@@ -1,0 +1,100 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.hypothesis/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.cache/
+
+# Frontend
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# Secrets (DO NOT COMMIT)
+*.key
+*.pem
+*.crt
+config/secrets.json
+
+# Hive Mind session data (contains sensitive info)
+.hive-mind/sessions/
+.hive-mind/hive.db
+.hive-mind/hive.db-shm
+.hive-mind/hive.db-wal
+.swarm/memory.db
+.swarm/memory.db-shm
+.swarm/memory.db-wal
