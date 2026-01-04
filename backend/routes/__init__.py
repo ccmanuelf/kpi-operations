@@ -1,0 +1,17 @@
+"""
+API Routes Package
+Modular route organization for the KPI Operations API
+"""
+from .attendance import router as attendance_router
+from .coverage import router as coverage_router
+from .quality import router as quality_router
+from .defect import router as defect_router
+from .reports import router as reports_router
+
+__all__ = [
+    "attendance_router",
+    "coverage_router",
+    "quality_router",
+    "defect_router",
+    "reports_router"
+]
