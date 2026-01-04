@@ -10,6 +10,7 @@ from decimal import Decimal
 
 class ShiftCoverageCreate(BaseModel):
     """Create shift coverage record"""
+    client_id: str = Field(..., min_length=1, max_length=50)
     shift_id: int = Field(..., gt=0)
     coverage_date: date
     required_employees: int = Field(..., gt=0)

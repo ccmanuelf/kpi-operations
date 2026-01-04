@@ -10,6 +10,7 @@ from decimal import Decimal
 
 class QualityInspectionCreate(BaseModel):
     """Create quality inspection record"""
+    client_id: str = Field(..., min_length=1, max_length=50)
     product_id: int = Field(..., gt=0)
     shift_id: int = Field(..., gt=0)
     inspection_date: date

@@ -10,6 +10,7 @@ from decimal import Decimal
 
 class AttendanceRecordCreate(BaseModel):
     """Create attendance record"""
+    client_id: str = Field(..., min_length=1, max_length=50)
     employee_id: int = Field(..., gt=0)
     shift_id: int = Field(..., gt=0)
     attendance_date: date
