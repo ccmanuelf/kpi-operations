@@ -4,7 +4,7 @@ PHASE 2: WIP aging tracking
 """
 from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
-from backend.database import Base
+from database import Base
 
 
 class WIPHold(Base):
@@ -12,6 +12,10 @@ class WIPHold(Base):
     __tablename__ = "wip_holds"
 
     hold_id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Multi-tenant isolation - CRITICAL
+    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+
     product_id = Column(Integer, ForeignKey('products.product_id'), nullable=False)
     shift_id = Column(Integer, ForeignKey('shifts.shift_id'), nullable=False)
     hold_date = Column(Date, nullable=False)

@@ -4,7 +4,7 @@ PHASE 2: Downtime tracking
 """
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
-from backend.database import Base
+from database import Base
 
 
 class DowntimeEvent(Base):
@@ -12,6 +12,10 @@ class DowntimeEvent(Base):
     __tablename__ = "downtime_events"
 
     downtime_id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Multi-tenant isolation - CRITICAL
+    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+
     product_id = Column(Integer, ForeignKey('products.product_id'), nullable=False)
     shift_id = Column(Integer, ForeignKey('shifts.shift_id'), nullable=False)
     production_date = Column(Date, nullable=False)

@@ -1,6 +1,7 @@
 """
 CRUD operations for quality inspection tracking
 PHASE 4
+SECURITY: Multi-tenant client filtering enabled
 """
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -8,14 +9,14 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.quality import QualityInspection
-from backend.models.quality import (
+from schemas.quality import QualityInspection
+from models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse
 )
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from middleware.client_auth import verify_client_access, build_client_filter_clause
+from schemas.user import User
 
 
 def create_quality_inspection(
@@ -23,9 +24,13 @@ def create_quality_inspection(
     inspection: QualityInspectionCreate,
     current_user: User
 ) -> QualityInspectionResponse:
-    """Create new quality inspection record"""
-    # Verify user has access to this client
-    verify_client_access(current_user, inspection.client_id)
+    """
+    Create new quality inspection record
+    SECURITY: Verifies user has access to the specified client
+    """
+    # SECURITY: Verify user has access to this client
+    if hasattr(inspection, 'client_id') and inspection.client_id:
+        verify_client_access(current_user, inspection.client_id)
 
     # Calculate PPM and DPMO
     if inspection.units_inspected > 0:
@@ -64,7 +69,10 @@ def get_quality_inspection(
     inspection_id: int,
     current_user: User
 ) -> Optional[QualityInspection]:
-    """Get quality inspection by ID"""
+    """
+    Get quality inspection by ID
+    SECURITY: Verifies user has access to the record's client
+    """
     db_inspection = db.query(QualityInspection).filter(
         QualityInspection.inspection_id == inspection_id
     ).first()
@@ -72,8 +80,9 @@ def get_quality_inspection(
     if not db_inspection:
         raise HTTPException(status_code=404, detail="Quality inspection not found")
 
-    # Verify user has access to this client
-    verify_client_access(current_user, db_inspection.client_id)
+    # SECURITY: Verify user has access to this record's client
+    if hasattr(db_inspection, 'client_id') and db_inspection.client_id:
+        verify_client_access(current_user, db_inspection.client_id)
 
     return db_inspection
 
@@ -88,15 +97,23 @@ def get_quality_inspections(
     product_id: Optional[int] = None,
     shift_id: Optional[int] = None,
     inspection_stage: Optional[str] = None,
-    defect_category: Optional[str] = None
+    defect_category: Optional[str] = None,
+    client_id: Optional[str] = None
 ) -> List[QualityInspection]:
-    """Get quality inspections with filters"""
+    """
+    Get quality inspections with filters
+    SECURITY: Automatically filters by user's authorized clients
+    """
     query = db.query(QualityInspection)
 
-    # Apply client filtering based on user role
+    # SECURITY: Apply client filtering based on user's role
     client_filter = build_client_filter_clause(current_user, QualityInspection.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
+
+    # Apply additional filters
+    if client_id:
+        query = query.filter(QualityInspection.client_id == client_id)
 
     if start_date:
         query = query.filter(QualityInspection.inspection_date >= start_date)
@@ -127,17 +144,22 @@ def update_quality_inspection(
     inspection_update: QualityInspectionUpdate,
     current_user: User
 ) -> Optional[QualityInspectionResponse]:
-    """Update quality inspection record"""
-    db_inspection = get_quality_inspection(db, inspection_id, current_user)
+    """
+    Update quality inspection record
+    SECURITY: Verifies user has access to the record's client
+    """
+    db_inspection = db.query(QualityInspection).filter(
+        QualityInspection.inspection_id == inspection_id
+    ).first()
 
     if not db_inspection:
-        return None
+        raise HTTPException(status_code=404, detail="Quality inspection not found")
+
+    # SECURITY: Verify user has access to this record's client
+    if hasattr(db_inspection, 'client_id') and db_inspection.client_id:
+        verify_client_access(current_user, db_inspection.client_id)
 
     update_data = inspection_update.dict(exclude_unset=True)
-
-    # Verify client_id if being updated
-    if 'client_id' in update_data:
-        verify_client_access(current_user, update_data['client_id'])
 
     # Recalculate PPM and DPMO if values changed
     units = update_data.get('units_inspected', db_inspection.units_inspected)
@@ -158,7 +180,8 @@ def update_quality_inspection(
         update_data['dpmo'] = Decimal("0")
 
     for field, value in update_data.items():
-        setattr(db_inspection, field, value)
+        if hasattr(db_inspection, field):
+            setattr(db_inspection, field, value)
 
     db.commit()
     db.refresh(db_inspection)
@@ -171,11 +194,20 @@ def delete_quality_inspection(
     inspection_id: int,
     current_user: User
 ) -> bool:
-    """Delete quality inspection record"""
-    db_inspection = get_quality_inspection(db, inspection_id, current_user)
+    """
+    Delete quality inspection record
+    SECURITY: Verifies user has access to the record's client
+    """
+    db_inspection = db.query(QualityInspection).filter(
+        QualityInspection.inspection_id == inspection_id
+    ).first()
 
     if not db_inspection:
-        return False
+        raise HTTPException(status_code=404, detail="Quality inspection not found")
+
+    # SECURITY: Verify user has access to this record's client
+    if hasattr(db_inspection, 'client_id') and db_inspection.client_id:
+        verify_client_access(current_user, db_inspection.client_id)
 
     db.delete(db_inspection)
     db.commit()

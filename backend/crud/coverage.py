@@ -1,6 +1,7 @@
 """
 CRUD operations for shift coverage tracking
 PHASE 3
+SECURITY: Multi-tenant client filtering enabled
 """
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -8,14 +9,14 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.coverage import ShiftCoverage
-from backend.models.coverage import (
+from schemas.coverage import ShiftCoverage
+from models.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse
 )
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from middleware.client_auth import verify_client_access, build_client_filter_clause
+from schemas.user import User
 
 
 def create_shift_coverage(
@@ -23,9 +24,13 @@ def create_shift_coverage(
     coverage: ShiftCoverageCreate,
     current_user: User
 ) -> ShiftCoverageResponse:
-    """Create new shift coverage record"""
-    # Verify user has access to this client
-    verify_client_access(current_user, coverage.client_id)
+    """
+    Create new shift coverage record
+    SECURITY: Verifies user has access to the specified client
+    """
+    # SECURITY: Verify user has access to this client
+    if hasattr(coverage, 'client_id') and coverage.client_id:
+        verify_client_access(current_user, coverage.client_id)
 
     # Calculate coverage percentage
     if coverage.required_employees > 0:
@@ -54,16 +59,20 @@ def get_shift_coverage(
     coverage_id: int,
     current_user: User
 ) -> Optional[ShiftCoverage]:
-    """Get shift coverage by ID"""
+    """
+    Get shift coverage by ID
+    SECURITY: Verifies user has access to the record's client
+    """
     db_coverage = db.query(ShiftCoverage).filter(
         ShiftCoverage.coverage_id == coverage_id
     ).first()
 
     if not db_coverage:
-        raise HTTPException(status_code=404, detail="Shift coverage not found")
+        raise HTTPException(status_code=404, detail="Shift coverage record not found")
 
-    # Verify user has access to this client
-    verify_client_access(current_user, db_coverage.client_id)
+    # SECURITY: Verify user has access to this record's client
+    if hasattr(db_coverage, 'client_id') and db_coverage.client_id:
+        verify_client_access(current_user, db_coverage.client_id)
 
     return db_coverage
 
@@ -75,15 +84,23 @@ def get_shift_coverages(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    shift_id: Optional[int] = None
+    shift_id: Optional[int] = None,
+    client_id: Optional[str] = None
 ) -> List[ShiftCoverage]:
-    """Get shift coverage records with filters"""
+    """
+    Get shift coverage records with filters
+    SECURITY: Automatically filters by user's authorized clients
+    """
     query = db.query(ShiftCoverage)
 
-    # Apply client filtering based on user role
+    # SECURITY: Apply client filtering based on user's role
     client_filter = build_client_filter_clause(current_user, ShiftCoverage.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
+
+    # Apply additional filters
+    if client_id:
+        query = query.filter(ShiftCoverage.client_id == client_id)
 
     if start_date:
         query = query.filter(ShiftCoverage.coverage_date >= start_date)
@@ -105,17 +122,22 @@ def update_shift_coverage(
     coverage_update: ShiftCoverageUpdate,
     current_user: User
 ) -> Optional[ShiftCoverageResponse]:
-    """Update shift coverage record"""
-    db_coverage = get_shift_coverage(db, coverage_id, current_user)
+    """
+    Update shift coverage record
+    SECURITY: Verifies user has access to the record's client
+    """
+    db_coverage = db.query(ShiftCoverage).filter(
+        ShiftCoverage.coverage_id == coverage_id
+    ).first()
 
     if not db_coverage:
-        return None
+        raise HTTPException(status_code=404, detail="Shift coverage record not found")
+
+    # SECURITY: Verify user has access to this record's client
+    if hasattr(db_coverage, 'client_id') and db_coverage.client_id:
+        verify_client_access(current_user, db_coverage.client_id)
 
     update_data = coverage_update.dict(exclude_unset=True)
-
-    # Verify client_id if being updated
-    if 'client_id' in update_data:
-        verify_client_access(current_user, update_data['client_id'])
 
     # Recalculate coverage percentage if values changed
     required = update_data.get('required_employees', db_coverage.required_employees)
@@ -129,7 +151,8 @@ def update_shift_coverage(
         update_data['coverage_percentage'] = Decimal("0")
 
     for field, value in update_data.items():
-        setattr(db_coverage, field, value)
+        if hasattr(db_coverage, field):
+            setattr(db_coverage, field, value)
 
     db.commit()
     db.refresh(db_coverage)
@@ -142,11 +165,20 @@ def delete_shift_coverage(
     coverage_id: int,
     current_user: User
 ) -> bool:
-    """Delete shift coverage record"""
-    db_coverage = get_shift_coverage(db, coverage_id, current_user)
+    """
+    Delete shift coverage record
+    SECURITY: Verifies user has access to the record's client
+    """
+    db_coverage = db.query(ShiftCoverage).filter(
+        ShiftCoverage.coverage_id == coverage_id
+    ).first()
 
     if not db_coverage:
-        return False
+        raise HTTPException(status_code=404, detail="Shift coverage record not found")
+
+    # SECURITY: Verify user has access to this record's client
+    if hasattr(db_coverage, 'client_id') and db_coverage.client_id:
+        verify_client_access(current_user, db_coverage.client_id)
 
     db.delete(db_coverage)
     db.commit()

@@ -10,6 +10,7 @@ from decimal import Decimal
 
 class DowntimeEventCreate(BaseModel):
     """Create downtime event"""
+    client_id: str = Field(..., min_length=1, max_length=50)
     product_id: int = Field(..., gt=0)
     shift_id: int = Field(..., gt=0)
     production_date: date

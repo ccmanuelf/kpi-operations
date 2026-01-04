@@ -4,7 +4,7 @@ PHASE 3: Employee attendance tracking
 """
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
-from backend.database import Base
+from database import Base
 
 
 class AttendanceRecord(Base):
@@ -12,6 +12,10 @@ class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
 
     attendance_id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Multi-tenant isolation - CRITICAL
+    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+
     employee_id = Column(Integer, nullable=False)  # Will link to employee table in future
     shift_id = Column(Integer, ForeignKey('shifts.shift_id'), nullable=False)
     attendance_date = Column(Date, nullable=False)

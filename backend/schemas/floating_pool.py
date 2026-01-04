@@ -5,7 +5,7 @@ Source: 01-Core_DataEntities_Inventory.csv lines 54-60
 """
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
-from backend.database import Base
+from database import Base
 
 
 class FloatingPool(Base):
@@ -14,6 +14,9 @@ class FloatingPool(Base):
 
     # Primary key
     pool_id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # Multi-tenant isolation - CRITICAL (nullable for shared resources)
+    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=True, index=True)
 
     # Employee reference
     employee_id = Column(Integer, ForeignKey('EMPLOYEE.employee_id'), nullable=False, index=True)
