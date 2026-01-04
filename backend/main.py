@@ -1331,6 +1331,15 @@ from routes import (
     defect_router
 )
 
+# Import reports router
+from routes.reports import router as reports_router
+
+# Import CSV upload endpoints
+from endpoints.csv_upload import router as csv_upload_router
+
+# Register CSV upload routes for all resources
+app.include_router(csv_upload_router)
+
 # Register attendance tracking routes
 app.include_router(attendance_router)
 
@@ -1342,6 +1351,9 @@ app.include_router(quality_router)
 
 # Register defect detail routes
 app.include_router(defect_router)
+
+# Register comprehensive report generation routes
+app.include_router(reports_router)
 
 # OTD (On-Time Delivery) KPI endpoints remain in main.py
 # as they don't fit into the modular structure
