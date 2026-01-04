@@ -10,12 +10,13 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta
 import io
 import csv
+import json
 from decimal import Decimal
 
-from backend.config import settings
-from backend.database import get_db, engine, Base
-from backend.models.user import UserCreate, UserLogin, UserResponse, Token
-from backend.models.production import (
+from config import settings
+from database import get_db, engine, Base
+from models.user import UserCreate, UserLogin, UserResponse, Token
+from models.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryResponse,
@@ -23,30 +24,34 @@ from backend.models.production import (
     CSVUploadResponse,
     KPICalculationResponse
 )
-from backend.models.downtime import (
+from models.import_log import (
+    BatchImportRequest,
+    BatchImportResponse
+)
+from models.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse,
     AvailabilityCalculationResponse
 )
-from backend.models.hold import (
+from models.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
     WIPHoldResponse,
     WIPAgingResponse
 )
-from backend.models.attendance import (
+from models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
     AbsenteeismCalculationResponse
 )
-from backend.models.coverage import (
+from models.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse
 )
-from backend.models.quality import (
+from models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse,
@@ -54,36 +59,65 @@ from backend.models.quality import (
     DPMOCalculationResponse,
     FPYRTYCalculationResponse
 )
-from backend.models.job import (
+from models.job import (
     JobCreate,
     JobUpdate,
     JobComplete,
     JobResponse
 )
-from backend.models.part_opportunities import (
+from models.part_opportunities import (
     PartOpportunityCreate,
     PartOpportunityUpdate,
     PartOpportunityResponse,
     BulkImportRequest,
     BulkImportResponse
 )
-from backend.models.defect_detail import (
+from models.defect_detail import (
     DefectDetailCreate,
     DefectDetailUpdate,
     DefectDetailResponse,
     DefectSummaryResponse
 )
-from backend.schemas.user import User
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.auth.jwt import (
+from models.work_order import (
+    WorkOrderCreate,
+    WorkOrderUpdate,
+    WorkOrderResponse,
+    WorkOrderWithMetrics
+)
+from models.client import (
+    ClientCreate,
+    ClientUpdate,
+    ClientResponse,
+    ClientSummary
+)
+from models.employee import (
+    EmployeeCreate,
+    EmployeeUpdate,
+    EmployeeResponse,
+    EmployeeWithClients,
+    EmployeeAssignmentRequest,
+    FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest
+)
+from models.floating_pool import (
+    FloatingPoolCreate,
+    FloatingPoolUpdate,
+    FloatingPoolResponse,
+    FloatingPoolAssignmentRequest,
+    FloatingPoolUnassignmentRequest,
+    FloatingPoolAvailability,
+    FloatingPoolSummary
+)
+from schemas.user import User
+from schemas.product import Product
+from schemas.shift import Shift
+from auth.jwt import (
     verify_password,
     get_password_hash,
     create_access_token,
     get_current_user,
     get_current_active_supervisor
 )
-from backend.crud.production import (
+from crud.production import (
     create_production_entry,
     get_production_entry,
     get_production_entries,
@@ -92,28 +126,28 @@ from backend.crud.production import (
     get_production_entry_with_details,
     get_daily_summary
 )
-from backend.crud.downtime import (
+from crud.downtime import (
     create_downtime_event,
     get_downtime_event,
     get_downtime_events,
     update_downtime_event,
     delete_downtime_event
 )
-from backend.crud.hold import (
+from crud.hold import (
     create_wip_hold,
     get_wip_hold,
     get_wip_holds,
     update_wip_hold,
     delete_wip_hold
 )
-from backend.crud.attendance import (
+from crud.attendance import (
     create_attendance_record,
     get_attendance_record,
     get_attendance_records,
     update_attendance_record,
     delete_attendance_record
 )
-from backend.crud.job import (
+from crud.job import (
     create_job,
     get_job,
     get_jobs,
@@ -122,7 +156,7 @@ from backend.crud.job import (
     delete_job,
     complete_job
 )
-from backend.crud.part_opportunities import (
+from crud.part_opportunities import (
     create_part_opportunity,
     get_part_opportunity,
     get_part_opportunities,
@@ -131,21 +165,21 @@ from backend.crud.part_opportunities import (
     delete_part_opportunity,
     bulk_import_opportunities
 )
-from backend.crud.coverage import (
+from crud.coverage import (
     create_shift_coverage,
     get_shift_coverage,
     get_shift_coverages,
     update_shift_coverage,
     delete_shift_coverage
 )
-from backend.crud.quality import (
+from crud.quality import (
     create_quality_inspection,
     get_quality_inspection,
     get_quality_inspections,
     update_quality_inspection,
     delete_quality_inspection
 )
-from backend.crud.defect_detail import (
+from crud.defect_detail import (
     create_defect_detail,
     get_defect_detail,
     get_defect_details,
@@ -154,20 +188,61 @@ from backend.crud.defect_detail import (
     delete_defect_detail,
     get_defect_summary_by_type
 )
-from backend.calculations.efficiency import calculate_efficiency
-from backend.calculations.performance import calculate_performance, calculate_quality_rate
-from backend.calculations.availability import calculate_availability
-from backend.calculations.wip_aging import calculate_wip_aging, identify_chronic_holds
-from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
-from backend.calculations.otd import calculate_otd, identify_late_orders
-from backend.calculations.ppm import calculate_ppm, identify_top_defects
-from backend.calculations.dpmo import calculate_dpmo
-from backend.calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
-from backend.calculations.inference import InferenceEngine
-from backend.reports.pdf_generator import generate_daily_report
+from crud.work_order import (
+    create_work_order,
+    get_work_order,
+    get_work_orders,
+    update_work_order,
+    delete_work_order,
+    get_work_orders_by_client,
+    get_work_orders_by_status,
+    get_work_orders_by_date_range
+)
+from crud.client import (
+    create_client,
+    get_client,
+    get_clients,
+    update_client,
+    delete_client,
+    get_active_clients
+)
+from crud.employee import (
+    create_employee,
+    get_employee,
+    get_employees,
+    update_employee,
+    delete_employee,
+    get_employees_by_client,
+    get_floating_pool_employees,
+    assign_to_floating_pool,
+    remove_from_floating_pool,
+    assign_employee_to_client
+)
+from crud.floating_pool import (
+    create_floating_pool_entry,
+    get_floating_pool_entry,
+    get_floating_pool_entries,
+    update_floating_pool_entry,
+    delete_floating_pool_entry,
+    assign_floating_pool_to_client,
+    unassign_floating_pool_from_client,
+    get_available_floating_pool_employees,
+    get_floating_pool_assignments_by_client
+)
+from calculations.efficiency import calculate_efficiency
+from calculations.performance import calculate_performance, calculate_quality_rate
+from calculations.availability import calculate_availability
+from calculations.wip_aging import calculate_wip_aging, identify_chronic_holds
+from calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
+from calculations.otd import calculate_otd, identify_late_orders
+from calculations.ppm import calculate_ppm, identify_top_defects
+from calculations.dpmo import calculate_dpmo
+from calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
+from calculations.inference import InferenceEngine
+from reports.pdf_generator import generate_daily_report
 
-# Create tables
-Base.metadata.create_all(bind=engine)
+# Create tables (DISABLED - using pre-populated SQLite database with demo data)
+# Base.metadata.create_all(bind=engine)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -460,6 +535,11 @@ async def upload_csv(
         total_rows += 1
 
         try:
+            # SECURITY: Validate client_id if present in CSV
+            if 'client_id' in row and row.get('client_id'):
+                from backend.middleware.client_auth import verify_client_access
+                verify_client_access(current_user, row['client_id'])
+
             # Parse CSV row
             entry = ProductionEntryCreate(
                 product_id=int(row['product_id']),
@@ -494,6 +574,139 @@ async def upload_csv(
         errors=errors,
         created_entries=created_entries
     )
+
+
+# ============================================================================
+# BATCH IMPORT ROUTE (CSV UPLOAD CONFIRMATION WORKFLOW)
+# ============================================================================
+
+@app.post("/api/production/batch-import", response_model=BatchImportResponse)
+def batch_import_production(
+    request: BatchImportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Batch import production entries after frontend validation.
+
+    This endpoint expects pre-validated data from the CSVUploadDialog component.
+    It creates multiple production entries and logs the import for audit purposes.
+    """
+    total_rows = len(request.entries)
+    successful = 0
+    failed = 0
+    errors = []
+    created_entries = []
+
+    # Process each entry
+    for idx, row in enumerate(request.entries):
+        try:
+            # Parse and validate the entry
+            entry = ProductionEntryCreate(
+                product_id=int(row['product_id']),
+                shift_id=int(row['shift_id']),
+                production_date=row['production_date'],
+                work_order_number=row.get('work_order_number') or None,
+                units_produced=int(row['units_produced']),
+                run_time_hours=Decimal(str(row['run_time_hours'])),
+                employees_assigned=int(row['employees_assigned']),
+                defect_count=int(row.get('defect_count', 0)),
+                scrap_count=int(row.get('scrap_count', 0)),
+                notes=row.get('notes')
+            )
+
+            # Create the entry
+            created = create_production_entry(db, entry, current_user)
+            created_entries.append(created.entry_id)
+            successful += 1
+
+        except Exception as e:
+            failed += 1
+            errors.append({
+                "row": idx + 1,
+                "error": str(e),
+                "data": row
+            })
+
+    # Create import log entry
+    import_log_id = None
+    try:
+        error_json = json.dumps(errors) if errors else None
+
+        # Insert into import_log table
+        result = db.execute(
+            """
+            INSERT INTO import_log
+            (user_id, rows_attempted, rows_succeeded, rows_failed, error_details, import_type)
+            VALUES (:user_id, :attempted, :succeeded, :failed, :errors, 'batch_import')
+            RETURNING log_id
+            """,
+            {
+                'user_id': current_user.user_id,
+                'attempted': total_rows,
+                'succeeded': successful,
+                'failed': failed,
+                'errors': error_json
+            }
+        )
+
+        log_row = result.fetchone()
+        if log_row:
+            import_log_id = log_row[0]
+
+        db.commit()
+
+    except Exception as log_error:
+        # Don't fail the entire import if logging fails
+        print(f"Warning: Failed to create import log: {log_error}")
+        db.rollback()
+
+    return BatchImportResponse(
+        total_rows=total_rows,
+        successful=successful,
+        failed=failed,
+        errors=errors[:100],  # Limit error list to first 100
+        created_entries=created_entries,
+        import_log_id=import_log_id,
+        import_timestamp=datetime.utcnow()
+    )
+
+
+@app.get("/api/import-logs")
+def get_import_logs(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get import logs for the current user"""
+    result = db.execute(
+        """
+        SELECT log_id, user_id, import_timestamp, file_name,
+               rows_attempted, rows_succeeded, rows_failed,
+               error_details, import_type
+        FROM import_log
+        WHERE user_id = :user_id
+        ORDER BY import_timestamp DESC
+        LIMIT :limit
+        """,
+        {'user_id': current_user.user_id, 'limit': limit}
+    )
+
+    logs = []
+    for row in result:
+        logs.append({
+            'log_id': row[0],
+            'user_id': row[1],
+            'import_timestamp': row[2],
+            'file_name': row[3],
+            'rows_attempted': row[4],
+            'rows_succeeded': row[5],
+            'rows_failed': row[6],
+            'error_details': row[7],
+            'import_type': row[8]
+        })
+
+    return logs
 
 
 # ============================================================================
@@ -865,8 +1078,11 @@ def generate_daily_pdf_report(
 # ============================================================================
 
 @app.get("/api/products", response_model=List[dict])
-def list_products(db: Session = Depends(get_db)):
-    """List all active products"""
+def list_products(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all active products (authentication required)"""
     products = db.query(Product).filter(Product.is_active == True).all()
     return [
         {
@@ -880,8 +1096,11 @@ def list_products(db: Session = Depends(get_db)):
 
 
 @app.get("/api/shifts", response_model=List[dict])
-def list_shifts(db: Session = Depends(get_db)):
-    """List all active shifts"""
+def list_shifts(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all active shifts (authentication required)"""
     shifts = db.query(Shift).filter(Shift.is_active == True).all()
     return [
         {
@@ -1100,203 +1319,32 @@ def get_chronic_holds(
 
 
 # ============================================================================
-# PHASE 3: ATTENDANCE TRACKING ROUTES
+# PHASE 3 & 4: MODULAR ROUTE REGISTRATION
+# Routes moved to /backend/routes/ modules for better organization
 # ============================================================================
 
-@app.post("/api/attendance", response_model=AttendanceRecordResponse, status_code=status.HTTP_201_CREATED)
-def create_attendance(
-    attendance: AttendanceRecordCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Create attendance record"""
-    return create_attendance_record(db, attendance, current_user)
+# Import and register modular route modules
+from routes import (
+    attendance_router,
+    coverage_router,
+    quality_router,
+    defect_router
+)
 
+# Register attendance tracking routes
+app.include_router(attendance_router)
 
-@app.get("/api/attendance", response_model=List[AttendanceRecordResponse])
-def list_attendance(
-    skip: int = 0,
-    limit: int = 100,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    employee_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
-    status: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """List attendance records with filters"""
-    return get_attendance_records(
-        db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, employee_id=employee_id,
-        shift_id=shift_id, status=status
-    )
+# Register shift coverage routes
+app.include_router(coverage_router)
 
+# Register quality inspection routes
+app.include_router(quality_router)
 
-@app.get("/api/attendance/{attendance_id}", response_model=AttendanceRecordResponse)
-def get_attendance(
-    attendance_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get attendance record by ID"""
-    record = get_attendance_record(db, attendance_id, current_user)
-    if not record:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-    return record
+# Register defect detail routes
+app.include_router(defect_router)
 
-
-@app.put("/api/attendance/{attendance_id}", response_model=AttendanceRecordResponse)
-def update_attendance(
-    attendance_id: int,
-    attendance_update: AttendanceRecordUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Update attendance record"""
-    updated = update_attendance_record(db, attendance_id, attendance_update, current_user)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-    return updated
-
-
-@app.delete("/api/attendance/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_attendance(
-    attendance_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
-):
-    """Delete attendance record (supervisor only)"""
-    success = delete_attendance_record(db, attendance_id, current_user)
-    if not success:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-
-
-@app.get("/api/kpi/absenteeism", response_model=AbsenteeismCalculationResponse)
-def calculate_absenteeism_kpi(
-    shift_id: int,
-    start_date: date,
-    end_date: date,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Calculate absenteeism KPI"""
-    rate, scheduled, absent, emp_count, absence_count = calculate_absenteeism(
-        db, shift_id, start_date, end_date
-    )
-
-    return AbsenteeismCalculationResponse(
-        shift_id=shift_id,
-        start_date=start_date,
-        end_date=end_date,
-        total_scheduled_hours=scheduled,
-        total_hours_worked=scheduled - absent,
-        total_hours_absent=absent,
-        absenteeism_rate=rate,
-        total_employees=emp_count,
-        total_absences=absence_count,
-        calculation_timestamp=datetime.utcnow()
-    )
-
-
-@app.get("/api/kpi/bradford-factor/{employee_id}")
-def get_bradford_factor(
-    employee_id: int,
-    start_date: date,
-    end_date: date,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Calculate Bradford Factor for employee"""
-    score = calculate_bradford_factor(db, employee_id, start_date, end_date)
-
-    interpretation = "Low risk"
-    if score > 250:
-        interpretation = "Critical - Final warning/termination"
-    elif score > 125:
-        interpretation = "High risk - Formal action required"
-    elif score > 50:
-        interpretation = "Medium risk - Monitor closely"
-
-    return {
-        "employee_id": employee_id,
-        "bradford_score": score,
-        "interpretation": interpretation,
-        "start_date": start_date,
-        "end_date": end_date
-    }
-
-
-# ============================================================================
-# PHASE 3: SHIFT COVERAGE ROUTES
-# ============================================================================
-
-@app.post("/api/coverage", response_model=ShiftCoverageResponse, status_code=status.HTTP_201_CREATED)
-def create_coverage(
-    coverage: ShiftCoverageCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Create shift coverage record"""
-    return create_shift_coverage(db, coverage, current_user)
-
-
-@app.get("/api/coverage", response_model=List[ShiftCoverageResponse])
-def list_coverage(
-    skip: int = 0,
-    limit: int = 100,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    shift_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """List shift coverage records"""
-    return get_shift_coverages(
-        db, current_user=current_user, skip=skip, limit=limit,
-        start_date=start_date, end_date=end_date, shift_id=shift_id
-    )
-
-
-@app.get("/api/coverage/{coverage_id}", response_model=ShiftCoverageResponse)
-def get_coverage(
-    coverage_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Get shift coverage by ID"""
-    coverage = get_shift_coverage(db, coverage_id, current_user)
-    if not coverage:
-        raise HTTPException(status_code=404, detail="Shift coverage not found")
-    return coverage
-
-
-@app.put("/api/coverage/{coverage_id}", response_model=ShiftCoverageResponse)
-def update_coverage(
-    coverage_id: int,
-    coverage_update: ShiftCoverageUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """Update shift coverage record"""
-    updated = update_shift_coverage(db, coverage_id, coverage_update, current_user)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Shift coverage not found")
-    return updated
-
-
-@app.delete("/api/coverage/{coverage_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_coverage(
-    coverage_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
-):
-    """Delete shift coverage (supervisor only)"""
-    success = delete_shift_coverage(db, coverage_id, current_user)
-    if not success:
-        raise HTTPException(status_code=404, detail="Shift coverage not found")
-
-
+# OTD (On-Time Delivery) KPI endpoints remain in main.py
+# as they don't fit into the modular structure
 @app.get("/api/kpi/otd")
 def calculate_otd_kpi(
     start_date: date,
@@ -1330,182 +1378,520 @@ def get_late_orders(
 
 
 # ============================================================================
-# PHASE 4: QUALITY INSPECTION ROUTES
+# WORK ORDER ROUTES (SPRINT 1)
 # ============================================================================
 
-@app.post("/api/quality", response_model=QualityInspectionResponse, status_code=status.HTTP_201_CREATED)
-def create_quality(
-    inspection: QualityInspectionCreate,
+@app.post("/api/work-orders", response_model=WorkOrderResponse, status_code=status.HTTP_201_CREATED)
+def create_work_order_endpoint(
+    work_order: WorkOrderCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Create quality inspection record"""
-    return create_quality_inspection(db, inspection, current_user)
+    """
+    Create new work order
+    SECURITY: Enforces client filtering
+    """
+    work_order_data = work_order.model_dump()
+    return create_work_order(db, work_order_data, current_user)
 
 
-@app.get("/api/quality", response_model=List[QualityInspectionResponse])
-def list_quality(
+@app.get("/api/work-orders", response_model=List[WorkOrderResponse])
+def list_work_orders(
     skip: int = 0,
     limit: int = 100,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
-    inspection_stage: Optional[str] = None,
-    defect_category: Optional[str] = None,
+    client_id: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    style_model: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List quality inspections with filters"""
-    return get_quality_inspections(
-        db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, product_id=product_id, shift_id=shift_id,
-        inspection_stage=inspection_stage, defect_category=defect_category
-    )
+    """
+    List work orders with filters
+    SECURITY: Returns only work orders for user's authorized clients
+    """
+    return get_work_orders(db, current_user, skip, limit, client_id, status_filter, style_model)
 
 
-@app.get("/api/quality/{inspection_id}", response_model=QualityInspectionResponse)
-def get_quality(
-    inspection_id: int,
+@app.get("/api/work-orders/{work_order_id}", response_model=WorkOrderResponse)
+def get_work_order_endpoint(
+    work_order_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get quality inspection by ID"""
-    inspection = get_quality_inspection(db, inspection_id, current_user)
-    if not inspection:
-        raise HTTPException(status_code=404, detail="Quality inspection not found")
-    return inspection
+    """
+    Get work order by ID
+    SECURITY: Verifies user has access to work order's client
+    """
+    work_order = get_work_order(db, work_order_id, current_user)
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found or access denied")
+    return work_order
 
 
-@app.put("/api/quality/{inspection_id}", response_model=QualityInspectionResponse)
-def update_quality(
-    inspection_id: int,
-    inspection_update: QualityInspectionUpdate,
+@app.put("/api/work-orders/{work_order_id}", response_model=WorkOrderResponse)
+def update_work_order_endpoint(
+    work_order_id: str,
+    work_order_update: WorkOrderUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Update quality inspection"""
-    updated = update_quality_inspection(db, inspection_id, inspection_update, current_user)
+    """
+    Update work order
+    SECURITY: Verifies user has access to work order's client
+    """
+    work_order_data = work_order_update.model_dump(exclude_unset=True)
+    updated = update_work_order(db, work_order_id, work_order_data, current_user)
     if not updated:
-        raise HTTPException(status_code=404, detail="Quality inspection not found")
+        raise HTTPException(status_code=404, detail="Work order not found or access denied")
     return updated
 
 
-@app.delete("/api/quality/{inspection_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_quality(
-    inspection_id: int,
+@app.delete("/api/work-orders/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_work_order_endpoint(
+    work_order_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor)
 ):
-    """Delete quality inspection (supervisor only)"""
-    success = delete_quality_inspection(db, inspection_id, current_user)
+    """
+    Delete work order (supervisor only)
+    SECURITY: Only deletes if user has access to work order's client
+    """
+    success = delete_work_order(db, work_order_id, current_user)
     if not success:
-        raise HTTPException(status_code=404, detail="Quality inspection not found")
+        raise HTTPException(status_code=404, detail="Work order not found or access denied")
 
 
-@app.get("/api/kpi/ppm", response_model=PPMCalculationResponse)
-def calculate_ppm_kpi(
-    product_id: int,
-    shift_id: int,
-    start_date: date,
-    end_date: date,
+@app.get("/api/clients/{client_id}/work-orders", response_model=List[WorkOrderResponse])
+def get_client_work_orders(
+    client_id: str,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Calculate PPM (Parts Per Million)"""
-    ppm, inspected, defects = calculate_ppm(
-        db, product_id, shift_id, start_date, end_date
-    )
-
-    return PPMCalculationResponse(
-        product_id=product_id,
-        shift_id=shift_id,
-        start_date=start_date,
-        end_date=end_date,
-        total_units_inspected=inspected,
-        total_defects=defects,
-        ppm=ppm,
-        calculation_timestamp=datetime.utcnow()
-    )
+    """
+    Get all work orders for a specific client
+    SECURITY: Returns only work orders for user's authorized clients
+    """
+    return get_work_orders_by_client(db, client_id, current_user, skip, limit)
 
 
-@app.get("/api/kpi/dpmo", response_model=DPMOCalculationResponse)
-def calculate_dpmo_kpi(
-    product_id: int,
-    shift_id: int,
-    start_date: date,
-    end_date: date,
-    opportunities_per_unit: int = 10,
+@app.get("/api/work-orders/status/{status}", response_model=List[WorkOrderResponse])
+def get_work_orders_by_status_endpoint(
+    status: str,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Calculate DPMO and Sigma Level"""
-    dpmo, sigma, units, defects = calculate_dpmo(
-        db, product_id, shift_id, start_date, end_date, opportunities_per_unit
-    )
-
-    return DPMOCalculationResponse(
-        product_id=product_id,
-        shift_id=shift_id,
-        start_date=start_date,
-        end_date=end_date,
-        total_units=units,
-        opportunities_per_unit=opportunities_per_unit,
-        total_defects=defects,
-        dpmo=dpmo,
-        sigma_level=sigma,
-        calculation_timestamp=datetime.utcnow()
-    )
+    """
+    Get work orders by status
+    SECURITY: Returns only work orders for user's authorized clients
+    """
+    return get_work_orders_by_status(db, status, current_user, skip, limit)
 
 
-@app.get("/api/kpi/fpy-rty", response_model=FPYRTYCalculationResponse)
-def calculate_fpy_rty_kpi(
-    product_id: int,
-    start_date: date,
-    end_date: date,
+@app.get("/api/work-orders/date-range", response_model=List[WorkOrderResponse])
+def get_work_orders_by_date_range_endpoint(
+    start_date: datetime,
+    end_date: datetime,
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Calculate FPY and RTY"""
-    fpy, good, total = calculate_fpy(db, product_id, start_date, end_date)
-    rty, steps = calculate_rty(db, product_id, start_date, end_date)
+    """
+    Get work orders within date range
+    SECURITY: Returns only work orders for user's authorized clients
+    """
+    return get_work_orders_by_date_range(db, start_date, end_date, current_user, skip, limit)
 
-    return FPYRTYCalculationResponse(
-        product_id=product_id,
-        start_date=start_date,
-        end_date=end_date,
-        total_units=total,
-        first_pass_good=good,
-        fpy_percentage=fpy,
-        rty_percentage=rty,
-        total_process_steps=len(steps),
-        calculation_timestamp=datetime.utcnow()
+
+# ============================================================================
+# CLIENT ROUTES (SPRINT 1)
+# ============================================================================
+
+@app.post("/api/clients", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
+def create_client_endpoint(
+    client: ClientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create new client
+    SECURITY: Admin only
+    """
+    client_data = client.model_dump()
+    return create_client(db, client_data, current_user)
+
+
+@app.get("/api/clients", response_model=List[ClientResponse])
+def list_clients(
+    skip: int = 0,
+    limit: int = 100,
+    is_active: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List clients with filters
+    SECURITY: Returns only clients user has access to
+    """
+    return get_clients(db, current_user, skip, limit, is_active)
+
+
+@app.get("/api/clients/{client_id}", response_model=ClientResponse)
+def get_client_endpoint(
+    client_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get client by ID
+    SECURITY: Verifies user has access to client
+    """
+    client = get_client(db, client_id, current_user)
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found or access denied")
+    return client
+
+
+@app.put("/api/clients/{client_id}", response_model=ClientResponse)
+def update_client_endpoint(
+    client_id: str,
+    client_update: ClientUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update client
+    SECURITY: Verifies user has access to client
+    """
+    client_data = client_update.model_dump(exclude_unset=True)
+    updated = update_client(db, client_id, client_data, current_user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Client not found or access denied")
+    return updated
+
+
+@app.delete("/api/clients/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_client_endpoint(
+    client_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete client (soft delete - admin only)
+    SECURITY: Admin only
+    """
+    success = delete_client(db, client_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="Client not found or access denied")
+
+
+@app.get("/api/clients/active/list", response_model=List[ClientResponse])
+def get_active_clients_endpoint(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all active clients
+    SECURITY: Returns only clients user has access to
+    """
+    return get_active_clients(db, current_user, skip, limit)
+
+
+# ============================================================================
+# EMPLOYEE ROUTES (SPRINT 2)
+# ============================================================================
+
+@app.post("/api/employees", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
+def create_employee_endpoint(
+    employee: EmployeeCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create new employee
+    SECURITY: Supervisor/admin only
+    """
+    employee_data = employee.model_dump()
+    return create_employee(db, employee_data, current_user)
+
+
+@app.get("/api/employees", response_model=List[EmployeeResponse])
+def list_employees(
+    skip: int = 0,
+    limit: int = 100,
+    client_id: Optional[str] = None,
+    is_floating_pool: Optional[bool] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List employees with filters
+    """
+    return get_employees(db, current_user, skip, limit, client_id, is_floating_pool)
+
+
+@app.get("/api/employees/{employee_id}", response_model=EmployeeResponse)
+def get_employee_endpoint(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get employee by ID
+    """
+    employee = get_employee(db, employee_id, current_user)
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return employee
+
+
+@app.put("/api/employees/{employee_id}", response_model=EmployeeResponse)
+def update_employee_endpoint(
+    employee_id: int,
+    employee_update: EmployeeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update employee
+    SECURITY: Supervisor/admin only
+    """
+    employee_data = employee_update.model_dump(exclude_unset=True)
+    updated = update_employee(db, employee_id, employee_data, current_user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    return updated
+
+
+@app.delete("/api/employees/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_employee_endpoint(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete employee (admin only)
+    SECURITY: Admin only
+    """
+    success = delete_employee(db, employee_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+
+@app.get("/api/clients/{client_id}/employees", response_model=List[EmployeeResponse])
+def get_client_employees(
+    client_id: str,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all employees assigned to a specific client
+    SECURITY: Verifies user has access to client
+    """
+    return get_employees_by_client(db, client_id, current_user, skip, limit)
+
+
+@app.get("/api/employees/floating-pool/list", response_model=List[EmployeeResponse])
+def get_floating_pool_employees_endpoint(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all floating pool employees
+    """
+    return get_floating_pool_employees(db, current_user, skip, limit)
+
+
+@app.post("/api/employees/{employee_id}/floating-pool/assign", response_model=EmployeeResponse)
+def assign_employee_to_floating_pool(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Assign employee to floating pool
+    SECURITY: Supervisor/admin only
+    """
+    return assign_to_floating_pool(db, employee_id, current_user)
+
+
+@app.post("/api/employees/{employee_id}/floating-pool/remove", response_model=EmployeeResponse)
+def remove_employee_from_floating_pool(
+    employee_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Remove employee from floating pool
+    SECURITY: Supervisor/admin only
+    """
+    return remove_from_floating_pool(db, employee_id, current_user)
+
+
+@app.post("/api/employees/{employee_id}/assign-client", response_model=EmployeeResponse)
+def assign_employee_to_client_endpoint(
+    employee_id: int,
+    assignment: EmployeeAssignmentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Assign employee to a client
+    SECURITY: Supervisor/admin only, verifies client access
+    """
+    return assign_employee_to_client(db, employee_id, assignment.client_id, current_user)
+
+
+# ============================================================================
+# FLOATING POOL ROUTES (SPRINT 2)
+# ============================================================================
+
+@app.post("/api/floating-pool", response_model=FloatingPoolResponse, status_code=status.HTTP_201_CREATED)
+def create_floating_pool_entry_endpoint(
+    pool_entry: FloatingPoolCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create new floating pool entry
+    SECURITY: Supervisor/admin only
+    """
+    pool_data = pool_entry.model_dump()
+    return create_floating_pool_entry(db, pool_data, current_user)
+
+
+@app.get("/api/floating-pool", response_model=List[FloatingPoolResponse])
+def list_floating_pool_entries(
+    skip: int = 0,
+    limit: int = 100,
+    employee_id: Optional[int] = None,
+    available_only: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List floating pool entries with filters
+    """
+    return get_floating_pool_entries(db, current_user, skip, limit, employee_id, available_only)
+
+
+@app.get("/api/floating-pool/{pool_id}", response_model=FloatingPoolResponse)
+def get_floating_pool_entry_endpoint(
+    pool_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get floating pool entry by ID
+    """
+    pool_entry = get_floating_pool_entry(db, pool_id, current_user)
+    if not pool_entry:
+        raise HTTPException(status_code=404, detail="Floating pool entry not found")
+    return pool_entry
+
+
+@app.put("/api/floating-pool/{pool_id}", response_model=FloatingPoolResponse)
+def update_floating_pool_entry_endpoint(
+    pool_id: int,
+    pool_update: FloatingPoolUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update floating pool entry
+    SECURITY: Supervisor/admin only
+    """
+    pool_data = pool_update.model_dump(exclude_unset=True)
+    updated = update_floating_pool_entry(db, pool_id, pool_data, current_user)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Floating pool entry not found")
+    return updated
+
+
+@app.delete("/api/floating-pool/{pool_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_floating_pool_entry_endpoint(
+    pool_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete floating pool entry
+    SECURITY: Supervisor/admin only
+    """
+    success = delete_floating_pool_entry(db, pool_id, current_user)
+    if not success:
+        raise HTTPException(status_code=404, detail="Floating pool entry not found")
+
+
+@app.post("/api/floating-pool/assign", response_model=FloatingPoolResponse)
+def assign_floating_pool_employee_to_client(
+    assignment: FloatingPoolAssignmentRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Assign floating pool employee to a client
+    SECURITY: Supervisor/admin only, verifies client access
+    """
+    return assign_floating_pool_to_client(
+        db,
+        assignment.employee_id,
+        assignment.client_id,
+        assignment.available_from,
+        assignment.available_to,
+        current_user,
+        assignment.notes
     )
 
 
-@app.get("/api/kpi/quality-score")
-def get_quality_score(
-    product_id: int,
-    start_date: date,
-    end_date: date,
+@app.post("/api/floating-pool/unassign", response_model=FloatingPoolResponse)
+def unassign_floating_pool_employee_from_client(
+    unassignment: FloatingPoolUnassignmentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Calculate comprehensive quality score"""
-    return calculate_quality_score(db, product_id, start_date, end_date)
+    """
+    Unassign floating pool employee from client
+    SECURITY: Supervisor/admin only
+    """
+    return unassign_floating_pool_from_client(db, unassignment.pool_id, current_user)
 
 
-@app.get("/api/kpi/top-defects")
-def get_top_defects(
-    product_id: Optional[int] = None,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None,
-    limit: int = 10,
+@app.get("/api/floating-pool/available/list")
+def get_available_floating_pool_list(
+    as_of_date: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get top defect types (Pareto analysis)"""
-    return identify_top_defects(db, product_id, start_date, end_date, limit)
+    """
+    Get all currently available floating pool employees
+    """
+    return get_available_floating_pool_employees(db, current_user, as_of_date)
+
+
+@app.get("/api/clients/{client_id}/floating-pool", response_model=List[FloatingPoolResponse])
+def get_client_floating_pool_assignments(
+    client_id: str,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all floating pool assignments for a specific client
+    SECURITY: Verifies user has access to client
+    """
+    return get_floating_pool_assignments_by_client(db, client_id, current_user, skip, limit)
 
 
 # ============================================================================
@@ -1535,6 +1921,256 @@ def infer_cycle_time(
         "is_estimated": is_estimated,
         **confidence_flag
     }
+
+
+# ============================================================================
+# REPORT GENERATION ROUTES (SPRINT 4.2)
+# ============================================================================
+
+from reports.pdf_generator import PDFReportGenerator
+from reports.excel_generator import ExcelReportGenerator
+from services.email_service import EmailService
+from tasks.daily_reports import scheduler as report_scheduler
+from pydantic import BaseModel
+
+
+class ReportEmailRequest(BaseModel):
+    """Request model for sending reports via email"""
+    client_id: Optional[int] = None
+    start_date: date
+    end_date: date
+    recipient_emails: List[str]
+    include_excel: bool = False
+
+
+@app.get("/api/reports/pdf")
+def generate_pdf_report(
+    client_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    kpis: Optional[str] = None,  # Comma-separated KPI keys
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate and download PDF report
+    Query params:
+    - client_id: Optional client filter
+    - start_date: Report start date (default: 30 days ago)
+    - end_date: Report end date (default: today)
+    - kpis: Comma-separated KPI keys to include (default: all)
+    """
+    # Default date range
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        start_date = end_date - timedelta(days=30)
+
+    # Parse KPIs
+    kpis_to_include = None
+    if kpis:
+        kpis_to_include = [k.strip() for k in kpis.split(',')]
+
+    try:
+        # Generate PDF
+        pdf_generator = PDFReportGenerator(db)
+        pdf_buffer = pdf_generator.generate_report(
+            client_id=client_id,
+            start_date=start_date,
+            end_date=end_date,
+            kpis_to_include=kpis_to_include
+        )
+
+        # Determine filename
+        client_name = "All_Clients"
+        if client_id:
+            from schemas.client import Client
+            client = db.query(Client).filter(Client.client_id == client_id).first()
+            if client:
+                client_name = client.name.replace(' ', '_')
+
+        filename = f"KPI_Report_{client_name}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.pdf"
+
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF report: {str(e)}")
+
+
+@app.get("/api/reports/excel")
+def generate_excel_report(
+    client_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate and download Excel report
+    Query params:
+    - client_id: Optional client filter
+    - start_date: Report start date (default: 30 days ago)
+    - end_date: Report end date (default: today)
+    """
+    # Default date range
+    if not end_date:
+        end_date = date.today()
+    if not start_date:
+        start_date = end_date - timedelta(days=30)
+
+    try:
+        # Generate Excel
+        excel_generator = ExcelReportGenerator(db)
+        excel_buffer = excel_generator.generate_report(
+            client_id=client_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+
+        # Determine filename
+        client_name = "All_Clients"
+        if client_id:
+            from schemas.client import Client
+            client = db.query(Client).filter(Client.client_id == client_id).first()
+            if client:
+                client_name = client.name.replace(' ', '_')
+
+        filename = f"KPI_Report_{client_name}_{start_date.strftime('%Y%m%d')}_{end_date.strftime('%Y%m%d')}.xlsx"
+
+        return StreamingResponse(
+            excel_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate Excel report: {str(e)}")
+
+
+@app.post("/api/reports/email")
+def send_report_via_email(
+    request: ReportEmailRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send KPI report via email
+    Body:
+    {
+        "client_id": 1,  // optional
+        "start_date": "2024-01-01",
+        "end_date": "2024-01-31",
+        "recipient_emails": ["user@example.com"],
+        "include_excel": false
+    }
+    """
+    try:
+        # Generate PDF
+        pdf_generator = PDFReportGenerator(db)
+        pdf_buffer = pdf_generator.generate_report(
+            client_id=request.client_id,
+            start_date=request.start_date,
+            end_date=request.end_date
+        )
+
+        # Get client name
+        client_name = "All Clients"
+        if request.client_id:
+            from schemas.client import Client
+            client = db.query(Client).filter(Client.client_id == request.client_id).first()
+            if client:
+                client_name = client.name
+
+        # Send email
+        email_service = EmailService()
+        result = email_service.send_kpi_report(
+            to_emails=request.recipient_emails,
+            client_name=client_name,
+            report_date=datetime.now(),
+            pdf_content=pdf_buffer.getvalue()
+        )
+
+        if result['success']:
+            return {
+                "message": "Report sent successfully",
+                "recipients": request.recipient_emails,
+                "client": client_name
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result.get('message', 'Failed to send email'))
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send report: {str(e)}")
+
+
+@app.post("/api/reports/schedule/trigger")
+def trigger_daily_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Manually trigger daily report generation for all clients
+    SECURITY: Admin only
+    """
+    if current_user.role not in ['admin', 'super_admin']:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        report_scheduler.send_daily_reports()
+        return {"message": "Daily reports triggered successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to trigger reports: {str(e)}")
+
+
+@app.get("/api/reports/test-email")
+def test_email_configuration(
+    test_email: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Test email configuration by sending a test email
+    SECURITY: Admin only
+    """
+    if current_user.role not in ['admin', 'super_admin']:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    try:
+        email_service = EmailService()
+        result = email_service.send_test_email(test_email)
+
+        if result['success']:
+            return {"message": f"Test email sent successfully to {test_email}"}
+        else:
+            raise HTTPException(status_code=500, detail=result.get('error', 'Failed to send test email'))
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Email test failed: {str(e)}")
+
+
+# Start report scheduler on application startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize application services"""
+    # Start daily report scheduler
+    try:
+        report_scheduler.start()
+    except Exception as e:
+        print(f"Warning: Failed to start report scheduler: {e}")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup application services"""
+    # Stop report scheduler
+    try:
+        report_scheduler.stop()
+    except Exception as e:
+        print(f"Warning: Failed to stop report scheduler: {e}")
 
 
 if __name__ == "__main__":
