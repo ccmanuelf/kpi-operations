@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 
-from database import get_db
-from models.quality import (
+from backend.database import get_db
+from backend.schemas.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse,
@@ -28,7 +28,7 @@ from calculations.ppm import calculate_ppm, identify_top_defects
 from calculations.dpmo import calculate_dpmo
 from calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
 from auth.jwt import get_current_user, get_current_active_supervisor
-from schemas.user import User
+from backend.schemas.user import User
 
 
 router = APIRouter(
@@ -102,7 +102,7 @@ def get_quality_by_work_order(
     Get all quality inspections for a specific work order
     SECURITY: Returns only inspections for user's authorized clients
     """
-    from schemas.quality import QualityInspection
+    from backend.schemas.quality import QualityInspection
 
     query = db.query(QualityInspection).filter(
         QualityInspection.work_order_number == work_order_id
@@ -125,7 +125,7 @@ def get_quality_statistics(
     SECURITY: Returns only data for user's authorized clients
     """
     from sqlalchemy import func
-    from schemas.quality import QualityInspection
+    from backend.schemas.quality import QualityInspection
 
     query = db.query(
         func.sum(QualityInspection.units_inspected).label('total_inspected'),

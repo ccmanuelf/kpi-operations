@@ -14,18 +14,18 @@ from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.product import Product
 from backend.schemas.shift import Shift
 from backend.schemas.user import User
-from backend.models.production import (
+from backend.schemas.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryWithKPIs
 )
-from backend.calculations.efficiency import calculate_efficiency
-from backend.calculations.performance import (
+from calculations.efficiency import calculate_efficiency
+from calculations.performance import (
     calculate_performance,
     calculate_quality_rate,
     calculate_oee
 )
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from middleware.client_auth import verify_client_access, build_client_filter_clause
 
 
 def create_production_entry(

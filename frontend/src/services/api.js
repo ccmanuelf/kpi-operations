@@ -74,6 +74,11 @@ export default {
     })
   },
 
+  // Batch Import Production Entries
+  batchImportProduction(entries) {
+    return api.post('/production/batch-import', { entries })
+  },
+
   // KPIs - Dashboard
   calculateKPIs(entryId) {
     return api.get(`/kpi/calculate/${entryId}`)
@@ -185,6 +190,12 @@ export default {
   // Data Entry - Hold/Resume
   createHoldEntry(data) {
     return api.post('/holds', data)
+  },
+  updateHoldEntry(id, data) {
+    return api.put(`/holds/${id}`, data)
+  },
+  deleteHoldEntry(id) {
+    return api.delete(`/holds/${id}`)
   },
   resumeHold(id, data) {
     return api.post(`/holds/${id}/resume`, data)

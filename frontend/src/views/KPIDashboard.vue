@@ -40,6 +40,42 @@
             </v-card-text>
           </v-card>
         </v-menu>
+
+        <!-- Report Actions Menu -->
+        <v-menu>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              color="primary"
+              variant="flat"
+              v-bind="props"
+              prepend-icon="mdi-file-download"
+              class="ml-2"
+            >
+              Reports
+            </v-btn>
+          </template>
+          <v-list>
+            <v-list-item @click="downloadPDF" :loading="downloadingPDF">
+              <template v-slot:prepend>
+                <v-icon>mdi-file-pdf-box</v-icon>
+              </template>
+              <v-list-item-title>Download PDF</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="downloadExcel" :loading="downloadingExcel">
+              <template v-slot:prepend>
+                <v-icon>mdi-file-excel</v-icon>
+              </template>
+              <v-list-item-title>Download Excel</v-list-item-title>
+            </v-list-item>
+            <v-list-item @click="emailDialog = true">
+              <template v-slot:prepend>
+                <v-icon>mdi-email</v-icon>
+              </template>
+              <v-list-item-title>Email Report</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
         <v-btn
           icon="mdi-refresh"
           variant="text"
@@ -215,6 +251,62 @@
         color="primary"
       />
     </v-overlay>
+
+    <!-- Email Report Dialog -->
+    <v-dialog v-model="emailDialog" max-width="500px">
+      <v-card>
+        <v-card-title class="text-h5">Email Report</v-card-title>
+        <v-card-text>
+          <v-form ref="emailForm" v-model="emailFormValid">
+            <v-combobox
+              v-model="emailRecipients"
+              label="Recipients"
+              chips
+              multiple
+              variant="outlined"
+              hint="Press Enter to add email addresses"
+              persistent-hint
+              :rules="[v => (v && v.length > 0) || 'At least one recipient required']"
+            >
+              <template v-slot:chip="{ item, props }">
+                <v-chip v-bind="props" closable>
+                  {{ item }}
+                </v-chip>
+              </template>
+            </v-combobox>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="grey" variant="text" @click="emailDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="sendEmailReport"
+            :loading="sendingEmail"
+            :disabled="!emailFormValid"
+          >
+            Send Report
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Success/Error Snackbar -->
+    <v-snackbar
+      v-model="snackbar"
+      :color="snackbarColor"
+      :timeout="4000"
+    >
+      {{ snackbarMessage }}
+      <template v-slot:actions>
+        <v-btn variant="text" @click="snackbar = false">
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -260,6 +352,17 @@ const trendPeriod = ref('30')
 const clients = ref([
   { id: null, name: 'All Clients' }
 ])
+
+// Report functionality
+const downloadingPDF = ref(false)
+const downloadingExcel = ref(false)
+const emailDialog = ref(false)
+const emailRecipients = ref([])
+const emailFormValid = ref(false)
+const sendingEmail = ref(false)
+const snackbar = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('success')
 
 // Computed
 const dateRangeText = computed(() => {
@@ -480,6 +583,111 @@ const loadClients = async () => {
   } catch (error) {
     console.error('Error loading clients:', error)
   }
+}
+
+const downloadPDF = async () => {
+  downloadingPDF.value = true
+  try {
+    const params = new URLSearchParams()
+    if (selectedClient.value) params.append('client_id', selectedClient.value)
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.append('start_date', format(dateRange.value[0], 'yyyy-MM-dd'))
+      params.append('end_date', format(dateRange.value[1], 'yyyy-MM-dd'))
+    }
+
+    const response = await api.get(`/reports/pdf?${params.toString()}`, {
+      responseType: 'blob'
+    })
+
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `KPI_Report_${format(new Date(), 'yyyyMMdd')}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+
+    showSnackbar('PDF report downloaded successfully', 'success')
+  } catch (error) {
+    console.error('Error downloading PDF:', error)
+    showSnackbar('Failed to download PDF report', 'error')
+  } finally {
+    downloadingPDF.value = false
+  }
+}
+
+const downloadExcel = async () => {
+  downloadingExcel.value = true
+  try {
+    const params = new URLSearchParams()
+    if (selectedClient.value) params.append('client_id', selectedClient.value)
+    if (dateRange.value && dateRange.value.length === 2) {
+      params.append('start_date', format(dateRange.value[0], 'yyyy-MM-dd'))
+      params.append('end_date', format(dateRange.value[1], 'yyyy-MM-dd'))
+    }
+
+    const response = await api.get(`/reports/excel?${params.toString()}`, {
+      responseType: 'blob'
+    })
+
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `KPI_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+
+    showSnackbar('Excel report downloaded successfully', 'success')
+  } catch (error) {
+    console.error('Error downloading Excel:', error)
+    showSnackbar('Failed to download Excel report', 'error')
+  } finally {
+    downloadingExcel.value = false
+  }
+}
+
+const sendEmailReport = async () => {
+  if (!emailFormValid.value || emailRecipients.value.length === 0) {
+    showSnackbar('Please add at least one recipient', 'warning')
+    return
+  }
+
+  sendingEmail.value = true
+  try {
+    const payload = {
+      client_id: selectedClient.value || null,
+      start_date: dateRange.value && dateRange.value.length === 2
+        ? format(dateRange.value[0], 'yyyy-MM-dd')
+        : format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+      end_date: dateRange.value && dateRange.value.length === 2
+        ? format(dateRange.value[1], 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd'),
+      recipient_emails: emailRecipients.value,
+      include_excel: false
+    }
+
+    await api.post('/reports/email', payload)
+
+    showSnackbar('Report sent successfully!', 'success')
+    emailDialog.value = false
+    emailRecipients.value = []
+  } catch (error) {
+    console.error('Error sending email:', error)
+    showSnackbar('Failed to send email report', 'error')
+  } finally {
+    sendingEmail.value = false
+  }
+}
+
+const showSnackbar = (message, color = 'success') => {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  snackbar.value = true
 }
 
 onMounted(async () => {

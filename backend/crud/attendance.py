@@ -8,14 +8,14 @@ from typing import Optional, List
 from datetime import date
 from fastapi import HTTPException
 
-from schemas.attendance import AttendanceRecord
-from models.attendance import (
+from backend.schemas.attendance import AttendanceRecord
+from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
-from schemas.user import User
+from backend.schemas.user import User
 
 
 def create_attendance_record(

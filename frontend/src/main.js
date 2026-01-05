@@ -5,6 +5,14 @@ import router from './router'
 import vuetify from './plugins/vuetify'
 import './assets/main.css'
 
+// AG Grid styles
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-material.css'
+import './assets/aggrid-theme.css'
+
+// Responsive styles - mobile-first approach
+import './assets/responsive.css'
+
 const app = createApp(App)
 
 app.use(createPinia())

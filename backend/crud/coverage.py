@@ -9,14 +9,14 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from schemas.coverage import ShiftCoverage
-from models.coverage import (
+from backend.schemas.coverage import ShiftCoverage
+from backend.schemas.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
-from schemas.user import User
+from backend.schemas.user import User
 
 
 def create_shift_coverage(

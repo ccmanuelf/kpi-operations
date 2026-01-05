@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 
-from database import get_db
-from models.coverage import (
+from backend.database import get_db
+from backend.schemas.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse
@@ -22,7 +22,7 @@ from crud.coverage import (
     delete_shift_coverage
 )
 from auth.jwt import get_current_user, get_current_active_supervisor
-from schemas.user import User
+from backend.schemas.user import User
 
 
 router = APIRouter(

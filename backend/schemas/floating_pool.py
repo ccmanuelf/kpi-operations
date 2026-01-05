@@ -5,7 +5,7 @@ Source: 01-Core_DataEntities_Inventory.csv lines 54-60
 """
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
-from database import Base
+from backend.database import Base
 
 
 class FloatingPool(Base):

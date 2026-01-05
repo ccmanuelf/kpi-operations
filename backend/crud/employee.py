@@ -7,8 +7,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from schemas.employee import Employee
-from schemas.user import User
+from backend.schemas.employee import Employee
+from backend.schemas.user import User
 from middleware.client_auth import verify_client_access
 
 

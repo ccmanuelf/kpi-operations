@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from backend.schemas.part_opportunities import PartOpportunities
 from backend.schemas.user import User
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from middleware.client_auth import verify_client_access, build_client_filter_clause
 
 
 def create_part_opportunity(

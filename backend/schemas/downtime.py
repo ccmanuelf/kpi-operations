@@ -4,7 +4,7 @@ PHASE 2: Downtime tracking
 """
 from sqlalchemy import Column, Integer, String, Numeric, Date, DateTime, ForeignKey, Text
 from sqlalchemy.sql import func
-from database import Base
+from backend.database import Base
 
 
 class DowntimeEvent(Base):

@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application settings from environment variables"""
 
     # Database - Using SQLite for temporary deployment (user requested)
-    DATABASE_URL: str = "sqlite:///./database/kpi_platform.db"
+    DATABASE_URL: str = "sqlite:///../database/kpi_platform.db"
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_NAME: str = "kpi_platform"
@@ -40,6 +40,22 @@ class Settings(BaseSettings):
 
     # Reports
     REPORT_OUTPUT_DIR: str = "./reports"
+
+    # Database Connection Pool Configuration
+    DATABASE_POOL_SIZE: int = 20
+    DATABASE_MAX_OVERFLOW: int = 10
+    DATABASE_POOL_TIMEOUT: int = 30
+    DATABASE_POOL_RECYCLE: int = 3600
+
+    # Email Configuration
+    SENDGRID_API_KEY: str = ""  # Set via environment variable
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""  # Set via environment variable
+    SMTP_PASSWORD: str = ""  # Set via environment variable
+    REPORT_FROM_EMAIL: str = "reports@kpi-platform.com"
+    REPORT_EMAIL_ENABLED: bool = True
+    REPORT_EMAIL_TIME: str = "06:00"  # Daily report time (HH:MM format)
 
     class Config:
         env_file = ".env"
