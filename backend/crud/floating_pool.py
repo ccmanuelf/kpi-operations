@@ -8,9 +8,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from schemas.floating_pool import FloatingPool
-from schemas.employee import Employee
-from schemas.user import User
+from backend.schemas.floating_pool import FloatingPool
+from backend.schemas.employee import Employee
+from backend.schemas.user import User
 from middleware.client_auth import verify_client_access
 
 

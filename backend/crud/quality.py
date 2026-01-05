@@ -9,14 +9,14 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from schemas.quality import QualityInspection
-from models.quality import (
+from backend.schemas.quality import QualityInspection
+from backend.schemas.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
-from schemas.user import User
+from backend.schemas.user import User
 
 
 def create_quality_inspection(

@@ -13,10 +13,10 @@ import csv
 import json
 from decimal import Decimal
 
-from config import settings
-from database import get_db, engine, Base
-from models.user import UserCreate, UserLogin, UserResponse, Token
-from models.production import (
+from backend.config import settings
+from backend.database import get_db, engine, Base
+from backend.schemas.user import UserCreate, UserLogin, UserResponse, Token
+from backend.schemas.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryResponse,
@@ -24,34 +24,34 @@ from models.production import (
     CSVUploadResponse,
     KPICalculationResponse
 )
-from models.import_log import (
+from backend.schemas.import_log import (
     BatchImportRequest,
     BatchImportResponse
 )
-from models.downtime import (
+from backend.schemas.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse,
     AvailabilityCalculationResponse
 )
-from models.hold import (
+from backend.schemas.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
     WIPHoldResponse,
     WIPAgingResponse
 )
-from models.attendance import (
+from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
     AbsenteeismCalculationResponse
 )
-from models.coverage import (
+from backend.schemas.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse
 )
-from models.quality import (
+from backend.schemas.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse,
@@ -59,38 +59,38 @@ from models.quality import (
     DPMOCalculationResponse,
     FPYRTYCalculationResponse
 )
-from models.job import (
+from backend.schemas.job import (
     JobCreate,
     JobUpdate,
     JobComplete,
     JobResponse
 )
-from models.part_opportunities import (
+from backend.schemas.part_opportunities import (
     PartOpportunityCreate,
     PartOpportunityUpdate,
     PartOpportunityResponse,
     BulkImportRequest,
     BulkImportResponse
 )
-from models.defect_detail import (
+from backend.schemas.defect_detail import (
     DefectDetailCreate,
     DefectDetailUpdate,
     DefectDetailResponse,
     DefectSummaryResponse
 )
-from models.work_order import (
+from backend.schemas.work_order import (
     WorkOrderCreate,
     WorkOrderUpdate,
     WorkOrderResponse,
     WorkOrderWithMetrics
 )
-from models.client import (
+from backend.schemas.client import (
     ClientCreate,
     ClientUpdate,
     ClientResponse,
     ClientSummary
 )
-from models.employee import (
+from backend.schemas.employee import (
     EmployeeCreate,
     EmployeeUpdate,
     EmployeeResponse,
@@ -98,7 +98,7 @@ from models.employee import (
     EmployeeAssignmentRequest,
     FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest
 )
-from models.floating_pool import (
+from backend.schemas.floating_pool import (
     FloatingPoolCreate,
     FloatingPoolUpdate,
     FloatingPoolResponse,
@@ -107,9 +107,9 @@ from models.floating_pool import (
     FloatingPoolAvailability,
     FloatingPoolSummary
 )
-from schemas.user import User
-from schemas.product import Product
-from schemas.shift import Shift
+from backend.schemas.user import User
+from backend.schemas.product import Product
+from backend.schemas.shift import Shift
 from auth.jwt import (
     verify_password,
     get_password_hash,
@@ -1333,9 +1333,13 @@ from routes import (
 
 # Import reports router
 from routes.reports import router as reports_router
+from routes.health import router as health_router
 
 # Import CSV upload endpoints
 from endpoints.csv_upload import router as csv_upload_router
+
+# Register health check and monitoring routes
+app.include_router(health_router)
 
 # Register CSV upload routes for all resources
 app.include_router(csv_upload_router)
@@ -1996,7 +2000,7 @@ def generate_pdf_report(
         # Determine filename
         client_name = "All_Clients"
         if client_id:
-            from schemas.client import Client
+            from backend.schemas.client import Client
             client = db.query(Client).filter(Client.client_id == client_id).first()
             if client:
                 client_name = client.name.replace(' ', '_')
@@ -2046,7 +2050,7 @@ def generate_excel_report(
         # Determine filename
         client_name = "All_Clients"
         if client_id:
-            from schemas.client import Client
+            from backend.schemas.client import Client
             client = db.query(Client).filter(Client.client_id == client_id).first()
             if client:
                 client_name = client.name.replace(' ', '_')
@@ -2092,7 +2096,7 @@ def send_report_via_email(
         # Get client name
         client_name = "All Clients"
         if request.client_id:
-            from schemas.client import Client
+            from backend.schemas.client import Client
             client = db.query(Client).filter(Client.client_id == request.client_id).first()
             if client:
                 client_name = client.name

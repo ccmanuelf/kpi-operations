@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from backend.schemas.job import Job
 from backend.schemas.user import User
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from middleware.client_auth import verify_client_access, build_client_filter_clause
 
 
 def create_job(

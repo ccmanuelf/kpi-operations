@@ -8,12 +8,12 @@ from datetime import date
 from fastapi import HTTPException
 
 from backend.schemas.hold import WIPHold
-from backend.models.hold import (
+from backend.schemas.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
     WIPHoldResponse
 )
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
 
 

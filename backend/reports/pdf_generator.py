@@ -164,7 +164,7 @@ class PDFReportGenerator:
         # Metadata table
         client_name = "All Clients"
         if client_id:
-            from schemas.client import Client
+            from backend.schemas.client import Client
             client = self.db.query(Client).filter(Client.client_id == client_id).first()
             if client:
                 client_name = client.name
@@ -319,10 +319,10 @@ class PDFReportGenerator:
 
     def _fetch_kpi_summary(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch summary data for all KPIs from database"""
-        from schemas.production_entry import ProductionEntry
-        from schemas.quality import QualityInspection
-        from schemas.attendance import AttendanceRecord
-        from schemas.product import Product
+        from backend.schemas.production_entry import ProductionEntry
+        from backend.schemas.quality import QualityInspection
+        from backend.schemas.attendance import AttendanceRecord
+        from backend.schemas.product import Product
 
         kpi_data = []
 
@@ -368,7 +368,7 @@ class PDFReportGenerator:
         )
 
         if client_id:
-            from schemas.product import Product
+            from backend.schemas.product import Product
             quality_query = quality_query.join(Product).filter(Product.client_id == client_id)
 
         quality_entries = quality_query.all()
@@ -424,10 +424,10 @@ class PDFReportGenerator:
 
     def _fetch_kpi_details(self, kpi_key: str, client_id: Optional[int], start_date: date, end_date: date) -> Dict[str, Any]:
         """Fetch detailed metrics for specific KPI from database"""
-        from schemas.production_entry import ProductionEntry
-        from schemas.quality import QualityInspection
-        from schemas.attendance import AttendanceRecord
-        from schemas.product import Product
+        from backend.schemas.production_entry import ProductionEntry
+        from backend.schemas.quality import QualityInspection
+        from backend.schemas.attendance import AttendanceRecord
+        from backend.schemas.product import Product
 
         details = {}
 

@@ -1,0 +1,194 @@
+/* AG Grid Material Theme Customization */
+.ag-theme-material {
+  /* Header styling */
+  --ag-header-height: 48px;
+  --ag-header-background-color: #1a237e;
+  --ag-header-foreground-color: white;
+  --ag-header-cell-hover-background-color: #0d47a1;
+
+  /* Row styling */
+  --ag-row-height: 40px;
+  --ag-row-hover-color: rgba(26, 35, 126, 0.05);
+  --ag-selected-row-background-color: rgba(26, 35, 126, 0.1);
+
+  /* Cell styling */
+  --ag-cell-horizontal-padding: 12px;
+  --ag-font-size: 14px;
+  --ag-font-family: 'Roboto', sans-serif;
+
+  /* Borders */
+  --ag-borders: solid 1px #e0e0e0;
+  --ag-border-color: #e0e0e0;
+
+  /* Focus */
+  --ag-range-selection-border-color: #1a237e;
+  --ag-range-selection-background-color: rgba(26, 35, 126, 0.1);
+
+  /* Input elements */
+  --ag-input-focus-border-color: #1a237e;
+
+  /* Checkbox */
+  --ag-checkbox-checked-color: #1a237e;
+
+  /* Menu */
+  --ag-menu-background-color: white;
+  --ag-menu-text-color: #333;
+}
+
+/* Custom cell classes */
+.ag-cell-error {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+}
+
+.ag-cell-warning {
+  background-color: #fff3e0 !important;
+  color: #f57c00 !important;
+}
+
+.ag-cell-success {
+  background-color: #e8f5e9 !important;
+  color: #2e7d32 !important;
+}
+
+/* Highlight unsaved changes */
+.ag-row-unsaved {
+  border-left: 4px solid #f57c00 !important;
+}
+
+/* Better editing experience */
+.ag-cell-inline-editing {
+  background-color: #fff9c4 !important;
+  box-shadow: inset 0 0 0 2px #1a237e !important;
+}
+
+/* Improved focus indicator */
+.ag-cell-focus {
+  border: 2px solid #1a237e !important;
+  outline: none !important;
+}
+
+/* Range selection */
+.ag-cell-range-selected:not(.ag-cell-focus) {
+  background-color: rgba(26, 35, 126, 0.08) !important;
+}
+
+/* Header icons */
+.ag-header-icon {
+  color: white !important;
+}
+
+/* Loading overlay */
+.ag-overlay-loading-wrapper {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Pagination */
+.ag-paging-panel {
+  border-top: 1px solid #e0e0e0 !important;
+  padding: 8px 16px !important;
+}
+
+.ag-paging-button {
+  cursor: pointer !important;
+}
+
+.ag-paging-button:hover {
+  background-color: rgba(26, 35, 126, 0.05) !important;
+}
+
+/* Filter menu */
+.ag-filter {
+  font-family: 'Roboto', sans-serif !important;
+}
+
+/* Scrollbar styling */
+.ag-body-horizontal-scroll-viewport::-webkit-scrollbar,
+.ag-body-vertical-scroll-viewport::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-track,
+.ag-body-vertical-scroll-viewport::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb,
+.ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 6px;
+}
+
+.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb:hover,
+.ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Excel-like fill handle */
+.ag-fill-handle {
+  background-color: #1a237e !important;
+}
+
+/* Column resize handle */
+.ag-header-cell-resize::after {
+  background-color: rgba(26, 35, 126, 0.3) !important;
+}
+
+/* Dropdown editor styling */
+.ag-popup-editor {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #e0e0e0 !important;
+}
+
+/* Large text editor */
+.ag-large-text-input {
+  font-family: 'Roboto', sans-serif !important;
+  font-size: 14px !important;
+  padding: 8px !important;
+}
+
+/* Numeric editor alignment */
+.ag-cell[col-id$="_quantity"] input,
+.ag-cell[col-id$="_hours"] input,
+.ag-cell[col-id$="_count"] input,
+.ag-cell[col-id$="_minutes"] input {
+  text-align: right !important;
+}
+
+/* Status badges in cells */
+.ag-cell .status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Animations */
+.ag-row {
+  transition: background-color 0.2s ease;
+}
+
+.ag-cell-data-changed {
+  background-color: #fff3e0 !important;
+  animation: highlight-fade 2s ease-out;
+}
+
+@keyframes highlight-fade {
+  0% {
+    background-color: #ffeb3b;
+  }
+  100% {
+    background-color: #fff3e0;
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .ag-theme-material {
+    --ag-header-height: 40px;
+    --ag-row-height: 36px;
+    --ag-font-size: 12px;
+  }
+}

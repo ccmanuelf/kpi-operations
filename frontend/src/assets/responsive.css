@@ -1,0 +1,513 @@
+/**
+ * Responsive CSS - Mobile-First Approach
+ *
+ * Breakpoints:
+ * - Mobile: < 768px (default)
+ * - Tablet: 768px - 1024px
+ * - Desktop: > 1024px
+ */
+
+/* ============================================
+   BASE STYLES - Mobile First
+   ============================================ */
+
+/* Touch-friendly button sizes (44px minimum) */
+.btn,
+.v-btn,
+button {
+  min-height: 44px !important;
+  min-width: 44px !important;
+  font-size: 14px;
+}
+
+/* Touch-friendly input fields */
+input,
+textarea,
+select,
+.v-text-field,
+.v-select {
+  min-height: 44px !important;
+  font-size: 16px !important; /* Prevents zoom on iOS */
+}
+
+/* Optimized font sizes for mobile */
+body {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+h4 {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Mobile container padding */
+.v-container {
+  padding: 12px !important;
+}
+
+/* Mobile card styling */
+.v-card {
+  margin-bottom: 12px;
+  border-radius: 8px;
+}
+
+.v-card-title {
+  font-size: 18px !important;
+  padding: 12px 16px !important;
+}
+
+.v-card-text {
+  padding: 12px 16px !important;
+}
+
+/* Mobile-friendly tables */
+.v-table {
+  font-size: 13px;
+}
+
+.v-table th {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Collapsible sections */
+.collapsible-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.collapsible-header {
+  padding: 12px 16px;
+  background: #f5f5f5;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+}
+
+.collapsible-content {
+  padding: 12px 16px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out;
+}
+
+.collapsible-content.expanded {
+  max-height: 2000px;
+}
+
+/* Mobile navigation adjustments */
+.v-navigation-drawer {
+  width: 280px !important;
+}
+
+.v-app-bar {
+  height: 56px !important;
+}
+
+.v-app-bar-title {
+  font-size: 18px !important;
+}
+
+/* AG Grid mobile optimizations */
+.ag-theme-material {
+  font-size: 13px;
+}
+
+.ag-theme-material .ag-header-cell {
+  padding: 8px 4px;
+  font-size: 12px;
+}
+
+.ag-theme-material .ag-cell {
+  padding: 4px;
+  line-height: 32px;
+}
+
+.ag-theme-material .ag-row {
+  min-height: 36px;
+}
+
+/* Enable horizontal scrolling on mobile */
+.ag-grid-mobile {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Touch gesture support */
+.touch-scrollable {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile form layouts */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Hide desktop-only elements on mobile */
+.desktop-only {
+  display: none !important;
+}
+
+.mobile-only {
+  display: block !important;
+}
+
+/* Mobile spacing utilities */
+.mt-mobile-1 { margin-top: 8px; }
+.mt-mobile-2 { margin-top: 16px; }
+.mt-mobile-3 { margin-top: 24px; }
+.mb-mobile-1 { margin-bottom: 8px; }
+.mb-mobile-2 { margin-bottom: 16px; }
+.mb-mobile-3 { margin-bottom: 24px; }
+.p-mobile-1 { padding: 8px; }
+.p-mobile-2 { padding: 16px; }
+.p-mobile-3 { padding: 24px; }
+
+/* ============================================
+   TABLET STYLES - 768px to 1024px
+   ============================================ */
+@media (min-width: 768px) {
+  /* Increase font sizes */
+  body {
+    font-size: 15px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+
+  h2 {
+    font-size: 24px;
+  }
+
+  h3 {
+    font-size: 20px;
+  }
+
+  h4 {
+    font-size: 18px;
+  }
+
+  /* Tablet container padding */
+  .v-container {
+    padding: 16px !important;
+  }
+
+  /* Tablet card styling */
+  .v-card {
+    margin-bottom: 16px;
+  }
+
+  .v-card-title {
+    font-size: 20px !important;
+    padding: 16px 20px !important;
+  }
+
+  .v-card-text {
+    padding: 16px 20px !important;
+  }
+
+  /* AG Grid tablet optimizations */
+  .ag-theme-material {
+    font-size: 14px;
+  }
+
+  .ag-theme-material .ag-header-cell {
+    padding: 10px 6px;
+    font-size: 13px;
+  }
+
+  .ag-theme-material .ag-cell {
+    padding: 6px;
+    line-height: 36px;
+  }
+
+  .ag-theme-material .ag-row {
+    min-height: 40px;
+  }
+
+  /* Tablet form layouts - 2 columns */
+  .form-row {
+    flex-direction: row;
+    gap: 16px;
+  }
+
+  .form-row > * {
+    flex: 1;
+  }
+
+  /* Show/hide elements */
+  .tablet-hide {
+    display: none !important;
+  }
+
+  .tablet-show {
+    display: block !important;
+  }
+}
+
+/* ============================================
+   DESKTOP STYLES - > 1024px
+   ============================================ */
+@media (min-width: 1024px) {
+  /* Desktop font sizes */
+  body {
+    font-size: 16px;
+  }
+
+  h1 {
+    font-size: 32px;
+  }
+
+  h2 {
+    font-size: 28px;
+  }
+
+  h3 {
+    font-size: 24px;
+  }
+
+  h4 {
+    font-size: 20px;
+  }
+
+  /* Desktop container padding */
+  .v-container {
+    padding: 24px !important;
+  }
+
+  /* Desktop card styling */
+  .v-card {
+    margin-bottom: 24px;
+  }
+
+  .v-card-title {
+    font-size: 24px !important;
+    padding: 20px 24px !important;
+  }
+
+  .v-card-text {
+    padding: 20px 24px !important;
+  }
+
+  /* AG Grid desktop optimizations */
+  .ag-theme-material {
+    font-size: 14px;
+  }
+
+  .ag-theme-material .ag-header-cell {
+    padding: 12px 8px;
+    font-size: 14px;
+  }
+
+  .ag-theme-material .ag-cell {
+    padding: 8px;
+    line-height: 40px;
+  }
+
+  .ag-theme-material .ag-row {
+    min-height: 44px;
+  }
+
+  /* Desktop navigation */
+  .v-navigation-drawer {
+    width: 320px !important;
+  }
+
+  .v-app-bar {
+    height: 64px !important;
+  }
+
+  .v-app-bar-title {
+    font-size: 20px !important;
+  }
+
+  /* Show/hide elements */
+  .desktop-only {
+    display: block !important;
+  }
+
+  .mobile-only,
+  .tablet-only {
+    display: none !important;
+  }
+
+  /* Desktop form layouts - 3 columns */
+  .form-row.triple {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+/* ============================================
+   LANDSCAPE ORIENTATION
+   ============================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce vertical spacing in landscape */
+  .v-container {
+    padding: 8px !important;
+  }
+
+  .v-card {
+    margin-bottom: 8px;
+  }
+
+  .v-card-title,
+  .v-card-text {
+    padding: 8px 12px !important;
+  }
+
+  /* Compact AG Grid rows */
+  .ag-theme-material .ag-row {
+    min-height: 32px;
+  }
+
+  .ag-theme-material .ag-cell {
+    line-height: 28px;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY & TOUCH IMPROVEMENTS
+   ============================================ */
+
+/* Larger tap targets for better accessibility */
+a,
+button,
+.clickable {
+  position: relative;
+}
+
+a::after,
+button::after,
+.clickable::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  bottom: -8px;
+  left: -8px;
+}
+
+/* Prevent text selection on touch devices */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Focus styles for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 2px;
+}
+
+/* Remove focus outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+@media print {
+  /* Hide navigation and non-essential elements */
+  .v-navigation-drawer,
+  .v-app-bar,
+  .mobile-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Optimize for print */
+  body {
+    font-size: 12pt;
+    color: #000;
+  }
+
+  .v-container {
+    padding: 0 !important;
+  }
+
+  /* Ensure tables print properly */
+  .ag-theme-material {
+    overflow: visible !important;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Responsive visibility helpers */
+.show-mobile { display: block !important; }
+.show-tablet { display: none !important; }
+.show-desktop { display: none !important; }
+
+@media (min-width: 768px) {
+  .show-mobile { display: none !important; }
+  .show-tablet { display: block !important; }
+  .show-desktop { display: none !important; }
+}
+
+@media (min-width: 1024px) {
+  .show-mobile { display: none !important; }
+  .show-tablet { display: none !important; }
+  .show-desktop { display: block !important; }
+}
+
+/* Responsive text alignment */
+.text-mobile-center { text-align: center; }
+.text-mobile-left { text-align: left; }
+.text-mobile-right { text-align: right; }
+
+@media (min-width: 768px) {
+  .text-tablet-center { text-align: center; }
+  .text-tablet-left { text-align: left; }
+  .text-tablet-right { text-align: right; }
+}
+
+@media (min-width: 1024px) {
+  .text-desktop-center { text-align: center; }
+  .text-desktop-left { text-align: left; }
+  .text-desktop-right { text-align: right; }
+}

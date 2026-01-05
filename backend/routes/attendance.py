@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime
 
-from database import get_db
-from models.attendance import (
+from backend.database import get_db
+from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
@@ -24,7 +24,7 @@ from crud.attendance import (
 )
 from calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from auth.jwt import get_current_user, get_current_active_supervisor
-from schemas.user import User
+from backend.schemas.user import User
 
 
 router = APIRouter(
@@ -146,7 +146,7 @@ def get_attendance_statistics(
     SECURITY: Returns only data for user's authorized clients
     """
     from sqlalchemy import func
-    from schemas.attendance import AttendanceRecord
+    from backend.schemas.attendance import AttendanceRecord
 
     query = db.query(
         AttendanceRecord.status,

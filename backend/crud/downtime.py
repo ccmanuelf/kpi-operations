@@ -9,12 +9,12 @@ from datetime import date
 from fastapi import HTTPException
 
 from backend.schemas.downtime import DowntimeEvent
-from backend.models.downtime import (
+from backend.schemas.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse
 )
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
 
 

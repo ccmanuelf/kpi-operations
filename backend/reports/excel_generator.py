@@ -394,16 +394,16 @@ class ExcelReportGenerator:
         if not client_id:
             return "All Clients"
 
-        from schemas.client import Client
+        from backend.schemas.client import Client
         client = self.db.query(Client).filter(Client.client_id == client_id).first()
         return client.name if client else "Unknown Client"
 
     def _fetch_kpi_summary_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch KPI summary data from database"""
-        from schemas.production_entry import ProductionEntry
-        from schemas.quality import QualityInspection
-        from schemas.attendance import AttendanceRecord
-        from schemas.product import Product
+        from backend.schemas.production_entry import ProductionEntry
+        from backend.schemas.quality import QualityInspection
+        from backend.schemas.attendance import AttendanceRecord
+        from backend.schemas.product import Product
 
         kpi_data = []
 
@@ -503,8 +503,8 @@ class ExcelReportGenerator:
 
     def _fetch_production_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch production data from database"""
-        from schemas.production_entry import ProductionEntry
-        from schemas.product import Product
+        from backend.schemas.production_entry import ProductionEntry
+        from backend.schemas.product import Product
         from sqlalchemy import func
 
         query = self.db.query(
@@ -538,8 +538,8 @@ class ExcelReportGenerator:
 
     def _fetch_quality_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch quality data from database"""
-        from schemas.quality import QualityInspection
-        from schemas.product import Product
+        from backend.schemas.quality import QualityInspection
+        from backend.schemas.product import Product
 
         query = self.db.query(QualityInspection).join(Product).filter(
             QualityInspection.inspection_date.between(start_date, end_date)
@@ -563,8 +563,8 @@ class ExcelReportGenerator:
 
     def _fetch_downtime_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch downtime data from database"""
-        from schemas.downtime import DowntimeEvent
-        from schemas.product import Product
+        from backend.schemas.downtime import DowntimeEvent
+        from backend.schemas.product import Product
 
         query = self.db.query(DowntimeEvent).join(Product).filter(
             DowntimeEvent.production_date.between(start_date, end_date)
@@ -589,7 +589,7 @@ class ExcelReportGenerator:
 
     def _fetch_attendance_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch attendance data from database"""
-        from schemas.attendance import AttendanceRecord
+        from backend.schemas.attendance import AttendanceRecord
         from sqlalchemy import func
 
         query = self.db.query(
