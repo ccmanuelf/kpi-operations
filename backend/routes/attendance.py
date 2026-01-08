@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
-from backend.schemas.attendance import (
+from backend.models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,

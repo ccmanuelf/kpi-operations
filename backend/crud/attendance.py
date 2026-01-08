@@ -9,7 +9,7 @@ from datetime import date
 from fastapi import HTTPException
 
 from backend.schemas.attendance import AttendanceRecord
-from backend.schemas.attendance import (
+from backend.models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse

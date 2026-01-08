@@ -14,7 +14,7 @@ from backend.database import get_db
 from auth.jwt import get_current_user
 from backend.schemas.user import User, UserRole
 from middleware.client_auth import verify_client_access
-from backend.schemas.production import CSVUploadResponse
+from backend.models.production import CSVUploadResponse
 
 # Import CRUD functions
 from crud.downtime import create_downtime_event
@@ -30,17 +30,17 @@ from crud.employee import create_employee
 from crud.floating_pool import create_floating_pool_entry
 
 # Import Pydantic models
-from backend.schemas.downtime import DowntimeEventCreate
-from backend.schemas.hold import WIPHoldCreate
-from backend.schemas.attendance import AttendanceRecordCreate
-from backend.schemas.coverage import ShiftCoverageCreate
-from backend.schemas.quality import QualityInspectionCreate
-from backend.schemas.defect_detail import DefectDetailCreate
-from backend.schemas.work_order import WorkOrderCreate
-from backend.schemas.job import JobCreate
-from backend.schemas.client import ClientCreate
-from backend.schemas.employee import EmployeeCreate
-from backend.schemas.floating_pool import FloatingPoolCreate
+from backend.models.downtime import DowntimeEventCreate
+from backend.models.hold import WIPHoldCreate
+from backend.models.attendance import AttendanceRecordCreate
+from backend.models.coverage import ShiftCoverageCreate
+from backend.models.quality import QualityInspectionCreate
+from backend.models.defect_detail import DefectDetailCreate
+from backend.models.work_order import WorkOrderCreate
+from backend.models.job import JobCreate
+from backend.models.client import ClientCreate
+from backend.models.employee import EmployeeCreate
+from backend.models.floating_pool import FloatingPoolCreate
 
 
 router = APIRouter()

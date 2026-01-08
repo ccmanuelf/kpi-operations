@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
-from backend.schemas.quality import (
+from backend.models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse,

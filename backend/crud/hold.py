@@ -8,7 +8,7 @@ from datetime import date
 from fastapi import HTTPException
 
 from backend.schemas.hold import WIPHold
-from backend.schemas.hold import (
+from backend.models.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
     WIPHoldResponse

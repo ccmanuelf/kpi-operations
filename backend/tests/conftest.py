@@ -11,16 +11,16 @@ from decimal import Decimal
 import sys
 import os
 
-# Add backend to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add project root to path (parent of backend)
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from backend.database import Base
 from backend.schemas.user import User, UserRole
 from backend.schemas.production import ProductionEntry
 from backend.schemas.quality import QualityInspection
-from backend.schemas.downtime import Downtime
-from backend.schemas.attendance import Attendance
-from backend.schemas.hold import Hold
+from backend.schemas.downtime import DowntimeEvent as Downtime
+from backend.schemas.attendance import AttendanceRecord as Attendance
+from backend.schemas.hold import WIPHold as Hold
 
 
 # Test Database Setup

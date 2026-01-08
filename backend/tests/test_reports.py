@@ -5,7 +5,7 @@ Run with: pytest backend/tests/test_reports.py -v
 import pytest
 from datetime import date, timedelta
 from fastapi.testclient import TestClient
-from main import app
+from backend.main import app
 
 client = TestClient(app)
 

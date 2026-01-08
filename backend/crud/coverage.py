@@ -10,7 +10,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.schemas.coverage import ShiftCoverage
-from backend.schemas.coverage import (
+from backend.models.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse

@@ -10,7 +10,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.schemas.quality import QualityInspection
-from backend.schemas.quality import (
+from backend.models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse

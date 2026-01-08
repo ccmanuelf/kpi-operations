@@ -15,8 +15,8 @@ from decimal import Decimal
 
 from backend.config import settings
 from backend.database import get_db, engine, Base
-from backend.schemas.user import UserCreate, UserLogin, UserResponse, Token
-from backend.schemas.production import (
+from backend.models.user import UserCreate, UserLogin, UserResponse, Token
+from backend.models.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryResponse,
@@ -24,34 +24,34 @@ from backend.schemas.production import (
     CSVUploadResponse,
     KPICalculationResponse
 )
-from backend.schemas.import_log import (
+from backend.models.import_log import (
     BatchImportRequest,
     BatchImportResponse
 )
-from backend.schemas.downtime import (
+from backend.models.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse,
     AvailabilityCalculationResponse
 )
-from backend.schemas.hold import (
+from backend.models.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
     WIPHoldResponse,
     WIPAgingResponse
 )
-from backend.schemas.attendance import (
+from backend.models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
     AbsenteeismCalculationResponse
 )
-from backend.schemas.coverage import (
+from backend.models.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse
 )
-from backend.schemas.quality import (
+from backend.models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse,
@@ -59,38 +59,38 @@ from backend.schemas.quality import (
     DPMOCalculationResponse,
     FPYRTYCalculationResponse
 )
-from backend.schemas.job import (
+from backend.models.job import (
     JobCreate,
     JobUpdate,
     JobComplete,
     JobResponse
 )
-from backend.schemas.part_opportunities import (
+from backend.models.part_opportunities import (
     PartOpportunityCreate,
     PartOpportunityUpdate,
     PartOpportunityResponse,
     BulkImportRequest,
     BulkImportResponse
 )
-from backend.schemas.defect_detail import (
+from backend.models.defect_detail import (
     DefectDetailCreate,
     DefectDetailUpdate,
     DefectDetailResponse,
     DefectSummaryResponse
 )
-from backend.schemas.work_order import (
+from backend.models.work_order import (
     WorkOrderCreate,
     WorkOrderUpdate,
     WorkOrderResponse,
     WorkOrderWithMetrics
 )
-from backend.schemas.client import (
+from backend.models.client import (
     ClientCreate,
     ClientUpdate,
     ClientResponse,
     ClientSummary
 )
-from backend.schemas.employee import (
+from backend.models.employee import (
     EmployeeCreate,
     EmployeeUpdate,
     EmployeeResponse,
@@ -98,7 +98,7 @@ from backend.schemas.employee import (
     EmployeeAssignmentRequest,
     FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest
 )
-from backend.schemas.floating_pool import (
+from backend.models.floating_pool import (
     FloatingPoolCreate,
     FloatingPoolUpdate,
     FloatingPoolResponse,
@@ -239,7 +239,7 @@ from calculations.ppm import calculate_ppm, identify_top_defects
 from calculations.dpmo import calculate_dpmo
 from calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
 from calculations.inference import InferenceEngine
-from reports.pdf_generator import generate_daily_report
+# PDFReportGenerator is imported later when needed for report endpoints
 
 # Create tables (DISABLED - using pre-populated SQLite database with demo data)
 # Base.metadata.create_all(bind=engine)
@@ -1062,10 +1062,17 @@ def generate_daily_pdf_report(
     current_user: User = Depends(get_current_user)
 ):
     """Generate daily production PDF report"""
-    pdf_bytes = generate_daily_report(db, report_date)
+    from reports.pdf_generator import PDFReportGenerator
+
+    pdf_generator = PDFReportGenerator(db)
+    pdf_buffer = pdf_generator.generate_report(
+        client_id=None,
+        start_date=report_date,
+        end_date=report_date
+    )
 
     return StreamingResponse(
-        io.BytesIO(pdf_bytes),
+        pdf_buffer,
         media_type="application/pdf",
         headers={
             "Content-Disposition": f"attachment; filename=daily_report_{report_date}.pdf"
@@ -1946,8 +1953,13 @@ def infer_cycle_time(
 from reports.pdf_generator import PDFReportGenerator
 from reports.excel_generator import ExcelReportGenerator
 from services.email_service import EmailService
-from tasks.daily_reports import scheduler as report_scheduler
 from pydantic import BaseModel
+
+# Optional scheduler import (may not be available in test environment)
+try:
+    from tasks.daily_reports import scheduler as report_scheduler
+except ImportError:
+    report_scheduler = None
 
 
 class ReportEmailRequest(BaseModel):
@@ -2135,6 +2147,9 @@ def trigger_daily_reports(
     if current_user.role not in ['admin', 'super_admin']:
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    if report_scheduler is None:
+        raise HTTPException(status_code=503, detail="Report scheduler not available")
+
     try:
         report_scheduler.send_daily_reports()
         return {"message": "Daily reports triggered successfully"}
@@ -2173,20 +2188,22 @@ def test_email_configuration(
 async def startup_event():
     """Initialize application services"""
     # Start daily report scheduler
-    try:
-        report_scheduler.start()
-    except Exception as e:
-        print(f"Warning: Failed to start report scheduler: {e}")
+    if report_scheduler is not None:
+        try:
+            report_scheduler.start()
+        except Exception as e:
+            print(f"Warning: Failed to start report scheduler: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup application services"""
     # Stop report scheduler
-    try:
-        report_scheduler.stop()
-    except Exception as e:
-        print(f"Warning: Failed to stop report scheduler: {e}")
+    if report_scheduler is not None:
+        try:
+            report_scheduler.stop()
+        except Exception as e:
+            print(f"Warning: Failed to stop report scheduler: {e}")
 
 
 if __name__ == "__main__":

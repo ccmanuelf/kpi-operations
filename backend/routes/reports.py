@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from auth.dependencies import get_current_user
+from auth.jwt import get_current_user
 from backend.schemas.user import User
 from reports.pdf_generator import PDFReportGenerator
 from reports.excel_generator import ExcelReportGenerator
