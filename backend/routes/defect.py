@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import date
 
 from backend.database import get_db
-from backend.schemas.defect_detail import (
+from backend.models.defect_detail import (
     DefectDetailCreate,
     DefectDetailUpdate,
     DefectDetailResponse,

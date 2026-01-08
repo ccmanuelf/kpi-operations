@@ -57,9 +57,10 @@ class Settings(BaseSettings):
     REPORT_EMAIL_ENABLED: bool = True
     REPORT_EMAIL_TIME: str = "06:00"  # Daily report time (HH:MM format)
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True
+    }
 
 
 # Global settings instance

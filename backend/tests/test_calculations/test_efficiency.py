@@ -18,7 +18,7 @@ from datetime import time
 from calculations.efficiency import (
     calculate_efficiency,
     calculate_shift_hours,
-    calculate_efficiency_from_db,
+    update_efficiency_for_entry,
 )
 
 

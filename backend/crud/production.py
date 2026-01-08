@@ -14,7 +14,7 @@ from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.product import Product
 from backend.schemas.shift import Shift
 from backend.schemas.user import User
-from backend.schemas.production import (
+from backend.models.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryWithKPIs

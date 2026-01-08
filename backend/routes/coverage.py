@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
-from backend.schemas.coverage import (
+from backend.models.coverage import (
     ShiftCoverageCreate,
     ShiftCoverageUpdate,
     ShiftCoverageResponse

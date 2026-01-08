@@ -9,7 +9,7 @@ from datetime import date
 from fastapi import HTTPException
 
 from backend.schemas.downtime import DowntimeEvent
-from backend.schemas.downtime import (
+from backend.models.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse

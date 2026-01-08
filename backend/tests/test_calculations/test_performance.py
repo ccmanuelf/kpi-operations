@@ -15,7 +15,7 @@ from decimal import Decimal
 
 from calculations.performance import (
     calculate_performance,
-    calculate_performance_from_db,
+    update_performance_for_entry,
 )
 
 
