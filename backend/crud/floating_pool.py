@@ -232,6 +232,7 @@ def assign_floating_pool_to_client(
     """
     Assign a floating pool employee to a client
     SECURITY: Supervisors and admins only, verifies client access
+    VALIDATION: Prevents double-assignment of employees
 
     Args:
         db: Database session
@@ -249,6 +250,7 @@ def assign_floating_pool_to_client(
         HTTPException 403: If user doesn't have permission or client access
         HTTPException 404: If employee not found
         HTTPException 400: If employee not in floating pool
+        HTTPException 409: If employee is already assigned (double-assignment)
     """
     # SECURITY: Only supervisors and admins can assign floating pool
     if current_user.role not in ['admin', 'supervisor']:
@@ -273,6 +275,41 @@ def assign_floating_pool_to_client(
             status_code=400,
             detail="Employee is not in floating pool"
         )
+
+    # VALIDATION: Check for existing active assignment (prevent double-assignment)
+    existing_assignment = db.query(FloatingPool).filter(
+        FloatingPool.employee_id == employee_id,
+        FloatingPool.current_assignment.isnot(None)
+    ).first()
+
+    if existing_assignment:
+        # Check for overlapping date ranges if dates are provided
+        if available_from and available_to:
+            # Check if the new assignment overlaps with existing
+            if existing_assignment.available_from and existing_assignment.available_to:
+                # Check for overlap: new_start <= existing_end AND new_end >= existing_start
+                if (available_from <= existing_assignment.available_to and
+                    available_to >= existing_assignment.available_from):
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Employee is already assigned to client '{existing_assignment.current_assignment}' "
+                               f"during the requested period ({existing_assignment.available_from} to "
+                               f"{existing_assignment.available_to}). Please unassign first or choose different dates."
+                    )
+            else:
+                # No dates on existing assignment means indefinite - block assignment
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Employee is already assigned to client '{existing_assignment.current_assignment}'. "
+                           f"Please unassign the employee first before creating a new assignment."
+                )
+        else:
+            # No dates on new assignment - treat as indefinite, block if any existing assignment
+            raise HTTPException(
+                status_code=409,
+                detail=f"Employee is already assigned to client '{existing_assignment.current_assignment}'. "
+                       f"Please unassign the employee first before creating a new assignment."
+            )
 
     # Create assignment entry
     pool_entry = FloatingPool(
@@ -413,3 +450,135 @@ def get_floating_pool_assignments_by_client(
     ).order_by(
         FloatingPool.available_from.desc()
     ).offset(skip).limit(limit).all()
+
+
+def is_employee_available_for_assignment(
+    db: Session,
+    employee_id: int,
+    proposed_start: Optional[datetime] = None,
+    proposed_end: Optional[datetime] = None
+) -> dict:
+    """
+    Check if an employee is available for a new assignment
+    Used by UI to show availability status before attempting assignment
+
+    Args:
+        db: Database session
+        employee_id: Employee ID to check
+        proposed_start: Optional proposed start date
+        proposed_end: Optional proposed end date
+
+    Returns:
+        Dictionary with availability status:
+        {
+            "is_available": bool,
+            "current_assignment": str or None,
+            "conflict_dates": dict or None,
+            "message": str
+        }
+    """
+    # Check for existing active assignment
+    existing_assignment = db.query(FloatingPool).filter(
+        FloatingPool.employee_id == employee_id,
+        FloatingPool.current_assignment.isnot(None)
+    ).first()
+
+    if not existing_assignment:
+        return {
+            "is_available": True,
+            "current_assignment": None,
+            "conflict_dates": None,
+            "message": "Employee is available for assignment"
+        }
+
+    # Check if there's a date conflict
+    if proposed_start and proposed_end:
+        if existing_assignment.available_from and existing_assignment.available_to:
+            # Check for overlap
+            if (proposed_start <= existing_assignment.available_to and
+                proposed_end >= existing_assignment.available_from):
+                return {
+                    "is_available": False,
+                    "current_assignment": existing_assignment.current_assignment,
+                    "conflict_dates": {
+                        "existing_start": existing_assignment.available_from,
+                        "existing_end": existing_assignment.available_to
+                    },
+                    "message": f"Employee is assigned to '{existing_assignment.current_assignment}' "
+                               f"from {existing_assignment.available_from} to {existing_assignment.available_to}"
+                }
+            else:
+                # No overlap - employee is available for the proposed dates
+                return {
+                    "is_available": True,
+                    "current_assignment": existing_assignment.current_assignment,
+                    "conflict_dates": None,
+                    "message": "Employee is available for the proposed dates (no overlap with existing assignment)"
+                }
+        else:
+            # Existing assignment has no dates (indefinite)
+            return {
+                "is_available": False,
+                "current_assignment": existing_assignment.current_assignment,
+                "conflict_dates": None,
+                "message": f"Employee is indefinitely assigned to '{existing_assignment.current_assignment}'. "
+                           f"Please unassign first."
+            }
+    else:
+        # No proposed dates - employee has existing assignment
+        return {
+            "is_available": False,
+            "current_assignment": existing_assignment.current_assignment,
+            "conflict_dates": {
+                "existing_start": existing_assignment.available_from,
+                "existing_end": existing_assignment.available_to
+            } if existing_assignment.available_from else None,
+            "message": f"Employee is currently assigned to '{existing_assignment.current_assignment}'"
+        }
+
+
+def get_floating_pool_summary(
+    db: Session,
+    current_user: User
+) -> dict:
+    """
+    Get summary statistics for floating pool
+    Useful for dashboard widgets
+
+    Args:
+        db: Database session
+        current_user: Authenticated user
+
+    Returns:
+        Dictionary with floating pool statistics
+    """
+    # Get all floating pool employees
+    floating_employees = db.query(Employee).filter(
+        Employee.is_floating_pool == True
+    ).all()
+
+    total_floating = len(floating_employees)
+
+    # Count currently assigned
+    assigned_count = db.query(FloatingPool).filter(
+        FloatingPool.current_assignment.isnot(None)
+    ).distinct(FloatingPool.employee_id).count()
+
+    # Get available employees
+    available_employees = []
+    for emp in floating_employees:
+        availability = is_employee_available_for_assignment(db, emp.employee_id)
+        if availability["is_available"]:
+            available_employees.append({
+                "employee_id": emp.employee_id,
+                "employee_code": emp.employee_code,
+                "employee_name": emp.employee_name,
+                "position": emp.position
+            })
+
+    return {
+        "total_floating_pool_employees": total_floating,
+        "currently_available": len(available_employees),
+        "currently_assigned": assigned_count,
+        "available_employees": available_employees
+    }
