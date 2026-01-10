@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from backend.schemas.job import Job
 from backend.schemas.user import User
 from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.utils.soft_delete import soft_delete
 
 
 def create_job(
@@ -171,7 +172,7 @@ def delete_job(
     current_user: User
 ) -> bool:
     """
-    Delete job with client access verification
+    Soft delete job (sets is_active = False)
     SECURITY: Only deletes if user has access to the job's client
 
     Args:
@@ -180,15 +181,14 @@ def delete_job(
         current_user: Authenticated user
 
     Returns:
-        True if deleted, False if not found or no access
+        True if soft deleted, False if not found or no access
     """
     job = get_job(db, job_id, current_user)
     if not job:
         return False
 
-    db.delete(job)
-    db.commit()
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, job)
 
 
 def complete_job(

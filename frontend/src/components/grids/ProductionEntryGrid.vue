@@ -130,6 +130,18 @@
       </v-row>
     </v-card-text>
 
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      title="Confirm Production Entry - Read Back"
+      subtitle="Please verify the following production data before saving:"
+      :data="pendingData"
+      :field-config="confirmationFieldConfig"
+      :loading="saving"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
+
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -142,12 +154,36 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
 const kpiStore = useKPIStore()
 const gridRef = ref(null)
 const unsavedChanges = ref(new Set())
 const saving = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
+
+// Read-back confirmation state
+const showConfirmDialog = ref(false)
+const pendingData = ref({})
+const pendingRows = ref([])
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const productName = products.value.find(p => p.product_id === pendingData.value.product_id)?.product_name || 'N/A'
+  const shiftName = shifts.value.find(s => s.shift_id === pendingData.value.shift_id)?.shift_name || 'N/A'
+
+  return [
+    { key: 'production_date', label: 'Production Date', type: 'date' },
+    { key: 'product_id', label: 'Product', type: 'text', displayValue: productName },
+    { key: 'shift_id', label: 'Shift', type: 'text', displayValue: shiftName },
+    { key: 'work_order_number', label: 'Work Order', type: 'text' },
+    { key: 'units_produced', label: 'Units Produced', type: 'number' },
+    { key: 'run_time_hours', label: 'Runtime (hours)', type: 'number' },
+    { key: 'employees_assigned', label: 'Employees Assigned', type: 'number' },
+    { key: 'defect_count', label: 'Defects', type: 'number' },
+    { key: 'scrap_count', label: 'Scrap', type: 'number' }
+  ]
+})
 
 // Filters
 const dateFilter = ref(null)
@@ -415,8 +451,6 @@ const saveChanges = async () => {
   const api = gridRef.value?.gridApi
   if (!api) return
 
-  saving.value = true
-
   const rowsToSave = []
   api.forEachNode(node => {
     if (node.data._hasChanges) {
@@ -424,11 +458,26 @@ const saveChanges = async () => {
     }
   })
 
+  if (rowsToSave.length === 0) {
+    showSnackbar('No changes to save', 'info')
+    return
+  }
+
+  // Store pending rows and show confirmation for first row
+  pendingRows.value = rowsToSave
+  pendingData.value = rowsToSave[0]
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
+  saving.value = true
+
   let successCount = 0
   let errorCount = 0
 
   try {
-    for (const row of rowsToSave) {
+    for (const row of pendingRows.value) {
       const data = {
         product_id: row.product_id,
         shift_id: row.shift_id,
@@ -481,7 +530,16 @@ const saveChanges = async () => {
     showSnackbar('Error saving changes: ' + error.message, 'error')
   } finally {
     saving.value = false
+    pendingRows.value = []
+    pendingData.value = {}
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
+  pendingRows.value = []
+  pendingData.value = {}
+  showSnackbar('Save cancelled', 'info')
 }
 
 const applyFilters = () => {

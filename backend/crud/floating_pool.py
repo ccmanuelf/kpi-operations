@@ -12,6 +12,7 @@ from backend.schemas.floating_pool import FloatingPool
 from backend.schemas.employee import Employee
 from backend.schemas.user import User
 from middleware.client_auth import verify_client_access
+from backend.utils.soft_delete import soft_delete
 
 
 def create_floating_pool_entry(
@@ -185,7 +186,7 @@ def delete_floating_pool_entry(
     current_user: User
 ) -> bool:
     """
-    Delete floating pool entry
+    Soft delete floating pool entry (sets is_active = False)
     SECURITY: Supervisors and admins only
 
     Args:
@@ -194,7 +195,7 @@ def delete_floating_pool_entry(
         current_user: Authenticated user
 
     Returns:
-        True if deleted
+        True if soft deleted
 
     Raises:
         HTTPException 403: If user doesn't have permission
@@ -214,10 +215,8 @@ def delete_floating_pool_entry(
     if not db_pool:
         raise HTTPException(status_code=404, detail="Floating pool entry not found")
 
-    db.delete(db_pool)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_pool)
 
 
 def assign_floating_pool_to_client(

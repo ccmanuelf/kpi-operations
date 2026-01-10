@@ -170,6 +170,19 @@
       </v-card>
     </v-dialog>
 
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      title="Confirm Hold Entry - Read Back"
+      subtitle="Please verify the following hold/resume data before saving:"
+      :data="pendingData"
+      :field-config="confirmationFieldConfig"
+      :loading="saving"
+      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} hold entries.` : ''"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
+
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -182,6 +195,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format, differenceInDays } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
 const kpiStore = useKPIStore()
 const gridRef = ref(null)
@@ -194,6 +208,36 @@ const resumeDialog = ref({
   actual_resume_date: null,
   resumed_by_user_id: '',
   resume_approved_at: null
+})
+
+// Read-back confirmation state
+const showConfirmDialog = ref(false)
+const pendingData = ref({})
+const pendingRows = ref([])
+
+const pendingRowsCount = computed(() => pendingRows.value.length)
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const workOrderNumber = workOrders.value.find(w => w.work_order_id === pendingData.value.work_order_id)?.work_order_number || 'N/A'
+
+  // Calculate days on hold
+  const startDate = pendingData.value.placed_on_hold_date ? new Date(pendingData.value.placed_on_hold_date) : null
+  const endDate = pendingData.value.actual_resume_date ? new Date(pendingData.value.actual_resume_date) : new Date()
+  const daysOnHold = startDate ? differenceInDays(endDate, startDate) : 0
+
+  return [
+    { key: 'placed_on_hold_date', label: 'Hold Date', type: 'date' },
+    { key: 'work_order_id', label: 'Work Order', type: 'text', displayValue: workOrderNumber },
+    { key: 'hold_reason', label: 'Hold Reason', type: 'text' },
+    { key: 'status_computed', label: 'Status', type: 'text', displayValue: pendingData.value.actual_resume_date ? 'RESUMED' : 'ACTIVE' },
+    { key: 'expected_resume_date', label: 'Expected Resume', type: 'date' },
+    { key: 'actual_resume_date', label: 'Actual Resume', type: 'datetime' },
+    { key: 'days_on_hold_computed', label: 'Days on Hold', type: 'number', displayValue: daysOnHold },
+    { key: 'resumed_by_user_id', label: 'Resumed By', type: 'text' },
+    { key: 'hold_approved_at', label: 'Hold Approved', type: 'datetime' },
+    { key: 'resume_approved_at', label: 'Resume Approved', type: 'datetime' }
+  ]
 })
 
 // Filters
@@ -523,23 +567,36 @@ const deleteEntry = async (rowData) => {
 }
 
 const saveChanges = async () => {
-  const api = gridRef.value?.gridApi
-  if (!api) return
-
-  saving.value = true
+  const gridApi = gridRef.value?.gridApi
+  if (!gridApi) return
 
   const rowsToSave = []
-  api.forEachNode(node => {
+  gridApi.forEachNode(node => {
     if (node.data._hasChanges) {
       rowsToSave.push(node.data)
     }
   })
 
+  if (rowsToSave.length === 0) {
+    showSnackbar('No changes to save', 'info')
+    return
+  }
+
+  // Store pending rows and show confirmation for first row
+  pendingRows.value = rowsToSave
+  pendingData.value = rowsToSave[0]
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
+  saving.value = true
+
   let successCount = 0
   let errorCount = 0
 
   try {
-    for (const row of rowsToSave) {
+    for (const row of pendingRows.value) {
       const data = {
         work_order_id: row.work_order_id,
         placed_on_hold_date: row.placed_on_hold_date,
@@ -591,7 +648,16 @@ const saveChanges = async () => {
     showSnackbar('Error saving changes: ' + error.message, 'error')
   } finally {
     saving.value = false
+    pendingRows.value = []
+    pendingData.value = {}
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
+  pendingRows.value = []
+  pendingData.value = {}
+  showSnackbar('Save cancelled', 'info')
 }
 
 const applyFilters = () => {

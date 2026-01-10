@@ -126,6 +126,19 @@
       </v-row>
     </v-card-text>
 
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      title="Confirm Downtime Entry - Read Back"
+      subtitle="Please verify the following downtime data before saving:"
+      :data="pendingData"
+      :field-config="confirmationFieldConfig"
+      :loading="saving"
+      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} downtime entries.` : ''"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
+
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -138,12 +151,36 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
 const kpiStore = useKPIStore()
 const gridRef = ref(null)
 const unsavedChanges = ref(new Set())
 const saving = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
+
+// Read-back confirmation state
+const showConfirmDialog = ref(false)
+const pendingData = ref({})
+const pendingRows = ref([])
+
+const pendingRowsCount = computed(() => pendingRows.value.length)
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const workOrderNumber = workOrders.value.find(w => w.work_order_id === pendingData.value.work_order_id)?.work_order_number || 'N/A'
+
+  return [
+    { key: 'downtime_start_time', label: 'Start Time', type: 'datetime' },
+    { key: 'work_order_id', label: 'Work Order', type: 'text', displayValue: workOrderNumber },
+    { key: 'downtime_reason', label: 'Reason', type: 'text' },
+    { key: 'category', label: 'Category', type: 'text' },
+    { key: 'duration_hours', label: 'Duration (hours)', type: 'number' },
+    { key: 'impact_on_wip_hours', label: 'WIP Impact (hours)', type: 'number' },
+    { key: 'is_resolved', label: 'Resolved', type: 'boolean' },
+    { key: 'resolution_notes', label: 'Resolution Notes', type: 'text' }
+  ]
+})
 
 // Filters
 const dateFilter = ref(null)
@@ -404,23 +441,36 @@ const deleteEntry = async (rowData) => {
 }
 
 const saveChanges = async () => {
-  const api = gridRef.value?.gridApi
-  if (!api) return
-
-  saving.value = true
+  const gridApi = gridRef.value?.gridApi
+  if (!gridApi) return
 
   const rowsToSave = []
-  api.forEachNode(node => {
+  gridApi.forEachNode(node => {
     if (node.data._hasChanges) {
       rowsToSave.push(node.data)
     }
   })
 
+  if (rowsToSave.length === 0) {
+    showSnackbar('No changes to save', 'info')
+    return
+  }
+
+  // Store pending rows and show confirmation for first row
+  pendingRows.value = rowsToSave
+  pendingData.value = rowsToSave[0]
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
+  saving.value = true
+
   let successCount = 0
   let errorCount = 0
 
   try {
-    for (const row of rowsToSave) {
+    for (const row of pendingRows.value) {
       const data = {
         work_order_id: row.work_order_id,
         downtime_start_time: row.downtime_start_time,
@@ -472,7 +522,16 @@ const saveChanges = async () => {
     showSnackbar('Error saving changes: ' + error.message, 'error')
   } finally {
     saving.value = false
+    pendingRows.value = []
+    pendingData.value = {}
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
+  pendingRows.value = []
+  pendingData.value = {}
+  showSnackbar('Save cancelled', 'info')
 }
 
 const applyFilters = () => {

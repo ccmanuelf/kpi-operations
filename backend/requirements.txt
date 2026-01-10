@@ -20,6 +20,7 @@ python-multipart==0.0.6
 
 # CORS & Security
 python-dotenv==1.0.1
+slowapi==0.1.9
 
 # CSV Processing
 pandas==2.2.0

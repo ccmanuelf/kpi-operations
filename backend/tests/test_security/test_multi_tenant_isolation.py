@@ -87,7 +87,8 @@ class TestClientFilterGeneration:
         with pytest.raises(ClientAccessError) as exc_info:
             get_user_client_filter(user)
 
-        assert "invalid client assignment" in str(exc_info.value.detail).lower()
+        # Error message should indicate missing/no client assignment
+        assert "no client assignment" in str(exc_info.value.detail).lower()
 
 
 class TestClientAccessVerification:

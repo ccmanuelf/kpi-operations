@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.user import User
 from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.utils.soft_delete import soft_delete
 
 
 def create_work_order(
@@ -180,7 +181,7 @@ def delete_work_order(
     current_user: User
 ) -> bool:
     """
-    Delete work order
+    Soft delete work order (sets is_active = False)
     SECURITY: Verifies user has access to the work order's client
 
     Args:
@@ -189,7 +190,7 @@ def delete_work_order(
         current_user: Authenticated user
 
     Returns:
-        True if deleted, False if not found
+        True if soft deleted, False if not found
 
     Raises:
         HTTPException 404: If work order not found
@@ -206,10 +207,8 @@ def delete_work_order(
     if hasattr(db_work_order, 'client_id') and db_work_order.client_id:
         verify_client_access(current_user, db_work_order.client_id)
 
-    db.delete(db_work_order)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_work_order)
 
 
 def get_work_orders_by_client(

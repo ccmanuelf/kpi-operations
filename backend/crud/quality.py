@@ -17,6 +17,7 @@ from backend.models.quality import (
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
+from backend.utils.soft_delete import soft_delete
 
 
 def create_quality_inspection(
@@ -195,7 +196,7 @@ def delete_quality_inspection(
     current_user: User
 ) -> bool:
     """
-    Delete quality inspection record
+    Soft delete quality inspection record (sets is_active = False)
     SECURITY: Verifies user has access to the record's client
     """
     db_inspection = db.query(QualityInspection).filter(
@@ -209,7 +210,5 @@ def delete_quality_inspection(
     if hasattr(db_inspection, 'client_id') and db_inspection.client_id:
         verify_client_access(current_user, db_inspection.client_id)
 
-    db.delete(db_inspection)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_inspection)

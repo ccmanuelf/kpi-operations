@@ -9,6 +9,16 @@
       </v-col>
     </v-row>
 
+    <!-- Absenteeism Alert Banner (P3-004) -->
+    <AbsenteeismAlert
+      :threshold="5"
+      :start-date="startDate"
+      :end-date="endDate"
+      @view-details="navigateToAbsenteeism"
+      @schedule-review="openScheduleDialog"
+      @take-action="handleAbsenteeismAction"
+    />
+
     <!-- KPI Summary Cards -->
     <v-row>
       <!-- Phase 1: Production KPIs -->
@@ -286,16 +296,85 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Advanced Analysis Widgets Section -->
+    <v-row class="mt-6">
+      <v-col cols="12">
+        <h2 class="text-h5 font-weight-bold mb-4">Advanced Analysis</h2>
+      </v-col>
+    </v-row>
+
+    <!-- Row 1: Downtime Impact & Bradford Factor (P2-002, P3-003) -->
+    <v-row>
+      <v-col cols="12" lg="6">
+        <DowntimeImpactWidget
+          :date-range="dateRange"
+          :start-date="startDate"
+          :end-date="endDate"
+          @view-details="navigateToDowntimeAnalysis"
+        />
+      </v-col>
+      <v-col cols="12" lg="6">
+        <BradfordFactorWidget
+          :date-range="dateRange"
+          :start-date="startDate"
+          :end-date="endDate"
+          @view-employees="navigateToAttendance"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Row 2: Quality by Operator & Rework by Operation (P4-001, P4-002) -->
+    <v-row class="mt-4">
+      <v-col cols="12" lg="6">
+        <QualityByOperatorWidget
+          :start-date="startDate"
+          :end-date="endDate"
+          @export-report="exportQualityReport"
+          @view-trends="navigateToQualityTrends"
+        />
+      </v-col>
+      <v-col cols="12" lg="6">
+        <ReworkByOperationWidget
+          :start-date="startDate"
+          :end-date="endDate"
+          @view-details="navigateToReworkAnalysis"
+          @create-action="openActionDialog"
+        />
+      </v-col>
+    </v-row>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
+
+// Import Dashboard Widgets
+import DowntimeImpactWidget from './widgets/DowntimeImpactWidget.vue'
+import BradfordFactorWidget from './widgets/BradfordFactorWidget.vue'
+import QualityByOperatorWidget from './widgets/QualityByOperatorWidget.vue'
+import ReworkByOperationWidget from './widgets/ReworkByOperationWidget.vue'
+import AbsenteeismAlert from './alerts/AbsenteeismAlert.vue'
+
+const router = useRouter()
 
 const props = defineProps<{
   dateRange: string
 }>()
+
+// Computed date range
+const startDate = computed(() => {
+  const today = new Date()
+  const days = props.dateRange === '7d' ? 7 : props.dateRange === '90d' ? 90 : 30
+  const start = new Date(today.getTime() - days * 24 * 60 * 60 * 1000)
+  return start.toISOString().split('T')[0]
+})
+
+const endDate = computed(() => {
+  return new Date().toISOString().split('T')[0]
+})
 
 const kpiData = ref({
   efficiency: 0,
@@ -357,4 +436,46 @@ const fetchKPIData = async () => {
 onMounted(() => {
   fetchKPIData()
 })
+
+// Navigation methods for widget events
+const navigateToAbsenteeism = () => {
+  router.push('/kpi/absenteeism')
+}
+
+const navigateToDowntimeAnalysis = () => {
+  router.push('/kpi/availability')
+}
+
+const navigateToAttendance = () => {
+  router.push('/kpi/absenteeism')
+}
+
+const navigateToQualityTrends = () => {
+  router.push('/kpi/quality')
+}
+
+const navigateToReworkAnalysis = () => {
+  router.push('/kpi/quality')
+}
+
+// Action handlers
+const openScheduleDialog = () => {
+  console.log('Opening schedule review dialog')
+  // Implementation: Open modal for scheduling attendance review
+}
+
+const handleAbsenteeismAction = (actionId: string) => {
+  console.log('Handling absenteeism action:', actionId)
+  // Implementation: Handle specific actions like notify-supervisors, activate-floating-pool, etc.
+}
+
+const exportQualityReport = () => {
+  console.log('Exporting quality by operator report')
+  // Implementation: Generate and download CSV/PDF report
+}
+
+const openActionDialog = () => {
+  console.log('Opening corrective action dialog')
+  // Implementation: Open modal for creating corrective action items
+}
 </script>

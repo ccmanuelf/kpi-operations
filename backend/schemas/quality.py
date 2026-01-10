@@ -16,8 +16,8 @@ class QualityInspection(Base):
     # Multi-tenant isolation - CRITICAL
     client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
 
-    product_id = Column(Integer, ForeignKey('products.product_id'), nullable=False)
-    shift_id = Column(Integer, ForeignKey('shifts.shift_id'), nullable=False)
+    product_id = Column(Integer, ForeignKey('PRODUCT.product_id'), nullable=False)
+    shift_id = Column(Integer, ForeignKey('SHIFT.shift_id'), nullable=False)
     inspection_date = Column(Date, nullable=False)
     work_order_number = Column(String(50))
     units_inspected = Column(Integer, nullable=False)
@@ -30,6 +30,6 @@ class QualityInspection(Base):
     ppm = Column(Numeric(12, 2))  # Calculated field
     dpmo = Column(Numeric(12, 2))  # Calculated field
     notes = Column(Text)
-    entered_by = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    entered_by = Column(Integer, ForeignKey('USER.user_id'), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())

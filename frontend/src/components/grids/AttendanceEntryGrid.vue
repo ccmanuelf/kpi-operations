@@ -128,6 +128,19 @@
       </v-btn>
     </v-card-text>
 
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      title="Confirm Attendance Entry - Read Back"
+      subtitle="Please verify the following attendance data before saving:"
+      :data="pendingData"
+      :field-config="confirmationFieldConfig"
+      :loading="saving"
+      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} attendance records.` : ''"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -138,6 +151,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AGGridBase from './AGGridBase.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import api from '@/services/api'
 import { format } from 'date-fns'
 
@@ -149,6 +163,32 @@ const attendanceData = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
+
+// Read-back confirmation state
+const showConfirmDialog = ref(false)
+const pendingData = ref({})
+const pendingRows = ref([])
+
+const pendingRowsCount = computed(() => pendingRows.value.length)
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const shiftName = shifts.value.find(s => s.shift_id === selectedShift.value)?.shift_name || 'N/A'
+
+  return [
+    { key: 'employee_id', label: 'Employee ID', type: 'text' },
+    { key: 'employee_name', label: 'Employee Name', type: 'text' },
+    { key: 'department', label: 'Department', type: 'text' },
+    { key: 'date', label: 'Date', type: 'date', displayValue: selectedDate.value },
+    { key: 'shift_id', label: 'Shift', type: 'text', displayValue: shiftName },
+    { key: 'status', label: 'Status', type: 'text' },
+    { key: 'clock_in', label: 'Clock In', type: 'text' },
+    { key: 'clock_out', label: 'Clock Out', type: 'text' },
+    { key: 'late_minutes', label: 'Late (minutes)', type: 'number' },
+    { key: 'absence_reason', label: 'Absence Reason', type: 'text' },
+    { key: 'is_excused', label: 'Excused', type: 'boolean' }
+  ]
+})
 
 // Track changed rows
 const hasChanges = computed(() => {
@@ -396,11 +436,11 @@ const bulkSetStatus = () => {
 }
 
 const saveAttendance = async () => {
-  const api = gridRef.value?.gridApi
-  if (!api) return
+  const gridApi = gridRef.value?.gridApi
+  if (!gridApi) return
 
   const changedRows = []
-  api.forEachNode(node => {
+  gridApi.forEachNode(node => {
     if (node.data._hasChanges) {
       changedRows.push(node.data)
     }
@@ -411,12 +451,21 @@ const saveAttendance = async () => {
     return
   }
 
+  // Store pending rows and show confirmation for first row
+  pendingRows.value = changedRows
+  pendingData.value = changedRows[0]
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
   saving.value = true
+
   let successCount = 0
   let errorCount = 0
 
   try {
-    for (const row of changedRows) {
+    for (const row of pendingRows.value) {
       const data = {
         employee_id: row.employee_id,
         date: selectedDate.value,
@@ -460,7 +509,16 @@ const saveAttendance = async () => {
     showSnackbar('Error saving attendance: ' + error.message, 'error')
   } finally {
     saving.value = false
+    pendingRows.value = []
+    pendingData.value = {}
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
+  pendingRows.value = []
+  pendingData.value = {}
+  showSnackbar('Save cancelled', 'info')
 }
 
 const showSnackbar = (message, color = 'success') => {

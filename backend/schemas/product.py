@@ -8,7 +8,7 @@ from backend.database import Base
 
 class Product(Base):
     """Product table ORM"""
-    __tablename__ = "product"
+    __tablename__ = "PRODUCT"
 
     product_id = Column(Integer, primary_key=True, autoincrement=True)
     product_code = Column(String(50), unique=True, nullable=False, index=True)

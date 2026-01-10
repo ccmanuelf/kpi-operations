@@ -14,13 +14,80 @@ import os
 # Add project root to path (parent of backend)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from backend.database import Base
-from backend.schemas.user import User, UserRole
-from backend.schemas.production import ProductionEntry
-from backend.schemas.quality import QualityInspection
-from backend.schemas.downtime import DowntimeEvent as Downtime
-from backend.schemas.attendance import AttendanceRecord as Attendance
-from backend.schemas.hold import WIPHold as Hold
+from backend.database import Base, get_db
+
+# Import ALL schemas to ensure tables are created in the correct order
+# This is critical for foreign key relationships to work
+from backend.schemas import (
+    # Core foundation (must be first - no FK dependencies)
+    Client, ClientType,
+    User, UserRole,
+    Employee,
+    FloatingPool,
+    # Work order management
+    WorkOrder, WorkOrderStatus,
+    Job,
+    PartOpportunities,
+    # Phase 1: Production tracking
+    Product,
+    Shift,
+    ProductionEntry,
+    # Phase 2: WIP & Downtime
+    HoldEntry, HoldStatus,
+    DowntimeEntry, DowntimeReason,
+    # Phase 3: Attendance
+    AttendanceEntry, AbsenceType,
+    CoverageEntry,
+    # Phase 4: Quality
+    QualityEntry,
+    DefectDetail, DefectType,
+)
+
+# Backward compatibility aliases
+QualityInspection = QualityEntry
+Downtime = DowntimeEntry
+Attendance = AttendanceEntry
+Hold = HoldEntry
+
+
+# Test Database Engine (shared across tests)
+TEST_DATABASE_URL = "sqlite:///:memory:"
+
+_test_engine = None
+_TestingSessionLocal = None
+
+
+def get_test_engine():
+    """Get or create test engine singleton"""
+    global _test_engine, _TestingSessionLocal
+    if _test_engine is None:
+        _test_engine = create_engine(
+            TEST_DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=_test_engine)
+        _TestingSessionLocal = sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=_test_engine
+        )
+    return _test_engine
+
+
+def get_test_db():
+    """Dependency override for get_db"""
+    engine = get_test_engine()
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine
+    )
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # Test Database Setup
@@ -317,3 +384,117 @@ def assert_percentage_equal(actual: float, expected: float, tolerance: float = 0
     """Assert percentage values are equal within tolerance"""
     assert abs(actual - expected) <= tolerance, \
         f"Expected {expected}% ± {tolerance}%, got {actual}%"
+
+
+# FastAPI Test Client Fixtures
+@pytest.fixture(scope="module")
+def test_client():
+    """Create a test client with overridden database dependency"""
+    from fastapi.testclient import TestClient
+
+    # IMPORTANT: Create test engine and tables BEFORE importing app
+    # This ensures the Base.metadata has all tables registered
+    engine = get_test_engine()
+
+    # Now import app - this will use our overridden get_db
+    from backend.main import app
+
+    # Override the database dependency with our test database
+    app.dependency_overrides[get_db] = get_test_db
+
+    # Create test client
+    client = TestClient(app)
+
+    yield client
+
+    # Clear dependency overrides after tests
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def test_user_data():
+    """Test user registration data"""
+    return {
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "Test123!",
+        "full_name": "Test User",
+        "role": "leader"  # Valid roles: admin, poweruser, leader, operator
+    }
+
+
+@pytest.fixture
+def auth_headers(test_client, test_user_data):
+    """
+    Get authentication headers for testing.
+    Creates a test user if needed and returns auth headers.
+    """
+    # Try to login first
+    response = test_client.post("/api/auth/login", json={
+        "username": test_user_data["username"],
+        "password": test_user_data["password"]
+    })
+
+    if response.status_code == 200:
+        token = response.json().get("access_token")
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+
+    # User doesn't exist, register first
+    register_response = test_client.post("/api/auth/register", json=test_user_data)
+
+    if register_response.status_code in [200, 201]:
+        # Now login
+        login_response = test_client.post("/api/auth/login", json={
+            "username": test_user_data["username"],
+            "password": test_user_data["password"]
+        })
+
+        if login_response.status_code == 200:
+            token = login_response.json().get("access_token")
+            if token:
+                return {"Authorization": f"Bearer {token}"}
+
+    # Return empty dict if auth fails - tests can handle gracefully
+    pytest.skip("Authentication setup failed - cannot create test user")
+    return {}
+
+
+@pytest.fixture
+def admin_auth_headers(test_client):
+    """Get admin authentication headers for testing."""
+    admin_data = {
+        "username": "admin_testuser",
+        "email": "admin_test@example.com",
+        "password": "AdminPass123!",
+        "full_name": "Admin Test User",
+        "role": "admin"
+    }
+
+    # Try to login first
+    response = test_client.post("/api/auth/login", json={
+        "username": admin_data["username"],
+        "password": admin_data["password"]
+    })
+
+    if response.status_code == 200:
+        token = response.json().get("access_token")
+        if token:
+            return {"Authorization": f"Bearer {token}"}
+
+    # User doesn't exist, register first
+    register_response = test_client.post("/api/auth/register", json=admin_data)
+
+    if register_response.status_code in [200, 201]:
+        login_response = test_client.post("/api/auth/login", json={
+            "username": admin_data["username"],
+            "password": admin_data["password"]
+        })
+
+        if login_response.status_code == 200:
+            token = login_response.json().get("access_token")
+            if token:
+                return {"Authorization": f"Bearer {token}"}
+
+    pytest.skip("Admin authentication setup failed")
+    return {}

@@ -8,7 +8,7 @@ from backend.database import Base
 
 class Shift(Base):
     """Shift table ORM"""
-    __tablename__ = "shift"
+    __tablename__ = "SHIFT"
 
     shift_id = Column(Integer, primary_key=True, autoincrement=True)
     shift_name = Column(String(50), unique=True, nullable=False, index=True)

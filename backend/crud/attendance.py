@@ -16,6 +16,7 @@ from backend.models.attendance import (
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
+from backend.utils.soft_delete import soft_delete
 
 
 def create_attendance_record(
@@ -152,7 +153,7 @@ def delete_attendance_record(
     current_user: User
 ) -> bool:
     """
-    Delete attendance record
+    Soft delete attendance record (sets is_active = False)
     SECURITY: Verifies user has access to the record's client
     """
     db_attendance = db.query(AttendanceRecord).filter(
@@ -166,7 +167,5 @@ def delete_attendance_record(
     if hasattr(db_attendance, 'client_id') and db_attendance.client_id:
         verify_client_access(current_user, db_attendance.client_id)
 
-    db.delete(db_attendance)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_attendance)
