@@ -11,6 +11,7 @@ from fastapi import HTTPException
 from backend.schemas.part_opportunities import PartOpportunities
 from backend.schemas.user import User
 from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.utils.soft_delete import soft_delete
 
 
 def create_part_opportunity(
@@ -165,7 +166,7 @@ def delete_part_opportunity(
     current_user: User
 ) -> bool:
     """
-    Delete part opportunity with client access verification
+    Soft delete part opportunity (sets is_active = False)
     SECURITY: Only deletes if user has access to the part's client
 
     Args:
@@ -174,15 +175,14 @@ def delete_part_opportunity(
         current_user: Authenticated user
 
     Returns:
-        True if deleted, False if not found or no access
+        True if soft deleted, False if not found or no access
     """
     part = get_part_opportunity(db, part_number, current_user)
     if not part:
         return False
 
-    db.delete(part)
-    db.commit()
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, part)
 
 
 def bulk_import_opportunities(

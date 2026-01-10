@@ -17,6 +17,7 @@ from backend.models.coverage import (
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
+from backend.utils.soft_delete import soft_delete
 
 
 def create_shift_coverage(
@@ -166,7 +167,7 @@ def delete_shift_coverage(
     current_user: User
 ) -> bool:
     """
-    Delete shift coverage record
+    Soft delete shift coverage record (sets is_active = False)
     SECURITY: Verifies user has access to the record's client
     """
     db_coverage = db.query(ShiftCoverage).filter(
@@ -180,7 +181,5 @@ def delete_shift_coverage(
     if hasattr(db_coverage, 'client_id') and db_coverage.client_id:
         verify_client_access(current_user, db_coverage.client_id)
 
-    db.delete(db_coverage)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_coverage)

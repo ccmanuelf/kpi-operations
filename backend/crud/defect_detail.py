@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from backend.schemas.defect_detail import DefectDetail
 from backend.schemas.user import User
 from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.utils.soft_delete import soft_delete
 
 
 def create_defect_detail(
@@ -172,7 +173,7 @@ def delete_defect_detail(
     current_user: User
 ) -> bool:
     """
-    Delete defect detail with client access verification
+    Soft delete defect detail (sets is_active = False)
     SECURITY: Only deletes if user has access to the defect's client
 
     Args:
@@ -181,15 +182,14 @@ def delete_defect_detail(
         current_user: Authenticated user
 
     Returns:
-        True if deleted, False if not found or no access
+        True if soft deleted, False if not found or no access
     """
     defect = get_defect_detail(db, defect_detail_id, current_user)
     if not defect:
         return False
 
-    db.delete(defect)
-    db.commit()
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, defect)
 
 
 def get_defect_summary_by_type(

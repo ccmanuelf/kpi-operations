@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from backend.schemas.employee import Employee
 from backend.schemas.user import User
 from middleware.client_auth import verify_client_access
+from backend.utils.soft_delete import soft_delete
 
 
 def create_employee(
@@ -181,7 +182,7 @@ def delete_employee(
     current_user: User
 ) -> bool:
     """
-    Delete employee
+    Soft delete employee (sets is_active = False)
     SECURITY: Admins only
 
     Args:
@@ -190,7 +191,7 @@ def delete_employee(
         current_user: Authenticated user
 
     Returns:
-        True if deleted
+        True if soft deleted
 
     Raises:
         HTTPException 403: If user is not admin
@@ -210,10 +211,8 @@ def delete_employee(
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    db.delete(db_employee)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_employee)
 
 
 def get_employees_by_client(

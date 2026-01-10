@@ -16,12 +16,12 @@ class ShiftCoverage(Base):
     # Multi-tenant isolation - CRITICAL
     client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
 
-    shift_id = Column(Integer, ForeignKey('shifts.shift_id'), nullable=False)
+    shift_id = Column(Integer, ForeignKey('SHIFT.shift_id'), nullable=False)
     coverage_date = Column(Date, nullable=False)
     required_employees = Column(Integer, nullable=False)
     actual_employees = Column(Integer, nullable=False)
     coverage_percentage = Column(Numeric(5, 2))  # Calculated field
     notes = Column(Text)
-    entered_by = Column(Integer, ForeignKey('users.user_id'), nullable=False)
+    entered_by = Column(Integer, ForeignKey('USER.user_id'), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())

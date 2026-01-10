@@ -86,6 +86,19 @@
       />
     </v-card-text>
 
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      title="Confirm Quality Inspection - Read Back"
+      subtitle="Please verify the following quality inspection data before saving:"
+      :data="pendingData"
+      :field-config="confirmationFieldConfig"
+      :loading="saving"
+      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} quality inspections.` : ''"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -96,6 +109,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AGGridBase from './AGGridBase.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import api from '@/services/api'
 import { format } from 'date-fns'
 
@@ -105,6 +119,39 @@ const products = ref([])
 const defectTypes = ref([])
 const saving = ref(false)
 const snackbar = ref({ show: false, message: '', color: 'success' })
+
+// Read-back confirmation state
+const showConfirmDialog = ref(false)
+const pendingData = ref({})
+const pendingRows = ref([])
+
+const pendingRowsCount = computed(() => pendingRows.value.length)
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const productName = products.value.find(p => p.product_id === pendingData.value.product_id)?.product_name || 'N/A'
+  const defectTypeName = defectTypes.value.find(d => d.defect_type_id === pendingData.value.defect_type_id)?.defect_name || 'N/A'
+
+  // Calculate FPY and PPM for display
+  const inspected = pendingData.value.inspected_quantity || 0
+  const defects = pendingData.value.defect_quantity || 0
+  const fpy = inspected > 0 ? ((1 - defects / inspected) * 100).toFixed(2) : '0.00'
+  const ppm = inspected > 0 ? Math.round((defects / inspected) * 1000000) : 0
+
+  return [
+    { key: 'inspection_date', label: 'Inspection Date', type: 'date' },
+    { key: 'work_order_id', label: 'Work Order', type: 'text' },
+    { key: 'product_id', label: 'Product', type: 'text', displayValue: productName },
+    { key: 'inspected_quantity', label: 'Inspected Quantity', type: 'number' },
+    { key: 'defect_quantity', label: 'Defect Quantity', type: 'number' },
+    { key: 'fpy_calculated', label: 'FPY %', type: 'percentage', displayValue: fpy },
+    { key: 'ppm_calculated', label: 'PPM', type: 'number', displayValue: ppm.toLocaleString() },
+    { key: 'defect_type_id', label: 'Defect Type', type: 'text', displayValue: defectTypeName },
+    { key: 'severity', label: 'Severity', type: 'text' },
+    { key: 'disposition', label: 'Disposition', type: 'text' },
+    { key: 'inspector_id', label: 'Inspector ID', type: 'text' }
+  ]
+})
 
 // Computed properties
 const hasChanges = computed(() => {
@@ -388,11 +435,11 @@ const deleteRow = (rowData) => {
 }
 
 const saveInspections = async () => {
-  const api = gridRef.value?.gridApi
-  if (!api) return
+  const gridApi = gridRef.value?.gridApi
+  if (!gridApi) return
 
   const changedRows = []
-  api.forEachNode(node => {
+  gridApi.forEachNode(node => {
     if (node.data._hasChanges) {
       changedRows.push(node.data)
     }
@@ -403,12 +450,21 @@ const saveInspections = async () => {
     return
   }
 
+  // Store pending rows and show confirmation for first row
+  pendingRows.value = changedRows
+  pendingData.value = changedRows[0]
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
   saving.value = true
+
   let successCount = 0
   let errorCount = 0
 
   try {
-    for (const row of changedRows) {
+    for (const row of pendingRows.value) {
       const data = {
         inspection_date: row.inspection_date,
         work_order_id: row.work_order_id,
@@ -448,7 +504,16 @@ const saveInspections = async () => {
     showSnackbar('Error saving inspections: ' + error.message, 'error')
   } finally {
     saving.value = false
+    pendingRows.value = []
+    pendingData.value = {}
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
+  pendingRows.value = []
+  pendingData.value = {}
+  showSnackbar('Save cancelled', 'info')
 }
 
 const showSnackbar = (message, color = 'success') => {

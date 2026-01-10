@@ -1,16 +1,19 @@
 """
 On-Time Delivery (OTD) KPI Calculation
 PHASE 3: Delivery performance tracking
+Enhanced with P3-001: TRUE-OTD vs Standard OTD
 
 OTD% = (Orders Delivered On Time / Total Orders) * 100
+TRUE-OTD% = (COMPLETE Orders Delivered On Time / Total COMPLETE Orders) * 100
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Dict, Tuple
 
 from backend.schemas.production_entry import ProductionEntry
+from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 
 
 def calculate_otd(
@@ -175,3 +178,332 @@ def identify_late_orders(
     results.sort(key=lambda x: x["days_pending"], reverse=True)
 
     return results
+
+
+# =============================================================================
+# P3-001: TRUE-OTD vs Standard OTD Calculation
+# =============================================================================
+
+def calculate_true_otd(
+    db: Session,
+    client_id: str,
+    start_date: date,
+    end_date: date
+) -> Dict:
+    """
+    Calculate TRUE-OTD: Only counts COMPLETE orders (status='COMPLETED')
+    P3-001: TRUE-OTD Implementation
+
+    TRUE-OTD: An order is on-time ONLY if:
+    1. Status is COMPLETED
+    2. actual_delivery_date <= planned_ship_date
+
+    Standard OTD: Uses all orders with actual_delivery_date
+
+    Args:
+        db: Database session
+        client_id: Client ID to filter
+        start_date: Start of date range
+        end_date: End of date range
+
+    Returns:
+        Dict with both TRUE-OTD and Standard OTD metrics
+    """
+    # Convert dates to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    # TRUE-OTD: Only COMPLETED orders with actual delivery date
+    complete_orders = db.query(WorkOrder).filter(
+        and_(
+            WorkOrder.client_id == client_id,
+            WorkOrder.status == WorkOrderStatus.COMPLETED,
+            WorkOrder.actual_delivery_date.isnot(None),
+            WorkOrder.planned_ship_date.isnot(None),
+            WorkOrder.actual_delivery_date >= start_datetime,
+            WorkOrder.actual_delivery_date <= end_datetime
+        )
+    ).all()
+
+    # Calculate TRUE-OTD metrics
+    true_otd_on_time = 0
+    true_otd_late = 0
+    true_otd_early = 0
+
+    for wo in complete_orders:
+        if wo.actual_delivery_date <= wo.planned_ship_date:
+            true_otd_on_time += 1
+            # Check if early (more than 1 day before planned)
+            days_diff = (wo.planned_ship_date - wo.actual_delivery_date).days
+            if days_diff > 1:
+                true_otd_early += 1
+        else:
+            true_otd_late += 1
+
+    true_otd_total = len(complete_orders)
+    true_otd_pct = Decimal("0")
+    if true_otd_total > 0:
+        true_otd_pct = (Decimal(str(true_otd_on_time)) / Decimal(str(true_otd_total))) * 100
+
+    # Standard OTD: All orders with delivery dates (any status)
+    standard_orders = db.query(WorkOrder).filter(
+        and_(
+            WorkOrder.client_id == client_id,
+            WorkOrder.actual_delivery_date.isnot(None),
+            WorkOrder.planned_ship_date.isnot(None),
+            WorkOrder.actual_delivery_date >= start_datetime,
+            WorkOrder.actual_delivery_date <= end_datetime
+        )
+    ).all()
+
+    standard_on_time = sum(
+        1 for wo in standard_orders
+        if wo.actual_delivery_date <= wo.planned_ship_date
+    )
+    standard_total = len(standard_orders)
+    standard_pct = Decimal("0")
+    if standard_total > 0:
+        standard_pct = (Decimal(str(standard_on_time)) / Decimal(str(standard_total))) * 100
+
+    return {
+        "true_otd": {
+            "on_time": true_otd_on_time,
+            "late": true_otd_late,
+            "early": true_otd_early,
+            "total": true_otd_total,
+            "percentage": true_otd_pct.quantize(Decimal("0.01")),
+            "description": "COMPLETE orders only"
+        },
+        "standard_otd": {
+            "on_time": standard_on_time,
+            "total": standard_total,
+            "percentage": standard_pct.quantize(Decimal("0.01")),
+            "description": "All orders with delivery dates"
+        },
+        "variance": {
+            "percentage_diff": (true_otd_pct - standard_pct).quantize(Decimal("0.01")),
+            "count_diff": true_otd_total - standard_total
+        },
+        "date_range": {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat()
+        },
+        "client_id": client_id
+    }
+
+
+def calculate_otd_by_work_order(
+    db: Session,
+    work_order_id: str
+) -> Optional[Dict]:
+    """
+    Calculate OTD status for a single work order
+    P3-001: Work order level OTD
+
+    Args:
+        db: Database session
+        work_order_id: Work order ID
+
+    Returns:
+        Dict with OTD metrics or None if not found
+    """
+    work_order = db.query(WorkOrder).filter(
+        WorkOrder.work_order_id == work_order_id
+    ).first()
+
+    if not work_order:
+        return None
+
+    result = {
+        "work_order_id": work_order_id,
+        "status": work_order.status.value if work_order.status else None,
+        "planned_ship_date": work_order.planned_ship_date.isoformat() if work_order.planned_ship_date else None,
+        "actual_delivery_date": work_order.actual_delivery_date.isoformat() if work_order.actual_delivery_date else None,
+        "is_on_time": None,
+        "days_variance": None,
+        "qualifies_for_true_otd": False
+    }
+
+    # Check if this work order qualifies for TRUE-OTD
+    if work_order.status == WorkOrderStatus.COMPLETED:
+        result["qualifies_for_true_otd"] = True
+
+    # Calculate OTD if dates available
+    if work_order.planned_ship_date and work_order.actual_delivery_date:
+        result["is_on_time"] = work_order.actual_delivery_date <= work_order.planned_ship_date
+        result["days_variance"] = (work_order.actual_delivery_date - work_order.planned_ship_date).days
+
+    return result
+
+
+def calculate_otd_trend(
+    db: Session,
+    client_id: str,
+    start_date: date,
+    end_date: date,
+    interval: str = "weekly"
+) -> Dict:
+    """
+    Calculate OTD trend over time with both TRUE-OTD and Standard OTD
+    P3-001: Trend analysis with toggle support
+
+    Args:
+        db: Database session
+        client_id: Client ID
+        start_date: Start date
+        end_date: End date
+        interval: "daily", "weekly", or "monthly"
+
+    Returns:
+        Dict with trend data
+    """
+    from datetime import timedelta
+    from collections import defaultdict
+
+    # Determine interval
+    if interval == "daily":
+        delta = timedelta(days=1)
+    elif interval == "weekly":
+        delta = timedelta(weeks=1)
+    else:  # monthly
+        delta = timedelta(days=30)
+
+    # Generate date ranges
+    current = start_date
+    periods = []
+    while current <= end_date:
+        period_end = min(current + delta - timedelta(days=1), end_date)
+        periods.append((current, period_end))
+        current = current + delta
+
+    # Calculate metrics for each period
+    trend_data = []
+    for period_start, period_end in periods:
+        metrics = calculate_true_otd(db, client_id, period_start, period_end)
+        trend_data.append({
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "true_otd_percentage": metrics["true_otd"]["percentage"],
+            "true_otd_count": metrics["true_otd"]["total"],
+            "standard_otd_percentage": metrics["standard_otd"]["percentage"],
+            "standard_otd_count": metrics["standard_otd"]["total"]
+        })
+
+    # Calculate overall averages
+    if trend_data:
+        avg_true_otd = sum(Decimal(str(d["true_otd_percentage"])) for d in trend_data) / len(trend_data)
+        avg_standard_otd = sum(Decimal(str(d["standard_otd_percentage"])) for d in trend_data) / len(trend_data)
+    else:
+        avg_true_otd = Decimal("0")
+        avg_standard_otd = Decimal("0")
+
+    return {
+        "trend": trend_data,
+        "summary": {
+            "average_true_otd": avg_true_otd.quantize(Decimal("0.01")),
+            "average_standard_otd": avg_standard_otd.quantize(Decimal("0.01")),
+            "periods_analyzed": len(trend_data),
+            "interval": interval
+        },
+        "client_id": client_id,
+        "date_range": {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat()
+        }
+    }
+
+
+def calculate_otd_by_product(
+    db: Session,
+    client_id: str,
+    start_date: date,
+    end_date: date
+) -> Dict:
+    """
+    Calculate OTD metrics grouped by product/style
+    P3-001: Product-level OTD analysis
+
+    Args:
+        db: Database session
+        client_id: Client ID
+        start_date: Start date
+        end_date: End date
+
+    Returns:
+        Dict with OTD by product
+    """
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    # Get all orders in range
+    orders = db.query(WorkOrder).filter(
+        and_(
+            WorkOrder.client_id == client_id,
+            WorkOrder.actual_delivery_date.isnot(None),
+            WorkOrder.planned_ship_date.isnot(None),
+            WorkOrder.actual_delivery_date >= start_datetime,
+            WorkOrder.actual_delivery_date <= end_datetime
+        )
+    ).all()
+
+    # Group by style_model
+    product_metrics = {}
+    for wo in orders:
+        style = wo.style_model
+        if style not in product_metrics:
+            product_metrics[style] = {
+                "style_model": style,
+                "true_otd_on_time": 0,
+                "true_otd_total": 0,
+                "standard_on_time": 0,
+                "standard_total": 0
+            }
+
+        # Standard OTD
+        product_metrics[style]["standard_total"] += 1
+        if wo.actual_delivery_date <= wo.planned_ship_date:
+            product_metrics[style]["standard_on_time"] += 1
+
+        # TRUE-OTD (only COMPLETED)
+        if wo.status == WorkOrderStatus.COMPLETED:
+            product_metrics[style]["true_otd_total"] += 1
+            if wo.actual_delivery_date <= wo.planned_ship_date:
+                product_metrics[style]["true_otd_on_time"] += 1
+
+    # Calculate percentages
+    results = []
+    for style, metrics in product_metrics.items():
+        true_pct = Decimal("0")
+        if metrics["true_otd_total"] > 0:
+            true_pct = (Decimal(str(metrics["true_otd_on_time"])) / Decimal(str(metrics["true_otd_total"]))) * 100
+
+        standard_pct = Decimal("0")
+        if metrics["standard_total"] > 0:
+            standard_pct = (Decimal(str(metrics["standard_on_time"])) / Decimal(str(metrics["standard_total"]))) * 100
+
+        results.append({
+            "style_model": style,
+            "true_otd": {
+                "on_time": metrics["true_otd_on_time"],
+                "total": metrics["true_otd_total"],
+                "percentage": true_pct.quantize(Decimal("0.01"))
+            },
+            "standard_otd": {
+                "on_time": metrics["standard_on_time"],
+                "total": metrics["standard_total"],
+                "percentage": standard_pct.quantize(Decimal("0.01"))
+            }
+        })
+
+    # Sort by TRUE-OTD percentage (lowest first to highlight issues)
+    results.sort(key=lambda x: x["true_otd"]["percentage"])
+
+    return {
+        "by_product": results,
+        "total_products": len(results),
+        "client_id": client_id,
+        "date_range": {
+            "start": start_date.isoformat(),
+            "end": end_date.isoformat()
+        }
+    }

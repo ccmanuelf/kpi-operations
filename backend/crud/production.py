@@ -26,6 +26,7 @@ from calculations.performance import (
     calculate_oee
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.utils.soft_delete import soft_delete
 
 
 def create_production_entry(
@@ -249,7 +250,7 @@ def delete_production_entry(
     current_user: User
 ) -> bool:
     """
-    Delete production entry
+    Soft delete production entry (sets is_active = False)
     SECURITY: Verifies user has access to the entry's client
 
     Args:
@@ -258,7 +259,7 @@ def delete_production_entry(
         current_user: Authenticated user (ADDED for authorization)
 
     Returns:
-        True if deleted, False if not found
+        True if soft deleted, False if not found
 
     Raises:
         HTTPException 404: If entry not found
@@ -275,10 +276,8 @@ def delete_production_entry(
     if hasattr(db_entry, 'client_id') and db_entry.client_id:
         verify_client_access(current_user, db_entry.client_id)
 
-    db.delete(db_entry)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_entry)
 
 
 def get_production_entry_with_details(

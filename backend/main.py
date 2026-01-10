@@ -2,7 +2,7 @@
 Manufacturing KPI Platform - FastAPI Backend
 Main application with all routes
 """
-from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -16,6 +16,12 @@ from decimal import Decimal
 from backend.config import settings
 from backend.database import get_db, engine, Base
 from backend.models.user import UserCreate, UserLogin, UserResponse, Token
+from backend.middleware.rate_limit import (
+    limiter,
+    configure_rate_limiting,
+    RateLimitConfig
+)
+from backend.auth.password_policy import validate_password_strength
 from backend.models.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
@@ -260,6 +266,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting middleware (SEC-001)
+configure_rate_limiting(app)
+
 
 # ============================================================================
 # HEALTH CHECK
@@ -281,8 +290,9 @@ def root():
 # ============================================================================
 
 @app.post("/api/auth/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
-    """Register new user"""
+@limiter.limit(RateLimitConfig.AUTH_LIMIT)
+def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)):
+    """Register new user (rate limited: 10 requests/minute)"""
     # Check if username exists
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
@@ -317,8 +327,9 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
 
 @app.post("/api/auth/login", response_model=Token)
-def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
-    """User login"""
+@limiter.limit(RateLimitConfig.AUTH_LIMIT)
+def login(request: Request, user_credentials: UserLogin, db: Session = Depends(get_db)):
+    """User login (rate limited: 10 requests/minute)"""
     user = db.query(User).filter(User.username == user_credentials.username).first()
 
     if not user or not verify_password(user_credentials.password, user.password_hash):
@@ -1335,7 +1346,9 @@ from routes import (
     attendance_router,
     coverage_router,
     quality_router,
-    defect_router
+    defect_router,
+    analytics_router,
+    predictions_router
 )
 
 # Import reports router
@@ -1365,6 +1378,12 @@ app.include_router(defect_router)
 
 # Register comprehensive report generation routes
 app.include_router(reports_router)
+
+# Register analytics and prediction routes
+app.include_router(analytics_router)
+
+# Phase 5: Register comprehensive predictions routes
+app.include_router(predictions_router)
 
 # OTD (On-Time Delivery) KPI endpoints remain in main.py
 # as they don't fit into the modular structure

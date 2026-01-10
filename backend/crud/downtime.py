@@ -16,6 +16,7 @@ from backend.models.downtime import (
 )
 from middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
+from backend.utils.soft_delete import soft_delete
 
 
 def create_downtime_event(
@@ -129,13 +130,11 @@ def delete_downtime_event(
     downtime_id: int,
     current_user: User
 ) -> bool:
-    """Delete downtime event"""
+    """Soft delete downtime event (sets is_active = False)"""
     db_downtime = get_downtime_event(db, downtime_id, current_user)
 
     if not db_downtime:
         return False
 
-    db.delete(db_downtime)
-    db.commit()
-
-    return True
+    # Soft delete - preserves data integrity
+    return soft_delete(db, db_downtime)
