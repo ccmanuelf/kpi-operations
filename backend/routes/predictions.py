@@ -28,7 +28,7 @@ from backend.schemas.analytics import (
     KPIHealthAssessment,
     KPIBenchmark
 )
-from calculations.predictions import (
+from backend.calculations.predictions import (
     auto_forecast,
     simple_exponential_smoothing,
     double_exponential_smoothing,

@@ -23,14 +23,14 @@ from reportlab.graphics.charts.linecharts import HorizontalLineChart
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from sqlalchemy.orm import Session
 
-from calculations.efficiency import calculate_efficiency
-from calculations.availability import calculate_availability
-from calculations.performance import calculate_performance
-from calculations.fpy_rty import calculate_fpy, calculate_rty
-from calculations.ppm import calculate_ppm
-from calculations.dpmo import calculate_dpmo
-from calculations.absenteeism import calculate_absenteeism
-from calculations.otd import calculate_otd
+from backend.calculations.efficiency import calculate_efficiency
+from backend.calculations.availability import calculate_availability
+from backend.calculations.performance import calculate_performance
+from backend.calculations.fpy_rty import calculate_fpy, calculate_rty
+from backend.calculations.ppm import calculate_ppm
+from backend.calculations.dpmo import calculate_dpmo
+from backend.calculations.absenteeism import calculate_absenteeism
+from backend.calculations.otd import calculate_otd
 
 
 class PDFReportGenerator:

@@ -116,14 +116,14 @@ from backend.models.floating_pool import (
 from backend.schemas.user import User
 from backend.schemas.product import Product
 from backend.schemas.shift import Shift
-from auth.jwt import (
+from backend.auth.jwt import (
     verify_password,
     get_password_hash,
     create_access_token,
     get_current_user,
     get_current_active_supervisor
 )
-from crud.production import (
+from backend.crud.production import (
     create_production_entry,
     get_production_entry,
     get_production_entries,
@@ -132,28 +132,28 @@ from crud.production import (
     get_production_entry_with_details,
     get_daily_summary
 )
-from crud.downtime import (
+from backend.crud.downtime import (
     create_downtime_event,
     get_downtime_event,
     get_downtime_events,
     update_downtime_event,
     delete_downtime_event
 )
-from crud.hold import (
+from backend.crud.hold import (
     create_wip_hold,
     get_wip_hold,
     get_wip_holds,
     update_wip_hold,
     delete_wip_hold
 )
-from crud.attendance import (
+from backend.crud.attendance import (
     create_attendance_record,
     get_attendance_record,
     get_attendance_records,
     update_attendance_record,
     delete_attendance_record
 )
-from crud.job import (
+from backend.crud.job import (
     create_job,
     get_job,
     get_jobs,
@@ -162,7 +162,7 @@ from crud.job import (
     delete_job,
     complete_job
 )
-from crud.part_opportunities import (
+from backend.crud.part_opportunities import (
     create_part_opportunity,
     get_part_opportunity,
     get_part_opportunities,
@@ -171,21 +171,21 @@ from crud.part_opportunities import (
     delete_part_opportunity,
     bulk_import_opportunities
 )
-from crud.coverage import (
+from backend.crud.coverage import (
     create_shift_coverage,
     get_shift_coverage,
     get_shift_coverages,
     update_shift_coverage,
     delete_shift_coverage
 )
-from crud.quality import (
+from backend.crud.quality import (
     create_quality_inspection,
     get_quality_inspection,
     get_quality_inspections,
     update_quality_inspection,
     delete_quality_inspection
 )
-from crud.defect_detail import (
+from backend.crud.defect_detail import (
     create_defect_detail,
     get_defect_detail,
     get_defect_details,
@@ -194,7 +194,7 @@ from crud.defect_detail import (
     delete_defect_detail,
     get_defect_summary_by_type
 )
-from crud.work_order import (
+from backend.crud.work_order import (
     create_work_order,
     get_work_order,
     get_work_orders,
@@ -204,7 +204,7 @@ from crud.work_order import (
     get_work_orders_by_status,
     get_work_orders_by_date_range
 )
-from crud.client import (
+from backend.crud.client import (
     create_client,
     get_client,
     get_clients,
@@ -212,7 +212,7 @@ from crud.client import (
     delete_client,
     get_active_clients
 )
-from crud.employee import (
+from backend.crud.employee import (
     create_employee,
     get_employee,
     get_employees,
@@ -224,7 +224,7 @@ from crud.employee import (
     remove_from_floating_pool,
     assign_employee_to_client
 )
-from crud.floating_pool import (
+from backend.crud.floating_pool import (
     create_floating_pool_entry,
     get_floating_pool_entry,
     get_floating_pool_entries,
@@ -235,16 +235,16 @@ from crud.floating_pool import (
     get_available_floating_pool_employees,
     get_floating_pool_assignments_by_client
 )
-from calculations.efficiency import calculate_efficiency
-from calculations.performance import calculate_performance, calculate_quality_rate
-from calculations.availability import calculate_availability
-from calculations.wip_aging import calculate_wip_aging, identify_chronic_holds
-from calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
-from calculations.otd import calculate_otd, identify_late_orders
-from calculations.ppm import calculate_ppm, identify_top_defects
-from calculations.dpmo import calculate_dpmo
-from calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
-from calculations.inference import InferenceEngine
+from backend.calculations.efficiency import calculate_efficiency
+from backend.calculations.performance import calculate_performance, calculate_quality_rate
+from backend.calculations.availability import calculate_availability
+from backend.calculations.wip_aging import calculate_wip_aging, identify_chronic_holds
+from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
+from backend.calculations.otd import calculate_otd, identify_late_orders
+from backend.calculations.ppm import calculate_ppm, identify_top_defects
+from backend.calculations.dpmo import calculate_dpmo
+from backend.calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
+from backend.calculations.inference import InferenceEngine
 # PDFReportGenerator is imported later when needed for report endpoints
 
 # Create tables (DISABLED - using pre-populated SQLite database with demo data)
@@ -1073,7 +1073,7 @@ def generate_daily_pdf_report(
     current_user: User = Depends(get_current_user)
 ):
     """Generate daily production PDF report"""
-    from reports.pdf_generator import PDFReportGenerator
+    from backend.reports.pdf_generator import PDFReportGenerator
 
     pdf_generator = PDFReportGenerator(db)
     pdf_buffer = pdf_generator.generate_report(
@@ -1342,7 +1342,7 @@ def get_chronic_holds(
 # ============================================================================
 
 # Import and register modular route modules
-from routes import (
+from backend.routes import (
     attendance_router,
     coverage_router,
     quality_router,
@@ -1352,11 +1352,11 @@ from routes import (
 )
 
 # Import reports router
-from routes.reports import router as reports_router
-from routes.health import router as health_router
+from backend.routes.reports import router as reports_router
+from backend.routes.health import router as health_router
 
 # Import CSV upload endpoints
-from endpoints.csv_upload import router as csv_upload_router
+from backend.endpoints.csv_upload import router as csv_upload_router
 
 # Register health check and monitoring routes
 app.include_router(health_router)
@@ -1969,14 +1969,14 @@ def infer_cycle_time(
 # REPORT GENERATION ROUTES (SPRINT 4.2)
 # ============================================================================
 
-from reports.pdf_generator import PDFReportGenerator
-from reports.excel_generator import ExcelReportGenerator
-from services.email_service import EmailService
+from backend.reports.pdf_generator import PDFReportGenerator
+from backend.reports.excel_generator import ExcelReportGenerator
+from backend.services.email_service import EmailService
 from pydantic import BaseModel
 
 # Optional scheduler import (may not be available in test environment)
 try:
-    from tasks.daily_reports import scheduler as report_scheduler
+    from backend.tasks.daily_reports import scheduler as report_scheduler
 except ImportError:
     report_scheduler = None
 

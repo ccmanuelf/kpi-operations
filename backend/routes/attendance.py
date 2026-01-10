@@ -22,7 +22,7 @@ from crud.attendance import (
     update_attendance_record,
     delete_attendance_record
 )
-from calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
+from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 

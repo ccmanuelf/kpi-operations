@@ -20,15 +20,15 @@ import pytest
 from decimal import Decimal
 from datetime import date
 
-from calculations.efficiency import calculate_efficiency
-from calculations.performance import calculate_performance
-from calculations.ppm import calculate_ppm
-from calculations.dpmo import calculate_dpmo
-from calculations.fpy_rty import calculate_fpy, calculate_rty
-from calculations.availability import calculate_availability
-from calculations.wip_aging import calculate_wip_aging
-from calculations.absenteeism import calculate_absenteeism
-from calculations.otd import calculate_otd
+from backend.calculations.efficiency import calculate_efficiency
+from backend.calculations.performance import calculate_performance
+from backend.calculations.ppm import calculate_ppm
+from backend.calculations.dpmo import calculate_dpmo
+from backend.calculations.fpy_rty import calculate_fpy, calculate_rty
+from backend.calculations.availability import calculate_availability
+from backend.calculations.wip_aging import calculate_wip_aging
+from backend.calculations.absenteeism import calculate_absenteeism
+from backend.calculations.otd import calculate_otd
 
 
 class TestAllKPIFormulas:

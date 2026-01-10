@@ -24,9 +24,9 @@ from crud.quality import (
     update_quality_inspection,
     delete_quality_inspection
 )
-from calculations.ppm import calculate_ppm, identify_top_defects
-from calculations.dpmo import calculate_dpmo
-from calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
+from backend.calculations.ppm import calculate_ppm, identify_top_defects
+from backend.calculations.dpmo import calculate_dpmo
+from backend.calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
 from auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
