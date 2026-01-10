@@ -19,8 +19,8 @@ from backend.models.production import (
     ProductionEntryUpdate,
     ProductionEntryWithKPIs
 )
-from calculations.efficiency import calculate_efficiency
-from calculations.performance import (
+from backend.calculations.efficiency import calculate_efficiency
+from backend.calculations.performance import (
     calculate_performance,
     calculate_quality_rate,
     calculate_oee

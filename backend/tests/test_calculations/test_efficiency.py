@@ -16,7 +16,7 @@ from decimal import Decimal
 from datetime import time
 from unittest.mock import Mock, MagicMock
 
-from calculations.efficiency import (
+from backend.calculations.efficiency import (
     calculate_efficiency,
     calculate_shift_hours,
     update_efficiency_for_entry,

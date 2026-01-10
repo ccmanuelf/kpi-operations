@@ -14,7 +14,7 @@ from decimal import Decimal
 from datetime import date, timedelta
 
 # Import from actual module to get coverage
-from calculations.predictions import (
+from backend.calculations.predictions import (
     simple_exponential_smoothing,
     double_exponential_smoothing,
     linear_trend_extrapolation,

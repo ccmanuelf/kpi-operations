@@ -9,7 +9,7 @@ from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 from backend.schemas.product import Product
 from backend.schemas.production_entry import ProductionEntry
-from calculations.efficiency import infer_ideal_cycle_time
+from backend.calculations.efficiency import infer_ideal_cycle_time
 
 
 def calculate_performance(

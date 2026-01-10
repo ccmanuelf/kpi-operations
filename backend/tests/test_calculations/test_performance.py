@@ -13,7 +13,7 @@ Covers:
 import pytest
 from decimal import Decimal
 
-from calculations.performance import (
+from backend.calculations.performance import (
     calculate_performance,
     update_performance_for_entry,
 )

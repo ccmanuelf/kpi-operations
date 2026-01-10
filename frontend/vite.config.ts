@@ -16,10 +16,25 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '0.0.0.0',
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true
+      }
+    }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['vue', 'vue-router', 'pinia'],
+          vuetify: ['vuetify'],
+          charts: ['chart.js', 'vue-chartjs'],
+          aggrid: ['ag-grid-community', 'ag-grid-vue3']
+        }
       }
     }
   }
