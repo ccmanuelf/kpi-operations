@@ -354,7 +354,8 @@ class TestRealWorldQualityScenarios:
         # Then: (50 / 100,000) × 1,000,000 = 500 DPMO
         sigma = calculate_sigma_level(dpmo)
         assert float(dpmo) == 500.0
-        assert float(sigma) >= 5.0  # Excellent quality
+        # 500 DPMO falls between 4σ (6210 DPMO) and 5σ (233 DPMO), returns 4.0
+        assert float(sigma) >= 4.0  # Good quality (between 4 and 5 sigma)
 
     def test_progressive_quality_improvement(self):
         """Test quality improvement over time"""

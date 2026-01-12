@@ -15,7 +15,7 @@ from backend.models.defect_detail import (
     DefectDetailResponse,
     DefectSummaryResponse
 )
-from crud.defect_detail import (
+from backend.crud.defect_detail import (
     create_defect_detail,
     get_defect_detail,
     get_defect_details,
@@ -24,7 +24,7 @@ from crud.defect_detail import (
     delete_defect_detail,
     get_defect_summary_by_type
 )
-from auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 

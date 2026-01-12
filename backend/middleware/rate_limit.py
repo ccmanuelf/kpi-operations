@@ -137,7 +137,7 @@ def configure_rate_limiting(app):
         app: FastAPI application instance
 
     Usage:
-        from middleware.rate_limit import configure_rate_limiting
+        from backend.middleware.rate_limit import configure_rate_limiting
 
         app = FastAPI()
         configure_rate_limiting(app)

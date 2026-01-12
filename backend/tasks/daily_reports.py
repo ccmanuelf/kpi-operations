@@ -12,8 +12,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from backend.database import get_db
-from reports.pdf_generator import PDFReportGenerator
-from services.email_service import EmailService
+from backend.reports.pdf_generator import PDFReportGenerator
+from backend.services.email_service import EmailService
 from backend.schemas.client import Client
 from backend.config import settings
 

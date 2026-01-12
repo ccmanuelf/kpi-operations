@@ -320,8 +320,8 @@ class PDFReportGenerator:
     def _fetch_kpi_summary(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch summary data for all KPIs from database"""
         from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.quality import QualityInspection
-        from backend.schemas.attendance import AttendanceRecord
+        from backend.schemas.quality_entry import QualityEntry
+        from backend.schemas.attendance_entry import AttendanceEntry
         from backend.schemas.product import Product
 
         kpi_data = []
@@ -332,8 +332,8 @@ class PDFReportGenerator:
         )
 
         if client_id:
-            # Join with Product to filter by client
-            production_query = production_query.join(Product).filter(Product.client_id == client_id)
+            # Filter by client_id directly on ProductionEntry
+            production_query = production_query.filter(ProductionEntry.client_id == client_id)
 
         production_entries = production_query.all()
 
@@ -363,20 +363,19 @@ class PDFReportGenerator:
             })
 
         # Quality metrics
-        quality_query = self.db.query(QualityInspection).filter(
-            QualityInspection.inspection_date.between(start_date, end_date)
+        quality_query = self.db.query(QualityEntry).filter(
+            QualityEntry.inspection_date.between(start_date, end_date)
         )
 
         if client_id:
-            from backend.schemas.product import Product
-            quality_query = quality_query.join(Product).filter(Product.client_id == client_id)
+            quality_query = quality_query.filter(QualityEntry.client_id == client_id)
 
         quality_entries = quality_query.all()
 
         if quality_entries:
             # Calculate FPY
             total_inspected = sum(e.units_inspected for e in quality_entries)
-            total_defects = sum(e.defects_found for e in quality_entries)
+            total_defects = sum(e.units_defective for e in quality_entries)
             fpy = ((total_inspected - total_defects) / total_inspected * 100) if total_inspected > 0 else 0
 
             kpi_data.append({
@@ -400,15 +399,15 @@ class PDFReportGenerator:
             })
 
         # Attendance metrics
-        attendance_query = self.db.query(AttendanceRecord).filter(
-            AttendanceRecord.attendance_date.between(start_date, end_date)
+        attendance_query = self.db.query(AttendanceEntry).filter(
+            AttendanceEntry.shift_date.between(start_date, end_date)
         )
 
         attendance_entries = attendance_query.all()
 
         if attendance_entries:
             total_scheduled = sum(float(e.scheduled_hours or 0) for e in attendance_entries)
-            total_absent = sum(float(e.scheduled_hours or 0) for e in attendance_entries if e.status == 'Absent')
+            total_absent = sum(float(e.absence_hours or 0) for e in attendance_entries if e.is_absent)
             absenteeism = (total_absent / total_scheduled * 100) if total_scheduled > 0 else 0
 
             kpi_data.append({
@@ -425,8 +424,8 @@ class PDFReportGenerator:
     def _fetch_kpi_details(self, kpi_key: str, client_id: Optional[int], start_date: date, end_date: date) -> Dict[str, Any]:
         """Fetch detailed metrics for specific KPI from database"""
         from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.quality import QualityInspection
-        from backend.schemas.attendance import AttendanceRecord
+        from backend.schemas.quality_entry import QualityEntry
+        from backend.schemas.attendance_entry import AttendanceEntry
         from backend.schemas.product import Product
 
         details = {}
@@ -437,7 +436,7 @@ class PDFReportGenerator:
             )
 
             if client_id:
-                query = query.join(Product).filter(Product.client_id == client_id)
+                query = query.filter(ProductionEntry.client_id == client_id)
 
             entries = query.all()
 
@@ -462,18 +461,18 @@ class PDFReportGenerator:
                 }
 
         elif kpi_key in ['fpy', 'ppm', 'dpmo']:
-            query = self.db.query(QualityInspection).filter(
-                QualityInspection.inspection_date.between(start_date, end_date)
+            query = self.db.query(QualityEntry).filter(
+                QualityEntry.inspection_date.between(start_date, end_date)
             )
 
             if client_id:
-                query = query.join(Product).filter(Product.client_id == client_id)
+                query = query.filter(QualityEntry.client_id == client_id)
 
             entries = query.all()
 
             if entries:
                 total_inspected = sum(e.units_inspected for e in entries)
-                total_defects = sum(e.defects_found for e in entries)
+                total_defects = sum(e.units_defective for e in entries)
 
                 if kpi_key == 'fpy':
                     fpy = ((total_inspected - total_defects) / total_inspected * 100) if total_inspected > 0 else 0
@@ -494,15 +493,15 @@ class PDFReportGenerator:
                     }
 
         elif kpi_key == 'absenteeism':
-            query = self.db.query(AttendanceRecord).filter(
-                AttendanceRecord.attendance_date.between(start_date, end_date)
+            query = self.db.query(AttendanceEntry).filter(
+                AttendanceEntry.shift_date.between(start_date, end_date)
             )
 
             entries = query.all()
 
             if entries:
                 total_scheduled = sum(float(e.scheduled_hours or 0) for e in entries)
-                total_absent = sum(float(e.scheduled_hours or 0) for e in entries if e.status == 'Absent')
+                total_absent = sum(float(e.absence_hours or 0) for e in entries if e.is_absent)
                 rate = (total_absent / total_scheduled * 100) if total_scheduled > 0 else 0
 
                 details = {

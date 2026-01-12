@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from backend.schemas.employee import Employee
 from backend.schemas.user import User
-from middleware.client_auth import verify_client_access
+from backend.middleware.client_auth import verify_client_access
 from backend.utils.soft_delete import soft_delete
 
 

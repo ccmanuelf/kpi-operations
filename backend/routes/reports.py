@@ -11,10 +11,10 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
-from reports.pdf_generator import PDFReportGenerator
-from reports.excel_generator import ExcelReportGenerator
+from backend.reports.pdf_generator import PDFReportGenerator
+from backend.reports.excel_generator import ExcelReportGenerator
 
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
@@ -85,6 +85,8 @@ async def generate_production_pdf_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating PDF report: {str(e)}")
 
@@ -137,6 +139,8 @@ async def generate_production_excel_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating Excel report: {str(e)}")
 
@@ -193,6 +197,8 @@ async def generate_quality_pdf_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating quality PDF: {str(e)}")
 
@@ -234,6 +240,8 @@ async def generate_quality_excel_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating quality Excel: {str(e)}")
 
@@ -288,6 +296,8 @@ async def generate_attendance_pdf_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating attendance PDF: {str(e)}")
 
@@ -329,6 +339,8 @@ async def generate_attendance_excel_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating attendance Excel: {str(e)}")
 
@@ -384,6 +396,8 @@ async def generate_comprehensive_pdf_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating comprehensive PDF: {str(e)}")
 
@@ -436,6 +450,8 @@ async def generate_comprehensive_excel_report(
             }
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating comprehensive Excel: {str(e)}")
 

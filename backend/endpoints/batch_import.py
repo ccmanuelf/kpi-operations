@@ -13,8 +13,8 @@ from backend.database import get_db
 from backend.schemas.import_log import BatchImportRequest, BatchImportResponse
 from backend.schemas.production import ProductionEntryCreate
 from backend.schemas.user import User
-from auth.jwt import get_current_user
-from crud.production import create_production_entry
+from backend.auth.jwt import get_current_user
+from backend.crud.production import create_production_entry
 
 
 router = APIRouter()

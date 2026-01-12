@@ -715,7 +715,7 @@ class TestOTDBusinessScenarios:
         orders = [
             {"planned_date": date(2024, 1, i), "actual_date": date(2024, 1, i)}
             if i <= 28  # 28 on-time
-            else {"planned_date": date(2024, 1, i), "actual_date": date(2024, 1, i + 2)}
+            else {"planned_date": date(2024, 1, i), "actual_date": date(2024, 2, 1)}  # Late delivery into Feb
             for i in range(1, 31)  # 30 orders total
         ]
 

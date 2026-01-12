@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.user import User
-from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
 
 

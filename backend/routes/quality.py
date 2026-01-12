@@ -17,7 +17,7 @@ from backend.models.quality import (
     DPMOCalculationResponse,
     FPYRTYCalculationResponse
 )
-from crud.quality import (
+from backend.crud.quality import (
     create_quality_inspection,
     get_quality_inspection,
     get_quality_inspections,
@@ -27,7 +27,7 @@ from crud.quality import (
 from backend.calculations.ppm import calculate_ppm, identify_top_defects
 from backend.calculations.dpmo import calculate_dpmo
 from backend.calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
-from auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 

@@ -44,13 +44,13 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     """User response model (without password)"""
-    user_id: int
+    user_id: str
     username: str
     email: str
-    full_name: str
-    role: str
-    is_active: bool
-    created_at: datetime
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    is_active: bool = True
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -61,3 +61,38 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class PasswordResetRequest(BaseModel):
+    """Password reset request model"""
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Password reset confirmation model"""
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password_policy(cls, v: str) -> str:
+        """Validate password against security policy"""
+        is_valid, message = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(message)
+        return v
+
+
+class PasswordChange(BaseModel):
+    """Password change model (for authenticated users)"""
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_password_policy(cls, v: str) -> str:
+        """Validate password against security policy"""
+        is_valid, message = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(message)
+        return v

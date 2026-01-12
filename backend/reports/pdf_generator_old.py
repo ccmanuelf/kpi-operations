@@ -17,7 +17,7 @@ from reportlab.platypus import (
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
 from sqlalchemy.orm import Session
-from crud.production import get_daily_summary, get_production_entries
+from backend.crud.production import get_daily_summary, get_production_entries
 
 
 def generate_daily_report(

@@ -11,23 +11,23 @@ import io
 import csv
 
 from backend.database import get_db
-from auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user
 from backend.schemas.user import User, UserRole
-from middleware.client_auth import verify_client_access
+from backend.middleware.client_auth import verify_client_access
 from backend.models.production import CSVUploadResponse
 
 # Import CRUD functions
-from crud.downtime import create_downtime_event
-from crud.hold import create_wip_hold
-from crud.attendance import create_attendance_record
-from crud.coverage import create_shift_coverage
-from crud.quality import create_quality_inspection
-from crud.defect_detail import create_defect_detail
-from crud.work_order import create_work_order
-from crud.job import create_job
-from crud.client import create_client
-from crud.employee import create_employee
-from crud.floating_pool import create_floating_pool_entry
+from backend.crud.downtime import create_downtime_event
+from backend.crud.hold import create_wip_hold
+from backend.crud.attendance import create_attendance_record
+from backend.crud.coverage import create_shift_coverage
+from backend.crud.quality import create_quality_inspection
+from backend.crud.defect_detail import create_defect_detail
+from backend.crud.work_order import create_work_order
+from backend.crud.job import create_job
+from backend.crud.client import create_client
+from backend.crud.employee import create_employee
+from backend.crud.floating_pool import create_floating_pool_entry
 
 # Import Pydantic models
 from backend.models.downtime import DowntimeEventCreate

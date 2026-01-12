@@ -43,6 +43,8 @@ class TestReportEndpoints:
             headers=auth_headers
         )
 
+        if response.status_code != 200:
+            print(f"ERROR RESPONSE: {response.text}")
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
         assert "Content-Disposition" in response.headers
@@ -161,6 +163,10 @@ class TestReportEndpoints:
             "/api/reports/production/pdf?client_id=TEST_CLIENT",
             headers=auth_headers
         )
+
+        # Debug: print error if not 200
+        if response.status_code != 200:
+            print(f"ERROR RESPONSE: {response.json()}")
 
         # Should succeed even if client doesn't have data
         assert response.status_code == 200

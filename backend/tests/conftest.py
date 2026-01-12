@@ -50,6 +50,21 @@ Attendance = AttendanceEntry
 Hold = HoldEntry
 
 
+# Disable rate limiting for tests
+@pytest.fixture(autouse=True)
+def disable_rate_limit():
+    """Disable rate limiter for all tests to prevent rate limit errors"""
+    try:
+        from backend.middleware.rate_limit import limiter
+        # Set very high limits for tests
+        original_enabled = limiter.enabled
+        limiter.enabled = False
+        yield
+        limiter.enabled = original_enabled
+    except Exception:
+        yield  # Ignore if rate limiter is not available
+
+
 # Test Database Engine (shared across tests)
 TEST_DATABASE_URL = "sqlite:///:memory:"
 
@@ -419,7 +434,7 @@ def test_user_data():
         "email": "test@example.com",
         "password": "Test123!",
         "full_name": "Test User",
-        "role": "leader"  # Valid roles: admin, poweruser, leader, operator
+        "role": "supervisor"  # Valid roles: admin, supervisor, operator, viewer
     }
 
 
