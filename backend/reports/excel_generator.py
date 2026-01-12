@@ -590,12 +590,12 @@ class ExcelReportGenerator:
     def _fetch_attendance_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch attendance data from database"""
         from backend.schemas.attendance import AttendanceRecord
-        from sqlalchemy import func
+        from sqlalchemy import func, case
 
         query = self.db.query(
             AttendanceRecord.attendance_date,
             func.count(AttendanceRecord.attendance_id).label('scheduled'),
-            func.sum(func.if_(AttendanceRecord.status == 'Absent', 1, 0)).label('absent')
+            func.sum(case((AttendanceRecord.status == 'Absent', 1), else_=0)).label('absent')
         ).filter(
             AttendanceRecord.attendance_date.between(start_date, end_date)
         ).group_by(AttendanceRecord.attendance_date).order_by(AttendanceRecord.attendance_date)

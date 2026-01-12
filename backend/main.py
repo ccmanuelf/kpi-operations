@@ -12,10 +12,11 @@ import io
 import csv
 import json
 from decimal import Decimal
+from jose import JWTError, jwt
 
 from backend.config import settings
 from backend.database import get_db, engine, Base
-from backend.models.user import UserCreate, UserLogin, UserResponse, Token
+from backend.models.user import UserCreate, UserLogin, UserResponse, Token, PasswordResetRequest, PasswordResetConfirm, PasswordChange
 from backend.middleware.rate_limit import (
     limiter,
     configure_rate_limiting,
@@ -309,14 +310,17 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
             detail="Email already registered"
         )
 
-    # Create user
+    # Create user with generated ID
+    import uuid
+    user_id = f"USR-{uuid.uuid4().hex[:8].upper()}"
     hashed_password = get_password_hash(user.password)
     db_user = User(
+        user_id=user_id,
         username=user.username,
         email=user.email,
         password_hash=hashed_password,
         full_name=user.full_name,
-        role=user.role
+        role=user.role.upper() if user.role else "OPERATOR"
     )
 
     db.add(db_user)
@@ -359,6 +363,90 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+
+@app.post("/api/auth/forgot-password")
+@limiter.limit(RateLimitConfig.AUTH_LIMIT)
+def forgot_password(request: Request, reset_request: PasswordResetRequest, db: Session = Depends(get_db)):
+    """
+    Request password reset (rate limited: 10 requests/minute)
+    
+    Sends a password reset email with a time-limited token.
+    Always returns success to prevent email enumeration attacks.
+    """
+    user = db.query(User).filter(User.email == reset_request.email).first()
+    
+    if user and user.is_active:
+        # Create password reset token (24 hour expiry)
+        reset_token = create_access_token(
+            data={"sub": user.username, "type": "password_reset"},
+            expires_delta=timedelta(hours=24)
+        )
+        # TODO: Send email with reset link
+        # In production, integrate with email service
+        # For now, log the token (remove in production)
+        print(f"[DEV] Password reset token for {user.email}: {reset_token}")
+    
+    # Always return success to prevent email enumeration
+    return {"message": "If your email is registered, you will receive a password reset link"}
+
+
+@app.post("/api/auth/reset-password")
+@limiter.limit(RateLimitConfig.AUTH_LIMIT)
+def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Session = Depends(get_db)):
+    """
+    Reset password using token (rate limited: 10 requests/minute)
+    """
+    try:
+        payload = jwt.decode(reset_confirm.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        username = payload.get("sub")
+        token_type = payload.get("type")
+        
+        if token_type != "password_reset" or not username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reset token"
+            )
+        
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid reset token"
+            )
+        
+        # Update password
+        user.password_hash = get_password_hash(reset_confirm.new_password)
+        user.updated_at = datetime.utcnow()
+        db.commit()
+        
+        return {"message": "Password has been reset successfully"}
+        
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token"
+        )
+
+
+@app.post("/api/auth/change-password")
+def change_password(
+    password_data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Change password for authenticated user"""
+    if not verify_password(password_data.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    current_user.password_hash = get_password_hash(password_data.new_password)
+    current_user.updated_at = datetime.utcnow()
+    db.commit()
+    
+    return {"message": "Password changed successfully"}
 
 
 # ============================================================================

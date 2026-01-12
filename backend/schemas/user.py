@@ -21,12 +21,12 @@ class User(Base):
     """USER table ORM - Authentication and authorization"""
     __tablename__ = "USER"
 
-    user_id = Column(Integer, primary_key=True, autoincrement=True)
-    username = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(100), unique=True, nullable=False, index=True)
-    password_hash = Column(String(255), nullable=False)
-    full_name = Column(String(100), nullable=False)
-    role = Column(SQLEnum(UserRole), nullable=False, default=UserRole.OPERATOR, index=True)
+    user_id = Column(String(50), primary_key=True)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=True)  # Nullable for legacy users
+    full_name = Column(String(255), nullable=True)
+    role = Column(String(20), nullable=True, default="OPERATOR", index=True)
 
     # Multi-client assignment - CRITICAL for tenant isolation
     # Format: Comma-separated client IDs (e.g., "BOOT-LINE-A,CLIENT-B")

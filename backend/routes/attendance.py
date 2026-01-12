@@ -15,7 +15,7 @@ from backend.models.attendance import (
     AttendanceRecordResponse,
     AbsenteeismCalculationResponse
 )
-from crud.attendance import (
+from backend.crud.attendance import (
     create_attendance_record,
     get_attendance_record,
     get_attendance_records,
@@ -23,7 +23,7 @@ from crud.attendance import (
     delete_attendance_record
 )
 from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
-from auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 

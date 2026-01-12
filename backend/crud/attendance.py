@@ -14,7 +14,7 @@ from backend.models.attendance import (
     AttendanceRecordUpdate,
     AttendanceRecordResponse
 )
-from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
 from backend.utils.soft_delete import soft_delete
 

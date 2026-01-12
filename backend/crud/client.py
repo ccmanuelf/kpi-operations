@@ -9,7 +9,7 @@ from fastapi import HTTPException
 
 from backend.schemas.client import Client
 from backend.schemas.user import User
-from middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 
 
 def create_client(

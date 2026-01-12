@@ -17,7 +17,7 @@ from datetime import date, timedelta, datetime
 from decimal import Decimal
 
 from backend.database import get_db
-from auth.jwt import get_current_user
+from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 from backend.schemas.analytics import (
     KPIType,
@@ -35,7 +35,7 @@ from backend.calculations.predictions import (
     linear_trend_extrapolation,
     ForecastResult
 )
-from generators.sample_data_phase5 import (
+from backend.generators.sample_data_phase5 import (
     generate_kpi_history,
     generate_all_kpi_histories,
     get_kpi_benchmarks,
@@ -90,7 +90,7 @@ def get_historical_kpi_data(
     Returns:
         List of historical data points
     """
-    from middleware.client_auth import verify_client_access
+    from backend.middleware.client_auth import verify_client_access
     from crud.analytics import get_kpi_time_series_data
 
     # Verify client access
@@ -395,7 +395,7 @@ async def get_all_kpi_predictions(
     """
     GET /api/predictions/dashboard/all - All KPI predictions dashboard
     """
-    from middleware.client_auth import verify_client_access
+    from backend.middleware.client_auth import verify_client_access
 
     # Verify client access
     verify_client_access(current_user, client_id)

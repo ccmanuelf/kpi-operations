@@ -14,14 +14,14 @@ from backend.models.coverage import (
     ShiftCoverageUpdate,
     ShiftCoverageResponse
 )
-from crud.coverage import (
+from backend.crud.coverage import (
     create_shift_coverage,
     get_shift_coverage,
     get_shift_coverages,
     update_shift_coverage,
     delete_shift_coverage
 )
-from auth.jwt import get_current_user, get_current_active_supervisor
+from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 
