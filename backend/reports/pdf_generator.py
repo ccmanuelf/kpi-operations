@@ -1,6 +1,9 @@
 """
 PDF Report Generator for KPI Platform
 Generates professional PDF reports with charts and tables using HTML templates
+
+IBM Carbon Design System color palette applied for consistent branding.
+Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 from datetime import datetime, date
 from decimal import Decimal
@@ -42,33 +45,51 @@ class PDFReportGenerator:
         self._setup_custom_styles()
 
     def _setup_custom_styles(self):
-        """Setup custom paragraph styles"""
-        # Title style
+        """Setup custom paragraph styles with IBM Carbon Design System colors"""
+        # IBM Carbon color tokens
+        self.carbon_colors = {
+            'blue_60': '#0f62fe',      # Primary - IBM Blue
+            'blue_70': '#0043ce',      # Primary dark
+            'blue_10': '#edf5ff',      # Primary light background
+            'gray_100': '#161616',     # Text primary
+            'gray_80': '#393939',      # Text secondary
+            'gray_70': '#525252',      # Text helper
+            'gray_10': '#f4f4f4',      # Background/Layer
+            'gray_20': '#e0e0e0',      # Border subtle
+            'green_60': '#198038',     # Success
+            'green_10': '#defbe6',     # Success background
+            'yellow_30': '#f1c21b',    # Warning
+            'yellow_10': '#fcf4d6',    # Warning background
+            'red_60': '#da1e28',       # Error/Danger
+            'red_10': '#fff1f1',       # Error background
+        }
+
+        # Title style - Carbon Heading 07
         self.styles.add(ParagraphStyle(
             name='CustomTitle',
             parent=self.styles['Heading1'],
             fontSize=24,
-            textColor=colors.HexColor('#1976d2'),
+            textColor=colors.HexColor(self.carbon_colors['blue_60']),
             spaceAfter=30,
             alignment=TA_CENTER
         ))
 
-        # Subtitle style
+        # Subtitle style - Carbon Heading 03
         self.styles.add(ParagraphStyle(
             name='CustomSubtitle',
             parent=self.styles['Heading2'],
             fontSize=16,
-            textColor=colors.HexColor('#424242'),
+            textColor=colors.HexColor(self.carbon_colors['gray_100']),
             spaceAfter=12,
             spaceBefore=12
         ))
 
-        # KPI Header style
+        # KPI Header style - Carbon Heading 02
         self.styles.add(ParagraphStyle(
             name='KPIHeader',
             parent=self.styles['Heading3'],
             fontSize=14,
-            textColor=colors.HexColor('#1976d2'),
+            textColor=colors.HexColor(self.carbon_colors['blue_60']),
             spaceAfter=6,
             spaceBefore=12
         ))
@@ -179,7 +200,7 @@ class PDFReportGenerator:
         meta_table.setStyle(TableStyle([
             ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
             ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
-            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#424242')),
+            ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor(self.carbon_colors['gray_70'])),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ]))
@@ -214,8 +235,8 @@ class PDFReportGenerator:
 
         summary_table = Table(summary_data, colWidths=[2.5 * inch, 1.5 * inch, 1.5 * inch, 1.5 * inch])
         summary_table.setStyle(TableStyle([
-            # Header row
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1976d2')),
+            # Header row - Carbon Blue 60
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(self.carbon_colors['blue_60'])),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 11),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
@@ -225,12 +246,12 @@ class PDFReportGenerator:
             ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
             ('ALIGN', (0, 1), (0, -1), 'LEFT'),
 
-            # Grid
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            # Grid - Carbon Gray 20
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor(self.carbon_colors['gray_20'])),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
 
-            # Alternating row colors
-            *[('BACKGROUND', (0, i), (-1, i), colors.HexColor('#f5f5f5'))
+            # Alternating row colors - Carbon Gray 10
+            *[('BACKGROUND', (0, i), (-1, i), colors.HexColor(self.carbon_colors['gray_10']))
               for i in range(2, len(summary_data), 2)]
         ]))
 
@@ -283,10 +304,12 @@ class PDFReportGenerator:
 
             metrics_table = Table(metrics_data, colWidths=[3 * inch, 3 * inch])
             metrics_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e3f2fd')),
+                # Header - Carbon Blue 10 (light background)
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(self.carbon_colors['blue_10'])),
                 ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10),
                 ('FONT', (0, 1), (-1, -1), 'Helvetica', 10),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                # Grid - Carbon Gray 20
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor(self.carbon_colors['gray_20'])),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ]))

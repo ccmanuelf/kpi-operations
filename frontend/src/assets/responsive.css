@@ -435,9 +435,9 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Focus styles for keyboard navigation */
+/* Focus styles for keyboard navigation - Carbon Blue 60 */
 *:focus-visible {
-  outline: 2px solid #1976d2;
+  outline: 2px solid var(--cds-focus, #0f62fe);
   outline-offset: 2px;
 }
 
