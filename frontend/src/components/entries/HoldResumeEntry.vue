@@ -1,8 +1,11 @@
 <template>
   <v-card>
-    <v-card-title>
-      <v-icon class="mr-2">mdi-pause-circle</v-icon>
-      Hold/Resume Management
+    <v-card-title class="d-flex justify-space-between align-center">
+      <div>
+        <v-icon class="mr-2">mdi-pause-circle</v-icon>
+        Hold/Resume Management
+      </div>
+      <CSVUploadDialogHold @imported="onImported" />
     </v-card-title>
     <v-card-text>
       <v-tabs v-model="tab" class="mb-4">
@@ -226,6 +229,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { format } from 'date-fns'
 import api from '@/services/api'
+import CSVUploadDialogHold from '@/components/CSVUploadDialogHold.vue'
 
 const emit = defineEmits(['submitted'])
 
@@ -276,6 +280,11 @@ const resumeData = ref({
 const rules = {
   required: value => !!value || 'Field is required',
   positive: value => value > 0 || 'Must be greater than 0'
+}
+
+const onImported = () => {
+  loadActiveHolds()
+  emit('submitted')
 }
 
 const formatDate = (date) => {

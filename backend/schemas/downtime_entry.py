@@ -23,6 +23,7 @@ class DowntimeReason(str, enum.Enum):
 class DowntimeEntry(Base):
     """DOWNTIME_ENTRY table - Equipment downtime tracking for Availability KPI"""
     __tablename__ = "DOWNTIME_ENTRY"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     downtime_entry_id = Column(String(50), primary_key=True)

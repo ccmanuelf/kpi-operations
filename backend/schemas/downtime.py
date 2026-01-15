@@ -10,6 +10,7 @@ from backend.database import Base
 class DowntimeEvent(Base):
     """Downtime events table"""
     __tablename__ = "downtime_events"
+    __table_args__ = {"extend_existing": True}
 
     downtime_id = Column(Integer, primary_key=True, autoincrement=True)
 

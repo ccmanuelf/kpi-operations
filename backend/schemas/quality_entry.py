@@ -11,6 +11,7 @@ from backend.database import Base
 class QualityEntry(Base):
     """QUALITY_ENTRY table - Quality inspection tracking for PPM/DPMO/FPY/RTY"""
     __tablename__ = "QUALITY_ENTRY"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     quality_entry_id = Column(String(50), primary_key=True)

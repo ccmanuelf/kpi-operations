@@ -11,6 +11,7 @@ from backend.database import Base
 class FloatingPool(Base):
     """FLOATING_POOL table - Shared resource availability tracking"""
     __tablename__ = "FLOATING_POOL"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     pool_id = Column(Integer, primary_key=True, autoincrement=True)

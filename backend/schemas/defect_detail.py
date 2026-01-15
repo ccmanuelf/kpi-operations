@@ -24,6 +24,7 @@ class DefectType(str, enum.Enum):
 class DefectDetail(Base):
     """DEFECT_DETAIL table - Granular defect tracking"""
     __tablename__ = "DEFECT_DETAIL"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     defect_detail_id = Column(String(50), primary_key=True)

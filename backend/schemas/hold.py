@@ -20,6 +20,7 @@ class HoldStatus(str, enum.Enum):
 class WIPHold(Base):
     """WIP hold records table"""
     __tablename__ = "wip_holds"
+    __table_args__ = {"extend_existing": True}
 
     hold_id = Column(Integer, primary_key=True, autoincrement=True)
 

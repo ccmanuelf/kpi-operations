@@ -1,8 +1,11 @@
 <template>
   <v-card>
-    <v-card-title>
-      <v-icon class="mr-2">mdi-clipboard-check</v-icon>
-      Quality Inspection Entry
+    <v-card-title class="d-flex justify-space-between align-center">
+      <div>
+        <v-icon class="mr-2">mdi-clipboard-check</v-icon>
+        Quality Inspection Entry
+      </div>
+      <CSVUploadDialogQuality @imported="onImported" />
     </v-card-title>
     <v-card-text>
       <v-form ref="form" v-model="valid">
@@ -177,6 +180,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
+import CSVUploadDialogQuality from '@/components/CSVUploadDialogQuality.vue'
 
 const emit = defineEmits(['submitted'])
 
@@ -207,6 +211,10 @@ const formData = ref({
 const rules = {
   required: value => !!value || 'Field is required',
   positive: value => value > 0 || 'Must be greater than 0'
+}
+
+const onImported = () => {
+  emit('submitted')
 }
 
 const calculateFPY = () => {

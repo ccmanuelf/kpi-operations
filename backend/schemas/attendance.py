@@ -10,6 +10,7 @@ from backend.database import Base
 class AttendanceRecord(Base):
     """Attendance records table"""
     __tablename__ = "attendance_records"
+    __table_args__ = {"extend_existing": True}
 
     attendance_id = Column(Integer, primary_key=True, autoincrement=True)
 

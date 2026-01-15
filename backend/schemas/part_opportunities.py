@@ -10,6 +10,7 @@ from backend.database import Base
 class PartOpportunities(Base):
     """PART_OPPORTUNITIES table - DPMO calculation metadata"""
     __tablename__ = "PART_OPPORTUNITIES"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     part_number = Column(String(100), primary_key=True, index=True)

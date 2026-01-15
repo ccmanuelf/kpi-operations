@@ -11,6 +11,7 @@ from backend.database import Base
 class CoverageEntry(Base):
     """COVERAGE_ENTRY table - Floating pool assignment tracking"""
     __tablename__ = "COVERAGE_ENTRY"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     coverage_entry_id = Column(String(50), primary_key=True)

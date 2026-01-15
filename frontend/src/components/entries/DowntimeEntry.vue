@@ -1,8 +1,11 @@
 <template>
   <v-card>
-    <v-card-title>
-      <v-icon class="mr-2">mdi-alert-circle</v-icon>
-      Downtime Entry
+    <v-card-title class="d-flex justify-space-between align-center">
+      <div>
+        <v-icon class="mr-2">mdi-alert-circle</v-icon>
+        Downtime Entry
+      </div>
+      <CSVUploadDialogDowntime @imported="onImported" />
     </v-card-title>
     <v-card-text>
       <v-form ref="form" v-model="valid">
@@ -128,6 +131,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import api from '@/services/api'
+import CSVUploadDialogDowntime from '@/components/CSVUploadDialogDowntime.vue'
 
 const emit = defineEmits(['submitted'])
 
@@ -160,6 +164,10 @@ const formData = ref({
 
 const rules = {
   required: value => !!value || 'Field is required'
+}
+
+const onImported = () => {
+  emit('submitted')
 }
 
 // Calculate duration when times change

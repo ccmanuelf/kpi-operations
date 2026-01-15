@@ -21,6 +21,7 @@ class WorkOrderStatus(str, enum.Enum):
 class WorkOrder(Base):
     """WORK_ORDER table - Central entity for all phases"""
     __tablename__ = "WORK_ORDER"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     work_order_id = Column(String(50), primary_key=True, index=True)
