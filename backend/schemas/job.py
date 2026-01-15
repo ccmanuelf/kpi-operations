@@ -11,6 +11,7 @@ from backend.database import Base
 class Job(Base):
     """JOB table - Work order line items with part-level detail"""
     __tablename__ = "JOB"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     job_id = Column(String(50), primary_key=True, index=True)

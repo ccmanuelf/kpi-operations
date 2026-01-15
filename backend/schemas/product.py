@@ -9,6 +9,7 @@ from backend.database import Base
 class Product(Base):
     """Product table ORM"""
     __tablename__ = "PRODUCT"
+    __table_args__ = {"extend_existing": True}
 
     product_id = Column(Integer, primary_key=True, autoincrement=True)
     product_code = Column(String(50), unique=True, nullable=False, index=True)

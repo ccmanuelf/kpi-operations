@@ -10,6 +10,7 @@ from backend.database import Base
 class ShiftCoverage(Base):
     """Shift coverage table"""
     __tablename__ = "shift_coverage"
+    __table_args__ = {"extend_existing": True}
 
     coverage_id = Column(Integer, primary_key=True, autoincrement=True)
 

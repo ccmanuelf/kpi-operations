@@ -10,6 +10,7 @@ from backend.database import Base
 class Employee(Base):
     """EMPLOYEE table - Staff directory with floating pool flag"""
     __tablename__ = "EMPLOYEE"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     employee_id = Column(Integer, primary_key=True, autoincrement=True)

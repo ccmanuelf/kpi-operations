@@ -21,6 +21,7 @@ class ClientType(str, enum.Enum):
 class Client(Base):
     """CLIENT table - Multi-tenant isolation foundation"""
     __tablename__ = "CLIENT"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     client_id = Column(String(50), primary_key=True, index=True)

@@ -11,6 +11,7 @@ from backend.database import Base
 class ProductionEntry(Base):
     """Production Entry table ORM"""
     __tablename__ = "production_entry"
+    __table_args__ = {"extend_existing": True}
 
     entry_id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(Integer, ForeignKey("product.product_id"), nullable=False)

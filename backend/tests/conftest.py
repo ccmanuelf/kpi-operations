@@ -513,3 +513,53 @@ def admin_auth_headers(test_client):
 
     pytest.skip("Admin authentication setup failed")
     return {}
+
+
+@pytest.fixture
+def authenticated_client(test_client, auth_headers):
+    """
+    Create an authenticated test client that automatically includes auth headers.
+    This provides a cleaner API for tests that need authentication.
+    """
+    class AuthenticatedTestClient:
+        """Wrapper around TestClient that adds auth headers to all requests"""
+        def __init__(self, client, headers):
+            self._client = client
+            self._headers = headers
+        
+        def get(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.get(url, headers=headers, **kwargs)
+        
+        def post(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.post(url, headers=headers, **kwargs)
+        
+        def put(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.put(url, headers=headers, **kwargs)
+        
+        def patch(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.patch(url, headers=headers, **kwargs)
+        
+        def delete(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.delete(url, headers=headers, **kwargs)
+        
+        def head(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.head(url, headers=headers, **kwargs)
+        
+        def options(self, url, **kwargs):
+            headers = kwargs.pop("headers", {})
+            headers.update(self._headers)
+            return self._client.options(url, headers=headers, **kwargs)
+    
+    return AuthenticatedTestClient(test_client, auth_headers)

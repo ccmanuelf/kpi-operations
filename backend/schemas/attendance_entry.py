@@ -20,6 +20,7 @@ class AbsenceType(str, enum.Enum):
 class AttendanceEntry(Base):
     """ATTENDANCE_ENTRY table - Daily attendance tracking for Absenteeism KPI"""
     __tablename__ = "ATTENDANCE_ENTRY"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     attendance_entry_id = Column(String(50), primary_key=True)

@@ -19,6 +19,7 @@ class HoldStatus(str, enum.Enum):
 class HoldEntry(Base):
     """HOLD_ENTRY table - WIP hold/resume tracking for aging calculation"""
     __tablename__ = "HOLD_ENTRY"
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     hold_entry_id = Column(String(50), primary_key=True)

@@ -10,6 +10,7 @@ from backend.database import Base
 class QualityInspection(Base):
     """Quality inspection records table"""
     __tablename__ = "quality_inspections"
+    __table_args__ = {"extend_existing": True}
 
     inspection_id = Column(Integer, primary_key=True, autoincrement=True)
 

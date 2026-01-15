@@ -20,6 +20,7 @@ class UserRole(str, enum.Enum):
 class User(Base):
     """USER table ORM - Authentication and authorization"""
     __tablename__ = "USER"
+    __table_args__ = {"extend_existing": True}
 
     user_id = Column(String(50), primary_key=True)
     username = Column(String(100), unique=True, nullable=False, index=True)

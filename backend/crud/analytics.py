@@ -37,8 +37,8 @@ def get_kpi_time_series_data(
         ClientAccessError: If user doesn't have access to this client
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.models.production import ProductionEntry
-    from backend.models.work_order import WorkOrder
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.work_order import WorkOrder
 
     # Verify client access
     verify_client_access(current_user, client_id)
@@ -104,9 +104,9 @@ def get_shift_heatmap_data(
         List of (date, shift_id, shift_name, avg_value) tuples
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.models.production import ProductionEntry
-    from backend.models.work_order import WorkOrder
-    from backend.models.job import Shift
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.work_order import WorkOrder
+    from backend.schemas.shift import Shift
 
     verify_client_access(current_user, client_id)
 
@@ -179,9 +179,9 @@ def get_client_comparison_data(
     Returns:
         List of (client_id, client_name, avg_value, data_points) tuples
     """
-    from backend.models.production import ProductionEntry
-    from backend.models.work_order import WorkOrder
-    from backend.models.client import Client
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.work_order import WorkOrder
+    from backend.schemas.client import Client
 
     # Get user's client filter
     user_clients = get_user_client_filter(current_user)
@@ -256,8 +256,8 @@ def get_defect_pareto_data(
         List of (defect_type, total_count) tuples ordered by count descending
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.models.defect_detail import DefectDetail
-    from backend.models.quality import QualityEntry
+    from backend.schemas.defect_detail import DefectDetail
+    from backend.schemas.quality_entry import QualityEntry
 
     verify_client_access(current_user, client_id)
 
@@ -342,8 +342,8 @@ def get_date_range_data_availability(
         Tuple of (min_date, max_date, total_records)
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.models.production import ProductionEntry
-    from backend.models.work_order import WorkOrder
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.work_order import WorkOrder
 
     verify_client_access(current_user, client_id)
 

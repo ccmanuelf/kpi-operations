@@ -3,7 +3,10 @@
     "allow": [
       "mcp__ruv-swarm",
       "mcp__claude-flow@alpha",
-      "mcp__flow-nexus"
+      "mcp__flow-nexus",
+      "Bash(sqlite3:*)",
+      "Bash(python -m pytest tests/ --tb=no -q)",
+      "Bash(npx playwright test --list)"
     ],
     "deny": []
   }
