@@ -1,194 +1,554 @@
-/* AG Grid Material Theme Customization */
+/**
+ * AG Grid Theme - IBM Carbon Design System Integration
+ *
+ * Applies Carbon Data Table patterns to AG Grid while maintaining functionality.
+ * Based on Carbon Design System v11 data table guidelines.
+ */
+
+/* ============================================
+   AG GRID CARBON THEME - BASE STYLES
+   ============================================ */
+
 .ag-theme-material {
-  /* Header styling */
+  /* Carbon Color Variables */
+  --ag-background-color: var(--cds-layer-02, #ffffff);
+  --ag-foreground-color: var(--cds-text-primary, #161616);
+  --ag-secondary-foreground-color: var(--cds-text-secondary, #525252);
+  --ag-data-color: var(--cds-text-primary, #161616);
+
+  /* Header - Carbon Data Table Header */
   --ag-header-height: 48px;
-  --ag-header-background-color: #1a237e;
-  --ag-header-foreground-color: white;
-  --ag-header-cell-hover-background-color: #0d47a1;
+  --ag-header-background-color: var(--cds-layer-01, #f4f4f4);
+  --ag-header-foreground-color: var(--cds-text-primary, #161616);
+  --ag-header-cell-hover-background-color: var(--cds-gray-20, #e0e0e0);
+  --ag-header-column-separator-color: var(--cds-border-subtle-01, #c6c6c6);
 
-  /* Row styling */
-  --ag-row-height: 40px;
-  --ag-row-hover-color: rgba(26, 35, 126, 0.05);
-  --ag-selected-row-background-color: rgba(26, 35, 126, 0.1);
+  /* Row Styling */
+  --ag-row-height: 48px;
+  --ag-row-hover-color: var(--cds-layer-01, #f4f4f4);
+  --ag-selected-row-background-color: var(--cds-blue-10, #edf5ff);
+  --ag-row-border-color: var(--cds-border-subtle-00, #e0e0e0);
 
-  /* Cell styling */
-  --ag-cell-horizontal-padding: 12px;
+  /* Cell Styling */
+  --ag-cell-horizontal-padding: 16px;
   --ag-font-size: 14px;
-  --ag-font-family: 'Roboto', sans-serif;
+  --ag-font-family: var(--cds-font-family-sans, 'IBM Plex Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif);
 
-  /* Borders */
-  --ag-borders: solid 1px #e0e0e0;
-  --ag-border-color: #e0e0e0;
+  /* Borders - Carbon Table Borders */
+  --ag-borders: solid 1px;
+  --ag-border-color: var(--cds-border-subtle-00, #e0e0e0);
+  --ag-borders-side-button: none;
 
-  /* Focus */
-  --ag-range-selection-border-color: #1a237e;
-  --ag-range-selection-background-color: rgba(26, 35, 126, 0.1);
+  /* Focus & Selection - Carbon Interactive Colors */
+  --ag-range-selection-border-color: var(--cds-focus, #0f62fe);
+  --ag-range-selection-background-color: var(--cds-blue-10, #edf5ff);
+  --ag-range-selection-highlight-color: var(--cds-blue-20, #d0e2ff);
 
-  /* Input elements */
-  --ag-input-focus-border-color: #1a237e;
+  /* Input Elements */
+  --ag-input-focus-border-color: var(--cds-focus, #0f62fe);
+  --ag-input-focus-box-shadow: inset 0 0 0 2px var(--cds-focus, #0f62fe);
 
-  /* Checkbox */
-  --ag-checkbox-checked-color: #1a237e;
+  /* Checkbox - Carbon Checkbox Colors */
+  --ag-checkbox-checked-color: var(--cds-interactive, #0f62fe);
+  --ag-checkbox-unchecked-color: var(--cds-icon-secondary, #525252);
+  --ag-checkbox-indeterminate-color: var(--cds-interactive, #0f62fe);
+  --ag-checkbox-background-color: var(--cds-layer-02, #ffffff);
 
-  /* Menu */
-  --ag-menu-background-color: white;
-  --ag-menu-text-color: #333;
+  /* Menu - Carbon Overflow Menu */
+  --ag-menu-background-color: var(--cds-layer-02, #ffffff);
+  --ag-menu-text-color: var(--cds-text-primary, #161616);
+  --ag-menu-option-hover-background-color: var(--cds-layer-01, #f4f4f4);
+  --ag-popup-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+  /* Odd Row - Carbon Zebra Striping (subtle) */
+  --ag-odd-row-background-color: var(--cds-layer-02, #ffffff);
+
+  /* Modal & Overlay */
+  --ag-modal-overlay-background-color: rgba(0, 0, 0, 0.5);
+
+  /* Spacing following Carbon 8px grid */
+  --ag-grid-size: 8px;
+  --ag-icon-size: 16px;
+  --ag-widget-container-horizontal-padding: 16px;
+  --ag-widget-container-vertical-padding: 12px;
 }
 
-/* Custom cell classes */
-.ag-cell-error {
-  background-color: #ffebee !important;
-  color: #c62828 !important;
+/* ============================================
+   HEADER STYLING - CARBON DATA TABLE
+   ============================================ */
+
+.ag-theme-material .ag-header {
+  border-bottom: 2px solid var(--cds-border-strong-01, #8d8d8d);
+  font-weight: 600;
 }
 
-.ag-cell-warning {
-  background-color: #fff3e0 !important;
-  color: #f57c00 !important;
+.ag-theme-material .ag-header-cell {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.16px;
+  text-transform: none;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
-.ag-cell-success {
-  background-color: #e8f5e9 !important;
-  color: #2e7d32 !important;
+.ag-theme-material .ag-header-cell-label {
+  justify-content: flex-start;
 }
 
-/* Highlight unsaved changes */
-.ag-row-unsaved {
-  border-left: 4px solid #f57c00 !important;
+.ag-theme-material .ag-header-cell-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Better editing experience */
-.ag-cell-inline-editing {
-  background-color: #fff9c4 !important;
-  box-shadow: inset 0 0 0 2px #1a237e !important;
+.ag-theme-material .ag-header-icon {
+  color: var(--cds-icon-secondary, #525252);
 }
 
-/* Improved focus indicator */
-.ag-cell-focus {
-  border: 2px solid #1a237e !important;
+.ag-theme-material .ag-header-cell:hover .ag-header-icon {
+  color: var(--cds-icon-primary, #161616);
+}
+
+/* Sort icons */
+.ag-theme-material .ag-sort-indicator-icon {
+  color: var(--cds-icon-secondary, #525252);
+}
+
+.ag-theme-material .ag-header-cell-sorted-asc .ag-sort-indicator-icon,
+.ag-theme-material .ag-header-cell-sorted-desc .ag-sort-indicator-icon {
+  color: var(--cds-interactive, #0f62fe);
+}
+
+/* ============================================
+   ROW STYLING - CARBON DATA TABLE
+   ============================================ */
+
+.ag-theme-material .ag-row {
+  border-bottom: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+.ag-theme-material .ag-row:hover {
+  background-color: var(--cds-layer-01, #f4f4f4);
+}
+
+.ag-theme-material .ag-row-selected {
+  background-color: var(--cds-blue-10, #edf5ff) !important;
+}
+
+.ag-theme-material .ag-row-selected:hover {
+  background-color: var(--cds-blue-20, #d0e2ff) !important;
+}
+
+/* Zebra striping option */
+.ag-theme-material.ag-zebra .ag-row-odd {
+  background-color: var(--cds-layer-01, #f4f4f4);
+}
+
+/* ============================================
+   CELL STYLING - CARBON DATA TABLE
+   ============================================ */
+
+.ag-theme-material .ag-cell {
+  line-height: 46px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border: none;
+}
+
+.ag-theme-material .ag-cell-focus:not(.ag-cell-range-selected):focus-within {
+  border: 2px solid var(--cds-focus, #0f62fe) !important;
+  outline: none;
+}
+
+/* Cell value alignment */
+.ag-theme-material .ag-cell.ag-right-aligned-cell {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.ag-theme-material .ag-cell.ag-center-aligned-cell {
+  justify-content: center;
+  text-align: center;
+}
+
+/* ============================================
+   STATUS CELLS - CARBON STATUS COLORS
+   ============================================ */
+
+.ag-cell-success,
+.ag-theme-material .ag-cell-success {
+  background-color: var(--cds-green-10, #defbe6) !important;
+  color: var(--cds-green-70, #0e6027) !important;
+}
+
+.ag-cell-warning,
+.ag-theme-material .ag-cell-warning {
+  background-color: var(--cds-yellow-10, #fcf4d6) !important;
+  color: var(--cds-yellow-70, #684e00) !important;
+}
+
+.ag-cell-error,
+.ag-theme-material .ag-cell-error {
+  background-color: var(--cds-red-10, #fff1f1) !important;
+  color: var(--cds-red-70, #a2191f) !important;
+}
+
+.ag-cell-info,
+.ag-theme-material .ag-cell-info {
+  background-color: var(--cds-blue-10, #edf5ff) !important;
+  color: var(--cds-blue-70, #0043ce) !important;
+}
+
+/* ============================================
+   EDITING CELLS - CARBON INPUT STYLE
+   ============================================ */
+
+.ag-theme-material .ag-cell-inline-editing {
+  background-color: var(--cds-layer-02, #ffffff) !important;
+  border: 2px solid var(--cds-focus, #0f62fe) !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.ag-theme-material .ag-cell-inline-editing input {
+  border: none !important;
+  background: transparent !important;
+  font-size: 14px;
+  padding: 0 16px;
+  height: 100%;
+}
+
+.ag-theme-material .ag-cell-inline-editing input:focus {
   outline: none !important;
 }
 
-/* Range selection */
-.ag-cell-range-selected:not(.ag-cell-focus) {
-  background-color: rgba(26, 35, 126, 0.08) !important;
+/* ============================================
+   UNSAVED ROW INDICATOR - CARBON STYLE
+   ============================================ */
+
+.ag-row-unsaved,
+.ag-theme-material .ag-row-unsaved {
+  border-left: 4px solid var(--cds-support-warning, #f1c21b) !important;
 }
 
-/* Header icons */
-.ag-header-icon {
-  color: white !important;
+.ag-row-error,
+.ag-theme-material .ag-row-error {
+  border-left: 4px solid var(--cds-support-error, #da1e28) !important;
 }
 
-/* Loading overlay */
-.ag-overlay-loading-wrapper {
-  background-color: rgba(255, 255, 255, 0.9) !important;
+.ag-row-success,
+.ag-theme-material .ag-row-success {
+  border-left: 4px solid var(--cds-support-success, #198038) !important;
 }
 
-/* Pagination */
-.ag-paging-panel {
-  border-top: 1px solid #e0e0e0 !important;
-  padding: 8px 16px !important;
+/* ============================================
+   PAGINATION - CARBON PAGINATION PATTERN
+   ============================================ */
+
+.ag-theme-material .ag-paging-panel {
+  border-top: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+  height: 48px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: var(--cds-text-secondary, #525252);
 }
 
-.ag-paging-button {
-  cursor: pointer !important;
+.ag-theme-material .ag-paging-button {
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 150ms cubic-bezier(0.2, 0, 0.38, 0.9);
 }
 
-.ag-paging-button:hover {
-  background-color: rgba(26, 35, 126, 0.05) !important;
+.ag-theme-material .ag-paging-button:hover {
+  background-color: var(--cds-layer-01, #f4f4f4);
 }
 
-/* Filter menu */
-.ag-filter {
-  font-family: 'Roboto', sans-serif !important;
+.ag-theme-material .ag-paging-button:focus {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: 2px;
 }
 
-/* Scrollbar styling */
-.ag-body-horizontal-scroll-viewport::-webkit-scrollbar,
-.ag-body-vertical-scroll-viewport::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+.ag-theme-material .ag-paging-button .ag-icon {
+  color: var(--cds-icon-primary, #161616);
 }
 
-.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-track,
-.ag-body-vertical-scroll-viewport::-webkit-scrollbar-track {
-  background: #f1f1f1;
+.ag-theme-material .ag-paging-button.ag-disabled .ag-icon {
+  color: var(--cds-icon-disabled, #c6c6c6);
 }
 
-.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb,
-.ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 6px;
+.ag-theme-material .ag-paging-page-summary-panel {
+  margin: 0 16px;
 }
 
-.ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb:hover,
-.ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb:hover {
-  background: #555;
+/* ============================================
+   FILTER - CARBON FILTER PANEL
+   ============================================ */
+
+.ag-theme-material .ag-filter {
+  font-family: var(--cds-font-family-sans, 'IBM Plex Sans', 'Roboto', sans-serif);
+  background-color: var(--cds-layer-02, #ffffff);
+  border: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Excel-like fill handle */
-.ag-fill-handle {
-  background-color: #1a237e !important;
+.ag-theme-material .ag-filter-toolpanel-header {
+  padding: 12px 16px;
+  font-weight: 600;
 }
 
-/* Column resize handle */
-.ag-header-cell-resize::after {
-  background-color: rgba(26, 35, 126, 0.3) !important;
+.ag-theme-material .ag-filter-body-wrapper {
+  padding: 16px;
 }
 
-/* Dropdown editor styling */
-.ag-popup-editor {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-  border: 1px solid #e0e0e0 !important;
+.ag-theme-material .ag-filter-apply-panel {
+  padding: 12px 16px;
+  border-top: 1px solid var(--cds-border-subtle-00, #e0e0e0);
 }
 
-/* Large text editor */
-.ag-large-text-input {
-  font-family: 'Roboto', sans-serif !important;
-  font-size: 14px !important;
-  padding: 8px !important;
+/* ============================================
+   MENU - CARBON OVERFLOW MENU
+   ============================================ */
+
+.ag-theme-material .ag-menu {
+  border: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Numeric editor alignment */
-.ag-cell[col-id$="_quantity"] input,
-.ag-cell[col-id$="_hours"] input,
-.ag-cell[col-id$="_count"] input,
-.ag-cell[col-id$="_minutes"] input {
-  text-align: right !important;
+.ag-theme-material .ag-menu-option {
+  padding: 12px 16px;
+  font-size: 14px;
+  min-height: 40px;
 }
 
-/* Status badges in cells */
-.ag-cell .status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 12px;
+.ag-theme-material .ag-menu-option:hover {
+  background-color: var(--cds-layer-01, #f4f4f4);
+}
+
+.ag-theme-material .ag-menu-option-active {
+  background-color: var(--cds-layer-01, #f4f4f4);
+}
+
+.ag-theme-material .ag-menu-separator {
+  border-bottom: 1px solid var(--cds-border-subtle-00, #e0e0e0);
+}
+
+/* ============================================
+   LOADING OVERLAY - CARBON LOADING
+   ============================================ */
+
+.ag-theme-material .ag-overlay-loading-wrapper {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.ag-theme-material .ag-overlay-loading-center {
+  padding: 24px;
+  background-color: var(--cds-layer-02, #ffffff);
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  color: var(--cds-text-secondary, #525252);
+}
+
+/* ============================================
+   SCROLLBAR - CARBON SCROLLBAR
+   ============================================ */
+
+.ag-theme-material .ag-body-horizontal-scroll-viewport::-webkit-scrollbar,
+.ag-theme-material .ag-body-vertical-scroll-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.ag-theme-material .ag-body-horizontal-scroll-viewport::-webkit-scrollbar-track,
+.ag-theme-material .ag-body-vertical-scroll-viewport::-webkit-scrollbar-track {
+  background: var(--cds-layer-01, #f4f4f4);
+}
+
+.ag-theme-material .ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb,
+.ag-theme-material .ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb {
+  background: var(--cds-gray-50, #8d8d8d);
+  border-radius: 4px;
+}
+
+.ag-theme-material .ag-body-horizontal-scroll-viewport::-webkit-scrollbar-thumb:hover,
+.ag-theme-material .ag-body-vertical-scroll-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--cds-gray-60, #6f6f6f);
+}
+
+/* ============================================
+   COLUMN RESIZE - CARBON STYLE
+   ============================================ */
+
+.ag-theme-material .ag-header-cell-resize::after {
+  background-color: var(--cds-border-subtle-01, #c6c6c6);
+  width: 1px;
+  height: 50%;
+  margin-top: 12px;
+}
+
+.ag-theme-material .ag-header-cell-resize:hover::after {
+  background-color: var(--cds-interactive, #0f62fe);
+  width: 2px;
+}
+
+/* ============================================
+   STATUS BADGES IN CELLS - CARBON TAGS
+   ============================================ */
+
+.ag-theme-material .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 9999px;
   font-size: 12px;
   font-weight: 500;
+  letter-spacing: 0.32px;
+  text-transform: uppercase;
 }
 
-/* Animations */
-.ag-row {
-  transition: background-color 0.2s ease;
+.ag-theme-material .status-badge--success {
+  background-color: var(--cds-green-20, #a7f0ba);
+  color: var(--cds-green-70, #0e6027);
 }
 
-.ag-cell-data-changed {
-  background-color: #fff3e0 !important;
-  animation: highlight-fade 2s ease-out;
+.ag-theme-material .status-badge--warning {
+  background-color: var(--cds-yellow-20, #fddc69);
+  color: var(--cds-yellow-70, #684e00);
 }
 
-@keyframes highlight-fade {
+.ag-theme-material .status-badge--error {
+  background-color: var(--cds-red-20, #ffd7d9);
+  color: var(--cds-red-70, #a2191f);
+}
+
+.ag-theme-material .status-badge--info {
+  background-color: var(--cds-blue-20, #d0e2ff);
+  color: var(--cds-blue-70, #0043ce);
+}
+
+.ag-theme-material .status-badge--neutral {
+  background-color: var(--cds-gray-20, #e0e0e0);
+  color: var(--cds-gray-70, #525252);
+}
+
+/* ============================================
+   DATA CHANGE ANIMATION - CARBON MOTION
+   ============================================ */
+
+.ag-theme-material .ag-cell-data-changed {
+  animation: carbon-highlight 2s cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+
+@keyframes carbon-highlight {
   0% {
-    background-color: #ffeb3b;
+    background-color: var(--cds-yellow-20, #fddc69);
   }
   100% {
-    background-color: #fff3e0;
+    background-color: transparent;
   }
 }
 
-/* Responsive adjustments */
+/* ============================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================ */
+
 @media (max-width: 768px) {
   .ag-theme-material {
     --ag-header-height: 40px;
-    --ag-row-height: 36px;
-    --ag-font-size: 12px;
+    --ag-row-height: 40px;
+    --ag-font-size: 13px;
+    --ag-cell-horizontal-padding: 12px;
+  }
+
+  .ag-theme-material .ag-header-cell,
+  .ag-theme-material .ag-cell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .ag-theme-material .ag-paging-panel {
+    padding: 0 12px;
+    font-size: 12px;
+  }
+}
+
+/* ============================================
+   COMPACT MODE (for high-density data)
+   ============================================ */
+
+.ag-theme-material.ag-compact {
+  --ag-header-height: 36px;
+  --ag-row-height: 36px;
+  --ag-font-size: 13px;
+  --ag-cell-horizontal-padding: 12px;
+}
+
+.ag-theme-material.ag-compact .ag-cell {
+  line-height: 34px;
+}
+
+/* ============================================
+   ACCESSIBILITY ENHANCEMENTS
+   ============================================ */
+
+.ag-theme-material [role="gridcell"]:focus {
+  outline: 2px solid var(--cds-focus, #0f62fe);
+  outline-offset: -2px;
+}
+
+.ag-theme-material .ag-keyboard-focus .ag-header-cell:focus::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 2px solid var(--cds-focus, #0f62fe);
+  pointer-events: none;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .ag-theme-material {
+    --ag-border-color: #000000;
+    --ag-row-border-color: #000000;
+  }
+
+  .ag-theme-material .ag-header {
+    border-bottom-width: 3px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .ag-theme-material .ag-row,
+  .ag-theme-material .ag-cell-data-changed {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  .ag-theme-material {
+    border: 1px solid #000;
+  }
+
+  .ag-theme-material .ag-header {
+    background-color: #f0f0f0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .ag-theme-material .ag-row {
+    border-bottom: 1px solid #ccc;
+  }
+
+  .ag-theme-material .ag-paging-panel {
+    display: none;
   }
 }

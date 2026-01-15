@@ -1,6 +1,9 @@
 """
 Excel Report Generator for KPI Platform
 Generates formatted Excel reports with multiple sheets, charts, and formulas
+
+IBM Carbon Design System color palette applied for consistent branding.
+Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 from datetime import date, datetime
 from decimal import Decimal
@@ -21,14 +24,26 @@ class ExcelReportGenerator:
     def __init__(self, db: Session):
         self.db = db
 
-        # Define color scheme
+        # IBM Carbon Design System color palette
+        # Reference: https://carbondesignsystem.com/guidelines/color/tokens
         self.colors = {
-            'header': 'FF1976D2',      # Blue
-            'success': 'FF4CAF50',     # Green
-            'warning': 'FFFFA726',     # Orange
-            'error': 'FFF44336',       # Red
-            'light_gray': 'FFF5F5F5',  # Light gray for alternating rows
-            'dark_gray': 'FF757575',   # Dark gray for borders
+            # Primary colors
+            'header': 'FF0f62fe',      # IBM Blue 60 - Primary
+            'header_dark': 'FF0043ce', # IBM Blue 70 - Primary dark
+            'header_light': 'FFedf5ff', # IBM Blue 10 - Primary light bg
+            # Status colors
+            'success': 'FF198038',     # Green 60 - Success
+            'success_light': 'FFdefbe6', # Green 10 - Success background
+            'warning': 'FFf1c21b',     # Yellow 30 - Warning
+            'warning_light': 'FFfcf4d6', # Yellow 10 - Warning background
+            'error': 'FFda1e28',       # Red 60 - Error/Danger
+            'error_light': 'FFfff1f1', # Red 10 - Error background
+            # Neutral colors
+            'text_primary': 'FF161616', # Gray 100 - Primary text
+            'text_secondary': 'FF525252', # Gray 70 - Secondary text
+            'light_gray': 'FFf4f4f4',  # Gray 10 - Layer/Background
+            'medium_gray': 'FFe0e0e0', # Gray 20 - Border subtle
+            'dark_gray': 'FF525252',   # Gray 70 - Borders
         }
 
     def generate_report(
@@ -125,16 +140,21 @@ class ExcelReportGenerator:
             ws[f'C{row}'].number_format = kpi.get('format', '0.0')
             ws[f'D{row}'].number_format = kpi.get('format', '0.0')
 
-            # Status color coding
+            # Status color coding using Carbon Design tokens
             status_cell = ws[f'E{row}']
             if kpi['status'] == 'On Target':
+                # Carbon Green 60 with white text
                 status_cell.fill = PatternFill(start_color=self.colors['success'], end_color=self.colors['success'], fill_type='solid')
+                status_cell.font = Font(bold=True, color='FFFFFF')
             elif kpi['status'] == 'At Risk':
+                # Carbon Yellow 30 with dark text (for contrast/accessibility)
                 status_cell.fill = PatternFill(start_color=self.colors['warning'], end_color=self.colors['warning'], fill_type='solid')
+                status_cell.font = Font(bold=True, color=self.colors['text_primary'][2:])  # Dark text for yellow bg
             else:
+                # Carbon Red 60 with white text
                 status_cell.fill = PatternFill(start_color=self.colors['error'], end_color=self.colors['error'], fill_type='solid')
+                status_cell.font = Font(bold=True, color='FFFFFF')
 
-            status_cell.font = Font(bold=True, color='FFFFFF')
             status_cell.alignment = Alignment(horizontal='center', vertical='center')
 
             # Alternating row colors
