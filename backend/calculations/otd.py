@@ -155,14 +155,14 @@ def identify_late_orders(
         and_(
             ProductionEntry.production_date <= threshold_date,
             ProductionEntry.confirmed_by.is_(None),
-            ProductionEntry.work_order_number.isnot(None)
+            ProductionEntry.work_order_id.isnot(None)
         )
     ).all()
 
     # Group by work order
     work_orders = {}
     for entry in late_entries:
-        wo = entry.work_order_number
+        wo = entry.work_order_id
         if wo not in work_orders:
             work_orders[wo] = {
                 "work_order": wo,
