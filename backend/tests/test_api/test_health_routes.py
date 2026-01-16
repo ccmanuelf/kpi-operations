@@ -248,136 +248,136 @@ class TestDetailedHealthWithMockedPsutil:
 
     def test_high_memory_warning(self, test_client):
         """Test detailed health shows warning on high memory usage"""
-        with patch('backend.routes.health.PSUTIL_AVAILABLE', True):
-            with patch('backend.routes.health.psutil') as mock_psutil:
-                mock_memory = MagicMock()
-                mock_memory.percent = 92.0
-                mock_memory.available = 1024 * 1024 * 500  # 500MB
-                mock_memory.total = 1024 * 1024 * 8000  # 8GB
-                mock_psutil.virtual_memory.return_value = mock_memory
+        import psutil
+        with patch.object(psutil, 'virtual_memory') as mock_vm, \
+             patch.object(psutil, 'disk_usage') as mock_disk, \
+             patch.object(psutil, 'cpu_percent', return_value=30.0), \
+             patch.object(psutil, 'cpu_count', return_value=8):
+            mock_memory = MagicMock()
+            mock_memory.percent = 92.0
+            mock_memory.available = 1024 * 1024 * 500  # 500MB
+            mock_memory.total = 1024 * 1024 * 8000  # 8GB
+            mock_vm.return_value = mock_memory
 
-                mock_disk = MagicMock()
-                mock_disk.percent = 50.0
-                mock_disk.free = 1024 * 1024 * 1024 * 100  # 100GB
-                mock_disk.total = 1024 * 1024 * 1024 * 500  # 500GB
-                mock_psutil.disk_usage.return_value = mock_disk
+            mock_disk_obj = MagicMock()
+            mock_disk_obj.percent = 50.0
+            mock_disk_obj.free = 1024 * 1024 * 1024 * 100  # 100GB
+            mock_disk_obj.total = 1024 * 1024 * 1024 * 500  # 500GB
+            mock_disk.return_value = mock_disk_obj
 
-                mock_psutil.cpu_percent.return_value = 30.0
-                mock_psutil.cpu_count.return_value = 8
-
-                response = test_client.get("/health/detailed")
-                # Test passes if response is valid
-                assert response.status_code == 200
+            response = test_client.get("/health/detailed")
+            # Test passes if response is valid
+            assert response.status_code == 200
 
     def test_critical_memory_unhealthy(self, test_client):
         """Test detailed health shows unhealthy on critical memory"""
-        with patch('backend.routes.health.PSUTIL_AVAILABLE', True):
-            with patch('backend.routes.health.psutil') as mock_psutil:
-                mock_memory = MagicMock()
-                mock_memory.percent = 96.0  # Critical
-                mock_memory.available = 1024 * 1024 * 200
-                mock_memory.total = 1024 * 1024 * 8000
-                mock_psutil.virtual_memory.return_value = mock_memory
+        import psutil
+        with patch.object(psutil, 'virtual_memory') as mock_vm, \
+             patch.object(psutil, 'disk_usage') as mock_disk, \
+             patch.object(psutil, 'cpu_percent', return_value=30.0), \
+             patch.object(psutil, 'cpu_count', return_value=8):
+            mock_memory = MagicMock()
+            mock_memory.percent = 96.0  # Critical
+            mock_memory.available = 1024 * 1024 * 200
+            mock_memory.total = 1024 * 1024 * 8000
+            mock_vm.return_value = mock_memory
 
-                mock_disk = MagicMock()
-                mock_disk.percent = 50.0
-                mock_disk.free = 1024 * 1024 * 1024 * 100
-                mock_disk.total = 1024 * 1024 * 1024 * 500
-                mock_psutil.disk_usage.return_value = mock_disk
+            mock_disk_obj = MagicMock()
+            mock_disk_obj.percent = 50.0
+            mock_disk_obj.free = 1024 * 1024 * 1024 * 100
+            mock_disk_obj.total = 1024 * 1024 * 1024 * 500
+            mock_disk.return_value = mock_disk_obj
 
-                mock_psutil.cpu_percent.return_value = 30.0
-                mock_psutil.cpu_count.return_value = 8
-
-                response = test_client.get("/health/detailed")
-                assert response.status_code == 200
+            response = test_client.get("/health/detailed")
+            assert response.status_code == 200
 
     def test_high_disk_warning(self, test_client):
         """Test detailed health shows warning on high disk usage"""
-        with patch('backend.routes.health.PSUTIL_AVAILABLE', True):
-            with patch('backend.routes.health.psutil') as mock_psutil:
-                mock_memory = MagicMock()
-                mock_memory.percent = 50.0
-                mock_memory.available = 1024 * 1024 * 4000
-                mock_memory.total = 1024 * 1024 * 8000
-                mock_psutil.virtual_memory.return_value = mock_memory
+        import psutil
+        with patch.object(psutil, 'virtual_memory') as mock_vm, \
+             patch.object(psutil, 'disk_usage') as mock_disk, \
+             patch.object(psutil, 'cpu_percent', return_value=30.0), \
+             patch.object(psutil, 'cpu_count', return_value=8):
+            mock_memory = MagicMock()
+            mock_memory.percent = 50.0
+            mock_memory.available = 1024 * 1024 * 4000
+            mock_memory.total = 1024 * 1024 * 8000
+            mock_vm.return_value = mock_memory
 
-                mock_disk = MagicMock()
-                mock_disk.percent = 92.0  # Warning
-                mock_disk.free = 1024 * 1024 * 1024 * 40
-                mock_disk.total = 1024 * 1024 * 1024 * 500
-                mock_psutil.disk_usage.return_value = mock_disk
+            mock_disk_obj = MagicMock()
+            mock_disk_obj.percent = 92.0  # Warning
+            mock_disk_obj.free = 1024 * 1024 * 1024 * 40
+            mock_disk_obj.total = 1024 * 1024 * 1024 * 500
+            mock_disk.return_value = mock_disk_obj
 
-                mock_psutil.cpu_percent.return_value = 30.0
-                mock_psutil.cpu_count.return_value = 8
-
-                response = test_client.get("/health/detailed")
-                assert response.status_code == 200
+            response = test_client.get("/health/detailed")
+            assert response.status_code == 200
 
     def test_critical_disk_unhealthy(self, test_client):
         """Test detailed health shows unhealthy on critical disk"""
-        with patch('backend.routes.health.PSUTIL_AVAILABLE', True):
-            with patch('backend.routes.health.psutil') as mock_psutil:
-                mock_memory = MagicMock()
-                mock_memory.percent = 50.0
-                mock_memory.available = 1024 * 1024 * 4000
-                mock_memory.total = 1024 * 1024 * 8000
-                mock_psutil.virtual_memory.return_value = mock_memory
+        import psutil
+        with patch.object(psutil, 'virtual_memory') as mock_vm, \
+             patch.object(psutil, 'disk_usage') as mock_disk, \
+             patch.object(psutil, 'cpu_percent', return_value=30.0), \
+             patch.object(psutil, 'cpu_count', return_value=8):
+            mock_memory = MagicMock()
+            mock_memory.percent = 50.0
+            mock_memory.available = 1024 * 1024 * 4000
+            mock_memory.total = 1024 * 1024 * 8000
+            mock_vm.return_value = mock_memory
 
-                mock_disk = MagicMock()
-                mock_disk.percent = 97.0  # Critical
-                mock_disk.free = 1024 * 1024 * 1024 * 15
-                mock_disk.total = 1024 * 1024 * 1024 * 500
-                mock_psutil.disk_usage.return_value = mock_disk
+            mock_disk_obj = MagicMock()
+            mock_disk_obj.percent = 97.0  # Critical
+            mock_disk_obj.free = 1024 * 1024 * 1024 * 15
+            mock_disk_obj.total = 1024 * 1024 * 1024 * 500
+            mock_disk.return_value = mock_disk_obj
 
-                mock_psutil.cpu_percent.return_value = 30.0
-                mock_psutil.cpu_count.return_value = 8
-
-                response = test_client.get("/health/detailed")
-                assert response.status_code == 200
+            response = test_client.get("/health/detailed")
+            assert response.status_code == 200
 
     def test_high_cpu_warning(self, test_client):
         """Test detailed health handles high CPU usage"""
-        with patch('backend.routes.health.PSUTIL_AVAILABLE', True):
-            with patch('backend.routes.health.psutil') as mock_psutil:
-                mock_memory = MagicMock()
-                mock_memory.percent = 50.0
-                mock_memory.available = 1024 * 1024 * 4000
-                mock_memory.total = 1024 * 1024 * 8000
-                mock_psutil.virtual_memory.return_value = mock_memory
+        import psutil
+        with patch.object(psutil, 'virtual_memory') as mock_vm, \
+             patch.object(psutil, 'disk_usage') as mock_disk, \
+             patch.object(psutil, 'cpu_percent', return_value=85.0), \
+             patch.object(psutil, 'cpu_count', return_value=8):
+            mock_memory = MagicMock()
+            mock_memory.percent = 50.0
+            mock_memory.available = 1024 * 1024 * 4000
+            mock_memory.total = 1024 * 1024 * 8000
+            mock_vm.return_value = mock_memory
 
-                mock_disk = MagicMock()
-                mock_disk.percent = 50.0
-                mock_disk.free = 1024 * 1024 * 1024 * 250
-                mock_disk.total = 1024 * 1024 * 1024 * 500
-                mock_psutil.disk_usage.return_value = mock_disk
+            mock_disk_obj = MagicMock()
+            mock_disk_obj.percent = 50.0
+            mock_disk_obj.free = 1024 * 1024 * 1024 * 250
+            mock_disk_obj.total = 1024 * 1024 * 1024 * 500
+            mock_disk.return_value = mock_disk_obj
 
-                mock_psutil.cpu_percent.return_value = 85.0  # Warning
-                mock_psutil.cpu_count.return_value = 8
-
-                response = test_client.get("/health/detailed")
-                assert response.status_code == 200
+            response = test_client.get("/health/detailed")
+            assert response.status_code == 200
 
     def test_critical_cpu_degraded(self, test_client):
         """Test detailed health shows degraded on critical CPU"""
-        with patch('backend.routes.health.PSUTIL_AVAILABLE', True):
-            with patch('backend.routes.health.psutil') as mock_psutil:
-                mock_memory = MagicMock()
-                mock_memory.percent = 50.0
-                mock_memory.available = 1024 * 1024 * 4000
-                mock_memory.total = 1024 * 1024 * 8000
-                mock_psutil.virtual_memory.return_value = mock_memory
+        import psutil
+        with patch.object(psutil, 'virtual_memory') as mock_vm, \
+             patch.object(psutil, 'disk_usage') as mock_disk, \
+             patch.object(psutil, 'cpu_percent', return_value=98.0), \
+             patch.object(psutil, 'cpu_count', return_value=8):
+            mock_memory = MagicMock()
+            mock_memory.percent = 50.0
+            mock_memory.available = 1024 * 1024 * 4000
+            mock_memory.total = 1024 * 1024 * 8000
+            mock_vm.return_value = mock_memory
 
-                mock_disk = MagicMock()
-                mock_disk.percent = 50.0
-                mock_disk.free = 1024 * 1024 * 1024 * 250
-                mock_disk.total = 1024 * 1024 * 1024 * 500
-                mock_psutil.disk_usage.return_value = mock_disk
+            mock_disk_obj = MagicMock()
+            mock_disk_obj.percent = 50.0
+            mock_disk_obj.free = 1024 * 1024 * 1024 * 250
+            mock_disk_obj.total = 1024 * 1024 * 1024 * 500
+            mock_disk.return_value = mock_disk_obj
 
-                mock_psutil.cpu_percent.return_value = 98.0  # Critical
-                mock_psutil.cpu_count.return_value = 8
-
-                response = test_client.get("/health/detailed")
-                assert response.status_code == 200
+            response = test_client.get("/health/detailed")
+            assert response.status_code == 200
 
 
 class TestDetailedHealthDatabaseLatency:
