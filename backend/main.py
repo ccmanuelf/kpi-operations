@@ -612,7 +612,32 @@ async def upload_csv(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Upload production entries via CSV"""
+    """
+    Upload production entries via CSV - ALIGNED WITH PRODUCTION_ENTRY SCHEMA
+
+    Required CSV columns:
+    - client_id (str) - Multi-tenant isolation
+    - product_id (int) - Product reference
+    - shift_id (int) - Shift reference
+    - production_date (YYYY-MM-DD) - Production date
+    - units_produced (int, > 0)
+    - run_time_hours (decimal)
+    - employees_assigned (int)
+
+    Optional columns:
+    - shift_date (YYYY-MM-DD) - Defaults to production_date if not provided
+    - work_order_id OR work_order_number (str)
+    - job_id (str) - Job-level tracking
+    - employees_present (int) - Actual employees present
+    - defect_count (int)
+    - scrap_count (int)
+    - rework_count (int)
+    - setup_time_hours (decimal)
+    - downtime_hours (decimal)
+    - maintenance_hours (decimal)
+    - ideal_cycle_time (decimal)
+    - notes (text)
+    """
     if not file.filename.endswith('.csv'):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -634,28 +659,48 @@ async def upload_csv(
         total_rows += 1
 
         try:
-            # SECURITY: Validate client_id if present in CSV
-            if 'client_id' in row and row.get('client_id'):
-                from backend.middleware.client_auth import verify_client_access
-                verify_client_access(current_user, row['client_id'])
+            # SECURITY: Validate client_id - REQUIRED
+            client_id = row.get('client_id')
+            if not client_id:
+                raise ValueError("client_id is required")
+            from backend.middleware.client_auth import verify_client_access
+            verify_client_access(current_user, client_id)
 
-            # Parse CSV row
-            entry = ProductionEntryCreate(
-                product_id=int(row['product_id']),
-                shift_id=int(row['shift_id']),
-                production_date=datetime.strptime(row['production_date'], '%Y-%m-%d').date(),
-                work_order_number=row.get('work_order_number') or None,
-                units_produced=int(row['units_produced']),
-                run_time_hours=Decimal(row['run_time_hours']),
-                employees_assigned=int(row['employees_assigned']),
-                defect_count=int(row.get('defect_count', 0)),
-                scrap_count=int(row.get('scrap_count', 0)),
-                notes=row.get('notes')
-            )
+            # Parse production_date - REQUIRED
+            prod_date_str = row.get('production_date')
+            if not prod_date_str:
+                raise ValueError("production_date is required")
+            production_date = datetime.strptime(prod_date_str, '%Y-%m-%d').date()
+
+            # Build data dict for legacy CSV mapping
+            csv_data = {
+                'client_id': client_id,
+                'product_id': row.get('product_id'),
+                'shift_id': row.get('shift_id'),
+                'work_order_number': row.get('work_order_number') or row.get('work_order_id'),
+                'job_id': row.get('job_id'),
+                'production_date': production_date,
+                'shift_date': datetime.strptime(row['shift_date'], '%Y-%m-%d').date() if row.get('shift_date') else None,
+                'units_produced': row.get('units_produced'),
+                'run_time_hours': row.get('run_time_hours'),
+                'employees_assigned': row.get('employees_assigned'),
+                'employees_present': row.get('employees_present'),
+                'defect_count': row.get('defect_count', 0),
+                'scrap_count': row.get('scrap_count', 0),
+                'rework_count': row.get('rework_count', 0),
+                'setup_time_hours': row.get('setup_time_hours'),
+                'downtime_hours': row.get('downtime_hours'),
+                'maintenance_hours': row.get('maintenance_hours'),
+                'ideal_cycle_time': row.get('ideal_cycle_time'),
+                'notes': row.get('notes')
+            }
+
+            # Use the from_legacy_csv method for proper field mapping
+            entry = ProductionEntryCreate.from_legacy_csv(csv_data)
 
             # Create entry
             created = create_production_entry(db, entry, current_user)
-            created_entries.append(created.entry_id)
+            created_entries.append(created.production_entry_id)
             successful += 1
 
         except Exception as e:

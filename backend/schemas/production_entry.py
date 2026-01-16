@@ -23,6 +23,7 @@ class ProductionEntry(Base):
     product_id = Column(Integer, ForeignKey("PRODUCT.product_id"), nullable=False, index=True)
     shift_id = Column(Integer, ForeignKey("SHIFT.shift_id"), nullable=False, index=True)
     work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), index=True)
+    job_id = Column(String(50), ForeignKey("JOB.job_id"), index=True)  # Job-level tracking
 
     # Date tracking
     production_date = Column(DateTime, nullable=False, index=True)
@@ -32,6 +33,7 @@ class ProductionEntry(Base):
     units_produced = Column(Integer, nullable=False)
     run_time_hours = Column(Numeric(10, 2), nullable=False)
     employees_assigned = Column(Integer, nullable=False)
+    employees_present = Column(Integer)  # For absenteeism correlation
 
     # Quality metrics
     defect_count = Column(Integer, nullable=False, default=0)
@@ -57,6 +59,7 @@ class ProductionEntry(Base):
     entered_by = Column(Integer, ForeignKey("USER.user_id"), nullable=False)
     confirmed_by = Column(Integer, ForeignKey("USER.user_id"))
     confirmation_timestamp = Column(DateTime)
+    entry_method = Column(String(20), default='MANUAL_ENTRY')  # MANUAL_ENTRY, CSV_UPLOAD, API
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

@@ -44,6 +44,10 @@ class AttendanceEntry(Base):
     is_absent = Column(Integer, nullable=False, default=0, index=True)  # Boolean
     absence_type = Column(SQLEnum(AbsenceType))
 
+    # Coverage tracking - for floating pool assignments
+    covered_by_employee_id = Column(Integer, ForeignKey('EMPLOYEE.employee_id'))  # FK to floating pool employee
+    coverage_confirmed = Column(Integer, default=0)  # Boolean: 0=pending, 1=confirmed
+
     # Late/early departure tracking
     arrival_time = Column(DateTime)
     departure_time = Column(DateTime)

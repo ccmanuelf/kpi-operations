@@ -1,0 +1,1151 @@
+{
+  "metadata": {
+    "generated_at": "2026-01-15T17:45:00Z",
+    "reference_schema": "docs/architecture/database_schema.sql",
+    "current_implementation": "backend/schemas/*.py (SQLAlchemy ORM)",
+    "reference_database": "MariaDB 10.6+",
+    "current_database": "SQLite (via SQLAlchemy)"
+  },
+  "tables": {
+    "CLIENT": {
+      "reference_fields": [
+        {"name": "client_id", "type": "VARCHAR(20)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "client_name", "type": "VARCHAR(100)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "is_active", "type": "BOOLEAN", "constraints": "NOT NULL DEFAULT TRUE", "nullable": false},
+        {"name": "client_contact", "type": "VARCHAR(100)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "client_email", "type": "VARCHAR(100)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "client_phone", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "location", "type": "VARCHAR(100)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "timezone", "type": "VARCHAR(10)", "constraints": "DEFAULT 'America/Mexico_City'", "nullable": true},
+        {"name": "supervisor_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL (FK to EMPLOYEE)", "nullable": true},
+        {"name": "planner_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL (FK to EMPLOYEE)", "nullable": true},
+        {"name": "engineering_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL (FK to EMPLOYEE)", "nullable": true},
+        {"name": "client_type", "type": "ENUM('Hourly Rate', 'Piece Rate', 'Hybrid', 'Service', 'Other')", "constraints": "DEFAULT 'Hourly Rate'", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "client_id", "type": "String(50)", "constraints": "primary_key, index", "nullable": false},
+        {"name": "client_name", "type": "String(255)", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "is_active", "type": "Integer", "constraints": "nullable=False, default=1", "nullable": false},
+        {"name": "client_contact", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "client_email", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "client_phone", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "location", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "timezone", "type": "String(50)", "constraints": "default='America/New_York'", "nullable": true},
+        {"name": "supervisor_id", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "planner_id", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "engineering_id", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "client_type", "type": "SQLEnum(ClientType)", "constraints": "nullable=False, default=PIECE_RATE", "nullable": false},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate=func.now()", "nullable": true}
+      ],
+      "missing_fields": [],
+      "renamed_fields": {},
+      "type_mismatches": [
+        {
+          "field": "client_id",
+          "reference_type": "VARCHAR(20)",
+          "current_type": "String(50)",
+          "severity": "LOW",
+          "note": "Current implementation allows larger IDs"
+        },
+        {
+          "field": "client_name",
+          "reference_type": "VARCHAR(100)",
+          "current_type": "String(255)",
+          "severity": "LOW",
+          "note": "Current implementation allows longer names"
+        },
+        {
+          "field": "is_active",
+          "reference_type": "BOOLEAN",
+          "current_type": "Integer",
+          "severity": "MEDIUM",
+          "note": "SQLite uses Integer(0/1) instead of native BOOLEAN"
+        },
+        {
+          "field": "timezone",
+          "reference_type": "VARCHAR(10)",
+          "current_type": "String(50)",
+          "severity": "LOW",
+          "note": "Current allows longer timezone strings"
+        },
+        {
+          "field": "timezone",
+          "reference_type": "DEFAULT 'America/Mexico_City'",
+          "current_type": "default='America/New_York'",
+          "severity": "MEDIUM",
+          "note": "Different default timezone"
+        },
+        {
+          "field": "client_type",
+          "reference_type": "DEFAULT 'Hourly Rate'",
+          "current_type": "default=PIECE_RATE",
+          "severity": "MEDIUM",
+          "note": "Different default client type"
+        }
+      ],
+      "extra_fields_in_current": [],
+      "missing_foreign_keys": [
+        "supervisor_id -> EMPLOYEE.employee_id",
+        "planner_id -> EMPLOYEE.employee_id",
+        "engineering_id -> EMPLOYEE.employee_id"
+      ],
+      "status": "COMPATIBLE"
+    },
+    "EMPLOYEE": {
+      "reference_fields": [
+        {"name": "employee_id", "type": "VARCHAR(20)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "employee_name", "type": "VARCHAR(100)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "is_active", "type": "BOOLEAN", "constraints": "NOT NULL DEFAULT TRUE", "nullable": false},
+        {"name": "department", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "is_floating_pool", "type": "BOOLEAN", "constraints": "NOT NULL DEFAULT FALSE", "nullable": false},
+        {"name": "is_support_billed", "type": "BOOLEAN", "constraints": "NOT NULL DEFAULT FALSE", "nullable": false},
+        {"name": "is_support_included", "type": "BOOLEAN", "constraints": "NOT NULL DEFAULT FALSE", "nullable": false},
+        {"name": "client_id_assigned", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL (FK to CLIENT)", "nullable": true},
+        {"name": "hourly_rate", "type": "DECIMAL(10,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "employee_id", "type": "Integer", "constraints": "primary_key, autoincrement", "nullable": false},
+        {"name": "employee_code", "type": "String(50)", "constraints": "unique, nullable=False, index", "nullable": false},
+        {"name": "employee_name", "type": "String(255)", "constraints": "nullable=False", "nullable": false},
+        {"name": "client_id_assigned", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "is_floating_pool", "type": "Integer", "constraints": "nullable=False, default=0, index", "nullable": false},
+        {"name": "contact_phone", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "contact_email", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "position", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "hire_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false}
+      ],
+      "missing_fields": [
+        {"name": "is_active", "reference_type": "BOOLEAN", "severity": "HIGH", "note": "Soft delete flag missing"},
+        {"name": "department", "reference_type": "VARCHAR(50)", "severity": "MEDIUM", "note": "Department classification missing"},
+        {"name": "is_support_billed", "reference_type": "BOOLEAN", "severity": "MEDIUM", "note": "Support billing flag missing"},
+        {"name": "is_support_included", "reference_type": "BOOLEAN", "severity": "MEDIUM", "note": "Support pool flag missing"},
+        {"name": "hourly_rate", "reference_type": "DECIMAL(10,2)", "severity": "LOW", "note": "Cost tracking field missing"},
+        {"name": "updated_at", "reference_type": "TIMESTAMP", "severity": "LOW", "note": "Audit trail incomplete"}
+      ],
+      "renamed_fields": {},
+      "type_mismatches": [
+        {
+          "field": "employee_id",
+          "reference_type": "VARCHAR(20)",
+          "current_type": "Integer (autoincrement)",
+          "severity": "HIGH",
+          "note": "Reference uses string PK, current uses auto-increment integer"
+        },
+        {
+          "field": "client_id_assigned",
+          "reference_type": "VARCHAR(20) FK to CLIENT",
+          "current_type": "Text (comma-separated)",
+          "severity": "MEDIUM",
+          "note": "Current uses denormalized comma-separated format"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "employee_code", "type": "String(50)", "note": "Additional unique identifier not in reference"},
+        {"name": "contact_phone", "type": "String(50)", "note": "Contact field not in reference"},
+        {"name": "contact_email", "type": "String(255)", "note": "Contact field not in reference"},
+        {"name": "position", "type": "String(100)", "note": "Similar to department but different name"},
+        {"name": "hire_date", "type": "DateTime", "note": "Additional HR field"}
+      ],
+      "missing_foreign_keys": [
+        "client_id_assigned -> CLIENT.client_id"
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "USER": {
+      "reference_fields": [
+        {"name": "user_id", "type": "VARCHAR(20)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "username", "type": "VARCHAR(50)", "constraints": "UNIQUE NOT NULL", "nullable": false},
+        {"name": "full_name", "type": "VARCHAR(100)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "role", "type": "ENUM('OPERATOR_DATAENTRY', 'LEADER_DATACONFIG', 'POWERUSER', 'ADMIN')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "is_active", "type": "BOOLEAN", "constraints": "NOT NULL DEFAULT TRUE", "nullable": false},
+        {"name": "email", "type": "VARCHAR(100)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "client_id_assigned", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "last_login", "type": "TIMESTAMP", "constraints": "NULL DEFAULT NULL", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "user_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "username", "type": "String(100)", "constraints": "unique, nullable=False, index", "nullable": false},
+        {"name": "email", "type": "String(255)", "constraints": "unique, nullable=False, index", "nullable": false},
+        {"name": "password_hash", "type": "String(255)", "constraints": "nullable=True", "nullable": true},
+        {"name": "full_name", "type": "String(255)", "constraints": "nullable=True", "nullable": true},
+        {"name": "role", "type": "String(20)", "constraints": "nullable=True, default='OPERATOR', index", "nullable": true},
+        {"name": "client_id_assigned", "type": "Text", "constraints": "index", "nullable": true},
+        {"name": "is_active", "type": "Boolean", "constraints": "nullable=False, default=True", "nullable": false},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now(), onupdate", "nullable": false}
+      ],
+      "missing_fields": [
+        {"name": "last_login", "reference_type": "TIMESTAMP", "severity": "LOW", "note": "Login tracking missing"}
+      ],
+      "renamed_fields": {},
+      "type_mismatches": [
+        {
+          "field": "role",
+          "reference_type": "ENUM('OPERATOR_DATAENTRY', 'LEADER_DATACONFIG', 'POWERUSER', 'ADMIN')",
+          "current_type": "String(20) with values: admin, poweruser, leader, operator",
+          "severity": "MEDIUM",
+          "note": "Role names differ and current uses String instead of ENUM"
+        },
+        {
+          "field": "full_name",
+          "reference_type": "VARCHAR(100) NOT NULL",
+          "current_type": "String(255) nullable=True",
+          "severity": "MEDIUM",
+          "note": "Nullability changed"
+        },
+        {
+          "field": "email",
+          "reference_type": "VARCHAR(100) DEFAULT NULL",
+          "current_type": "String(255) NOT NULL UNIQUE",
+          "severity": "MEDIUM",
+          "note": "Email made required and unique in current"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "password_hash", "type": "String(255)", "note": "Security field - reference mentions separate auth table"}
+      ],
+      "status": "COMPATIBLE"
+    },
+    "WORK_ORDER": {
+      "reference_fields": [
+        {"name": "work_order_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "client_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "planned_quantity", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "status", "type": "ENUM('ACTIVE', 'ON_HOLD', 'COMPLETED', 'REJECTED', 'CANCELLED')", "constraints": "NOT NULL DEFAULT 'ACTIVE'", "nullable": false},
+        {"name": "style_model", "type": "VARCHAR(100)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "planned_start_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "actual_start_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "planned_ship_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "required_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "receipt_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "acknowledged_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "ideal_cycle_time", "type": "DECIMAL(10,4)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "priority_level", "type": "ENUM('RUSH', 'STANDARD', 'LOW')", "constraints": "DEFAULT 'STANDARD'", "nullable": true},
+        {"name": "po_number", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "created_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "work_order_id", "type": "String(50)", "constraints": "primary_key, index", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "style_model", "type": "String(100)", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "planned_quantity", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "actual_quantity", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "planned_start_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "actual_start_date", "type": "DateTime", "constraints": "index", "nullable": true},
+        {"name": "planned_ship_date", "type": "DateTime", "constraints": "index", "nullable": true},
+        {"name": "required_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "actual_delivery_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "ideal_cycle_time", "type": "Numeric(10,4)", "constraints": "none", "nullable": true},
+        {"name": "calculated_cycle_time", "type": "Numeric(10,4)", "constraints": "none", "nullable": true},
+        {"name": "status", "type": "SQLEnum(WorkOrderStatus)", "constraints": "nullable=False, default=ACTIVE, index", "nullable": false},
+        {"name": "priority", "type": "String(20)", "constraints": "none", "nullable": true},
+        {"name": "qc_approved", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "qc_approved_by", "type": "Integer", "constraints": "none", "nullable": true},
+        {"name": "qc_approved_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "rejection_reason", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "rejected_by", "type": "Integer", "constraints": "none", "nullable": true},
+        {"name": "rejected_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "total_run_time_hours", "type": "Numeric(10,2)", "constraints": "none", "nullable": true},
+        {"name": "total_employees_assigned", "type": "Integer", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "customer_po_number", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "internal_notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "receipt_date", "reference_type": "DATE", "severity": "LOW", "note": "PO receipt date missing"},
+        {"name": "acknowledged_date", "reference_type": "DATE", "severity": "LOW", "note": "Planner acknowledgment date missing"},
+        {"name": "created_by", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail field missing"}
+      ],
+      "renamed_fields": {
+        "client_id_fk": "client_id",
+        "priority_level": "priority",
+        "po_number": "customer_po_number"
+      },
+      "type_mismatches": [
+        {
+          "field": "style_model",
+          "reference_type": "VARCHAR(100) DEFAULT NULL",
+          "current_type": "String(100) nullable=False",
+          "severity": "MEDIUM",
+          "note": "Made required in current implementation"
+        },
+        {
+          "field": "priority",
+          "reference_type": "ENUM('RUSH', 'STANDARD', 'LOW')",
+          "current_type": "String(20) with values: HIGH, MEDIUM, LOW",
+          "severity": "MEDIUM",
+          "note": "Different enum values"
+        },
+        {
+          "field": "dates",
+          "reference_type": "DATE",
+          "current_type": "DateTime",
+          "severity": "LOW",
+          "note": "Current uses DateTime instead of DATE for all date fields"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "actual_quantity", "type": "Integer", "note": "Completion tracking field"},
+        {"name": "actual_delivery_date", "type": "DateTime", "note": "OTD calculation field"},
+        {"name": "calculated_cycle_time", "type": "Numeric(10,4)", "note": "Performance tracking field"},
+        {"name": "qc_approved", "type": "Integer", "note": "Quality approval flag"},
+        {"name": "qc_approved_by", "type": "Integer", "note": "Quality approval audit"},
+        {"name": "qc_approved_date", "type": "DateTime", "note": "Quality approval audit"},
+        {"name": "rejection_reason", "type": "Text", "note": "Quality rejection detail"},
+        {"name": "rejected_by", "type": "Integer", "note": "Quality rejection audit"},
+        {"name": "rejected_date", "type": "DateTime", "note": "Quality rejection audit"},
+        {"name": "total_run_time_hours", "type": "Numeric(10,2)", "note": "Aggregated production metric"},
+        {"name": "total_employees_assigned", "type": "Integer", "note": "Aggregated resource metric"},
+        {"name": "internal_notes", "type": "Text", "note": "Additional notes field"}
+      ],
+      "status": "EXTENDED"
+    },
+    "JOB": {
+      "reference_fields": [
+        {"name": "job_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "work_order_id_fk", "type": "VARCHAR(50)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "part_number", "type": "VARCHAR(50)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "quantity_ordered", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "job_number", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "quantity_completed", "type": "INT", "constraints": "DEFAULT 0", "nullable": true},
+        {"name": "quantity_scrapped", "type": "INT", "constraints": "DEFAULT 0", "nullable": true},
+        {"name": "priority_level", "type": "ENUM('RUSH', 'STANDARD', 'LOW')", "constraints": "DEFAULT 'STANDARD'", "nullable": true},
+        {"name": "notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true}
+      ],
+      "current_fields": [
+        {"name": "job_id", "type": "String(50)", "constraints": "primary_key, index", "nullable": false},
+        {"name": "work_order_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "client_id_fk", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "operation_name", "type": "String(255)", "constraints": "nullable=False", "nullable": false},
+        {"name": "operation_code", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "sequence_number", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "part_number", "type": "String(100)", "constraints": "index", "nullable": true},
+        {"name": "part_description", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "planned_quantity", "type": "Integer", "constraints": "none", "nullable": true},
+        {"name": "completed_quantity", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "planned_hours", "type": "Numeric(10,2)", "constraints": "none", "nullable": true},
+        {"name": "actual_hours", "type": "Numeric(10,2)", "constraints": "none", "nullable": true},
+        {"name": "is_completed", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "completed_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "assigned_employee_id", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "assigned_shift_id", "type": "Integer", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "job_number", "reference_type": "VARCHAR(50)", "severity": "LOW", "note": "Customer job number missing"},
+        {"name": "quantity_scrapped", "reference_type": "INT", "severity": "MEDIUM", "note": "Scrap tracking missing"},
+        {"name": "priority_level", "reference_type": "ENUM", "severity": "LOW", "note": "Priority field missing"}
+      ],
+      "renamed_fields": {
+        "work_order_id_fk": "work_order_id",
+        "quantity_ordered": "planned_quantity",
+        "quantity_completed": "completed_quantity"
+      },
+      "type_mismatches": [
+        {
+          "field": "part_number",
+          "reference_type": "VARCHAR(50) NOT NULL",
+          "current_type": "String(100) nullable=True",
+          "severity": "MEDIUM",
+          "note": "Made optional in current implementation"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "client_id_fk", "type": "String(50)", "note": "Multi-tenant isolation - GOOD addition"},
+        {"name": "operation_name", "type": "String(255)", "note": "Operation tracking"},
+        {"name": "operation_code", "type": "String(50)", "note": "Operation tracking"},
+        {"name": "sequence_number", "type": "Integer", "note": "Order within work order"},
+        {"name": "part_description", "type": "String(255)", "note": "Part metadata"},
+        {"name": "planned_hours", "type": "Numeric(10,2)", "note": "Time tracking"},
+        {"name": "actual_hours", "type": "Numeric(10,2)", "note": "Time tracking"},
+        {"name": "is_completed", "type": "Integer", "note": "Status flag"},
+        {"name": "completed_date", "type": "DateTime", "note": "Completion tracking"},
+        {"name": "assigned_employee_id", "type": "Integer", "note": "Resource assignment"},
+        {"name": "assigned_shift_id", "type": "Integer", "note": "Resource assignment"},
+        {"name": "created_at", "type": "DateTime", "note": "Audit trail"},
+        {"name": "updated_at", "type": "DateTime", "note": "Audit trail"}
+      ],
+      "status": "EXTENDED"
+    },
+    "FLOATING_POOL": {
+      "reference_fields": [
+        {"name": "floating_pool_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "employee_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "status", "type": "ENUM('AVAILABLE', 'ASSIGNED_CLIENT_A', ...)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "last_updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false},
+        {"name": "assigned_to_client", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "assigned_by_user_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true}
+      ],
+      "current_fields": [
+        {"name": "pool_id", "type": "Integer", "constraints": "primary_key, autoincrement", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=True, index", "nullable": true},
+        {"name": "employee_id", "type": "Integer", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "available_from", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "available_to", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "current_assignment", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "status", "reference_type": "ENUM", "severity": "HIGH", "note": "Assignment status enum missing"},
+        {"name": "assigned_by_user_id", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail field missing"}
+      ],
+      "renamed_fields": {
+        "floating_pool_id": "pool_id",
+        "employee_id_fk": "employee_id",
+        "assigned_to_client": "current_assignment"
+      },
+      "type_mismatches": [
+        {
+          "field": "pool_id",
+          "reference_type": "VARCHAR(50)",
+          "current_type": "Integer (autoincrement)",
+          "severity": "MEDIUM",
+          "note": "Reference uses string PK, current uses auto-increment"
+        },
+        {
+          "field": "employee_id",
+          "reference_type": "VARCHAR(20)",
+          "current_type": "Integer",
+          "severity": "HIGH",
+          "note": "Must match EMPLOYEE.employee_id type"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "client_id", "type": "String(50)", "note": "Multi-tenant isolation"},
+        {"name": "available_from", "type": "DateTime", "note": "Availability period tracking"},
+        {"name": "available_to", "type": "DateTime", "note": "Availability period tracking"},
+        {"name": "created_at", "type": "DateTime", "note": "Audit trail"},
+        {"name": "updated_at", "type": "DateTime", "note": "Audit trail"}
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "PART_OPPORTUNITIES": {
+      "reference_fields": [
+        {"name": "part_number", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "opportunities_per_unit", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "description", "type": "VARCHAR(200)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "updated_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "part_number", "type": "String(100)", "constraints": "primary_key, index", "nullable": false},
+        {"name": "client_id_fk", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "opportunities_per_unit", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "part_description", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "part_category", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "updated_by", "reference_type": "VARCHAR(20) FK", "severity": "LOW", "note": "Audit trail field missing"},
+        {"name": "updated_at", "reference_type": "TIMESTAMP", "severity": "LOW", "note": "Audit trail field missing"}
+      ],
+      "renamed_fields": {
+        "description": "part_description"
+      },
+      "type_mismatches": [],
+      "extra_fields_in_current": [
+        {"name": "client_id_fk", "type": "String(50)", "note": "Multi-tenant isolation - GOOD addition"},
+        {"name": "part_category", "type": "String(100)", "note": "Additional categorization"},
+        {"name": "notes", "type": "Text", "note": "Additional metadata"}
+      ],
+      "status": "EXTENDED"
+    },
+    "PRODUCTION_ENTRY": {
+      "reference_fields": [
+        {"name": "production_entry_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "work_order_id_fk", "type": "VARCHAR(50)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "job_id_fk", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "client_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "shift_date", "type": "DATE", "constraints": "NOT NULL", "nullable": false},
+        {"name": "shift_type", "type": "ENUM('SHIFT_1ST', 'SHIFT_2ND', 'SAT_OT', 'SUN_OT', 'OTHER')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "operation_id", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "units_produced", "type": "INT", "constraints": "NOT NULL DEFAULT 0", "nullable": false},
+        {"name": "units_defective", "type": "INT", "constraints": "NOT NULL DEFAULT 0", "nullable": false},
+        {"name": "run_time_hours", "type": "DECIMAL(10,2)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "employees_assigned", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "employees_present", "type": "INT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "shift_hours_scheduled", "type": "DECIMAL(10,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "downtime_total_minutes", "type": "INT", "constraints": "DEFAULT 0", "nullable": true},
+        {"name": "efficiency_target", "type": "DECIMAL(5,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "performance_target", "type": "DECIMAL(5,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "data_collector_id", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "entry_method", "type": "ENUM('MANUAL_ENTRY', 'CSV_UPLOAD', 'QR_SCAN', 'API', 'SYSTEM_IMPORT')", "constraints": "DEFAULT 'MANUAL_ENTRY'", "nullable": true},
+        {"name": "timestamp", "type": "TIMESTAMP", "constraints": "NULL DEFAULT NULL", "nullable": true},
+        {"name": "verified_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "verified_at", "type": "TIMESTAMP", "constraints": "NULL DEFAULT NULL", "nullable": true},
+        {"name": "notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "created_by", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "production_entry_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "product_id", "type": "Integer", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "shift_id", "type": "Integer", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "work_order_id", "type": "String(50)", "constraints": "FK, index", "nullable": true},
+        {"name": "production_date", "type": "DateTime", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "shift_date", "type": "DateTime", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "units_produced", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "run_time_hours", "type": "Numeric(10,2)", "constraints": "nullable=False", "nullable": false},
+        {"name": "employees_assigned", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "defect_count", "type": "Integer", "constraints": "nullable=False, default=0", "nullable": false},
+        {"name": "scrap_count", "type": "Integer", "constraints": "nullable=False, default=0", "nullable": false},
+        {"name": "rework_count", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "setup_time_hours", "type": "Numeric(10,2)", "constraints": "none", "nullable": true},
+        {"name": "downtime_hours", "type": "Numeric(10,2)", "constraints": "none", "nullable": true},
+        {"name": "maintenance_hours", "type": "Numeric(10,2)", "constraints": "none", "nullable": true},
+        {"name": "ideal_cycle_time", "type": "Numeric(10,4)", "constraints": "none", "nullable": true},
+        {"name": "actual_cycle_time", "type": "Numeric(10,4)", "constraints": "none", "nullable": true},
+        {"name": "efficiency_percentage", "type": "Numeric(8,4)", "constraints": "none", "nullable": true},
+        {"name": "performance_percentage", "type": "Numeric(8,4)", "constraints": "none", "nullable": true},
+        {"name": "quality_rate", "type": "Numeric(8,4)", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "entered_by", "type": "Integer", "constraints": "FK, nullable=False", "nullable": false},
+        {"name": "confirmed_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "confirmation_timestamp", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "job_id_fk", "reference_type": "VARCHAR(50) FK", "severity": "MEDIUM", "note": "Job-level tracking missing"},
+        {"name": "shift_type", "reference_type": "ENUM", "severity": "HIGH", "note": "Shift classification missing - uses FK to SHIFT table instead"},
+        {"name": "operation_id", "reference_type": "VARCHAR(50)", "severity": "LOW", "note": "Operation tracking missing"},
+        {"name": "employees_present", "reference_type": "INT", "severity": "MEDIUM", "note": "Absenteeism tracking missing"},
+        {"name": "shift_hours_scheduled", "reference_type": "DECIMAL(10,2)", "severity": "LOW", "note": "Schedule validation missing"},
+        {"name": "downtime_total_minutes", "reference_type": "INT", "severity": "MEDIUM", "note": "Has downtime_hours instead"},
+        {"name": "efficiency_target", "reference_type": "DECIMAL(5,2)", "severity": "LOW", "note": "Target tracking missing"},
+        {"name": "performance_target", "reference_type": "DECIMAL(5,2)", "severity": "LOW", "note": "Target tracking missing"},
+        {"name": "entry_method", "reference_type": "ENUM", "severity": "MEDIUM", "note": "Data quality tracking missing"},
+        {"name": "timestamp", "reference_type": "TIMESTAMP", "severity": "LOW", "note": "Exact entry time missing"},
+        {"name": "created_by", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail incomplete - has entered_by instead"}
+      ],
+      "renamed_fields": {
+        "client_id_fk": "client_id",
+        "work_order_id_fk": "work_order_id",
+        "units_defective": "defect_count",
+        "data_collector_id": "entered_by",
+        "verified_by": "confirmed_by",
+        "verified_at": "confirmation_timestamp"
+      },
+      "type_mismatches": [
+        {
+          "field": "shift_type vs shift_id",
+          "reference_type": "ENUM('SHIFT_1ST', 'SHIFT_2ND', ...)",
+          "current_type": "Integer FK to SHIFT table",
+          "severity": "HIGH",
+          "note": "Different approach - reference uses inline ENUM, current uses FK to separate SHIFT table"
+        },
+        {
+          "field": "defect_count",
+          "reference_type": "units_defective INT",
+          "current_type": "defect_count Integer",
+          "severity": "LOW",
+          "note": "Name difference only"
+        },
+        {
+          "field": "work_order_id",
+          "reference_type": "NOT NULL FK",
+          "current_type": "nullable=True",
+          "severity": "MEDIUM",
+          "note": "Made optional in current implementation"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "product_id", "type": "Integer FK", "note": "FK to PRODUCT table - not in reference"},
+        {"name": "production_date", "type": "DateTime", "note": "Additional date field"},
+        {"name": "scrap_count", "type": "Integer", "note": "Scrap tracking"},
+        {"name": "rework_count", "type": "Integer", "note": "Rework tracking"},
+        {"name": "setup_time_hours", "type": "Numeric(10,2)", "note": "Time breakdown"},
+        {"name": "maintenance_hours", "type": "Numeric(10,2)", "note": "Time breakdown"},
+        {"name": "ideal_cycle_time", "type": "Numeric(10,4)", "note": "Local cycle time override"},
+        {"name": "actual_cycle_time", "type": "Numeric(10,4)", "note": "Calculated metric"},
+        {"name": "efficiency_percentage", "type": "Numeric(8,4)", "note": "Cached KPI"},
+        {"name": "performance_percentage", "type": "Numeric(8,4)", "note": "Cached KPI"},
+        {"name": "quality_rate", "type": "Numeric(8,4)", "note": "Cached KPI"}
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "DOWNTIME_ENTRY": {
+      "reference_fields": [
+        {"name": "downtime_entry_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "work_order_id_fk", "type": "VARCHAR(50)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "client_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "shift_date", "type": "DATE", "constraints": "NOT NULL", "nullable": false},
+        {"name": "shift_type", "type": "ENUM('SHIFT_1ST', 'SHIFT_2ND', 'SAT_OT', 'SUN_OT', 'OTHER')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "downtime_reason", "type": "ENUM('EQUIPMENT_FAILURE', 'MATERIAL_SHORTAGE', 'CHANGEOVER_SETUP', 'LACK_OF_ORDERS', 'MAINTENANCE_SCHEDULED', 'QC_HOLD', 'MISSING_SPECIFICATION', 'OTHER')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "downtime_reason_detail", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "downtime_duration_minutes", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "downtime_start_time", "type": "TIME", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "responsible_person_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "is_resolved", "type": "BOOLEAN", "constraints": "DEFAULT TRUE", "nullable": true},
+        {"name": "resolution_notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "reported_by_user_id", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "reported_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "created_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "downtime_entry_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "work_order_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "shift_date", "type": "DateTime", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "downtime_reason", "type": "SQLEnum(DowntimeReason)", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "downtime_duration_minutes", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "machine_id", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "equipment_code", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "root_cause_category", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "corrective_action", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "reported_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "resolved_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "resolution_timestamp", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "shift_type", "reference_type": "ENUM", "severity": "HIGH", "note": "Shift classification missing"},
+        {"name": "downtime_reason_detail", "reference_type": "TEXT", "severity": "LOW", "note": "Has notes field instead"},
+        {"name": "downtime_start_time", "reference_type": "TIME", "severity": "LOW", "note": "Start time missing"},
+        {"name": "responsible_person_id", "reference_type": "VARCHAR(20)", "severity": "MEDIUM", "note": "Responsibility tracking missing"},
+        {"name": "is_resolved", "reference_type": "BOOLEAN", "severity": "MEDIUM", "note": "Resolution status missing"},
+        {"name": "resolution_notes", "reference_type": "TEXT", "severity": "LOW", "note": "Has corrective_action instead"},
+        {"name": "reported_at", "reference_type": "TIMESTAMP", "severity": "MEDIUM", "note": "Report timestamp missing"},
+        {"name": "created_by", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail missing"}
+      ],
+      "renamed_fields": {
+        "client_id_fk": "client_id",
+        "work_order_id_fk": "work_order_id",
+        "reported_by_user_id": "reported_by"
+      },
+      "type_mismatches": [
+        {
+          "field": "downtime_reason",
+          "reference_type": "ENUM('EQUIPMENT_FAILURE', 'MATERIAL_SHORTAGE', 'CHANGEOVER_SETUP', 'LACK_OF_ORDERS', 'MAINTENANCE_SCHEDULED', 'QC_HOLD', 'MISSING_SPECIFICATION', 'OTHER')",
+          "current_type": "SQLEnum('EQUIPMENT_FAILURE', 'MATERIAL_SHORTAGE', 'SETUP_CHANGEOVER', 'QUALITY_HOLD', 'MAINTENANCE', 'POWER_OUTAGE', 'OTHER')",
+          "severity": "MEDIUM",
+          "note": "Different enum values"
+        },
+        {
+          "field": "reported_by",
+          "reference_type": "VARCHAR(20) NOT NULL FK",
+          "current_type": "Integer nullable=True FK",
+          "severity": "MEDIUM",
+          "note": "Type and nullability differ"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "machine_id", "type": "String(100)", "note": "Equipment tracking"},
+        {"name": "equipment_code", "type": "String(50)", "note": "Equipment tracking"},
+        {"name": "root_cause_category", "type": "String(100)", "note": "Analysis field"},
+        {"name": "corrective_action", "type": "Text", "note": "Resolution tracking"},
+        {"name": "resolved_by", "type": "Integer FK", "note": "Resolution audit"},
+        {"name": "resolution_timestamp", "type": "DateTime", "note": "Resolution audit"},
+        {"name": "updated_at", "type": "DateTime", "note": "Audit trail"}
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "HOLD_ENTRY": {
+      "reference_fields": [
+        {"name": "hold_entry_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "work_order_id_fk", "type": "VARCHAR(50)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "job_id_fk", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "client_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "hold_status", "type": "ENUM('ON_HOLD', 'RESUMED', 'CANCELLED')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "hold_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "hold_time", "type": "TIME", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "hold_reason", "type": "ENUM('MATERIAL_INSPECTION', 'QUALITY_ISSUE', 'ENGINEERING_REVIEW', 'CUSTOMER_REQUEST', 'MISSING_SPECIFICATION', 'EQUIPMENT_UNAVAILABLE', 'CAPACITY_CONSTRAINT', 'OTHER')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "hold_reason_detail", "type": "TEXT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "hold_approved_by_user_id", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "hold_approved_at", "type": "TIMESTAMP", "constraints": "NOT NULL", "nullable": false},
+        {"name": "resume_date", "type": "DATE", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "resume_time", "type": "TIME", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "resume_approved_by_user_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "resume_approved_at", "type": "TIMESTAMP", "constraints": "NULL DEFAULT NULL", "nullable": true},
+        {"name": "total_hold_duration_hours", "type": "DECIMAL(10,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "hold_notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "created_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "hold_entry_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "work_order_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "hold_status", "type": "SQLEnum(HoldStatus)", "constraints": "nullable=False, default=ON_HOLD, index", "nullable": false},
+        {"name": "hold_date", "type": "DateTime", "constraints": "index", "nullable": true},
+        {"name": "resume_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "total_hold_duration_hours", "type": "Numeric(10,2)", "constraints": "default=0", "nullable": true},
+        {"name": "hold_reason_category", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "hold_reason_description", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "quality_issue_type", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "expected_resolution_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "hold_initiated_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "hold_approved_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "resumed_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "job_id_fk", "reference_type": "VARCHAR(50) FK", "severity": "MEDIUM", "note": "Job-level tracking missing"},
+        {"name": "hold_time", "reference_type": "TIME", "severity": "LOW", "note": "Time portion missing"},
+        {"name": "hold_reason", "reference_type": "ENUM", "severity": "HIGH", "note": "Uses hold_reason_category String instead of ENUM"},
+        {"name": "hold_reason_detail", "reference_type": "TEXT NOT NULL", "severity": "MEDIUM", "note": "Has hold_reason_description but nullable"},
+        {"name": "hold_approved_at", "reference_type": "TIMESTAMP NOT NULL", "severity": "MEDIUM", "note": "Approval timestamp missing"},
+        {"name": "resume_time", "reference_type": "TIME", "severity": "LOW", "note": "Time portion missing"},
+        {"name": "resume_approved_by_user_id", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Has resumed_by instead"},
+        {"name": "resume_approved_at", "reference_type": "TIMESTAMP", "severity": "MEDIUM", "note": "Resume approval timestamp missing"},
+        {"name": "hold_notes", "reference_type": "TEXT", "severity": "LOW", "note": "Has notes field instead"},
+        {"name": "created_by", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail missing"}
+      ],
+      "renamed_fields": {
+        "client_id_fk": "client_id",
+        "work_order_id_fk": "work_order_id",
+        "hold_approved_by_user_id": "hold_approved_by"
+      },
+      "type_mismatches": [
+        {
+          "field": "hold_reason",
+          "reference_type": "ENUM('MATERIAL_INSPECTION', 'QUALITY_ISSUE', ...)",
+          "current_type": "String(100) hold_reason_category",
+          "severity": "HIGH",
+          "note": "Reference uses strict ENUM, current uses free-form String"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "hold_reason_category", "type": "String(100)", "note": "Alternative to ENUM"},
+        {"name": "hold_reason_description", "type": "Text", "note": "Detailed reason"},
+        {"name": "quality_issue_type", "type": "String(100)", "note": "Quality-specific tracking"},
+        {"name": "expected_resolution_date", "type": "DateTime", "note": "Resolution planning"},
+        {"name": "hold_initiated_by", "type": "Integer FK", "note": "Initiator tracking"},
+        {"name": "updated_at", "type": "DateTime", "note": "Audit trail"}
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "ATTENDANCE_ENTRY": {
+      "reference_fields": [
+        {"name": "attendance_entry_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "employee_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "client_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "shift_date", "type": "DATE", "constraints": "NOT NULL", "nullable": false},
+        {"name": "shift_type", "type": "ENUM('SHIFT_1ST', 'SHIFT_2ND', 'SAT_OT', 'SUN_OT', 'OTHER')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "scheduled_hours", "type": "DECIMAL(10,2)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "actual_hours", "type": "DECIMAL(10,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "is_absent", "type": "BOOLEAN", "constraints": "NOT NULL", "nullable": false},
+        {"name": "absence_type", "type": "ENUM('UNSCHEDULED_ABSENCE', 'VACATION', 'MEDICAL_LEAVE', 'PERSONAL_DAY', 'SUSPENDED', 'OTHER')", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "absence_hours", "type": "DECIMAL(10,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "covered_by_floating_employee_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "coverage_confirmed", "type": "BOOLEAN", "constraints": "DEFAULT FALSE", "nullable": true},
+        {"name": "recorded_by_user_id", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "recorded_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "verified_by_user_id", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "verified_at", "type": "TIMESTAMP", "constraints": "NULL DEFAULT NULL", "nullable": true},
+        {"name": "notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "created_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "attendance_entry_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "employee_id", "type": "Integer", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "shift_date", "type": "DateTime", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "shift_id", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "scheduled_hours", "type": "Numeric(5,2)", "constraints": "nullable=False", "nullable": false},
+        {"name": "actual_hours", "type": "Numeric(5,2)", "constraints": "default=0", "nullable": true},
+        {"name": "absence_hours", "type": "Numeric(5,2)", "constraints": "default=0", "nullable": true},
+        {"name": "is_absent", "type": "Integer", "constraints": "nullable=False, default=0, index", "nullable": false},
+        {"name": "absence_type", "type": "SQLEnum(AbsenceType)", "constraints": "none", "nullable": true},
+        {"name": "arrival_time", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "departure_time", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "is_late", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "is_early_departure", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "absence_reason", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "entered_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "shift_type", "reference_type": "ENUM", "severity": "HIGH", "note": "Uses shift_id FK instead of ENUM"},
+        {"name": "covered_by_floating_employee_id", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Coverage tracking missing"},
+        {"name": "coverage_confirmed", "reference_type": "BOOLEAN", "severity": "MEDIUM", "note": "Coverage confirmation missing"},
+        {"name": "recorded_by_user_id", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Has entered_by instead"},
+        {"name": "recorded_at", "reference_type": "TIMESTAMP", "severity": "MEDIUM", "note": "Record timestamp missing"},
+        {"name": "verified_by_user_id", "reference_type": "VARCHAR(20) FK", "severity": "LOW", "note": "Verification audit missing"},
+        {"name": "verified_at", "reference_type": "TIMESTAMP", "severity": "LOW", "note": "Verification audit missing"},
+        {"name": "created_by", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail missing"}
+      ],
+      "renamed_fields": {
+        "client_id_fk": "client_id",
+        "employee_id_fk": "employee_id"
+      },
+      "type_mismatches": [
+        {
+          "field": "employee_id",
+          "reference_type": "VARCHAR(20) FK",
+          "current_type": "Integer FK",
+          "severity": "HIGH",
+          "note": "Must match EMPLOYEE.employee_id type"
+        },
+        {
+          "field": "absence_type",
+          "reference_type": "ENUM('UNSCHEDULED_ABSENCE', 'VACATION', 'MEDICAL_LEAVE', 'PERSONAL_DAY', 'SUSPENDED', 'OTHER')",
+          "current_type": "SQLEnum('UNSCHEDULED_ABSENCE', 'VACATION', 'MEDICAL_LEAVE', 'PERSONAL_LEAVE')",
+          "severity": "MEDIUM",
+          "note": "Missing SUSPENDED and OTHER values, PERSONAL_DAY renamed to PERSONAL_LEAVE"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "shift_id", "type": "Integer FK", "note": "Alternative to shift_type ENUM"},
+        {"name": "arrival_time", "type": "DateTime", "note": "Time tracking"},
+        {"name": "departure_time", "type": "DateTime", "note": "Time tracking"},
+        {"name": "is_late", "type": "Integer", "note": "Punctuality tracking"},
+        {"name": "is_early_departure", "type": "Integer", "note": "Punctuality tracking"},
+        {"name": "absence_reason", "type": "Text", "note": "Detailed reason"},
+        {"name": "updated_at", "type": "DateTime", "note": "Audit trail"}
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "QUALITY_ENTRY": {
+      "reference_fields": [
+        {"name": "quality_entry_id", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "nullable": false},
+        {"name": "work_order_id_fk", "type": "VARCHAR(50)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "job_id_fk", "type": "VARCHAR(50)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "client_id_fk", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "shift_date", "type": "DATE", "constraints": "NOT NULL", "nullable": false},
+        {"name": "shift_type", "type": "ENUM('SHIFT_1ST', 'SHIFT_2ND', 'SAT_OT', 'SUN_OT', 'OTHER')", "constraints": "NOT NULL", "nullable": false},
+        {"name": "operation_checked", "type": "VARCHAR(50)", "constraints": "NOT NULL", "nullable": false},
+        {"name": "units_inspected", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "units_passed", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "units_defective", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "units_requiring_rework", "type": "INT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "units_requiring_repair", "type": "INT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "total_defects_count", "type": "INT", "constraints": "NOT NULL", "nullable": false},
+        {"name": "inspection_method", "type": "ENUM('VISUAL', 'MEASUREMENT', 'FUNCTIONAL_TEST', 'SAMPLE_CHECK', '100_PERCENT_INSPECTION', 'OTHER')", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "sample_size_percent", "type": "DECIMAL(5,2)", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "qc_inspector_id", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "recorded_by_user_id", "type": "VARCHAR(20)", "constraints": "NOT NULL FK", "nullable": false},
+        {"name": "recorded_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false},
+        {"name": "notes", "type": "TEXT", "constraints": "DEFAULT NULL", "nullable": true},
+        {"name": "created_by", "type": "VARCHAR(20)", "constraints": "DEFAULT NULL FK", "nullable": true},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "NOT NULL DEFAULT CURRENT_TIMESTAMP", "nullable": false}
+      ],
+      "current_fields": [
+        {"name": "quality_entry_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "work_order_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "shift_date", "type": "DateTime", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "inspection_date", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "units_inspected", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "units_passed", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "units_defective", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "total_defects_count", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "inspection_stage", "type": "String(50)", "constraints": "none", "nullable": true},
+        {"name": "process_step", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "is_first_pass", "type": "Integer", "constraints": "default=1", "nullable": true},
+        {"name": "units_scrapped", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "units_reworked", "type": "Integer", "constraints": "default=0", "nullable": true},
+        {"name": "ppm", "type": "Numeric(12,2)", "constraints": "none", "nullable": true},
+        {"name": "dpmo", "type": "Numeric(12,2)", "constraints": "none", "nullable": true},
+        {"name": "fpy_percentage", "type": "Numeric(8,4)", "constraints": "none", "nullable": true},
+        {"name": "inspection_method", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "inspector_id", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [
+        {"name": "job_id_fk", "reference_type": "VARCHAR(50) FK", "severity": "MEDIUM", "note": "Job-level tracking missing"},
+        {"name": "shift_type", "reference_type": "ENUM", "severity": "HIGH", "note": "Shift classification missing"},
+        {"name": "operation_checked", "reference_type": "VARCHAR(50) NOT NULL", "severity": "MEDIUM", "note": "Operation tracking missing"},
+        {"name": "units_requiring_rework", "reference_type": "INT", "severity": "LOW", "note": "Has units_reworked instead"},
+        {"name": "units_requiring_repair", "reference_type": "INT", "severity": "LOW", "note": "Missing repair tracking"},
+        {"name": "sample_size_percent", "reference_type": "DECIMAL(5,2)", "severity": "LOW", "note": "Sample size tracking missing"},
+        {"name": "qc_inspector_id", "reference_type": "VARCHAR(20) FK NOT NULL", "severity": "MEDIUM", "note": "Has inspector_id but nullable"},
+        {"name": "recorded_by_user_id", "reference_type": "VARCHAR(20) FK NOT NULL", "severity": "MEDIUM", "note": "Recorder tracking missing"},
+        {"name": "recorded_at", "reference_type": "TIMESTAMP NOT NULL", "severity": "MEDIUM", "note": "Record timestamp missing"},
+        {"name": "created_by", "reference_type": "VARCHAR(20) FK", "severity": "MEDIUM", "note": "Audit trail missing"}
+      ],
+      "renamed_fields": {
+        "client_id_fk": "client_id",
+        "work_order_id_fk": "work_order_id",
+        "qc_inspector_id": "inspector_id"
+      },
+      "type_mismatches": [
+        {
+          "field": "inspection_method",
+          "reference_type": "ENUM('VISUAL', 'MEASUREMENT', 'FUNCTIONAL_TEST', 'SAMPLE_CHECK', '100_PERCENT_INSPECTION', 'OTHER')",
+          "current_type": "String(100)",
+          "severity": "MEDIUM",
+          "note": "Reference uses ENUM, current uses free-form String"
+        },
+        {
+          "field": "inspector_id",
+          "reference_type": "VARCHAR(20) NOT NULL FK",
+          "current_type": "Integer nullable FK",
+          "severity": "MEDIUM",
+          "note": "Type and nullability differ"
+        }
+      ],
+      "extra_fields_in_current": [
+        {"name": "inspection_date", "type": "DateTime", "note": "Additional date field"},
+        {"name": "inspection_stage", "type": "String(50)", "note": "Stage tracking"},
+        {"name": "process_step", "type": "String(100)", "note": "RTY calculation"},
+        {"name": "is_first_pass", "type": "Integer", "note": "FPY tracking"},
+        {"name": "units_scrapped", "type": "Integer", "note": "Scrap tracking"},
+        {"name": "units_reworked", "type": "Integer", "note": "Alternative to units_requiring_rework"},
+        {"name": "ppm", "type": "Numeric(12,2)", "note": "Cached KPI"},
+        {"name": "dpmo", "type": "Numeric(12,2)", "note": "Cached KPI"},
+        {"name": "fpy_percentage", "type": "Numeric(8,4)", "note": "Cached KPI"},
+        {"name": "updated_at", "type": "DateTime", "note": "Audit trail"}
+      ],
+      "status": "NEEDS_MIGRATION"
+    },
+    "DEFECT_DETAIL": {
+      "reference_fields": [],
+      "current_fields": [
+        {"name": "defect_detail_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "quality_entry_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "client_id_fk", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "defect_type", "type": "SQLEnum(DefectType)", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "defect_category", "type": "String(100)", "constraints": "none", "nullable": true},
+        {"name": "defect_count", "type": "Integer", "constraints": "nullable=False", "nullable": false},
+        {"name": "severity", "type": "String(20)", "constraints": "none", "nullable": true},
+        {"name": "location", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "description", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false}
+      ],
+      "missing_fields": [],
+      "renamed_fields": {},
+      "type_mismatches": [],
+      "extra_fields_in_current": [],
+      "note": "DEFECT_DETAIL is not in the reference schema - it is an extension in the current implementation",
+      "status": "NEW_TABLE"
+    },
+    "PRODUCT": {
+      "reference_fields": [],
+      "current_fields": [
+        {"name": "product_id", "type": "Integer", "constraints": "primary_key, autoincrement", "nullable": false},
+        {"name": "product_code", "type": "String(50)", "constraints": "unique, nullable=False, index", "nullable": false},
+        {"name": "product_name", "type": "String(100)", "constraints": "nullable=False", "nullable": false},
+        {"name": "description", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "ideal_cycle_time", "type": "DECIMAL(8,4)", "constraints": "nullable=True", "nullable": true},
+        {"name": "unit_of_measure", "type": "String(20)", "constraints": "nullable=False, default='units'", "nullable": false},
+        {"name": "is_active", "type": "Boolean", "constraints": "nullable=False, default=True, index", "nullable": false},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "TIMESTAMP", "constraints": "nullable=False, server_default=func.now(), onupdate", "nullable": false}
+      ],
+      "missing_fields": [],
+      "renamed_fields": {},
+      "type_mismatches": [],
+      "extra_fields_in_current": [],
+      "note": "PRODUCT table is not in the reference schema - current implementation uses it for cycle time configuration. Reference schema uses WORK_ORDER.ideal_cycle_time directly.",
+      "status": "NEW_TABLE"
+    },
+    "SHIFT": {
+      "reference_fields": [],
+      "current_fields": [
+        {"name": "shift_id", "type": "Integer", "constraints": "primary_key, autoincrement", "nullable": false},
+        {"name": "shift_name", "type": "String(50)", "constraints": "unique, nullable=False, index", "nullable": false},
+        {"name": "start_time", "type": "Time", "constraints": "nullable=False", "nullable": false},
+        {"name": "end_time", "type": "Time", "constraints": "nullable=False", "nullable": false},
+        {"name": "is_active", "type": "Boolean", "constraints": "nullable=False, default=True", "nullable": false},
+        {"name": "created_at", "type": "TIMESTAMP", "constraints": "nullable=False, server_default=func.now()", "nullable": false}
+      ],
+      "missing_fields": [],
+      "renamed_fields": {},
+      "type_mismatches": [],
+      "extra_fields_in_current": [],
+      "note": "SHIFT table is not in the reference schema - reference uses shift_type ENUM instead. Current implementation normalizes shift data into a separate table.",
+      "status": "NEW_TABLE"
+    },
+    "COVERAGE_ENTRY": {
+      "reference_fields": [],
+      "current_fields": [
+        {"name": "coverage_entry_id", "type": "String(50)", "constraints": "primary_key", "nullable": false},
+        {"name": "client_id", "type": "String(50)", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "floating_employee_id", "type": "Integer", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "covered_employee_id", "type": "Integer", "constraints": "FK, nullable=False, index", "nullable": false},
+        {"name": "shift_date", "type": "DateTime", "constraints": "nullable=False, index", "nullable": false},
+        {"name": "shift_id", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "coverage_start_time", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "coverage_end_time", "type": "DateTime", "constraints": "none", "nullable": true},
+        {"name": "coverage_hours", "type": "Integer", "constraints": "none", "nullable": true},
+        {"name": "coverage_reason", "type": "String(255)", "constraints": "none", "nullable": true},
+        {"name": "notes", "type": "Text", "constraints": "none", "nullable": true},
+        {"name": "assigned_by", "type": "Integer", "constraints": "FK", "nullable": true},
+        {"name": "created_at", "type": "DateTime", "constraints": "nullable=False, server_default=func.now()", "nullable": false},
+        {"name": "updated_at", "type": "DateTime", "constraints": "server_default=func.now(), onupdate", "nullable": true}
+      ],
+      "missing_fields": [],
+      "renamed_fields": {},
+      "type_mismatches": [],
+      "extra_fields_in_current": [],
+      "note": "COVERAGE_ENTRY is not in the reference schema - it is an extension to track floating pool coverage assignments. Reference schema handles coverage via ATTENDANCE_ENTRY.covered_by_floating_employee_id.",
+      "status": "NEW_TABLE"
+    }
+  },
+  "summary": {
+    "total_tables_reference": 12,
+    "total_tables_current": 16,
+    "reference_tables": [
+      "CLIENT",
+      "EMPLOYEE",
+      "USER",
+      "WORK_ORDER",
+      "JOB",
+      "FLOATING_POOL",
+      "PART_OPPORTUNITIES",
+      "PRODUCTION_ENTRY",
+      "DOWNTIME_ENTRY",
+      "HOLD_ENTRY",
+      "ATTENDANCE_ENTRY",
+      "QUALITY_ENTRY"
+    ],
+    "current_tables": [
+      "CLIENT",
+      "EMPLOYEE",
+      "USER",
+      "WORK_ORDER",
+      "JOB",
+      "FLOATING_POOL",
+      "PART_OPPORTUNITIES",
+      "PRODUCTION_ENTRY",
+      "DOWNTIME_ENTRY",
+      "HOLD_ENTRY",
+      "ATTENDANCE_ENTRY",
+      "QUALITY_ENTRY",
+      "DEFECT_DETAIL",
+      "PRODUCT",
+      "SHIFT",
+      "COVERAGE_ENTRY"
+    ],
+    "missing_tables": [],
+    "extra_tables_in_current": [
+      "DEFECT_DETAIL",
+      "PRODUCT",
+      "SHIFT",
+      "COVERAGE_ENTRY"
+    ],
+    "tables_needing_migration": [
+      "EMPLOYEE",
+      "FLOATING_POOL",
+      "PRODUCTION_ENTRY",
+      "DOWNTIME_ENTRY",
+      "HOLD_ENTRY",
+      "ATTENDANCE_ENTRY",
+      "QUALITY_ENTRY"
+    ],
+    "tables_compatible": [
+      "CLIENT",
+      "USER"
+    ],
+    "tables_extended": [
+      "WORK_ORDER",
+      "JOB",
+      "PART_OPPORTUNITIES"
+    ],
+    "fields_needing_migration": 67,
+    "critical_differences": [
+      {
+        "issue": "EMPLOYEE.employee_id type mismatch",
+        "reference": "VARCHAR(20) PRIMARY KEY",
+        "current": "Integer autoincrement",
+        "impact": "HIGH - All FK references to EMPLOYEE must be updated",
+        "affected_tables": ["FLOATING_POOL", "ATTENDANCE_ENTRY", "QUALITY_ENTRY", "JOB", "COVERAGE_ENTRY"]
+      },
+      {
+        "issue": "shift_type ENUM vs SHIFT table FK",
+        "reference": "ENUM('SHIFT_1ST', 'SHIFT_2ND', 'SAT_OT', 'SUN_OT', 'OTHER')",
+        "current": "Integer FK to SHIFT table",
+        "impact": "HIGH - Different architectural approach",
+        "affected_tables": ["PRODUCTION_ENTRY", "DOWNTIME_ENTRY", "HOLD_ENTRY", "ATTENDANCE_ENTRY", "QUALITY_ENTRY"]
+      },
+      {
+        "issue": "USER.role ENUM values differ",
+        "reference": "OPERATOR_DATAENTRY, LEADER_DATACONFIG, POWERUSER, ADMIN",
+        "current": "admin, poweruser, leader, operator",
+        "impact": "MEDIUM - Role names and values differ"
+      },
+      {
+        "issue": "hold_reason ENUM vs String",
+        "reference": "ENUM('MATERIAL_INSPECTION', 'QUALITY_ISSUE', ...)",
+        "current": "String(100) hold_reason_category",
+        "impact": "MEDIUM - Data validation differs"
+      },
+      {
+        "issue": "downtime_reason ENUM values differ",
+        "reference": "EQUIPMENT_FAILURE, MATERIAL_SHORTAGE, CHANGEOVER_SETUP, LACK_OF_ORDERS, MAINTENANCE_SCHEDULED, QC_HOLD, MISSING_SPECIFICATION, OTHER",
+        "current": "EQUIPMENT_FAILURE, MATERIAL_SHORTAGE, SETUP_CHANGEOVER, QUALITY_HOLD, MAINTENANCE, POWER_OUTAGE, OTHER",
+        "impact": "MEDIUM - Different enum values"
+      },
+      {
+        "issue": "Missing audit trail fields",
+        "reference": "created_by, verified_by, reported_by_user_id throughout",
+        "current": "Some tables missing these FK audit fields",
+        "impact": "MEDIUM - Audit trail incomplete"
+      }
+    ],
+    "architectural_differences": [
+      {
+        "area": "Shift Management",
+        "reference": "Uses ENUM inline in each entry table",
+        "current": "Normalized into separate SHIFT table with FK references",
+        "recommendation": "Current approach is more flexible and recommended"
+      },
+      {
+        "area": "Product/Cycle Time",
+        "reference": "Cycle time stored directly on WORK_ORDER",
+        "current": "Normalized into separate PRODUCT table",
+        "recommendation": "Current approach allows reusable product definitions"
+      },
+      {
+        "area": "Coverage Tracking",
+        "reference": "Single field on ATTENDANCE_ENTRY.covered_by_floating_employee_id",
+        "current": "Separate COVERAGE_ENTRY table for detailed tracking",
+        "recommendation": "Current approach allows better coverage history"
+      },
+      {
+        "area": "Defect Details",
+        "reference": "Not present - total counts only",
+        "current": "DEFECT_DETAIL table for granular defect categorization",
+        "recommendation": "Current approach enables better quality analysis"
+      }
+    ],
+    "migration_priority": {
+      "HIGH": [
+        "EMPLOYEE.employee_id type alignment",
+        "shift_type vs shift_id resolution",
+        "Missing is_active on EMPLOYEE"
+      ],
+      "MEDIUM": [
+        "Role ENUM standardization",
+        "Missing audit trail fields",
+        "hold_reason ENUM standardization"
+      ],
+      "LOW": [
+        "Field length adjustments",
+        "Default value alignment",
+        "Extra fields in current (mostly beneficial)"
+      ]
+    }
+  }
+}

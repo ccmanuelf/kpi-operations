@@ -25,6 +25,10 @@ class Employee(Base):
     # Floating pool flag
     is_floating_pool = Column(Integer, nullable=False, default=0, index=True)  # Boolean: 0=regular, 1=floating
 
+    # Status and department
+    is_active = Column(Integer, nullable=False, default=1, index=True)  # Soft delete: 1=active, 0=inactive
+    department = Column(String(50))  # Department classification
+
     # Additional info
     contact_phone = Column(String(50))
     contact_email = Column(String(255))
@@ -33,3 +37,4 @@ class Employee(Base):
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

@@ -18,20 +18,80 @@ class HoldStatusEnum(str, Enum):
     SCRAPPED = "SCRAPPED"
 
 
+class HoldReasonEnum(str, Enum):
+    """Hold reason enum for strict validation"""
+    MATERIAL_INSPECTION = "MATERIAL_INSPECTION"
+    QUALITY_ISSUE = "QUALITY_ISSUE"
+    ENGINEERING_REVIEW = "ENGINEERING_REVIEW"
+    CUSTOMER_REQUEST = "CUSTOMER_REQUEST"
+    MISSING_SPECIFICATION = "MISSING_SPECIFICATION"
+    EQUIPMENT_UNAVAILABLE = "EQUIPMENT_UNAVAILABLE"
+    CAPACITY_CONSTRAINT = "CAPACITY_CONSTRAINT"
+    OTHER = "OTHER"
+
+
 class WIPHoldCreate(BaseModel):
-    """Create WIP hold record"""
+    """Create WIP hold record - aligned with HOLD_ENTRY schema"""
+    # Multi-tenant isolation - REQUIRED
     client_id: str = Field(..., min_length=1, max_length=50)
-    product_id: int = Field(..., gt=0)
-    shift_id: int = Field(..., gt=0)
-    hold_date: date
-    work_order_number: str = Field(..., max_length=50)
-    quantity_held: int = Field(..., gt=0)
-    hold_reason: str = Field(..., max_length=255)
-    hold_category: str = Field(..., max_length=50)
+
+    # Work order reference - REQUIRED (replaces product_id/shift_id)
+    work_order_id: str = Field(..., min_length=1, max_length=50)
+    job_id: Optional[str] = Field(None, max_length=50, description="Job ID for job-level tracking")
+
+    # Hold tracking - hold_status is REQUIRED
+    hold_status: HoldStatusEnum = Field(default=HoldStatusEnum.ON_HOLD, description="Hold status - defaults to ON_HOLD")
+    hold_date: Optional[date] = Field(None, description="Hold date")
+
+    # Hold reason details
+    hold_reason_category: Optional[str] = Field(None, max_length=100, description="Hold reason category")
+    hold_reason: Optional[HoldReasonEnum] = Field(None, description="Enum-based hold reason")
+    hold_reason_description: Optional[str] = Field(None, description="Detailed hold description")
+
+    # Quality hold specifics
+    quality_issue_type: Optional[str] = Field(None, max_length=100)
     expected_resolution_date: Optional[date] = None
+
+    # Metadata
     notes: Optional[str] = None
-    # P2-001: Optional hold timestamp (defaults to now if not provided)
-    hold_timestamp: Optional[datetime] = None
+
+    @classmethod
+    def from_legacy_csv(cls, data: dict) -> "WIPHoldCreate":
+        """Create from legacy CSV format with field mapping"""
+        # Map legacy hold_reason string to enum
+        reason_mapping = {
+            "MATERIAL": HoldReasonEnum.MATERIAL_INSPECTION,
+            "MATERIAL_INSPECTION": HoldReasonEnum.MATERIAL_INSPECTION,
+            "QUALITY": HoldReasonEnum.QUALITY_ISSUE,
+            "QUALITY_ISSUE": HoldReasonEnum.QUALITY_ISSUE,
+            "ENGINEERING": HoldReasonEnum.ENGINEERING_REVIEW,
+            "ENGINEERING_REVIEW": HoldReasonEnum.ENGINEERING_REVIEW,
+            "CUSTOMER": HoldReasonEnum.CUSTOMER_REQUEST,
+            "CUSTOMER_REQUEST": HoldReasonEnum.CUSTOMER_REQUEST,
+            "MISSING_SPEC": HoldReasonEnum.MISSING_SPECIFICATION,
+            "MISSING_SPECIFICATION": HoldReasonEnum.MISSING_SPECIFICATION,
+            "EQUIPMENT": HoldReasonEnum.EQUIPMENT_UNAVAILABLE,
+            "EQUIPMENT_UNAVAILABLE": HoldReasonEnum.EQUIPMENT_UNAVAILABLE,
+            "CAPACITY": HoldReasonEnum.CAPACITY_CONSTRAINT,
+            "CAPACITY_CONSTRAINT": HoldReasonEnum.CAPACITY_CONSTRAINT,
+        }
+
+        raw_reason = (data.get('hold_category') or data.get('hold_reason') or 'OTHER').upper()
+        reason_enum = reason_mapping.get(raw_reason, HoldReasonEnum.OTHER)
+
+        return cls(
+            client_id=data.get('client_id', ''),
+            work_order_id=data.get('work_order_number') or data.get('work_order_id', ''),
+            job_id=data.get('job_id'),
+            hold_status=HoldStatusEnum.ON_HOLD,
+            hold_date=data.get('hold_date'),
+            hold_reason_category=data.get('hold_category') or data.get('hold_reason_category'),
+            hold_reason=reason_enum,
+            hold_reason_description=data.get('hold_reason') or data.get('hold_reason_description'),
+            quality_issue_type=data.get('quality_issue_type'),
+            expected_resolution_date=data.get('expected_resolution_date'),
+            notes=data.get('notes')
+        )
 
 
 class WIPHoldUpdate(BaseModel):
@@ -62,8 +122,10 @@ class WIPHoldResponse(BaseModel):
     shift_id: int
     hold_date: date
     work_order_number: str
+    job_id: Optional[str] = None
     quantity_held: int
     hold_reason: str
+    hold_reason_enum: Optional[str] = None
     hold_category: str
     expected_resolution_date: Optional[date]
     release_date: Optional[date]
