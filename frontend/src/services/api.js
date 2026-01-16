@@ -253,5 +253,83 @@ export default {
   },
   getDefectTypes() {
     return api.get('/defect-types')
+  },
+
+  // ============================================
+  // Dashboard Preferences
+  // ============================================
+  getDashboardPreferences() {
+    return api.get('/preferences/dashboard')
+  },
+  saveDashboardPreferences(data) {
+    return api.put('/preferences/dashboard', data)
+  },
+  updateDashboardPreferences(data) {
+    return api.patch('/preferences/dashboard', data)
+  },
+  getDashboardDefaults(role) {
+    return api.get(`/preferences/defaults/${role}`)
+  },
+  resetDashboardPreferences() {
+    return api.post('/preferences/reset')
+  },
+
+  // ============================================
+  // Saved Filters
+  // ============================================
+  getSavedFilters(params) {
+    return api.get('/filters', { params })
+  },
+  createSavedFilter(data) {
+    return api.post('/filters', data)
+  },
+  getSavedFilter(filterId) {
+    return api.get(`/filters/${filterId}`)
+  },
+  updateSavedFilter(filterId, data) {
+    return api.put(`/filters/${filterId}`, data)
+  },
+  deleteSavedFilter(filterId) {
+    return api.delete(`/filters/${filterId}`)
+  },
+  applyFilter(filterId) {
+    return api.post(`/filters/${filterId}/apply`)
+  },
+  setDefaultFilter(filterId) {
+    return api.post(`/filters/${filterId}/set-default`)
+  },
+  duplicateFilter(filterId, newName) {
+    return api.post(`/filters/${filterId}/duplicate`, { new_name: newName })
+  },
+  getFilterHistory() {
+    return api.get('/filters/history/recent')
+  },
+  clearFilterHistory() {
+    return api.delete('/filters/history')
+  },
+
+  // ============================================
+  // QR Code
+  // ============================================
+  lookupQR(data) {
+    return api.get('/qr/lookup', { params: { data } })
+  },
+  getWorkOrderQR(workOrderId) {
+    return api.get(`/qr/work-order/${workOrderId}/image`, { responseType: 'blob' })
+  },
+  getProductQR(productId) {
+    return api.get(`/qr/product/${productId}/image`, { responseType: 'blob' })
+  },
+  getJobQR(jobId) {
+    return api.get(`/qr/job/${jobId}/image`, { responseType: 'blob' })
+  },
+  getEmployeeQR(employeeId) {
+    return api.get(`/qr/employee/${employeeId}/image`, { responseType: 'blob' })
+  },
+  generateQR(entityType, entityId) {
+    return api.post('/qr/generate', { entity_type: entityType, entity_id: entityId })
+  },
+  generateQRImage(entityType, entityId) {
+    return api.post('/qr/generate/image', { entity_type: entityType, entity_id: entityId }, { responseType: 'blob' })
   }
 }

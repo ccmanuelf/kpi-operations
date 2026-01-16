@@ -10,6 +10,16 @@ from .production import (
     CSVUploadResponse,
     KPICalculationResponse
 )
+from .preferences import (
+    DashboardWidgetConfig,
+    DashboardPreferences,
+    DashboardPreferencesUpdate,
+    PreferenceResponse,
+    WidgetDefaultResponse,
+    RoleDefaultsResponse,
+    ResetPreferencesRequest,
+    ResetPreferencesResponse
+)
 
 __all__ = [
     "UserCreate",
@@ -22,4 +32,13 @@ __all__ = [
     "ProductionEntryWithKPIs",
     "CSVUploadResponse",
     "KPICalculationResponse",
+    # Preferences models
+    "DashboardWidgetConfig",
+    "DashboardPreferences",
+    "DashboardPreferencesUpdate",
+    "PreferenceResponse",
+    "WidgetDefaultResponse",
+    "RoleDefaultsResponse",
+    "ResetPreferencesRequest",
+    "ResetPreferencesResponse",
 ]
