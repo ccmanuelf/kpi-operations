@@ -45,3 +45,9 @@ mypy==1.8.0
 # Email & Reports
 sendgrid==6.11.0
 APScheduler==3.10.4
+
+# System Monitoring
+psutil>=5.9.0
+
+# QR Code Generation
+qrcode[pil]>=7.4.0
