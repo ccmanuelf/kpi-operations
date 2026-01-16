@@ -34,6 +34,7 @@ class Job(Base):
     # Quantity tracking
     planned_quantity = Column(Integer)
     completed_quantity = Column(Integer, default=0)
+    quantity_scrapped = Column(Integer, default=0)  # Scrap tracking for quality metrics
 
     # Time tracking
     planned_hours = Column(Numeric(10, 2))

@@ -54,21 +54,21 @@ async def upload_downtime_csv(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Upload downtime events via CSV
+    Upload downtime events via CSV - ALIGNED WITH DOWNTIME_ENTRY SCHEMA
 
     Required CSV columns:
-    - product_id (int)
-    - shift_id (int)
-    - production_date (YYYY-MM-DD)
-    - downtime_category (str, max 50)
-    - downtime_reason (str, max 255)
-    - duration_hours (decimal, 0-24)
+    - client_id (str) - Multi-tenant isolation
+    - work_order_id OR work_order_number (str) - Work order reference
+    - shift_date OR production_date (YYYY-MM-DD) - Date tracking
+    - downtime_category OR downtime_reason (str) - Maps to enum: EQUIPMENT_FAILURE, MATERIAL_SHORTAGE, etc.
+    - duration_hours (decimal) OR downtime_duration_minutes (int) - Duration
 
     Optional columns:
-    - machine_id (str, max 50)
-    - work_order_number (str, max 50)
+    - machine_id (str, max 100)
+    - equipment_code (str, max 50)
+    - root_cause_category (str, max 100)
+    - corrective_action (text)
     - notes (text)
-    - client_id (str, for validation)
     """
     if not file.filename.endswith('.csv'):
         raise HTTPException(
@@ -91,26 +91,40 @@ async def upload_downtime_csv(
         total_rows += 1
 
         try:
-            # SECURITY: Validate client_id if present
-            if 'client_id' in row and row.get('client_id'):
-                verify_client_access(current_user, row['client_id'])
+            # SECURITY: Validate client_id - REQUIRED
+            client_id = row.get('client_id')
+            if not client_id:
+                raise ValueError("client_id is required")
+            verify_client_access(current_user, client_id)
 
-            # Parse CSV row
-            entry = DowntimeEventCreate(
-                product_id=int(row['product_id']),
-                shift_id=int(row['shift_id']),
-                production_date=datetime.strptime(row['production_date'], '%Y-%m-%d').date(),
-                downtime_category=row['downtime_category'],
-                downtime_reason=row['downtime_reason'],
-                duration_hours=Decimal(row['duration_hours']),
-                machine_id=row.get('machine_id') or None,
-                work_order_number=row.get('work_order_number') or None,
-                notes=row.get('notes')
-            )
+            # Parse date - support both field names
+            shift_date_str = row.get('shift_date') or row.get('production_date')
+            if not shift_date_str:
+                raise ValueError("shift_date or production_date is required")
+            shift_date = datetime.strptime(shift_date_str, '%Y-%m-%d').date()
+
+            # Build data dict for legacy CSV mapping
+            csv_data = {
+                'client_id': client_id,
+                'work_order_number': row.get('work_order_number') or row.get('work_order_id'),
+                'shift_date': shift_date,
+                'downtime_category': row.get('downtime_category'),
+                'downtime_reason': row.get('downtime_reason'),
+                'duration_hours': row.get('duration_hours'),
+                'downtime_duration_minutes': int(row['downtime_duration_minutes']) if row.get('downtime_duration_minutes') else None,
+                'machine_id': row.get('machine_id'),
+                'equipment_code': row.get('equipment_code'),
+                'root_cause_category': row.get('root_cause_category'),
+                'corrective_action': row.get('corrective_action'),
+                'notes': row.get('notes')
+            }
+
+            # Use the from_legacy_csv method for proper field mapping
+            entry = DowntimeEventCreate.from_legacy_csv(csv_data)
 
             # Create entry
             created = create_downtime_event(db, entry, current_user)
-            created_ids.append(created.downtime_id)
+            created_ids.append(created.downtime_entry_id)
             successful += 1
 
         except Exception as e:
@@ -138,21 +152,21 @@ async def upload_holds_csv(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Upload WIP hold/resume events via CSV
+    Upload WIP hold/resume events via CSV - ALIGNED WITH HOLD_ENTRY SCHEMA
 
     Required CSV columns:
-    - product_id (int)
-    - shift_id (int)
-    - hold_date (YYYY-MM-DD)
-    - work_order_number (str, max 50)
-    - quantity_held (int, > 0)
-    - hold_reason (str, max 255)
-    - hold_category (str, max 50)
+    - client_id (str) - Multi-tenant isolation
+    - work_order_id OR work_order_number (str) - Work order reference
 
     Optional columns:
+    - job_id (str) - Job-level tracking
+    - hold_date (YYYY-MM-DD) - When hold was created
+    - hold_category OR hold_reason_category (str) - Hold category
+    - hold_reason (str) - Maps to enum: QUALITY_ISSUE, MATERIAL_INSPECTION, etc.
+    - hold_reason_description (str) - Detailed description
+    - quality_issue_type (str, max 100)
     - expected_resolution_date (YYYY-MM-DD)
     - notes (text)
-    - client_id (str, for validation)
     """
     if not file.filename.endswith('.csv'):
         raise HTTPException(
@@ -174,28 +188,41 @@ async def upload_holds_csv(
         total_rows += 1
 
         try:
-            if 'client_id' in row and row.get('client_id'):
-                verify_client_access(current_user, row['client_id'])
+            # SECURITY: Validate client_id - REQUIRED
+            client_id = row.get('client_id')
+            if not client_id:
+                raise ValueError("client_id is required")
+            verify_client_access(current_user, client_id)
 
             # Parse expected resolution date if present
             expected_date = None
             if row.get('expected_resolution_date'):
                 expected_date = datetime.strptime(row['expected_resolution_date'], '%Y-%m-%d').date()
 
-            entry = WIPHoldCreate(
-                product_id=int(row['product_id']),
-                shift_id=int(row['shift_id']),
-                hold_date=datetime.strptime(row['hold_date'], '%Y-%m-%d').date(),
-                work_order_number=row['work_order_number'],
-                quantity_held=int(row['quantity_held']),
-                hold_reason=row['hold_reason'],
-                hold_category=row['hold_category'],
-                expected_resolution_date=expected_date,
-                notes=row.get('notes')
-            )
+            # Parse hold date if present
+            hold_date = None
+            if row.get('hold_date'):
+                hold_date = datetime.strptime(row['hold_date'], '%Y-%m-%d').date()
+
+            # Build data dict for legacy CSV mapping
+            csv_data = {
+                'client_id': client_id,
+                'work_order_number': row.get('work_order_number') or row.get('work_order_id'),
+                'job_id': row.get('job_id'),
+                'hold_date': hold_date,
+                'hold_category': row.get('hold_category') or row.get('hold_reason_category'),
+                'hold_reason': row.get('hold_reason'),
+                'hold_reason_description': row.get('hold_reason_description'),
+                'quality_issue_type': row.get('quality_issue_type'),
+                'expected_resolution_date': expected_date,
+                'notes': row.get('notes')
+            }
+
+            # Use the from_legacy_csv method for proper field mapping
+            entry = WIPHoldCreate.from_legacy_csv(csv_data)
 
             created = create_wip_hold(db, entry, current_user)
-            created_ids.append(created.hold_id)
+            created_ids.append(created.hold_entry_id)
             successful += 1
 
         except Exception as e:
@@ -223,18 +250,28 @@ async def upload_attendance_csv(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Upload attendance records via CSV
+    Upload attendance records via CSV - ALIGNED WITH ATTENDANCE_ENTRY SCHEMA
 
     Required CSV columns:
-    - employee_id (int)
-    - shift_id (int)
-    - attendance_date (YYYY-MM-DD)
-    - status (str: Present, Absent, Late, Leave)
+    - client_id (str) - Multi-tenant isolation
+    - employee_id (int) - Employee reference
+    - shift_date OR attendance_date (YYYY-MM-DD) - Date tracking
     - scheduled_hours (decimal, 0-24)
-    - actual_hours_worked (decimal, 0-24)
+
+    Status mapping (legacy → new schema):
+    - status: Present → is_absent=0
+    - status: Absent → is_absent=1, absence_type=UNSCHEDULED_ABSENCE
+    - status: Late → is_absent=0, is_late=1
+    - status: Leave → is_absent=1, absence_type=PERSONAL_LEAVE
+    - status: Vacation → is_absent=1, absence_type=VACATION
+    - status: Medical → is_absent=1, absence_type=MEDICAL_LEAVE
 
     Optional columns:
-    - absence_reason (str, max 100)
+    - shift_id (int)
+    - actual_hours_worked OR actual_hours (decimal)
+    - covered_by_employee_id (int) - Floating pool coverage
+    - coverage_confirmed (int: 0 or 1)
+    - absence_reason (text)
     - notes (text)
     """
     if not file.filename.endswith('.csv'):
@@ -257,19 +294,38 @@ async def upload_attendance_csv(
         total_rows += 1
 
         try:
-            entry = AttendanceRecordCreate(
-                employee_id=int(row['employee_id']),
-                shift_id=int(row['shift_id']),
-                attendance_date=datetime.strptime(row['attendance_date'], '%Y-%m-%d').date(),
-                status=row['status'],
-                scheduled_hours=Decimal(row['scheduled_hours']),
-                actual_hours_worked=Decimal(row['actual_hours_worked']),
-                absence_reason=row.get('absence_reason'),
-                notes=row.get('notes')
-            )
+            # SECURITY: Validate client_id - REQUIRED
+            client_id = row.get('client_id')
+            if not client_id:
+                raise ValueError("client_id is required")
+            verify_client_access(current_user, client_id)
+
+            # Parse date - support both field names
+            shift_date_str = row.get('shift_date') or row.get('attendance_date')
+            if not shift_date_str:
+                raise ValueError("shift_date or attendance_date is required")
+            shift_date = datetime.strptime(shift_date_str, '%Y-%m-%d').date()
+
+            # Build data dict for legacy CSV mapping
+            csv_data = {
+                'client_id': client_id,
+                'employee_id': row.get('employee_id'),
+                'shift_date': shift_date,
+                'shift_id': row.get('shift_id'),
+                'status': row.get('status', 'Present'),
+                'scheduled_hours': row.get('scheduled_hours', 8),
+                'actual_hours_worked': row.get('actual_hours_worked') or row.get('actual_hours'),
+                'covered_by_employee_id': row.get('covered_by_employee_id'),
+                'coverage_confirmed': row.get('coverage_confirmed', 0),
+                'absence_reason': row.get('absence_reason'),
+                'notes': row.get('notes')
+            }
+
+            # Use the from_legacy_csv method for proper field mapping
+            entry = AttendanceRecordCreate.from_legacy_csv(csv_data)
 
             created = create_attendance_record(db, entry, current_user)
-            created_ids.append(created.attendance_id)
+            created_ids.append(created.attendance_entry_id)
             successful += 1
 
         except Exception as e:
@@ -365,24 +421,28 @@ async def upload_quality_csv(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Upload quality inspection records via CSV
+    Upload quality inspection records via CSV - ALIGNED WITH QUALITY_ENTRY SCHEMA
 
     Required CSV columns:
-    - product_id (int)
-    - shift_id (int)
-    - inspection_date (YYYY-MM-DD)
+    - client_id (str) - Multi-tenant isolation
+    - work_order_id OR work_order_number (str) - Work order reference
+    - shift_date OR inspection_date (YYYY-MM-DD) - Date tracking
     - units_inspected (int, > 0)
-    - inspection_stage (str: Incoming, In-Process, Final)
+    - units_passed (int, >= 0) - For FPY calculation
 
     Optional columns:
-    - work_order_number (str, max 50)
-    - defects_found (int, >= 0)
-    - defect_type (str, max 100)
-    - defect_category (str, max 50)
-    - scrap_units (int, >= 0)
-    - rework_units (int, >= 0)
+    - job_id (str) - Job-level tracking
+    - units_defective OR defects_found (int) - For PPM
+    - total_defects_count (int) - For DPMO (defaults to units_defective)
+    - inspection_stage (str: Incoming, In-Process, Final)
+    - process_step (str) - For RTY calculation
+    - operation_checked (str, max 50)
+    - is_first_pass (int: 0 or 1)
+    - units_scrapped OR scrap_units (int)
+    - units_reworked OR rework_units (int)
+    - units_requiring_repair (int)
+    - inspection_method (str, max 100)
     - notes (text)
-    - client_id (str, for validation)
     """
     if not file.filename.endswith('.csv'):
         raise HTTPException(
@@ -404,26 +464,56 @@ async def upload_quality_csv(
         total_rows += 1
 
         try:
-            if 'client_id' in row and row.get('client_id'):
-                verify_client_access(current_user, row['client_id'])
+            # SECURITY: Validate client_id - REQUIRED
+            client_id = row.get('client_id')
+            if not client_id:
+                raise ValueError("client_id is required")
+            verify_client_access(current_user, client_id)
 
-            entry = QualityInspectionCreate(
-                product_id=int(row['product_id']),
-                shift_id=int(row['shift_id']),
-                inspection_date=datetime.strptime(row['inspection_date'], '%Y-%m-%d').date(),
-                work_order_number=row.get('work_order_number'),
-                units_inspected=int(row['units_inspected']),
-                defects_found=int(row.get('defects_found', 0)),
-                defect_type=row.get('defect_type'),
-                defect_category=row.get('defect_category'),
-                scrap_units=int(row.get('scrap_units', 0)),
-                rework_units=int(row.get('rework_units', 0)),
-                inspection_stage=row['inspection_stage'],
-                notes=row.get('notes')
-            )
+            # Parse date - support both field names
+            shift_date_str = row.get('shift_date') or row.get('inspection_date')
+            if not shift_date_str:
+                raise ValueError("shift_date or inspection_date is required")
+            shift_date = datetime.strptime(shift_date_str, '%Y-%m-%d').date()
+
+            # Parse inspection_date if separate from shift_date
+            inspection_date = None
+            if row.get('inspection_date'):
+                inspection_date = datetime.strptime(row['inspection_date'], '%Y-%m-%d').date()
+
+            # Calculate units_passed if not provided
+            units_inspected = int(row.get('units_inspected', 0))
+            defects_found = int(row.get('defects_found') or row.get('units_defective') or 0)
+            units_passed = int(row.get('units_passed', units_inspected - defects_found))
+
+            # Build data dict for legacy CSV mapping
+            csv_data = {
+                'client_id': client_id,
+                'work_order_number': row.get('work_order_number') or row.get('work_order_id'),
+                'job_id': row.get('job_id'),
+                'shift_date': shift_date,
+                'inspection_date': inspection_date,
+                'units_inspected': units_inspected,
+                'units_passed': units_passed,
+                'defects_found': defects_found,
+                'units_defective': defects_found,
+                'total_defects_count': int(row.get('total_defects_count') or defects_found),
+                'inspection_stage': row.get('inspection_stage'),
+                'process_step': row.get('process_step'),
+                'operation_checked': row.get('operation_checked'),
+                'is_first_pass': int(row.get('is_first_pass', 1)),
+                'scrap_units': int(row.get('scrap_units') or row.get('units_scrapped') or 0),
+                'rework_units': int(row.get('rework_units') or row.get('units_reworked') or 0),
+                'units_requiring_repair': int(row.get('units_requiring_repair', 0)),
+                'inspection_method': row.get('inspection_method'),
+                'notes': row.get('notes')
+            }
+
+            # Use the from_legacy_csv method for proper field mapping
+            entry = QualityInspectionCreate.from_legacy_csv(csv_data)
 
             created = create_quality_inspection(db, entry, current_user)
-            created_ids.append(created.inspection_id)
+            created_ids.append(created.quality_entry_id)
             successful += 1
 
         except Exception as e:

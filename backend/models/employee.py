@@ -20,6 +20,13 @@ class EmployeeCreate(BaseModel):
         le=1,
         description="Boolean: 0=regular, 1=floating pool"
     )
+    is_active: Optional[int] = Field(
+        default=1,
+        ge=0,
+        le=1,
+        description="Boolean: 1=active, 0=inactive (soft delete)"
+    )
+    department: Optional[str] = Field(None, max_length=50, description="Department classification")
     contact_phone: Optional[str] = Field(None, max_length=50)
     contact_email: Optional[str] = Field(None, max_length=255)
     position: Optional[str] = Field(None, max_length=100)
@@ -32,6 +39,8 @@ class EmployeeUpdate(BaseModel):
     employee_name: Optional[str] = Field(None, min_length=1, max_length=255)
     client_id_assigned: Optional[str] = None
     is_floating_pool: Optional[int] = Field(None, ge=0, le=1)
+    is_active: Optional[int] = Field(None, ge=0, le=1)
+    department: Optional[str] = Field(None, max_length=50)
     contact_phone: Optional[str] = Field(None, max_length=50)
     contact_email: Optional[str] = Field(None, max_length=255)
     position: Optional[str] = Field(None, max_length=100)
@@ -45,11 +54,14 @@ class EmployeeResponse(BaseModel):
     employee_name: str
     client_id_assigned: Optional[str]
     is_floating_pool: int
+    is_active: Optional[int] = 1
+    department: Optional[str] = None
     contact_phone: Optional[str]
     contact_email: Optional[str]
     position: Optional[str]
     hire_date: Optional[datetime]
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

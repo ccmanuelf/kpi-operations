@@ -21,6 +21,7 @@ class QualityEntry(Base):
 
     # Work order reference
     work_order_id = Column(String(50), ForeignKey('WORK_ORDER.work_order_id'), nullable=False, index=True)
+    job_id = Column(String(50), ForeignKey('JOB.job_id'), index=True)  # Job-level tracking
 
     # Date tracking
     shift_date = Column(DateTime, nullable=False, index=True)
@@ -35,11 +36,13 @@ class QualityEntry(Base):
     # Process tracking
     inspection_stage = Column(String(50))  # "Incoming", "In-Process", "Final"
     process_step = Column(String(100))  # For RTY calculation
+    operation_checked = Column(String(50))  # Which operation was inspected
     is_first_pass = Column(Integer, default=1)  # Boolean: 1=first pass, 0=rework
 
     # Disposition
     units_scrapped = Column(Integer, default=0)
     units_reworked = Column(Integer, default=0)
+    units_requiring_repair = Column(Integer, default=0)  # Repair tracking
 
     # Calculated KPIs (cached for performance)
     ppm = Column(Numeric(12, 2))  # Parts Per Million

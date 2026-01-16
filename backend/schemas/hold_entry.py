@@ -16,6 +16,18 @@ class HoldStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+class HoldReason(str, enum.Enum):
+    """Hold reason classification - strict validation"""
+    MATERIAL_INSPECTION = "MATERIAL_INSPECTION"
+    QUALITY_ISSUE = "QUALITY_ISSUE"
+    ENGINEERING_REVIEW = "ENGINEERING_REVIEW"
+    CUSTOMER_REQUEST = "CUSTOMER_REQUEST"
+    MISSING_SPECIFICATION = "MISSING_SPECIFICATION"
+    EQUIPMENT_UNAVAILABLE = "EQUIPMENT_UNAVAILABLE"
+    CAPACITY_CONSTRAINT = "CAPACITY_CONSTRAINT"
+    OTHER = "OTHER"
+
+
 class HoldEntry(Base):
     """HOLD_ENTRY table - WIP hold/resume tracking for aging calculation"""
     __tablename__ = "HOLD_ENTRY"
@@ -29,6 +41,7 @@ class HoldEntry(Base):
 
     # Work order reference
     work_order_id = Column(String(50), ForeignKey('WORK_ORDER.work_order_id'), nullable=False, index=True)
+    job_id = Column(String(50), ForeignKey('JOB.job_id'), index=True)  # Job-level tracking
 
     # Hold tracking
     hold_status = Column(SQLEnum(HoldStatus), nullable=False, default=HoldStatus.ON_HOLD, index=True)
@@ -40,7 +53,8 @@ class HoldEntry(Base):
     total_hold_duration_hours = Column(Numeric(10, 2), default=0)
 
     # Hold reason details
-    hold_reason_category = Column(String(100))
+    hold_reason_category = Column(String(100))  # Kept for backward compatibility
+    hold_reason = Column(SQLEnum(HoldReason))  # Enum-based hold reason
     hold_reason_description = Column(Text)
 
     # Quality hold specifics

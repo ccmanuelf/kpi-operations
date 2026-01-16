@@ -8,17 +8,74 @@ from decimal import Decimal
 
 
 class ProductionEntryCreate(BaseModel):
-    """Create production entry"""
+    """Create production entry - aligned with PRODUCTION_ENTRY schema"""
+    # Multi-tenant isolation - REQUIRED
+    client_id: str = Field(..., min_length=1, max_length=50)
+
+    # References - REQUIRED
     product_id: int = Field(..., gt=0)
     shift_id: int = Field(..., gt=0)
-    production_date: date
-    work_order_number: Optional[str] = Field(None, max_length=50)
+    work_order_id: Optional[str] = Field(None, max_length=50, description="Work order reference")
+    job_id: Optional[str] = Field(None, max_length=50, description="Job ID for job-level tracking")
+
+    # Date tracking - both REQUIRED
+    production_date: date = Field(..., description="Production date")
+    shift_date: date = Field(..., description="Shift date - REQUIRED for KPI calculations")
+
+    # Production metrics - REQUIRED for KPI calculations
     units_produced: int = Field(..., gt=0)
     run_time_hours: Decimal = Field(..., gt=0, le=24)
     employees_assigned: int = Field(..., gt=0, le=100)
+    employees_present: Optional[int] = Field(None, ge=0, le=100, description="Employees actually present")
+
+    # Quality metrics
     defect_count: int = Field(default=0, ge=0)
     scrap_count: int = Field(default=0, ge=0)
+    rework_count: int = Field(default=0, ge=0)
+
+    # Time breakdown
+    setup_time_hours: Optional[Decimal] = Field(None, ge=0, le=24)
+    downtime_hours: Optional[Decimal] = Field(None, ge=0, le=24)
+    maintenance_hours: Optional[Decimal] = Field(None, ge=0, le=24)
+
+    # Performance calculation inputs
+    ideal_cycle_time: Optional[Decimal] = Field(None, gt=0, description="Hours per unit")
+
+    # Metadata
     notes: Optional[str] = None
+    entry_method: str = Field(default="MANUAL_ENTRY", description="MANUAL_ENTRY, CSV_UPLOAD, or API")
+
+    @classmethod
+    def from_legacy_csv(cls, data: dict) -> "ProductionEntryCreate":
+        """Create from legacy CSV format with field mapping"""
+        # Get production_date
+        prod_date = data.get('production_date')
+
+        # shift_date defaults to production_date if not provided
+        shift_date = data.get('shift_date') or prod_date
+
+        return cls(
+            client_id=data.get('client_id', ''),
+            product_id=int(data.get('product_id', 0)),
+            shift_id=int(data.get('shift_id', 0)),
+            work_order_id=data.get('work_order_number') or data.get('work_order_id'),
+            job_id=data.get('job_id'),
+            production_date=prod_date,
+            shift_date=shift_date,
+            units_produced=int(data.get('units_produced', 0)),
+            run_time_hours=Decimal(str(data.get('run_time_hours', 0))),
+            employees_assigned=int(data.get('employees_assigned', 1)),
+            employees_present=int(data['employees_present']) if data.get('employees_present') else None,
+            defect_count=int(data.get('defect_count', 0)),
+            scrap_count=int(data.get('scrap_count', 0)),
+            rework_count=int(data.get('rework_count', 0)),
+            setup_time_hours=Decimal(str(data['setup_time_hours'])) if data.get('setup_time_hours') else None,
+            downtime_hours=Decimal(str(data['downtime_hours'])) if data.get('downtime_hours') else None,
+            maintenance_hours=Decimal(str(data['maintenance_hours'])) if data.get('maintenance_hours') else None,
+            ideal_cycle_time=Decimal(str(data['ideal_cycle_time'])) if data.get('ideal_cycle_time') else None,
+            notes=data.get('notes'),
+            entry_method='CSV_UPLOAD'
+        )
 
 
 class ProductionEntryUpdate(BaseModel):
@@ -26,10 +83,12 @@ class ProductionEntryUpdate(BaseModel):
     units_produced: Optional[int] = Field(None, gt=0)
     run_time_hours: Optional[Decimal] = Field(None, gt=0, le=24)
     employees_assigned: Optional[int] = Field(None, gt=0, le=100)
+    employees_present: Optional[int] = Field(None, ge=0, le=100)
     defect_count: Optional[int] = Field(None, ge=0)
     scrap_count: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
     confirmed_by: Optional[int] = None
+    entry_method: Optional[str] = None
 
 
 class ProductionEntryResponse(BaseModel):
@@ -39,9 +98,11 @@ class ProductionEntryResponse(BaseModel):
     shift_id: int
     production_date: date
     work_order_number: Optional[str]
+    job_id: Optional[str] = None
     units_produced: int
     run_time_hours: Decimal
     employees_assigned: int
+    employees_present: Optional[int] = None
     defect_count: int
     scrap_count: int
     efficiency_percentage: Optional[Decimal]
@@ -50,6 +111,7 @@ class ProductionEntryResponse(BaseModel):
     entered_by: int
     confirmed_by: Optional[int]
     confirmation_timestamp: Optional[datetime]
+    entry_method: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

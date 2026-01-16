@@ -18,6 +18,7 @@ class JobBase(BaseModel):
     part_description: Optional[str] = Field(None, description="Part description")
     planned_quantity: Optional[int] = Field(None, description="Planned quantity")
     completed_quantity: Optional[int] = Field(0, description="Completed quantity")
+    quantity_scrapped: Optional[int] = Field(0, description="Quantity scrapped for quality metrics")
     planned_hours: Optional[Decimal] = Field(None, description="Planned hours")
     actual_hours: Optional[Decimal] = Field(None, description="Actual hours")
     is_completed: int = Field(0, description="Completion status (0/1)")
@@ -41,6 +42,7 @@ class JobUpdate(BaseModel):
     part_description: Optional[str] = None
     planned_quantity: Optional[int] = None
     completed_quantity: Optional[int] = None
+    quantity_scrapped: Optional[int] = None
     planned_hours: Optional[Decimal] = None
     actual_hours: Optional[Decimal] = None
     is_completed: Optional[int] = None
