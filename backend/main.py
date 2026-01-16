@@ -1481,7 +1481,10 @@ from backend.routes import (
     quality_router,
     defect_router,
     analytics_router,
-    predictions_router
+    predictions_router,
+    qr_router,
+    preferences_router,
+    filters_router
 )
 
 # Import reports router
@@ -1517,6 +1520,15 @@ app.include_router(analytics_router)
 
 # Phase 5: Register comprehensive predictions routes
 app.include_router(predictions_router)
+
+# Phase 6: Register QR code routes
+app.include_router(qr_router)
+
+# Phase 7: Register user preferences routes
+app.include_router(preferences_router)
+
+# Phase 8: Register saved filters routes
+app.include_router(filters_router)
 
 # OTD (On-Time Delivery) KPI endpoints remain in main.py
 # as they don't fit into the modular structure

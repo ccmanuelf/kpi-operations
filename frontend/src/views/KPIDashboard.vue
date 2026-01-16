@@ -1,45 +1,20 @@
 <template>
   <v-container fluid class="pa-4">
-    <!-- Header with filters -->
-    <v-row class="mb-4">
+    <!-- Header with title and actions -->
+    <v-row class="mb-2">
       <v-col cols="12" md="6">
         <h1 class="text-h3">KPI Dashboard</h1>
         <p class="text-subtitle-1 text-grey">Real-time performance metrics across all operations</p>
       </v-col>
-      <v-col cols="12" md="6" class="d-flex align-center justify-end">
-        <v-select
-          v-model="selectedClient"
-          :items="clients"
-          item-title="name"
-          item-value="id"
-          label="Client"
+      <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2">
+        <!-- Dashboard Customize Button -->
+        <v-btn
           variant="outlined"
-          density="compact"
-          class="mr-2"
-          style="max-width: 200px"
-          @update:model-value="handleClientChange"
-        />
-        <v-menu :close-on-content-click="false">
-          <template v-slot:activator="{ props }">
-            <v-btn
-              color="primary"
-              variant="outlined"
-              v-bind="props"
-              prepend-icon="mdi-calendar-range"
-            >
-              {{ dateRangeText }}
-            </v-btn>
-          </template>
-          <v-card>
-            <v-card-text>
-              <v-date-picker
-                v-model="dateRange"
-                range
-                @update:model-value="handleDateChange"
-              />
-            </v-card-text>
-          </v-card>
-        </v-menu>
+          prepend-icon="mdi-view-dashboard-edit"
+          @click="showCustomizer = true"
+        >
+          Customize
+        </v-btn>
 
         <!-- Report Actions Menu -->
         <v-menu>
@@ -49,7 +24,6 @@
               variant="flat"
               v-bind="props"
               prepend-icon="mdi-file-download"
-              class="ml-2"
             >
               Reports
             </v-btn>
@@ -79,9 +53,19 @@
         <v-btn
           icon="mdi-refresh"
           variant="text"
-          class="ml-2"
           @click="refreshData"
           :loading="loading"
+        />
+      </v-col>
+    </v-row>
+
+    <!-- Filter Bar -->
+    <v-row class="mb-4">
+      <v-col cols="12">
+        <FilterBar
+          filter-type="dashboard"
+          :clients="clients"
+          @filter-change="handleFilterChange"
         />
       </v-col>
     </v-row>
@@ -307,6 +291,17 @@
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Dashboard Customizer Dialog -->
+    <DashboardCustomizer
+      v-model="showCustomizer"
+      @saved="onCustomizerSaved"
+    />
+
+    <!-- Filter Manager Dialog -->
+    <FilterManager
+      v-model="showFilterManager"
+    />
   </v-container>
 </template>
 
@@ -326,7 +321,14 @@ import {
 } from 'chart.js'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
+import { useDashboardStore } from '@/stores/dashboardStore'
+import { useFiltersStore } from '@/stores/filtersStore'
 import api from '@/services/api'
+
+// New components for custom dashboards and filters
+import FilterBar from '@/components/filters/FilterBar.vue'
+import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer.vue'
+import FilterManager from '@/components/filters/FilterManager.vue'
 
 ChartJS.register(
   CategoryScale,
@@ -340,6 +342,8 @@ ChartJS.register(
 
 const router = useRouter()
 const kpiStore = useKPIStore()
+const dashboardStore = useDashboardStore()
+const filtersStore = useFiltersStore()
 
 // State
 const loading = ref(false)
@@ -352,6 +356,10 @@ const trendPeriod = ref('30')
 const clients = ref([
   { id: null, name: 'All Clients' }
 ])
+
+// New feature dialogs
+const showCustomizer = ref(false)
+const showFilterManager = ref(false)
 
 // Report functionality
 const downloadingPDF = ref(false)
@@ -690,8 +698,27 @@ const showSnackbar = (message, color = 'success') => {
   snackbar.value = true
 }
 
+// New feature handlers
+const handleFilterChange = (filterParams) => {
+  // Apply filter to KPI store
+  if (filterParams.client_id) {
+    selectedClient.value = filterParams.client_id
+    kpiStore.setClient(filterParams.client_id)
+  }
+  if (filterParams.start_date && filterParams.end_date) {
+    kpiStore.setDateRange(filterParams.start_date, filterParams.end_date)
+  }
+  refreshData()
+}
+
+const onCustomizerSaved = () => {
+  showSnackbar('Dashboard preferences saved', 'success')
+}
+
 onMounted(async () => {
   await loadClients()
+  await dashboardStore.initializePreferences()
+  await filtersStore.initializeFilters()
   await refreshData()
 })
 </script>
