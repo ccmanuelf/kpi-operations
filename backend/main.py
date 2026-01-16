@@ -599,7 +599,7 @@ def get_kpi_dashboard(
     if not end_date:
         end_date = date.today()
 
-    return get_daily_summary(db, start_date, end_date, current_user)
+    return get_daily_summary(db, current_user, start_date, end_date)
 
 
 # ============================================================================
@@ -823,8 +823,9 @@ def get_import_logs(
     current_user: User = Depends(get_current_user)
 ):
     """Get import logs for the current user"""
+    from sqlalchemy import text
     result = db.execute(
-        """
+        text("""
         SELECT log_id, user_id, import_timestamp, file_name,
                rows_attempted, rows_succeeded, rows_failed,
                error_details, import_type
@@ -832,7 +833,7 @@ def get_import_logs(
         WHERE user_id = :user_id
         ORDER BY import_timestamp DESC
         LIMIT :limit
-        """,
+        """),
         {'user_id': current_user.user_id, 'limit': limit}
     )
 

@@ -185,33 +185,38 @@ class TestCRUDIsolation:
         # when creating a record, the client_id is set correctly
         pass  # Placeholder for actual CRUD test
 
-    @pytest.mark.skip(reason="ProductionEntry model doesn't have client_id field yet - pending schema migration")
     def test_read_filters_by_client(self, db_session, operator_user_client_a, operator_user_client_b):
         """Test that READ operations only return user's client data"""
         # Given: Data for both clients
-        from backend.schemas.production import ProductionEntry
-        from datetime import date
+        from backend.schemas.production_entry import ProductionEntry
+        from datetime import datetime
+
+        prod_date = datetime(2024, 1, 15, 8, 0, 0)
 
         # Create entries for both clients
         entry_a = ProductionEntry(
+            production_entry_id="PE-READ-A-001",
             client_id="CLIENT-A",
             product_id=101,
             shift_id=1,
-            work_order_number="WO-A-001",
-            production_date=date(2024, 1, 15),
+            production_date=prod_date,
+            shift_date=prod_date,
             units_produced=1000,
             employees_assigned=5,
             run_time_hours=8.0,
+            entered_by=1,
         )
         entry_b = ProductionEntry(
+            production_entry_id="PE-READ-B-001",
             client_id="CLIENT-B",
             product_id=101,
             shift_id=1,
-            work_order_number="WO-B-001",
-            production_date=date(2024, 1, 15),
+            production_date=prod_date,
+            shift_date=prod_date,
             units_produced=1000,
             employees_assigned=5,
             run_time_hours=8.0,
+            entered_by=1,
         )
 
         db_session.add_all([entry_a, entry_b])
@@ -241,22 +246,25 @@ class TestCRUDIsolation:
         assert len(results_b) == 1
         assert all(r.client_id == "CLIENT-B" for r in results_b)
 
-    @pytest.mark.skip(reason="ProductionEntry model doesn't have client_id field yet - pending schema migration")
     def test_update_prevents_cross_client_modification(self, db_session, operator_user_client_a):
         """Test that UPDATE operations cannot modify other client's data"""
         # Given: Entry for CLIENT-B
-        from backend.schemas.production import ProductionEntry
-        from datetime import date
+        from backend.schemas.production_entry import ProductionEntry
+        from datetime import datetime
+
+        prod_date = datetime(2024, 1, 15, 8, 0, 0)
 
         entry_b = ProductionEntry(
+            production_entry_id="PE-UPDATE-B-001",
             client_id="CLIENT-B",
             product_id=101,
             shift_id=1,
-            work_order_number="WO-B-001",
-            production_date=date(2024, 1, 15),
+            production_date=prod_date,
+            shift_date=prod_date,
             units_produced=1000,
             employees_assigned=5,
             run_time_hours=8.0,
+            entered_by=1,
         )
         db_session.add(entry_b)
         db_session.commit()
@@ -273,32 +281,37 @@ class TestCRUDIsolation:
         # Then: Should not find any entries (filtered out)
         assert len(results) == 0
 
-    @pytest.mark.skip(reason="ProductionEntry model doesn't have client_id field yet - pending schema migration")
     def test_delete_prevents_cross_client_deletion(self, db_session, operator_user_client_a):
         """Test that DELETE operations cannot delete other client's data"""
         # Given: Entries for both clients
-        from backend.schemas.production import ProductionEntry
-        from datetime import date
+        from backend.schemas.production_entry import ProductionEntry
+        from datetime import datetime
+
+        prod_date = datetime(2024, 1, 15, 8, 0, 0)
 
         entry_a = ProductionEntry(
+            production_entry_id="PE-DELETE-A-001",
             client_id="CLIENT-A",
             product_id=101,
             shift_id=1,
-            work_order_number="WO-A-001",
-            production_date=date(2024, 1, 15),
+            production_date=prod_date,
+            shift_date=prod_date,
             units_produced=1000,
             employees_assigned=5,
             run_time_hours=8.0,
+            entered_by=1,
         )
         entry_b = ProductionEntry(
+            production_entry_id="PE-DELETE-B-001",
             client_id="CLIENT-B",
             product_id=101,
             shift_id=1,
-            work_order_number="WO-B-001",
-            production_date=date(2024, 1, 15),
+            production_date=prod_date,
+            shift_date=prod_date,
             units_produced=1000,
             employees_assigned=5,
             run_time_hours=8.0,
+            entered_by=1,
         )
 
         db_session.add_all([entry_a, entry_b])
@@ -323,7 +336,6 @@ class TestCRUDIsolation:
         assert len(remaining) == 1
 
 
-@pytest.mark.skip(reason="ProductionEntry model doesn't have client_id field yet - pending schema migration")
 class TestRealWorldIsolationScenarios:
     """Test real-world multi-tenant scenarios"""
 
@@ -345,7 +357,7 @@ class TestRealWorldIsolationScenarios:
             is_active=True
         )
 
-        from backend.schemas.production import ProductionEntry
+        from backend.schemas.production_entry import ProductionEntry
 
         query = db_session.query(ProductionEntry)
         filter_clause = build_client_filter_clause(operator_a, ProductionEntry.client_id)
@@ -377,10 +389,10 @@ class TestRealWorldIsolationScenarios:
             is_active=True
         )
 
-        from backend.schemas.quality import QualityInspection
+        from backend.schemas.quality_entry import QualityEntry
 
-        query = db_session.query(QualityInspection)
-        filter_clause = build_client_filter_clause(operator_a, QualityInspection.client_id)
+        query = db_session.query(QualityEntry)
+        filter_clause = build_client_filter_clause(operator_a, QualityEntry.client_id)
 
         if filter_clause is not None:
             query = query.filter(filter_clause)
@@ -393,7 +405,7 @@ class TestRealWorldIsolationScenarios:
 
         # Calculate PPM for CLIENT-A only
         total_inspected = sum(r.units_inspected for r in results)
-        total_defects = sum(r.defects_found for r in results)
+        total_defects = sum(r.units_defective for r in results)
 
         # CLIENT-A has 1% defect rate
         assert total_defects / total_inspected == pytest.approx(0.01, rel=0.001)
@@ -417,7 +429,7 @@ class TestRealWorldIsolationScenarios:
             is_active=True
         )
 
-        from backend.schemas.production import ProductionEntry
+        from backend.schemas.production_entry import ProductionEntry
 
         query = db_session.query(ProductionEntry)
         filter_clause = build_client_filter_clause(leader, ProductionEntry.client_id)

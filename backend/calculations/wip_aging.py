@@ -7,7 +7,7 @@ Tracks how long inventory sits in hold status
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
 
@@ -140,11 +140,13 @@ def identify_chronic_holds(
     """
 
     today = date.today()
+    threshold_date = today - timedelta(days=threshold_days)
 
+    # Use date comparison instead of datediff (SQLite compatible)
     chronic_holds = db.query(WIPHold).filter(
         and_(
             WIPHold.release_date.is_(None),
-            func.datediff(today, WIPHold.hold_date) > threshold_days
+            WIPHold.hold_date <= threshold_date
         )
     ).all()
 

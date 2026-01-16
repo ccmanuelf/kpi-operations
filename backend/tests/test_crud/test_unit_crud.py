@@ -402,7 +402,6 @@ class TestPartOpportunitiesCRUD:
 class TestAnalyticsCRUD:
     """Tests for analytics CRUD operations"""
     
-    @pytest.mark.skip(reason="ProductionEntry import issue in crud/analytics.py - schema/model mismatch")
     def test_get_kpi_time_series_data(self, mock_db, mock_admin_user):
         """Test getting KPI time series data"""
         from backend.crud.analytics import get_kpi_time_series_data

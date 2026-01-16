@@ -43,6 +43,12 @@ from backend.schemas import (
     DefectDetail, DefectType,
 )
 
+# CRITICAL: Also import alternative schemas that CRUD operations use
+# These have different table names (downtime_events, wip_holds) that tests expect
+from backend.schemas.downtime import DowntimeEvent
+from backend.schemas.hold import WIPHold, HoldStatus as WIPHoldStatus
+from backend.schemas.import_log import ImportLog
+
 # Backward compatibility aliases
 QualityInspection = QualityEntry
 Downtime = DowntimeEntry
@@ -335,15 +341,18 @@ class TestDataFactory:
 
         entries = []
         for i in range(count):
+            prod_date = datetime.combine(base_date + timedelta(days=i), datetime.min.time())
             entry = ProductionEntry(
+                production_entry_id=f"PE-{client_id}-{i:03d}",
                 client_id=client_id,
                 product_id=101,
                 shift_id=1,
-                work_order_number=f"WO-2024-{i:03d}",
-                production_date=base_date + timedelta(days=i),
+                production_date=prod_date,
+                shift_date=prod_date,
                 units_produced=1000 + (i * 10),
                 employees_assigned=5,
                 run_time_hours=8.0,
+                entered_by=1,  # Test user ID
             )
             db.add(entry)
             entries.append(entry)
@@ -363,17 +372,20 @@ class TestDataFactory:
         for i in range(count):
             units = 1000
             defects = int(units * defect_rate)
+            shift_dt = datetime.combine(date(2024, 1, 1) + timedelta(days=i), datetime.min.time())
 
             inspection = QualityInspection(
+                quality_entry_id=f"QE-{client_id}-{i:03d}",
                 client_id=client_id,
-                product_id=101,
-                shift_id=1,
-                inspection_date=date(2024, 1, 1) + timedelta(days=i),
+                work_order_id=f"WO-{client_id}-001",  # Placeholder work order
+                shift_date=shift_dt,
+                inspection_date=shift_dt,
                 units_inspected=units,
-                defects_found=defects,
-                defect_category="VISUAL",
-                scrap_units=defects // 2,
-                rework_units=defects - (defects // 2),
+                units_passed=units - defects,
+                units_defective=defects,
+                total_defects_count=defects,
+                units_scrapped=defects // 2,
+                units_reworked=defects - (defects // 2),
             )
             db.add(inspection)
             inspections.append(inspection)

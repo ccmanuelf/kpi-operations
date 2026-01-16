@@ -62,7 +62,7 @@ def get_kpi_time_series_data(
         ProductionEntry.production_date,
         func.avg(kpi_column).label('avg_value')
     ).join(
-        WorkOrder, ProductionEntry.work_order_number == WorkOrder.work_order_number
+        WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id
     ).where(
         and_(
             WorkOrder.client_id == client_id,
@@ -128,7 +128,7 @@ def get_shift_heatmap_data(
         Shift.shift_name,
         func.avg(kpi_column).label('avg_value')
     ).join(
-        WorkOrder, ProductionEntry.work_order_number == WorkOrder.work_order_number
+        WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id
     ).join(
         Shift, ProductionEntry.shift_id == Shift.shift_id
     ).where(
@@ -203,11 +203,11 @@ def get_client_comparison_data(
         Client.client_id,
         Client.client_name,
         func.avg(kpi_column).label('avg_value'),
-        func.count(ProductionEntry.entry_id).label('data_points')
+        func.count(ProductionEntry.production_entry_id).label('data_points')
     ).join(
         WorkOrder, Client.client_id == WorkOrder.client_id
     ).join(
-        ProductionEntry, WorkOrder.work_order_number == ProductionEntry.work_order_number
+        ProductionEntry, WorkOrder.work_order_id == ProductionEntry.work_order_id
     ).where(
         and_(
             ProductionEntry.production_date >= start_date,
@@ -350,9 +350,9 @@ def get_date_range_data_availability(
     query = select(
         func.min(ProductionEntry.production_date).label('min_date'),
         func.max(ProductionEntry.production_date).label('max_date'),
-        func.count(ProductionEntry.entry_id).label('total_records')
+        func.count(ProductionEntry.production_entry_id).label('total_records')
     ).join(
-        WorkOrder, ProductionEntry.work_order_number == WorkOrder.work_order_number
+        WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id
     ).where(
         WorkOrder.client_id == client_id
     )
