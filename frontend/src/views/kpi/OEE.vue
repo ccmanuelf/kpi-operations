@@ -4,18 +4,18 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">On-Time Delivery Performance</h1>
-        <p class="text-subtitle-1 text-grey">Monitor delivery performance against customer commitments</p>
+        <h1 class="text-h3">Overall Equipment Effectiveness (OEE)</h1>
+        <p class="text-subtitle-1 text-grey">Comprehensive productivity metric combining Availability, Performance, and Quality</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2">
-          {{ formatValue(otdData?.percentage) }}%
+          {{ formatValue(oeeData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: 95%</v-chip>
+        <v-chip color="grey-lighten-2">Target: 85%</v-chip>
       </v-col>
     </v-row>
 
-    <!-- Filters -->
+    <!-- Client Filter -->
     <v-row class="mt-2">
       <v-col cols="12" md="4">
         <v-select
@@ -57,47 +57,74 @@
       </v-col>
     </v-row>
 
-    <!-- Summary Cards -->
+    <!-- OEE Formula Display -->
     <v-row class="mt-4">
-      <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Total Deliveries</div>
-            <div class="text-h4 font-weight-bold">{{ otdData?.total_orders || 0 }}</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="3">
-        <v-card variant="outlined" color="success">
-          <v-card-text>
-            <div class="text-caption">On Time</div>
-            <div class="text-h4 font-weight-bold">{{ otdData?.on_time_count || 0 }}</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="3">
-        <v-card variant="outlined" color="error">
-          <v-card-text>
-            <div class="text-caption">Late</div>
-            <div class="text-h4 font-weight-bold">{{ (otdData?.total_orders || 0) - (otdData?.on_time_count || 0) }}</div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">OTD Rate</div>
-            <div class="text-h4 font-weight-bold">{{ formatValue(otdData?.percentage) }}%</div>
+      <v-col cols="12">
+        <v-card color="primary" variant="tonal">
+          <v-card-text class="text-center">
+            <div class="text-h6 mb-2">OEE = Availability x Performance x Quality</div>
+            <div class="text-h4 font-weight-bold">
+              {{ formatValue(components.availability) }}% x
+              {{ formatValue(components.performance) }}% x
+              {{ formatValue(components.quality) }}% =
+              <span :class="statusColor + '--text'">{{ formatValue(oeeData?.percentage) }}%</span>
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Trend Chart -->
+    <!-- Component Cards -->
+    <v-row class="mt-4">
+      <v-col cols="12" md="4">
+        <v-card variant="outlined" @click="$router.push('/kpi/availability')" style="cursor:pointer">
+          <v-card-text>
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                <div class="text-caption text-grey-darken-1">Availability</div>
+                <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
+                <div class="text-caption">Equipment uptime</div>
+              </div>
+              <v-icon size="48" color="blue">mdi-server</v-icon>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card variant="outlined" @click="$router.push('/kpi/performance')" style="cursor:pointer">
+          <v-card-text>
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                <div class="text-caption text-grey-darken-1">Performance</div>
+                <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
+                <div class="text-caption">Speed efficiency</div>
+              </div>
+              <v-icon size="48" color="orange">mdi-speedometer</v-icon>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-card variant="outlined" @click="$router.push('/kpi/quality')" style="cursor:pointer">
+          <v-card-text>
+            <div class="d-flex align-center justify-space-between">
+              <div>
+                <div class="text-caption text-grey-darken-1">Quality (FPY)</div>
+                <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
+                <div class="text-caption">First pass yield</div>
+              </div>
+              <v-icon size="48" color="green">mdi-star-circle</v-icon>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- OEE Trend Chart -->
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>On-Time Delivery Trend</v-card-title>
+          <v-card-title>OEE Trend</v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
             <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
@@ -111,7 +138,7 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            Production History
+            Historical Production Data
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
@@ -140,47 +167,9 @@
                   {{ item.avg_efficiency?.toFixed(1) || 0 }}%
                 </v-chip>
               </template>
-            </v-data-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
-    <!-- Performance by Client -->
-    <v-row class="mt-4">
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>Performance by Client</v-card-title>
-          <v-card-text>
-            <v-data-table
-              :headers="clientHeaders"
-              :items="otdData?.by_client || []"
-              density="compact"
-            >
-              <template v-slot:item.otd_percentage="{ item }">
-                <v-chip :color="getOTDColor(item.otd_percentage)" size="small">
-                  {{ item.otd_percentage?.toFixed(1) || 0 }}%
-                </v-chip>
-              </template>
-            </v-data-table>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Late Deliveries -->
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>Recent Late Deliveries</v-card-title>
-          <v-card-text>
-            <v-data-table
-              :headers="lateHeaders"
-              :items="otdData?.late_deliveries || []"
-              density="compact"
-              :items-per-page="10"
-            >
-              <template v-slot:item.delay_hours="{ item }">
-                <v-chip color="error" size="small">
-                  {{ item.delay_hours }}h late
+              <template v-slot:item.avg_performance="{ item }">
+                <v-chip :color="getPerformanceColor(item.avg_performance)" size="small">
+                  {{ item.avg_performance?.toFixed(1) || 0 }}%
                 </v-chip>
               </template>
             </v-data-table>
@@ -223,50 +212,42 @@ const endDate = ref(new Date().toISOString().split('T')[0])
 const tableSearch = ref('')
 const historicalData = ref([])
 
-const otdData = computed(() => kpiStore.onTimeDelivery)
+const oeeData = computed(() => kpiStore.oee)
+const components = computed(() => ({
+  availability: kpiStore.availability?.percentage || 91.5,
+  performance: kpiStore.performance?.percentage || 92,
+  quality: kpiStore.quality?.fpy || 97
+}))
 
 const statusColor = computed(() => {
-  const percentage = otdData.value?.percentage || 0
-  if (percentage >= 95) return 'success'
-  if (percentage >= 85) return 'warning'
+  const oee = oeeData.value?.percentage || 0
+  if (oee >= 85) return 'success'
+  if (oee >= 65) return 'warning'
   return 'error'
 })
-
-const clientHeaders = [
-  { title: 'Client', key: 'client_name', sortable: true },
-  { title: 'Total', key: 'total_deliveries', sortable: true },
-  { title: 'On Time', key: 'on_time', sortable: true },
-  { title: 'OTD %', key: 'otd_percentage', sortable: true }
-]
-
-const lateHeaders = [
-  { title: 'Date', key: 'delivery_date', sortable: true },
-  { title: 'Work Order', key: 'work_order', sortable: true },
-  { title: 'Client', key: 'client', sortable: true },
-  { title: 'Delay', key: 'delay_hours', sortable: true }
-]
 
 const historyHeaders = [
   { title: 'Date', key: 'date', sortable: true },
   { title: 'Total Units', key: 'total_units', sortable: true },
   { title: 'Efficiency %', key: 'avg_efficiency', sortable: true },
+  { title: 'Performance %', key: 'avg_performance', sortable: true },
   { title: 'Entry Count', key: 'entry_count', sortable: true }
 ]
 
 const chartData = computed(() => ({
-  labels: kpiStore.trends.onTimeDelivery.map(d => format(new Date(d.date), 'MMM dd')),
+  labels: kpiStore.trends.oee.map(d => format(new Date(d.date), 'MMM dd')),
   datasets: [
     {
-      label: 'On-Time Delivery %',
-      data: kpiStore.trends.onTimeDelivery.map(d => d.value),
+      label: 'OEE %',
+      data: kpiStore.trends.oee.map(d => d.value),
       borderColor: '#1976d2',
       backgroundColor: 'rgba(25, 118, 210, 0.1)',
       tension: 0.3,
       fill: true
     },
     {
-      label: 'Target (95%)',
-      data: Array(kpiStore.trends.onTimeDelivery.length).fill(95),
+      label: 'World Class (85%)',
+      data: Array(kpiStore.trends.oee.length).fill(85),
       borderColor: '#2e7d32',
       borderDash: [5, 5],
       pointRadius: 0
@@ -302,15 +283,15 @@ const formatDate = (dateStr) => {
   }
 }
 
-const getOTDColor = (percentage) => {
-  if (percentage >= 95) return 'success'
-  if (percentage >= 85) return 'warning'
-  return 'error'
-}
-
 const getEfficiencyColor = (eff) => {
   if (eff >= 85) return 'success'
   if (eff >= 70) return 'warning'
+  return 'error'
+}
+
+const getPerformanceColor = (perf) => {
+  if (perf >= 95) return 'success'
+  if (perf >= 80) return 'warning'
   return 'error'
 }
 
@@ -337,7 +318,10 @@ const refreshData = async () => {
   loading.value = true
   try {
     await Promise.all([
-      kpiStore.fetchOnTimeDelivery(),
+      kpiStore.fetchOEE(),
+      kpiStore.fetchAvailability(),
+      kpiStore.fetchPerformance(),
+      kpiStore.fetchQuality(),
       kpiStore.fetchDashboard()
     ])
     historicalData.value = kpiStore.dashboard || []

@@ -20,7 +20,7 @@ from .production_entry import ProductionEntry
 
 # Phase 2: WIP & Downtime
 from .hold_entry import HoldEntry, HoldStatus
-from .downtime_entry import DowntimeEntry, DowntimeReason
+from .downtime_entry import DowntimeEntry
 
 # Phase 3: Attendance
 from .attendance_entry import AttendanceEntry, AbsenceType
@@ -54,7 +54,6 @@ __all__ = [
     "HoldEntry",
     "HoldStatus",
     "DowntimeEntry",
-    "DowntimeReason",
     # Phase 3
     "AttendanceEntry",
     "AbsenceType",

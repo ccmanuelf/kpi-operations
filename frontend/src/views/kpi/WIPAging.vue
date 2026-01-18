@@ -3,15 +3,57 @@
     <v-btn icon="mdi-arrow-left" variant="text" @click="$router.back()" class="mb-4" />
 
     <v-row>
-      <v-col cols="12" md="8">
+      <v-col cols="12" md="6">
         <h1 class="text-h3">WIP Aging Analysis</h1>
         <p class="text-subtitle-1 text-grey">Track work-in-process aging and identify bottlenecks</p>
       </v-col>
-      <v-col cols="12" md="4" class="text-right">
+      <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2">
           {{ formatValue(wipData?.average_days) }} days avg
         </v-chip>
         <v-chip color="grey-lighten-2">Target: 7 days</v-chip>
+      </v-col>
+    </v-row>
+
+    <!-- Filters -->
+    <v-row class="mt-2">
+      <v-col cols="12" md="4">
+        <v-select
+          v-model="selectedClient"
+          :items="clients"
+          item-title="client_name"
+          item-value="client_id"
+          label="Filter by Client"
+          clearable
+          density="compact"
+          variant="outlined"
+          @update:model-value="onClientChange"
+        />
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-text-field
+          v-model="startDate"
+          type="date"
+          label="Start Date"
+          density="compact"
+          variant="outlined"
+          @change="onDateChange"
+        />
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-text-field
+          v-model="endDate"
+          type="date"
+          label="End Date"
+          density="compact"
+          variant="outlined"
+          @change="onDateChange"
+        />
+      </v-col>
+      <v-col cols="12" md="2">
+        <v-btn color="primary" block @click="refreshData" :loading="loading">
+          <v-icon left>mdi-refresh</v-icon> Refresh
+        </v-btn>
       </v-col>
     </v-row>
 
@@ -59,6 +101,46 @@
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
             <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Historical Hold Data Table -->
+    <v-row class="mt-4">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title>
+            Hold Records History
+            <v-spacer />
+            <v-text-field
+              v-model="tableSearch"
+              append-icon="mdi-magnify"
+              label="Search"
+              single-line
+              hide-details
+              density="compact"
+              style="max-width: 300px"
+            />
+          </v-card-title>
+          <v-card-text>
+            <v-data-table
+              :headers="historyHeaders"
+              :items="holdHistory"
+              :search="tableSearch"
+              :loading="loading"
+              :items-per-page="10"
+              class="elevation-0"
+            >
+              <template v-slot:item.hold_date="{ item }">
+                {{ formatDate(item.hold_date) }}
+              </template>
+              <template v-slot:item.hold_status="{ item }">
+                <v-chip :color="item.hold_status === 'ON_HOLD' ? 'warning' : 'success'" size="small">
+                  {{ item.hold_status }}
+                </v-chip>
+              </template>
+            </v-data-table>
           </v-card-text>
         </v-card>
       </v-col>
@@ -140,11 +222,19 @@ import {
 } from 'chart.js'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
+import api from '@/services/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
 const kpiStore = useKPIStore()
 const loading = ref(false)
+const clients = ref([])
+const selectedClient = ref(null)
+const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+const endDate = ref(new Date().toISOString().split('T')[0])
+const tableSearch = ref('')
+const holdHistory = ref([])
+
 const wipData = computed(() => kpiStore.wipAging)
 
 const statusColor = computed(() => {
@@ -159,6 +249,14 @@ const agingHeaders = [
   { title: 'Product', key: 'product', sortable: true },
   { title: 'Age', key: 'age', sortable: true },
   { title: 'Quantity', key: 'quantity', sortable: true }
+]
+
+const historyHeaders = [
+  { title: 'Hold Date', key: 'hold_date', sortable: true },
+  { title: 'Work Order', key: 'work_order_id', sortable: true },
+  { title: 'Category', key: 'hold_reason_category', sortable: true },
+  { title: 'Reason', key: 'hold_reason_description', sortable: true },
+  { title: 'Status', key: 'hold_status', sortable: true }
 ]
 
 const chartData = computed(() => ({
@@ -201,16 +299,76 @@ const formatValue = (value) => {
   return value !== null && value !== undefined ? Number(value).toFixed(1) : 'N/A'
 }
 
+const formatDate = (dateStr) => {
+  try {
+    return format(new Date(dateStr), 'MMM dd, yyyy')
+  } catch {
+    return dateStr
+  }
+}
+
 const getAgeColor = (age) => {
   if (age <= 7) return 'success'
   if (age <= 14) return 'warning'
   return 'error'
 }
 
+const loadClients = async () => {
+  try {
+    const response = await api.getClients()
+    clients.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load clients:', error)
+  }
+}
+
+const loadHoldHistory = async () => {
+  try {
+    const params = {
+      start_date: startDate.value,
+      end_date: endDate.value
+    }
+    if (selectedClient.value) {
+      params.client_id = selectedClient.value
+    }
+    const response = await api.getHoldEntries(params)
+    holdHistory.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load hold history:', error)
+    holdHistory.value = []
+  }
+}
+
+const onClientChange = () => {
+  kpiStore.setClient(selectedClient.value)
+  refreshData()
+}
+
+const onDateChange = () => {
+  kpiStore.setDateRange(startDate.value, endDate.value)
+  refreshData()
+}
+
+const refreshData = async () => {
+  loading.value = true
+  try {
+    await Promise.all([
+      kpiStore.fetchWIPAging(),
+      loadHoldHistory()
+    ])
+  } catch (error) {
+    console.error('Failed to refresh data:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(async () => {
   loading.value = true
   try {
-    await kpiStore.fetchWIPAging()
+    await loadClients()
+    kpiStore.setDateRange(startDate.value, endDate.value)
+    await refreshData()
   } finally {
     loading.value = false
   }

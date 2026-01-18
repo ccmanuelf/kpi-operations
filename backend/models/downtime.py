@@ -98,20 +98,20 @@ class DowntimeEventUpdate(BaseModel):
 
 
 class DowntimeEventResponse(BaseModel):
-    """Downtime event response"""
-    downtime_id: int
-    product_id: int
-    shift_id: int
-    production_date: date
-    downtime_category: str
+    """Downtime event response - matches DOWNTIME_ENTRY schema"""
+    downtime_entry_id: str
+    client_id: str
+    work_order_id: str
+    shift_date: datetime
     downtime_reason: str
-    duration_hours: Decimal
-    machine_id: Optional[str]
-    work_order_number: Optional[str]
-    notes: Optional[str]
-    entered_by: int
-    created_at: datetime
-    updated_at: datetime
+    downtime_duration_minutes: int
+    machine_id: Optional[str] = None
+    equipment_code: Optional[str] = None
+    root_cause_category: Optional[str] = None
+    corrective_action: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -84,28 +84,32 @@ class QualityInspectionUpdate(BaseModel):
 
 
 class QualityInspectionResponse(BaseModel):
-    """Quality inspection response"""
-    inspection_id: int
-    product_id: int
-    shift_id: int
-    inspection_date: date
-    work_order_number: Optional[str]
+    """Quality inspection response - matches QUALITY_ENTRY schema"""
+    quality_entry_id: str
+    client_id: str
+    work_order_id: str
     job_id: Optional[str] = None
+    shift_date: datetime
+    inspection_date: Optional[datetime] = None
     units_inspected: int
-    defects_found: int
-    defect_type: Optional[str]
-    defect_category: Optional[str]
-    scrap_units: int
-    rework_units: int
-    units_requiring_repair: Optional[int] = None
-    inspection_stage: str
+    units_passed: int
+    units_defective: int
+    total_defects_count: int
+    inspection_stage: Optional[str] = None
+    process_step: Optional[str] = None
     operation_checked: Optional[str] = None
-    ppm: Decimal
-    dpmo: Decimal
-    notes: Optional[str]
-    entered_by: int
-    created_at: datetime
-    updated_at: datetime
+    is_first_pass: Optional[int] = None
+    units_scrapped: Optional[int] = None
+    units_reworked: Optional[int] = None
+    units_requiring_repair: Optional[int] = None
+    ppm: Optional[Decimal] = None
+    dpmo: Optional[Decimal] = None
+    fpy_percentage: Optional[Decimal] = None
+    inspection_method: Optional[str] = None
+    inspector_id: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

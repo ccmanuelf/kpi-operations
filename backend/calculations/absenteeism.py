@@ -6,11 +6,11 @@ Absenteeism Rate = (Total Hours Absent / Total Scheduled Hours) * 100
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from backend.schemas.attendance import AttendanceRecord
+from backend.schemas.attendance_entry import AttendanceEntry
 
 
 def calculate_absenteeism(
@@ -24,13 +24,16 @@ def calculate_absenteeism(
 
     Returns: (absenteeism_rate, total_scheduled, total_absent, employee_count, absence_count)
     """
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
 
     # Get all attendance records for period
-    records = db.query(AttendanceRecord).filter(
+    records = db.query(AttendanceEntry).filter(
         and_(
-            AttendanceRecord.shift_id == shift_id,
-            AttendanceRecord.attendance_date >= start_date,
-            AttendanceRecord.attendance_date <= end_date
+            AttendanceEntry.shift_id == shift_id,
+            AttendanceEntry.shift_date >= start_datetime,
+            AttendanceEntry.shift_date <= end_datetime
         )
     ).all()
 
@@ -44,11 +47,12 @@ def calculate_absenteeism(
     absence_count = 0
 
     for record in records:
-        total_scheduled += Decimal(str(record.scheduled_hours))
-        total_worked += Decimal(str(record.actual_hours_worked))
+        total_scheduled += Decimal(str(record.scheduled_hours or 0))
+        total_worked += Decimal(str(record.actual_hours or 0))
         unique_employees.add(record.employee_id)
 
-        if record.status in ['Absent', 'Late']:
+        # Check if absent or late using boolean flags
+        if record.is_absent == 1 or record.is_late == 1:
             absence_count += 1
 
     total_absent = total_scheduled - total_worked
@@ -79,24 +83,28 @@ def calculate_attendance_rate(
 
     Attendance Rate = (Days Present / Total Scheduled Days) * 100
     """
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
 
-    total_days = db.query(func.count(AttendanceRecord.attendance_id)).filter(
+    total_days = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
         and_(
-            AttendanceRecord.employee_id == employee_id,
-            AttendanceRecord.attendance_date >= start_date,
-            AttendanceRecord.attendance_date <= end_date
+            AttendanceEntry.employee_id == employee_id,
+            AttendanceEntry.shift_date >= start_datetime,
+            AttendanceEntry.shift_date <= end_datetime
         )
     ).scalar()
 
     if not total_days:
         return Decimal("0")
 
-    present_days = db.query(func.count(AttendanceRecord.attendance_id)).filter(
+    # Count days where employee was present (not absent)
+    present_days = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
         and_(
-            AttendanceRecord.employee_id == employee_id,
-            AttendanceRecord.attendance_date >= start_date,
-            AttendanceRecord.attendance_date <= end_date,
-            AttendanceRecord.status == 'Present'
+            AttendanceEntry.employee_id == employee_id,
+            AttendanceEntry.shift_date >= start_datetime,
+            AttendanceEntry.shift_date <= end_datetime,
+            AttendanceEntry.is_absent == 0
         )
     ).scalar()
 
@@ -115,17 +123,21 @@ def identify_chronic_absentees(
 
     Default threshold: 10% (industry average is ~5%)
     """
+    from datetime import timedelta
 
     if not start_date:
-        from datetime import timedelta
         end_date = date.today()
         start_date = end_date - timedelta(days=30)
 
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
     # Get all unique employees
-    employees = db.query(AttendanceRecord.employee_id).filter(
+    employees = db.query(AttendanceEntry.employee_id).filter(
         and_(
-            AttendanceRecord.attendance_date >= start_date,
-            AttendanceRecord.attendance_date <= end_date
+            AttendanceEntry.shift_date >= start_datetime,
+            AttendanceEntry.shift_date <= end_datetime
         )
     ).distinct().all()
 
@@ -171,25 +183,29 @@ def calculate_bradford_factor(
     - 126-250: Formal action
     - 251+: Final warning/termination
     """
+    from sqlalchemy import or_
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
 
-    absences = db.query(AttendanceRecord).filter(
+    absences = db.query(AttendanceEntry).filter(
         and_(
-            AttendanceRecord.employee_id == employee_id,
-            AttendanceRecord.attendance_date >= start_date,
-            AttendanceRecord.attendance_date <= end_date,
-            AttendanceRecord.status.in_(['Absent', 'Late'])
+            AttendanceEntry.employee_id == employee_id,
+            AttendanceEntry.shift_date >= start_datetime,
+            AttendanceEntry.shift_date <= end_datetime,
+            or_(AttendanceEntry.is_absent == 1, AttendanceEntry.is_late == 1)
         )
-    ).order_by(AttendanceRecord.attendance_date).all()
+    ).order_by(AttendanceEntry.shift_date).all()
 
     if not absences:
         return 0
 
     # Count spells (continuous absence periods)
     spells = 1
-    prev_date = absences[0].attendance_date
+    prev_date = absences[0].shift_date.date() if hasattr(absences[0].shift_date, 'date') else absences[0].shift_date
 
     for i in range(1, len(absences)):
-        current_date = absences[i].attendance_date
+        current_date = absences[i].shift_date.date() if hasattr(absences[i].shift_date, 'date') else absences[i].shift_date
         if (current_date - prev_date).days > 1:
             spells += 1
         prev_date = current_date

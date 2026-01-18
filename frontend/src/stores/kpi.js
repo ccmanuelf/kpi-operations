@@ -189,7 +189,8 @@ export const useKPIStore = defineStore('kpi', {
         return response.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch dashboard'
-        throw error
+        console.error('Dashboard fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -208,11 +209,12 @@ export const useKPIStore = defineStore('kpi', {
           api.getEfficiencyTrend(params)
         ])
         this.efficiency = dataRes.data
-        this.trends.efficiency = trendRes.data
+        this.trends.efficiency = trendRes.data || []
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch efficiency'
-        throw error
+        console.error('Efficiency fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -235,7 +237,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch WIP aging'
-        throw error
+        console.error('WIP Aging fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -258,7 +261,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch on-time delivery'
-        throw error
+        console.error('On-time delivery fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -281,7 +285,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch availability'
-        throw error
+        console.error('Availability fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -304,7 +309,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch performance'
-        throw error
+        console.error('Performance fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -327,7 +333,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch quality'
-        throw error
+        console.error('Quality fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -350,7 +357,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch OEE'
-        throw error
+        console.error('OEE fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -373,7 +381,8 @@ export const useKPIStore = defineStore('kpi', {
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch absenteeism'
-        throw error
+        console.error('Absenteeism fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -392,7 +401,8 @@ export const useKPIStore = defineStore('kpi', {
         return response.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch defect rates'
-        throw error
+        console.error('Defect rates fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
@@ -411,7 +421,8 @@ export const useKPIStore = defineStore('kpi', {
         return response.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch throughput time'
-        throw error
+        console.error('Throughput time fetch error:', error)
+        return null
       } finally {
         this.loading = false
       }
