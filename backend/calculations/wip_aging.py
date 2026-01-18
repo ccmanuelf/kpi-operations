@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional
 
-from backend.schemas.hold import WIPHold, HoldStatus
+from backend.schemas.hold_entry import HoldEntry, HoldStatus
 from backend.schemas.work_order import WorkOrder
 
 
@@ -33,13 +33,14 @@ def calculate_wip_aging(
     if as_of_date is None:
         as_of_date = date.today()
 
-    # Base query - only unreleased holds
-    query = db.query(WIPHold).filter(
-        WIPHold.release_date.is_(None)
+    # Base query - only active holds (not resumed)
+    query = db.query(HoldEntry).filter(
+        HoldEntry.hold_status == HoldStatus.ON_HOLD
     )
 
-    if product_id:
-        query = query.filter(WIPHold.product_id == product_id)
+    # Note: HoldEntry doesn't have product_id - skip filter for now
+    # if product_id:
+    #     query = query.filter(HoldEntry.product_id == product_id)
 
     holds = query.all()
 
@@ -55,12 +56,15 @@ def calculate_wip_aging(
     total_aging_days = 0
 
     for hold in holds:
-        # Calculate aging
-        aging_days = (as_of_date - hold.hold_date).days
-        quantity = hold.quantity_held - (hold.quantity_released or 0) - (hold.quantity_scrapped or 0)
+        # Calculate aging - hold_date is DateTime, need to convert to date
+        hold_date = hold.hold_date.date() if hasattr(hold.hold_date, 'date') else hold.hold_date
+        if hold_date is None:
+            continue
+        aging_days = (as_of_date - hold_date).days
+        quantity = 1  # Each hold counts as 1 since HoldEntry doesn't track quantity
 
         total_quantity += quantity
-        total_aging_days += aging_days * quantity  # Weighted by quantity
+        total_aging_days += aging_days * quantity
 
         # Categorize
         if aging_days <= 7:
@@ -104,16 +108,17 @@ def calculate_hold_resolution_rate(
     Target: 7 days
     """
 
-    query = db.query(WIPHold).filter(
+    query = db.query(HoldEntry).filter(
         and_(
-            WIPHold.hold_date >= start_date,
-            WIPHold.hold_date <= end_date,
-            WIPHold.release_date.isnot(None)
+            HoldEntry.hold_date >= datetime.combine(start_date, datetime.min.time()),
+            HoldEntry.hold_date <= datetime.combine(end_date, datetime.max.time()),
+            HoldEntry.hold_status == HoldStatus.RESUMED
         )
     )
 
-    if product_id:
-        query = query.filter(WIPHold.product_id == product_id)
+    # Note: HoldEntry doesn't have product_id - skip filter
+    # if product_id:
+    #     query = query.filter(HoldEntry.product_id == product_id)
 
     holds = query.all()
 
@@ -123,9 +128,12 @@ def calculate_hold_resolution_rate(
     # Count how many resolved within 7 days
     resolved_on_time = 0
     for hold in holds:
-        resolution_days = (hold.release_date - hold.hold_date).days
-        if resolution_days <= 7:
-            resolved_on_time += 1
+        if hold.resume_date and hold.hold_date:
+            hold_date = hold.hold_date.date() if hasattr(hold.hold_date, 'date') else hold.hold_date
+            resume_date = hold.resume_date.date() if hasattr(hold.resume_date, 'date') else hold.resume_date
+            resolution_days = (resume_date - hold_date).days
+            if resolution_days <= 7:
+                resolved_on_time += 1
 
     resolution_rate = (Decimal(str(resolved_on_time)) / Decimal(str(len(holds)))) * 100
     return resolution_rate
@@ -143,24 +151,28 @@ def identify_chronic_holds(
     threshold_date = today - timedelta(days=threshold_days)
 
     # Use date comparison instead of datediff (SQLite compatible)
-    chronic_holds = db.query(WIPHold).filter(
+    threshold_datetime = datetime.combine(threshold_date, datetime.min.time())
+    chronic_holds = db.query(HoldEntry).filter(
         and_(
-            WIPHold.release_date.is_(None),
-            WIPHold.hold_date <= threshold_date
+            HoldEntry.hold_status == HoldStatus.ON_HOLD,
+            HoldEntry.hold_date <= threshold_datetime
         )
     ).all()
 
     results = []
     for hold in chronic_holds:
-        aging_days = (today - hold.hold_date).days
+        hold_date = hold.hold_date.date() if hasattr(hold.hold_date, 'date') else hold.hold_date
+        if hold_date is None:
+            continue
+        aging_days = (today - hold_date).days
         results.append({
-            "hold_id": hold.hold_id,
-            "work_order": hold.work_order_number,
-            "product_id": hold.product_id,
-            "quantity": hold.quantity_held,
+            "hold_id": hold.hold_entry_id,
+            "work_order": hold.work_order_id,
+            "product_id": None,  # HoldEntry doesn't have product_id
+            "quantity": 1,
             "aging_days": aging_days,
-            "hold_reason": hold.hold_reason,
-            "hold_category": hold.hold_category
+            "hold_reason": str(hold.hold_reason) if hold.hold_reason else hold.hold_reason_category,
+            "hold_category": hold.hold_reason_category
         })
 
     # Sort by aging (oldest first)
@@ -192,22 +204,17 @@ def get_total_hold_duration_hours(
     Returns:
         Total hold duration in hours as Decimal
     """
-    holds = db.query(WIPHold).filter(
-        WIPHold.work_order_number == work_order_number
+    holds = db.query(HoldEntry).filter(
+        HoldEntry.work_order_id == work_order_number
     ).all()
 
     total_duration = Decimal("0")
 
     for hold in holds:
-        if hold.status == HoldStatus.ON_HOLD:
+        if hold.hold_status == HoldStatus.ON_HOLD:
             # Active hold - calculate from hold_timestamp to now
-            if hold.hold_timestamp:
-                delta = datetime.now() - hold.hold_timestamp
-                total_duration += Decimal(str(delta.total_seconds() / 3600))
-            elif hold.hold_date:
-                # Fallback to hold_date
-                hold_start = datetime.combine(hold.hold_date, datetime.min.time())
-                delta = datetime.now() - hold_start
+            if hold.hold_date:
+                delta = datetime.now() - hold.hold_date
                 total_duration += Decimal(str(delta.total_seconds() / 3600))
         else:
             # Completed hold - use stored duration
@@ -254,15 +261,15 @@ def calculate_wip_age_adjusted(
     adjusted_age_hours = max(Decimal("0"), adjusted_age_hours)  # Cannot be negative
 
     # Count holds
-    hold_count = db.query(WIPHold).filter(
-        WIPHold.work_order_number == work_order_number
+    hold_count = db.query(HoldEntry).filter(
+        HoldEntry.work_order_id == work_order_number
     ).count()
 
     # Check if currently on hold
-    active_holds = db.query(WIPHold).filter(
+    active_holds = db.query(HoldEntry).filter(
         and_(
-            WIPHold.work_order_number == work_order_number,
-            WIPHold.status == HoldStatus.ON_HOLD
+            HoldEntry.work_order_id == work_order_number,
+            HoldEntry.hold_status == HoldStatus.ON_HOLD
         )
     ).count()
 
@@ -336,16 +343,17 @@ def calculate_wip_aging_with_hold_adjustment(
     if as_of_date is None:
         as_of_date = date.today()
 
-    # Base query - only unreleased holds
-    query = db.query(WIPHold).filter(
-        WIPHold.release_date.is_(None)
+    # Base query - only active holds
+    query = db.query(HoldEntry).filter(
+        HoldEntry.hold_status == HoldStatus.ON_HOLD
     )
 
-    if product_id:
-        query = query.filter(WIPHold.product_id == product_id)
+    # Note: HoldEntry doesn't have product_id
+    # if product_id:
+    #     query = query.filter(HoldEntry.product_id == product_id)
 
     if client_id:
-        query = query.filter(WIPHold.client_id == client_id)
+        query = query.filter(HoldEntry.client_id == client_id)
 
     holds = query.all()
 
@@ -365,18 +373,21 @@ def calculate_wip_aging_with_hold_adjustment(
     # Group holds by work order for adjustment calculation
     work_order_holds: Dict[str, List] = {}
     for hold in holds:
-        wo = hold.work_order_number
+        wo = hold.work_order_id
         if wo not in work_order_holds:
             work_order_holds[wo] = []
         work_order_holds[wo].append(hold)
 
     for hold in holds:
-        # Calculate raw aging
-        raw_aging_days = (as_of_date - hold.hold_date).days
-        quantity = hold.quantity_held - (hold.quantity_released or 0) - (hold.quantity_scrapped or 0)
+        # Calculate raw aging - handle DateTime
+        hold_date = hold.hold_date.date() if hasattr(hold.hold_date, 'date') else hold.hold_date
+        if hold_date is None:
+            continue
+        raw_aging_days = (as_of_date - hold_date).days
+        quantity = 1  # HoldEntry doesn't track quantity
 
         # Get hold duration for this work order
-        hold_duration = get_total_hold_duration_hours(db, hold.work_order_number)
+        hold_duration = get_total_hold_duration_hours(db, hold.work_order_id)
         hold_duration_days = float(hold_duration) / 24.0
 
         # Calculate adjusted aging

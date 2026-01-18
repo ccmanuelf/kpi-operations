@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional, List
 import math
 
-from backend.schemas.quality import QualityInspection
+from backend.schemas.quality_entry import QualityEntry
 from backend.schemas.production_entry import ProductionEntry
 
 
@@ -26,33 +26,39 @@ def calculate_fpy(
     """
     Calculate First Pass Yield for a specific inspection stage
 
-    FPY = (Units - Defects - Rework) / Units * 100
+    FPY = (Units Passed / Units Inspected) * 100
 
     Returns: (fpy_percentage, first_pass_good, total_units)
     """
+    from datetime import datetime
 
-    query = db.query(QualityInspection).filter(
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    # Note: QualityEntry doesn't have product_id - use work_order/job based filtering
+    # For now, get all quality entries in date range
+    query = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.shift_date >= start_datetime,
+            QualityEntry.shift_date <= end_datetime
         )
     )
 
     if inspection_stage:
-        query = query.filter(QualityInspection.inspection_stage == inspection_stage)
+        query = query.filter(QualityEntry.inspection_stage == inspection_stage)
 
     inspections = query.all()
 
     if not inspections:
         return (Decimal("0"), 0, 0)
 
-    total_units = sum(i.units_inspected for i in inspections)
-    total_defects = sum(i.defects_found for i in inspections)
-    total_rework = sum(i.rework_units for i in inspections)
+    total_units = sum(i.units_inspected or 0 for i in inspections)
+    total_passed = sum(i.units_passed or 0 for i in inspections)
+    total_rework = sum(i.units_reworked or 0 for i in inspections)
 
-    # First pass good = units that passed without defects or rework
-    first_pass_good = total_units - total_defects - total_rework
+    # First pass good = units_passed (already calculated)
+    first_pass_good = total_passed
 
     if total_units > 0:
         fpy = (Decimal(str(first_pass_good)) / Decimal(str(total_units))) * 100
@@ -121,30 +127,34 @@ def calculate_process_yield(
 
     Process Yield = ((Total Produced - Total Scrapped) / Total Produced) * 100
     """
+    from datetime import datetime
+
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
 
     # Get production data
     production = db.query(ProductionEntry).filter(
         and_(
             ProductionEntry.product_id == product_id,
-            ProductionEntry.production_date >= start_date,
-            ProductionEntry.production_date <= end_date
+            ProductionEntry.production_date >= start_datetime,
+            ProductionEntry.production_date <= end_datetime
         )
     ).all()
 
-    total_produced = sum(p.units_produced for p in production)
-    total_scrap = sum(p.scrap_count for p in production)
-    total_defects = sum(p.defect_count for p in production)
+    total_produced = sum(p.units_produced or 0 for p in production)
+    total_scrap = sum(p.scrap_count or 0 for p in production)
+    total_defects = sum(p.defect_count or 0 for p in production)
 
-    # Get quality inspection data
-    inspections = db.query(QualityInspection).filter(
+    # Get quality entry data
+    inspections = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.shift_date >= start_datetime,
+            QualityEntry.shift_date <= end_datetime
         )
     ).all()
 
-    inspection_scrap = sum(i.scrap_units for i in inspections)
+    inspection_scrap = sum(i.units_scrapped or 0 for i in inspections)
     total_scrap += inspection_scrap
 
     # Calculate yield
@@ -180,13 +190,17 @@ def calculate_defect_escape_rate(
 
     Measures how many defects escape earlier inspection stages
     """
+    from datetime import datetime
 
-    # Get all inspections
-    all_inspections = db.query(QualityInspection).filter(
+    # Convert date to datetime for comparison
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    # Get all quality entries
+    all_inspections = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.shift_date >= start_datetime,
+            QualityEntry.shift_date <= end_datetime
         )
     ).all()
 
@@ -195,12 +209,12 @@ def calculate_defect_escape_rate(
 
     # Defects found at final inspection
     final_defects = sum(
-        i.defects_found for i in all_inspections
+        i.units_defective or 0 for i in all_inspections
         if i.inspection_stage == 'Final'
     )
 
     # Total defects found
-    total_defects = sum(i.defects_found for i in all_inspections)
+    total_defects = sum(i.units_defective or 0 for i in all_inspections)
 
     if total_defects > 0:
         escape_rate = (Decimal(str(final_defects)) / Decimal(str(total_defects))) * 100

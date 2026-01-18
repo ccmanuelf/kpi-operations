@@ -3,21 +3,9 @@ DOWNTIME_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation for KPI #8 Availability calculation
 Source: 03-Phase2_Downtime_WIP_Inventory.csv lines 2-19
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
-import enum
-
-
-class DowntimeReason(str, enum.Enum):
-    """Downtime categories for availability calculation"""
-    EQUIPMENT_FAILURE = "EQUIPMENT_FAILURE"
-    MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
-    SETUP_CHANGEOVER = "SETUP_CHANGEOVER"
-    QUALITY_HOLD = "QUALITY_HOLD"
-    MAINTENANCE = "MAINTENANCE"
-    POWER_OUTAGE = "POWER_OUTAGE"
-    OTHER = "OTHER"
 
 
 class DowntimeEntry(Base):
@@ -37,8 +25,8 @@ class DowntimeEntry(Base):
     # Date tracking
     shift_date = Column(DateTime, nullable=False, index=True)
 
-    # Downtime classification
-    downtime_reason = Column(SQLEnum(DowntimeReason), nullable=False, index=True)
+    # Downtime classification - String to accept any value
+    downtime_reason = Column(String(100), nullable=False, index=True)
     downtime_duration_minutes = Column(Integer, nullable=False)  # REQUIRED for Availability
 
     # Equipment details

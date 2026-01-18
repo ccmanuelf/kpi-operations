@@ -56,10 +56,9 @@ def list_quality(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
+    work_order_id: Optional[str] = None,
     inspection_stage: Optional[str] = None,
-    defect_category: Optional[str] = None,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -69,14 +68,14 @@ def list_quality(
     """
     return get_quality_inspections(
         db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, product_id=product_id, shift_id=shift_id,
-        inspection_stage=inspection_stage, defect_category=defect_category
+        end_date=end_date, work_order_id=work_order_id,
+        inspection_stage=inspection_stage, client_id=client_id
     )
 
 
 @router.get("/{inspection_id}", response_model=QualityInspectionResponse)
 def get_quality(
-    inspection_id: int,
+    inspection_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -265,9 +264,9 @@ def calculate_dpmo_kpi(
 
 @router.get("/kpi/fpy-rty", response_model=FPYRTYCalculationResponse)
 def calculate_fpy_rty_kpi(
-    product_id: int,
-    start_date: date,
-    end_date: date,
+    product_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -275,7 +274,26 @@ def calculate_fpy_rty_kpi(
     Calculate FPY (First Pass Yield) and RTY (Rolled Throughput Yield)
     FPY = (Units Passed / Total Units) × 100
     RTY = Product of all FPY values across process steps
+
+    Parameters are optional - defaults to all products and last 30 days
     """
+    from datetime import timedelta
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # If no product_id, get first available product
+    if product_id is None:
+        from backend.schemas.product import Product
+        first_product = db.query(Product).first()
+        if first_product:
+            product_id = first_product.product_id
+        else:
+            product_id = 1  # Fallback default
+
     fpy, good, total = calculate_fpy(db, product_id, start_date, end_date)
     rty, steps = calculate_rty(db, product_id, start_date, end_date)
 

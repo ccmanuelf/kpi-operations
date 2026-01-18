@@ -10,7 +10,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.hold import WIPHold, HoldStatus
+from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
 from backend.models.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
@@ -55,11 +55,11 @@ def create_wip_hold(
 
 def get_wip_hold(
     db: Session,
-    hold_id: int,
+    hold_id: str,
     current_user: User
 ) -> Optional[WIPHold]:
     """Get WIP hold by ID"""
-    db_hold = db.query(WIPHold).filter(WIPHold.hold_id == hold_id).first()
+    db_hold = db.query(WIPHold).filter(WIPHold.hold_entry_id == hold_id).first()
 
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
@@ -77,12 +77,12 @@ def get_wip_holds(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
+    client_id: Optional[str] = None,
+    work_order_id: Optional[str] = None,
     released: Optional[bool] = None,
-    hold_category: Optional[str] = None
+    hold_reason_category: Optional[str] = None
 ) -> List[WIPHold]:
-    """Get WIP holds with filters"""
+    """Get WIP holds with filters - uses HOLD_ENTRY schema"""
     query = db.query(WIPHold)
 
     # Apply client filtering based on user role
@@ -90,26 +90,27 @@ def get_wip_holds(
     if client_filter is not None:
         query = query.filter(client_filter)
 
+    # Additional client filter if provided
+    if client_id:
+        query = query.filter(WIPHold.client_id == client_id)
+
     if start_date:
         query = query.filter(WIPHold.hold_date >= start_date)
 
     if end_date:
         query = query.filter(WIPHold.hold_date <= end_date)
 
-    if product_id:
-        query = query.filter(WIPHold.product_id == product_id)
-
-    if shift_id:
-        query = query.filter(WIPHold.shift_id == shift_id)
+    if work_order_id:
+        query = query.filter(WIPHold.work_order_id == work_order_id)
 
     if released is not None:
         if released:
-            query = query.filter(WIPHold.release_date.isnot(None))
+            query = query.filter(WIPHold.hold_status == HoldStatus.RESUMED)
         else:
-            query = query.filter(WIPHold.release_date.is_(None))
+            query = query.filter(WIPHold.hold_status == HoldStatus.ON_HOLD)
 
-    if hold_category:
-        query = query.filter(WIPHold.hold_category == hold_category)
+    if hold_reason_category:
+        query = query.filter(WIPHold.hold_reason_category == hold_reason_category)
 
     return query.order_by(
         WIPHold.hold_date.desc()

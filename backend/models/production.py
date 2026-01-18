@@ -92,28 +92,37 @@ class ProductionEntryUpdate(BaseModel):
 
 
 class ProductionEntryResponse(BaseModel):
-    """Production entry response"""
-    entry_id: int
+    """Production entry response - matches PRODUCTION_ENTRY schema"""
+    production_entry_id: str
+    client_id: str
     product_id: int
     shift_id: int
-    production_date: date
-    work_order_number: Optional[str]
+    work_order_id: Optional[str] = None
     job_id: Optional[str] = None
+    production_date: datetime
+    shift_date: datetime
     units_produced: int
     run_time_hours: Decimal
     employees_assigned: int
     employees_present: Optional[int] = None
     defect_count: int
     scrap_count: int
-    efficiency_percentage: Optional[Decimal]
-    performance_percentage: Optional[Decimal]
-    notes: Optional[str]
-    entered_by: int
-    confirmed_by: Optional[int]
-    confirmation_timestamp: Optional[datetime]
+    rework_count: Optional[int] = None
+    setup_time_hours: Optional[Decimal] = None
+    downtime_hours: Optional[Decimal] = None
+    maintenance_hours: Optional[Decimal] = None
+    ideal_cycle_time: Optional[Decimal] = None
+    actual_cycle_time: Optional[Decimal] = None
+    efficiency_percentage: Optional[Decimal] = None
+    performance_percentage: Optional[Decimal] = None
+    quality_rate: Optional[Decimal] = None
+    notes: Optional[str] = None
+    entered_by: Optional[int] = None
+    confirmed_by: Optional[int] = None
+    confirmation_timestamp: Optional[datetime] = None
     entry_method: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

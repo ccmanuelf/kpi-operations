@@ -108,21 +108,27 @@ class AttendanceRecordUpdate(BaseModel):
 
 
 class AttendanceRecordResponse(BaseModel):
-    """Attendance record response"""
-    attendance_id: int
+    """Attendance record response - matches ATTENDANCE_ENTRY schema"""
+    attendance_entry_id: str
+    client_id: str
     employee_id: int
-    shift_id: int
-    attendance_date: date
-    status: str
+    shift_date: datetime
+    shift_id: Optional[int] = None
     scheduled_hours: Decimal
-    actual_hours_worked: Decimal
-    absence_reason: Optional[str]
+    actual_hours: Optional[Decimal] = None
+    absence_hours: Optional[Decimal] = None
+    is_absent: int
+    absence_type: Optional[str] = None
     covered_by_employee_id: Optional[int] = None
     coverage_confirmed: Optional[int] = None
-    notes: Optional[str]
-    entered_by: int
-    created_at: datetime
-    updated_at: datetime
+    arrival_time: Optional[datetime] = None
+    departure_time: Optional[datetime] = None
+    is_late: Optional[int] = None
+    is_early_departure: Optional[int] = None
+    absence_reason: Optional[str] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

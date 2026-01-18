@@ -602,6 +602,110 @@ def get_kpi_dashboard(
     return get_daily_summary(db, current_user, start_date, end_date)
 
 
+@app.get("/api/kpi/efficiency/by-shift")
+def get_efficiency_by_shift(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get efficiency aggregated by shift"""
+    from sqlalchemy import func
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.shift import Shift
+
+    if not start_date:
+        start_date = date.today() - timedelta(days=30)
+    if not end_date:
+        end_date = date.today()
+
+    query = db.query(
+        ProductionEntry.shift_id,
+        Shift.shift_name,
+        func.sum(ProductionEntry.units_produced).label('actual_output'),
+        func.avg(ProductionEntry.efficiency_percentage).label('efficiency'),
+        func.count(ProductionEntry.production_entry_id).label('entry_count')
+    ).join(
+        Shift, ProductionEntry.shift_id == Shift.shift_id
+    ).filter(
+        ProductionEntry.shift_date >= start_date,
+        ProductionEntry.shift_date <= end_date
+    )
+
+    if client_id:
+        query = query.filter(ProductionEntry.client_id == client_id)
+
+    results = query.group_by(
+        ProductionEntry.shift_id,
+        Shift.shift_name
+    ).all()
+
+    return [
+        {
+            "shift_id": r.shift_id,
+            "shift_name": r.shift_name or f"Shift {r.shift_id}",
+            "actual_output": r.actual_output or 0,
+            "expected_output": int((r.actual_output or 0) / ((r.efficiency or 100) / 100)) if r.efficiency else 0,
+            "efficiency": float(r.efficiency) if r.efficiency else 0
+        }
+        for r in results
+    ]
+
+
+@app.get("/api/kpi/efficiency/by-product")
+def get_efficiency_by_product(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get top products by efficiency"""
+    from sqlalchemy import func
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.product import Product
+
+    if not start_date:
+        start_date = date.today() - timedelta(days=30)
+    if not end_date:
+        end_date = date.today()
+
+    query = db.query(
+        ProductionEntry.product_id,
+        Product.product_name,
+        func.sum(ProductionEntry.units_produced).label('actual_output'),
+        func.avg(ProductionEntry.efficiency_percentage).label('efficiency'),
+        func.count(ProductionEntry.production_entry_id).label('entry_count')
+    ).join(
+        Product, ProductionEntry.product_id == Product.product_id
+    ).filter(
+        ProductionEntry.shift_date >= start_date,
+        ProductionEntry.shift_date <= end_date
+    )
+
+    if client_id:
+        query = query.filter(ProductionEntry.client_id == client_id)
+
+    results = query.group_by(
+        ProductionEntry.product_id,
+        Product.product_name
+    ).order_by(
+        func.avg(ProductionEntry.efficiency_percentage).desc()
+    ).limit(limit).all()
+
+    return [
+        {
+            "product_id": r.product_id,
+            "product_name": r.product_name or f"Product {r.product_id}",
+            "actual_output": r.actual_output or 0,
+            "efficiency": float(r.efficiency) if r.efficiency else 0
+        }
+        for r in results
+    ]
+
+
 # ============================================================================
 # CSV UPLOAD ROUTE
 # ============================================================================
@@ -1285,23 +1389,23 @@ def list_downtime(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
-    downtime_category: Optional[str] = None,
+    client_id: Optional[str] = None,
+    work_order_id: Optional[str] = None,
+    downtime_reason: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """List downtime events with filters"""
     return get_downtime_events(
         db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, product_id=product_id, shift_id=shift_id,
-        downtime_category=downtime_category
+        end_date=end_date, client_id=client_id, work_order_id=work_order_id,
+        downtime_reason=downtime_reason
     )
 
 
 @app.get("/api/downtime/{downtime_id}", response_model=DowntimeEventResponse)
 def get_downtime(
-    downtime_id: int,
+    downtime_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1314,7 +1418,7 @@ def get_downtime(
 
 @app.put("/api/downtime/{downtime_id}", response_model=DowntimeEventResponse)
 def update_downtime(
-    downtime_id: int,
+    downtime_id: str,
     downtime_update: DowntimeEventUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1328,7 +1432,7 @@ def update_downtime(
 
 @app.delete("/api/downtime/{downtime_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_downtime(
-    downtime_id: int,
+    downtime_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor)
 ):
@@ -1384,18 +1488,18 @@ def list_holds(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
+    client_id: Optional[str] = None,
+    work_order_id: Optional[str] = None,
     released: Optional[bool] = None,
-    hold_category: Optional[str] = None,
+    hold_reason_category: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List WIP holds with filters"""
+    """List WIP holds with filters - uses HOLD_ENTRY schema"""
     return get_wip_holds(
         db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, product_id=product_id, shift_id=shift_id,
-        released=released, hold_category=hold_category
+        end_date=end_date, client_id=client_id, work_order_id=work_order_id,
+        released=released, hold_reason_category=hold_reason_category
     )
 
 
@@ -1458,6 +1562,100 @@ def calculate_wip_aging_kpi(
         total_hold_events=aging_data["total_hold_events"],
         calculation_timestamp=datetime.utcnow()
     )
+
+
+@app.get("/api/kpi/wip-aging/top")
+def get_top_aging_items(
+    limit: int = 10,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get top aging WIP items - for WIP Aging view table"""
+    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.schemas.work_order import WorkOrder
+    from sqlalchemy import func
+
+    query = db.query(
+        HoldEntry.work_order_id,
+        WorkOrder.style_model,
+        HoldEntry.hold_date,
+        func.julianday('now') - func.julianday(HoldEntry.hold_date)
+    ).outerjoin(
+        WorkOrder, HoldEntry.work_order_id == WorkOrder.work_order_id
+    ).filter(
+        HoldEntry.hold_status == HoldStatus.ON_HOLD
+    )
+
+    # Apply client filter
+    if client_id:
+        query = query.filter(HoldEntry.client_id == client_id)
+    elif current_user.role != 'admin' and current_user.client_id_assigned:
+        query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
+
+    results = query.order_by(
+        (func.julianday('now') - func.julianday(HoldEntry.hold_date)).desc()
+    ).limit(limit).all()
+
+    return [
+        {
+            "work_order": r[0],
+            "product": r[1] or "N/A",
+            "age": int(r[3]) if r[3] else 0,
+            "quantity": 1  # Placeholder - HOLD_ENTRY doesn't track quantity
+        }
+        for r in results
+    ]
+
+
+@app.get("/api/kpi/wip-aging/trend")
+def get_wip_aging_trend(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get WIP aging trend data - for WIP Aging view chart"""
+    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from sqlalchemy import func, cast, Date
+
+    if not start_date:
+        start_date = date.today() - timedelta(days=30)
+    if not end_date:
+        end_date = date.today()
+
+    # Get daily average aging for the date range
+    # We calculate for each day how old the active holds were on that day
+    trend_data = []
+    current_date = start_date
+
+    while current_date <= end_date:
+        # Query holds that were active on this date
+        query = db.query(
+            func.avg(func.julianday(current_date) - func.julianday(HoldEntry.hold_date))
+        ).filter(
+            HoldEntry.hold_date <= current_date,
+            (HoldEntry.resume_date.is_(None)) | (HoldEntry.resume_date > current_date)
+        )
+
+        # Apply client filter
+        if client_id:
+            query = query.filter(HoldEntry.client_id == client_id)
+        elif current_user.role != 'admin' and current_user.client_id_assigned:
+            query = query.filter(HoldEntry.client_id == current_user.client_id_assigned)
+
+        result = query.scalar()
+        avg_age = float(result) if result else 0
+
+        trend_data.append({
+            "date": current_date.isoformat(),
+            "value": round(avg_age, 1)
+        })
+
+        current_date += timedelta(days=1)
+
+    return trend_data
 
 
 @app.get("/api/kpi/chronic-holds")
@@ -1535,13 +1733,24 @@ app.include_router(filters_router)
 # as they don't fit into the modular structure
 @app.get("/api/kpi/otd")
 def calculate_otd_kpi(
-    start_date: date,
-    end_date: date,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     product_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Calculate On-Time Delivery KPI"""
+    """Calculate On-Time Delivery KPI
+
+    Parameters are optional - defaults to last 30 days
+    """
+    from datetime import timedelta
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
     otd_pct, on_time, total = calculate_otd(db, start_date, end_date, product_id)
 
     return {

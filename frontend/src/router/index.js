@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -72,7 +71,7 @@ const router = createRouter({
     {
       path: '/kpi/oee',
       name: 'kpi-oee',
-      component: () => import('@/views/KPIDashboard.vue'),
+      component: () => import('@/views/kpi/OEE.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -102,13 +101,14 @@ const router = createRouter({
   ]
 })
 
-// Navigation guard
+// Navigation guard - check auth from localStorage directly to avoid Pinia timing issues
 router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
+  const token = localStorage.getItem('access_token')
+  const isAuthenticated = !!token
 
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+  if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
-  } else if (to.path === '/login' && authStore.isAuthenticated) {
+  } else if (to.path === '/login' && isAuthenticated) {
     next('/')
   } else {
     next()

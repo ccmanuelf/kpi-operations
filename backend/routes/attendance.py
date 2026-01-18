@@ -54,7 +54,8 @@ def list_attendance(
     end_date: Optional[date] = None,
     employee_id: Optional[int] = None,
     shift_id: Optional[int] = None,
-    status: Optional[str] = None,
+    is_absent: Optional[int] = None,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -65,13 +66,13 @@ def list_attendance(
     return get_attendance_records(
         db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
         end_date=end_date, employee_id=employee_id,
-        shift_id=shift_id, status=status
+        shift_id=shift_id, is_absent=is_absent, client_id=client_id
     )
 
 
 @router.get("/{attendance_id}", response_model=AttendanceRecordResponse)
 def get_attendance(
-    attendance_id: int,
+    attendance_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -221,16 +222,35 @@ def delete_attendance(
 
 @router.get("/kpi/absenteeism", response_model=AbsenteeismCalculationResponse)
 def calculate_absenteeism_kpi(
-    shift_id: int,
-    start_date: date,
-    end_date: date,
+    shift_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     Calculate absenteeism KPI for a shift and date range
     Formula: (Total Hours Absent / Total Scheduled Hours) * 100
+
+    Parameters are optional - defaults to all shifts and last 30 days
     """
+    from datetime import timedelta
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # If no shift_id, get first available shift
+    if shift_id is None:
+        from backend.schemas.shift import Shift
+        first_shift = db.query(Shift).first()
+        if first_shift:
+            shift_id = first_shift.shift_id
+        else:
+            shift_id = 1  # Fallback default
+
     rate, scheduled, absent, emp_count, absence_count = calculate_absenteeism(
         db, shift_id, start_date, end_date
     )

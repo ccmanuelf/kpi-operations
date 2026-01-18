@@ -115,34 +115,26 @@ class WIPHoldResumeRequest(BaseModel):
 
 
 class WIPHoldResponse(BaseModel):
-    """WIP hold response"""
-    hold_id: int
+    """WIP hold response - matches HOLD_ENTRY schema"""
+    hold_entry_id: str
     client_id: str
-    product_id: int
-    shift_id: int
-    hold_date: date
-    work_order_number: str
+    work_order_id: str
     job_id: Optional[str] = None
-    quantity_held: int
-    hold_reason: str
-    hold_reason_enum: Optional[str] = None
-    hold_category: str
-    expected_resolution_date: Optional[date]
-    release_date: Optional[date]
-    actual_resolution_date: Optional[date]
-    quantity_released: Optional[int]
-    quantity_scrapped: Optional[int]
-    aging_days: Optional[int]
-    # P2-001: Hold duration fields
-    hold_timestamp: Optional[datetime]
-    resume_timestamp: Optional[datetime]
-    resumed_by: Optional[int]
-    status: Optional[str]
-    total_hold_duration_hours: Optional[Decimal]
-    notes: Optional[str]
-    entered_by: int
-    created_at: datetime
-    updated_at: Optional[datetime]
+    hold_status: str
+    hold_date: Optional[datetime] = None
+    resume_date: Optional[datetime] = None
+    total_hold_duration_hours: Optional[Decimal] = None
+    hold_reason_category: Optional[str] = None
+    hold_reason: Optional[str] = None
+    hold_reason_description: Optional[str] = None
+    quality_issue_type: Optional[str] = None
+    expected_resolution_date: Optional[datetime] = None
+    hold_initiated_by: Optional[int] = None
+    hold_approved_by: Optional[int] = None
+    resumed_by: Optional[int] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

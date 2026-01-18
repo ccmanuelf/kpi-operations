@@ -39,7 +39,7 @@ class Client(Base):
     engineering_id = Column(String(50))
 
     # Business configuration
-    client_type = Column(SQLEnum(ClientType), nullable=False, default=ClientType.PIECE_RATE)
+    client_type = Column(SQLEnum(ClientType, values_callable=lambda x: [e.value for e in x]), nullable=False, default=ClientType.PIECE_RATE)
     timezone = Column(String(50), default="America/New_York")
 
     # Status
