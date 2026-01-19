@@ -1,8 +1,23 @@
 <template>
   <v-container fluid>
     <v-row>
-      <v-col cols="12">
+      <v-col cols="12" md="8">
         <h1 class="text-h3 mb-4">Production Dashboard</h1>
+      </v-col>
+      <v-col cols="12" md="4">
+        <v-select
+          v-model="selectedClient"
+          :items="clients"
+          item-title="client_name"
+          item-value="client_id"
+          label="Filter by Client"
+          clearable
+          density="compact"
+          variant="outlined"
+          prepend-inner-icon="mdi-domain"
+          :loading="loadingClients"
+          @update:model-value="onClientChange"
+        />
       </v-col>
     </v-row>
 
@@ -47,24 +62,67 @@
     <v-row>
       <v-col cols="12">
         <v-card>
-          <v-card-title>Recent Production Entries</v-card-title>
+          <v-card-title class="d-flex align-center">
+            <span>Production Entries</span>
+            <v-spacer />
+            <v-btn
+              color="success"
+              variant="outlined"
+              size="small"
+              class="mr-2"
+              @click="exportToCSV"
+              :disabled="productionEntries.length === 0"
+            >
+              <v-icon start>mdi-file-delimited</v-icon>
+              Export CSV
+            </v-btn>
+            <v-btn
+              color="primary"
+              variant="outlined"
+              size="small"
+              @click="exportToExcel"
+              :disabled="productionEntries.length === 0"
+            >
+              <v-icon start>mdi-file-excel</v-icon>
+              Export Excel
+            </v-btn>
+          </v-card-title>
           <v-card-text>
             <v-data-table
               :headers="headers"
-              :items="recentEntries"
+              :items="productionEntries"
               :loading="loading"
+              :items-per-page="10"
+              :items-per-page-options="[10, 25, 50, 100]"
               class="elevation-1"
             >
               <template v-slot:item.production_date="{ item }">
                 {{ formatDate(item.production_date) }}
               </template>
+              <template v-slot:item.reference="{ item }">
+                <div class="d-flex flex-column">
+                  <span v-if="item.work_order_id" class="font-weight-medium">
+                    WO: {{ item.work_order_id }}
+                  </span>
+                  <span v-else-if="item.job_id" class="font-weight-medium">
+                    Job: {{ item.job_id }}
+                  </span>
+                  <span v-else class="text-grey-darken-1">—</span>
+                </div>
+              </template>
+              <template v-slot:item.product_id="{ item }">
+                <span>{{ getProductName(item.product_id) }}</span>
+              </template>
+              <template v-slot:item.shift_id="{ item }">
+                <span>{{ getShiftName(item.shift_id) }}</span>
+              </template>
               <template v-slot:item.efficiency_percentage="{ item }">
-                <v-chip :color="getEfficiencyColor(item.efficiency_percentage)" small>
+                <v-chip :color="getEfficiencyColor(item.efficiency_percentage)" size="small">
                   {{ parseFloat(item.efficiency_percentage || 0).toFixed(2) }}%
                 </v-chip>
               </template>
               <template v-slot:item.performance_percentage="{ item }">
-                <v-chip :color="getPerformanceColor(item.performance_percentage)" small>
+                <v-chip :color="getPerformanceColor(item.performance_percentage)" size="small">
                   {{ parseFloat(item.performance_percentage || 0).toFixed(2) }}%
                 </v-chip>
               </template>
@@ -80,24 +138,82 @@
 import { ref, computed, onMounted } from 'vue'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
+import api from '@/services/api'
 
 const kpiStore = useKPIStore()
 
+// Client filter state
+const clients = ref([])
+const selectedClient = ref(null)
+const loadingClients = ref(false)
+
 const loading = computed(() => kpiStore.loading)
 const productionEntries = computed(() => kpiStore.productionEntries)
-const recentEntries = computed(() => kpiStore.recentEntries)
-const totalUnitsToday = computed(() => kpiStore.totalUnitsToday)
-const averageEfficiency = computed(() => kpiStore.averageEfficiency)
-const averagePerformance = computed(() => kpiStore.averagePerformance)
+
+// Compute card values directly from productionEntries for proper reactivity
+const totalUnitsToday = computed(() => {
+  const today = format(new Date(), 'yyyy-MM-dd')
+  return productionEntries.value
+    .filter(e => e.production_date === today)
+    .reduce((sum, e) => sum + (e.units_produced || 0), 0)
+})
+
+const averageEfficiency = computed(() => {
+  if (productionEntries.value.length === 0) return '0.00'
+  const validEntries = productionEntries.value.filter(e => e.efficiency_percentage != null)
+  if (validEntries.length === 0) return '0.00'
+  const sum = validEntries.reduce((acc, e) => acc + parseFloat(e.efficiency_percentage || 0), 0)
+  return (sum / validEntries.length).toFixed(2)
+})
+
+const averagePerformance = computed(() => {
+  if (productionEntries.value.length === 0) return '0.00'
+  const validEntries = productionEntries.value.filter(e => e.performance_percentage != null)
+  if (validEntries.length === 0) return '0.00'
+  const sum = validEntries.reduce((acc, e) => acc + parseFloat(e.performance_percentage || 0), 0)
+  return (sum / validEntries.length).toFixed(2)
+})
 
 const headers = [
-  { title: 'Date', key: 'production_date' },
-  { title: 'Work Order', key: 'work_order_number' },
-  { title: 'Product', key: 'product_id' },
-  { title: 'Units', key: 'units_produced' },
-  { title: 'Efficiency', key: 'efficiency_percentage' },
-  { title: 'Performance', key: 'performance_percentage' }
+  { title: 'Date', key: 'production_date', sortable: true },
+  { title: 'Reference (WO/Job)', key: 'reference', sortable: false },
+  { title: 'Product', key: 'product_id', sortable: true },
+  { title: 'Shift', key: 'shift_id', sortable: true },
+  { title: 'Units', key: 'units_produced', sortable: true },
+  { title: 'Efficiency', key: 'efficiency_percentage', sortable: true },
+  { title: 'Performance', key: 'performance_percentage', sortable: true }
 ]
+
+// Reference data for lookups
+const products = ref([])
+const shifts = ref([])
+
+// Load reference data
+const loadReferenceData = async () => {
+  try {
+    const [productsRes, shiftsRes] = await Promise.all([
+      api.getProducts(),
+      api.getShifts()
+    ])
+    products.value = productsRes.data || []
+    shifts.value = shiftsRes.data || []
+  } catch (error) {
+    console.error('Failed to load reference data:', error)
+  }
+}
+
+// Lookup functions
+const getProductName = (productId) => {
+  if (!productId) return '—'
+  const product = products.value.find(p => p.product_id === productId)
+  return product ? product.product_name : `Product #${productId}`
+}
+
+const getShiftName = (shiftId) => {
+  if (!shiftId) return '—'
+  const shift = shifts.value.find(s => s.shift_id === shiftId)
+  return shift ? shift.shift_name : `Shift #${shiftId}`
+}
 
 const formatDate = (date) => {
   return format(new Date(date), 'MMM dd, yyyy')
@@ -117,8 +233,95 @@ const getPerformanceColor = (value) => {
   return 'error'
 }
 
+// Load clients from API
+const loadClients = async () => {
+  loadingClients.value = true
+  try {
+    const response = await api.getClients()
+    clients.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load clients:', error)
+  } finally {
+    loadingClients.value = false
+  }
+}
+
+// Handle client filter change
+const onClientChange = async () => {
+  const params = selectedClient.value ? { client_id: selectedClient.value } : {}
+  await Promise.all([
+    kpiStore.fetchProductionEntries(params),
+    kpiStore.fetchKPIDashboard(30, params)
+  ])
+}
+
+// Refresh data with current filters
+const refreshData = async () => {
+  const params = selectedClient.value ? { client_id: selectedClient.value } : {}
+  await Promise.all([
+    kpiStore.fetchProductionEntries(params),
+    kpiStore.fetchKPIDashboard(30, params)
+  ])
+}
+
+// Export to CSV
+const exportToCSV = () => {
+  const csvHeaders = ['Date', 'Work Order', 'Job ID', 'Product', 'Shift', 'Units', 'Efficiency %', 'Performance %']
+  const csvRows = productionEntries.value.map(entry => [
+    entry.production_date,
+    entry.work_order_id || '',
+    entry.job_id || '',
+    getProductName(entry.product_id),
+    getShiftName(entry.shift_id),
+    entry.units_produced || 0,
+    parseFloat(entry.efficiency_percentage || 0).toFixed(2),
+    parseFloat(entry.performance_percentage || 0).toFixed(2)
+  ])
+
+  const csvContent = [
+    csvHeaders.join(','),
+    ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+  ].join('\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const link = document.createElement('a')
+  const url = URL.createObjectURL(blob)
+  link.setAttribute('href', url)
+  link.setAttribute('download', `production_entries_${format(new Date(), 'yyyy-MM-dd')}.csv`)
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+// Export to Excel (using XLSX format via CSV with Excel-compatible encoding)
+const exportToExcel = async () => {
+  try {
+    const params = selectedClient.value ? { client_id: selectedClient.value } : {}
+    const response = await api.exportExcel(params)
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    link.setAttribute('href', url)
+    link.setAttribute('download', `production_entries_${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (error) {
+    console.error('Failed to export Excel:', error)
+    // Fallback to CSV if Excel export fails
+    exportToCSV()
+  }
+}
+
 onMounted(async () => {
-  await kpiStore.fetchProductionEntries()
-  await kpiStore.fetchKPIDashboard()
+  await Promise.all([
+    loadClients(),
+    loadReferenceData()
+  ])
+  await refreshData()
 })
 </script>

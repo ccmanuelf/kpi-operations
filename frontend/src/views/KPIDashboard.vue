@@ -94,6 +94,9 @@
                 <div class="text-h4 font-weight-bold mt-1">
                   {{ formatValue(kpi.value, kpi.unit) }}
                 </div>
+                <div v-if="kpi.subtitle" class="text-caption text-grey-darken-2 mt-1">
+                  {{ kpi.subtitle }}
+                </div>
               </div>
               <v-icon
                 :color="getStatusColor(kpi)"
@@ -700,14 +703,33 @@ const showSnackbar = (message, color = 'success') => {
 
 // New feature handlers
 const handleFilterChange = (filterParams) => {
-  // Apply filter to KPI store
-  if (filterParams.client_id) {
+  // Apply client filter
+  if (filterParams.client_id !== undefined) {
     selectedClient.value = filterParams.client_id
     kpiStore.setClient(filterParams.client_id)
   }
-  if (filterParams.start_date && filterParams.end_date) {
+
+  // Apply date range filter - handle both nested and flat formats
+  if (filterParams.date_range) {
+    const filterDateRange = filterParams.date_range
+    if (filterDateRange.type === 'absolute' && filterDateRange.start_date && filterDateRange.end_date) {
+      kpiStore.setDateRange(filterDateRange.start_date, filterDateRange.end_date)
+      dateRange.value = [new Date(filterDateRange.start_date), new Date(filterDateRange.end_date)]
+    } else if (filterDateRange.type === 'relative' && filterDateRange.relative_days !== undefined) {
+      const end = new Date()
+      const start = new Date()
+      start.setDate(start.getDate() - filterDateRange.relative_days)
+      const startStr = format(start, 'yyyy-MM-dd')
+      const endStr = format(end, 'yyyy-MM-dd')
+      kpiStore.setDateRange(startStr, endStr)
+      dateRange.value = [start, end]
+    }
+  } else if (filterParams.start_date && filterParams.end_date) {
+    // Fallback for flat date format
     kpiStore.setDateRange(filterParams.start_date, filterParams.end_date)
+    dateRange.value = [new Date(filterParams.start_date), new Date(filterParams.end_date)]
   }
+
   refreshData()
 }
 

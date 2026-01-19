@@ -25,14 +25,20 @@ export const useKPIStore = defineStore('kpi', {
         .reduce((sum, e) => sum + e.units_produced, 0)
     },
     averageEfficiency: (state) => {
-      if (state.dashboardData.length === 0) return 0
-      const sum = state.dashboardData.reduce((acc, d) => acc + d.avg_efficiency, 0)
-      return (sum / state.dashboardData.length).toFixed(2)
+      // Calculate from productionEntries for consistent filtering
+      if (state.productionEntries.length === 0) return 0
+      const validEntries = state.productionEntries.filter(e => e.efficiency_percentage != null)
+      if (validEntries.length === 0) return 0
+      const sum = validEntries.reduce((acc, e) => acc + parseFloat(e.efficiency_percentage || 0), 0)
+      return (sum / validEntries.length).toFixed(2)
     },
     averagePerformance: (state) => {
-      if (state.dashboardData.length === 0) return 0
-      const sum = state.dashboardData.reduce((acc, d) => acc + d.avg_performance, 0)
-      return (sum / state.dashboardData.length).toFixed(2)
+      // Calculate from productionEntries for consistent filtering
+      if (state.productionEntries.length === 0) return 0
+      const validEntries = state.productionEntries.filter(e => e.performance_percentage != null)
+      if (validEntries.length === 0) return 0
+      const sum = validEntries.reduce((acc, e) => acc + parseFloat(e.performance_percentage || 0), 0)
+      return (sum / validEntries.length).toFixed(2)
     }
   },
 
@@ -104,7 +110,7 @@ export const useKPIStore = defineStore('kpi', {
       }
     },
 
-    async fetchKPIDashboard(days = 30) {
+    async fetchKPIDashboard(days = 30, additionalParams = {}) {
       this.loading = true
       this.error = null
 
@@ -114,7 +120,8 @@ export const useKPIStore = defineStore('kpi', {
       try {
         const response = await api.getKPIDashboard({
           start_date: startDate,
-          end_date: endDate
+          end_date: endDate,
+          ...additionalParams
         })
         this.dashboardData = response.data
         return { success: true }

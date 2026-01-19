@@ -9,7 +9,7 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.quality import QualityInspection
+from backend.schemas.quality_entry import QualityEntry
 from backend.models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
@@ -34,28 +34,31 @@ def create_quality_inspection(
         verify_client_access(current_user, inspection.client_id)
 
     # Calculate PPM and DPMO
-    if inspection.units_inspected > 0:
+    units_inspected = getattr(inspection, 'units_inspected', 0) or 0
+    units_defective = getattr(inspection, 'units_defective', 0) or getattr(inspection, 'defects_found', 0) or 0
+
+    if units_inspected > 0:
         ppm = (
-            Decimal(str(inspection.defects_found)) /
-            Decimal(str(inspection.units_inspected))
+            Decimal(str(units_defective)) /
+            Decimal(str(units_inspected))
         ) * Decimal("1000000")
 
         # DPMO (assume 10 opportunities per unit for apparel)
         opportunities_per_unit = 10
-        total_opportunities = inspection.units_inspected * opportunities_per_unit
+        total_opportunities = units_inspected * opportunities_per_unit
         dpmo = (
-            Decimal(str(inspection.defects_found)) /
+            Decimal(str(units_defective)) /
             Decimal(str(total_opportunities))
         ) * Decimal("1000000")
     else:
         ppm = Decimal("0")
         dpmo = Decimal("0")
 
-    db_inspection = QualityInspection(
+    db_inspection = QualityEntry(
         **inspection.dict(),
         ppm=ppm,
         dpmo=dpmo,
-        entered_by=current_user.user_id
+        inspector_id=current_user.user_id
     )
 
     db.add(db_inspection)
@@ -67,15 +70,15 @@ def create_quality_inspection(
 
 def get_quality_inspection(
     db: Session,
-    inspection_id: int,
+    inspection_id: str,
     current_user: User
-) -> Optional[QualityInspection]:
+) -> Optional[QualityEntry]:
     """
     Get quality inspection by ID
     SECURITY: Verifies user has access to the record's client
     """
-    db_inspection = db.query(QualityInspection).filter(
-        QualityInspection.inspection_id == inspection_id
+    db_inspection = db.query(QualityEntry).filter(
+        QualityEntry.quality_entry_id == inspection_id
     ).first()
 
     if not db_inspection:
@@ -95,53 +98,45 @@ def get_quality_inspections(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
+    work_order_id: Optional[str] = None,
     inspection_stage: Optional[str] = None,
-    defect_category: Optional[str] = None,
     client_id: Optional[str] = None
-) -> List[QualityInspection]:
+) -> List[QualityEntry]:
     """
     Get quality inspections with filters
     SECURITY: Automatically filters by user's authorized clients
     """
-    query = db.query(QualityInspection)
+    query = db.query(QualityEntry)
 
     # SECURITY: Apply client filtering based on user's role
-    client_filter = build_client_filter_clause(current_user, QualityInspection.client_id)
+    client_filter = build_client_filter_clause(current_user, QualityEntry.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
 
     # Apply additional filters
     if client_id:
-        query = query.filter(QualityInspection.client_id == client_id)
+        query = query.filter(QualityEntry.client_id == client_id)
 
     if start_date:
-        query = query.filter(QualityInspection.inspection_date >= start_date)
+        query = query.filter(QualityEntry.shift_date >= start_date)
 
     if end_date:
-        query = query.filter(QualityInspection.inspection_date <= end_date)
+        query = query.filter(QualityEntry.shift_date <= end_date)
 
-    if product_id:
-        query = query.filter(QualityInspection.product_id == product_id)
-
-    if shift_id:
-        query = query.filter(QualityInspection.shift_id == shift_id)
+    if work_order_id:
+        query = query.filter(QualityEntry.work_order_id == work_order_id)
 
     if inspection_stage:
-        query = query.filter(QualityInspection.inspection_stage == inspection_stage)
-
-    if defect_category:
-        query = query.filter(QualityInspection.defect_category == defect_category)
+        query = query.filter(QualityEntry.inspection_stage == inspection_stage)
 
     return query.order_by(
-        QualityInspection.inspection_date.desc()
+        QualityEntry.shift_date.desc()
     ).offset(skip).limit(limit).all()
 
 
 def update_quality_inspection(
     db: Session,
-    inspection_id: int,
+    inspection_id: str,
     inspection_update: QualityInspectionUpdate,
     current_user: User
 ) -> Optional[QualityInspectionResponse]:
@@ -149,8 +144,8 @@ def update_quality_inspection(
     Update quality inspection record
     SECURITY: Verifies user has access to the record's client
     """
-    db_inspection = db.query(QualityInspection).filter(
-        QualityInspection.inspection_id == inspection_id
+    db_inspection = db.query(QualityEntry).filter(
+        QualityEntry.quality_entry_id == inspection_id
     ).first()
 
     if not db_inspection:
@@ -164,7 +159,7 @@ def update_quality_inspection(
 
     # Recalculate PPM and DPMO if values changed
     units = update_data.get('units_inspected', db_inspection.units_inspected)
-    defects = update_data.get('defects_found', db_inspection.defects_found)
+    defects = update_data.get('units_defective', db_inspection.units_defective)
 
     if units > 0:
         update_data['ppm'] = (
@@ -192,15 +187,15 @@ def update_quality_inspection(
 
 def delete_quality_inspection(
     db: Session,
-    inspection_id: int,
+    inspection_id: str,
     current_user: User
 ) -> bool:
     """
     Soft delete quality inspection record (sets is_active = False)
     SECURITY: Verifies user has access to the record's client
     """
-    db_inspection = db.query(QualityInspection).filter(
-        QualityInspection.inspection_id == inspection_id
+    db_inspection = db.query(QualityEntry).filter(
+        QualityEntry.quality_entry_id == inspection_id
     ).first()
 
     if not db_inspection:

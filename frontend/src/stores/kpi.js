@@ -151,7 +151,10 @@ export const useKPIStore = defineStore('kpi', {
         unit: 'ppm',
         higherBetter: false,
         icon: 'mdi-alert-circle',
-        route: '/kpi/quality'
+        route: '/kpi/quality',
+        subtitle: state.defectRates?.defect_rate_percentage != null
+          ? `${state.defectRates.defect_rate_percentage}% defect rate`
+          : null
       },
       {
         key: 'throughputTime',
@@ -175,15 +178,23 @@ export const useKPIStore = defineStore('kpi', {
       this.dateRange = { start, end }
     },
 
+    // Helper to build query params without null values
+    _buildParams() {
+      const params = {
+        start_date: this.dateRange.start,
+        end_date: this.dateRange.end
+      }
+      if (this.selectedClient) {
+        params.client_id = this.selectedClient
+      }
+      return params
+    },
+
     async fetchDashboard() {
       this.loading = true
       this.error = null
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const response = await api.getKPIDashboard(params)
         this.dashboard = response.data
         return response.data
@@ -199,11 +210,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchEfficiency() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getEfficiency(params),
           api.getEfficiencyTrend(params)
@@ -223,11 +230,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchWIPAging() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getWIPAging(params),
           api.getWIPAgingTrend(params)
@@ -247,11 +250,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchOnTimeDelivery() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getOnTimeDelivery(params),
           api.getOnTimeDeliveryTrend(params)
@@ -271,11 +270,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchAvailability() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getAvailability(params),
           api.getAvailabilityTrend(params)
@@ -295,11 +290,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchPerformance() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getPerformance(params),
           api.getPerformanceTrend(params)
@@ -319,11 +310,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchQuality() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getQuality(params),
           api.getQualityTrend(params)
@@ -343,11 +330,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchOEE() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getOEE(params),
           api.getOEETrend(params)
@@ -367,11 +350,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchAbsenteeism() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const [dataRes, trendRes] = await Promise.all([
           api.getAbsenteeism(params),
           api.getAbsenteeismTrend(params)
@@ -391,11 +370,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchDefectRates() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const response = await api.getDefectRates(params)
         this.defectRates = response.data
         return response.data
@@ -411,11 +386,7 @@ export const useKPIStore = defineStore('kpi', {
     async fetchThroughputTime() {
       this.loading = true
       try {
-        const params = {
-          client_id: this.selectedClient,
-          start_date: this.dateRange.start,
-          end_date: this.dateRange.end
-        }
+        const params = this._buildParams()
         const response = await api.getThroughputTime(params)
         this.throughputTime = response.data
         return response.data
