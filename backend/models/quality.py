@@ -116,7 +116,7 @@ class QualityInspectionResponse(BaseModel):
 
 
 class PPMCalculationResponse(BaseModel):
-    """PPM (Parts Per Million) calculation"""
+    """PPM (Parts Per Million) calculation with defect rate percentage"""
     product_id: int
     shift_id: int
     start_date: date
@@ -124,6 +124,7 @@ class PPMCalculationResponse(BaseModel):
     total_units_inspected: int
     total_defects: int
     ppm: Decimal
+    defect_rate_percentage: Decimal  # PPM / 10,000 = percentage
     calculation_timestamp: datetime
 
 

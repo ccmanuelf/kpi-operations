@@ -8,7 +8,7 @@ from typing import Optional, List
 from datetime import date
 from fastapi import HTTPException
 
-from backend.schemas.attendance import AttendanceRecord
+from backend.schemas.attendance_entry import AttendanceEntry
 from backend.models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
@@ -32,7 +32,7 @@ def create_attendance_record(
     if hasattr(attendance, 'client_id') and attendance.client_id:
         verify_client_access(current_user, attendance.client_id)
 
-    db_attendance = AttendanceRecord(
+    db_attendance = AttendanceEntry(
         **attendance.dict(),
         entered_by=current_user.user_id
     )
@@ -46,15 +46,15 @@ def create_attendance_record(
 
 def get_attendance_record(
     db: Session,
-    attendance_id: int,
+    attendance_id: str,
     current_user: User
-) -> Optional[AttendanceRecord]:
+) -> Optional[AttendanceEntry]:
     """
     Get attendance record by ID
     SECURITY: Verifies user has access to the record's client
     """
-    db_attendance = db.query(AttendanceRecord).filter(
-        AttendanceRecord.attendance_id == attendance_id
+    db_attendance = db.query(AttendanceEntry).filter(
+        AttendanceEntry.attendance_entry_id == attendance_id
     ).first()
 
     if not db_attendance:
@@ -76,47 +76,47 @@ def get_attendance_records(
     end_date: Optional[date] = None,
     employee_id: Optional[int] = None,
     shift_id: Optional[int] = None,
-    status: Optional[str] = None,
+    is_absent: Optional[int] = None,
     client_id: Optional[str] = None
-) -> List[AttendanceRecord]:
+) -> List[AttendanceEntry]:
     """
     Get attendance records with filters
     SECURITY: Automatically filters by user's authorized clients
     """
-    query = db.query(AttendanceRecord)
+    query = db.query(AttendanceEntry)
 
     # SECURITY: Apply client filtering based on user's role
-    client_filter = build_client_filter_clause(current_user, AttendanceRecord.client_id)
+    client_filter = build_client_filter_clause(current_user, AttendanceEntry.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
 
     # Apply additional filters
     if client_id:
-        query = query.filter(AttendanceRecord.client_id == client_id)
+        query = query.filter(AttendanceEntry.client_id == client_id)
 
     if start_date:
-        query = query.filter(AttendanceRecord.attendance_date >= start_date)
+        query = query.filter(AttendanceEntry.shift_date >= start_date)
 
     if end_date:
-        query = query.filter(AttendanceRecord.attendance_date <= end_date)
+        query = query.filter(AttendanceEntry.shift_date <= end_date)
 
     if employee_id:
-        query = query.filter(AttendanceRecord.employee_id == employee_id)
+        query = query.filter(AttendanceEntry.employee_id == employee_id)
 
     if shift_id:
-        query = query.filter(AttendanceRecord.shift_id == shift_id)
+        query = query.filter(AttendanceEntry.shift_id == shift_id)
 
-    if status:
-        query = query.filter(AttendanceRecord.status == status)
+    if is_absent is not None:
+        query = query.filter(AttendanceEntry.is_absent == is_absent)
 
     return query.order_by(
-        AttendanceRecord.attendance_date.desc()
+        AttendanceEntry.shift_date.desc()
     ).offset(skip).limit(limit).all()
 
 
 def update_attendance_record(
     db: Session,
-    attendance_id: int,
+    attendance_id: str,
     attendance_update: AttendanceRecordUpdate,
     current_user: User
 ) -> Optional[AttendanceRecordResponse]:
@@ -124,8 +124,8 @@ def update_attendance_record(
     Update attendance record
     SECURITY: Verifies user has access to the record's client
     """
-    db_attendance = db.query(AttendanceRecord).filter(
-        AttendanceRecord.attendance_id == attendance_id
+    db_attendance = db.query(AttendanceEntry).filter(
+        AttendanceEntry.attendance_entry_id == attendance_id
     ).first()
 
     if not db_attendance:
@@ -149,15 +149,15 @@ def update_attendance_record(
 
 def delete_attendance_record(
     db: Session,
-    attendance_id: int,
+    attendance_id: str,
     current_user: User
 ) -> bool:
     """
     Soft delete attendance record (sets is_active = False)
     SECURITY: Verifies user has access to the record's client
     """
-    db_attendance = db.query(AttendanceRecord).filter(
-        AttendanceRecord.attendance_id == attendance_id
+    db_attendance = db.query(AttendanceEntry).filter(
+        AttendanceEntry.attendance_entry_id == attendance_id
     ).first()
 
     if not db_attendance:

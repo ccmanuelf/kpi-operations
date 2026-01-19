@@ -4,12 +4,13 @@
 -- ============================================================================
 -- USERS
 -- ============================================================================
-INSERT INTO `user` (`username`, `email`, `password_hash`, `full_name`, `role`) VALUES
-('admin', 'admin@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIx.N9C/zu', 'System Administrator', 'admin'),
-('supervisor1', 'supervisor@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIx.N9C/zu', 'Jane Supervisor', 'supervisor'),
-('operator1', 'operator1@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIx.N9C/zu', 'John Operator', 'operator'),
-('operator2', 'operator2@company.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYIx.N9C/zu', 'Maria Worker', 'operator');
 -- Password for all users: "password123"
+-- Hash generated with: passlib.context.CryptContext(schemes=["bcrypt"]).hash("password123")
+INSERT INTO `user` (`username`, `email`, `password_hash`, `full_name`, `role`) VALUES
+('admin', 'admin@company.com', '$2b$12$UJsNbGECns6S5zo9nas.nuXSzsAKjQB0X63oUu1UzFkxAG1pIdvpC', 'System Administrator', 'admin'),
+('supervisor1', 'supervisor@company.com', '$2b$12$UJsNbGECns6S5zo9nas.nuXSzsAKjQB0X63oUu1UzFkxAG1pIdvpC', 'Jane Supervisor', 'supervisor'),
+('operator1', 'operator1@company.com', '$2b$12$UJsNbGECns6S5zo9nas.nuXSzsAKjQB0X63oUu1UzFkxAG1pIdvpC', 'John Operator', 'operator'),
+('operator2', 'operator2@company.com', '$2b$12$UJsNbGECns6S5zo9nas.nuXSzsAKjQB0X63oUu1UzFkxAG1pIdvpC', 'Maria Worker', 'operator');
 
 -- ============================================================================
 -- SHIFTS

@@ -8,7 +8,7 @@ from typing import Optional, List
 from datetime import date
 from fastapi import HTTPException
 
-from backend.schemas.downtime import DowntimeEvent
+from backend.schemas.downtime_entry import DowntimeEntry
 from backend.models.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
@@ -28,7 +28,7 @@ def create_downtime_event(
     # Verify user has access to this client
     verify_client_access(current_user, downtime.client_id)
 
-    db_downtime = DowntimeEvent(
+    db_downtime = DowntimeEntry(
         **downtime.dict(),
         entered_by=current_user.user_id
     )
@@ -42,12 +42,12 @@ def create_downtime_event(
 
 def get_downtime_event(
     db: Session,
-    downtime_id: int,
+    downtime_id: str,
     current_user: User
-) -> Optional[DowntimeEvent]:
+) -> Optional[DowntimeEntry]:
     """Get downtime event by ID"""
-    db_downtime = db.query(DowntimeEvent).filter(
-        DowntimeEvent.downtime_id == downtime_id
+    db_downtime = db.query(DowntimeEntry).filter(
+        DowntimeEntry.downtime_entry_id == downtime_id
     ).first()
 
     if not db_downtime:
@@ -66,41 +66,41 @@ def get_downtime_events(
     limit: int = 100,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    product_id: Optional[int] = None,
-    shift_id: Optional[int] = None,
-    downtime_category: Optional[str] = None
-) -> List[DowntimeEvent]:
+    client_id: Optional[str] = None,
+    work_order_id: Optional[str] = None,
+    downtime_reason: Optional[str] = None
+) -> List[DowntimeEntry]:
     """Get downtime events with filters"""
-    query = db.query(DowntimeEvent)
+    query = db.query(DowntimeEntry)
 
     # Apply client filtering based on user role
-    client_filter = build_client_filter_clause(current_user, DowntimeEvent.client_id)
+    client_filter = build_client_filter_clause(current_user, DowntimeEntry.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
 
+    if client_id:
+        query = query.filter(DowntimeEntry.client_id == client_id)
+
     if start_date:
-        query = query.filter(DowntimeEvent.production_date >= start_date)
+        query = query.filter(DowntimeEntry.shift_date >= start_date)
 
     if end_date:
-        query = query.filter(DowntimeEvent.production_date <= end_date)
+        query = query.filter(DowntimeEntry.shift_date <= end_date)
 
-    if product_id:
-        query = query.filter(DowntimeEvent.product_id == product_id)
+    if work_order_id:
+        query = query.filter(DowntimeEntry.work_order_id == work_order_id)
 
-    if shift_id:
-        query = query.filter(DowntimeEvent.shift_id == shift_id)
-
-    if downtime_category:
-        query = query.filter(DowntimeEvent.downtime_category == downtime_category)
+    if downtime_reason:
+        query = query.filter(DowntimeEntry.downtime_reason == downtime_reason)
 
     return query.order_by(
-        DowntimeEvent.production_date.desc()
+        DowntimeEntry.shift_date.desc()
     ).offset(skip).limit(limit).all()
 
 
 def update_downtime_event(
     db: Session,
-    downtime_id: int,
+    downtime_id: str,
     downtime_update: DowntimeEventUpdate,
     current_user: User
 ) -> Optional[DowntimeEventResponse]:
@@ -127,7 +127,7 @@ def update_downtime_event(
 
 def delete_downtime_event(
     db: Session,
-    downtime_id: int,
+    downtime_id: str,
     current_user: User
 ) -> bool:
     """Soft delete downtime event (sets is_active = False)"""

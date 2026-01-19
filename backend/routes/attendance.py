@@ -5,6 +5,7 @@ All endpoints enforce multi-tenant client filtering
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import case
 from typing import List, Optional
 from datetime import date, datetime
 
@@ -225,16 +226,19 @@ def calculate_absenteeism_kpi(
     shift_id: Optional[int] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Calculate absenteeism KPI for a shift and date range
+    Calculate absenteeism KPI for a shift and date range with client filtering
     Formula: (Total Hours Absent / Total Scheduled Hours) * 100
 
     Parameters are optional - defaults to all shifts and last 30 days
     """
     from datetime import timedelta
+    from backend.schemas.attendance_entry import AttendanceEntry
+    from sqlalchemy import func
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -242,18 +246,41 @@ def calculate_absenteeism_kpi(
     if start_date is None:
         start_date = end_date - timedelta(days=30)
 
-    # If no shift_id, get first available shift
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # Build query with client filter - using ATTENDANCE_ENTRY table
+    # Calculate absent hours from absence_hours column or scheduled - actual
+    query = db.query(
+        func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
+        func.sum(func.coalesce(AttendanceEntry.absence_hours, AttendanceEntry.scheduled_hours - func.coalesce(AttendanceEntry.actual_hours, 0))).label('absent'),
+        func.count(func.distinct(AttendanceEntry.employee_id)).label('emp_count'),
+        func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label('absence_count')
+    ).filter(
+        AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    # Apply optional filters
+    if shift_id:
+        query = query.filter(AttendanceEntry.shift_id == shift_id)
+    if effective_client_id:
+        query = query.filter(AttendanceEntry.client_id == effective_client_id)
+
+    result = query.first()
+    scheduled = float(result.scheduled or 0)
+    absent = float(result.absent or 0)
+    emp_count = result.emp_count or 0
+    absence_count = result.absence_count or 0
+    rate = (absent / scheduled * 100) if scheduled > 0 else 0
+
+    # Get shift_id for response if not provided
     if shift_id is None:
         from backend.schemas.shift import Shift
         first_shift = db.query(Shift).first()
-        if first_shift:
-            shift_id = first_shift.shift_id
-        else:
-            shift_id = 1  # Fallback default
-
-    rate, scheduled, absent, emp_count, absence_count = calculate_absenteeism(
-        db, shift_id, start_date, end_date
-    )
+        shift_id = first_shift.shift_id if first_shift else 1
 
     return AbsenteeismCalculationResponse(
         shift_id=shift_id,
@@ -262,7 +289,7 @@ def calculate_absenteeism_kpi(
         total_scheduled_hours=scheduled,
         total_hours_worked=scheduled - absent,
         total_hours_absent=absent,
-        absenteeism_rate=rate,
+        absenteeism_rate=round(rate, 2),
         total_employees=emp_count,
         total_absences=absence_count,
         calculation_timestamp=datetime.utcnow()

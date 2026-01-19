@@ -168,16 +168,46 @@ export default {
       }
     })).catch(() => ({ data: { percentage: 0, on_time_count: 0, total_orders: 0 } }))
   },
-  getAvailability(params) {
-    return api.get('/kpi/dashboard', { params }).then(res => {
-      // Calculate availability from production data
-      const data = res.data || []
-      if (Array.isArray(data) && data.length > 0) {
-        // Availability is typically ~90-95% in manufacturing
-        return { data: { percentage: 91.5 } }
+  async getAvailability(params) {
+    try {
+      // Fetch downtime data to calculate actual availability
+      const [dashboardRes, downtimeRes] = await Promise.all([
+        api.get('/kpi/dashboard', { params }).catch(() => ({ data: [] })),
+        api.get('/downtime', { params }).catch(() => ({ data: [] }))
+      ])
+
+      const productionData = dashboardRes.data || []
+      const downtimeData = downtimeRes.data || []
+
+      // Calculate total scheduled hours and downtime hours
+      let totalScheduledHours = 0
+      let totalDowntimeHours = 0
+
+      // Sum up downtime - backend returns downtime_duration_minutes
+      downtimeData.forEach(d => {
+        // Convert minutes to hours
+        const minutes = parseFloat(d.downtime_duration_minutes || d.duration_hours * 60 || 0)
+        totalDowntimeHours += minutes / 60
+      })
+
+      // Estimate scheduled hours from production data (entries * 8 hours average)
+      totalScheduledHours = productionData.length * 8 || 1
+
+      // Calculate availability: (Scheduled - Downtime) / Scheduled * 100
+      const availability = totalScheduledHours > 0
+        ? Math.max(0, Math.min(100, ((totalScheduledHours - totalDowntimeHours) / totalScheduledHours) * 100))
+        : 0
+
+      return {
+        data: {
+          percentage: availability > 0 ? parseFloat(availability.toFixed(2)) : null,
+          scheduled_hours: totalScheduledHours,
+          downtime_hours: totalDowntimeHours
+        }
       }
-      return { data: { percentage: 91.5 } }
-    }).catch(() => ({ data: { percentage: 91.5 } }))
+    } catch (error) {
+      return { data: { percentage: null } }
+    }
   },
   getPerformance(params) {
     return api.get('/kpi/dashboard', { params }).then(res => {
@@ -203,23 +233,34 @@ export default {
       }
     })).catch(() => ({ data: { fpy: 0, rty: 0, total_units: 0 } }))
   },
-  getOEE(params) {
+  async getOEE(params) {
     // OEE = Availability x Performance x Quality
-    return api.get('/kpi/dashboard', { params }).then(res => {
-      const data = res.data || []
+    try {
+      const [dashboardRes, qualityRes, availabilityData] = await Promise.all([
+        api.get('/kpi/dashboard', { params }).catch(() => ({ data: [] })),
+        api.get('/quality/kpi/fpy-rty', { params }).catch(() => ({ data: { fpy_percentage: 97 } })),
+        this.getAvailability(params)
+      ])
+
+      const data = dashboardRes.data || []
+      const quality = parseFloat(qualityRes.data?.fpy_percentage || qualityRes.data?.fpy || 97)
+      const availability = availabilityData.data?.percentage || 90
+
       if (Array.isArray(data) && data.length > 0) {
-        // Calculate OEE from efficiency and performance data
+        // Calculate OEE from efficiency, performance, and actual quality data
         const validEntries = data.filter(d => d.avg_efficiency != null && d.avg_performance != null)
         if (validEntries.length > 0) {
           const avgEff = validEntries.reduce((sum, d) => sum + d.avg_efficiency, 0) / validEntries.length
           const avgPerf = validEntries.reduce((sum, d) => sum + d.avg_performance, 0) / validEntries.length
-          // OEE simplified calculation
-          const oee = (avgEff / 100) * (avgPerf / 100) * 0.97 * 100 // Assuming 97% quality
-          return { data: { percentage: Math.min(oee, 100) } }
+          // OEE = Availability × Performance × Quality
+          const oee = (availability / 100) * (avgPerf / 100) * (quality / 100) * 100
+          return { data: { percentage: parseFloat(Math.min(oee, 100).toFixed(2)) } }
         }
       }
-      return { data: { percentage: 78.5 } }
-    }).catch(() => ({ data: { percentage: 78.5 } }))
+      return { data: { percentage: null } }
+    } catch (error) {
+      return { data: { percentage: null } }
+    }
   },
   getAbsenteeism(params) {
     return api.get('/attendance/kpi/absenteeism', { params }).then(res => ({
@@ -234,13 +275,39 @@ export default {
   },
   getDefectRates(params) {
     return api.get('/quality/kpi/ppm', { params }).then(res => ({
-      data: { ppm: res.data?.ppm || 320 }
-    })).catch(() => ({ data: { ppm: 320 } }))
+      data: {
+        ppm: res.data?.ppm ?? null,
+        defect_rate_percentage: res.data?.defect_rate_percentage ?? null
+      }
+    })).catch(() => ({ data: { ppm: null, defect_rate_percentage: null } }))
   },
-  getThroughputTime(params) {
-    return api.get('/kpi/dashboard', { params }).then(res => ({
-      data: { average_hours: res.data?.throughput_time || 18.5 }
-    })).catch(() => ({ data: { average_hours: 18.5 } }))
+  async getThroughputTime(params) {
+    try {
+      // Calculate throughput time from production entries
+      const response = await api.get('/production', { params })
+      const entries = response.data || []
+
+      if (entries.length > 0) {
+        // Throughput time = total run time / total units produced (averaged across entries)
+        let totalRunHours = 0
+        let totalUnits = 0
+
+        entries.forEach(entry => {
+          totalRunHours += parseFloat(entry.run_time_hours || 0)
+          totalUnits += parseInt(entry.units_produced || 0)
+        })
+
+        // Average throughput time per unit in hours
+        const avgThroughput = totalUnits > 0 ? (totalRunHours / totalUnits) * 100 : 0
+        // Cap at reasonable value (24 hours max for display)
+        const displayValue = Math.min(avgThroughput, 24)
+
+        return { data: { average_hours: parseFloat(displayValue.toFixed(2)) || null } }
+      }
+      return { data: { average_hours: null } }
+    } catch (error) {
+      return { data: { average_hours: null } }
+    }
   },
 
   // KPI Trends (fallback to empty arrays if endpoints don't exist)

@@ -134,7 +134,8 @@ def get_production_entries(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     product_id: Optional[int] = None,
-    shift_id: Optional[int] = None
+    shift_id: Optional[int] = None,
+    client_id: Optional[str] = None
 ) -> List[ProductionEntry]:
     """
     Get production entries with filtering
@@ -149,6 +150,7 @@ def get_production_entries(
         end_date: Filter by end date
         product_id: Filter by product
         shift_id: Filter by shift
+        client_id: Filter by specific client (must be within user's authorized clients)
 
     Returns:
         List of production entries (filtered by user's client access)
@@ -159,6 +161,11 @@ def get_production_entries(
     client_filter = build_client_filter_clause(current_user, ProductionEntry.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
+
+    # Apply specific client filter (within user's authorized clients)
+    if client_id:
+        verify_client_access(current_user, client_id)
+        query = query.filter(ProductionEntry.client_id == client_id)
 
     # Apply additional filters
     if start_date:
@@ -358,7 +365,8 @@ def get_daily_summary(
     db: Session,
     current_user: User,
     start_date: date,
-    end_date: Optional[date] = None
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None
 ) -> List[dict]:
     """
     Get daily production summary
@@ -369,6 +377,7 @@ def get_daily_summary(
         current_user: Authenticated user (ADDED for client filtering)
         start_date: Start date
         end_date: End date (defaults to start_date)
+        client_id: Filter by specific client (must be within user's authorized clients)
 
     Returns:
         List of daily summaries (filtered by user's client access)
@@ -388,6 +397,11 @@ def get_daily_summary(
     client_filter = build_client_filter_clause(current_user, ProductionEntry.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
+
+    # Apply specific client filter (within user's authorized clients)
+    if client_id:
+        verify_client_access(current_user, client_id)
+        query = query.filter(ProductionEntry.client_id == client_id)
 
     # Apply date filtering
     query = query.filter(
