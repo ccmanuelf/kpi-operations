@@ -5,13 +5,13 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">On-Time Delivery Performance</h1>
-        <p class="text-subtitle-1 text-grey">Monitor delivery performance against customer commitments</p>
+        <p class="text-subtitle-1 text-grey-darken-1">Monitor delivery performance against customer commitments</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
-        <v-chip :color="statusColor" size="large" class="mr-2">
+        <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(otdData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: 95%</v-chip>
+        <v-chip color="grey-darken-2">Target: 95%</v-chip>
       </v-col>
     </v-row>
 
@@ -60,36 +60,72 @@
     <!-- Summary Cards -->
     <v-row class="mt-4">
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Total Deliveries</div>
-            <div class="text-h4 font-weight-bold">{{ otdData?.total_orders || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Total Deliveries</div>
+                <div class="text-h4 font-weight-bold">{{ otdData?.total_orders || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of deliveries scheduled or completed within the selected date range. This is the base for OTD percentage calculation.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined" color="success">
-          <v-card-text>
-            <div class="text-caption">On Time</div>
-            <div class="text-h4 font-weight-bold">{{ otdData?.on_time_count || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" color="success" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption">On Time</div>
+                <div class="text-h4 font-weight-bold">{{ otdData?.on_time_count || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Number of deliveries completed on or before the promised delivery date. Higher numbers indicate better planning and execution.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined" color="error">
-          <v-card-text>
-            <div class="text-caption">Late</div>
-            <div class="text-h4 font-weight-bold">{{ (otdData?.total_orders || 0) - (otdData?.on_time_count || 0) }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" color="error" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption">Late</div>
+                <div class="text-h4 font-weight-bold">{{ (otdData?.total_orders || 0) - (otdData?.on_time_count || 0) }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Late = Total Deliveries - On Time Deliveries</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Number of deliveries that missed the promised date. Analyze root causes to improve future performance.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">OTD Rate</div>
-            <div class="text-h4 font-weight-bold">{{ formatValue(otdData?.percentage) }}%</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">OTD Rate</div>
+                <div class="text-h4 font-weight-bold">{{ formatValue(otdData?.percentage) }}%</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">OTD % = (On Time / Total Deliveries) × 100</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Percentage of orders delivered by the promised date. Target is 95%. Critical for customer satisfaction and contract compliance.</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -228,7 +264,7 @@ const otdData = computed(() => kpiStore.onTimeDelivery)
 const statusColor = computed(() => {
   const percentage = otdData.value?.percentage || 0
   if (percentage >= 95) return 'success'
-  if (percentage >= 85) return 'warning'
+  if (percentage >= 85) return 'amber-darken-3'
   return 'error'
 })
 
@@ -304,13 +340,13 @@ const formatDate = (dateStr) => {
 
 const getOTDColor = (percentage) => {
   if (percentage >= 95) return 'success'
-  if (percentage >= 85) return 'warning'
+  if (percentage >= 85) return 'amber-darken-3'
   return 'error'
 }
 
 const getEfficiencyColor = (eff) => {
   if (eff >= 85) return 'success'
-  if (eff >= 70) return 'warning'
+  if (eff >= 70) return 'amber-darken-3'
   return 'error'
 }
 
@@ -359,3 +395,39 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.cursor-help {
+  cursor: help;
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>

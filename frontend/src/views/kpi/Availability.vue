@@ -5,13 +5,13 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">Equipment Availability</h1>
-        <p class="text-subtitle-1 text-grey">Monitor equipment uptime and downtime patterns</p>
+        <p class="text-subtitle-1 text-grey-darken-1">Monitor equipment uptime and downtime patterns</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
-        <v-chip :color="statusColor" size="large" class="mr-2">
+        <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(availabilityData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: 90%</v-chip>
+        <v-chip color="grey-darken-2">Target: 90%</v-chip>
       </v-col>
     </v-row>
 
@@ -60,36 +60,74 @@
     <!-- Summary Cards -->
     <v-row class="mt-4">
       <v-col cols="12" md="3">
-        <v-card variant="outlined" color="success">
-          <v-card-text>
-            <div class="text-caption">Uptime (hours)</div>
-            <div class="text-h4 font-weight-bold">{{ availabilityData?.uptime || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" color="success" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption">Uptime (hours)</div>
+                <div class="text-h4 font-weight-bold">{{ availabilityData?.uptime || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Uptime = Total Time - Downtime</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total hours equipment was operational and available for production. Higher uptime directly correlates with increased production capacity.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined" color="error">
-          <v-card-text>
-            <div class="text-caption">Downtime (hours)</div>
-            <div class="text-h4 font-weight-bold">{{ availabilityData?.downtime || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" color="error" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption">Downtime (hours)</div>
+                <div class="text-h4 font-weight-bold">{{ availabilityData?.downtime || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total hours equipment was unavailable due to breakdowns, maintenance, changeovers, or other stoppages. Target is to minimize this value.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Total Time</div>
-            <div class="text-h4 font-weight-bold">{{ availabilityData?.total_time || 0 }}h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Total Time</div>
+                <div class="text-h4 font-weight-bold">{{ availabilityData?.total_time || 0 }}h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Total Time = Uptime + Downtime</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total scheduled production hours within the selected period. This represents the maximum potential operating time.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">MTBF</div>
-            <div class="text-h4 font-weight-bold">{{ availabilityData?.mtbf || 0 }}h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">MTBF</div>
+                <div class="text-h4 font-weight-bold">{{ availabilityData?.mtbf || 0 }}h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">MTBF = Total Uptime / Number of Failures</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Mean Time Between Failures - average operating time between equipment breakdowns. Higher MTBF indicates more reliable equipment.</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -135,9 +173,9 @@
               <template v-slot:item.shift_date="{ item }">
                 {{ formatDate(item.shift_date) }}
               </template>
-              <template v-slot:item.duration_minutes="{ item }">
+              <template v-slot:item.downtime_duration_minutes="{ item }">
                 <v-chip color="error" size="small">
-                  {{ item.duration_minutes }} min
+                  {{ item.downtime_duration_minutes }} min
                 </v-chip>
               </template>
             </v-data-table>
@@ -229,7 +267,7 @@ const availabilityData = computed(() => kpiStore.availability)
 const statusColor = computed(() => {
   const avail = availabilityData.value?.percentage || 0
   if (avail >= 90) return 'success'
-  if (avail >= 80) return 'warning'
+  if (avail >= 80) return 'amber-darken-3'
   return 'error'
 })
 
@@ -248,9 +286,9 @@ const equipmentHeaders = [
 
 const downtimeHistoryHeaders = [
   { title: 'Date', key: 'shift_date', sortable: true },
-  { title: 'Reason', key: 'reason_type', sortable: true },
-  { title: 'Duration', key: 'duration_minutes', sortable: true },
-  { title: 'Description', key: 'description', sortable: true }
+  { title: 'Reason', key: 'downtime_reason', sortable: true },
+  { title: 'Duration', key: 'downtime_duration_minutes', sortable: true },
+  { title: 'Notes', key: 'notes', sortable: true }
 ]
 
 const chartData = computed(() => ({
@@ -304,7 +342,7 @@ const formatDate = (dateStr) => {
 
 const getAvailabilityColor = (avail) => {
   if (avail >= 90) return 'success'
-  if (avail >= 80) return 'warning'
+  if (avail >= 80) return 'amber-darken-3'
   return 'error'
 }
 
@@ -369,3 +407,39 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.cursor-help {
+  cursor: help;
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>

@@ -5,13 +5,13 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">WIP Aging Analysis</h1>
-        <p class="text-subtitle-1 text-grey">Track work-in-process aging and identify bottlenecks</p>
+        <p class="text-subtitle-1 text-grey-darken-1">Track work-in-process aging and identify bottlenecks</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
-        <v-chip :color="statusColor" size="large" class="mr-2">
+        <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(wipData?.average_days) }} days avg
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: 7 days</v-chip>
+        <v-chip color="grey-darken-2">Target: 7 days</v-chip>
       </v-col>
     </v-row>
 
@@ -60,36 +60,70 @@
     <!-- Summary Cards -->
     <v-row class="mt-4">
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Total WIP Units</div>
-            <div class="text-h4 font-weight-bold">{{ wipData?.total_units || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Total WIP Units</div>
+                <div class="text-h4 font-weight-bold">{{ wipData?.total_units || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of units currently in work-in-process status. These are items that have started production but are not yet complete.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Average Age</div>
-            <div class="text-h4 font-weight-bold">{{ formatValue(wipData?.average_days) }} days</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Average Age</div>
+                <div class="text-h4 font-weight-bold">{{ formatValue(wipData?.average_days) }} days</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Avg Age = Sum of All WIP Ages / Total WIP Items</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Average number of days items have been in WIP status. Lower values indicate faster throughput and more efficient production flow.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Oldest Item</div>
-            <div class="text-h4 font-weight-bold">{{ wipData?.max_days || 0 }} days</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Oldest Item</div>
+                <div class="text-h4 font-weight-bold">{{ wipData?.max_days || 0 }} days</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Age of the oldest item currently in WIP. High values may indicate production bottlenecks, quality holds, or material shortages requiring immediate attention.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Critical Items (>14d)</div>
-            <div class="text-h4 font-weight-bold text-error">{{ wipData?.critical_count || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Critical Items (>14d)</div>
+                <div class="text-h4 font-weight-bold text-error">{{ wipData?.critical_count || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Number of WIP items aged over 14 days. These require urgent attention as they impact delivery schedules and tie up working capital.</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -240,7 +274,7 @@ const wipData = computed(() => kpiStore.wipAging)
 const statusColor = computed(() => {
   const avg = wipData.value?.average_days || 0
   if (avg <= 7) return 'success'
-  if (avg <= 14) return 'warning'
+  if (avg <= 14) return 'amber-darken-3'
   return 'error'
 })
 
@@ -309,7 +343,7 @@ const formatDate = (dateStr) => {
 
 const getAgeColor = (age) => {
   if (age <= 7) return 'success'
-  if (age <= 14) return 'warning'
+  if (age <= 14) return 'amber-darken-3'
   return 'error'
 }
 
@@ -374,3 +408,39 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.cursor-help {
+  cursor: help;
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>

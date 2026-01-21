@@ -23,39 +23,75 @@
 
     <v-row>
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-overline">Today's Units</div>
-            <div class="text-h4">{{ totalUnitsToday }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" class="cursor-help">
+              <v-card-text>
+                <div class="text-overline">Today's Units</div>
+                <div class="text-h4">{{ totalUnitsToday }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of units produced on today's date across all production entries.</div>
+          </div>
+        </v-tooltip>
       </v-col>
 
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-overline">Avg Efficiency</div>
-            <div class="text-h4">{{ averageEfficiency }}%</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" class="cursor-help">
+              <v-card-text>
+                <div class="text-overline">Avg Efficiency</div>
+                <div class="text-h4">{{ averageEfficiency }}%</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Efficiency = (Actual Output / Expected Output) × 100</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Measures how well resources are utilized to produce output.</div>
+          </div>
+        </v-tooltip>
       </v-col>
 
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-overline">Avg Performance</div>
-            <div class="text-h4">{{ averagePerformance }}%</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" class="cursor-help">
+              <v-card-text>
+                <div class="text-overline">Avg Performance</div>
+                <div class="text-h4">{{ averagePerformance }}%</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Performance = (Actual Rate / Standard Rate) × 100</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Measures production speed compared to the ideal cycle time.</div>
+          </div>
+        </v-tooltip>
       </v-col>
 
       <v-col cols="12" md="3">
-        <v-card>
-          <v-card-text>
-            <div class="text-overline">Total Entries</div>
-            <div class="text-h4">{{ productionEntries.length }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" class="cursor-help">
+              <v-card-text>
+                <div class="text-overline">Total Entries</div>
+                <div class="text-h4">{{ productionEntries.length }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of production records in the system for the selected filters.</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -325,3 +361,39 @@ onMounted(async () => {
   await refreshData()
 })
 </script>
+
+<style scoped>
+.cursor-help {
+  cursor: help;
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>

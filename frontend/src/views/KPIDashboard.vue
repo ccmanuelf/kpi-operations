@@ -80,52 +80,63 @@
         md="4"
         lg="3"
       >
-        <v-card
-          :color="getCardColor(kpi)"
-          variant="outlined"
-          class="kpi-card"
-          @click="navigateToDetail(kpi.route)"
-          hover
-        >
-          <v-card-text>
-            <div class="d-flex justify-space-between align-start mb-3">
-              <div>
-                <div class="text-caption text-grey-darken-1">{{ kpi.title }}</div>
-                <div class="text-h4 font-weight-bold mt-1">
-                  {{ formatValue(kpi.value, kpi.unit) }}
+        <v-tooltip location="bottom" max-width="350">
+          <template v-slot:activator="{ props: tooltipProps }">
+            <v-card
+              v-bind="tooltipProps"
+              :color="getCardColor(kpi)"
+              variant="outlined"
+              class="kpi-card"
+              @click="navigateToDetail(kpi.route)"
+              hover
+            >
+              <v-card-text>
+                <div class="d-flex justify-space-between align-start mb-3">
+                  <div>
+                    <div class="text-caption text-grey-darken-1">{{ kpi.title }}</div>
+                    <div class="text-h4 font-weight-bold mt-1">
+                      {{ formatValue(kpi.value, kpi.unit) }}
+                    </div>
+                    <div v-if="kpi.subtitle" class="text-caption text-grey-darken-2 mt-1">
+                      {{ kpi.subtitle }}
+                    </div>
+                  </div>
+                  <v-icon
+                    :color="getStatusColor(kpi)"
+                    size="40"
+                  >
+                    {{ kpiStore.kpiIcon(kpi.value, kpi.target, kpi.higherBetter) }}
+                  </v-icon>
                 </div>
-                <div v-if="kpi.subtitle" class="text-caption text-grey-darken-2 mt-1">
-                  {{ kpi.subtitle }}
+
+                <!-- Progress bar -->
+                <v-progress-linear
+                  :model-value="getProgress(kpi)"
+                  :color="getStatusColor(kpi)"
+                  height="8"
+                  rounded
+                  class="mb-2"
+                />
+
+                <!-- Target and status -->
+                <div class="d-flex justify-space-between text-caption">
+                  <span class="text-grey-darken-1">
+                    Target: {{ kpi.target }}{{ kpi.unit }}
+                  </span>
+                  <span :class="`text-${getStatusColor(kpi)}`">
+                    {{ getStatusText(kpi) }}
+                  </span>
                 </div>
-              </div>
-              <v-icon
-                :color="getStatusColor(kpi)"
-                size="40"
-              >
-                {{ kpiStore.kpiIcon(kpi.value, kpi.target, kpi.higherBetter) }}
-              </v-icon>
-            </div>
-
-            <!-- Progress bar -->
-            <v-progress-linear
-              :model-value="getProgress(kpi)"
-              :color="getStatusColor(kpi)"
-              height="8"
-              rounded
-              class="mb-2"
-            />
-
-            <!-- Target and status -->
-            <div class="d-flex justify-space-between text-caption">
-              <span class="text-grey-darken-1">
-                Target: {{ kpi.target }}{{ kpi.unit }}
-              </span>
-              <span :class="`text-${getStatusColor(kpi)}`">
-                {{ getStatusText(kpi) }}
-              </span>
-            </div>
-          </v-card-text>
-        </v-card>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">{{ getKpiTooltip(kpi.key).title }}</div>
+            <div v-if="getKpiTooltip(kpi.key).formula" class="tooltip-formula">{{ getKpiTooltip(kpi.key).formula }}</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">{{ getKpiTooltip(kpi.key).meaning }}</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -554,6 +565,68 @@ const getTrendColor = (kpi) => {
   return 'success'
 }
 
+// KPI Tooltip descriptions
+const kpiTooltips = {
+  efficiency: {
+    title: 'Formula:',
+    formula: 'Efficiency = (Actual Output / Expected Output) × 100',
+    meaning: 'Measures how well resources are utilized to produce output. Higher efficiency means more output with the same resources.'
+  },
+  wipAging: {
+    title: 'Formula:',
+    formula: 'WIP Age = Days Since Work Order Started',
+    meaning: 'Average time work-in-process items spend in production. Lower is better - indicates faster throughput and fewer bottlenecks.'
+  },
+  onTimeDelivery: {
+    title: 'Formula:',
+    formula: 'OTD = (Orders Delivered On Time / Total Orders) × 100',
+    meaning: 'Percentage of orders delivered by the promised date. Critical for customer satisfaction and reliability.'
+  },
+  availability: {
+    title: 'Formula:',
+    formula: 'Availability = (Uptime / Planned Production Time) × 100',
+    meaning: 'Percentage of scheduled time that equipment is available for production. Accounts for breakdowns and changeovers.'
+  },
+  performance: {
+    title: 'Formula:',
+    formula: 'Performance = (Actual Rate / Ideal Rate) × 100',
+    meaning: 'Measures production speed relative to the designed capacity. Accounts for slow cycles and minor stoppages.'
+  },
+  quality: {
+    title: 'Formula:',
+    formula: 'FPY = (Good Units First Pass / Total Units) × 100',
+    meaning: 'First Pass Yield - percentage of units that pass inspection on the first attempt without rework or repair.'
+  },
+  oee: {
+    title: 'Formula:',
+    formula: 'OEE = Availability × Performance × Quality',
+    meaning: 'Overall Equipment Effectiveness - comprehensive metric combining availability, performance, and quality to measure manufacturing productivity.'
+  },
+  absenteeism: {
+    title: 'Formula:',
+    formula: 'Absenteeism = (Absent Hours / Scheduled Hours) × 100',
+    meaning: 'Percentage of scheduled work hours lost due to employee absence. Lower is better for workforce planning and productivity.'
+  },
+  defectRates: {
+    title: 'Formula:',
+    formula: 'PPM = (Defective Units / Total Units) × 1,000,000',
+    meaning: 'Parts Per Million - number of defective parts per million produced. Industry standard for measuring quality at scale.'
+  },
+  throughputTime: {
+    title: 'Formula:',
+    formula: 'Throughput = Total Time from Start to Completion',
+    meaning: 'Average time to complete a production order from start to finish. Lower times indicate more efficient processes.'
+  }
+}
+
+const getKpiTooltip = (key) => {
+  return kpiTooltips[key] || {
+    title: 'Info:',
+    formula: null,
+    meaning: 'Key performance indicator tracking operational metrics.'
+  }
+}
+
 const navigateToDetail = (route) => {
   router.push(route)
 }
@@ -755,5 +828,35 @@ onMounted(async () => {
 .kpi-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
 }
 </style>

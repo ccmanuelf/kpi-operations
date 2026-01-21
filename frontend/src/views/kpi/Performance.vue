@@ -5,13 +5,13 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">Production Performance</h1>
-        <p class="text-subtitle-1 text-grey">Monitor production speed and throughput efficiency</p>
+        <p class="text-subtitle-1 text-grey-darken-1">Monitor production speed and throughput efficiency</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
-        <v-chip :color="statusColor" size="large" class="mr-2">
+        <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(performanceData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: 95%</v-chip>
+        <v-chip color="grey-darken-2">Target: 95%</v-chip>
       </v-col>
     </v-row>
 
@@ -60,36 +60,70 @@
     <!-- Summary Cards -->
     <v-row class="mt-4">
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Actual Rate</div>
-            <div class="text-h4 font-weight-bold">{{ performanceData?.actual_rate || 0 }} u/h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Actual Rate</div>
+                <div class="text-h4 font-weight-bold">{{ performanceData?.actual_rate || 0 }} u/h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Actual Rate = Total Units / Production Hours</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Current production speed in units per hour. Compare against standard rate to identify performance gaps.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Standard Rate</div>
-            <div class="text-h4 font-weight-bold">{{ performanceData?.standard_rate || 0 }} u/h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Standard Rate</div>
+                <div class="text-h4 font-weight-bold">{{ performanceData?.standard_rate || 0 }} u/h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Target production speed based on equipment design capacity and optimal conditions. This is the benchmark for performance measurement.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Total Units</div>
-            <div class="text-h4 font-weight-bold">{{ performanceData?.total_units || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Total Units</div>
+                <div class="text-h4 font-weight-bold">{{ performanceData?.total_units || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of units produced within the selected period. This is the raw output measure before quality adjustments.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Production Hours</div>
-            <div class="text-h4 font-weight-bold">{{ performanceData?.production_hours || 0 }}h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Production Hours</div>
+                <div class="text-h4 font-weight-bold">{{ performanceData?.production_hours || 0 }}h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total hours spent in active production (excluding downtime). Used to calculate actual production rate and performance efficiency.</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -231,7 +265,7 @@ const performanceData = computed(() => kpiStore.performance)
 const statusColor = computed(() => {
   const perf = performanceData.value?.percentage || 0
   if (perf >= 95) return 'success'
-  if (perf >= 85) return 'warning'
+  if (perf >= 85) return 'amber-darken-3'
   return 'error'
 })
 
@@ -308,13 +342,13 @@ const formatDate = (dateStr) => {
 
 const getPerformanceColor = (perf) => {
   if (perf >= 95) return 'success'
-  if (perf >= 85) return 'warning'
+  if (perf >= 85) return 'amber-darken-3'
   return 'error'
 }
 
 const getEfficiencyColor = (eff) => {
   if (eff >= 85) return 'success'
-  if (eff >= 70) return 'warning'
+  if (eff >= 70) return 'amber-darken-3'
   return 'error'
 }
 
@@ -363,3 +397,39 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.cursor-help {
+  cursor: help;
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>

@@ -5,13 +5,13 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">Overall Equipment Effectiveness (OEE)</h1>
-        <p class="text-subtitle-1 text-grey">Comprehensive productivity metric combining Availability, Performance, and Quality</p>
+        <p class="text-subtitle-1 text-grey-darken-1">Comprehensive productivity metric combining Availability, Performance, and Quality</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
-        <v-chip :color="statusColor" size="large" class="mr-2">
+        <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(oeeData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: 85%</v-chip>
+        <v-chip color="grey-darken-2">Target: 85%</v-chip>
       </v-col>
     </v-row>
 
@@ -77,46 +77,76 @@
     <!-- Component Cards -->
     <v-row class="mt-4">
       <v-col cols="12" md="4">
-        <v-card variant="outlined" @click="$router.push('/kpi/availability')" style="cursor:pointer">
-          <v-card-text>
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <div class="text-caption text-grey-darken-1">Availability</div>
-                <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
-                <div class="text-caption">Equipment uptime</div>
-              </div>
-              <v-icon size="48" color="blue">mdi-server</v-icon>
-            </div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="350">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" @click="$router.push('/kpi/availability')" style="cursor:pointer">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between">
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Availability</div>
+                    <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
+                    <div class="text-caption">Equipment uptime</div>
+                  </div>
+                  <v-icon size="48" color="blue">mdi-server</v-icon>
+                </div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Availability = (Uptime / Planned Time) × 100</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Percentage of scheduled time equipment is available for production. Accounts for breakdowns, changeovers, and unplanned stops. Target: 90%+</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card variant="outlined" @click="$router.push('/kpi/performance')" style="cursor:pointer">
-          <v-card-text>
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <div class="text-caption text-grey-darken-1">Performance</div>
-                <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
-                <div class="text-caption">Speed efficiency</div>
-              </div>
-              <v-icon size="48" color="orange">mdi-speedometer</v-icon>
-            </div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="350">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" @click="$router.push('/kpi/performance')" style="cursor:pointer">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between">
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Performance</div>
+                    <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
+                    <div class="text-caption">Speed efficiency</div>
+                  </div>
+                  <v-icon size="48" color="orange">mdi-speedometer</v-icon>
+                </div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Performance = (Actual Rate / Ideal Rate) × 100</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Measures production speed relative to design capacity. Accounts for slow cycles, minor stops, and reduced speed. Target: 95%+</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="4">
-        <v-card variant="outlined" @click="$router.push('/kpi/quality')" style="cursor:pointer">
-          <v-card-text>
-            <div class="d-flex align-center justify-space-between">
-              <div>
-                <div class="text-caption text-grey-darken-1">Quality (FPY)</div>
-                <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
-                <div class="text-caption">First pass yield</div>
-              </div>
-              <v-icon size="48" color="green">mdi-star-circle</v-icon>
-            </div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="350">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" @click="$router.push('/kpi/quality')" style="cursor:pointer">
+              <v-card-text>
+                <div class="d-flex align-center justify-space-between">
+                  <div>
+                    <div class="text-caption text-grey-darken-1">Quality (FPY)</div>
+                    <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
+                    <div class="text-caption">First pass yield</div>
+                  </div>
+                  <v-icon size="48" color="green">mdi-star-circle</v-icon>
+                </div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Quality = (Good Units / Total Units) × 100</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">First Pass Yield - percentage of units passing inspection without rework. Accounts for defects, scrap, and rework. Target: 99%+</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -222,7 +252,7 @@ const components = computed(() => ({
 const statusColor = computed(() => {
   const oee = oeeData.value?.percentage || 0
   if (oee >= 85) return 'success'
-  if (oee >= 65) return 'warning'
+  if (oee >= 65) return 'amber-darken-3'
   return 'error'
 })
 
@@ -285,13 +315,13 @@ const formatDate = (dateStr) => {
 
 const getEfficiencyColor = (eff) => {
   if (eff >= 85) return 'success'
-  if (eff >= 70) return 'warning'
+  if (eff >= 70) return 'amber-darken-3'
   return 'error'
 }
 
 const getPerformanceColor = (perf) => {
   if (perf >= 95) return 'success'
-  if (perf >= 80) return 'warning'
+  if (perf >= 80) return 'amber-darken-3'
   return 'error'
 }
 
@@ -343,3 +373,33 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>

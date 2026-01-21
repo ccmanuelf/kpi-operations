@@ -5,13 +5,13 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">Workforce Absenteeism</h1>
-        <p class="text-subtitle-1 text-grey">Track employee attendance patterns and absence rates</p>
+        <p class="text-subtitle-1 text-grey-darken-1">Track employee attendance patterns and absence rates</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
-        <v-chip :color="statusColor" size="large" class="mr-2">
+        <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(absenteeismData?.rate) }}%
         </v-chip>
-        <v-chip color="grey-lighten-2">Target: &lt; 5%</v-chip>
+        <v-chip color="grey-darken-2">Target: &lt; 5%</v-chip>
       </v-col>
     </v-row>
 
@@ -60,36 +60,70 @@
     <!-- Summary Cards -->
     <v-row class="mt-4">
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Total Employees</div>
-            <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_employees || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Total Employees</div>
+                <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_employees || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of employees scheduled to work within the selected period. This is the workforce baseline for calculating absenteeism metrics.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined" color="error">
-          <v-card-text>
-            <div class="text-caption">Total Absences</div>
-            <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_absences || 0 }}</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" color="error" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption">Total Absences</div>
+                <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_absences || 0 }}</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total number of absence instances recorded. Each day an employee is absent counts as one absence, regardless of partial or full day.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Scheduled Hours</div>
-            <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_scheduled_hours || 0 }}h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Scheduled Hours</div>
+                <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_scheduled_hours || 0 }}h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Formula:</div>
+            <div class="tooltip-formula">Scheduled Hours = Σ(Employee Hours × Working Days)</div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total hours employees were scheduled to work. This is the denominator for calculating absenteeism rate percentage.</div>
+          </div>
+        </v-tooltip>
       </v-col>
       <v-col cols="12" md="3">
-        <v-card variant="outlined">
-          <v-card-text>
-            <div class="text-caption text-grey-darken-1">Absent Hours</div>
-            <div class="text-h4 font-weight-bold text-error">{{ absenteeismData?.total_hours_absent || 0 }}h</div>
-          </v-card-text>
-        </v-card>
+        <v-tooltip location="bottom" max-width="300">
+          <template v-slot:activator="{ props }">
+            <v-card v-bind="props" variant="outlined" class="cursor-help">
+              <v-card-text>
+                <div class="text-caption text-grey-darken-1">Absent Hours</div>
+                <div class="text-h4 font-weight-bold text-error">{{ absenteeismData?.total_hours_absent || 0 }}h</div>
+              </v-card-text>
+            </v-card>
+          </template>
+          <div>
+            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-meaning">Total hours lost due to employee absences. Used to calculate the absenteeism rate and estimate productivity impact.</div>
+          </div>
+        </v-tooltip>
       </v-col>
     </v-row>
 
@@ -249,7 +283,7 @@ const absenteeismData = computed(() => kpiStore.absenteeism)
 const statusColor = computed(() => {
   const rate = absenteeismData.value?.rate || 0
   if (rate <= 5) return 'success'
-  if (rate <= 10) return 'warning'
+  if (rate <= 10) return 'amber-darken-3'
   return 'error'
 })
 
@@ -276,8 +310,8 @@ const alertHeaders = [
 const attendanceHistoryHeaders = [
   { title: 'Date', key: 'shift_date', sortable: true },
   { title: 'Employee ID', key: 'employee_id', sortable: true },
-  { title: 'Hours Scheduled', key: 'hours_scheduled', sortable: true },
-  { title: 'Hours Worked', key: 'hours_worked', sortable: true },
+  { title: 'Hours Scheduled', key: 'scheduled_hours', sortable: true },
+  { title: 'Hours Worked', key: 'actual_hours', sortable: true },
   { title: 'Status', key: 'status', sortable: true }
 ]
 
@@ -332,7 +366,7 @@ const formatDate = (dateStr) => {
 
 const getAbsenteeismColor = (rate) => {
   if (rate <= 5) return 'success'
-  if (rate <= 10) return 'warning'
+  if (rate <= 10) return 'amber-darken-3'
   return 'error'
 }
 
@@ -355,7 +389,11 @@ const loadAttendanceHistory = async () => {
       params.client_id = selectedClient.value
     }
     const response = await api.getAttendanceEntries(params)
-    attendanceHistory.value = response.data || []
+    // Transform data to add computed status field
+    attendanceHistory.value = (response.data || []).map(record => ({
+      ...record,
+      status: record.is_absent ? 'ABSENT' : 'PRESENT'
+    }))
   } catch (error) {
     console.error('Failed to load attendance history:', error)
     attendanceHistory.value = []
@@ -397,3 +435,39 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.cursor-help {
+  cursor: help;
+}
+</style>
+
+<style>
+/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
+.v-tooltip > .v-overlay__content {
+  background-color: rgba(33, 33, 33, 0.95) !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.v-tooltip .tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #90caf9;
+}
+
+.v-tooltip .tooltip-formula {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.v-tooltip .tooltip-meaning {
+  color: rgba(255, 255, 255, 0.9);
+}
+</style>
