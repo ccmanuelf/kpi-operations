@@ -30,6 +30,9 @@ from .coverage_entry import CoverageEntry
 from .quality_entry import QualityEntry
 from .defect_detail import DefectDetail, DefectType
 
+# Phase 9: Client-specific Defect Type Catalog
+from .defect_type_catalog import DefectTypeCatalog
+
 # Phase 6: User Preferences
 from .user_preferences import UserPreferences, DashboardWidgetDefaults
 
@@ -62,6 +65,8 @@ __all__ = [
     "QualityEntry",
     "DefectDetail",
     "DefectType",
+    # Phase 9
+    "DefectTypeCatalog",
     # Phase 6
     "UserPreferences",
     "DashboardWidgetDefaults",

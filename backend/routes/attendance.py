@@ -221,7 +221,7 @@ def delete_attendance(
 # KPI CALCULATION ENDPOINTS
 # ============================================================================
 
-@router.get("/kpi/absenteeism", response_model=AbsenteeismCalculationResponse)
+@router.get("/kpi/absenteeism")
 def calculate_absenteeism_kpi(
     shift_id: Optional[int] = None,
     start_date: Optional[date] = None,
@@ -235,10 +235,15 @@ def calculate_absenteeism_kpi(
     Formula: (Total Hours Absent / Total Scheduled Hours) * 100
 
     Parameters are optional - defaults to all shifts and last 30 days
+
+    Returns extended data including:
+    - by_reason: Breakdown of absences by reason/type
+    - by_department: Absenteeism rates by client/department
+    - high_absence_employees: Employees with high absence counts
     """
     from datetime import timedelta
     from backend.schemas.attendance_entry import AttendanceEntry
-    from sqlalchemy import func
+    from sqlalchemy import func, desc
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -251,17 +256,20 @@ def calculate_absenteeism_kpi(
     if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
-    # Build query with client filter - using ATTENDANCE_ENTRY table
+    # Date filter conditions
+    date_filter = [
+        AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    ]
+
+    # Build base query with client filter - using ATTENDANCE_ENTRY table
     # Calculate absent hours from absence_hours column or scheduled - actual
     query = db.query(
         func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
         func.sum(func.coalesce(AttendanceEntry.absence_hours, AttendanceEntry.scheduled_hours - func.coalesce(AttendanceEntry.actual_hours, 0))).label('absent'),
         func.count(func.distinct(AttendanceEntry.employee_id)).label('emp_count'),
         func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label('absence_count')
-    ).filter(
-        AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
-    )
+    ).filter(*date_filter)
 
     # Apply optional filters
     if shift_id:
@@ -282,18 +290,176 @@ def calculate_absenteeism_kpi(
         first_shift = db.query(Shift).first()
         shift_id = first_shift.shift_id if first_shift else 1
 
-    return AbsenteeismCalculationResponse(
-        shift_id=shift_id,
-        start_date=start_date,
-        end_date=end_date,
-        total_scheduled_hours=scheduled,
-        total_hours_worked=scheduled - absent,
-        total_hours_absent=absent,
-        absenteeism_rate=round(rate, 2),
-        total_employees=emp_count,
-        total_absences=absence_count,
-        calculation_timestamp=datetime.utcnow()
+    # ========================================
+    # Additional breakdown data for tables
+    # ========================================
+
+    # 1. Absence by reason/type - use raw SQL to avoid enum issues
+    from sqlalchemy import text
+    reason_sql = """
+        SELECT
+            COALESCE(absence_type, 'Unspecified') as reason,
+            COUNT(*) as count
+        FROM ATTENDANCE_ENTRY
+        WHERE shift_date >= :start_date
+          AND shift_date <= :end_date
+          AND is_absent = 1
+    """
+    if effective_client_id:
+        reason_sql += " AND client_id = :client_id"
+    reason_sql += " GROUP BY COALESCE(absence_type, 'Unspecified')"
+
+    reason_params = {
+        "start_date": datetime.combine(start_date, datetime.min.time()),
+        "end_date": datetime.combine(end_date, datetime.max.time())
+    }
+    if effective_client_id:
+        reason_params["client_id"] = effective_client_id
+
+    reason_results = db.execute(text(reason_sql), reason_params).fetchall()
+
+    total_absences_for_pct = sum(r.count for r in reason_results) or 1
+    by_reason = [
+        {
+            "reason": r.reason or "Unspecified",
+            "count": r.count,
+            "percentage": round((r.count / total_absences_for_pct) * 100, 1)
+        }
+        for r in reason_results
+    ]
+
+    # 2. Absenteeism by department (using client_id as proxy)
+    dept_query = db.query(
+        AttendanceEntry.client_id.label('department'),
+        func.count(func.distinct(AttendanceEntry.employee_id)).label('workforce'),
+        func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label('absences'),
+        func.sum(AttendanceEntry.scheduled_hours).label('scheduled_hrs'),
+        func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label('absent_hrs')
+    ).filter(*date_filter)
+
+    if effective_client_id:
+        dept_query = dept_query.filter(AttendanceEntry.client_id == effective_client_id)
+
+    dept_results = dept_query.group_by(AttendanceEntry.client_id).all()
+
+    by_department = [
+        {
+            "department": d.department,
+            "workforce": d.workforce,
+            "absences": d.absences,
+            "rate": round((float(d.absent_hrs or 0) / float(d.scheduled_hrs or 1)) * 100, 1)
+        }
+        for d in dept_results
+    ]
+
+    # 3. High absence employees (more than 2 absences in period)
+    high_absence_query = db.query(
+        AttendanceEntry.employee_id,
+        AttendanceEntry.client_id.label('department'),
+        func.count().label('absence_count'),
+        func.max(AttendanceEntry.shift_date).label('last_absence')
+    ).filter(
+        *date_filter,
+        AttendanceEntry.is_absent == 1
     )
+
+    if effective_client_id:
+        high_absence_query = high_absence_query.filter(AttendanceEntry.client_id == effective_client_id)
+
+    high_absence_results = high_absence_query.group_by(
+        AttendanceEntry.employee_id,
+        AttendanceEntry.client_id
+    ).having(func.count() >= 2).order_by(desc('absence_count')).limit(10).all()
+
+    high_absence_employees = [
+        {
+            "employee_id": e.employee_id,
+            "department": e.department,
+            "absence_count": e.absence_count,
+            "last_absence": e.last_absence.strftime('%Y-%m-%d') if e.last_absence else None
+        }
+        for e in high_absence_results
+    ]
+
+    return {
+        "shift_id": shift_id,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "total_scheduled_hours": scheduled,
+        "total_hours_worked": scheduled - absent,
+        "total_hours_absent": absent,
+        "rate": round(rate, 2),
+        "absenteeism_rate": round(rate, 2),
+        "total_employees": emp_count,
+        "total_absences": absence_count,
+        "calculation_timestamp": datetime.utcnow().isoformat(),
+        "by_reason": by_reason,
+        "by_department": by_department,
+        "high_absence_employees": high_absence_employees
+    }
+
+
+@router.get("/kpi/absenteeism/trend")
+def get_absenteeism_trend(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get daily absenteeism trend data for charting
+
+    Returns array of { date, value } where value is the absenteeism rate %
+    """
+    from datetime import timedelta
+    from backend.schemas.attendance_entry import AttendanceEntry
+    from sqlalchemy import func
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # Query daily absenteeism rates
+    # Calculate absent hours: only count when is_absent=1
+    # Note: `case` is imported at module level
+    query = db.query(
+        func.date(AttendanceEntry.shift_date).label('date'),
+        func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
+        func.sum(
+            case(
+                (AttendanceEntry.is_absent == 1, AttendanceEntry.scheduled_hours),
+                else_=0
+            )
+        ).label('absent')
+    ).filter(
+        AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    if effective_client_id:
+        query = query.filter(AttendanceEntry.client_id == effective_client_id)
+
+    results = query.group_by(func.date(AttendanceEntry.shift_date)).order_by('date').all()
+
+    trend_data = []
+    for r in results:
+        scheduled = float(r.scheduled or 0)
+        absent = float(r.absent or 0)
+        rate = (absent / scheduled * 100) if scheduled > 0 else 0
+        trend_data.append({
+            "date": r.date.isoformat() if hasattr(r.date, 'isoformat') else str(r.date),
+            "value": round(rate, 2)
+        })
+
+    return trend_data
 
 
 @router.get("/kpi/bradford-factor/{employee_id}")

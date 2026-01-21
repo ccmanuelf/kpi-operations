@@ -1,0 +1,11 @@
+defect_code,defect_name,description,category,severity_default,industry_standard_code,sort_order
+DIM_ERR,Dimensional Error,Part dimensions outside tolerance,Measurement,MAJOR,,1
+SURF_DEF,Surface Defect,"Scratches, dents, or blemishes on surface",Finish,MINOR,,2
+MAT_DEF,Material Defect,Raw material quality issues,Material,CRITICAL,,3
+ASSY_ERR,Assembly Error,Incorrect assembly or missing components,Assembly,MAJOR,,4
+WELD_DEF,Weld Defect,"Weld cracks, porosity, or incomplete fusion",Process,CRITICAL,,5
+PAINT_DEF,Paint/Coating Defect,"Paint runs, orange peel, or coating issues",Finish,MINOR,,6
+BURR,Burr/Sharp Edge,Rough edges requiring deburring,Finish,MINOR,,7
+FUNC_FAIL,Functional Failure,Part fails functional testing,Testing,CRITICAL,,8
+CONTAM,Contamination,Foreign material or debris,Cleanliness,MAJOR,,9
+OTHER,Other,Other defects not categorized above,General,MINOR,,10

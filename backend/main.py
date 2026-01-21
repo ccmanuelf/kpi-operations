@@ -11,12 +11,13 @@ from datetime import date, datetime, timedelta
 import io
 import csv
 import json
+import uuid
 from decimal import Decimal
 from jose import JWTError, jwt
 
 from backend.config import settings
 from backend.database import get_db, engine, Base
-from backend.models.user import UserCreate, UserLogin, UserResponse, Token, PasswordResetRequest, PasswordResetConfirm, PasswordChange
+from backend.models.user import UserCreate, UserLogin, UserResponse, UserUpdate, Token, PasswordResetRequest, PasswordResetConfirm, PasswordChange
 from backend.middleware.rate_limit import (
     limiter,
     configure_rate_limiting,
@@ -447,6 +448,315 @@ def change_password(
     db.commit()
     
     return {"message": "Password changed successfully"}
+
+
+# ============================================================================
+# USER MANAGEMENT ROUTES (Admin)
+# ============================================================================
+
+@app.get("/api/users", response_model=List[UserResponse])
+def list_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all users (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    users = db.query(User).offset(skip).limit(limit).all()
+    return users
+
+
+@app.get("/api/users/{user_id}", response_model=UserResponse)
+def get_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get user by ID (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@app.post("/api/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Create new user (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    # Check if username or email already exists
+    existing = db.query(User).filter(
+        (User.username == user_data.username) | (User.email == user_data.email)
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already registered"
+        )
+
+    new_user = User(
+        user_id=str(uuid.uuid4()),
+        username=user_data.username,
+        email=user_data.email,
+        password_hash=get_password_hash(user_data.password),
+        full_name=user_data.full_name,
+        role=user_data.role,
+        client_id_assigned=user_data.client_id_assigned,
+        is_active=True,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+@app.put("/api/users/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: str,
+    user_data: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Update user (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_data = user_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if field == 'password' and value:
+            setattr(user, 'password_hash', get_password_hash(value))
+        elif hasattr(user, field):
+            setattr(user, field, value)
+
+    user.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@app.delete("/api/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete user (admin only)"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Prevent deleting yourself
+    if user.user_id == current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete your own account"
+        )
+
+    db.delete(user)
+    db.commit()
+
+
+# ============================================================================
+# KPI THRESHOLDS ROUTES
+# ============================================================================
+
+@app.get("/api/kpi-thresholds")
+def get_kpi_thresholds(
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get KPI thresholds for a specific client or global defaults.
+    If client_id is provided, returns client-specific thresholds merged with global defaults.
+    If client_id is NULL/not provided, returns only global defaults.
+    """
+    from backend.schemas.kpi_threshold import KPIThreshold
+    from backend.schemas.client import Client
+
+    # Get global defaults
+    global_thresholds = db.query(KPIThreshold).filter(
+        KPIThreshold.client_id.is_(None)
+    ).all()
+
+    # Build response with global defaults
+    result = {
+        "client_id": client_id,
+        "client_name": None,
+        "thresholds": {}
+    }
+
+    # Add global defaults first
+    for t in global_thresholds:
+        result["thresholds"][t.kpi_key] = {
+            "threshold_id": t.threshold_id,
+            "kpi_key": t.kpi_key,
+            "target_value": t.target_value,
+            "warning_threshold": t.warning_threshold,
+            "critical_threshold": t.critical_threshold,
+            "unit": t.unit,
+            "higher_is_better": t.higher_is_better,
+            "is_global": True
+        }
+
+    # If client_id provided, override with client-specific values
+    if client_id:
+        client = db.query(Client).filter(Client.client_id == client_id).first()
+        if client:
+            result["client_name"] = client.client_name
+
+        client_thresholds = db.query(KPIThreshold).filter(
+            KPIThreshold.client_id == client_id
+        ).all()
+
+        for t in client_thresholds:
+            result["thresholds"][t.kpi_key] = {
+                "threshold_id": t.threshold_id,
+                "kpi_key": t.kpi_key,
+                "target_value": t.target_value,
+                "warning_threshold": t.warning_threshold,
+                "critical_threshold": t.critical_threshold,
+                "unit": t.unit,
+                "higher_is_better": t.higher_is_better,
+                "is_global": False
+            }
+
+    return result
+
+
+@app.put("/api/kpi-thresholds")
+def update_kpi_thresholds(
+    thresholds_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update KPI thresholds for a client or global.
+    Expects: { "client_id": "xxx" or null, "thresholds": { "efficiency": { "target_value": 85 }, ... } }
+    """
+    if current_user.role not in ['admin', 'poweruser']:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or supervisor access required"
+        )
+
+    from backend.schemas.kpi_threshold import KPIThreshold
+
+    client_id = thresholds_data.get("client_id")
+    thresholds = thresholds_data.get("thresholds", {})
+
+    updated = []
+    for kpi_key, values in thresholds.items():
+        # Check if threshold exists
+        existing = db.query(KPIThreshold).filter(
+            KPIThreshold.client_id == client_id if client_id else KPIThreshold.client_id.is_(None),
+            KPIThreshold.kpi_key == kpi_key
+        ).first()
+
+        if existing:
+            # Update existing
+            if "target_value" in values:
+                existing.target_value = values["target_value"]
+            if "warning_threshold" in values:
+                existing.warning_threshold = values["warning_threshold"]
+            if "critical_threshold" in values:
+                existing.critical_threshold = values["critical_threshold"]
+            if "unit" in values:
+                existing.unit = values["unit"]
+            if "higher_is_better" in values:
+                existing.higher_is_better = values["higher_is_better"]
+            existing.updated_at = datetime.utcnow()
+            updated.append(kpi_key)
+        else:
+            # Create new client-specific threshold
+            new_threshold = KPIThreshold(
+                threshold_id=str(uuid.uuid4()),
+                client_id=client_id,
+                kpi_key=kpi_key,
+                target_value=values.get("target_value", 0),
+                warning_threshold=values.get("warning_threshold"),
+                critical_threshold=values.get("critical_threshold"),
+                unit=values.get("unit", "%"),
+                higher_is_better=values.get("higher_is_better", "Y"),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.add(new_threshold)
+            updated.append(kpi_key)
+
+    db.commit()
+
+    return {
+        "message": f"Updated {len(updated)} thresholds",
+        "client_id": client_id,
+        "updated_kpis": updated
+    }
+
+
+@app.delete("/api/kpi-thresholds/{client_id}/{kpi_key}")
+def delete_client_threshold(
+    client_id: str,
+    kpi_key: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete a client-specific threshold (reverts to global default).
+    Cannot delete global thresholds.
+    """
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+
+    from backend.schemas.kpi_threshold import KPIThreshold
+
+    threshold = db.query(KPIThreshold).filter(
+        KPIThreshold.client_id == client_id,
+        KPIThreshold.kpi_key == kpi_key
+    ).first()
+
+    if not threshold:
+        raise HTTPException(status_code=404, detail="Client threshold not found")
+
+    db.delete(threshold)
+    db.commit()
+
+    return {"message": f"Threshold {kpi_key} deleted for client {client_id}, reverted to global default"}
 
 
 # ============================================================================
@@ -1752,6 +2062,7 @@ from backend.routes import (
 # Import reports router
 from backend.routes.reports import router as reports_router
 from backend.routes.health import router as health_router
+from backend.routes.defect_type_catalog import router as defect_type_catalog_router
 
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
@@ -1791,6 +2102,9 @@ app.include_router(preferences_router)
 
 # Phase 8: Register saved filters routes
 app.include_router(filters_router)
+
+# Phase 9: Register defect type catalog routes (client-specific defect types)
+app.include_router(defect_type_catalog_router)
 
 # OTD (On-Time Delivery) KPI endpoints remain in main.py
 # as they don't fit into the modular structure
@@ -1879,6 +2193,145 @@ def get_late_orders(
     return identify_late_orders(db, as_of_date or date.today())
 
 
+@app.get("/api/kpi/otd/by-client")
+def get_otd_by_client(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get OTD metrics aggregated by client"""
+    from sqlalchemy import func, case
+    from backend.schemas.work_order import WorkOrder
+    from backend.schemas.client import Client
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Query work orders grouped by client
+    query = db.query(
+        WorkOrder.client_id,
+        Client.client_name,
+        func.count(WorkOrder.work_order_id).label('total_deliveries'),
+        func.sum(
+            case(
+                (WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1),
+                (WorkOrder.actual_delivery_date.is_(None),
+                 case((WorkOrder.required_date >= date.today(), 1), else_=0)),
+                else_=0
+            )
+        ).label('on_time')
+    ).join(
+        Client, WorkOrder.client_id == Client.client_id
+    ).filter(
+        WorkOrder.required_date.isnot(None),
+        WorkOrder.required_date >= datetime.combine(start_date, datetime.min.time()),
+        WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    # Non-admin users only see their assigned client
+    if current_user.role != 'admin' and current_user.client_id_assigned:
+        query = query.filter(WorkOrder.client_id == current_user.client_id_assigned)
+
+    results = query.group_by(
+        WorkOrder.client_id,
+        Client.client_name
+    ).all()
+
+    return [
+        {
+            "client_id": r.client_id,
+            "client_name": r.client_name or f"Client {r.client_id}",
+            "total_deliveries": r.total_deliveries or 0,
+            "on_time": r.on_time or 0,
+            "otd_percentage": round((r.on_time / r.total_deliveries * 100) if r.total_deliveries > 0 else 0, 1)
+        }
+        for r in results
+    ]
+
+
+@app.get("/api/kpi/otd/late-deliveries")
+def get_late_deliveries(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get recent late deliveries with details"""
+    from backend.schemas.work_order import WorkOrder
+    from backend.schemas.client import Client
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # Query for late deliveries (actual_delivery_date > required_date)
+    query = db.query(
+        WorkOrder.work_order_id,
+        WorkOrder.client_id,
+        Client.client_name,
+        WorkOrder.required_date,
+        WorkOrder.actual_delivery_date,
+        WorkOrder.style_model
+    ).join(
+        Client, WorkOrder.client_id == Client.client_id
+    ).filter(
+        WorkOrder.required_date.isnot(None),
+        WorkOrder.actual_delivery_date.isnot(None),
+        WorkOrder.actual_delivery_date > WorkOrder.required_date,
+        WorkOrder.actual_delivery_date >= datetime.combine(start_date, datetime.min.time()),
+        WorkOrder.actual_delivery_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    # Apply client filter
+    if effective_client_id:
+        query = query.filter(WorkOrder.client_id == effective_client_id)
+
+    # Order by delivery date (most recent first) and limit
+    results = query.order_by(WorkOrder.actual_delivery_date.desc()).limit(limit).all()
+
+    late_deliveries = []
+    for r in results:
+        # Calculate delay in hours
+        required = r.required_date
+        actual = r.actual_delivery_date
+
+        # Handle datetime vs date conversion
+        if hasattr(required, 'date'):
+            required_dt = required
+        else:
+            required_dt = datetime.combine(required, datetime.min.time())
+
+        if hasattr(actual, 'date'):
+            actual_dt = actual
+        else:
+            actual_dt = datetime.combine(actual, datetime.min.time())
+
+        delay_hours = int((actual_dt - required_dt).total_seconds() / 3600)
+
+        late_deliveries.append({
+            "delivery_date": str(actual.date() if hasattr(actual, 'date') else actual),
+            "work_order": r.work_order_id,
+            "client": r.client_name or r.client_id,
+            "delay_hours": delay_hours,
+            "style_model": r.style_model
+        })
+
+    return late_deliveries
+
+
 # ============================================================================
 # KPI TREND ENDPOINTS
 # ============================================================================
@@ -1957,6 +2410,123 @@ def get_performance_trend(
     results = query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
 
     return [{"date": str(r.date), "value": round(float(r.value), 2) if r.value else 0} for r in results]
+
+
+@app.get("/api/kpi/performance/by-shift")
+def get_performance_by_shift(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get performance aggregated by shift"""
+    from sqlalchemy import func
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.shift import Shift
+
+    if not start_date:
+        start_date = date.today() - timedelta(days=30)
+    if not end_date:
+        end_date = date.today()
+
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    query = db.query(
+        ProductionEntry.shift_id,
+        Shift.shift_name,
+        func.sum(ProductionEntry.units_produced).label('units'),
+        func.sum(ProductionEntry.run_time_hours).label('hours'),
+        func.avg(ProductionEntry.performance_percentage).label('performance'),
+        func.count(ProductionEntry.production_entry_id).label('entry_count')
+    ).outerjoin(
+        Shift, ProductionEntry.shift_id == Shift.shift_id
+    ).filter(
+        ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    if effective_client_id:
+        query = query.filter(ProductionEntry.client_id == effective_client_id)
+
+    results = query.group_by(
+        ProductionEntry.shift_id,
+        Shift.shift_name
+    ).order_by(
+        func.avg(ProductionEntry.performance_percentage).desc()
+    ).all()
+
+    return [
+        {
+            "shift_id": r.shift_id,
+            "shift_name": r.shift_name or f"Shift {r.shift_id}",
+            "units": int(r.units) if r.units else 0,
+            "rate": round(float(r.units) / float(r.hours), 1) if r.hours and r.hours > 0 else 0,
+            "performance": round(float(r.performance), 1) if r.performance else 0
+        }
+        for r in results
+    ]
+
+
+@app.get("/api/kpi/performance/by-product")
+def get_performance_by_product(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get performance aggregated by product"""
+    from sqlalchemy import func
+    from backend.schemas.production_entry import ProductionEntry
+    from backend.schemas.product import Product
+
+    if not start_date:
+        start_date = date.today() - timedelta(days=30)
+    if not end_date:
+        end_date = date.today()
+
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    query = db.query(
+        ProductionEntry.product_id,
+        Product.product_name,
+        func.sum(ProductionEntry.units_produced).label('units'),
+        func.sum(ProductionEntry.run_time_hours).label('hours'),
+        func.avg(ProductionEntry.performance_percentage).label('performance'),
+        func.count(ProductionEntry.production_entry_id).label('entry_count')
+    ).join(
+        Product, ProductionEntry.product_id == Product.product_id
+    ).filter(
+        ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    if effective_client_id:
+        query = query.filter(ProductionEntry.client_id == effective_client_id)
+
+    results = query.group_by(
+        ProductionEntry.product_id,
+        Product.product_name
+    ).order_by(
+        func.avg(ProductionEntry.performance_percentage).desc()
+    ).limit(limit).all()
+
+    return [
+        {
+            "product_id": r.product_id,
+            "product_name": r.product_name or f"Product {r.product_id}",
+            "units": int(r.units) if r.units else 0,
+            "rate": round(float(r.units) / float(r.hours), 1) if r.hours and r.hours > 0 else 0,
+            "performance": round(float(r.performance), 1) if r.performance else 0
+        }
+        for r in results
+    ]
 
 
 @app.get("/api/kpi/quality/trend")

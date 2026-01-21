@@ -4,7 +4,7 @@
 
 [![Status](https://img.shields.io/badge/status-UAT--Ready-green)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com)
-[![Completion](https://img.shields.io/badge/completion-97%25-brightgreen)](https://github.com)
+[![Completion](https://img.shields.io/badge/completion-98%25-brightgreen)](https://github.com)
 [![Grade](https://img.shields.io/badge/grade-A+-success)](https://github.com)
 [![Design](https://img.shields.io/badge/design-IBM%20Carbon-blue)](https://carbondesignsystem.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
@@ -47,10 +47,10 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 - ✅ **CSV Bulk Upload** - Import 100+ records with validation
 - ✅ **Inference Engine** - Smart defaults for missing data
 - ✅ **Real-Time Calculations** - KPIs update as data is entered
-- ✅ **Predictive Analytics** - Forecasting for all 10 KPIs with exponential smoothing
+- ✅ **Predictive Analytics** - Forecasting for all 10 KPIs with exponential smoothing (toggle "Show Forecast" on KPI detail charts)
 - ✅ **Custom Dashboards** - Role-based layouts with drag-drop widget customization
-- ✅ **Advanced Filtering** - Save, apply, and manage filter configurations
-- ✅ **QR Code Integration** - Scan QR codes for work order lookup and form auto-fill
+- ✅ **Advanced Filtering** - Save, apply, and manage filter configurations (Saved Filters dropdown in dashboard header with save/load/history)
+- ✅ **QR Code Integration** - Scan QR codes for work order lookup and form auto-fill (Quick-access button in dashboard header OR Dashboard Customize → Add QR Scanner widget)
 - ✅ **Responsive Design** - Works on desktop, tablet, mobile
 - ✅ **Keyboard Shortcuts** - Power-user productivity features
 - ✅ **Demo Data** - Sample data generator with 5 clients, 100 employees
@@ -231,18 +231,22 @@ kpi-operations/
 
 ### **KPI Dashboard**
 - Summary cards with trend indicators
-- Interactive charts (Chart.js)
+- Interactive charts (Chart.js) with optional forecast visualization
 - Filterable by date range, client, shift
+- **Saved Filters** - Quick dropdown to save, load, and manage filter presets
+- **QR Scanner** - Quick-access button for work order lookup
+- **Bradford Factor Widget** - Absenteeism pattern analysis (enabled by default for Leader+ roles)
 - Drill-down to detailed data
-- Export to Excel/PDF (coming soon)
+- Export to Excel/PDF
+- **Email Reports** - Configure automated report delivery (daily/weekly/monthly)
 
 ### **Keyboard Shortcuts**
 - `Ctrl+S` - Save current changes
 - `Ctrl+Z` - Undo last change
-- `Ctrl+Shift+Z` - Redo
+- `Ctrl+Y` - Redo
 - `Delete` - Clear selected cells
 - `Ctrl+C/V` - Copy/Paste
-- `F1` - Show keyboard shortcuts help
+- `Ctrl+/` - Show keyboard shortcuts help
 
 ---
 
@@ -337,10 +341,11 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 
 ### **Future Enhancements (Sprint 6+)** 🔵
 1. 📊 **Reports** - PDF and Excel export ✅ Implemented
-2. 📧 **Email Delivery** - Daily automated reports ✅ Implemented
-3. 📱 **QR Code Integration** - Mobile barcode scanning ✅ **COMPLETED**
+2. 📧 **Email Delivery** - Daily automated reports ✅ **COMPLETED** (UI added in v1.0.3)
+3. 📱 **QR Code Integration** - Mobile barcode scanning ✅ **COMPLETED** (Quick-access UI added)
 4. 📈 **Custom Dashboards** - Role-based dashboard views ✅ **COMPLETED**
-5. 🔍 **Advanced Filtering** - Saved views and filter presets ✅ **COMPLETED**
+5. 🔍 **Advanced Filtering** - Saved views and filter presets ✅ **COMPLETED** (UI dropdown added)
+6. 🔮 **Predictive Analytics UI** - Forecast visualization on charts ✅ **COMPLETED** (v1.0.3)
 
 ### **Production Status**
 ✅ **CERTIFIED FOR DEPLOYMENT** - See [Audit Report](docs/AUDIT_HIVE_MIND_REPORT.md) for details
@@ -412,10 +417,11 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 - ✅ Automated email delivery
 
 ### **Version 1.2 (Q2 2026)** - Enhanced Features
-- ~~QR code integration for mobile data entry~~ ✅ **COMPLETED**
+- ~~QR code integration for mobile data entry~~ ✅ **COMPLETED** (v1.0.3)
 - ~~Custom dashboards per role~~ ✅ **COMPLETED**
-- ~~Advanced filtering and saved views~~ ✅ **COMPLETED**
-- ~~Predictive analytics~~ ✅ **COMPLETED** (moved to v1.0)
+- ~~Advanced filtering and saved views~~ ✅ **COMPLETED** (v1.0.3 UI)
+- ~~Predictive analytics~~ ✅ **COMPLETED** (v1.0.3 with UI)
+- ~~Email report configuration~~ ✅ **COMPLETED** (v1.0.3 UI)
 
 ### **Version 2.0 (Q3 2026)** - Mobile App
 - Native iOS/Android app
@@ -485,7 +491,7 @@ Frontend:
 Backend:
 - 16 database tables
 - 12 KPI calculation engines + predictive forecasting
-- 197 API endpoints + 10 prediction endpoints
+- 197 API endpoints + 10 prediction endpoints + 4 email config endpoints
 - 59.92% test coverage (1,558 tests passing, 59 skipped)
 - 95%+ coverage on KPI calculations
 - Docker deployment ready
@@ -508,15 +514,25 @@ Documentation:
 
 ---
 
-**Version:** 1.0.2
-**Last Updated:** January 17, 2026
-**Status:** ✅ UAT Ready (97% Complete - Grade A+)
+**Version:** 1.0.3
+**Last Updated:** January 20, 2026
+**Status:** ✅ UAT Ready (98% Complete - Grade A+)
 
 **✅ UAT CERTIFIED** - System is ready for User Acceptance Testing with IBM Carbon Design.
 
 **Test Coverage:** Backend 77.48% (1,558 tests) | E2E Tests: 120 scenarios | **Docker Support:** YES | **Design System:** IBM Carbon v11
 
-### **Recent Updates (v1.0.2)**
+### **Recent Updates (v1.0.3)**
+- ✅ **Predictive Analytics UI** - Added "Show Forecast" toggle on Efficiency and Performance KPI charts
+- ✅ **Forecast Visualization** - Displays 7-30 day predictions with confidence intervals on trend charts
+- ✅ **QR Scanner Quick-Access** - Added QR Scanner button directly in dashboard header
+- ✅ **Saved Filters UI** - Added dropdown menu to save, load, and manage filter presets
+- ✅ **Bradford Factor Widget** - Now included in default dashboard for Leader, PowerUser, and Admin roles
+- ✅ **Email Reports Dialog** - Full UI for configuring automated report delivery (frequency, recipients, content)
+- ✅ **Tooltip Enhancements** - Added formula and meaning tooltips to all KPI cards
+- ✅ **Fixed keyboard shortcuts** - Corrected help shortcut to Ctrl+/, redo to Ctrl+Y
+
+### **Previous Updates (v1.0.2)**
 - ✅ Fixed WIP Aging view - all data tables now connected and displaying
 - ✅ Added `/api/kpi/wip-aging/top` endpoint for top aging items
 - ✅ Added `/api/kpi/wip-aging/trend` endpoint for trend chart data

@@ -7,6 +7,85 @@
         <p class="text-subtitle-1 text-grey">Real-time performance metrics across all operations</p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2">
+        <!-- QR Scanner Quick Access Button -->
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              color="secondary"
+              variant="tonal"
+              prepend-icon="mdi-qrcode-scan"
+              @click="showQRScanner = true"
+            >
+              QR Scanner
+            </v-btn>
+          </template>
+          <span>Scan QR codes for quick data entry</span>
+        </v-tooltip>
+
+        <!-- Saved Filters Quick Access -->
+        <v-menu v-if="filtersStore.savedFilters.length > 0" offset-y>
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              variant="tonal"
+              prepend-icon="mdi-filter-check"
+              :color="filtersStore.hasActiveFilter ? 'primary' : undefined"
+            >
+              {{ filtersStore.hasActiveFilter ? filtersStore.activeFilter.filter_name : 'Saved Filters' }}
+              <v-icon end>mdi-chevron-down</v-icon>
+            </v-btn>
+          </template>
+          <v-list density="compact" max-width="300">
+            <v-list-subheader>
+              <v-icon start size="small">mdi-bookmark-multiple</v-icon>
+              Quick Apply Filter
+            </v-list-subheader>
+            <v-list-item
+              v-for="filter in filtersStore.savedFilters.slice(0, 5)"
+              :key="filter.filter_id"
+              :active="filtersStore.activeFilter?.filter_id === filter.filter_id"
+              @click="applyQuickSavedFilter(filter)"
+            >
+              <template v-slot:prepend>
+                <v-icon :color="filter.is_default ? 'primary' : undefined">
+                  {{ filter.is_default ? 'mdi-star' : 'mdi-filter-outline' }}
+                </v-icon>
+              </template>
+              <v-list-item-title>{{ filter.filter_name }}</v-list-item-title>
+              <v-list-item-subtitle>{{ filter.filter_type }}</v-list-item-subtitle>
+            </v-list-item>
+            <v-divider v-if="filtersStore.savedFilters.length > 5" />
+            <v-list-item @click="showFilterManager = true">
+              <template v-slot:prepend>
+                <v-icon>mdi-cog-outline</v-icon>
+              </template>
+              <v-list-item-title>Manage All Filters</v-list-item-title>
+            </v-list-item>
+            <v-list-item v-if="filtersStore.hasActiveFilter" @click="filtersStore.clearActiveFilter()">
+              <template v-slot:prepend>
+                <v-icon color="error">mdi-filter-off</v-icon>
+              </template>
+              <v-list-item-title class="text-error">Clear Active Filter</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-menu>
+
+        <!-- Save Current Filter Button -->
+        <v-tooltip location="bottom">
+          <template v-slot:activator="{ props }">
+            <v-btn
+              v-bind="props"
+              icon
+              variant="text"
+              @click="showSaveFilterDialog = true"
+            >
+              <v-icon>mdi-content-save-outline</v-icon>
+            </v-btn>
+          </template>
+          <span>Save current filter configuration</span>
+        </v-tooltip>
+
         <!-- Dashboard Customize Button -->
         <v-btn
           variant="outlined"
@@ -316,6 +395,75 @@
     <FilterManager
       v-model="showFilterManager"
     />
+
+    <!-- QR Scanner Dialog -->
+    <v-dialog v-model="showQRScanner" max-width="500px">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-qrcode-scan</v-icon>
+          Quick QR Scanner
+          <v-spacer />
+          <v-btn icon variant="text" @click="showQRScanner = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text class="pa-0">
+          <QRCodeScanner
+            @auto-fill="handleQRAutoFill"
+            @scanned="handleQRScanned"
+          />
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <!-- Save Filter Dialog -->
+    <v-dialog v-model="showSaveFilterDialog" max-width="450px">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon class="mr-2">mdi-content-save</v-icon>
+          Save Current Filter
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="saveFilterForm" v-model="saveFilterFormValid">
+            <v-text-field
+              v-model="newFilterName"
+              label="Filter Name"
+              placeholder="e.g., Last Week - Client A"
+              variant="outlined"
+              :rules="[v => !!v || 'Name is required']"
+              class="mb-3"
+            />
+            <v-select
+              v-model="newFilterType"
+              :items="filterTypeOptions"
+              label="Filter Type"
+              variant="outlined"
+              class="mb-3"
+            />
+            <v-checkbox
+              v-model="newFilterIsDefault"
+              label="Set as default for this filter type"
+              hide-details
+            />
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="grey" variant="text" @click="showSaveFilterDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="saveCurrentFilter"
+            :loading="savingFilter"
+            :disabled="!saveFilterFormValid"
+          >
+            Save Filter
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -343,6 +491,7 @@ import api from '@/services/api'
 import FilterBar from '@/components/filters/FilterBar.vue'
 import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer.vue'
 import FilterManager from '@/components/filters/FilterManager.vue'
+import QRCodeScanner from '@/components/QRCodeScanner.vue'
 
 ChartJS.register(
   CategoryScale,
@@ -374,6 +523,23 @@ const clients = ref([
 // New feature dialogs
 const showCustomizer = ref(false)
 const showFilterManager = ref(false)
+const showQRScanner = ref(false)
+
+// Save filter dialog state
+const showSaveFilterDialog = ref(false)
+const saveFilterForm = ref(null)
+const saveFilterFormValid = ref(false)
+const newFilterName = ref('')
+const newFilterType = ref('dashboard')
+const newFilterIsDefault = ref(false)
+const savingFilter = ref(false)
+const filterTypeOptions = [
+  { title: 'Dashboard', value: 'dashboard' },
+  { title: 'Production', value: 'production' },
+  { title: 'Quality', value: 'quality' },
+  { title: 'Attendance', value: 'attendance' },
+  { title: 'Downtime', value: 'downtime' }
+]
 
 // Report functionality
 const downloadingPDF = ref(false)
@@ -808,6 +974,76 @@ const handleFilterChange = (filterParams) => {
 
 const onCustomizerSaved = () => {
   showSnackbar('Dashboard preferences saved', 'success')
+}
+
+// QR Scanner handlers
+const handleQRScanned = (data) => {
+  showSnackbar(`Scanned: ${data.entity_type} - ${data.entity_data?.id || 'ID'}`, 'info')
+}
+
+const handleQRAutoFill = (data) => {
+  showQRScanner.value = false
+  showSnackbar(`Auto-filled form data for ${data.entity_type}`, 'success')
+  // Navigate to appropriate entry form based on entity type
+  if (data.entity_type === 'work_order') {
+    router.push({ name: 'production-entry', query: { work_order_id: data.entity_data?.id } })
+  } else if (data.entity_type === 'product') {
+    router.push({ name: 'production-entry', query: { product_id: data.entity_data?.id } })
+  }
+}
+
+// Saved filter handlers
+const applyQuickSavedFilter = async (filter) => {
+  try {
+    const filterConfig = await filtersStore.applyFilter(filter)
+    handleFilterChange(filterConfig)
+    showSnackbar(`Applied filter: ${filter.filter_name}`, 'success')
+  } catch (error) {
+    console.error('Error applying filter:', error)
+    showSnackbar('Failed to apply filter', 'error')
+  }
+}
+
+const saveCurrentFilter = async () => {
+  if (!saveFilterFormValid.value || !newFilterName.value) {
+    showSnackbar('Please enter a filter name', 'warning')
+    return
+  }
+
+  savingFilter.value = true
+  try {
+    // Build filter config from current state
+    const filterConfig = filtersStore.createFilterConfig({
+      client_id: selectedClient.value,
+      date_range: dateRange.value && dateRange.value.length === 2 ? {
+        type: 'absolute',
+        start_date: format(dateRange.value[0], 'yyyy-MM-dd'),
+        end_date: format(dateRange.value[1], 'yyyy-MM-dd')
+      } : { type: 'relative', relative_days: 30 }
+    })
+
+    const newFilter = await filtersStore.createFilter({
+      filter_name: newFilterName.value,
+      filter_type: newFilterType.value,
+      filter_config: filterConfig,
+      is_default: newFilterIsDefault.value
+    })
+
+    if (newFilter) {
+      showSnackbar(`Filter "${newFilterName.value}" saved successfully`, 'success')
+      showSaveFilterDialog.value = false
+      // Reset form
+      newFilterName.value = ''
+      newFilterIsDefault.value = false
+    } else {
+      showSnackbar('Failed to save filter', 'error')
+    }
+  } catch (error) {
+    console.error('Error saving filter:', error)
+    showSnackbar('Failed to save filter', 'error')
+  } finally {
+    savingFilter.value = false
+  }
 }
 
 onMounted(async () => {

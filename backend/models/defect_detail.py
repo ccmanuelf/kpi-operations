@@ -1,18 +1,21 @@
 """
 Pydantic models for DEFECT_DETAIL API requests and responses
 Used for API validation, serialization, and documentation
+
+NOTE: defect_type is now a free-form string that should match a value from
+the client's DEFECT_TYPE_CATALOG. This allows each client to define their
+own industry-specific defect types.
 """
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
-from backend.schemas.defect_detail import DefectType
 
 
 class DefectDetailBase(BaseModel):
     """Base defect detail fields shared across schemas"""
     quality_entry_id: str = Field(..., description="Foreign key to QUALITY_ENTRY")
     client_id_fk: str = Field(..., description="Foreign key to CLIENT (multi-tenant)")
-    defect_type: DefectType = Field(..., description="Defect category (Stitching, Fabric Defect, etc.)")
+    defect_type: str = Field(..., max_length=100, description="Defect type from client's DEFECT_TYPE_CATALOG")
     defect_category: Optional[str] = Field(None, max_length=100, description="Defect sub-category")
     defect_count: int = Field(..., ge=0, description="Number of defects found")
     severity: Optional[str] = Field(None, max_length=20, description="Severity level (CRITICAL, MAJOR, MINOR)")
@@ -44,7 +47,7 @@ class DefectDetailUpdate(BaseModel):
     """Schema for updating defect detail (all fields optional)"""
     quality_entry_id: Optional[str] = None
     client_id_fk: Optional[str] = None
-    defect_type: Optional[DefectType] = None
+    defect_type: Optional[str] = Field(None, max_length=100)
     defect_category: Optional[str] = Field(None, max_length=100)
     defect_count: Optional[int] = Field(None, ge=0)
     severity: Optional[str] = Field(None, max_length=20)
@@ -86,7 +89,7 @@ class DefectDetailResponse(DefectDetailBase):
 
 class DefectSummaryResponse(BaseModel):
     """Schema for defect summary by type"""
-    defect_type: DefectType = Field(..., description="Defect category")
+    defect_type: str = Field(..., description="Defect type from client's catalog")
     total_count: int = Field(..., ge=0, description="Number of defect records")
     defect_count: int = Field(..., ge=0, description="Total defects found")
 

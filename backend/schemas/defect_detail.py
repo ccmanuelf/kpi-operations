@@ -2,15 +2,23 @@
 DEFECT_DETAIL table ORM schema (SQLAlchemy)
 Detailed defect categorization for quality analysis
 Source: 05-Phase4_Quality_Inventory.csv lines 28-37
+
+NOTE: defect_type is now a free-form string validated against DEFECT_TYPE_CATALOG.
+Each client has their own set of valid defect types defined in the catalog.
+The DefectType enum is kept for backward compatibility but is DEPRECATED.
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
 import enum
 
 
 class DefectType(str, enum.Enum):
-    """Defect categories"""
+    """
+    DEPRECATED: Use DEFECT_TYPE_CATALOG for client-specific defect types.
+    This enum is kept only for backward compatibility with existing data.
+    New defect entries should use defect_type values from the client's catalog.
+    """
     STITCHING = "Stitching"
     FABRIC_DEFECT = "Fabric Defect"
     MEASUREMENT = "Measurement"
@@ -35,8 +43,9 @@ class DefectDetail(Base):
     # Multi-tenant isolation (HIGH SECURITY FIX)
     client_id_fk = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
 
-    # Defect classification
-    defect_type = Column(SQLEnum(DefectType), nullable=False, index=True)
+    # Defect classification - NOW uses client-specific catalog (String, not Enum)
+    # Validated against DEFECT_TYPE_CATALOG entries for the client
+    defect_type = Column(String(100), nullable=False, index=True)
     defect_category = Column(String(100))  # Sub-category
     defect_count = Column(Integer, nullable=False)
 

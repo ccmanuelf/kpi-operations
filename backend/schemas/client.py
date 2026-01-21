@@ -5,6 +5,7 @@ Source: 01-Core_DataEntities_Inventory.csv lines 2-15
 """
 from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Enum as SQLEnum
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from backend.database import Base
 import enum
 
@@ -48,3 +49,6 @@ class Client(Base):
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    defect_types = relationship("DefectTypeCatalog", back_populates="client", lazy="dynamic")

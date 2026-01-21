@@ -119,9 +119,12 @@ h4 {
   max-height: 2000px;
 }
 
-/* Mobile navigation adjustments */
-.v-navigation-drawer {
+/* Mobile navigation adjustments - respect Vuetify rail mode */
+.v-navigation-drawer:not(.v-navigation-drawer--rail) {
   width: 280px !important;
+}
+.v-navigation-drawer.v-navigation-drawer--rail {
+  width: 56px !important;
 }
 
 .v-app-bar {
@@ -340,9 +343,12 @@ h4 {
     min-height: 44px;
   }
 
-  /* Desktop navigation */
-  .v-navigation-drawer {
-    width: 320px !important;
+  /* Desktop navigation - respect Vuetify rail mode */
+  .v-navigation-drawer:not(.v-navigation-drawer--rail) {
+    width: 280px !important;
+  }
+  .v-navigation-drawer.v-navigation-drawer--rail {
+    width: 56px !important;
   }
 
   .v-app-bar {

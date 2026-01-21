@@ -10,7 +10,19 @@
     <v-card-text>
       <v-form ref="form" v-model="valid">
         <v-row>
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="4">
+            <v-select
+              v-model="formData.client_id"
+              :items="clients"
+              item-title="client_name"
+              item-value="client_id"
+              label="Client *"
+              :rules="[rules.required]"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12" md="4">
             <v-select
               v-model="formData.work_order_id"
               :items="workOrders"
@@ -22,7 +34,7 @@
               density="comfortable"
             />
           </v-col>
-          <v-col cols="12" md="6">
+          <v-col cols="12" md="4">
             <v-select
               v-model="formData.product_id"
               :items="products"
@@ -72,11 +84,14 @@
             <v-select
               v-model="formData.defect_type_id"
               :items="defectTypes"
-              item-title="name"
-              item-value="id"
+              item-title="defect_name"
+              item-value="defect_type_id"
               label="Primary Defect Type"
               variant="outlined"
               density="comfortable"
+              :disabled="!formData.client_id"
+              :hint="!formData.client_id ? 'Select a client first' : ''"
+              persistent-hint
             />
           </v-col>
           <v-col cols="12" md="6">
@@ -178,11 +193,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import api from '@/services/api'
 import CSVUploadDialogQuality from '@/components/CSVUploadDialogQuality.vue'
+import { useKPIStore } from '@/stores/kpi'
 
 const emit = defineEmits(['submitted'])
+const kpiStore = useKPIStore()
 
 const form = ref(null)
 const valid = ref(false)
@@ -190,11 +207,13 @@ const loading = ref(false)
 const products = ref([])
 const defectTypes = ref([])
 const workOrders = ref([])
+const clients = ref([])
 
 const severities = ['Critical', 'Major', 'Minor', 'Cosmetic']
 const dispositions = ['Accept', 'Reject', 'Rework', 'Use As Is', 'Return to Supplier']
 
 const formData = ref({
+  client_id: null,
   work_order_id: null,
   product_id: null,
   inspected_quantity: 0,
@@ -277,12 +296,15 @@ const submitEntry = async () => {
 
 const loadReferenceData = async () => {
   try {
-    const [productsRes, defectTypesRes] = await Promise.all([
+    const [productsRes, clientsRes] = await Promise.all([
       api.getProducts(),
-      api.getDefectTypes()
+      api.getClients()
     ])
     products.value = productsRes.data
-    defectTypes.value = defectTypesRes.data
+    clients.value = clientsRes.data || []
+
+    // Load defect types for selected client
+    await loadDefectTypes()
 
     // Load work orders (placeholder)
     workOrders.value = []
@@ -290,6 +312,30 @@ const loadReferenceData = async () => {
     console.error('Error loading reference data:', error)
   }
 }
+
+const loadDefectTypes = async () => {
+  try {
+    const clientId = formData.value.client_id || kpiStore.selectedClient || clients.value[0]?.client_id
+    if (clientId) {
+      const res = await api.getDefectTypes(clientId)
+      defectTypes.value = res.data || []
+    } else {
+      defectTypes.value = []
+    }
+  } catch (error) {
+    console.error('Error loading defect types:', error)
+    defectTypes.value = []
+  }
+}
+
+// Watch for client changes to reload defect types
+watch(() => formData.value.client_id, async (newClientId) => {
+  if (newClientId) {
+    await loadDefectTypes()
+    // Reset defect type selection when client changes
+    formData.value.defect_type_id = null
+  }
+})
 
 onMounted(() => {
   loadReferenceData()

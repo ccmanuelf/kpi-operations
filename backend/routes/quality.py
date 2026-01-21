@@ -309,7 +309,7 @@ def calculate_fpy_rty_kpi(
     """
     Calculate FPY (First Pass Yield) and RTY (Rolled Throughput Yield) with client filtering
     FPY = (Units Passed / Total Units) × 100
-    RTY = Product of all FPY values across process steps
+    RTY = Product of all FPY values across process steps (inspection stages)
 
     Parameters are optional - defaults to all products and last 30 days
     """
@@ -328,7 +328,7 @@ def calculate_fpy_rty_kpi(
     if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
-    # Build query with client filter for FPY calculation - using QUALITY_ENTRY table
+    # Build query with client filter for overall FPY calculation
     query = db.query(
         func.sum(QualityEntry.units_inspected).label('total'),
         func.sum(QualityEntry.units_passed).label('good')
@@ -345,9 +345,65 @@ def calculate_fpy_rty_kpi(
     good = result.good or 0
     fpy = (good / total * 100) if total > 0 else 0
 
-    # RTY calculation - simplified for client filtering
-    rty = fpy  # Simplified - RTY = FPY when single stage
+    # Calculate total scrapped for Final Yield
+    scrapped_query = db.query(
+        func.sum(QualityEntry.units_scrapped).label('scrapped')
+    ).filter(
+        QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    )
+
+    if effective_client_id:
+        scrapped_query = scrapped_query.filter(QualityEntry.client_id == effective_client_id)
+
+    scrapped_result = scrapped_query.first()
+    total_scrapped = scrapped_result.scrapped or 0
+
+    # Final Yield = (Total Inspected - Scrapped) / Total Inspected × 100
+    # This represents units that ultimately passed (first pass + reworked successfully)
+    final_yield = ((total - total_scrapped) / total * 100) if total > 0 else 0
+
+    # RTY calculation - calculate FPY per inspection stage and multiply them
+    # RTY = FPY_stage1 × FPY_stage2 × ... × FPY_stageN
+    stage_query = db.query(
+        QualityEntry.inspection_stage,
+        func.sum(QualityEntry.units_inspected).label('stage_total'),
+        func.sum(QualityEntry.units_passed).label('stage_passed')
+    ).filter(
+        QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+        QualityEntry.inspection_stage.isnot(None)
+    )
+
+    if effective_client_id:
+        stage_query = stage_query.filter(QualityEntry.client_id == effective_client_id)
+
+    stage_results = stage_query.group_by(QualityEntry.inspection_stage).all()
+
+    # Calculate RTY as product of stage FPYs
     steps = []
+    rty_decimal = 1.0  # Start at 100%
+
+    if stage_results:
+        for stage in stage_results:
+            stage_total = stage.stage_total or 0
+            stage_passed = stage.stage_passed or 0
+            if stage_total > 0:
+                stage_fpy = (stage_passed / stage_total)  # As decimal (0.0 to 1.0)
+                rty_decimal *= stage_fpy
+                steps.append({
+                    "stage": stage.inspection_stage,
+                    "fpy": round(stage_fpy * 100, 2),
+                    "total": stage_total,
+                    "passed": stage_passed
+                })
+
+    # Convert RTY back to percentage
+    if steps:
+        rty = rty_decimal * 100
+    else:
+        # If no stage data available, fall back to overall FPY
+        rty = fpy
 
     return FPYRTYCalculationResponse(
         product_id=product_id or 1,
@@ -355,8 +411,10 @@ def calculate_fpy_rty_kpi(
         end_date=end_date,
         total_units=total,
         first_pass_good=good,
+        total_scrapped=total_scrapped,
         fpy_percentage=round(fpy, 2),
         rty_percentage=round(rty, 2),
+        final_yield_percentage=round(final_yield, 2),
         total_process_steps=len(steps),
         calculation_timestamp=datetime.utcnow()
     )
@@ -391,3 +449,120 @@ def get_top_defects(
     Returns defects sorted by frequency for root cause analysis
     """
     return identify_top_defects(db, product_id, start_date, end_date, limit)
+
+
+@router.get("/kpi/defects-by-type")
+def get_defects_by_type(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get defect counts grouped by type with client filtering
+    Returns defect_type, count, and percentage for Pareto analysis
+    """
+    from datetime import timedelta
+    from sqlalchemy import func, text
+
+    # Default to last 30 days
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # Use raw SQL for reliable column access
+    sql = """
+        SELECT dd.defect_type, SUM(dd.defect_count) as count
+        FROM DEFECT_DETAIL dd
+        JOIN QUALITY_ENTRY qe ON dd.quality_entry_id = qe.quality_entry_id
+        WHERE qe.shift_date >= :start_date AND qe.shift_date <= :end_date
+    """
+    params = {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
+
+    if effective_client_id:
+        sql += " AND dd.client_id_fk = :client_id"
+        params["client_id"] = effective_client_id
+
+    sql += " GROUP BY dd.defect_type ORDER BY count DESC LIMIT :limit"
+    params["limit"] = limit
+
+    results = db.execute(text(sql), params).fetchall()
+
+    # Calculate total for percentages
+    total_defects = sum(r[1] or 0 for r in results)
+
+    return [
+        {
+            "defect_type": str(r[0]),
+            "count": r[1] or 0,
+            "percentage": round((r[1] / total_defects) * 100, 1) if total_defects > 0 else 0
+        }
+        for r in results
+    ]
+
+
+@router.get("/kpi/by-product")
+def get_quality_by_product(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get quality metrics (FPY) grouped by product/style with client filtering
+    Returns product_name (style_model), units inspected, defects, and FPY percentage
+    """
+    from datetime import timedelta
+    from sqlalchemy import text
+
+    # Default to last 30 days
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # Use raw SQL - WORK_ORDER has style_model, not product_id
+    sql = """
+        SELECT wo.style_model as product_name,
+               SUM(qe.units_inspected) as inspected,
+               SUM(qe.units_defective) as defects,
+               SUM(qe.units_passed) as passed
+        FROM QUALITY_ENTRY qe
+        JOIN WORK_ORDER wo ON qe.work_order_id = wo.work_order_id
+        WHERE qe.shift_date >= :start_date AND qe.shift_date <= :end_date
+    """
+    params = {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()}
+
+    if effective_client_id:
+        sql += " AND qe.client_id = :client_id"
+        params["client_id"] = effective_client_id
+
+    sql += " GROUP BY wo.style_model ORDER BY inspected DESC LIMIT :limit"
+    params["limit"] = limit
+
+    results = db.execute(text(sql), params).fetchall()
+
+    return [
+        {
+            "product_name": r[0] or "Unknown",
+            "inspected": r[1] or 0,
+            "defects": r[2] or 0,
+            "fpy": round((r[3] / r[1]) * 100, 1) if r[1] and r[1] > 0 else 0
+        }
+        for r in results
+    ]

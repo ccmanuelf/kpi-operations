@@ -135,10 +135,125 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>Efficiency Trend</v-card-title>
+          <v-card-title class="d-flex align-center">
+            <span>Efficiency Trend</span>
+            <v-spacer />
+            <v-switch
+              v-model="showForecast"
+              label="Show Forecast"
+              color="purple"
+              density="compact"
+              hide-details
+              class="mr-4"
+              @change="onForecastToggle"
+            />
+            <v-select
+              v-if="showForecast"
+              v-model="forecastDays"
+              :items="[3, 7, 14, 21, 30]"
+              label="Forecast Days"
+              density="compact"
+              variant="outlined"
+              style="max-width: 120px"
+              hide-details
+              @update:model-value="fetchPrediction"
+            />
+          </v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
             <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Prediction Details Card -->
+    <v-row v-if="showForecast && predictionData" class="mt-4">
+      <v-col cols="12" md="4">
+        <v-card variant="outlined" class="border-purple">
+          <v-card-title class="text-purple-darken-1">
+            <v-icon start>mdi-crystal-ball</v-icon>
+            Prediction Summary
+          </v-card-title>
+          <v-card-text>
+            <div class="d-flex justify-space-between mb-2">
+              <span class="text-grey-darken-1">Predicted Average:</span>
+              <span class="font-weight-bold">{{ predictionData.predicted_average?.toFixed(1) }}%</span>
+            </div>
+            <div class="d-flex justify-space-between mb-2">
+              <span class="text-grey-darken-1">Current Value:</span>
+              <span>{{ predictionData.current_value?.toFixed(1) }}%</span>
+            </div>
+            <div class="d-flex justify-space-between mb-2">
+              <span class="text-grey-darken-1">Expected Change:</span>
+              <v-chip :color="predictionData.expected_change_percent >= 0 ? 'success' : 'error'" size="small">
+                {{ predictionData.expected_change_percent >= 0 ? '+' : '' }}{{ predictionData.expected_change_percent?.toFixed(1) }}%
+              </v-chip>
+            </div>
+            <div class="d-flex justify-space-between mb-2">
+              <span class="text-grey-darken-1">Model Accuracy:</span>
+              <span>{{ predictionData.model_accuracy?.toFixed(0) }}%</span>
+            </div>
+            <div class="d-flex justify-space-between">
+              <span class="text-grey-darken-1">Method:</span>
+              <v-chip size="x-small" color="purple" variant="outlined">
+                {{ predictionData.prediction_method?.replace(/_/g, ' ') }}
+              </v-chip>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="4">
+        <v-card variant="outlined">
+          <v-card-title>
+            <v-icon start>mdi-heart-pulse</v-icon>
+            Health Assessment
+          </v-card-title>
+          <v-card-text v-if="predictionData.health_assessment">
+            <div class="d-flex align-center mb-3">
+              <v-progress-circular
+                :model-value="predictionData.health_assessment.health_score"
+                :color="getHealthColor(predictionData.health_assessment.health_score)"
+                :size="60"
+                :width="6"
+              >
+                {{ predictionData.health_assessment.health_score?.toFixed(0) }}
+              </v-progress-circular>
+              <div class="ml-3">
+                <div class="text-body-2 text-grey-darken-1">Health Score</div>
+                <v-chip :color="getTrendColor(predictionData.health_assessment.trend)" size="small">
+                  <v-icon start size="small">{{ getTrendIcon(predictionData.health_assessment.trend) }}</v-icon>
+                  {{ predictionData.health_assessment.trend }}
+                </v-chip>
+              </div>
+            </div>
+            <div class="text-caption text-grey-darken-1">
+              {{ predictionData.health_assessment.current_vs_target }}
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <v-col cols="12" md="4">
+        <v-card variant="outlined">
+          <v-card-title>
+            <v-icon start>mdi-lightbulb</v-icon>
+            Recommendations
+          </v-card-title>
+          <v-card-text v-if="predictionData.health_assessment?.recommendations">
+            <v-list density="compact" class="pa-0">
+              <v-list-item
+                v-for="(rec, index) in predictionData.health_assessment.recommendations.slice(0, 3)"
+                :key="index"
+                class="px-0"
+              >
+                <template v-slot:prepend>
+                  <v-icon size="small" color="amber-darken-2">mdi-arrow-right</v-icon>
+                </template>
+                <v-list-item-title class="text-body-2">{{ rec }}</v-list-item-title>
+              </v-list-item>
+            </v-list>
           </v-card-text>
         </v-card>
       </v-col>
@@ -263,6 +378,9 @@ const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOStrin
 const endDate = ref(new Date().toISOString().split('T')[0])
 const tableSearch = ref('')
 const historicalData = ref([])
+const showForecast = ref(true)
+const forecastDays = ref(7)
+const predictionData = ref(null)
 
 const efficiencyData = computed(() => kpiStore.efficiency)
 
@@ -299,12 +417,14 @@ const historyHeaders = [
   { title: 'Entry Count', key: 'entry_count', sortable: true }
 ]
 
-const chartData = computed(() => ({
-  labels: kpiStore.trends.efficiency.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
+const chartData = computed(() => {
+  const trendLabels = kpiStore.trends.efficiency.map(d => format(new Date(d.date), 'MMM dd'))
+  const trendData = kpiStore.trends.efficiency.map(d => d.value)
+
+  const datasets = [
     {
       label: 'Efficiency %',
-      data: kpiStore.trends.efficiency.map(d => d.value),
+      data: trendData,
       borderColor: '#2e7d32',
       backgroundColor: 'rgba(46, 125, 50, 0.1)',
       tension: 0.3,
@@ -312,13 +432,93 @@ const chartData = computed(() => ({
     },
     {
       label: 'Target (85%)',
-      data: Array(kpiStore.trends.efficiency.length).fill(85),
+      data: Array(trendLabels.length).fill(85),
       borderColor: '#f57c00',
       borderDash: [5, 5],
       pointRadius: 0
     }
   ]
-}))
+
+  // Add forecast data if available and enabled
+  if (showForecast.value && predictionData.value && predictionData.value.predictions) {
+    const forecastLabels = predictionData.value.predictions.map(p => {
+      const date = new Date(p.date)
+      return format(date, 'MMM dd')
+    })
+    const forecastValues = predictionData.value.predictions.map(p => p.predicted_value)
+    const upperBounds = predictionData.value.predictions.map(p => p.upper_bound)
+    const lowerBounds = predictionData.value.predictions.map(p => p.lower_bound)
+
+    // Combine labels (historical + forecast)
+    const allLabels = [...trendLabels, ...forecastLabels]
+
+    // Pad historical data with nulls for forecast period
+    const paddedTrendData = [...trendData, ...Array(forecastLabels.length).fill(null)]
+    const paddedTarget = Array(allLabels.length).fill(85)
+
+    // Pad forecast data with nulls for historical period
+    // Connect forecast to last historical point
+    const lastHistoricalValue = trendData.length > 0 ? trendData[trendData.length - 1] : null
+    const paddedForecast = [...Array(trendLabels.length - 1).fill(null), lastHistoricalValue, ...forecastValues]
+    const paddedUpper = [...Array(trendLabels.length - 1).fill(null), lastHistoricalValue, ...upperBounds]
+    const paddedLower = [...Array(trendLabels.length - 1).fill(null), lastHistoricalValue, ...lowerBounds]
+
+    return {
+      labels: allLabels,
+      datasets: [
+        {
+          label: 'Efficiency %',
+          data: paddedTrendData,
+          borderColor: '#2e7d32',
+          backgroundColor: 'rgba(46, 125, 50, 0.1)',
+          tension: 0.3,
+          fill: true
+        },
+        {
+          label: 'Target (85%)',
+          data: paddedTarget,
+          borderColor: '#f57c00',
+          borderDash: [5, 5],
+          pointRadius: 0
+        },
+        {
+          label: 'Forecast',
+          data: paddedForecast,
+          borderColor: '#9c27b0',
+          backgroundColor: 'rgba(156, 39, 176, 0.1)',
+          borderDash: [6, 4],
+          tension: 0.3,
+          fill: false,
+          pointStyle: 'rectRot',
+          pointRadius: 4,
+          pointBackgroundColor: '#9c27b0'
+        },
+        {
+          label: 'Confidence Upper',
+          data: paddedUpper,
+          borderColor: 'rgba(156, 39, 176, 0.3)',
+          backgroundColor: 'rgba(156, 39, 176, 0.05)',
+          borderDash: [2, 2],
+          tension: 0.3,
+          fill: '+1',
+          pointRadius: 0
+        },
+        {
+          label: 'Confidence Lower',
+          data: paddedLower,
+          borderColor: 'rgba(156, 39, 176, 0.3)',
+          backgroundColor: 'transparent',
+          borderDash: [2, 2],
+          tension: 0.3,
+          fill: false,
+          pointRadius: 0
+        }
+      ]
+    }
+  }
+
+  return { labels: trendLabels, datasets }
+})
 
 const chartOptions = {
   responsive: true,
@@ -360,6 +560,54 @@ const getPerformanceColor = (perf) => {
   return 'error'
 }
 
+const getHealthColor = (score) => {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  return 'error'
+}
+
+const getTrendColor = (trend) => {
+  if (trend === 'improving') return 'success'
+  if (trend === 'declining') return 'error'
+  return 'grey'
+}
+
+const getTrendIcon = (trend) => {
+  if (trend === 'improving') return 'mdi-trending-up'
+  if (trend === 'declining') return 'mdi-trending-down'
+  return 'mdi-minus'
+}
+
+const fetchPrediction = async () => {
+  if (!showForecast.value) {
+    predictionData.value = null
+    return
+  }
+  try {
+    const params = {
+      forecast_days: forecastDays.value,
+      historical_days: 30,
+      method: 'auto'
+    }
+    if (selectedClient.value) {
+      params.client_id = selectedClient.value
+    }
+    const response = await api.getPrediction('efficiency', params)
+    predictionData.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch prediction:', error)
+    predictionData.value = null
+  }
+}
+
+const onForecastToggle = () => {
+  if (showForecast.value) {
+    fetchPrediction()
+  } else {
+    predictionData.value = null
+  }
+}
+
 const loadClients = async () => {
   try {
     const response = await api.getClients()
@@ -382,10 +630,14 @@ const onDateChange = () => {
 const refreshData = async () => {
   loading.value = true
   try {
-    await Promise.all([
+    const promises = [
       kpiStore.fetchEfficiency(),
       kpiStore.fetchDashboard()
-    ])
+    ]
+    if (showForecast.value) {
+      promises.push(fetchPrediction())
+    }
+    await Promise.all(promises)
     historicalData.value = kpiStore.dashboard || []
   } catch (error) {
     console.error('Failed to refresh data:', error)

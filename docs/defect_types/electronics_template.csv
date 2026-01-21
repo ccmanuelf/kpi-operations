@@ -1,0 +1,11 @@
+defect_code,defect_name,description,category,severity_default,industry_standard_code,sort_order
+SOLDER_DEF,Solder Defect,"Cold solder, bridges, insufficient solder",Assembly,MAJOR,IPC-A-610-5.2,1
+COMP_MISS,Component Missing,Required component not present on PCB,Assembly,CRITICAL,,2
+COMP_WRONG,Wrong Component,Incorrect component value or type installed,Assembly,CRITICAL,,3
+POLARITY,Polarity Error,Component installed with wrong polarity,Assembly,CRITICAL,,4
+SHORT,Short Circuit,Unintended electrical connection,Electrical,CRITICAL,,5
+OPEN,Open Circuit,Missing required electrical connection,Electrical,CRITICAL,,6
+ESD_DMG,ESD Damage,Electrostatic discharge damage to components,Handling,CRITICAL,,7
+PCB_DEF,PCB Defect,"Board delamination, cracks, or copper issues",Material,MAJOR,,8
+TOMBSTONE,Tombstoning,Component standing on one end,Assembly,MAJOR,IPC-A-610-8.3,9
+OTHER,Other,Other defects not categorized above,General,MINOR,,10

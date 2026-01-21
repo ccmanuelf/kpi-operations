@@ -188,6 +188,9 @@ const widgetComponents = {
       template: '<div class="text-center pa-4"><v-icon>mdi-account-group</v-icon><p class="text-grey mt-2">Team KPIs</p></div>'
     }))
   ),
+  bradford_factor: defineAsyncComponent(() =>
+    import('@/components/widgets/BradfordFactorWidget.vue')
+  ),
   efficiency_trends: defineAsyncComponent(() =>
     import('./widgets/EfficiencyTrends.vue').catch(() => ({
       template: '<div class="text-center pa-4"><v-icon>mdi-trending-up</v-icon><p class="text-grey mt-2">Efficiency Trends</p></div>'

@@ -143,13 +143,15 @@ class DPMOCalculationResponse(BaseModel):
 
 
 class FPYRTYCalculationResponse(BaseModel):
-    """FPY (First Pass Yield) and RTY (Rolled Throughput Yield) calculation"""
+    """FPY (First Pass Yield), RTY (Rolled Throughput Yield), and Final Yield calculation"""
     product_id: int
     start_date: date
     end_date: date
     total_units: int
     first_pass_good: int
+    total_scrapped: int = 0
     fpy_percentage: Decimal
     rty_percentage: Decimal
+    final_yield_percentage: Decimal = Decimal("0")
     total_process_steps: int
     calculation_timestamp: datetime

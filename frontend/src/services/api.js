@@ -108,16 +108,32 @@ export default {
           : null
       }
 
+      // Calculate total actual_output, expected_output, and gap from by-shift data
+      const byShiftData = byShiftRes.data || []
+      let totalActualOutput = 0
+      let totalExpectedOutput = 0
+
+      byShiftData.forEach(shift => {
+        totalActualOutput += shift.actual_output || 0
+        totalExpectedOutput += shift.expected_output || 0
+      })
+
+      // Gap = difference between expected and actual (positive = under target)
+      const gap = totalExpectedOutput - totalActualOutput
+
       return {
         data: {
           current: avgEfficiency,
           target: 85,
-          by_shift: byShiftRes.data || [],
+          actual_output: totalActualOutput,
+          expected_output: totalExpectedOutput,
+          gap: gap,
+          by_shift: byShiftData,
           by_product: byProductRes.data || []
         }
       }
     } catch (error) {
-      return { data: { current: null, target: 85, by_shift: [], by_product: [] } }
+      return { data: { current: null, target: 85, actual_output: 0, expected_output: 0, gap: 0, by_shift: [], by_product: [] } }
     }
   },
   async getWIPAging(params) {
@@ -159,79 +175,235 @@ export default {
       return { data: { average_days: 0, total_held: 0, total_units: 0, max_days: 0, top_aging: [] } }
     }
   },
-  getOnTimeDelivery(params) {
-    return api.get('/kpi/otd', { params }).then(res => ({
-      data: {
-        percentage: res.data?.otd_percentage || res.data?.otd_rate || res.data?.percentage || 0,
-        on_time_count: res.data?.on_time_count || 0,
-        total_orders: res.data?.total_orders || 0
+  async getOnTimeDelivery(params) {
+    try {
+      // Fetch OTD data, by-client breakdown, and late deliveries in parallel
+      const [otdRes, byClientRes, lateDeliveriesRes] = await Promise.all([
+        api.get('/kpi/otd', { params }).catch(() => ({ data: {} })),
+        api.get('/kpi/otd/by-client', { params }).catch(() => ({ data: [] })),
+        api.get('/kpi/otd/late-deliveries', { params }).catch(() => ({ data: [] }))
+      ])
+
+      const otdData = otdRes.data || {}
+      const byClientData = byClientRes.data || []
+      const lateDeliveriesData = lateDeliveriesRes.data || []
+
+      return {
+        data: {
+          percentage: otdData.otd_percentage || otdData.otd_rate || otdData.percentage || 0,
+          on_time_count: otdData.on_time_count || 0,
+          total_orders: otdData.total_orders || 0,
+          by_client: byClientData,
+          late_deliveries: lateDeliveriesData
+        }
       }
-    })).catch(() => ({ data: { percentage: 0, on_time_count: 0, total_orders: 0 } }))
+    } catch (error) {
+      console.error('OTD fetch error:', error)
+      return { data: { percentage: 0, on_time_count: 0, total_orders: 0, by_client: [], late_deliveries: [] } }
+    }
   },
   async getAvailability(params) {
     try {
-      // Fetch downtime data to calculate actual availability
-      const [dashboardRes, downtimeRes] = await Promise.all([
-        api.get('/kpi/dashboard', { params }).catch(() => ({ data: [] })),
+      // Fetch production entries and downtime data to calculate actual availability
+      const [productionRes, downtimeRes] = await Promise.all([
+        api.get('/production', { params }).catch(() => ({ data: [] })),
         api.get('/downtime', { params }).catch(() => ({ data: [] }))
       ])
 
-      const productionData = dashboardRes.data || []
+      const productionData = productionRes.data || []
       const downtimeData = downtimeRes.data || []
 
-      // Calculate total scheduled hours and downtime hours
+      // Calculate total scheduled hours from actual production run_time_hours
       let totalScheduledHours = 0
+      productionData.forEach(p => {
+        totalScheduledHours += parseFloat(p.run_time_hours || 0)
+      })
+
+      // If no production data, use a reasonable default based on date range
+      if (totalScheduledHours === 0 && productionData.length === 0) {
+        // Fallback: estimate based on 8 hours/day for the date range
+        const startDate = params?.start_date ? new Date(params.start_date) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        const endDate = params?.end_date ? new Date(params.end_date) : new Date()
+        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) || 30
+        totalScheduledHours = days * 8
+      }
+
+      // Calculate total downtime hours
       let totalDowntimeHours = 0
+      let totalDowntimeEvents = downtimeData.length
+
+      // Aggregate downtime by reason
+      const reasonsMap = {}
+      // Aggregate downtime by equipment
+      const equipmentMap = {}
 
       // Sum up downtime - backend returns downtime_duration_minutes
       downtimeData.forEach(d => {
         // Convert minutes to hours
         const minutes = parseFloat(d.downtime_duration_minutes || d.duration_hours * 60 || 0)
-        totalDowntimeHours += minutes / 60
+        const hours = minutes / 60
+        totalDowntimeHours += hours
+
+        // Aggregate by reason
+        const reason = d.downtime_reason || d.reason_type || 'Unknown'
+        if (!reasonsMap[reason]) {
+          reasonsMap[reason] = { reason, hours: 0, count: 0 }
+        }
+        reasonsMap[reason].hours += hours
+        reasonsMap[reason].count += 1
+
+        // Aggregate by equipment
+        const equipment = d.machine_id || d.equipment_code || 'Unknown Equipment'
+        if (!equipmentMap[equipment]) {
+          equipmentMap[equipment] = { equipment_name: equipment, uptime: 0, downtime: 0 }
+        }
+        equipmentMap[equipment].downtime += hours
       })
 
-      // Estimate scheduled hours from production data (entries * 8 hours average)
-      totalScheduledHours = productionData.length * 8 || 1
+      // Calculate uptime
+      const uptimeHours = Math.max(0, totalScheduledHours - totalDowntimeHours)
 
       // Calculate availability: (Scheduled - Downtime) / Scheduled * 100
       const availability = totalScheduledHours > 0
-        ? Math.max(0, Math.min(100, ((totalScheduledHours - totalDowntimeHours) / totalScheduledHours) * 100))
+        ? Math.max(0, Math.min(100, (uptimeHours / totalScheduledHours) * 100))
         : 0
+
+      // Calculate MTBF (Mean Time Between Failures)
+      // MTBF = Total Operating Time / Number of Failures
+      const mtbf = totalDowntimeEvents > 0
+        ? parseFloat((uptimeHours / totalDowntimeEvents).toFixed(1))
+        : parseFloat(uptimeHours.toFixed(1))
+
+      // Convert reasons map to array with percentages
+      const downtimeReasons = Object.values(reasonsMap).map(r => ({
+        reason: r.reason,
+        hours: parseFloat(r.hours.toFixed(1)),
+        count: r.count,
+        percentage: totalDowntimeHours > 0 ? (r.hours / totalDowntimeHours) * 100 : 0
+      })).sort((a, b) => b.hours - a.hours)
+
+      // Convert equipment map to array with availability
+      const equipmentCount = Object.keys(equipmentMap).length || 1
+      const byEquipment = Object.values(equipmentMap).map(e => {
+        const equipScheduled = totalScheduledHours / equipmentCount
+        const equipUptime = equipScheduled - e.downtime
+        return {
+          equipment_name: e.equipment_name,
+          uptime: parseFloat(Math.max(0, equipUptime).toFixed(1)),
+          downtime: parseFloat(e.downtime.toFixed(1)),
+          availability: parseFloat((Math.max(0, equipUptime) / equipScheduled * 100).toFixed(1))
+        }
+      }).sort((a, b) => a.availability - b.availability)
 
       return {
         data: {
           percentage: availability > 0 ? parseFloat(availability.toFixed(2)) : null,
+          uptime: parseFloat(uptimeHours.toFixed(1)),
+          downtime: parseFloat(totalDowntimeHours.toFixed(1)),
+          total_time: parseFloat(totalScheduledHours.toFixed(1)),
+          mtbf: mtbf,
           scheduled_hours: totalScheduledHours,
-          downtime_hours: totalDowntimeHours
+          downtime_hours: totalDowntimeHours,
+          downtime_events: totalDowntimeEvents,
+          downtime_reasons: downtimeReasons,
+          by_equipment: byEquipment
         }
       }
     } catch (error) {
-      return { data: { percentage: null } }
+      console.error('Availability fetch error:', error)
+      return { data: { percentage: null, uptime: 0, downtime: 0, total_time: 0, mtbf: 0, downtime_reasons: [], by_equipment: [] } }
     }
   },
-  getPerformance(params) {
-    return api.get('/kpi/dashboard', { params }).then(res => {
-      // Backend returns array of daily summaries - calculate average performance
-      const data = res.data || []
-      if (Array.isArray(data) && data.length > 0) {
-        const validEntries = data.filter(d => d.avg_performance != null)
-        const avgPerf = validEntries.length > 0
+  async getPerformance(params) {
+    try {
+      // Fetch all performance data in parallel
+      const [dashboardRes, productionRes, byShiftRes, byProductRes] = await Promise.all([
+        api.get('/kpi/dashboard', { params }).catch(() => ({ data: [] })),
+        api.get('/production', { params }).catch(() => ({ data: [] })),
+        api.get('/kpi/performance/by-shift', { params }).catch(() => ({ data: [] })),
+        api.get('/kpi/performance/by-product', { params }).catch(() => ({ data: [] }))
+      ])
+
+      // Calculate average performance from dashboard data
+      const dashboardData = dashboardRes.data || []
+      let avgPerformance = null
+      if (Array.isArray(dashboardData) && dashboardData.length > 0) {
+        const validEntries = dashboardData.filter(d => d.avg_performance != null)
+        avgPerformance = validEntries.length > 0
           ? validEntries.reduce((sum, d) => sum + d.avg_performance, 0) / validEntries.length
           : null
-        return { data: { percentage: avgPerf, target: 95 } }
       }
-      return { data: { percentage: null, target: 95 } }
-    }).catch(() => ({ data: { percentage: null } }))
+
+      // Calculate totals from production entries
+      const productionData = productionRes.data || []
+      let totalUnits = 0
+      let totalHours = 0
+      let totalExpectedOutput = 0
+
+      productionData.forEach(entry => {
+        totalUnits += parseInt(entry.units_produced || 0)
+        totalHours += parseFloat(entry.run_time_hours || 0)
+        // Expected output based on ideal cycle time: run_time_hours * 60 / ideal_cycle_time_minutes
+        if (entry.ideal_cycle_time_minutes && entry.ideal_cycle_time_minutes > 0) {
+          totalExpectedOutput += (parseFloat(entry.run_time_hours || 0) * 60) / parseFloat(entry.ideal_cycle_time_minutes)
+        }
+      })
+
+      // Actual Rate = Total Units / Production Hours (units per hour)
+      const actualRate = totalHours > 0 ? Math.round(totalUnits / totalHours) : 0
+
+      // Standard Rate = Expected Output / Production Hours
+      // If no expected output data, estimate based on typical target (95% of actual as baseline)
+      let standardRate = 0
+      if (totalExpectedOutput > 0 && totalHours > 0) {
+        standardRate = Math.round(totalExpectedOutput / totalHours)
+      } else if (avgPerformance && avgPerformance > 0 && actualRate > 0) {
+        // Estimate: if actual_rate is X% of standard, then standard = actual / (performance/100)
+        standardRate = Math.round(actualRate / (avgPerformance / 100))
+      } else if (actualRate > 0) {
+        // Fallback: assume 95% target means actual = 95% of standard
+        standardRate = Math.round(actualRate / 0.95)
+      }
+
+      return {
+        data: {
+          percentage: avgPerformance ? parseFloat(avgPerformance.toFixed(1)) : null,
+          target: 95,
+          actual_rate: actualRate,
+          standard_rate: standardRate,
+          total_units: totalUnits,
+          production_hours: parseFloat(totalHours.toFixed(1)),
+          by_shift: byShiftRes.data || [],
+          by_product: byProductRes.data || []
+        }
+      }
+    } catch (error) {
+      console.error('Performance fetch error:', error)
+      return { data: { percentage: null, target: 95, actual_rate: 0, standard_rate: 0, total_units: 0, production_hours: 0, by_shift: [], by_product: [] } }
+    }
   },
-  getQuality(params) {
-    return api.get('/quality/kpi/fpy-rty', { params }).then(res => ({
-      data: {
-        fpy: parseFloat(res.data?.fpy_percentage) || res.data?.fpy || res.data?.first_pass_yield || 0,
-        rty: parseFloat(res.data?.rty_percentage) || 0,
-        total_units: res.data?.total_units || 0,
-        first_pass_good: res.data?.first_pass_good || 0
+  async getQuality(params) {
+    try {
+      const [fpyRtyRes, defectsRes, byProductRes] = await Promise.all([
+        api.get('/quality/kpi/fpy-rty', { params }),
+        api.get('/quality/kpi/defects-by-type', { params }).catch(() => ({ data: [] })),
+        api.get('/quality/kpi/by-product', { params }).catch(() => ({ data: [] }))
+      ])
+      return {
+        data: {
+          fpy: parseFloat(fpyRtyRes.data?.fpy_percentage) || fpyRtyRes.data?.fpy || fpyRtyRes.data?.first_pass_yield || 0,
+          rty: parseFloat(fpyRtyRes.data?.rty_percentage) || 0,
+          final_yield: parseFloat(fpyRtyRes.data?.final_yield_percentage) || 0,
+          total_units: fpyRtyRes.data?.total_units || 0,
+          first_pass_good: fpyRtyRes.data?.first_pass_good || 0,
+          total_scrapped: fpyRtyRes.data?.total_scrapped || 0,
+          defects_by_type: defectsRes.data || [],
+          by_product: byProductRes.data || []
+        }
       }
-    })).catch(() => ({ data: { fpy: 0, rty: 0, total_units: 0 } }))
+    } catch {
+      return { data: { fpy: 0, rty: 0, final_yield: 0, total_units: 0, total_scrapped: 0, defects_by_type: [], by_product: [] } }
+    }
   },
   async getOEE(params) {
     // OEE = Availability x Performance x Quality
@@ -269,9 +441,22 @@ export default {
         total_scheduled_hours: parseFloat(res.data?.total_scheduled_hours) || 0,
         total_hours_absent: parseFloat(res.data?.total_hours_absent) || 0,
         total_employees: res.data?.total_employees || 0,
-        total_absences: res.data?.total_absences || 0
+        total_absences: res.data?.total_absences || 0,
+        // Include breakdown data for tables
+        by_reason: res.data?.by_reason || [],
+        by_department: res.data?.by_department || [],
+        high_absence_employees: res.data?.high_absence_employees || []
       }
-    })).catch(() => ({ data: { rate: 0, total_employees: 0, total_absences: 0 } }))
+    })).catch(() => ({
+      data: {
+        rate: 0,
+        total_employees: 0,
+        total_absences: 0,
+        by_reason: [],
+        by_department: [],
+        high_absence_employees: []
+      }
+    }))
   },
   getDefectRates(params) {
     return api.get('/quality/kpi/ppm', { params }).then(res => ({
@@ -333,7 +518,7 @@ export default {
     return api.get('/kpi/oee/trend', { params }).catch(() => ({ data: [] }))
   },
   getAbsenteeismTrend(params) {
-    return api.get('/kpi/absenteeism/trend', { params }).catch(() => ({ data: [] }))
+    return api.get('/attendance/kpi/absenteeism/trend', { params }).catch(() => ({ data: [] }))
   },
 
   // Data Entry - Downtime
@@ -436,14 +621,99 @@ export default {
   getShifts() {
     return api.get('/shifts')
   },
+  // Clients CRUD
   getClients() {
     return api.get('/clients')
   },
+  getClient(clientId) {
+    return api.get(`/clients/${clientId}`)
+  },
+  createClient(data) {
+    return api.post('/clients', data)
+  },
+  updateClient(clientId, data) {
+    return api.put(`/clients/${clientId}`, data)
+  },
+  deleteClient(clientId) {
+    return api.delete(`/clients/${clientId}`)
+  },
+
+  // Users CRUD (Admin)
+  getUsers() {
+    return api.get('/users')
+  },
+  getUser(userId) {
+    return api.get(`/users/${userId}`)
+  },
+  createUser(data) {
+    return api.post('/users', data)
+  },
+  updateUser(userId, data) {
+    return api.put(`/users/${userId}`, data)
+  },
+  deleteUser(userId) {
+    return api.delete(`/users/${userId}`)
+  },
+
+  // KPI Thresholds
+  getKPIThresholds(clientId = null) {
+    const params = clientId ? { client_id: clientId } : {}
+    return api.get('/kpi-thresholds', { params })
+  },
+  updateKPIThresholds(data) {
+    return api.put('/kpi-thresholds', data)
+  },
+  deleteClientThreshold(clientId, kpiKey) {
+    return api.delete(`/kpi-thresholds/${clientId}/${kpiKey}`)
+  },
+
   getDowntimeReasons() {
     return api.get('/downtime-reasons')
   },
-  getDefectTypes() {
-    return api.get('/defect-types')
+
+  // ============================================
+  // Defect Type Catalog (Client-specific)
+  // ============================================
+  getDefectTypes(clientId) {
+    // If clientId provided, get client-specific defect types
+    if (clientId) {
+      return api.get(`/defect-types/client/${clientId}`)
+    }
+    // Fallback: try to get from user's assigned client or return empty
+    return api.get('/defect-types/client/default').catch(() => ({ data: [] }))
+  },
+  getDefectTypesByClient(clientId, includeInactive = false, includeGlobal = true) {
+    return api.get(`/defect-types/client/${clientId}`, {
+      params: {
+        include_inactive: includeInactive,
+        include_global: includeGlobal
+      }
+    })
+  },
+  getGlobalDefectTypes(includeInactive = false) {
+    return api.get('/defect-types/global', {
+      params: { include_inactive: includeInactive }
+    })
+  },
+  createDefectType(data) {
+    return api.post('/defect-types', data)
+  },
+  updateDefectType(defectTypeId, data) {
+    return api.put(`/defect-types/${defectTypeId}`, data)
+  },
+  deleteDefectType(defectTypeId) {
+    return api.delete(`/defect-types/${defectTypeId}`)
+  },
+  uploadDefectTypes(clientId, file, replaceExisting = false) {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('replace_existing', replaceExisting)
+    return api.post(`/defect-types/upload/${clientId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  getDefectTypeTemplate() {
+    return api.get('/defect-types/template/download')
   },
 
   // ============================================
@@ -522,5 +792,93 @@ export default {
   },
   generateQRImage(entityType, entityId) {
     return api.post('/qr/generate/image', { entity_type: entityType, entity_id: entityId }, { responseType: 'blob' })
+  },
+
+  // ============================================
+  // Predictions API (Forecasting)
+  // ============================================
+
+  /**
+   * Get prediction for a single KPI with confidence intervals
+   * @param {string} kpiType - Type of KPI (efficiency, performance, availability, oee, ppm, dpmo, fpy, rty, absenteeism, otd)
+   * @param {Object} params - Query params: client_id, forecast_days (1-30), historical_days (7-90), method (auto|simple|double|linear)
+   */
+  getPrediction(kpiType, params) {
+    return api.get(`/predictions/${kpiType}`, { params })
+  },
+
+  /**
+   * Get predictions for all KPIs in a single dashboard response
+   * @param {Object} params - Query params: client_id, forecast_days (1-30), historical_days (7-90)
+   */
+  getAllPredictions(params) {
+    return api.get('/predictions/dashboard/all', { params })
+  },
+
+  /**
+   * Get KPI benchmarks for all metrics
+   */
+  getPredictionBenchmarks() {
+    return api.get('/predictions/benchmarks')
+  },
+
+  /**
+   * Get quick health assessment for a specific KPI
+   * @param {string} kpiType - Type of KPI
+   * @param {Object} params - Query params: client_id
+   */
+  getKPIHealth(kpiType, params) {
+    return api.get(`/predictions/health/${kpiType}`, { params })
+  },
+
+  // ============================================
+  // Email Report Configuration
+  // ============================================
+
+  /**
+   * Get email report configuration for a client
+   * @param {string|number} clientId - Client ID
+   */
+  getEmailReportConfig(clientId) {
+    return api.get('/reports/email-config', { params: { client_id: clientId } }).catch(() => ({
+      data: {
+        enabled: false,
+        frequency: 'daily',
+        recipients: [],
+        report_time: '06:00'
+      }
+    }))
+  },
+
+  /**
+   * Save email report configuration
+   * @param {Object} data - Configuration: enabled, frequency, recipients[], report_time
+   */
+  saveEmailReportConfig(data) {
+    return api.post('/reports/email-config', data)
+  },
+
+  /**
+   * Update email report configuration
+   * @param {Object} data - Configuration updates
+   */
+  updateEmailReportConfig(data) {
+    return api.put('/reports/email-config', data)
+  },
+
+  /**
+   * Send test email to verify configuration
+   * @param {string} email - Email address to test
+   */
+  sendTestEmail(email) {
+    return api.post('/reports/email-config/test', { email })
+  },
+
+  /**
+   * Manually trigger a report for specific client
+   * @param {Object} data - client_id, start_date, end_date, recipient_emails[]
+   */
+  triggerManualReport(data) {
+    return api.post('/reports/send-manual', data)
   }
 }

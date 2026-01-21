@@ -14,7 +14,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
     full_name: str = Field(..., min_length=1, max_length=100)
-    role: str = Field(default="operator", pattern="^(admin|supervisor|operator|viewer)$")
+    role: str = Field(default="operator", pattern="^(admin|poweruser|supervisor|operator|viewer)$")
+    client_id_assigned: Optional[str] = None
 
     @field_validator('password')
     @classmethod
@@ -42,6 +43,17 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserUpdate(BaseModel):
+    """User update model (all fields optional)"""
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+    password: Optional[str] = Field(None, min_length=8, max_length=128)
+    full_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    role: Optional[str] = Field(None, pattern="^(admin|poweruser|supervisor|operator|viewer)$")
+    client_id_assigned: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
 class UserResponse(BaseModel):
     """User response model (without password)"""
     user_id: str
@@ -49,8 +61,10 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str] = None
     role: Optional[str] = None
+    client_id_assigned: Optional[str] = None
     is_active: bool = True
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

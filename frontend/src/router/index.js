@@ -97,6 +97,31 @@ const router = createRouter({
       name: 'hold-resume-entry',
       component: () => import('@/components/entries/HoldResumeEntry.vue'),
       meta: { requiresAuth: true }
+    },
+    // Admin Routes
+    {
+      path: '/admin/settings',
+      name: 'admin-settings',
+      component: () => import('@/views/admin/AdminSettings.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('@/views/admin/AdminUsers.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/clients',
+      name: 'admin-clients',
+      component: () => import('@/views/admin/AdminClients.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/defect-types',
+      name: 'admin-defect-types',
+      component: () => import('@/views/admin/AdminDefectTypes.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })

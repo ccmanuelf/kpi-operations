@@ -1,0 +1,11 @@
+defect_code,defect_name,description,category,severity_default,industry_standard_code,sort_order
+PKG_DMG,Package Damage,"Crushed, torn, or damaged packaging",Packaging,MAJOR,,1
+SEAL_FAIL,Seal Failure,Package seal broken or incomplete,Packaging,CRITICAL,,2
+LABEL_ERR,Label Error,"Incorrect, missing, or unreadable labels",Labeling,MAJOR,,3
+BARCODE,Barcode Issue,Barcode unreadable or incorrect,Labeling,MAJOR,,4
+QTY_ERR,Quantity Error,Incorrect item count in package,Fulfillment,CRITICAL,,5
+WRONG_ITEM,Wrong Item,Incorrect product in package,Fulfillment,CRITICAL,,6
+CONTAM,Contamination,Foreign material in package,Cleanliness,MAJOR,,7
+MOIST_DMG,Moisture Damage,Water or humidity damage,Environment,MAJOR,,8
+PRINT_DEF,Print Defect,Poor print quality on packaging,Printing,MINOR,,9
+OTHER,Other,Other defects not categorized above,General,MINOR,,10

@@ -1,10 +1,20 @@
 <template>
   <v-container fluid>
     <v-row>
-      <v-col cols="12" md="8">
+      <v-col cols="12" md="6">
         <h1 class="text-h3 mb-4">Production Dashboard</h1>
       </v-col>
-      <v-col cols="12" md="4">
+      <v-col cols="12" md="6" class="d-flex align-center justify-end">
+        <v-btn
+          color="purple"
+          variant="outlined"
+          size="small"
+          class="mr-3"
+          @click="showEmailDialog = true"
+        >
+          <v-icon start>mdi-email-outline</v-icon>
+          Email Reports
+        </v-btn>
         <v-select
           v-model="selectedClient"
           :items="clients"
@@ -16,6 +26,7 @@
           variant="outlined"
           prepend-inner-icon="mdi-domain"
           :loading="loadingClients"
+          style="max-width: 250px"
           @update:model-value="onClientChange"
         />
       </v-col>
@@ -167,6 +178,13 @@
         </v-card>
       </v-col>
     </v-row>
+
+    <!-- Email Reports Dialog -->
+    <EmailReportsDialog
+      v-model="showEmailDialog"
+      :client-id="selectedClient"
+      @saved="onEmailConfigSaved"
+    />
   </v-container>
 </template>
 
@@ -175,6 +193,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import api from '@/services/api'
+import EmailReportsDialog from '@/components/dialogs/EmailReportsDialog.vue'
 
 const kpiStore = useKPIStore()
 
@@ -182,6 +201,14 @@ const kpiStore = useKPIStore()
 const clients = ref([])
 const selectedClient = ref(null)
 const loadingClients = ref(false)
+
+// Email dialog state
+const showEmailDialog = ref(false)
+
+const onEmailConfigSaved = (config) => {
+  console.log('Email config saved:', config)
+  // Optionally show a snackbar notification
+}
 
 const loading = computed(() => kpiStore.loading)
 const productionEntries = computed(() => kpiStore.productionEntries)

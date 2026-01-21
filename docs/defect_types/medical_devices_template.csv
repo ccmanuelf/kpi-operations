@@ -1,0 +1,11 @@
+defect_code,defect_name,description,category,severity_default,industry_standard_code,sort_order
+STERIL_FAIL,Sterility Failure,Product failed sterility testing,Sterility,CRITICAL,ISO-11137,1
+BIOCOMPAT,Biocompatibility Issue,Material biocompatibility concern,Material,CRITICAL,ISO-10993,2
+DIM_OOT,Dimension Out of Tolerance,Critical dimension outside specification,Measurement,MAJOR,,3
+SURF_FINISH,Surface Finish Defect,Surface roughness or finish issues,Finish,MAJOR,,4
+CONTAM,Particulate Contamination,Particle contamination on device,Cleanliness,CRITICAL,,5
+FUNC_FAIL,Functional Failure,Device fails functional testing,Testing,CRITICAL,,6
+LABEL_ERR,Labeling Error,UDI or label compliance issue,Labeling,MAJOR,FDA-UDI,7
+PKG_INTEG,Package Integrity Failure,Sterile barrier breach,Packaging,CRITICAL,,8
+DOC_ERR,Documentation Error,IFU or DHR documentation issues,Documentation,MAJOR,,9
+OTHER,Other,Other defects not categorized above,General,MINOR,,10

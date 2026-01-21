@@ -21,25 +21,28 @@ const ROLE_DEFAULTS = {
   leader: [
     { widget_key: 'client_overview', widget_name: 'Client Overview', widget_order: 1, is_visible: true },
     { widget_key: 'team_kpis', widget_name: 'Team KPIs', widget_order: 2, is_visible: true },
-    { widget_key: 'efficiency_trends', widget_name: 'Efficiency Trends', widget_order: 3, is_visible: true },
-    { widget_key: 'attendance_summary', widget_name: 'Attendance', widget_order: 4, is_visible: true },
-    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 5, is_visible: true }
+    { widget_key: 'bradford_factor', widget_name: 'Bradford Factor', widget_order: 3, is_visible: true },
+    { widget_key: 'efficiency_trends', widget_name: 'Efficiency Trends', widget_order: 4, is_visible: true },
+    { widget_key: 'attendance_summary', widget_name: 'Attendance', widget_order: 5, is_visible: true },
+    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 6, is_visible: true }
   ],
   poweruser: [
     { widget_key: 'all_kpis_grid', widget_name: 'All KPIs', widget_order: 1, is_visible: true },
     { widget_key: 'predictions', widget_name: 'Predictions', widget_order: 2, is_visible: true },
-    { widget_key: 'analytics_deep_dive', widget_name: 'Analytics', widget_order: 3, is_visible: true },
-    { widget_key: 'reports', widget_name: 'Reports', widget_order: 4, is_visible: true },
-    { widget_key: 'efficiency_trends', widget_name: 'Trends', widget_order: 5, is_visible: true },
-    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 6, is_visible: true }
+    { widget_key: 'bradford_factor', widget_name: 'Bradford Factor', widget_order: 3, is_visible: true },
+    { widget_key: 'analytics_deep_dive', widget_name: 'Analytics', widget_order: 4, is_visible: true },
+    { widget_key: 'reports', widget_name: 'Reports', widget_order: 5, is_visible: true },
+    { widget_key: 'efficiency_trends', widget_name: 'Trends', widget_order: 6, is_visible: true },
+    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 7, is_visible: true }
   ],
   admin: [
     { widget_key: 'system_health', widget_name: 'System Health', widget_order: 1, is_visible: true },
     { widget_key: 'user_stats', widget_name: 'User Stats', widget_order: 2, is_visible: true },
-    { widget_key: 'all_kpis_grid', widget_name: 'All KPIs', widget_order: 3, is_visible: true },
-    { widget_key: 'audit_log', widget_name: 'Audit Log', widget_order: 4, is_visible: true },
-    { widget_key: 'predictions', widget_name: 'Predictions', widget_order: 5, is_visible: true },
-    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 6, is_visible: true }
+    { widget_key: 'bradford_factor', widget_name: 'Bradford Factor', widget_order: 3, is_visible: true },
+    { widget_key: 'all_kpis_grid', widget_name: 'All KPIs', widget_order: 4, is_visible: true },
+    { widget_key: 'audit_log', widget_name: 'Audit Log', widget_order: 5, is_visible: true },
+    { widget_key: 'predictions', widget_name: 'Predictions', widget_order: 6, is_visible: true },
+    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 7, is_visible: true }
   ]
 }
 
@@ -51,6 +54,7 @@ const ALL_WIDGETS = {
   recent_entries: { name: 'Recent Entries', description: 'Your recent data entries', icon: 'mdi-history', minRole: 'operator' },
   client_overview: { name: 'Client Overview', description: 'Multi-client summary', icon: 'mdi-domain', minRole: 'leader' },
   team_kpis: { name: 'Team KPIs', description: 'Team performance metrics', icon: 'mdi-account-group', minRole: 'leader' },
+  bradford_factor: { name: 'Bradford Factor', description: 'Employee absence patterns and risk scores', icon: 'mdi-account-clock-outline', minRole: 'leader' },
   efficiency_trends: { name: 'Efficiency Trends', description: 'Efficiency over time', icon: 'mdi-trending-up', minRole: 'leader' },
   attendance_summary: { name: 'Attendance', description: 'Team attendance summary', icon: 'mdi-account-clock', minRole: 'leader' },
   all_kpis_grid: { name: 'All KPIs', description: 'Complete KPI dashboard', icon: 'mdi-view-grid', minRole: 'poweruser' },

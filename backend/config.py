@@ -54,7 +54,8 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="development", description="Runtime environment")
 
     # Database - Using SQLite for temporary deployment (user requested)
-    DATABASE_URL: str = "sqlite:///../database/kpi_platform.db"
+    # Use absolute path for SQLite to avoid working directory issues
+    DATABASE_URL: str = f"sqlite:///{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/database/kpi_platform.db"
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_NAME: str = "kpi_platform"

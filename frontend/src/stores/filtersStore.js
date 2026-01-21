@@ -123,7 +123,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to create filter:', e)
-      throw e
+      return null
     } finally {
       isLoading.value = false
     }
@@ -144,7 +144,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to update filter:', e)
-      throw e
+      return null
     } finally {
       isLoading.value = false
     }
@@ -164,7 +164,7 @@ export const useFiltersStore = defineStore('filters', () => {
       return true
     } catch (e) {
       console.error('Failed to delete filter:', e)
-      throw e
+      return false
     } finally {
       isLoading.value = false
     }
@@ -225,7 +225,7 @@ export const useFiltersStore = defineStore('filters', () => {
       return true
     } catch (e) {
       console.error('Failed to set default filter:', e)
-      throw e
+      return false
     } finally {
       isLoading.value = false
     }
@@ -274,7 +274,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to duplicate filter:', e)
-      throw e
+      return null
     } finally {
       isLoading.value = false
     }

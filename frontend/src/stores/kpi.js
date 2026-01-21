@@ -29,6 +29,22 @@ export const useKPIStore = defineStore('kpi', {
       oee: [],
       absenteeism: []
     },
+    // Predictions state
+    predictions: {
+      efficiency: null,
+      performance: null,
+      availability: null,
+      oee: null,
+      quality: null,
+      absenteeism: null,
+      otd: null,
+      fpy: null,
+      rty: null,
+      ppm: null,
+      dpmo: null
+    },
+    allPredictions: null,
+    benchmarks: null,
     loading: false,
     error: null
   }),
@@ -418,6 +434,177 @@ export const useKPIStore = defineStore('kpi', {
         console.error('Error fetching all KPIs:', error)
       } finally {
         this.loading = false
+      }
+    },
+
+    // ============================================
+    // Predictions Actions
+    // ============================================
+
+    /**
+     * Fetch prediction for a specific KPI
+     * @param {string} kpiType - Type of KPI (efficiency, performance, availability, oee, ppm, dpmo, fpy, rty, absenteeism, otd)
+     * @param {number} forecastDays - Number of days to forecast (1-30), default 7
+     * @param {number} historicalDays - Number of historical days to use (7-90), default 30
+     * @param {string} method - Forecasting method (auto, simple, double, linear), default auto
+     */
+    async fetchPrediction(kpiType, forecastDays = 7, historicalDays = 30, method = 'auto') {
+      this.loading = true
+      try {
+        const params = {
+          ...this._buildParams(),
+          forecast_days: forecastDays,
+          historical_days: historicalDays,
+          method: method
+        }
+        const response = await api.getPrediction(kpiType, params)
+
+        // Map KPI type to predictions state key
+        const keyMap = {
+          'efficiency': 'efficiency',
+          'performance': 'performance',
+          'availability': 'availability',
+          'oee': 'oee',
+          'quality': 'quality',
+          'fpy': 'fpy',
+          'rty': 'rty',
+          'ppm': 'ppm',
+          'dpmo': 'dpmo',
+          'absenteeism': 'absenteeism',
+          'otd': 'otd'
+        }
+
+        const stateKey = keyMap[kpiType] || kpiType
+        this.predictions[stateKey] = response.data
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || `Failed to fetch ${kpiType} prediction`
+        console.error(`Prediction fetch error for ${kpiType}:`, error)
+        return null
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Fetch predictions for all KPIs at once
+     * @param {number} forecastDays - Number of days to forecast (1-30), default 7
+     * @param {number} historicalDays - Number of historical days to use (7-90), default 30
+     */
+    async fetchAllPredictions(forecastDays = 7, historicalDays = 30) {
+      this.loading = true
+      try {
+        const params = {
+          ...this._buildParams(),
+          forecast_days: forecastDays,
+          historical_days: historicalDays
+        }
+        const response = await api.getAllPredictions(params)
+        this.allPredictions = response.data
+
+        // Also populate individual predictions from the response
+        if (response.data) {
+          const kpiTypes = ['efficiency', 'performance', 'availability', 'oee', 'ppm', 'dpmo', 'fpy', 'rty', 'absenteeism', 'otd']
+          kpiTypes.forEach(kpi => {
+            if (response.data[kpi]) {
+              this.predictions[kpi] = response.data[kpi]
+            }
+          })
+        }
+
+        return response.data
+      } catch (error) {
+        this.error = error.response?.data?.detail || 'Failed to fetch all predictions'
+        console.error('All predictions fetch error:', error)
+        return null
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
+     * Fetch KPI benchmarks
+     */
+    async fetchBenchmarks() {
+      try {
+        const response = await api.getPredictionBenchmarks()
+        this.benchmarks = response.data
+        return response.data
+      } catch (error) {
+        console.error('Benchmarks fetch error:', error)
+        return null
+      }
+    },
+
+    /**
+     * Get quick health assessment for a KPI
+     * @param {string} kpiType - Type of KPI
+     */
+    async fetchKPIHealth(kpiType) {
+      try {
+        const params = this._buildParams()
+        const response = await api.getKPIHealth(kpiType, params)
+        return response.data
+      } catch (error) {
+        console.error(`Health fetch error for ${kpiType}:`, error)
+        return null
+      }
+    },
+
+    /**
+     * Helper to generate forecast chart dataset
+     * @param {Object} prediction - Prediction response from API
+     * @param {string} color - Color for the forecast line
+     */
+    getForecastChartData(prediction, color = '#9c27b0') {
+      if (!prediction || !prediction.predictions) {
+        return null
+      }
+
+      const forecastLabels = prediction.predictions.map(p => {
+        const date = new Date(p.date)
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      })
+
+      const forecastValues = prediction.predictions.map(p => p.predicted_value)
+      const lowerBounds = prediction.predictions.map(p => p.lower_bound)
+      const upperBounds = prediction.predictions.map(p => p.upper_bound)
+
+      return {
+        labels: forecastLabels,
+        datasets: [
+          {
+            label: 'Forecast',
+            data: forecastValues,
+            borderColor: color,
+            backgroundColor: `${color}20`,
+            borderDash: [5, 5],
+            tension: 0.3,
+            fill: false,
+            pointStyle: 'rectRot',
+            pointRadius: 4
+          },
+          {
+            label: 'Confidence Upper',
+            data: upperBounds,
+            borderColor: `${color}50`,
+            backgroundColor: `${color}10`,
+            borderDash: [2, 2],
+            tension: 0.3,
+            fill: '+1',
+            pointRadius: 0
+          },
+          {
+            label: 'Confidence Lower',
+            data: lowerBounds,
+            borderColor: `${color}50`,
+            backgroundColor: 'transparent',
+            borderDash: [2, 2],
+            tension: 0.3,
+            fill: false,
+            pointRadius: 0
+          }
+        ]
       }
     }
   }

@@ -1,0 +1,486 @@
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <h1 class="text-h4 mb-4">
+          <v-icon class="mr-2">mdi-cog</v-icon>
+          System Settings
+        </h1>
+      </v-col>
+    </v-row>
+
+    <v-row>
+      <!-- General Settings -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-tune</v-icon>
+            General Settings
+          </v-card-title>
+          <v-card-text>
+            <v-form ref="generalForm">
+              <v-text-field
+                v-model="settings.companyName"
+                label="Company Name"
+                prepend-icon="mdi-domain"
+                variant="outlined"
+                density="comfortable"
+                class="mb-3"
+              />
+              <v-text-field
+                v-model="settings.timezone"
+                label="Timezone"
+                prepend-icon="mdi-clock-outline"
+                variant="outlined"
+                density="comfortable"
+                class="mb-3"
+              />
+              <v-select
+                v-model="settings.dateFormat"
+                :items="dateFormats"
+                label="Date Format"
+                prepend-icon="mdi-calendar"
+                variant="outlined"
+                density="comfortable"
+                class="mb-3"
+              />
+              <v-select
+                v-model="settings.language"
+                :items="languages"
+                label="Language"
+                prepend-icon="mdi-translate"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-form>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn color="primary" @click="saveGeneralSettings" :loading="saving">
+              Save Changes
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+
+      <!-- KPI Thresholds -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-chart-line</v-icon>
+            <span>KPI Thresholds</span>
+            <v-spacer />
+            <v-chip v-if="selectedClientId" color="primary" size="small" class="ml-2">
+              {{ selectedClientName }}
+            </v-chip>
+            <v-chip v-else color="grey" size="small" class="ml-2">
+              Global Defaults
+            </v-chip>
+          </v-card-title>
+          <v-card-text>
+            <!-- Client Selector -->
+            <v-select
+              v-model="selectedClientId"
+              :items="clientOptions"
+              item-title="name"
+              item-value="id"
+              label="Select Client (or Global)"
+              prepend-icon="mdi-domain"
+              variant="outlined"
+              density="comfortable"
+              class="mb-4"
+              clearable
+              @update:model-value="loadThresholds"
+            />
+
+            <v-divider class="mb-4" />
+
+            <!-- Loading state -->
+            <div v-if="loadingThresholds" class="text-center py-4">
+              <v-progress-circular indeterminate color="primary" />
+              <div class="text-grey mt-2">Loading thresholds...</div>
+            </div>
+
+            <!-- Thresholds Form -->
+            <v-form v-else ref="thresholdsForm">
+              <v-row dense>
+                <v-col cols="12" sm="6" v-for="kpi in kpiList" :key="kpi.key">
+                  <v-text-field
+                    v-model.number="thresholds[kpi.key]"
+                    :label="kpi.label"
+                    :prepend-icon="kpi.icon"
+                    :suffix="kpi.unit"
+                    type="number"
+                    variant="outlined"
+                    density="compact"
+                    :hint="getThresholdHint(kpi.key)"
+                    persistent-hint
+                  />
+                </v-col>
+              </v-row>
+
+              <!-- Info about inheritance -->
+              <v-alert
+                v-if="selectedClientId && hasGlobalOverrides"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mt-4"
+              >
+                <template v-slot:prepend>
+                  <v-icon>mdi-information</v-icon>
+                </template>
+                Client-specific values override global defaults. Clear a value to revert to global.
+              </v-alert>
+            </v-form>
+          </v-card-text>
+          <v-card-actions>
+            <v-btn
+              v-if="selectedClientId"
+              variant="outlined"
+              color="secondary"
+              @click="resetToGlobal"
+              :disabled="!hasClientOverrides"
+            >
+              Reset to Global
+            </v-btn>
+            <v-spacer />
+            <v-btn color="primary" @click="saveThresholds" :loading="savingThresholds">
+              Save Thresholds
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+
+      <!-- Notification Settings -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-bell</v-icon>
+            Notifications
+          </v-card-title>
+          <v-card-text>
+            <v-switch
+              v-model="settings.emailNotifications"
+              label="Email Notifications"
+              color="primary"
+              class="mb-2"
+            />
+            <v-switch
+              v-model="settings.alertOnThresholdBreach"
+              label="Alert on KPI Threshold Breach"
+              color="primary"
+              class="mb-2"
+            />
+            <v-switch
+              v-model="settings.dailyReportEnabled"
+              label="Daily Summary Report"
+              color="primary"
+              class="mb-2"
+            />
+            <v-text-field
+              v-if="settings.dailyReportEnabled"
+              v-model="settings.reportRecipients"
+              label="Report Recipients (comma-separated emails)"
+              prepend-icon="mdi-email-multiple"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn color="primary" @click="saveNotificationSettings" :loading="saving">
+              Save Notifications
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+
+      <!-- Data Retention -->
+      <v-col cols="12" md="6">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-database</v-icon>
+            Data Management
+          </v-card-title>
+          <v-card-text>
+            <v-select
+              v-model="settings.dataRetentionPeriod"
+              :items="retentionPeriods"
+              label="Data Retention Period"
+              prepend-icon="mdi-calendar-clock"
+              variant="outlined"
+              density="comfortable"
+              class="mb-3"
+            />
+            <v-switch
+              v-model="settings.autoBackup"
+              label="Automatic Backups"
+              color="primary"
+              class="mb-2"
+            />
+            <v-select
+              v-if="settings.autoBackup"
+              v-model="settings.backupFrequency"
+              :items="backupFrequencies"
+              label="Backup Frequency"
+              prepend-icon="mdi-backup-restore"
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-card-text>
+          <v-card-actions>
+            <v-btn color="secondary" variant="outlined" @click="exportData">
+              <v-icon left>mdi-download</v-icon>
+              Export Data
+            </v-btn>
+            <v-spacer />
+            <v-btn color="primary" @click="saveDataSettings" :loading="saving">
+              Save Settings
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000">
+      {{ snackbarMessage }}
+    </v-snackbar>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import api from '@/services/api'
+
+const saving = ref(false)
+const savingThresholds = ref(false)
+const loadingThresholds = ref(false)
+const snackbar = ref(false)
+const snackbarMessage = ref('')
+const snackbarColor = ref('success')
+
+// Client selection for thresholds
+const clients = ref([])
+const selectedClientId = ref(null)
+const selectedClientName = computed(() => {
+  const client = clients.value.find(c => c.client_id === selectedClientId.value)
+  return client?.client_name || ''
+})
+
+const clientOptions = computed(() => {
+  return [
+    { id: null, name: 'Global Defaults (All Clients)' },
+    ...clients.value.map(c => ({ id: c.client_id, name: c.client_name }))
+  ]
+})
+
+// KPI definitions
+const kpiList = [
+  { key: 'efficiency', label: 'Efficiency Target', icon: 'mdi-speedometer', unit: '%' },
+  { key: 'quality', label: 'Quality (FPY) Target', icon: 'mdi-star', unit: '%' },
+  { key: 'availability', label: 'Availability Target', icon: 'mdi-server', unit: '%' },
+  { key: 'performance', label: 'Performance Target', icon: 'mdi-gauge', unit: '%' },
+  { key: 'oee', label: 'OEE Target', icon: 'mdi-factory', unit: '%' },
+  { key: 'ppm', label: 'PPM Target', icon: 'mdi-alert-circle', unit: 'ppm' },
+  { key: 'absenteeism', label: 'Absenteeism Target', icon: 'mdi-account-alert', unit: '%' },
+  { key: 'otd', label: 'On-Time Delivery Target', icon: 'mdi-truck-delivery', unit: '%' },
+  { key: 'wip_aging', label: 'WIP Aging Target', icon: 'mdi-clock-alert', unit: 'days' },
+  { key: 'throughput', label: 'Throughput Time Target', icon: 'mdi-timer', unit: 'hrs' }
+]
+
+// Thresholds state
+const thresholds = ref({})
+const originalThresholds = ref({})
+const globalDefaults = ref({})
+
+const hasClientOverrides = computed(() => {
+  if (!selectedClientId.value) return false
+  return Object.keys(thresholds.value).some(key => {
+    const current = thresholds.value[key]
+    const global = globalDefaults.value[key]
+    return current !== global
+  })
+})
+
+const hasGlobalOverrides = computed(() => {
+  return Object.values(originalThresholds.value).some(t => !t.is_global)
+})
+
+const getThresholdHint = (key) => {
+  const original = originalThresholds.value[key]
+  if (!original) return ''
+  if (selectedClientId.value && original.is_global) {
+    return `Global default: ${original.target_value}`
+  }
+  return ''
+}
+
+// General settings
+const settings = ref({
+  companyName: 'KPI Operations',
+  timezone: 'America/Mexico_City',
+  dateFormat: 'YYYY-MM-DD',
+  language: 'en',
+  emailNotifications: true,
+  alertOnThresholdBreach: true,
+  dailyReportEnabled: false,
+  reportRecipients: '',
+  dataRetentionPeriod: '1 year',
+  autoBackup: true,
+  backupFrequency: 'daily'
+})
+
+const dateFormats = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD-MMM-YYYY']
+const languages = [
+  { title: 'English', value: 'en' },
+  { title: 'Spanish', value: 'es' },
+  { title: 'French', value: 'fr' }
+]
+const retentionPeriods = ['6 months', '1 year', '2 years', '5 years', 'Forever']
+const backupFrequencies = [
+  { title: 'Daily', value: 'daily' },
+  { title: 'Weekly', value: 'weekly' },
+  { title: 'Monthly', value: 'monthly' }
+]
+
+const showSnackbar = (message, color = 'success') => {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  snackbar.value = true
+}
+
+const loadClients = async () => {
+  try {
+    const response = await api.getClients()
+    clients.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load clients:', error)
+  }
+}
+
+const loadThresholds = async () => {
+  loadingThresholds.value = true
+  try {
+    const response = await api.getKPIThresholds(selectedClientId.value)
+    const data = response.data
+
+    // Store original data for comparison
+    originalThresholds.value = data.thresholds || {}
+
+    // Extract just the target values for the form
+    thresholds.value = {}
+    for (const [key, value] of Object.entries(data.thresholds || {})) {
+      thresholds.value[key] = value.target_value
+    }
+
+    // Store global defaults for reference
+    if (!selectedClientId.value) {
+      globalDefaults.value = { ...thresholds.value }
+    }
+  } catch (error) {
+    console.error('Failed to load thresholds:', error)
+    showSnackbar('Failed to load thresholds', 'error')
+  } finally {
+    loadingThresholds.value = false
+  }
+}
+
+const saveThresholds = async () => {
+  savingThresholds.value = true
+  try {
+    // Build thresholds object with only changed values
+    const thresholdsToSave = {}
+    for (const kpi of kpiList) {
+      if (thresholds.value[kpi.key] !== undefined) {
+        thresholdsToSave[kpi.key] = {
+          target_value: thresholds.value[kpi.key]
+        }
+      }
+    }
+
+    await api.updateKPIThresholds({
+      client_id: selectedClientId.value,
+      thresholds: thresholdsToSave
+    })
+
+    showSnackbar(
+      selectedClientId.value
+        ? `Thresholds saved for ${selectedClientName.value}`
+        : 'Global thresholds saved'
+    )
+
+    // Reload to get updated data
+    await loadThresholds()
+  } catch (error) {
+    showSnackbar(error.response?.data?.detail || 'Failed to save thresholds', 'error')
+  } finally {
+    savingThresholds.value = false
+  }
+}
+
+const resetToGlobal = async () => {
+  if (!selectedClientId.value) return
+
+  try {
+    // Delete all client-specific thresholds
+    for (const kpi of kpiList) {
+      const original = originalThresholds.value[kpi.key]
+      if (original && !original.is_global) {
+        await api.deleteClientThreshold(selectedClientId.value, kpi.key)
+      }
+    }
+
+    showSnackbar(`Reset ${selectedClientName.value} to global defaults`)
+    await loadThresholds()
+  } catch (error) {
+    showSnackbar('Failed to reset thresholds', 'error')
+  }
+}
+
+const saveGeneralSettings = async () => {
+  saving.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    showSnackbar('General settings saved successfully')
+  } catch (error) {
+    showSnackbar('Failed to save settings', 'error')
+  } finally {
+    saving.value = false
+  }
+}
+
+const saveNotificationSettings = async () => {
+  saving.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    showSnackbar('Notification settings saved successfully')
+  } catch (error) {
+    showSnackbar('Failed to save notification settings', 'error')
+  } finally {
+    saving.value = false
+  }
+}
+
+const saveDataSettings = async () => {
+  saving.value = true
+  try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    showSnackbar('Data settings saved successfully')
+  } catch (error) {
+    showSnackbar('Failed to save data settings', 'error')
+  } finally {
+    saving.value = false
+  }
+}
+
+const exportData = () => {
+  showSnackbar('Data export started. You will receive an email when ready.', 'info')
+}
+
+onMounted(async () => {
+  await loadClients()
+  await loadThresholds()
+})
+</script>

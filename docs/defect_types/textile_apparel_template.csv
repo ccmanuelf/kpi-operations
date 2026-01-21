@@ -1,0 +1,11 @@
+defect_code,defect_name,description,category,severity_default,industry_standard_code,sort_order
+STITCH,Stitching Defect,"Broken, skipped, or loose stitches",Sewing,MAJOR,,1
+FABRIC,Fabric Defect,"Holes, snags, or weave issues in fabric",Material,MAJOR,,2
+MEASURE,Measurement Error,Garment measurements outside specification,Sizing,MAJOR,,3
+COLOR,Color Shade Variation,Color inconsistency or shade variation,Dyeing,MINOR,,4
+PILLING,Pilling,Fabric pilling or fuzzing,Material,MINOR,,5
+HOLE_TEAR,Hole/Tear,Holes or tears in fabric,Material,CRITICAL,,6
+STAIN,Stain,"Oil, dirt, or other stains",Cleanliness,MINOR,,7
+SEAM_PUCKER,Seam Pucker,Puckering along seam lines,Sewing,MINOR,,8
+LABEL_ERR,Label Error,"Missing, incorrect, or poorly attached labels",Labeling,MINOR,,9
+OTHER,Other,Other defects not categorized above,General,MINOR,,10
