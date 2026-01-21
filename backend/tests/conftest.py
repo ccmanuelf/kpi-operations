@@ -34,7 +34,7 @@ from backend.schemas import (
     ProductionEntry,
     # Phase 2: WIP & Downtime
     HoldEntry, HoldStatus,
-    DowntimeEntry, DowntimeReason,
+    DowntimeEntry,
     # Phase 3: Attendance
     AttendanceEntry, AbsenceType,
     CoverageEntry,

@@ -225,7 +225,7 @@ class TestAbsenteeismCalculations:
         # Mock record: 8 scheduled, 7 worked
         mock_record = MagicMock()
         mock_record.scheduled_hours = 8.0
-        mock_record.actual_hours_worked = 7.0
+        mock_record.actual_hours = 7.0
         mock_record.employee_id = 1
         mock_record.status = 'Present'
         

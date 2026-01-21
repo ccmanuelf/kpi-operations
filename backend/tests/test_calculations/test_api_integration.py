@@ -7,7 +7,7 @@ For comprehensive API testing with authentication, see test_reports.py pattern.
 """
 import pytest
 from fastapi.testclient import TestClient
-from main import app
+from backend.main import app
 
 client = TestClient(app)
 
