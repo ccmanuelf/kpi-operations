@@ -89,6 +89,9 @@ Thumbs.db
 *.pem
 *.crt
 config/secrets.json
+.mcp.json
+.env.mcp
+.claude-memory.json
 
 # Hive Mind session data (contains sensitive info)
 .hive-mind/sessions/
