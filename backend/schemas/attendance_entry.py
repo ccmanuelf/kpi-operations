@@ -2,8 +2,9 @@
 ATTENDANCE_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation for KPI #10 Absenteeism calculation
 Source: 04-Phase3_Attendance_Inventory.csv lines 2-21
+Enhanced with composite indexes for query performance (per audit requirement)
 """
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from backend.database import Base
 import enum
@@ -20,7 +21,13 @@ class AbsenceType(str, enum.Enum):
 class AttendanceEntry(Base):
     """ATTENDANCE_ENTRY table - Daily attendance tracking for Absenteeism KPI"""
     __tablename__ = "ATTENDANCE_ENTRY"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # Composite indexes for query performance (per audit requirement)
+        Index('ix_attendance_client_shift_date', 'client_id', 'shift_date'),  # Most common query pattern
+        Index('ix_attendance_client_employee', 'client_id', 'employee_id'),  # Employee attendance history
+        Index('ix_attendance_shift_date_absent', 'shift_date', 'is_absent'),  # Absenteeism reports
+        {"extend_existing": True}
+    )
 
     # Primary key
     attendance_entry_id = Column(String(50), primary_key=True)
@@ -58,6 +65,9 @@ class AttendanceEntry(Base):
     absence_reason = Column(Text)
     notes = Column(Text)
     entered_by = Column(Integer, ForeignKey('USER.user_id'))
+
+    # Audit field - tracks who last modified the record (per audit requirement)
+    updated_by = Column(Integer, ForeignKey('USER.user_id'))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

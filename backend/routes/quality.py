@@ -15,7 +15,8 @@ from backend.models.quality import (
     QualityInspectionResponse,
     PPMCalculationResponse,
     DPMOCalculationResponse,
-    FPYRTYCalculationResponse
+    FPYRTYCalculationResponse,
+    InferenceMetadata
 )
 from backend.crud.quality import (
     create_quality_inspection,
@@ -29,6 +30,7 @@ from backend.calculations.dpmo import calculate_dpmo
 from backend.calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
+from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
 
 router = APIRouter(
@@ -107,6 +109,11 @@ def get_quality_by_work_order(
         QualityInspection.work_order_number == work_order_id
     )
 
+    # SECURITY FIX (VULN-001): Apply client filter to prevent cross-client data access
+    client_filter = build_client_filter_clause(current_user, QualityInspection.client_id)
+    if client_filter is not None:
+        query = query.filter(client_filter)
+
     return query.offset(skip).limit(limit).all()
 
 
@@ -116,6 +123,7 @@ def get_quality_statistics(
     end_date: date,
     product_id: Optional[int] = None,
     shift_id: Optional[int] = None,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -134,6 +142,17 @@ def get_quality_statistics(
         func.avg(QualityInspection.ppm).label('avg_ppm'),
         func.avg(QualityInspection.dpmo).label('avg_dpmo')
     )
+
+    # SECURITY FIX (VULN-002): Apply client filter to prevent cross-client data access
+    # If specific client_id requested, verify access first
+    if client_id:
+        verify_client_access(current_user, client_id)
+        query = query.filter(QualityInspection.client_id == client_id)
+    else:
+        # Apply user's authorized client filter
+        client_filter = build_client_filter_clause(current_user, QualityInspection.client_id)
+        if client_filter is not None:
+            query = query.filter(client_filter)
 
     # Apply date filters
     query = query.filter(
@@ -251,6 +270,15 @@ def calculate_ppm_kpi(
     defect_rate_pct = (defects / inspected * 100) if inspected > 0 else 0
 
     # Use default product/shift IDs for response (required by schema)
+    # ENHANCEMENT: Include inference metadata per audit requirement
+    # PPM uses actual data, so is_estimated=False unless no data found
+    inference = InferenceMetadata(
+        is_estimated=inspected == 0,  # Estimated only if no data
+        confidence_score=1.0 if inspected > 0 else 0.3,
+        inference_source="actual_data" if inspected > 0 else "system_fallback",
+        inference_warning="No inspection data available for the specified period" if inspected == 0 else None
+    )
+
     return PPMCalculationResponse(
         product_id=product_id or 1,
         shift_id=shift_id or 1,
@@ -260,7 +288,8 @@ def calculate_ppm_kpi(
         total_defects=defects,
         ppm=round(ppm, 2),
         defect_rate_percentage=round(defect_rate_pct, 2),
-        calculation_timestamp=datetime.utcnow()
+        calculation_timestamp=datetime.utcnow(),
+        inference=inference
     )
 
 
@@ -283,6 +312,14 @@ def calculate_dpmo_kpi(
         db, product_id, shift_id, start_date, end_date, opportunities_per_unit
     )
 
+    # ENHANCEMENT: Include inference metadata per audit requirement
+    inference = InferenceMetadata(
+        is_estimated=units == 0,
+        confidence_score=1.0 if units > 0 else 0.3,
+        inference_source="actual_data" if units > 0 else "system_fallback",
+        inference_warning="No production data available for DPMO calculation" if units == 0 else None
+    )
+
     return DPMOCalculationResponse(
         product_id=product_id,
         shift_id=shift_id,
@@ -293,7 +330,8 @@ def calculate_dpmo_kpi(
         total_defects=defects,
         dpmo=dpmo,
         sigma_level=sigma,
-        calculation_timestamp=datetime.utcnow()
+        calculation_timestamp=datetime.utcnow(),
+        inference=inference
     )
 
 
@@ -405,6 +443,16 @@ def calculate_fpy_rty_kpi(
         # If no stage data available, fall back to overall FPY
         rty = fpy
 
+    # ENHANCEMENT: Include inference metadata per audit requirement
+    # RTY defaults to FPY if no stage data available (partial inference)
+    is_estimated = total == 0 or (not steps and fpy > 0)
+    inference = InferenceMetadata(
+        is_estimated=is_estimated,
+        confidence_score=1.0 if total > 0 and steps else (0.7 if total > 0 else 0.3),
+        inference_source="actual_data" if total > 0 and steps else ("overall_fpy_fallback" if total > 0 else "system_fallback"),
+        inference_warning="RTY calculation used overall FPY as fallback (no stage-specific data)" if (total > 0 and not steps) else ("No quality data available" if total == 0 else None)
+    )
+
     return FPYRTYCalculationResponse(
         product_id=product_id or 1,
         start_date=start_date,
@@ -416,7 +464,8 @@ def calculate_fpy_rty_kpi(
         rty_percentage=round(rty, 2),
         final_yield_percentage=round(final_yield, 2),
         total_process_steps=len(steps),
-        calculation_timestamp=datetime.utcnow()
+        calculation_timestamp=datetime.utcnow(),
+        inference=inference
     )
 
 

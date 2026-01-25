@@ -17,6 +17,7 @@ from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.reports.excel_generator import ExcelReportGenerator
+from backend.middleware.client_auth import verify_client_access
 
 
 # ============================================
@@ -95,6 +96,10 @@ async def generate_production_pdf_report(
     - Multi-client filtering
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -154,6 +159,10 @@ async def generate_production_excel_report(
     - Downtime analysis
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -210,6 +219,10 @@ async def generate_quality_pdf_report(
     - Quality trends
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -258,6 +271,10 @@ async def generate_quality_excel_report(
 ):
     """Generate quality metrics Excel report with detailed worksheets"""
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -309,6 +326,10 @@ async def generate_attendance_pdf_report(
     - Department/shift breakdown
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -357,6 +378,10 @@ async def generate_attendance_excel_report(
 ):
     """Generate attendance and absenteeism Excel report"""
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -410,6 +435,10 @@ async def generate_comprehensive_pdf_report(
     - On-time delivery
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -467,6 +496,10 @@ async def generate_comprehensive_excel_report(
     - Trend Charts
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        if client_id:
+            verify_client_access(current_user, client_id)
+
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
@@ -737,6 +770,9 @@ async def send_manual_report(
     Generates and sends a KPI report immediately to specified recipients.
     """
     try:
+        # SECURITY FIX (VULN-004): Verify client access before generating report
+        verify_client_access(current_user, request.client_id)
+
         # Parse dates
         try:
             start_date = datetime.strptime(request.start_date, "%Y-%m-%d").date()

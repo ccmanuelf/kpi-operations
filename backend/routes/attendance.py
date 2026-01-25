@@ -26,6 +26,7 @@ from backend.crud.attendance import (
 from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
+from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
 
 router = APIRouter(
@@ -140,6 +141,7 @@ def get_attendance_statistics(
     start_date: date,
     end_date: date,
     shift_id: Optional[int] = None,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -165,6 +167,15 @@ def get_attendance_statistics(
     # Optional shift filter
     if shift_id:
         query = query.filter(AttendanceRecord.shift_id == shift_id)
+
+    # SECURITY FIX (VULN-003): Apply client filter to prevent cross-client data access
+    if client_id:
+        verify_client_access(current_user, client_id)
+        query = query.filter(AttendanceRecord.client_id == client_id)
+    else:
+        client_filter = build_client_filter_clause(current_user, AttendanceRecord.client_id)
+        if client_filter is not None:
+            query = query.filter(client_filter)
 
     # Group by status
     results = query.group_by(AttendanceRecord.status).all()

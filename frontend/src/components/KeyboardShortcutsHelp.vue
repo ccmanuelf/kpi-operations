@@ -1,11 +1,18 @@
 <template>
-  <v-dialog v-model="isOpen" max-width="900" scrollable>
+  <v-dialog
+    v-model="isOpen"
+    max-width="900"
+    scrollable
+    aria-labelledby="shortcuts-dialog-title"
+    role="dialog"
+    aria-modal="true"
+  >
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-primary">
-        <v-icon class="mr-2">mdi-keyboard</v-icon>
-        <span class="text-h5">Keyboard Shortcuts</span>
+        <v-icon class="mr-2" aria-hidden="true">mdi-keyboard</v-icon>
+        <span id="shortcuts-dialog-title" class="text-h5">Keyboard Shortcuts</span>
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="close">
+        <v-btn icon variant="text" @click="close" aria-label="Close keyboard shortcuts dialog">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -21,6 +28,7 @@
             density="compact"
             hide-details
             clearable
+            aria-label="Search keyboard shortcuts"
           ></v-text-field>
         </div>
 
@@ -44,18 +52,20 @@
               {{ category }}
             </h3>
 
-            <v-list density="compact" class="bg-transparent">
+            <v-list density="compact" class="bg-transparent" :aria-label="`${category} shortcuts`">
               <v-list-item
                 v-for="shortcut in shortcuts"
                 :key="shortcut.id"
                 class="px-0 mb-2"
+                role="listitem"
               >
                 <template v-slot:prepend>
-                  <div class="shortcut-keys mr-4">
+                  <div class="shortcut-keys mr-4" role="presentation">
                     <kbd
                       v-for="(key, index) in parseShortcutKeys(shortcut.displayKey)"
                       :key="index"
                       class="key-badge"
+                      :aria-label="key"
                     >
                       {{ key }}
                     </kbd>
@@ -72,6 +82,7 @@
                     size="x-small"
                     color="grey"
                     variant="tonal"
+                    aria-label="This shortcut is disabled"
                   >
                     Disabled
                   </v-chip>

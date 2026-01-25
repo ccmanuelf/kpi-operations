@@ -4,18 +4,172 @@ Formula: (units_produced × ideal_cycle_time) / (employees_assigned × scheduled
 
 Includes inference engine for missing ideal_cycle_time
 CORRECTED: Uses scheduled hours from shift, not actual run time
+
+Enhanced with employees_assigned fallback chain per audit requirement:
+employees_assigned → employees_present → historical_shift_average → default
 """
 from decimal import Decimal
 from typing import Optional, Tuple
-from datetime import time
+from datetime import time, date
+from dataclasses import dataclass
 from sqlalchemy.orm import Session
+from sqlalchemy import func, and_
 from backend.schemas.product import Product
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.shift import Shift
+from backend.schemas.coverage_entry import CoverageEntry
 
 
 DEFAULT_CYCLE_TIME = Decimal("0.25")  # 15 minutes per unit default
 DEFAULT_SHIFT_HOURS = Decimal("8.0")  # 8 hours standard shift
+DEFAULT_EMPLOYEES = 1  # Minimum employees for calculation
+
+
+# =============================================================================
+# FloatingPool Integration (Audit Requirement)
+# =============================================================================
+
+def get_floating_pool_coverage_count(
+    db: Session,
+    client_id: str,
+    shift_date: date,
+    shift_id: Optional[int] = None
+) -> int:
+    """
+    Get count of floating pool employees providing coverage on a specific shift date.
+
+    This integrates FloatingPool into efficiency calculation per audit requirement.
+
+    Args:
+        db: Database session
+        client_id: Client ID for tenant isolation
+        shift_date: The shift date to check for coverage
+        shift_id: Optional shift ID for more specific filtering
+
+    Returns:
+        Number of floating pool employees providing coverage
+    """
+    query = db.query(func.count(CoverageEntry.coverage_entry_id)).filter(
+        and_(
+            CoverageEntry.client_id == client_id,
+            func.date(CoverageEntry.shift_date) == shift_date
+        )
+    )
+
+    if shift_id:
+        query = query.filter(CoverageEntry.shift_id == shift_id)
+
+    coverage_count = query.scalar() or 0
+    return coverage_count
+
+
+# =============================================================================
+# Employees Assigned Inference Chain (Audit Requirement)
+# =============================================================================
+
+@dataclass
+class InferredEmployees:
+    """Result of employees inference with metadata for ESTIMATED flag"""
+    count: int
+    is_inferred: bool
+    inference_source: str  # "employees_assigned", "employees_present", "historical_avg", "default"
+    confidence_score: float  # 1.0 for actual, 0.8 for present, 0.5 for historical, 0.3 for default
+
+
+def infer_employees_count(
+    db: Session,
+    entry: ProductionEntry,
+    include_floating_pool: bool = True
+) -> InferredEmployees:
+    """
+    Infer the employees count using the specification fallback chain:
+    employees_assigned → employees_present → historical_shift_average → default
+
+    Enhanced with FloatingPool integration per audit requirement.
+    When include_floating_pool=True, adds coverage employees to the count.
+
+    Args:
+        db: Database session
+        entry: Production entry object
+        include_floating_pool: Whether to add floating pool coverage to the count
+
+    Returns:
+        InferredEmployees with the resolved count and inference metadata
+    """
+    base_count = 0
+    is_inferred = False
+    inference_source = ""
+    confidence_score = 0.0
+
+    # Level 1: Use employees_assigned (highest confidence - explicit value)
+    if entry.employees_assigned is not None and entry.employees_assigned > 0:
+        base_count = entry.employees_assigned
+        is_inferred = False
+        inference_source = "employees_assigned"
+        confidence_score = 1.0
+
+    # Level 2: Fall back to employees_present (medium-high confidence)
+    elif hasattr(entry, 'employees_present') and entry.employees_present is not None and entry.employees_present > 0:
+        base_count = entry.employees_present
+        is_inferred = True
+        inference_source = "employees_present"
+        confidence_score = 0.8
+
+    # Level 3: Calculate historical average for this shift (medium confidence)
+    elif entry.shift_id:
+        historical_avg = db.query(func.avg(ProductionEntry.employees_assigned)).filter(
+            ProductionEntry.shift_id == entry.shift_id,
+            ProductionEntry.employees_assigned.isnot(None),
+            ProductionEntry.employees_assigned > 0,
+            ProductionEntry.entry_id != (entry.entry_id if hasattr(entry, 'entry_id') else None)
+        ).scalar()
+
+        if historical_avg is not None and historical_avg > 0:
+            base_count = max(1, int(round(float(historical_avg))))
+            is_inferred = True
+            inference_source = "historical_shift_avg"
+            confidence_score = 0.5
+        else:
+            base_count = DEFAULT_EMPLOYEES
+            is_inferred = True
+            inference_source = "default"
+            confidence_score = 0.3
+    else:
+        # Level 4: Use default minimum (low confidence)
+        base_count = DEFAULT_EMPLOYEES
+        is_inferred = True
+        inference_source = "default"
+        confidence_score = 0.3
+
+    # ENHANCEMENT: Add floating pool coverage employees (per audit requirement)
+    floating_pool_count = 0
+    if include_floating_pool and hasattr(entry, 'client_id') and hasattr(entry, 'shift_date'):
+        try:
+            shift_date_value = entry.shift_date.date() if hasattr(entry.shift_date, 'date') else entry.shift_date
+            floating_pool_count = get_floating_pool_coverage_count(
+                db,
+                entry.client_id,
+                shift_date_value,
+                entry.shift_id if hasattr(entry, 'shift_id') else None
+            )
+        except Exception:
+            # Silently ignore errors in floating pool lookup
+            floating_pool_count = 0
+
+    total_count = base_count + floating_pool_count
+
+    # Update inference source if floating pool was used
+    if floating_pool_count > 0:
+        inference_source = f"{inference_source}+floating_pool({floating_pool_count})"
+        # Slightly reduce confidence when using floating pool (workforce composition changed)
+        confidence_score = min(confidence_score, 0.9)
+
+    return InferredEmployees(
+        count=total_count,
+        is_inferred=is_inferred,
+        inference_source=inference_source,
+        confidence_score=confidence_score
+    )
 
 
 def calculate_shift_hours(shift_start: time, shift_end: time) -> Decimal:
@@ -120,6 +274,9 @@ def calculate_efficiency(
     CORRECTED FORMULA: Uses scheduled hours (from shift), not actual run time hours
     Formula: (units_produced × ideal_cycle_time) / (employees_assigned × scheduled_hours) × 100
 
+    Enhanced: Uses employees inference chain when employees_assigned is 0/missing
+    employees_assigned → employees_present → historical_shift_avg → default
+
     Args:
         db: Database session
         entry: Production entry
@@ -127,6 +284,7 @@ def calculate_efficiency(
 
     Returns:
         Tuple of (efficiency_percentage, ideal_cycle_time_used, was_inferred)
+        Note: was_inferred is True if EITHER cycle_time OR employees were inferred
     """
     # Get product if not provided
     if product is None:
@@ -137,9 +295,9 @@ def calculate_efficiency(
     # Get ideal cycle time (with inference if needed)
     if product and product.ideal_cycle_time is not None:
         ideal_cycle_time = Decimal(str(product.ideal_cycle_time))
-        was_inferred = False
+        cycle_time_inferred = False
     else:
-        ideal_cycle_time, was_inferred = infer_ideal_cycle_time(
+        ideal_cycle_time, cycle_time_inferred = infer_ideal_cycle_time(
             db, entry.product_id, entry.entry_id
         )
 
@@ -151,22 +309,130 @@ def calculate_efficiency(
         # Fallback to default 8-hour shift
         scheduled_hours = DEFAULT_SHIFT_HOURS
 
-    # Calculate efficiency
-    # CORRECTED Formula: (units_produced × ideal_cycle_time) / (employees_assigned × SCHEDULED_hours) × 100
+    # ENHANCED: Use inference chain for employees count
+    inferred_employees = infer_employees_count(db, entry)
+    employees_count = inferred_employees.count
+    employees_inferred = inferred_employees.is_inferred
 
-    if entry.employees_assigned == 0 or scheduled_hours == 0:
+    # Combined inference flag - True if EITHER value was inferred
+    was_inferred = cycle_time_inferred or employees_inferred
+
+    # Calculate efficiency
+    # Formula: (units_produced × ideal_cycle_time) / (employees × SCHEDULED_hours) × 100
+
+    if scheduled_hours == 0:
         return (Decimal("0"), ideal_cycle_time, was_inferred)
 
     efficiency = (
         entry.units_produced * ideal_cycle_time
     ) / (
-        entry.employees_assigned * scheduled_hours
+        employees_count * scheduled_hours
     ) * 100
 
     # Cap at 150% (reasonable max efficiency accounting for learning/improvements)
     efficiency = min(efficiency, Decimal("150"))
 
     return (efficiency.quantize(Decimal("0.01")), ideal_cycle_time, was_inferred)
+
+
+def calculate_efficiency_with_metadata(
+    db: Session,
+    entry: ProductionEntry,
+    product: Optional[Product] = None
+) -> dict:
+    """
+    Calculate efficiency with full inference metadata for API responses.
+    This exposes the ESTIMATED flag per audit requirement.
+
+    Args:
+        db: Database session
+        entry: Production entry
+        product: Optional product object
+
+    Returns:
+        Dict with efficiency result and detailed inference metadata
+    """
+    # Get product if not provided
+    if product is None:
+        product = db.query(Product).filter(
+            Product.product_id == entry.product_id
+        ).first()
+
+    # Get ideal cycle time (with inference if needed)
+    if product and product.ideal_cycle_time is not None:
+        ideal_cycle_time = Decimal(str(product.ideal_cycle_time))
+        cycle_time_inferred = False
+        cycle_time_source = "product_standard"
+        cycle_time_confidence = 1.0
+    else:
+        ideal_cycle_time, cycle_time_inferred = infer_ideal_cycle_time(
+            db, entry.product_id, entry.entry_id
+        )
+        cycle_time_source = "historical_avg" if cycle_time_inferred else "default"
+        cycle_time_confidence = 0.6 if cycle_time_inferred else 0.3
+
+    # Get scheduled hours from shift
+    shift = db.query(Shift).filter(Shift.shift_id == entry.shift_id).first()
+    if shift and shift.start_time and shift.end_time:
+        scheduled_hours = calculate_shift_hours(shift.start_time, shift.end_time)
+        hours_inferred = False
+    else:
+        scheduled_hours = DEFAULT_SHIFT_HOURS
+        hours_inferred = True
+
+    # Get employees count with inference
+    inferred_employees = infer_employees_count(db, entry)
+    employees_count = inferred_employees.count
+
+    # Calculate efficiency
+    if scheduled_hours == 0:
+        efficiency = Decimal("0")
+    else:
+        efficiency = (
+            entry.units_produced * ideal_cycle_time
+        ) / (
+            employees_count * scheduled_hours
+        ) * 100
+        efficiency = min(efficiency, Decimal("150"))
+
+    # Determine overall inference status
+    any_inferred = cycle_time_inferred or inferred_employees.is_inferred or hours_inferred
+
+    # Calculate minimum confidence score across all inferred values
+    confidence_scores = []
+    if cycle_time_inferred:
+        confidence_scores.append(cycle_time_confidence)
+    if inferred_employees.is_inferred:
+        confidence_scores.append(inferred_employees.confidence_score)
+    if hours_inferred:
+        confidence_scores.append(0.5)  # Default shift hours has medium confidence
+
+    min_confidence = min(confidence_scores) if confidence_scores else 1.0
+
+    return {
+        "efficiency_percentage": efficiency.quantize(Decimal("0.01")),
+        "ideal_cycle_time_used": ideal_cycle_time,
+        "employees_used": employees_count,
+        "scheduled_hours_used": scheduled_hours,
+        "inference": {
+            "is_estimated": any_inferred,
+            "confidence_score": min_confidence,
+            "cycle_time": {
+                "is_inferred": cycle_time_inferred,
+                "source": cycle_time_source,
+                "confidence": cycle_time_confidence
+            },
+            "employees": {
+                "is_inferred": inferred_employees.is_inferred,
+                "source": inferred_employees.inference_source,
+                "confidence": inferred_employees.confidence_score
+            },
+            "scheduled_hours": {
+                "is_inferred": hours_inferred,
+                "source": "shift_times" if not hours_inferred else "default"
+            }
+        }
+    }
 
 
 def update_efficiency_for_entry(

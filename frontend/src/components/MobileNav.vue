@@ -1,9 +1,14 @@
 <template>
-  <div v-if="isMobile" class="mobile-nav">
+  <div v-if="isMobile" class="mobile-nav" role="banner">
     <!-- Mobile Header -->
     <div class="mobile-header">
       <v-app-bar color="primary" dark prominent>
-        <v-app-bar-nav-icon @click="toggleDrawer"></v-app-bar-nav-icon>
+        <v-app-bar-nav-icon
+          @click="toggleDrawer"
+          aria-label="Open navigation menu"
+          :aria-expanded="drawer.toString()"
+          aria-controls="mobile-nav-drawer"
+        ></v-app-bar-nav-icon>
         <v-toolbar-title>KPI Platform</v-toolbar-title>
         <v-spacer></v-spacer>
 
@@ -13,11 +18,13 @@
           size="small"
           @click="$emit('toggle-shortcuts')"
           :color="shortcutsEnabled ? 'white' : 'grey'"
+          :aria-label="shortcutsEnabled ? 'Disable keyboard shortcuts' : 'Enable keyboard shortcuts'"
+          :aria-pressed="shortcutsEnabled.toString()"
         >
           <v-icon size="small">mdi-keyboard</v-icon>
         </v-btn>
 
-        <v-btn icon size="small" @click="$emit('logout')">
+        <v-btn icon size="small" @click="$emit('logout')" aria-label="Logout from application">
           <v-icon size="small">mdi-logout</v-icon>
         </v-btn>
       </v-app-bar>
@@ -25,11 +32,14 @@
 
     <!-- Mobile Navigation Drawer -->
     <v-navigation-drawer
+      id="mobile-nav-drawer"
       v-model="drawer"
       temporary
       touchless
       width="280"
       class="mobile-drawer"
+      role="navigation"
+      aria-label="Main navigation"
     >
       <!-- User Info Section -->
       <div class="mobile-user-section">
@@ -40,7 +50,7 @@
       </div>
 
       <!-- Navigation List -->
-      <v-list nav class="mobile-nav-list">
+      <v-list nav class="mobile-nav-list" aria-label="Navigation menu">
         <!-- Main Navigation -->
         <v-list-item
           v-for="item in mainNavItems"
@@ -50,11 +60,12 @@
           :title="item.title"
           @click="closeDrawer"
           class="mobile-nav-item"
+          :aria-label="`Navigate to ${item.title}`"
         />
 
         <!-- Data Entry Section -->
-        <v-divider class="my-2"></v-divider>
-        <v-list-subheader class="mobile-section-header">
+        <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader id="data-entry-heading" class="mobile-section-header">
           Data Entry
         </v-list-subheader>
         <v-list-item
@@ -65,11 +76,12 @@
           :title="item.title"
           @click="closeDrawer"
           class="mobile-nav-item"
+          :aria-label="`Navigate to ${item.title} data entry`"
         />
 
         <!-- KPI Reports Section -->
-        <v-divider class="my-2"></v-divider>
-        <v-list-subheader class="mobile-section-header">
+        <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader id="kpi-reports-heading" class="mobile-section-header">
           KPI Reports
         </v-list-subheader>
         <v-list-item
@@ -80,6 +92,7 @@
           :title="item.title"
           @click="closeDrawer"
           class="mobile-nav-item"
+          :aria-label="`View ${item.title} KPI report`"
         />
       </v-list>
 
@@ -92,8 +105,9 @@
             variant="outlined"
             @click="handleLogout"
             class="mobile-logout-btn"
+            aria-label="Logout from KPI Platform"
           >
-            <v-icon left>mdi-logout</v-icon>
+            <v-icon left aria-hidden="true">mdi-logout</v-icon>
             Logout
           </v-btn>
         </div>

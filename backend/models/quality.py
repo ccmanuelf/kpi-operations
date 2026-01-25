@@ -115,6 +115,14 @@ class QualityInspectionResponse(BaseModel):
         from_attributes = True
 
 
+class InferenceMetadata(BaseModel):
+    """Inference metadata for KPI calculations - exposes ESTIMATED flag per audit requirement"""
+    is_estimated: bool = Field(default=False, description="True if any values were inferred rather than from explicit standards")
+    confidence_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Confidence score (0.0-1.0) for inferred values")
+    inference_source: Optional[str] = Field(default=None, description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback")
+    inference_warning: Optional[str] = Field(default=None, description="Warning message for low confidence estimates")
+
+
 class PPMCalculationResponse(BaseModel):
     """PPM (Parts Per Million) calculation with defect rate percentage"""
     product_id: int
@@ -126,6 +134,8 @@ class PPMCalculationResponse(BaseModel):
     ppm: Decimal
     defect_rate_percentage: Decimal  # PPM / 10,000 = percentage
     calculation_timestamp: datetime
+    # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
+    inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
 
 
 class DPMOCalculationResponse(BaseModel):
@@ -140,6 +150,8 @@ class DPMOCalculationResponse(BaseModel):
     dpmo: Decimal
     sigma_level: Decimal
     calculation_timestamp: datetime
+    # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
+    inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
 
 
 class FPYRTYCalculationResponse(BaseModel):
@@ -155,3 +167,5 @@ class FPYRTYCalculationResponse(BaseModel):
     final_yield_percentage: Decimal = Decimal("0")
     total_process_steps: int
     calculation_timestamp: datetime
+    # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
+    inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")

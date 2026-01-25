@@ -1,6 +1,6 @@
 <template>
-  <v-card>
-    <v-card-title>Bulk Upload via CSV</v-card-title>
+  <v-card role="region" aria-labelledby="csv-upload-title">
+    <v-card-title id="csv-upload-title">Bulk Upload via CSV</v-card-title>
     <v-card-text>
       <v-file-input
         v-model="file"
@@ -10,20 +10,28 @@
         @change="handleFileChange"
         :loading="loading"
         show-size
+        aria-describedby="csv-upload-help"
       ></v-file-input>
+      <span id="csv-upload-help" class="sr-only">Select a CSV file to upload production entries in bulk</span>
 
-      <v-alert v-if="uploadResult" :type="uploadResult.type" class="mt-4">
+      <v-alert
+        v-if="uploadResult"
+        :type="uploadResult.type"
+        class="mt-4"
+        role="status"
+        :aria-live="uploadResult.type === 'error' ? 'assertive' : 'polite'"
+      >
         {{ uploadResult.message }}
         <div v-if="uploadResult.details" class="mt-2">
           <strong>Details:</strong>
-          <ul>
+          <ul aria-label="Upload statistics">
             <li>Total Rows: {{ uploadResult.details.total_rows }}</li>
             <li>Successful: {{ uploadResult.details.successful }}</li>
             <li>Failed: {{ uploadResult.details.failed }}</li>
           </ul>
           <div v-if="uploadResult.details.errors && uploadResult.details.errors.length > 0">
             <strong>Errors:</strong>
-            <v-list dense>
+            <v-list dense aria-label="Upload errors">
               <v-list-item v-for="(error, idx) in uploadResult.details.errors.slice(0, 5)" :key="idx">
                 Row {{ error.row }}: {{ error.error }}
               </v-list-item>
@@ -38,8 +46,10 @@
         :disabled="!file || loading"
         :loading="loading"
         class="mt-4"
+        aria-label="Upload selected CSV file"
+        :aria-busy="loading"
       >
-        <v-icon left>mdi-upload</v-icon>
+        <v-icon left aria-hidden="true">mdi-upload</v-icon>
         Upload CSV
       </v-btn>
 
@@ -47,8 +57,9 @@
         text
         @click="downloadTemplate"
         class="mt-4 ml-2"
+        aria-label="Download CSV template file"
       >
-        <v-icon left>mdi-download</v-icon>
+        <v-icon left aria-hidden="true">mdi-download</v-icon>
         Download Template
       </v-btn>
     </v-card-text>

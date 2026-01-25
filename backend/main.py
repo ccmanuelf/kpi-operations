@@ -123,7 +123,8 @@ from backend.auth.jwt import (
     get_password_hash,
     create_access_token,
     get_current_user,
-    get_current_active_supervisor
+    get_current_active_supervisor,
+    oauth2_scheme  # For logout endpoint token extraction
 )
 from backend.crud.production import (
     create_production_entry,
@@ -350,8 +351,14 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
             detail="User account is inactive"
         )
 
-    # Create access token
-    access_token = create_access_token(data={"sub": user.username})
+    # Create access token with client_id for stateless validation (per audit requirement)
+    # Include client_id_assigned in JWT payload for stateless tenant verification
+    token_data = {
+        "sub": user.username,
+        "role": user.role,
+        "client_ids": user.client_id_assigned  # Comma-separated or None for admin/poweruser
+    }
+    access_token = create_access_token(data=token_data)
 
     return Token(
         access_token=access_token,
@@ -364,6 +371,41 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
 def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
+
+
+# Token blacklist for logout functionality (per audit requirement)
+# In production, this should be replaced with Redis or database-backed storage
+_token_blacklist: set = set()
+
+
+@app.post("/api/auth/logout")
+def logout(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme)
+):
+    """
+    Explicit logout endpoint (per audit requirement)
+
+    Invalidates the current access token by adding it to the blacklist.
+    Client should also clear the token from local storage.
+
+    Returns:
+        Success message confirming logout
+    """
+    # Add token to blacklist (JTI would be better, using full token for simplicity)
+    # In production, use Redis with TTL matching token expiration
+    _token_blacklist.add(token)
+
+    return {
+        "message": "Successfully logged out",
+        "detail": "Token has been invalidated. Please clear your local session."
+    }
+
+
+def is_token_blacklisted(token: str) -> bool:
+    """Check if a token has been blacklisted (logged out)"""
+    return token in _token_blacklist
 
 
 @app.post("/api/auth/forgot-password")

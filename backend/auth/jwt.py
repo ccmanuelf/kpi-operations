@@ -93,12 +93,15 @@ def get_current_user(
     """
     Dependency to get current authenticated user
 
+    Enhanced: Extracts client_ids from JWT for stateless validation (per audit requirement)
+    This allows client access verification without additional DB queries.
+
     Args:
         token: JWT token from request
         db: Database session
 
     Returns:
-        Current user object
+        Current user object with _jwt_client_ids attribute for stateless validation
 
     Raises:
         HTTPException: If user not found or inactive
@@ -120,6 +123,11 @@ def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user"
         )
+
+    # ENHANCEMENT: Attach JWT payload data for stateless validation
+    # This allows client_auth middleware to validate without DB lookup
+    user._jwt_role = payload.get("role")
+    user._jwt_client_ids = payload.get("client_ids")  # Comma-separated or None
 
     return user
 

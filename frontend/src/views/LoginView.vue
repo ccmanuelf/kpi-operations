@@ -1,13 +1,13 @@
 <template>
-  <v-container class="fill-height" fluid>
+  <v-container class="fill-height" fluid role="main" aria-label="Login page">
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="4">
-        <v-card class="elevation-12">
+        <v-card class="elevation-12" role="region" aria-labelledby="login-title">
           <v-toolbar color="primary" dark flat>
-            <v-toolbar-title>Manufacturing KPI Platform</v-toolbar-title>
+            <v-toolbar-title id="login-title">Manufacturing KPI Platform</v-toolbar-title>
           </v-toolbar>
           <v-card-text>
-            <v-form @submit.prevent="handleLogin">
+            <v-form @submit.prevent="handleLogin" aria-label="Login form">
               <v-text-field
                 v-model="username"
                 label="Username"
@@ -15,7 +15,12 @@
                 type="text"
                 required
                 :error-messages="errors.username"
+                aria-required="true"
+                :aria-invalid="!!errors.username"
+                :aria-describedby="errors.username ? 'username-error' : undefined"
+                autocomplete="username"
               ></v-text-field>
+              <div v-if="errors.username" id="username-error" class="sr-only">{{ errors.username[0] }}</div>
 
               <v-text-field
                 v-model="password"
@@ -24,9 +29,14 @@
                 type="password"
                 required
                 :error-messages="errors.password"
+                aria-required="true"
+                :aria-invalid="!!errors.password"
+                :aria-describedby="errors.password ? 'password-error' : undefined"
+                autocomplete="current-password"
               ></v-text-field>
+              <div v-if="errors.password" id="password-error" class="sr-only">{{ errors.password[0] }}</div>
 
-              <v-alert v-if="errorMessage" type="error" class="mb-4" closable>
+              <v-alert v-if="errorMessage" type="error" class="mb-4" closable role="alert" aria-live="polite">
                 {{ errorMessage }}
               </v-alert>
             </v-form>
@@ -39,6 +49,8 @@
               block
               size="large"
               class="mb-3"
+              aria-label="Sign in to your account"
+              :aria-busy="loading"
             >
               Login
             </v-btn>
@@ -48,6 +60,7 @@
                 color="primary"
                 size="small"
                 @click="showForgotPassword = true"
+                aria-label="Open forgot password dialog"
               >
                 Forgot Password?
               </v-btn>
@@ -56,6 +69,7 @@
                 color="primary"
                 size="small"
                 @click="showRegister = true"
+                aria-label="Open account registration dialog"
               >
                 Create Account
               </v-btn>
@@ -66,26 +80,36 @@
     </v-row>
 
     <!-- Forgot Password Dialog -->
-    <v-dialog v-model="showForgotPassword" max-width="400">
+    <v-dialog
+      v-model="showForgotPassword"
+      max-width="400"
+      aria-labelledby="reset-password-title"
+      role="dialog"
+      aria-modal="true"
+    >
       <v-card>
-        <v-card-title class="text-h6">Reset Password</v-card-title>
+        <v-card-title id="reset-password-title" class="text-h6">Reset Password</v-card-title>
         <v-card-text>
-          <p class="mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+          <p id="reset-instructions" class="mb-4">Enter your email address and we'll send you a link to reset your password.</p>
           <v-text-field
             v-model="resetEmail"
             label="Email Address"
             type="email"
             prepend-icon="mdi-email"
             :error-messages="resetErrors.email"
+            aria-required="true"
+            :aria-invalid="!!resetErrors.email"
+            aria-describedby="reset-instructions"
+            autocomplete="email"
           ></v-text-field>
-          <v-alert v-if="resetSuccess" type="success" class="mt-2">
+          <v-alert v-if="resetSuccess" type="success" class="mt-2" role="status" aria-live="polite">
             {{ resetSuccess }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="showForgotPassword = false">Cancel</v-btn>
-          <v-btn color="primary" @click="handleForgotPassword" :loading="resetLoading">
+          <v-btn text @click="showForgotPassword = false" aria-label="Cancel password reset">Cancel</v-btn>
+          <v-btn color="primary" @click="handleForgotPassword" :loading="resetLoading" :aria-busy="resetLoading" aria-label="Send password reset link">
             Send Reset Link
           </v-btn>
         </v-card-actions>
@@ -93,17 +117,26 @@
     </v-dialog>
 
     <!-- Register Dialog -->
-    <v-dialog v-model="showRegister" max-width="500">
+    <v-dialog
+      v-model="showRegister"
+      max-width="500"
+      aria-labelledby="register-title"
+      role="dialog"
+      aria-modal="true"
+    >
       <v-card>
-        <v-card-title class="text-h6">Create Account</v-card-title>
+        <v-card-title id="register-title" class="text-h6">Create Account</v-card-title>
         <v-card-text>
-          <v-form @submit.prevent="handleRegister">
+          <v-form @submit.prevent="handleRegister" aria-label="Registration form">
             <v-text-field
               v-model="registerForm.username"
               label="Username"
               prepend-icon="mdi-account"
               :error-messages="registerErrors.username"
               required
+              aria-required="true"
+              :aria-invalid="!!registerErrors.username"
+              autocomplete="username"
             ></v-text-field>
             <v-text-field
               v-model="registerForm.email"
@@ -112,6 +145,9 @@
               prepend-icon="mdi-email"
               :error-messages="registerErrors.email"
               required
+              aria-required="true"
+              :aria-invalid="!!registerErrors.email"
+              autocomplete="email"
             ></v-text-field>
             <v-text-field
               v-model="registerForm.full_name"
@@ -119,6 +155,9 @@
               prepend-icon="mdi-badge-account"
               :error-messages="registerErrors.full_name"
               required
+              aria-required="true"
+              :aria-invalid="!!registerErrors.full_name"
+              autocomplete="name"
             ></v-text-field>
             <v-text-field
               v-model="registerForm.password"
@@ -128,7 +167,12 @@
               :error-messages="registerErrors.password"
               hint="Min 8 chars, uppercase, lowercase, number, special char"
               required
+              aria-required="true"
+              :aria-invalid="!!registerErrors.password"
+              aria-describedby="password-requirements"
+              autocomplete="new-password"
             ></v-text-field>
+            <span id="password-requirements" class="sr-only">Password must be minimum 8 characters with uppercase, lowercase, number, and special character</span>
             <v-text-field
               v-model="registerForm.confirmPassword"
               label="Confirm Password"
@@ -136,19 +180,22 @@
               prepend-icon="mdi-lock-check"
               :error-messages="registerErrors.confirmPassword"
               required
+              aria-required="true"
+              :aria-invalid="!!registerErrors.confirmPassword"
+              autocomplete="new-password"
             ></v-text-field>
-            <v-alert v-if="registerError" type="error" class="mt-2">
+            <v-alert v-if="registerError" type="error" class="mt-2" role="alert" aria-live="assertive">
               {{ registerError }}
             </v-alert>
-            <v-alert v-if="registerSuccess" type="success" class="mt-2">
+            <v-alert v-if="registerSuccess" type="success" class="mt-2" role="status" aria-live="polite">
               {{ registerSuccess }}
             </v-alert>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="showRegister = false">Cancel</v-btn>
-          <v-btn color="primary" @click="handleRegister" :loading="registerLoading">
+          <v-btn text @click="showRegister = false" aria-label="Cancel registration">Cancel</v-btn>
+          <v-btn color="primary" @click="handleRegister" :loading="registerLoading" :aria-busy="registerLoading" aria-label="Submit registration">
             Create Account
           </v-btn>
         </v-card-actions>

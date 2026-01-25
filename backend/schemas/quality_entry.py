@@ -2,8 +2,9 @@
 QUALITY_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation for KPI #4 PPM, #5 DPMO, #6 FPY, #7 RTY
 Source: 05-Phase4_Quality_Inventory.csv lines 2-25
+Enhanced with composite indexes for query performance (per audit requirement)
 """
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
 from backend.database import Base
 
@@ -11,7 +12,13 @@ from backend.database import Base
 class QualityEntry(Base):
     """QUALITY_ENTRY table - Quality inspection tracking for PPM/DPMO/FPY/RTY"""
     __tablename__ = "QUALITY_ENTRY"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # Composite indexes for query performance (per audit requirement)
+        Index('ix_quality_client_shift_date', 'client_id', 'shift_date'),  # Most common query pattern
+        Index('ix_quality_client_work_order', 'client_id', 'work_order_id'),  # Work order quality
+        Index('ix_quality_shift_date_stage', 'shift_date', 'inspection_stage'),  # Inspection reports
+        {"extend_existing": True}
+    )
 
     # Primary key
     quality_entry_id = Column(String(50), primary_key=True)
@@ -55,6 +62,9 @@ class QualityEntry(Base):
 
     # Metadata
     notes = Column(Text)
+
+    # Audit field - tracks who last modified the record (per audit requirement)
+    updated_by = Column(Integer, ForeignKey('USER.user_id'))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

@@ -1,9 +1,9 @@
 <template>
-  <div>
+  <div role="region" aria-label="KPI Dashboard">
     <v-row class="mb-4">
       <v-col cols="12">
-        <h1 class="text-h4 font-weight-bold">KPI Dashboard - All Phases</h1>
-        <p class="text-subtitle-1 text-grey">
+        <h1 id="dashboard-title" class="text-h4 font-weight-bold">KPI Dashboard - All Phases</h1>
+        <p class="text-subtitle-1 text-grey" aria-describedby="dashboard-title">
           Real-time manufacturing performance metrics
         </p>
       </v-col>
@@ -20,42 +20,52 @@
     />
 
     <!-- KPI Summary Cards -->
-    <v-row>
+    <v-row role="list" aria-label="Key Performance Indicators">
       <!-- Phase 1: Production KPIs -->
-      <v-col cols="12" md="6" lg="3">
-        <v-card class="pa-4" elevation="2">
+      <v-col cols="12" md="6" lg="3" role="listitem">
+        <v-card class="pa-4" elevation="2" role="article" aria-labelledby="kpi-efficiency-label">
           <div class="d-flex align-center mb-2">
-            <v-icon color="primary" size="large">mdi-speedometer</v-icon>
+            <v-icon color="primary" size="large" aria-hidden="true">mdi-speedometer</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small" aria-label="KPI Status: Active">Active</v-chip>
           </div>
-          <div class="text-h3 font-weight-bold text-primary">
+          <div class="text-h3 font-weight-bold text-primary" aria-live="polite">
             {{ kpiData.efficiency }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #3: Efficiency</div>
+          <div id="kpi-efficiency-label" class="text-subtitle-2 text-grey">KPI #3: Efficiency</div>
           <v-progress-linear
             :model-value="kpiData.efficiency"
             color="primary"
             class="mt-2"
+            :aria-label="`Efficiency progress: ${kpiData.efficiency} percent`"
+            role="progressbar"
+            :aria-valuenow="kpiData.efficiency"
+            aria-valuemin="0"
+            aria-valuemax="100"
           ></v-progress-linear>
         </v-card>
       </v-col>
 
-      <v-col cols="12" md="6" lg="3">
-        <v-card class="pa-4" elevation="2">
+      <v-col cols="12" md="6" lg="3" role="listitem">
+        <v-card class="pa-4" elevation="2" role="article" aria-labelledby="kpi-performance-label">
           <div class="d-flex align-center mb-2">
-            <v-icon color="success" size="large">mdi-chart-line</v-icon>
+            <v-icon color="success" size="large" aria-hidden="true">mdi-chart-line</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small" aria-label="KPI Status: Active">Active</v-chip>
           </div>
-          <div class="text-h3 font-weight-bold text-success">
+          <div class="text-h3 font-weight-bold text-success" aria-live="polite">
             {{ kpiData.performance }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #9: Performance</div>
+          <div id="kpi-performance-label" class="text-subtitle-2 text-grey">KPI #9: Performance</div>
           <v-progress-linear
             :model-value="kpiData.performance"
             color="success"
             class="mt-2"
+            :aria-label="`Performance progress: ${kpiData.performance} percent`"
+            role="progressbar"
+            :aria-valuenow="kpiData.performance"
+            aria-valuemin="0"
+            aria-valuemax="100"
           ></v-progress-linear>
         </v-card>
       </v-col>

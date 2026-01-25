@@ -3,7 +3,7 @@ WORK_ORDER table ORM schema (SQLAlchemy)
 Core entity for WIP tracking, OTD, and quality metrics
 Source: 01-Core_DataEntities_Inventory.csv lines 16-42
 """
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from backend.database import Base
 import enum
@@ -21,7 +21,13 @@ class WorkOrderStatus(str, enum.Enum):
 class WorkOrder(Base):
     """WORK_ORDER table - Central entity for all phases"""
     __tablename__ = "WORK_ORDER"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # Composite indexes for query performance (per audit requirement)
+        Index('ix_workorder_client_status', 'client_id', 'status'),  # Active work orders by client
+        Index('ix_workorder_client_ship_date', 'client_id', 'planned_ship_date'),  # OTD queries
+        Index('ix_workorder_status_ship_date', 'status', 'planned_ship_date'),  # Delivery reports
+        {"extend_existing": True}
+    )
 
     # Primary key
     work_order_id = Column(String(50), primary_key=True, index=True)

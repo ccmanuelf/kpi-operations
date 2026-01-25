@@ -2,8 +2,9 @@
 PRODUCTION_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation with all 26 fields for KPI #3 Efficiency and #9 Performance
 Source: 02-Phase1_Production_Inventory.csv
+Enhanced with composite indexes for query performance (per audit requirement)
 """
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Index
 from sqlalchemy.sql import func
 from backend.database import Base
 
@@ -11,7 +12,14 @@ from backend.database import Base
 class ProductionEntry(Base):
     """PRODUCTION_ENTRY table - Daily production tracking"""
     __tablename__ = "PRODUCTION_ENTRY"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        # Composite indexes for query performance (per audit requirement)
+        Index('ix_production_client_shift_date', 'client_id', 'shift_date'),  # Most common query pattern
+        Index('ix_production_client_product', 'client_id', 'product_id'),  # Client product analysis
+        Index('ix_production_shift_date_product', 'shift_date', 'product_id'),  # Date range by product
+        Index('ix_production_client_work_order', 'client_id', 'work_order_id'),  # Work order lookups
+        {"extend_existing": True}
+    )
 
     # Primary key
     production_entry_id = Column(String(50), primary_key=True)
@@ -60,6 +68,9 @@ class ProductionEntry(Base):
     confirmed_by = Column(Integer, ForeignKey("USER.user_id"))
     confirmation_timestamp = Column(DateTime)
     entry_method = Column(String(20), default='MANUAL_ENTRY')  # MANUAL_ENTRY, CSV_UPLOAD, API
+
+    # Audit field - tracks who last modified the record (per audit requirement)
+    updated_by = Column(Integer, ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

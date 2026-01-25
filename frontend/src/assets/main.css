@@ -509,10 +509,69 @@ body {
    ACCESSIBILITY - WCAG 2.1 AA
    ============================================ */
 
-/* Focus indicators */
+/* Screen reader only - visually hidden but accessible to assistive technologies */
+.sr-only,
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Allow screen reader content to become visible when focused (for skip links) */
+.sr-only-focusable:focus,
+.sr-only-focusable:focus-within {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  padding: var(--cds-spacing-03) var(--cds-spacing-05) !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  white-space: normal !important;
+}
+
+/* Focus indicators - enhanced for better visibility */
 *:focus-visible {
   outline: 2px solid var(--cds-focus) !important;
   outline-offset: 2px !important;
+}
+
+/* Button focus states */
+.v-btn:focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.3) !important;
+}
+
+/* Input focus states */
+.v-field:focus-within {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: -2px !important;
+}
+
+/* Link focus states */
+a:focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: 2px !important;
+  border-radius: 2px;
+}
+
+/* List item focus states for navigation */
+.v-list-item:focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: -2px !important;
+  background-color: var(--cds-layer-hover) !important;
+}
+
+/* Dialog focus trap indicator */
+.v-dialog:focus-visible {
+  outline: none !important;
 }
 
 /* Skip to main content link */
@@ -525,11 +584,61 @@ body {
   color: white;
   text-decoration: none;
   font-weight: 500;
+  border-radius: var(--cds-border-radius-md);
 }
 
 .skip-to-main:focus {
   left: var(--cds-spacing-03);
   top: var(--cds-spacing-03);
+}
+
+/* Ensure disabled elements are not focusable visually */
+[disabled]:focus-visible,
+.v-btn--disabled:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Live region announcements */
+[aria-live] {
+  position: relative;
+}
+
+/* Error state indicators */
+[aria-invalid="true"] {
+  border-color: var(--cds-support-error) !important;
+}
+
+[aria-invalid="true"]:focus-visible {
+  outline-color: var(--cds-support-error) !important;
+}
+
+/* Required field indicators */
+[aria-required="true"]::after {
+  content: "*";
+  color: var(--cds-support-error);
+  margin-left: 2px;
+}
+
+/* Loading state */
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* Expanded/Collapsed states */
+[aria-expanded="true"] .expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Selected state for interactive elements */
+[aria-selected="true"] {
+  background-color: var(--cds-layer-selected) !important;
+}
+
+/* Current page indicator */
+[aria-current="page"] {
+  font-weight: 600;
+  border-left: 3px solid var(--cds-blue-60) !important;
 }
 
 /* Reduced motion preference */
@@ -540,6 +649,10 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .expand-icon {
+    transition: none !important;
   }
 }
 
@@ -555,6 +668,30 @@ body {
 
   .v-field--variant-outlined {
     border-width: 2px !important;
+  }
+
+  *:focus-visible {
+    outline-width: 3px !important;
+  }
+
+  [aria-invalid="true"] {
+    border-width: 2px !important;
+  }
+}
+
+/* Forced colors mode (Windows High Contrast) */
+@media (forced-colors: active) {
+  .v-btn {
+    border: 2px solid ButtonText !important;
+  }
+
+  *:focus-visible {
+    outline: 3px solid Highlight !important;
+  }
+
+  [aria-selected="true"],
+  [aria-current="page"] {
+    border: 2px solid Highlight !important;
   }
 }
 

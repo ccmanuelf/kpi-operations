@@ -39,6 +39,9 @@ class CoverageEntry(Base):
     notes = Column(Text)
     assigned_by = Column(Integer, ForeignKey('USER.user_id'))
 
+    # Audit field - tracks who last modified the record (per audit requirement)
+    updated_by = Column(Integer, ForeignKey('USER.user_id'))
+
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

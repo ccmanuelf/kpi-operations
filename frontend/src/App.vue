@@ -1,16 +1,25 @@
 <template>
   <v-app>
+    <!-- Skip to main content link for keyboard users -->
+    <a href="#main-content" class="skip-to-main sr-only-focusable">
+      Skip to main content
+    </a>
+
     <!-- App Bar - Full Width -->
-    <v-app-bar v-if="isAuthenticated" color="primary" density="default">
-      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
+    <v-app-bar v-if="isAuthenticated" color="primary" density="default" role="banner">
+      <v-app-bar-nav-icon
+        @click="drawer = !drawer"
+        aria-label="Toggle navigation menu"
+        :aria-expanded="drawer.toString()"
+      ></v-app-bar-nav-icon>
       <v-toolbar-title>KPI Platform</v-toolbar-title>
       <v-spacer></v-spacer>
 
-      <v-btn icon @click="toggleShortcutsHelp">
-        <v-icon>mdi-keyboard</v-icon>
+      <v-btn icon @click="toggleShortcutsHelp" aria-label="View keyboard shortcuts">
+        <v-icon aria-hidden="true">mdi-keyboard</v-icon>
       </v-btn>
-      <v-btn icon @click="logout">
-        <v-icon>mdi-logout</v-icon>
+      <v-btn icon @click="logout" aria-label="Logout from application">
+        <v-icon aria-hidden="true">mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
 
@@ -20,6 +29,8 @@
       v-model="drawer"
       :rail="rail"
       permanent
+      role="navigation"
+      aria-label="Main navigation"
     >
       <v-list-item
         prepend-icon="mdi-factory"
@@ -27,6 +38,7 @@
         nav
         @click="rail = !rail"
         class="cursor-pointer"
+        :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
       >
         <template v-slot:append>
           <v-btn
@@ -34,49 +46,50 @@
             variant="text"
             size="small"
             @click.stop="rail = !rail"
+            :aria-label="rail ? 'Expand navigation sidebar' : 'Collapse navigation sidebar'"
           ></v-btn>
         </template>
       </v-list-item>
 
-      <v-divider></v-divider>
+      <v-divider role="separator"></v-divider>
 
-      <v-list density="compact" nav>
-        <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/" />
-        <v-list-item prepend-icon="mdi-factory" title="Production Entry" value="production" to="/production-entry" />
-        <v-list-item prepend-icon="mdi-chart-box" title="KPI Dashboard" value="kpi-dashboard" to="/kpi-dashboard" />
+      <v-list density="compact" nav aria-label="Primary navigation">
+        <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/" aria-label="Go to Dashboard" />
+        <v-list-item prepend-icon="mdi-factory" title="Production Entry" value="production" to="/production-entry" aria-label="Go to Production Entry" />
+        <v-list-item prepend-icon="mdi-chart-box" title="KPI Dashboard" value="kpi-dashboard" to="/kpi-dashboard" aria-label="Go to KPI Dashboard" />
 
-        <v-divider class="my-2"></v-divider>
-        <v-list-subheader v-if="!rail">DATA ENTRY</v-list-subheader>
+        <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader v-if="!rail" id="data-entry-nav">DATA ENTRY</v-list-subheader>
 
-        <v-list-item prepend-icon="mdi-clock-alert" title="Downtime" value="downtime" to="/data-entry/downtime" />
-        <v-list-item prepend-icon="mdi-account-group" title="Attendance" value="attendance" to="/data-entry/attendance" />
-        <v-list-item prepend-icon="mdi-quality-high" title="Quality" value="quality" to="/data-entry/quality" />
-        <v-list-item prepend-icon="mdi-pause-circle" title="Hold/Resume" value="hold" to="/data-entry/hold-resume" />
+        <v-list-item prepend-icon="mdi-clock-alert" title="Downtime" value="downtime" to="/data-entry/downtime" aria-label="Go to Downtime data entry" />
+        <v-list-item prepend-icon="mdi-account-group" title="Attendance" value="attendance" to="/data-entry/attendance" aria-label="Go to Attendance data entry" />
+        <v-list-item prepend-icon="mdi-quality-high" title="Quality" value="quality" to="/data-entry/quality" aria-label="Go to Quality data entry" />
+        <v-list-item prepend-icon="mdi-pause-circle" title="Hold/Resume" value="hold" to="/data-entry/hold-resume" aria-label="Go to Hold and Resume data entry" />
 
-        <v-divider class="my-2"></v-divider>
-        <v-list-subheader v-if="!rail">KPI REPORTS</v-list-subheader>
+        <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader v-if="!rail" id="kpi-reports-nav">KPI REPORTS</v-list-subheader>
 
-        <v-list-item prepend-icon="mdi-chart-line" title="Efficiency" value="efficiency" to="/kpi/efficiency" />
-        <v-list-item prepend-icon="mdi-warehouse" title="WIP Aging" value="wip" to="/kpi/wip-aging" />
-        <v-list-item prepend-icon="mdi-truck-delivery" title="On-Time Delivery" value="otd" to="/kpi/on-time-delivery" />
-        <v-list-item prepend-icon="mdi-checkbox-marked-circle" title="Availability" value="availability" to="/kpi/availability" />
-        <v-list-item prepend-icon="mdi-speedometer" title="Performance" value="performance" to="/kpi/performance" />
-        <v-list-item prepend-icon="mdi-star" title="Quality" value="quality-kpi" to="/kpi/quality" />
-        <v-list-item prepend-icon="mdi-account-off" title="Absenteeism" value="absenteeism" to="/kpi/absenteeism" />
-        <v-list-item prepend-icon="mdi-gauge" title="OEE" value="oee" to="/kpi/oee" />
+        <v-list-item prepend-icon="mdi-chart-line" title="Efficiency" value="efficiency" to="/kpi/efficiency" aria-label="View Efficiency KPI report" />
+        <v-list-item prepend-icon="mdi-warehouse" title="WIP Aging" value="wip" to="/kpi/wip-aging" aria-label="View WIP Aging KPI report" />
+        <v-list-item prepend-icon="mdi-truck-delivery" title="On-Time Delivery" value="otd" to="/kpi/on-time-delivery" aria-label="View On-Time Delivery KPI report" />
+        <v-list-item prepend-icon="mdi-checkbox-marked-circle" title="Availability" value="availability" to="/kpi/availability" aria-label="View Availability KPI report" />
+        <v-list-item prepend-icon="mdi-speedometer" title="Performance" value="performance" to="/kpi/performance" aria-label="View Performance KPI report" />
+        <v-list-item prepend-icon="mdi-star" title="Quality" value="quality-kpi" to="/kpi/quality" aria-label="View Quality KPI report" />
+        <v-list-item prepend-icon="mdi-account-off" title="Absenteeism" value="absenteeism" to="/kpi/absenteeism" aria-label="View Absenteeism KPI report" />
+        <v-list-item prepend-icon="mdi-gauge" title="OEE" value="oee" to="/kpi/oee" aria-label="View OEE KPI report" />
 
-        <v-divider class="my-2"></v-divider>
-        <v-list-subheader v-if="!rail">ADMIN</v-list-subheader>
+        <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader v-if="!rail" id="admin-nav">ADMIN</v-list-subheader>
 
-        <v-list-item prepend-icon="mdi-cog" title="Settings" value="settings" to="/admin/settings" />
-        <v-list-item prepend-icon="mdi-account-multiple" title="Users" value="users" to="/admin/users" />
-        <v-list-item prepend-icon="mdi-domain" title="Clients" value="clients" to="/admin/clients" />
-        <v-list-item prepend-icon="mdi-alert-circle-outline" title="Defect Types" value="defect-types" to="/admin/defect-types" />
+        <v-list-item prepend-icon="mdi-cog" title="Settings" value="settings" to="/admin/settings" aria-label="Go to Settings" />
+        <v-list-item prepend-icon="mdi-account-multiple" title="Users" value="users" to="/admin/users" aria-label="Go to User management" />
+        <v-list-item prepend-icon="mdi-domain" title="Clients" value="clients" to="/admin/clients" aria-label="Go to Client management" />
+        <v-list-item prepend-icon="mdi-alert-circle-outline" title="Defect Types" value="defect-types" to="/admin/defect-types" aria-label="Go to Defect Types management" />
       </v-list>
     </v-navigation-drawer>
 
     <!-- Main Content -->
-    <v-main>
+    <v-main id="main-content" role="main" aria-label="Main content">
       <v-container fluid class="pa-6">
         <router-view />
       </v-container>
@@ -90,6 +103,8 @@
       v-model="showNotification"
       :timeout="2000"
       color="primary"
+      role="status"
+      aria-live="polite"
     >
       {{ notificationMessage }}
     </v-snackbar>

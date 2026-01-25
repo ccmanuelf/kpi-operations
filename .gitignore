@@ -101,3 +101,25 @@ config/secrets.json
 .swarm/memory.db
 .swarm/memory.db-shm
 .swarm/memory.db-wal
+
+# Claude Flow runtime data (regenerated per session)
+.claude-flow/agents/
+.claude-flow/claims/
+.claude-flow/embeddings.json
+.claude-flow/hive-mind/
+.claude-flow/memory/
+.claude-flow/performance/
+.claude-flow/system/
+.claude-flow/tasks/
+.claude-flow/workflows/
+.swarm/
+
+# Database backups
+database/*.backup.*
+
+# Test reports (generated)
+frontend/playwright-report/
+frontend/e2e-results.json
+
+# Generated documentation reports
+docs/reports/

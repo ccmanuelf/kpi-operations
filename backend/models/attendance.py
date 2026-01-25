@@ -134,6 +134,14 @@ class AttendanceRecordResponse(BaseModel):
         from_attributes = True
 
 
+class InferenceMetadata(BaseModel):
+    """Inference metadata for KPI calculations - exposes ESTIMATED flag per audit requirement"""
+    is_estimated: bool = Field(default=False, description="True if any values were inferred rather than from explicit standards")
+    confidence_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Confidence score (0.0-1.0) for inferred values")
+    inference_source: Optional[str] = Field(default=None, description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback")
+    inference_warning: Optional[str] = Field(default=None, description="Warning message for low confidence estimates")
+
+
 class AbsenteeismCalculationResponse(BaseModel):
     """Absenteeism KPI calculation"""
     shift_id: int
@@ -146,3 +154,5 @@ class AbsenteeismCalculationResponse(BaseModel):
     total_employees: int
     total_absences: int
     calculation_timestamp: datetime
+    # ENHANCEMENT: Inference metadata (ESTIMATED flag) per audit requirement
+    inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
