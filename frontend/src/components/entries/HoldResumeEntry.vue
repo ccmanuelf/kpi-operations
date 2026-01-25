@@ -1,5 +1,10 @@
 <template>
-  <v-card>
+  <v-skeleton-loader
+    v-if="initialLoading"
+    type="card, table, actions"
+    class="mb-4"
+  />
+  <v-card v-else>
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-pause-circle</v-icon>
@@ -239,6 +244,7 @@ const resumeForm = ref(null)
 const holdValid = ref(false)
 const resumeValid = ref(false)
 const loading = ref(false)
+const initialLoading = ref(true)
 const workOrders = ref([])
 const activeHolds = ref([])
 const selectedHoldId = ref(null)
@@ -369,6 +375,8 @@ const loadActiveHolds = async () => {
     }))
   } catch (error) {
     console.error('Error loading active holds:', error)
+  } finally {
+    initialLoading.value = false
   }
 }
 

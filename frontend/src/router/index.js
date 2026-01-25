@@ -126,18 +126,35 @@ const router = createRouter({
   ]
 })
 
-// Navigation guard - check auth from localStorage directly to avoid Pinia timing issues
+// Navigation guard - check auth and admin role from localStorage
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('access_token')
   const isAuthenticated = !!token
 
+  // Check authentication first
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
-  } else if (to.path === '/login' && isAuthenticated) {
-    next('/')
-  } else {
-    next()
+    return
   }
+
+  // Check admin role for admin routes
+  if (to.meta.requiresAdmin && isAuthenticated) {
+    const user = JSON.parse(localStorage.getItem('user') || 'null')
+    const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN'
+    if (!isAdmin) {
+      // Redirect non-admins to dashboard
+      next('/')
+      return
+    }
+  }
+
+  // Redirect authenticated users away from login page
+  if (to.path === '/login' && isAuthenticated) {
+    next('/')
+    return
+  }
+
+  next()
 })
 
 export default router

@@ -1,5 +1,10 @@
 <template>
-  <v-card>
+  <v-skeleton-loader
+    v-if="initialLoading"
+    type="card, article, actions"
+    class="mb-4"
+  />
+  <v-card v-else>
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-clipboard-check</v-icon>
@@ -204,6 +209,7 @@ const kpiStore = useKPIStore()
 const form = ref(null)
 const valid = ref(false)
 const loading = ref(false)
+const initialLoading = ref(true)
 const products = ref([])
 const defectTypes = ref([])
 const workOrders = ref([])
@@ -310,6 +316,8 @@ const loadReferenceData = async () => {
     workOrders.value = []
   } catch (error) {
     console.error('Error loading reference data:', error)
+  } finally {
+    initialLoading.value = false
   }
 }
 

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import api from '@/services/api'
 import { format, subDays } from 'date-fns'
 
-export const useKPIStore = defineStore('kpi', {
+export const useKPIStore = defineStore('productionData', {
   state: () => ({
     productionEntries: [],
     downtimeEntries: [],

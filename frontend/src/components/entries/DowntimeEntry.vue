@@ -1,5 +1,10 @@
 <template>
-  <v-card>
+  <v-skeleton-loader
+    v-if="initialLoading"
+    type="card, article, actions"
+    class="mb-4"
+  />
+  <v-card v-else>
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-alert-circle</v-icon>
@@ -138,6 +143,7 @@ const emit = defineEmits(['submitted'])
 const form = ref(null)
 const valid = ref(false)
 const loading = ref(false)
+const initialLoading = ref(true)
 const equipmentList = ref([])
 const downtimeReasons = ref([])
 const inferenceData = ref(null)
@@ -242,6 +248,8 @@ const loadReferenceData = async () => {
     downtimeReasons.value = reasonsRes.data
   } catch (error) {
     console.error('Error loading reference data:', error)
+  } finally {
+    initialLoading.value = false
   }
 }
 

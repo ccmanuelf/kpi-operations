@@ -98,7 +98,7 @@
     <!-- Keyboard Shortcuts Help Modal -->
     <KeyboardShortcutsHelp v-model="isHelpModalOpen" />
 
-    <!-- Toast notifications -->
+    <!-- Toast notifications for keyboard shortcuts -->
     <v-snackbar
       v-model="showNotification"
       :timeout="2000"
@@ -108,6 +108,28 @@
     >
       {{ notificationMessage }}
     </v-snackbar>
+
+    <!-- Global notifications from notification store -->
+    <v-snackbar
+      v-model="notificationStore.snackbar.show"
+      :timeout="notificationStore.snackbar.timeout"
+      :color="notificationStore.snackbar.color"
+      location="bottom right"
+      role="alert"
+      aria-live="assertive"
+    >
+      {{ notificationStore.snackbar.message }}
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          size="small"
+          @click="notificationStore.hide()"
+          aria-label="Close notification"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-app>
 </template>
 
@@ -115,12 +137,14 @@
 import { ref, computed, onMounted, onErrorCaptured } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 const shortcutsStore = useKeyboardShortcutsStore()
 
 // Error handling for child components

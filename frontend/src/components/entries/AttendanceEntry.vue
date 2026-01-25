@@ -1,5 +1,10 @@
 <template>
-  <v-card>
+  <v-skeleton-loader
+    v-if="initialLoading"
+    type="card, article, actions"
+    class="mb-4"
+  />
+  <v-card v-else>
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-account-clock</v-icon>
@@ -146,6 +151,7 @@ const emit = defineEmits(['submitted'])
 const form = ref(null)
 const valid = ref(false)
 const loading = ref(false)
+const initialLoading = ref(true)
 const shifts = ref([])
 
 const statuses = ['Present', 'Absent', 'Late', 'Half Day', 'Leave']
@@ -218,6 +224,8 @@ const loadShifts = async () => {
     shifts.value = response.data
   } catch (error) {
     console.error('Error loading shifts:', error)
+  } finally {
+    initialLoading.value = false
   }
 }
 
