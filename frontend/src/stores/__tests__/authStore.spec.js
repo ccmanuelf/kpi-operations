@@ -1,6 +1,7 @@
 /**
  * Unit tests for Auth Store
- * Tests authentication state management, login, register, and logout actions
+ * Tests authentication state management: login, register, logout, forgot password, reset password
+ * Phase 8: Comprehensive auth coverage
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
@@ -10,7 +11,11 @@ import { useAuthStore } from '../authStore'
 vi.mock('@/services/api', () => ({
   default: {
     login: vi.fn(),
-    register: vi.fn()
+    register: vi.fn(),
+    forgotPassword: vi.fn(),
+    resetPassword: vi.fn(),
+    verifyResetToken: vi.fn(),
+    changePassword: vi.fn()
   }
 }))
 
@@ -61,6 +66,13 @@ describe('Auth Store', () => {
       const store = useAuthStore()
 
       expect(store.token).toBe('stored-token')
+    })
+
+    it('initializes password reset state as false', () => {
+      const store = useAuthStore()
+
+      expect(store.passwordResetSent).toBe(false)
+      expect(store.passwordResetError).toBeNull()
     })
   })
 
@@ -212,6 +224,174 @@ describe('Auth Store', () => {
     })
   })
 
+  describe('Forgot Password Action', () => {
+    it('sends password reset email successfully', async () => {
+      api.forgotPassword.mockResolvedValue({ data: { message: 'Email sent' } })
+
+      const store = useAuthStore()
+      const result = await store.forgotPassword('user@test.com')
+
+      expect(result.success).toBe(true)
+      expect(result.message).toBe('Password reset email sent')
+      expect(store.passwordResetSent).toBe(true)
+      expect(store.passwordResetError).toBeNull()
+    })
+
+    it('handles forgot password failure', async () => {
+      api.forgotPassword.mockRejectedValue({
+        response: { data: { detail: 'User not found' } }
+      })
+
+      const store = useAuthStore()
+      const result = await store.forgotPassword('nonexistent@test.com')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('User not found')
+      expect(store.passwordResetSent).toBe(false)
+      expect(store.passwordResetError).toBe('User not found')
+    })
+
+    it('handles forgot password with generic error', async () => {
+      api.forgotPassword.mockRejectedValue(new Error('Network error'))
+
+      const store = useAuthStore()
+      const result = await store.forgotPassword('user@test.com')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Failed to send reset email')
+    })
+
+    it('clears previous error state before new request', async () => {
+      const store = useAuthStore()
+      store.passwordResetError = 'Previous error'
+      store.passwordResetSent = true
+
+      api.forgotPassword.mockResolvedValue({ data: {} })
+      await store.forgotPassword('user@test.com')
+
+      // Error should be cleared at start
+      expect(store.passwordResetError).toBeNull()
+    })
+  })
+
+  describe('Reset Password Action', () => {
+    it('resets password successfully', async () => {
+      api.resetPassword.mockResolvedValue({ data: { message: 'Success' } })
+
+      const store = useAuthStore()
+      const result = await store.resetPassword('valid-token', 'newPassword123')
+
+      expect(result.success).toBe(true)
+      expect(result.message).toBe('Password reset successfully')
+    })
+
+    it('handles reset password failure with expired token', async () => {
+      api.resetPassword.mockRejectedValue({
+        response: { data: { detail: 'Token expired' } }
+      })
+
+      const store = useAuthStore()
+      const result = await store.resetPassword('expired-token', 'newPassword123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Token expired')
+    })
+
+    it('handles reset password failure with invalid token', async () => {
+      api.resetPassword.mockRejectedValue({
+        response: { data: { detail: 'Invalid token' } }
+      })
+
+      const store = useAuthStore()
+      const result = await store.resetPassword('invalid-token', 'newPassword123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Invalid token')
+    })
+
+    it('handles reset password with generic error', async () => {
+      api.resetPassword.mockRejectedValue(new Error('Network error'))
+
+      const store = useAuthStore()
+      const result = await store.resetPassword('token', 'newPassword123')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Failed to reset password')
+    })
+  })
+
+  describe('Verify Reset Token Action', () => {
+    it('verifies valid token successfully', async () => {
+      api.verifyResetToken.mockResolvedValue({
+        data: { valid: true, email: 'user@test.com' }
+      })
+
+      const store = useAuthStore()
+      const result = await store.verifyResetToken('valid-token')
+
+      expect(result.success).toBe(true)
+      expect(result.valid).toBe(true)
+      expect(result.email).toBe('user@test.com')
+    })
+
+    it('handles invalid token verification', async () => {
+      api.verifyResetToken.mockRejectedValue({
+        response: { data: { detail: 'Token expired' } }
+      })
+
+      const store = useAuthStore()
+      const result = await store.verifyResetToken('expired-token')
+
+      expect(result.success).toBe(false)
+      expect(result.valid).toBe(false)
+      expect(result.error).toBe('Token expired')
+    })
+
+    it('handles verification with generic error', async () => {
+      api.verifyResetToken.mockRejectedValue(new Error('Network error'))
+
+      const store = useAuthStore()
+      const result = await store.verifyResetToken('token')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Invalid or expired token')
+    })
+  })
+
+  describe('Change Password Action', () => {
+    it('changes password successfully', async () => {
+      api.changePassword.mockResolvedValue({ data: { message: 'Changed' } })
+
+      const store = useAuthStore()
+      const result = await store.changePassword('oldPassword', 'newPassword')
+
+      expect(result.success).toBe(true)
+      expect(result.message).toBe('Password changed successfully')
+    })
+
+    it('handles incorrect current password', async () => {
+      api.changePassword.mockRejectedValue({
+        response: { data: { detail: 'Current password is incorrect' } }
+      })
+
+      const store = useAuthStore()
+      const result = await store.changePassword('wrongOld', 'newPassword')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Current password is incorrect')
+    })
+
+    it('handles change password with generic error', async () => {
+      api.changePassword.mockRejectedValue(new Error('Network error'))
+
+      const store = useAuthStore()
+      const result = await store.changePassword('old', 'new')
+
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('Failed to change password')
+    })
+  })
+
   describe('Logout Action', () => {
     it('clears token and user on logout', () => {
       const store = useAuthStore()
@@ -224,6 +404,30 @@ describe('Auth Store', () => {
       expect(store.user).toBeNull()
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('access_token')
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('user')
+    })
+
+    it('clears password reset state on logout', () => {
+      const store = useAuthStore()
+      store.passwordResetSent = true
+      store.passwordResetError = 'Some error'
+
+      store.logout()
+
+      expect(store.passwordResetSent).toBe(false)
+      expect(store.passwordResetError).toBeNull()
+    })
+  })
+
+  describe('Clear Password Reset State', () => {
+    it('clears password reset sent flag', () => {
+      const store = useAuthStore()
+      store.passwordResetSent = true
+      store.passwordResetError = 'Error'
+
+      store.clearPasswordResetState()
+
+      expect(store.passwordResetSent).toBe(false)
+      expect(store.passwordResetError).toBeNull()
     })
   })
 })

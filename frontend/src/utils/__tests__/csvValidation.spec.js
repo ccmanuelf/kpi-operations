@@ -18,13 +18,14 @@ import {
 describe('CSV Validation', () => {
   describe('Constants', () => {
     it('defines required columns', () => {
+      expect(requiredColumns).toContain('client_id')
       expect(requiredColumns).toContain('production_date')
       expect(requiredColumns).toContain('product_id')
       expect(requiredColumns).toContain('shift_id')
       expect(requiredColumns).toContain('units_produced')
       expect(requiredColumns).toContain('run_time_hours')
       expect(requiredColumns).toContain('employees_assigned')
-      expect(requiredColumns).toHaveLength(6)
+      expect(requiredColumns).toHaveLength(7)
     })
 
     it('defines optional columns', () => {
@@ -161,6 +162,7 @@ describe('CSV Validation', () => {
 
   describe('validateProductionEntry', () => {
     const validRow = {
+      client_id: 'client_1',
       production_date: '2024-01-15',
       product_id: 1,
       shift_id: 1,
@@ -205,7 +207,7 @@ describe('CSV Validation', () => {
 
       expect(result.data.defect_count).toBe(0)
       expect(result.data.scrap_count).toBe(0)
-      expect(result.data.work_order_number).toBe('')
+      expect(result.data.work_order_id).toBe('')
       expect(result.data.notes).toBe('')
     })
 
@@ -214,7 +216,7 @@ describe('CSV Validation', () => {
         ...validRow,
         defect_count: 5,
         scrap_count: 2,
-        work_order_number: 'WO-123',
+        work_order_id: 'WO-123',
         notes: 'Test note'
       }
 
@@ -222,7 +224,7 @@ describe('CSV Validation', () => {
 
       expect(result.data.defect_count).toBe(5)
       expect(result.data.scrap_count).toBe(2)
-      expect(result.data.work_order_number).toBe('WO-123')
+      expect(result.data.work_order_id).toBe('WO-123')
       expect(result.data.notes).toBe('Test note')
     })
 
@@ -324,6 +326,7 @@ describe('CSV Validation', () => {
   describe('validateHeaders', () => {
     it('validates complete headers', () => {
       const headers = [
+        'client_id',
         'production_date',
         'product_id',
         'shift_id',
@@ -344,6 +347,7 @@ describe('CSV Validation', () => {
       const result = validateHeaders(headers)
 
       expect(result.valid).toBe(false)
+      expect(result.missingColumns).toContain('client_id')
       expect(result.missingColumns).toContain('shift_id')
       expect(result.missingColumns).toContain('units_produced')
       expect(result.missingColumns).toContain('run_time_hours')
@@ -355,11 +359,12 @@ describe('CSV Validation', () => {
       const result = validateHeaders([])
 
       expect(result.valid).toBe(false)
-      expect(result.missingColumns).toHaveLength(6)
+      expect(result.missingColumns).toHaveLength(7)
     })
 
     it('ignores extra columns', () => {
       const headers = [
+        'client_id',
         'production_date',
         'product_id',
         'shift_id',

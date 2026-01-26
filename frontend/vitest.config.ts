@@ -31,7 +31,23 @@ export default defineConfig({
     },
     coverage: {
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', 'src/**/*.d.ts', 'e2e/**']
+      include: [
+        'src/services/**/*.js',
+        'src/stores/**/*.js',
+        'src/utils/**/*.js'
+      ],
+      exclude: [
+        'node_modules/',
+        'src/**/*.d.ts',
+        'e2e/**',
+        'src/**/__tests__/**'
+      ],
+      thresholds: {
+        statements: 80,
+        branches: 70,
+        functions: 75,
+        lines: 80
+      }
     }
   }
 })
