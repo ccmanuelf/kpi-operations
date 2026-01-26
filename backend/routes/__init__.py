@@ -43,6 +43,8 @@ from .floating_pool import router as floating_pool_router
 from .floating_pool import client_floating_pool_router
 from .part_opportunities import router as part_opportunities_router
 from .reference import router as reference_router
+from .data_completeness import router as data_completeness_router
+from .my_shift import router as my_shift_router
 
 __all__ = [
     # Existing routers
@@ -78,5 +80,7 @@ __all__ = [
     "floating_pool_router",
     "client_floating_pool_router",
     "part_opportunities_router",
-    "reference_router"
+    "reference_router",
+    "data_completeness_router",
+    "my_shift_router"
 ]

@@ -98,6 +98,20 @@ const router = createRouter({
       component: () => import('@/components/entries/HoldResumeEntry.vue'),
       meta: { requiresAuth: true }
     },
+    // Work Order Management
+    {
+      path: '/work-orders',
+      name: 'work-orders',
+      component: () => import('@/views/WorkOrderManagement.vue'),
+      meta: { requiresAuth: true }
+    },
+    // My Shift Dashboard - Operator personalized view
+    {
+      path: '/my-shift',
+      name: 'my-shift',
+      component: () => import('@/views/MyShiftDashboard.vue'),
+      meta: { requiresAuth: true }
+    },
     // Admin Routes
     {
       path: '/admin/settings',

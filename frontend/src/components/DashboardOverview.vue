@@ -9,6 +9,12 @@
       </v-col>
     </v-row>
 
+    <!-- Shift Status Banner -->
+    <ShiftStatusBanner
+      @start-shift="handleStartShift"
+      @end-shift="handleEndShift"
+    />
+
     <!-- Absenteeism Alert Banner (P3-004) -->
     <AbsenteeismAlert
       :threshold="5"
@@ -244,64 +250,54 @@
 
     <!-- Data Quality Indicators -->
     <v-row class="mt-4">
-      <v-col cols="12">
+      <v-col cols="12" lg="6">
+        <DataCompletenessIndicator
+          :date="endDate"
+          @navigate="handleCompletenessNavigate"
+        />
+      </v-col>
+      <v-col cols="12" lg="6">
         <v-card elevation="2">
-          <v-card-title>Data Quality Status</v-card-title>
-          <v-card-text>
+          <v-card-title class="bg-grey-darken-3 text-white py-2">
+            <v-icon class="mr-2" size="24">mdi-chart-box</v-icon>
+            System Health
+          </v-card-title>
+          <v-card-text class="pa-4">
             <v-row>
-              <v-col cols="12" md="3">
-                <div class="text-center">
-                  <v-progress-circular
-                    :model-value="100"
-                    :size="100"
-                    :width="10"
-                    color="success"
-                  >
-                    <span class="text-h5 font-weight-bold">10/10</span>
-                  </v-progress-circular>
-                  <div class="text-subtitle-2 mt-2">KPIs Active</div>
-                </div>
+              <v-col cols="6" class="text-center">
+                <v-progress-circular
+                  :model-value="100"
+                  :size="80"
+                  :width="8"
+                  color="success"
+                >
+                  <span class="text-h6 font-weight-bold">10/10</span>
+                </v-progress-circular>
+                <div class="text-subtitle-2 mt-2">KPIs Active</div>
               </v-col>
-              <v-col cols="12" md="3">
-                <div class="text-center">
-                  <v-progress-circular
-                    :model-value="95"
-                    :size="100"
-                    :width="10"
-                    color="primary"
-                  >
-                    <span class="text-h5 font-weight-bold">95%</span>
-                  </v-progress-circular>
-                  <div class="text-subtitle-2 mt-2">Data Completeness</div>
-                </div>
-              </v-col>
-              <v-col cols="12" md="3">
-                <div class="text-center">
-                  <v-progress-circular
-                    :model-value="88"
-                    :size="100"
-                    :width="10"
-                    color="info"
-                  >
-                    <span class="text-h5 font-weight-bold">88%</span>
-                  </v-progress-circular>
-                  <div class="text-subtitle-2 mt-2">Inference Confidence</div>
-                </div>
-              </v-col>
-              <v-col cols="12" md="3">
-                <div class="text-center">
-                  <v-progress-circular
-                    :model-value="100"
-                    :size="100"
-                    :width="10"
-                    color="success"
-                  >
-                    <span class="text-h5 font-weight-bold">100%</span>
-                  </v-progress-circular>
-                  <div class="text-subtitle-2 mt-2">System Health</div>
-                </div>
+              <v-col cols="6" class="text-center">
+                <v-progress-circular
+                  :model-value="88"
+                  :size="80"
+                  :width="8"
+                  color="info"
+                >
+                  <span class="text-h6 font-weight-bold">88%</span>
+                </v-progress-circular>
+                <div class="text-subtitle-2 mt-2">Inference Confidence</div>
               </v-col>
             </v-row>
+            <v-divider class="my-4" />
+            <div class="d-flex justify-space-between align-center">
+              <div>
+                <v-icon color="success" class="mr-1">mdi-check-circle</v-icon>
+                <span class="text-body-2">API Status: Healthy</span>
+              </div>
+              <div>
+                <v-icon color="success" class="mr-1">mdi-database</v-icon>
+                <span class="text-body-2">Database: Connected</span>
+              </div>
+            </div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -367,8 +363,12 @@ import BradfordFactorWidget from './widgets/BradfordFactorWidget.vue'
 import QualityByOperatorWidget from './widgets/QualityByOperatorWidget.vue'
 import ReworkByOperationWidget from './widgets/ReworkByOperationWidget.vue'
 import AbsenteeismAlert from './alerts/AbsenteeismAlert.vue'
+import DataCompletenessIndicator from './DataCompletenessIndicator.vue'
+import ShiftStatusBanner from './workflow/ShiftStatusBanner.vue'
+import { useWorkflowStore } from '@/stores/workflowStore'
 
 const router = useRouter()
+const workflowStore = useWorkflowStore()
 
 const props = defineProps<{
   dateRange: string
@@ -487,5 +487,19 @@ const exportQualityReport = () => {
 const openActionDialog = () => {
   console.log('Opening corrective action dialog')
   // Implementation: Open modal for creating corrective action items
+}
+
+const handleCompletenessNavigate = (categoryId: string, route: string) => {
+  console.log(`Navigating to ${categoryId} at ${route}`)
+  // Navigation is handled by the component itself
+}
+
+// Shift workflow handlers
+const handleStartShift = () => {
+  workflowStore.startWorkflow('shift-start')
+}
+
+const handleEndShift = () => {
+  workflowStore.startWorkflow('shift-end')
 }
 </script>

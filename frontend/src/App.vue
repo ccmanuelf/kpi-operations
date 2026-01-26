@@ -55,6 +55,8 @@
 
       <v-list density="compact" nav aria-label="Primary navigation">
         <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/" aria-label="Go to Dashboard" />
+        <v-list-item prepend-icon="mdi-account-hard-hat" title="My Shift" value="my-shift" to="/my-shift" aria-label="Go to My Shift Dashboard - personalized operator view" />
+        <v-list-item prepend-icon="mdi-clipboard-list" title="Work Orders" value="work-orders" to="/work-orders" aria-label="Go to Work Order Management" />
         <v-list-item prepend-icon="mdi-factory" title="Production Entry" value="production" to="/production-entry" aria-label="Go to Production Entry" />
         <v-list-item prepend-icon="mdi-chart-box" title="KPI Dashboard" value="kpi-dashboard" to="/kpi-dashboard" aria-label="Go to KPI Dashboard" />
 
@@ -130,6 +132,9 @@
         </v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Quick Actions FAB for Workflow Navigation -->
+    <QuickActionsFAB v-if="isAuthenticated" />
   </v-app>
 </template>
 
@@ -141,6 +146,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
+import QuickActionsFAB from '@/components/QuickActionsFAB.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

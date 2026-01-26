@@ -94,7 +94,9 @@ from backend.routes import (
     floating_pool_router,
     client_floating_pool_router,
     part_opportunities_router,
-    reference_router
+    reference_router,
+    data_completeness_router,
+    my_shift_router
 )
 
 # Import defect type catalog router
@@ -180,6 +182,16 @@ app.include_router(part_opportunities_router)
 # Register reference data routes
 # ============================================================================
 app.include_router(reference_router)
+
+# ============================================================================
+# Register data completeness routes
+# ============================================================================
+app.include_router(data_completeness_router)
+
+# ============================================================================
+# Register My Shift routes (operator personalized dashboard)
+# ============================================================================
+app.include_router(my_shift_router)
 
 # ============================================================================
 # Register CSV upload routes for all resources
