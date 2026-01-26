@@ -722,3 +722,629 @@ a:focus-visible {
     border-left-width: 4px !important;
   }
 }
+
+/* ============================================
+   UI/UX POLISH - MANUFACTURING ENVIRONMENT
+   ============================================ */
+
+/* Mobile-first responsive container padding */
+.v-container {
+  padding: var(--cds-spacing-04) !important;
+}
+
+@media (min-width: 600px) {
+  .v-container {
+    padding: var(--cds-spacing-05) !important;
+  }
+}
+
+@media (min-width: 960px) {
+  .v-container {
+    padding: var(--cds-spacing-06) !important;
+  }
+}
+
+/* Consistent card spacing for dashboard layouts */
+.v-col > .v-card {
+  height: 100%;
+}
+
+.v-row + .v-row {
+  margin-top: var(--cds-spacing-05);
+}
+
+/* Page title hierarchy */
+.page-title,
+h1.text-h3,
+h1.text-h4 {
+  font-weight: 600 !important;
+  color: var(--cds-text-primary) !important;
+  margin-bottom: var(--cds-spacing-02) !important;
+}
+
+.page-subtitle,
+p.text-subtitle-1 {
+  color: var(--cds-text-secondary) !important;
+  margin-bottom: var(--cds-spacing-05) !important;
+}
+
+/* Section headings */
+h2.text-h5 {
+  font-weight: 600 !important;
+  color: var(--cds-text-primary) !important;
+  margin-bottom: var(--cds-spacing-04) !important;
+  padding-bottom: var(--cds-spacing-03);
+  border-bottom: 1px solid var(--cds-border-subtle-00);
+}
+
+/* ============================================
+   ENHANCED INTERACTIVE STATES
+   ============================================ */
+
+/* Button hover enhancement for industrial touch screens */
+.v-btn {
+  transition: all var(--cds-duration-fast-02) var(--cds-easing-standard-productive) !important;
+}
+
+.v-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.v-btn:not(:disabled):active {
+  transform: translateY(0);
+}
+
+/* Large touch targets for factory floor use */
+.v-btn--size-default {
+  min-height: 44px !important; /* WCAG minimum touch target */
+}
+
+.v-list-item {
+  min-height: 48px !important;
+}
+
+/* Card interactive states */
+.v-card[role="button"],
+.v-card--link,
+.v-card.cursor-pointer {
+  cursor: pointer;
+  transition: all var(--cds-duration-moderate-01) var(--cds-easing-standard-productive) !important;
+}
+
+.v-card[role="button"]:hover,
+.v-card--link:hover,
+.v-card.cursor-pointer:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--cds-shadow-md) !important;
+}
+
+.v-card[role="button"]:active,
+.v-card--link:active,
+.v-card.cursor-pointer:active {
+  transform: translateY(0);
+}
+
+/* ============================================
+   FORM ENHANCEMENTS
+   ============================================ */
+
+/* Real-time validation visual feedback */
+.v-field--error .v-field__outline {
+  border-color: var(--cds-support-error) !important;
+  border-width: 2px !important;
+}
+
+.v-field--error .v-label {
+  color: var(--cds-support-error) !important;
+}
+
+/* Success state for validated fields */
+.v-field--validated {
+  position: relative;
+}
+
+.v-field--validated::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23198038' d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") no-repeat center;
+}
+
+/* Input focus enhancement for visibility */
+.v-field:focus-within {
+  box-shadow: 0 0 0 3px rgba(15, 98, 254, 0.2) !important;
+}
+
+/* Tab order visual indicator */
+.v-field input:focus {
+  outline: none !important;
+}
+
+/* ============================================
+   DATA TABLE ENHANCEMENTS
+   ============================================ */
+
+/* Striped rows for easier scanning */
+.v-data-table__tbody tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02) !important;
+}
+
+[data-theme="dark"] .v-data-table__tbody tr:nth-child(even),
+.dark-theme .v-data-table__tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Row hover enhancement */
+.v-data-table__tbody tr:hover {
+  background-color: var(--cds-layer-hover) !important;
+}
+
+/* Sortable column indicator */
+.v-data-table__thead th[aria-sort] {
+  cursor: pointer;
+}
+
+.v-data-table__thead th[aria-sort]:hover {
+  background-color: var(--cds-background-hover) !important;
+}
+
+/* Loading state for tables */
+.v-data-table--loading {
+  position: relative;
+}
+
+.v-data-table--loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(1px);
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-loader {
+  background: linear-gradient(
+    90deg,
+    var(--cds-gray-20) 0%,
+    var(--cds-gray-10) 50%,
+    var(--cds-gray-20) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--cds-border-radius-sm);
+}
+
+/* Pulse animation for loading indicators */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   SNACKBAR / TOAST ENHANCEMENTS
+   ============================================ */
+
+/* Success toast */
+.v-snackbar--variant-flat.bg-success .v-snackbar__wrapper {
+  background-color: var(--cds-green-60) !important;
+}
+
+/* Error toast */
+.v-snackbar--variant-flat.bg-error .v-snackbar__wrapper {
+  background-color: var(--cds-red-60) !important;
+}
+
+/* Warning toast */
+.v-snackbar--variant-flat.bg-warning .v-snackbar__wrapper {
+  background-color: var(--cds-yellow-30) !important;
+  color: var(--cds-gray-100) !important;
+}
+
+/* Info toast */
+.v-snackbar--variant-flat.bg-info .v-snackbar__wrapper {
+  background-color: var(--cds-blue-60) !important;
+}
+
+/* Toast action button */
+.v-snackbar .v-btn {
+  font-weight: 500 !important;
+}
+
+/* ============================================
+   DIALOG / MODAL ENHANCEMENTS
+   ============================================ */
+
+/* Dialog backdrop */
+.v-overlay__scrim {
+  background: rgba(22, 22, 22, 0.5) !important;
+  backdrop-filter: blur(2px);
+}
+
+/* Dialog entrance animation */
+.v-dialog {
+  animation: dialogEnter var(--cds-duration-moderate-02) var(--cds-easing-entrance-expressive);
+}
+
+@keyframes dialogEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ============================================
+   HIGH CONTRAST MODE ENHANCEMENTS
+   ============================================ */
+
+/* Manufacturing environments often have bright lighting */
+.high-contrast-mode {
+  --cds-text-primary: #000000;
+  --cds-text-secondary: #333333;
+  --cds-border-subtle-00: #666666;
+  --cds-border-subtle-01: #444444;
+}
+
+.high-contrast-mode .v-card {
+  border-width: 2px !important;
+}
+
+.high-contrast-mode .v-btn {
+  border-width: 2px !important;
+  font-weight: 600 !important;
+}
+
+.high-contrast-mode .kpi-value {
+  font-weight: 700 !important;
+}
+
+/* ============================================
+   MOBILE / TOUCH OPTIMIZATIONS
+   ============================================ */
+
+@media (max-width: 600px) {
+  /* Larger touch targets on mobile */
+  .v-btn {
+    min-height: 48px !important;
+    font-size: var(--cds-body-short-02-font-size) !important;
+  }
+
+  /* Full width buttons on mobile */
+  .v-card-actions .v-btn {
+    flex: 1;
+  }
+
+  /* Simplified card padding */
+  .v-card-text {
+    padding: var(--cds-spacing-04) !important;
+  }
+
+  /* Stack filter controls */
+  .filter-bar {
+    flex-direction: column !important;
+  }
+
+  .filter-bar > * {
+    width: 100% !important;
+    margin-bottom: var(--cds-spacing-03);
+  }
+
+  /* Hide less important columns */
+  .v-data-table td.hidden-mobile,
+  .v-data-table th.hidden-mobile {
+    display: none !important;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Cursor utilities */
+.cursor-pointer { cursor: pointer; }
+.cursor-help { cursor: help; }
+.cursor-not-allowed { cursor: not-allowed; }
+.cursor-grab { cursor: grab; }
+
+/* Gap utilities */
+.gap-1 { gap: var(--cds-spacing-01); }
+.gap-2 { gap: var(--cds-spacing-02); }
+.gap-3 { gap: var(--cds-spacing-03); }
+.gap-4 { gap: var(--cds-spacing-04); }
+.gap-5 { gap: var(--cds-spacing-05); }
+.gap-6 { gap: var(--cds-spacing-06); }
+
+/* Text utilities */
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.text-truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Animation utilities */
+.animate-fade-in {
+  animation: fadeIn var(--cds-duration-moderate-02) var(--cds-easing-entrance-productive);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp var(--cds-duration-moderate-02) var(--cds-easing-entrance-productive);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Status indicator utilities */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--cds-spacing-02);
+}
+
+.status-dot--success { background-color: var(--cds-green-50); }
+.status-dot--warning { background-color: var(--cds-yellow-30); }
+.status-dot--error { background-color: var(--cds-red-50); }
+.status-dot--info { background-color: var(--cds-blue-50); }
+.status-dot--neutral { background-color: var(--cds-gray-50); }
+
+/* Pulsing status for active items */
+.status-dot--active {
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    box-shadow: 0 0 0 4px currentColor;
+    opacity: 0.3;
+  }
+}
+
+/* Scroll behavior */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Sticky header utility */
+.sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--cds-layer-02);
+}
+
+/* ============================================
+   DARK MODE TRANSITIONS
+   ============================================ */
+
+/* Smooth theme transition */
+body,
+.v-application,
+.v-card,
+.v-data-table,
+.v-navigation-drawer,
+.v-app-bar {
+  transition: background-color var(--cds-duration-moderate-02) var(--cds-easing-standard-productive),
+              color var(--cds-duration-moderate-02) var(--cds-easing-standard-productive),
+              border-color var(--cds-duration-moderate-02) var(--cds-easing-standard-productive);
+}
+
+/* ============================================
+   WCAG 2.1 AA ACCESSIBILITY ENHANCEMENTS
+   ============================================ */
+
+/* Status indicators that don't rely on color alone */
+.status-badge-accessible {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: var(--cds-label-01-font-size);
+  font-weight: 600;
+}
+
+.status-badge-accessible--success {
+  background-color: var(--cds-green-20);
+  color: var(--cds-green-70);
+  border: 1px solid var(--cds-green-50);
+}
+
+.status-badge-accessible--success::before {
+  content: '\2713'; /* Checkmark */
+  font-weight: bold;
+}
+
+.status-badge-accessible--warning {
+  background-color: var(--cds-yellow-20);
+  color: var(--cds-yellow-70);
+  border: 1px solid var(--cds-yellow-50);
+}
+
+.status-badge-accessible--warning::before {
+  content: '\26A0'; /* Warning triangle */
+}
+
+.status-badge-accessible--error {
+  background-color: var(--cds-red-20);
+  color: var(--cds-red-70);
+  border: 1px solid var(--cds-red-50);
+}
+
+.status-badge-accessible--error::before {
+  content: '\2717'; /* X mark */
+  font-weight: bold;
+}
+
+/* Enhanced focus for data tables */
+.v-data-table :deep(tbody tr:focus-visible) {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: -2px !important;
+  background-color: var(--cds-layer-hover) !important;
+}
+
+/* Interactive table rows with keyboard navigation */
+.v-data-table--clickable :deep(tbody tr[tabindex="0"]:focus-visible) {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: -2px;
+}
+
+/* Chip focus states for better visibility */
+.v-chip:focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* FAB focus states */
+.v-fab:focus-visible,
+.v-speed-dial .v-btn:focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(15, 98, 254, 0.3) !important;
+}
+
+/* Dialog focus trap styling */
+.v-dialog[role="dialog"]:focus,
+.v-dialog[role="alertdialog"]:focus {
+  outline: none;
+}
+
+/* Menu and dropdown accessibility */
+.v-menu .v-list-item:focus-visible {
+  background-color: var(--cds-layer-hover) !important;
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: -2px !important;
+}
+
+/* Tab navigation indicators */
+.v-tabs .v-tab:focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: -2px !important;
+}
+
+/* Ensure icon buttons have minimum touch target size (44x44px WCAG) */
+.v-btn--icon {
+  min-width: 44px !important;
+  min-height: 44px !important;
+}
+
+/* Ensure tooltips have sufficient contrast (4.5:1 minimum) */
+.v-tooltip > .v-overlay__content {
+  background-color: var(--cds-gray-90) !important;
+  color: white !important;
+  font-size: 14px !important;
+  padding: 8px 12px !important;
+}
+
+/* Skip link improvements for industrial visibility */
+.skip-to-main:focus {
+  position: fixed !important;
+  top: var(--cds-spacing-03) !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10000 !important;
+  padding: var(--cds-spacing-04) var(--cds-spacing-06) !important;
+  background-color: var(--cds-blue-60) !important;
+  color: white !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  border-radius: var(--cds-border-radius-md) !important;
+  box-shadow: var(--cds-shadow-lg) !important;
+  text-decoration: none !important;
+}
+
+/* Screen reader only text - duplicate for safety */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Focus visible polyfill for older browsers */
+.js-focus-visible :focus:not(.focus-visible) {
+  outline: none;
+}
+
+.js-focus-visible .focus-visible {
+  outline: 2px solid var(--cds-focus) !important;
+  outline-offset: 2px !important;
+}
+
+/* Ensure form errors are visible and accessible */
+.v-messages--error {
+  color: var(--cds-support-error) !important;
+  font-weight: 500 !important;
+}
+
+/* Progress bar accessibility - ensure visible track */
+.v-progress-linear__background {
+  background-color: var(--cds-gray-30) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure loading overlays don't trap focus */
+.v-overlay--active:not([role="dialog"]) {
+  pointer-events: none;
+}
+
+.v-overlay--active:not([role="dialog"]) .v-progress-circular {
+  pointer-events: auto;
+}

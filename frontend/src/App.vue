@@ -248,4 +248,58 @@ onMounted(() => {
 .fade-leave-to {
   opacity: 0;
 }
+
+/* Enhanced route transitions */
+.slide-fade-enter-active {
+  transition: all 0.2s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.15s ease-in;
+}
+
+.slide-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* Active navigation item enhancement */
+.v-navigation-drawer .v-list-item--active {
+  position: relative;
+}
+
+.v-navigation-drawer .v-list-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background-color: var(--cds-blue-60);
+  border-radius: 0 2px 2px 0;
+}
+
+/* App bar action buttons hover */
+.v-app-bar .v-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Main content area padding for mobile */
+@media (max-width: 600px) {
+  .v-main > .v-container {
+    padding: var(--cds-spacing-03) !important;
+  }
+}
+
+/* Snackbar positioning for mobile nav */
+@media (max-width: 600px) {
+  .v-snackbar {
+    bottom: 80px !important;
+  }
+}
 </style>

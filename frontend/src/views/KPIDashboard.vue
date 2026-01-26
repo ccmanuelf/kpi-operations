@@ -1,9 +1,9 @@
 <template>
-  <v-container fluid class="pa-4">
+  <v-container fluid class="pa-4" role="main" aria-labelledby="kpi-dashboard-title">
     <!-- Header with title and actions -->
     <v-row class="mb-2">
       <v-col cols="12" md="6">
-        <h1 class="text-h3">KPI Dashboard</h1>
+        <h1 id="kpi-dashboard-title" class="text-h3">KPI Dashboard</h1>
         <p class="text-subtitle-1 text-grey">Real-time performance metrics across all operations</p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2">
@@ -16,6 +16,7 @@
               variant="tonal"
               prepend-icon="mdi-qrcode-scan"
               @click="showQRScanner = true"
+              aria-label="Open QR code scanner for quick data entry"
             >
               QR Scanner
             </v-btn>
@@ -134,6 +135,8 @@
           variant="text"
           @click="refreshData"
           :loading="loading"
+          aria-label="Refresh dashboard data"
+          :aria-busy="loading"
         />
       </v-col>
     </v-row>
@@ -222,49 +225,74 @@
     <!-- Trend Charts Section -->
     <v-row class="mt-4">
       <v-col cols="12">
-        <v-card>
+        <v-card role="region" aria-labelledby="trends-title">
           <v-card-title class="d-flex justify-space-between align-center">
-            <span>Performance Trends</span>
+            <span id="trends-title">Performance Trends</span>
             <v-btn-toggle
               v-model="trendPeriod"
               mandatory
               density="compact"
               @update:model-value="refreshData"
+              aria-label="Select trend period"
             >
-              <v-btn value="7" size="small">7 Days</v-btn>
-              <v-btn value="30" size="small">30 Days</v-btn>
-              <v-btn value="90" size="small">90 Days</v-btn>
+              <v-btn value="7" size="small" aria-label="Show 7 days trend">7 Days</v-btn>
+              <v-btn value="30" size="small" aria-label="Show 30 days trend">30 Days</v-btn>
+              <v-btn value="90" size="small" aria-label="Show 90 days trend">90 Days</v-btn>
             </v-btn-toggle>
           </v-card-title>
           <v-card-text>
             <v-row>
               <v-col cols="12" md="6">
-                <Line
-                  v-if="efficiencyChartData.labels.length"
-                  :data="efficiencyChartData"
-                  :options="chartOptions"
-                />
+                <figure role="img" aria-label="Efficiency trend chart showing performance over time">
+                  <Line
+                    v-if="efficiencyChartData.labels.length"
+                    :data="efficiencyChartData"
+                    :options="chartOptions"
+                  />
+                  <figcaption class="sr-only">
+                    Efficiency trend chart displaying {{ efficiencyChartData.labels.length }} data points.
+                    Latest value: {{ efficiencyChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                  </figcaption>
+                </figure>
               </v-col>
               <v-col cols="12" md="6">
-                <Line
-                  v-if="qualityChartData.labels.length"
-                  :data="qualityChartData"
-                  :options="chartOptions"
-                />
+                <figure role="img" aria-label="Quality FPY trend chart showing first pass yield over time">
+                  <Line
+                    v-if="qualityChartData.labels.length"
+                    :data="qualityChartData"
+                    :options="chartOptions"
+                  />
+                  <figcaption class="sr-only">
+                    Quality FPY trend chart displaying {{ qualityChartData.labels.length }} data points.
+                    Latest value: {{ qualityChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                  </figcaption>
+                </figure>
               </v-col>
               <v-col cols="12" md="6">
-                <Line
-                  v-if="availabilityChartData.labels.length"
-                  :data="availabilityChartData"
-                  :options="chartOptions"
-                />
+                <figure role="img" aria-label="Availability trend chart showing equipment uptime over time">
+                  <Line
+                    v-if="availabilityChartData.labels.length"
+                    :data="availabilityChartData"
+                    :options="chartOptions"
+                  />
+                  <figcaption class="sr-only">
+                    Availability trend chart displaying {{ availabilityChartData.labels.length }} data points.
+                    Latest value: {{ availabilityChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                  </figcaption>
+                </figure>
               </v-col>
               <v-col cols="12" md="6">
-                <Line
-                  v-if="oeeChartData.labels.length"
-                  :data="oeeChartData"
-                  :options="chartOptions"
-                />
+                <figure role="img" aria-label="OEE trend chart showing overall equipment effectiveness over time">
+                  <Line
+                    v-if="oeeChartData.labels.length"
+                    :data="oeeChartData"
+                    :options="chartOptions"
+                  />
+                  <figcaption class="sr-only">
+                    OEE trend chart displaying {{ oeeChartData.labels.length }} data points.
+                    Latest value: {{ oeeChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                  </figcaption>
+                </figure>
               </v-col>
             </v-row>
           </v-card-text>
@@ -330,9 +358,15 @@
     </v-overlay>
 
     <!-- Email Report Dialog -->
-    <v-dialog v-model="emailDialog" max-width="500px">
+    <v-dialog
+      v-model="emailDialog"
+      max-width="500px"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="email-dialog-title"
+    >
       <v-card>
-        <v-card-title class="text-h5">Email Report</v-card-title>
+        <v-card-title id="email-dialog-title" class="text-h5">Email Report</v-card-title>
         <v-card-text>
           <v-form ref="emailForm" v-model="emailFormValid">
             <v-combobox
@@ -376,10 +410,12 @@
       v-model="snackbar"
       :color="snackbarColor"
       :timeout="4000"
+      role="alert"
+      :aria-live="snackbarColor === 'error' ? 'assertive' : 'polite'"
     >
       {{ snackbarMessage }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar = false">
+        <v-btn variant="text" @click="snackbar = false" aria-label="Close notification">
           Close
         </v-btn>
       </template>
@@ -397,14 +433,20 @@
     />
 
     <!-- QR Scanner Dialog -->
-    <v-dialog v-model="showQRScanner" max-width="500px">
+    <v-dialog
+      v-model="showQRScanner"
+      max-width="500px"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="qr-scanner-title"
+    >
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-qrcode-scan</v-icon>
-          Quick QR Scanner
+          <v-icon class="mr-2" aria-hidden="true">mdi-qrcode-scan</v-icon>
+          <span id="qr-scanner-title">Quick QR Scanner</span>
           <v-spacer />
-          <v-btn icon variant="text" @click="showQRScanner = false">
-            <v-icon>mdi-close</v-icon>
+          <v-btn icon variant="text" @click="showQRScanner = false" aria-label="Close QR scanner">
+            <v-icon aria-hidden="true">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
         <v-card-text class="pa-0">
@@ -417,11 +459,17 @@
     </v-dialog>
 
     <!-- Save Filter Dialog -->
-    <v-dialog v-model="showSaveFilterDialog" max-width="450px">
+    <v-dialog
+      v-model="showSaveFilterDialog"
+      max-width="450px"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="save-filter-title"
+    >
       <v-card>
         <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-content-save</v-icon>
-          Save Current Filter
+          <v-icon class="mr-2" aria-hidden="true">mdi-content-save</v-icon>
+          <span id="save-filter-title">Save Current Filter</span>
         </v-card-title>
         <v-card-text>
           <v-form ref="saveFilterForm" v-model="saveFilterFormValid">

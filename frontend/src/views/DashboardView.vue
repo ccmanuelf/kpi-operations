@@ -1,18 +1,20 @@
 <template>
-  <v-container fluid>
-    <v-row>
+  <v-container fluid role="main" aria-labelledby="dashboard-page-title">
+    <!-- Page Header -->
+    <v-row class="mb-2">
       <v-col cols="12" md="6">
-        <h1 class="text-h3 mb-4">Production Dashboard</h1>
+        <h1 id="dashboard-page-title" class="text-h3">Production Dashboard</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">Real-time manufacturing performance overview</p>
       </v-col>
-      <v-col cols="12" md="6" class="d-flex align-center justify-end">
+      <v-col cols="12" md="6" class="d-flex align-center justify-end flex-wrap ga-3">
         <v-btn
           color="purple"
           variant="outlined"
           size="small"
-          class="mr-3"
           @click="showEmailDialog = true"
+          aria-label="Open email reports dialog"
+          prepend-icon="mdi-email-outline"
         >
-          <v-icon start>mdi-email-outline</v-icon>
           Email Reports
         </v-btn>
         <v-select
@@ -28,18 +30,29 @@
           :loading="loadingClients"
           style="max-width: 250px"
           @update:model-value="onClientChange"
+          aria-label="Filter dashboard by client"
         />
       </v-col>
     </v-row>
 
-    <v-row>
-      <v-col cols="12" md="3">
+    <!-- KPI Summary Cards with Loading State -->
+    <v-row role="region" aria-label="Key Performance Indicators Summary">
+      <!-- Skeleton loaders while loading -->
+      <template v-if="initialLoading">
+        <v-col v-for="i in 4" :key="i" cols="12" sm="6" md="3">
+          <CardSkeleton variant="stats" />
+        </v-col>
+      </template>
+
+      <template v-else>
+        <v-col cols="12" sm="6" md="3">
         <v-tooltip location="bottom" max-width="300">
           <template v-slot:activator="{ props }">
-            <v-card v-bind="props" class="cursor-help">
+            <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-units-label">
               <v-card-text>
-                <div class="text-overline">Today's Units</div>
-                <div class="text-h4">{{ totalUnitsToday }}</div>
+                <div id="kpi-units-label" class="text-overline">Today's Units</div>
+                <div class="text-h4" aria-live="polite">{{ totalUnitsToday }}</div>
+                <span class="sr-only">units produced today</span>
               </v-card-text>
             </v-card>
           </template>
@@ -53,16 +66,17 @@
       <v-col cols="12" md="3">
         <v-tooltip location="bottom" max-width="300">
           <template v-slot:activator="{ props }">
-            <v-card v-bind="props" class="cursor-help">
+            <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-efficiency-label">
               <v-card-text>
-                <div class="text-overline">Avg Efficiency</div>
-                <div class="text-h4">{{ averageEfficiency }}%</div>
+                <div id="kpi-efficiency-label" class="text-overline">Avg Efficiency</div>
+                <div class="text-h4" aria-live="polite">{{ averageEfficiency }}%</div>
+                <span class="sr-only">average efficiency percentage</span>
               </v-card-text>
             </v-card>
           </template>
           <div>
             <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Efficiency = (Actual Output / Expected Output) × 100</div>
+            <div class="tooltip-formula">Efficiency = (Actual Output / Expected Output) times 100</div>
             <div class="tooltip-title">Meaning:</div>
             <div class="tooltip-meaning">Measures how well resources are utilized to produce output.</div>
           </div>
@@ -72,16 +86,17 @@
       <v-col cols="12" md="3">
         <v-tooltip location="bottom" max-width="300">
           <template v-slot:activator="{ props }">
-            <v-card v-bind="props" class="cursor-help">
+            <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-performance-label">
               <v-card-text>
-                <div class="text-overline">Avg Performance</div>
-                <div class="text-h4">{{ averagePerformance }}%</div>
+                <div id="kpi-performance-label" class="text-overline">Avg Performance</div>
+                <div class="text-h4" aria-live="polite">{{ averagePerformance }}%</div>
+                <span class="sr-only">average performance percentage</span>
               </v-card-text>
             </v-card>
           </template>
           <div>
             <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Performance = (Actual Rate / Standard Rate) × 100</div>
+            <div class="tooltip-formula">Performance = (Actual Rate / Standard Rate) times 100</div>
             <div class="tooltip-title">Meaning:</div>
             <div class="tooltip-meaning">Measures production speed compared to the ideal cycle time.</div>
           </div>
@@ -91,10 +106,11 @@
       <v-col cols="12" md="3">
         <v-tooltip location="bottom" max-width="300">
           <template v-slot:activator="{ props }">
-            <v-card v-bind="props" class="cursor-help">
+            <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-entries-label">
               <v-card-text>
-                <div class="text-overline">Total Entries</div>
-                <div class="text-h4">{{ productionEntries.length }}</div>
+                <div id="kpi-entries-label" class="text-overline">Total Entries</div>
+                <div class="text-h4" aria-live="polite">{{ productionEntries.length }}</div>
+                <span class="sr-only">total production entries</span>
               </v-card-text>
             </v-card>
           </template>
@@ -104,13 +120,15 @@
           </div>
         </v-tooltip>
       </v-col>
+      </template>
     </v-row>
 
-    <v-row>
+    <!-- Production Entries Table -->
+    <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title class="d-flex align-center">
-            <span>Production Entries</span>
+          <v-card-title class="d-flex align-center flex-wrap ga-3">
+            <span class="text-h6">Production Entries</span>
             <v-spacer />
             <v-btn
               color="success"
@@ -119,8 +137,9 @@
               class="mr-2"
               @click="exportToCSV"
               :disabled="productionEntries.length === 0"
+              aria-label="Export production entries to CSV file"
             >
-              <v-icon start>mdi-file-delimited</v-icon>
+              <v-icon start aria-hidden="true">mdi-file-delimited</v-icon>
               Export CSV
             </v-btn>
             <v-btn
@@ -129,19 +148,37 @@
               size="small"
               @click="exportToExcel"
               :disabled="productionEntries.length === 0"
+              aria-label="Export production entries to Excel file"
             >
-              <v-icon start>mdi-file-excel</v-icon>
+              <v-icon start aria-hidden="true">mdi-file-excel</v-icon>
               Export Excel
             </v-btn>
           </v-card-title>
           <v-card-text>
+            <!-- Loading Skeleton -->
+            <TableSkeleton v-if="initialLoading" :rows="5" :columns="7" />
+
+            <!-- Empty State -->
+            <EmptyState
+              v-else-if="!loading && productionEntries.length === 0"
+              variant="no-data"
+              title="No production data available"
+              :description="selectedClient ? 'No entries found for the selected client filter. Try clearing the filter or selecting a different client.' : 'Production entries will appear here once data is recorded.'"
+              :action-text="selectedClient ? 'Clear Filter' : ''"
+              @action="selectedClient = null; onClientChange()"
+            />
+
+            <!-- Data Table -->
             <v-data-table
+              v-else
               :headers="headers"
               :items="productionEntries"
               :loading="loading"
               :items-per-page="10"
               :items-per-page-options="[10, 25, 50, 100]"
               class="elevation-1"
+              aria-label="Production entries table"
+              hover
             >
               <template v-slot:item.production_date="{ item }">
                 {{ formatDate(item.production_date) }}
@@ -164,13 +201,23 @@
                 <span>{{ getShiftName(item.shift_id) }}</span>
               </template>
               <template v-slot:item.efficiency_percentage="{ item }">
-                <v-chip :color="getEfficiencyColor(item.efficiency_percentage)" size="small">
+                <v-chip
+                  :color="getEfficiencyColor(item.efficiency_percentage)"
+                  size="small"
+                  :aria-label="`Efficiency: ${parseFloat(item.efficiency_percentage || 0).toFixed(2)} percent, status: ${getEfficiencyColor(item.efficiency_percentage)}`"
+                >
                   {{ parseFloat(item.efficiency_percentage || 0).toFixed(2) }}%
+                  <span class="sr-only">({{ getEfficiencyColor(item.efficiency_percentage) === 'success' ? 'good' : getEfficiencyColor(item.efficiency_percentage) === 'warning' ? 'needs attention' : 'critical' }})</span>
                 </v-chip>
               </template>
               <template v-slot:item.performance_percentage="{ item }">
-                <v-chip :color="getPerformanceColor(item.performance_percentage)" size="small">
+                <v-chip
+                  :color="getPerformanceColor(item.performance_percentage)"
+                  size="small"
+                  :aria-label="`Performance: ${parseFloat(item.performance_percentage || 0).toFixed(2)} percent, status: ${getPerformanceColor(item.performance_percentage)}`"
+                >
                   {{ parseFloat(item.performance_percentage || 0).toFixed(2) }}%
+                  <span class="sr-only">({{ getPerformanceColor(item.performance_percentage) === 'success' ? 'good' : getPerformanceColor(item.performance_percentage) === 'warning' ? 'needs attention' : 'critical' }})</span>
                 </v-chip>
               </template>
             </v-data-table>
@@ -194,8 +241,14 @@ import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import api from '@/services/api'
 import EmailReportsDialog from '@/components/dialogs/EmailReportsDialog.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import TableSkeleton from '@/components/ui/TableSkeleton.vue'
+import CardSkeleton from '@/components/ui/CardSkeleton.vue'
 
 const kpiStore = useKPIStore()
+
+// Loading states
+const initialLoading = ref(true)
 
 // Client filter state
 const clients = ref([])
@@ -381,11 +434,15 @@ const exportToExcel = async () => {
 }
 
 onMounted(async () => {
-  await Promise.all([
-    loadClients(),
-    loadReferenceData()
-  ])
-  await refreshData()
+  try {
+    await Promise.all([
+      loadClients(),
+      loadReferenceData()
+    ])
+    await refreshData()
+  } finally {
+    initialLoading.value = false
+  }
 })
 </script>
 

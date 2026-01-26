@@ -20,6 +20,7 @@
               color="primary"
               prepend-icon="mdi-plus"
               @click="openCreateDialog"
+              aria-label="Create new work order"
             >
               New Work Order
             </v-btn>
@@ -28,55 +29,55 @@
       </v-row>
 
       <!-- Summary Cards -->
-      <v-row class="mb-4">
+      <v-row class="mb-4" role="region" aria-label="Work order statistics summary">
         <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" variant="tonal" color="primary">
+          <v-card class="pa-4" variant="tonal" color="primary" role="article" aria-labelledby="stat-total-label">
             <div class="d-flex align-center">
               <v-avatar color="primary" size="48" class="mr-4">
-                <v-icon>mdi-clipboard-list</v-icon>
+                <v-icon aria-hidden="true">mdi-clipboard-list</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ summaryStats.total }}</div>
-                <div class="text-body-2">Total Orders</div>
+                <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.total }}</div>
+                <div id="stat-total-label" class="text-body-2">Total Orders</div>
               </div>
             </div>
           </v-card>
         </v-col>
         <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" variant="tonal" color="info">
+          <v-card class="pa-4" variant="tonal" color="info" role="article" aria-labelledby="stat-active-label">
             <div class="d-flex align-center">
               <v-avatar color="info" size="48" class="mr-4">
-                <v-icon>mdi-progress-clock</v-icon>
+                <v-icon aria-hidden="true">mdi-progress-clock</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ summaryStats.active }}</div>
-                <div class="text-body-2">Active</div>
+                <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.active }}</div>
+                <div id="stat-active-label" class="text-body-2">Active</div>
               </div>
             </div>
           </v-card>
         </v-col>
         <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" variant="tonal" color="warning">
+          <v-card class="pa-4" variant="tonal" color="warning" role="article" aria-labelledby="stat-hold-label">
             <div class="d-flex align-center">
               <v-avatar color="warning" size="48" class="mr-4">
-                <v-icon>mdi-pause-circle</v-icon>
+                <v-icon aria-hidden="true">mdi-pause-circle</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ summaryStats.onHold }}</div>
-                <div class="text-body-2">On Hold</div>
+                <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.onHold }}</div>
+                <div id="stat-hold-label" class="text-body-2">On Hold</div>
               </div>
             </div>
           </v-card>
         </v-col>
         <v-col cols="12" sm="6" md="3">
-          <v-card class="pa-4" variant="tonal" color="success">
+          <v-card class="pa-4" variant="tonal" color="success" role="article" aria-labelledby="stat-completed-label">
             <div class="d-flex align-center">
               <v-avatar color="success" size="48" class="mr-4">
-                <v-icon>mdi-check-circle</v-icon>
+                <v-icon aria-hidden="true">mdi-check-circle</v-icon>
               </v-avatar>
               <div>
-                <div class="text-h5 font-weight-bold">{{ summaryStats.completed }}</div>
-                <div class="text-body-2">Completed</div>
+                <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.completed }}</div>
+                <div id="stat-completed-label" class="text-body-2">Completed</div>
               </div>
             </div>
           </v-card>
@@ -84,7 +85,7 @@
       </v-row>
 
       <!-- Filters -->
-      <v-card class="mb-4">
+      <v-card class="mb-4" role="search" aria-label="Work order filters">
         <v-card-text>
           <v-row align="center">
             <v-col cols="12" md="3">
@@ -97,6 +98,7 @@
                 hide-details
                 clearable
                 @update:model-value="debouncedSearch"
+                aria-label="Search work orders by ID or description"
               />
             </v-col>
             <v-col cols="12" md="2">
@@ -150,6 +152,7 @@
                 variant="text"
                 color="primary"
                 @click="resetFilters"
+                aria-label="Reset all filters"
               >
                 Reset
               </v-btn>
@@ -254,8 +257,9 @@
               size="small"
               variant="text"
               @click.stop="openDetailDrawer(item)"
+              :aria-label="`View details for work order ${item.work_order_id}`"
             >
-              <v-icon>mdi-eye</v-icon>
+              <v-icon aria-hidden="true">mdi-eye</v-icon>
               <v-tooltip activator="parent">View Details</v-tooltip>
             </v-btn>
             <v-btn
@@ -263,8 +267,9 @@
               size="small"
               variant="text"
               @click.stop="openEditDialog(item)"
+              :aria-label="`Edit work order ${item.work_order_id}`"
             >
-              <v-icon>mdi-pencil</v-icon>
+              <v-icon aria-hidden="true">mdi-pencil</v-icon>
               <v-tooltip activator="parent">Edit</v-tooltip>
             </v-btn>
             <v-menu>
@@ -275,8 +280,10 @@
                   variant="text"
                   v-bind="props"
                   @click.stop
+                  :aria-label="`More actions for work order ${item.work_order_id}`"
+                  aria-haspopup="menu"
                 >
-                  <v-icon>mdi-dots-vertical</v-icon>
+                  <v-icon aria-hidden="true">mdi-dots-vertical</v-icon>
                 </v-btn>
               </template>
               <v-list density="compact">
@@ -325,12 +332,26 @@
     />
 
     <!-- Create/Edit Dialog -->
-    <v-dialog v-model="formDialog" max-width="700" persistent>
+    <v-dialog
+      v-model="formDialog"
+      max-width="700"
+      persistent
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'"
+    >
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
-          <span>{{ editingWorkOrder ? 'Edit Work Order' : 'Create Work Order' }}</span>
-          <v-btn icon variant="text" @click="formDialog = false">
-            <v-icon>mdi-close</v-icon>
+          <span :id="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'">
+            {{ editingWorkOrder ? 'Edit Work Order' : 'Create Work Order' }}
+          </span>
+          <v-btn
+            icon
+            variant="text"
+            @click="formDialog = false"
+            aria-label="Close dialog"
+          >
+            <v-icon aria-hidden="true">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
         <v-card-text>
@@ -458,21 +479,29 @@
     </v-dialog>
 
     <!-- Delete Confirmation Dialog -->
-    <v-dialog v-model="deleteDialog" max-width="400">
+    <v-dialog
+      v-model="deleteDialog"
+      max-width="400"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="delete-dialog-title"
+      aria-describedby="delete-dialog-desc"
+    >
       <v-card>
-        <v-card-title class="text-h6">Confirm Delete</v-card-title>
-        <v-card-text>
+        <v-card-title id="delete-dialog-title" class="text-h6">Confirm Delete</v-card-title>
+        <v-card-text id="delete-dialog-desc">
           Are you sure you want to delete work order
           <strong>{{ workOrderToDelete?.work_order_id }}</strong>?
           This action cannot be undone.
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false" aria-label="Cancel deletion">Cancel</v-btn>
           <v-btn
             color="error"
             :loading="deleting"
             @click="deleteWorkOrder"
+            aria-label="Confirm delete work order"
           >
             Delete
           </v-btn>

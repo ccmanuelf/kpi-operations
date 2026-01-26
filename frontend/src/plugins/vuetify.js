@@ -119,6 +119,12 @@ export default createVuetify({
           'high-emphasis-opacity': 0.87,
           'medium-emphasis-opacity': 0.6,
           'disabled-opacity': 0.38,
+          // Custom variables for UI polish
+          'hover-opacity': 0.04,
+          'activated-opacity': 0.12,
+          'pressed-opacity': 0.16,
+          'focus-opacity': 0.12,
+          'selected-opacity': 0.08,
         }
       },
       dark: {
@@ -129,6 +135,11 @@ export default createVuetify({
           'high-emphasis-opacity': 0.87,
           'medium-emphasis-opacity': 0.6,
           'disabled-opacity': 0.38,
+          'hover-opacity': 0.08,
+          'activated-opacity': 0.16,
+          'pressed-opacity': 0.20,
+          'focus-opacity': 0.16,
+          'selected-opacity': 0.12,
         }
       }
     }
@@ -214,6 +225,19 @@ export default createVuetify({
     },
     VTooltip: {
       location: 'bottom',
+    },
+    // Snackbar defaults for toast notifications
+    VSnackbar: {
+      timeout: 4000,
+      location: 'bottom',
+    },
+    // Dialog animation defaults
+    VDialog: {
+      transition: 'dialog-transition',
+    },
+    // Skeleton loader defaults
+    VSkeletonLoader: {
+      boilerplate: false,
     },
   }
 })

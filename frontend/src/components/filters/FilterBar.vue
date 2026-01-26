@@ -316,11 +316,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format, subDays, formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
+import { debounce } from '@/utils/performance'
 import SaveFilterDialog from './SaveFilterDialog.vue'
 import FilterManager from './FilterManager.vue'
 
@@ -546,13 +547,27 @@ const onFilterAppliedFromManager = (filter) => {
   applySavedFilter(filter)
 }
 
-const emitFilterChange = () => {
+/**
+ * Debounced filter emission to prevent excessive API calls
+ * when users quickly change multiple filter options.
+ * Uses 300ms delay which feels responsive but prevents flooding.
+ */
+const debouncedEmitFilterChange = debounce(() => {
   const filterParams = {
     ...currentFilterConfig.value,
     ...filtersStore.getFilterParams
   }
   emit('filter-change', filterParams)
+}, 300)
+
+const emitFilterChange = () => {
+  debouncedEmitFilterChange()
 }
+
+// Cleanup debounced function on unmount
+onUnmounted(() => {
+  debouncedEmitFilterChange.cancel()
+})
 
 const formatFilterPreview = (config) => {
   const parts = []
