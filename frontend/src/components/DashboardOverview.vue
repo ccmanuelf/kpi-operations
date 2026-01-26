@@ -1,10 +1,10 @@
 <template>
-  <div role="region" aria-label="KPI Dashboard">
+  <div role="region" :aria-label="$t('navigation.kpiDashboard')">
     <v-row class="mb-4">
       <v-col cols="12">
-        <h1 id="dashboard-title" class="text-h4 font-weight-bold">KPI Dashboard - All Phases</h1>
+        <h1 id="dashboard-title" class="text-h4 font-weight-bold">{{ $t('navigation.kpiDashboard') }}</h1>
         <p class="text-subtitle-1 text-grey" aria-describedby="dashboard-title">
-          Real-time manufacturing performance metrics
+          {{ $t('dashboard.todaySummary') }}
         </p>
       </v-col>
     </v-row>
@@ -26,19 +26,19 @@
     />
 
     <!-- KPI Summary Cards -->
-    <v-row role="list" aria-label="Key Performance Indicators">
+    <v-row role="list" :aria-label="$t('kpi.title')">
       <!-- Phase 1: Production KPIs -->
       <v-col cols="12" md="6" lg="3" role="listitem">
         <v-card class="pa-4" elevation="2" role="article" aria-labelledby="kpi-efficiency-label">
           <div class="d-flex align-center mb-2">
             <v-icon color="primary" size="large" aria-hidden="true">mdi-speedometer</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small" aria-label="KPI Status: Active">Active</v-chip>
+            <v-chip color="success" size="small" :aria-label="`${$t('common.status')}: ${$t('common.success')}`">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-primary" aria-live="polite">
             {{ kpiData.efficiency }}%
           </div>
-          <div id="kpi-efficiency-label" class="text-subtitle-2 text-grey">KPI #3: Efficiency</div>
+          <div id="kpi-efficiency-label" class="text-subtitle-2 text-grey">KPI #3: {{ $t('kpi.efficiency') }}</div>
           <v-progress-linear
             :model-value="kpiData.efficiency"
             color="primary"
@@ -57,12 +57,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="success" size="large" aria-hidden="true">mdi-chart-line</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small" aria-label="KPI Status: Active">Active</v-chip>
+            <v-chip color="success" size="small" :aria-label="`${$t('common.status')}: ${$t('common.success')}`">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-success" aria-live="polite">
             {{ kpiData.performance }}%
           </div>
-          <div id="kpi-performance-label" class="text-subtitle-2 text-grey">KPI #9: Performance</div>
+          <div id="kpi-performance-label" class="text-subtitle-2 text-grey">KPI #9: {{ $t('kpi.performance') }}</div>
           <v-progress-linear
             :model-value="kpiData.performance"
             color="success"
@@ -82,12 +82,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="warning" size="large">mdi-clock-outline</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-warning">
             {{ kpiData.wipAging }}
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #1: WIP Aging (days)</div>
+          <div class="text-subtitle-2 text-grey">KPI #1: {{ $t('kpi.wipAging') }}</div>
           <v-progress-linear
             :model-value="(kpiData.wipAging / 30) * 100"
             color="warning"
@@ -101,12 +101,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="info" size="large">mdi-truck-delivery</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-info">
             {{ kpiData.otd }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #2: On-Time Delivery</div>
+          <div class="text-subtitle-2 text-grey">KPI #2: {{ $t('kpi.otdFull') }}</div>
           <v-progress-linear
             :model-value="kpiData.otd"
             color="info"
@@ -120,12 +120,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="primary" size="large">mdi-gauge</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-primary">
             {{ kpiData.availability }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #8: Availability</div>
+          <div class="text-subtitle-2 text-grey">KPI #8: {{ $t('kpi.availability') }}</div>
           <v-progress-linear
             :model-value="kpiData.availability"
             color="primary"
@@ -140,12 +140,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="error" size="large">mdi-account-alert</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-error">
             {{ kpiData.absenteeism }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #10: Absenteeism</div>
+          <div class="text-subtitle-2 text-grey">KPI #10: {{ $t('kpi.absenteeism') }}</div>
           <v-progress-linear
             :model-value="kpiData.absenteeism"
             color="error"
@@ -160,12 +160,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="deep-purple" size="large">mdi-bug</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-deep-purple">
             {{ kpiData.ppm }}
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #4: Quality PPM</div>
+          <div class="text-subtitle-2 text-grey">KPI #4: {{ $t('kpi.ppmFull') }}</div>
           <v-progress-linear
             :model-value="Math.min((kpiData.ppm / 10000) * 100, 100)"
             color="deep-purple"
@@ -179,12 +179,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="indigo" size="large">mdi-target</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-indigo">
             {{ kpiData.dpmo }}
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #5: Quality DPMO</div>
+          <div class="text-subtitle-2 text-grey">KPI #5: {{ $t('kpi.dpmoFull') }}</div>
           <v-progress-linear
             :model-value="Math.min((kpiData.dpmo / 10000) * 100, 100)"
             color="indigo"
@@ -198,12 +198,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="teal" size="large">mdi-check-circle</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-teal">
             {{ kpiData.fpy }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #6: First Pass Yield</div>
+          <div class="text-subtitle-2 text-grey">KPI #6: {{ $t('kpi.fpyFull') }}</div>
           <v-progress-linear
             :model-value="kpiData.fpy"
             color="teal"
@@ -217,12 +217,12 @@
           <div class="d-flex align-center mb-2">
             <v-icon color="cyan" size="large">mdi-shield-check</v-icon>
             <v-spacer></v-spacer>
-            <v-chip color="success" size="small">Active</v-chip>
+            <v-chip color="success" size="small">{{ $t('common.success') }}</v-chip>
           </div>
           <div class="text-h3 font-weight-bold text-cyan">
             {{ kpiData.rty }}%
           </div>
-          <div class="text-subtitle-2 text-grey">KPI #7: Rolled Throughput Yield</div>
+          <div class="text-subtitle-2 text-grey">KPI #7: {{ $t('kpi.rtyFull') }}</div>
           <v-progress-linear
             :model-value="kpiData.rty"
             color="cyan"
@@ -236,10 +236,10 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card elevation="2">
-          <v-card-title>KPI Trends - Last {{ dateRange }}</v-card-title>
+          <v-card-title>{{ $t('kpi.trend') }} - {{ dateRange }}</v-card-title>
           <v-card-text>
             <div class="text-center text-grey pa-8">
-              Chart component would render here (ApexCharts or Chart.js)
+              {{ $t('common.loading') }}
               <br />
               <v-icon size="64" class="mt-4">mdi-chart-line-variant</v-icon>
             </div>
@@ -260,7 +260,7 @@
         <v-card elevation="2">
           <v-card-title class="bg-grey-darken-3 text-white py-2">
             <v-icon class="mr-2" size="24">mdi-chart-box</v-icon>
-            System Health
+            {{ $t('common.status') }}
           </v-card-title>
           <v-card-text class="pa-4">
             <v-row>
@@ -273,7 +273,7 @@
                 >
                   <span class="text-h6 font-weight-bold">10/10</span>
                 </v-progress-circular>
-                <div class="text-subtitle-2 mt-2">KPIs Active</div>
+                <div class="text-subtitle-2 mt-2">{{ $t('kpi.title') }}</div>
               </v-col>
               <v-col cols="6" class="text-center">
                 <v-progress-circular
@@ -284,18 +284,18 @@
                 >
                   <span class="text-h6 font-weight-bold">88%</span>
                 </v-progress-circular>
-                <div class="text-subtitle-2 mt-2">Inference Confidence</div>
+                <div class="text-subtitle-2 mt-2">{{ $t('kpi.confidence') }}</div>
               </v-col>
             </v-row>
             <v-divider class="my-4" />
             <div class="d-flex justify-space-between align-center">
               <div>
                 <v-icon color="success" class="mr-1">mdi-check-circle</v-icon>
-                <span class="text-body-2">API Status: Healthy</span>
+                <span class="text-body-2">API: {{ $t('common.success') }}</span>
               </div>
               <div>
                 <v-icon color="success" class="mr-1">mdi-database</v-icon>
-                <span class="text-body-2">Database: Connected</span>
+                <span class="text-body-2">DB: {{ $t('common.success') }}</span>
               </div>
             </div>
           </v-card-text>
@@ -306,7 +306,7 @@
     <!-- Advanced Analysis Widgets Section -->
     <v-row class="mt-6">
       <v-col cols="12">
-        <h2 class="text-h5 font-weight-bold mb-4">Advanced Analysis</h2>
+        <h2 class="text-h5 font-weight-bold mb-4">{{ $t('navigation.analytics') }}</h2>
       </v-col>
     </v-row>
 
@@ -355,7 +355,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+
+const { t } = useI18n()
 
 // Import Dashboard Widgets
 import DowntimeImpactWidget from './widgets/DowntimeImpactWidget.vue'

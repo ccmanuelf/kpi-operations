@@ -4,8 +4,8 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">Operational Efficiency</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">Monitor resource utilization and productivity metrics</p>
+        <h1 class="text-h3">{{ $t('kpi.efficiency') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.efficiencyDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -23,7 +23,7 @@
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          label="Filter by Client"
+          :label="$t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -34,7 +34,7 @@
         <v-text-field
           v-model="startDate"
           type="date"
-          label="Start Date"
+          :label="$t('filters.startDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -44,7 +44,7 @@
         <v-text-field
           v-model="endDate"
           type="date"
-          label="End Date"
+          :label="$t('filters.endDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -52,7 +52,7 @@
       </v-col>
       <v-col cols="12" md="2">
         <v-btn color="primary" block @click="refreshData" :loading="loading">
-          <v-icon left>mdi-refresh</v-icon> Refresh
+          <v-icon left>mdi-refresh</v-icon> {{ $t('common.refresh') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Current Efficiency</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.currentEfficiency') }}</div>
                 <div class="text-h4 font-weight-bold">{{ formatValue(efficiencyData?.current) }}%</div>
               </v-card-text>
             </v-card>
@@ -82,7 +82,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Actual Output</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.actualOutput') }}</div>
                 <div class="text-h4 font-weight-bold">{{ efficiencyData?.actual_output || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -98,7 +98,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Expected Output</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.expectedOutput') }}</div>
                 <div class="text-h4 font-weight-bold">{{ efficiencyData?.expected_output || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -114,7 +114,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Gap</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.gap') }}</div>
                 <div class="text-h4 font-weight-bold" :class="gapColor">
                   {{ efficiencyData?.gap || 0 }} units
                 </div>
@@ -136,11 +136,11 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <span>Efficiency Trend</span>
+            <span>{{ $t('kpi.efficiencyTrend') }}</span>
             <v-spacer />
             <v-switch
               v-model="showForecast"
-              label="Show Forecast"
+              :label="$t('kpi.showForecast')"
               color="purple"
               density="compact"
               hide-details
@@ -151,7 +151,7 @@
               v-if="showForecast"
               v-model="forecastDays"
               :items="[3, 7, 14, 21, 30]"
-              label="Forecast Days"
+              :label="$t('kpi.forecastDays')"
               density="compact"
               variant="outlined"
               style="max-width: 120px"
@@ -161,7 +161,7 @@
           </v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
-            <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+            <v-alert v-else type="info" variant="tonal">{{ $t('kpi.noTrendData') }}</v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -173,7 +173,7 @@
         <v-card variant="outlined" class="border-purple">
           <v-card-title class="text-purple-darken-1">
             <v-icon start>mdi-crystal-ball</v-icon>
-            Prediction Summary
+            {{ $t('kpi.predictionSummary') }}
           </v-card-title>
           <v-card-text>
             <div class="d-flex justify-space-between mb-2">
@@ -208,7 +208,7 @@
         <v-card variant="outlined">
           <v-card-title>
             <v-icon start>mdi-heart-pulse</v-icon>
-            Health Assessment
+            {{ $t('kpi.healthAssessment') }}
           </v-card-title>
           <v-card-text v-if="predictionData.health_assessment">
             <div class="d-flex align-center mb-3">
@@ -239,7 +239,7 @@
         <v-card variant="outlined">
           <v-card-title>
             <v-icon start>mdi-lightbulb</v-icon>
-            Recommendations
+            {{ $t('kpi.recommendations') }}
           </v-card-title>
           <v-card-text v-if="predictionData.health_assessment?.recommendations">
             <v-list density="compact" class="pa-0">
@@ -264,12 +264,12 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            Historical Production Data
+            {{ $t('kpi.historicalData') }}
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
               append-icon="mdi-magnify"
-              label="Search"
+              :label="$t('common.search')"
               single-line
               hide-details
               density="compact"
@@ -308,7 +308,7 @@
     <v-row class="mt-4">
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Efficiency by Shift</v-card-title>
+          <v-card-title>{{ $t('kpi.efficiencyByShift') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="shiftHeaders"
@@ -327,7 +327,7 @@
 
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Top Products by Efficiency</v-card-title>
+          <v-card-title>{{ $t('kpi.topProductsByEfficiency') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="productHeaders"
@@ -353,6 +353,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -370,6 +371,7 @@ import api from '@/services/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 const loading = ref(false)
 const clients = ref([])
@@ -423,7 +425,7 @@ const chartData = computed(() => {
 
   const datasets = [
     {
-      label: 'Efficiency %',
+      label: t('kpi.charts.efficiencyPercent'),
       data: trendData,
       borderColor: '#2e7d32',
       backgroundColor: 'rgba(46, 125, 50, 0.1)',
@@ -431,7 +433,7 @@ const chartData = computed(() => {
       fill: true
     },
     {
-      label: 'Target (85%)',
+      label: t('kpi.charts.targetValue', { value: 85 }),
       data: Array(trendLabels.length).fill(85),
       borderColor: '#f57c00',
       borderDash: [5, 5],
@@ -467,7 +469,7 @@ const chartData = computed(() => {
       labels: allLabels,
       datasets: [
         {
-          label: 'Efficiency %',
+          label: t('kpi.charts.efficiencyPercent'),
           data: paddedTrendData,
           borderColor: '#2e7d32',
           backgroundColor: 'rgba(46, 125, 50, 0.1)',
@@ -475,14 +477,14 @@ const chartData = computed(() => {
           fill: true
         },
         {
-          label: 'Target (85%)',
+          label: t('kpi.charts.targetValue', { value: 85 }),
           data: paddedTarget,
           borderColor: '#f57c00',
           borderDash: [5, 5],
           pointRadius: 0
         },
         {
-          label: 'Forecast',
+          label: t('kpi.charts.forecast'),
           data: paddedForecast,
           borderColor: '#9c27b0',
           backgroundColor: 'rgba(156, 39, 176, 0.1)',
@@ -494,7 +496,7 @@ const chartData = computed(() => {
           pointBackgroundColor: '#9c27b0'
         },
         {
-          label: 'Confidence Upper',
+          label: t('kpi.charts.confidenceUpper'),
           data: paddedUpper,
           borderColor: 'rgba(156, 39, 176, 0.3)',
           backgroundColor: 'rgba(156, 39, 176, 0.05)',
@@ -504,7 +506,7 @@ const chartData = computed(() => {
           pointRadius: 0
         },
         {
-          label: 'Confidence Lower',
+          label: t('kpi.charts.confidenceLower'),
           data: paddedLower,
           borderColor: 'rgba(156, 39, 176, 0.3)',
           backgroundColor: 'transparent',

@@ -8,7 +8,7 @@
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-alert-circle</v-icon>
-        Downtime Entry
+        {{ $t('downtime.entry') }}
       </div>
       <CSVUploadDialogDowntime @imported="onImported" />
     </v-card-title>
@@ -21,7 +21,7 @@
               :items="equipmentList"
               item-title="name"
               item-value="id"
-              label="Equipment *"
+              :label="`${$t('production.line')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -33,7 +33,7 @@
               :items="downtimeReasons"
               item-title="name"
               item-value="id"
-              label="Downtime Reason *"
+              :label="`${$t('downtime.reason')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -46,7 +46,7 @@
             <v-text-field
               v-model="formData.start_time"
               type="datetime-local"
-              label="Start Time *"
+              :label="`${$t('downtime.startTime')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -56,7 +56,7 @@
             <v-text-field
               v-model="formData.end_time"
               type="datetime-local"
-              label="End Time"
+              :label="$t('downtime.endTime')"
               variant="outlined"
               density="comfortable"
             />
@@ -68,7 +68,7 @@
             <v-text-field
               v-model.number="formData.duration_minutes"
               type="number"
-              label="Duration (minutes)"
+              :label="`${$t('downtime.duration')} (${$t('downtime.minutes')})`"
               variant="outlined"
               density="comfortable"
               readonly
@@ -89,7 +89,7 @@
           <v-col cols="12">
             <v-textarea
               v-model="formData.notes"
-              label="Notes"
+              :label="$t('production.notes')"
               rows="3"
               variant="outlined"
               density="comfortable"
@@ -127,7 +127,7 @@
         :loading="loading"
         @click="submitEntry"
       >
-        Submit Downtime Entry
+        {{ $t('common.submit') }} {{ $t('downtime.entry') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -135,8 +135,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogDowntime from '@/components/CSVUploadDialogDowntime.vue'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['submitted'])
 
@@ -169,7 +172,7 @@ const formData = ref({
 })
 
 const rules = {
-  required: value => !!value || 'Field is required'
+  required: value => !!value || t('validation.required')
 }
 
 const onImported = () => {

@@ -5,11 +5,11 @@
       <v-app-bar color="primary" dark prominent>
         <v-app-bar-nav-icon
           @click="toggleDrawer"
-          aria-label="Open navigation menu"
+          :aria-label="$t('navigation.toggleNav')"
           :aria-expanded="drawer.toString()"
           aria-controls="mobile-nav-drawer"
         ></v-app-bar-nav-icon>
-        <v-toolbar-title>KPI Platform</v-toolbar-title>
+        <v-toolbar-title>{{ $t('navigation.kpiDashboard') }}</v-toolbar-title>
         <v-spacer></v-spacer>
 
         <!-- Keyboard shortcuts button (smaller on mobile) -->
@@ -18,13 +18,13 @@
           size="small"
           @click="$emit('toggle-shortcuts')"
           :color="shortcutsEnabled ? 'white' : 'grey'"
-          :aria-label="shortcutsEnabled ? 'Disable keyboard shortcuts' : 'Enable keyboard shortcuts'"
+          :aria-label="$t('navigation.settings')"
           :aria-pressed="shortcutsEnabled.toString()"
         >
           <v-icon size="small">mdi-keyboard</v-icon>
         </v-btn>
 
-        <v-btn icon size="small" @click="$emit('logout')" aria-label="Logout from application">
+        <v-btn icon size="small" @click="$emit('logout')" :aria-label="$t('navigation.logout')">
           <v-icon size="small">mdi-logout</v-icon>
         </v-btn>
       </v-app-bar>
@@ -39,7 +39,7 @@
       width="280"
       class="mobile-drawer"
       role="navigation"
-      aria-label="Main navigation"
+      :aria-label="$t('navigation.mainNav')"
     >
       <!-- User Info Section -->
       <div class="mobile-user-section">
@@ -50,7 +50,7 @@
       </div>
 
       <!-- Navigation List -->
-      <v-list nav class="mobile-nav-list" aria-label="Navigation menu">
+      <v-list nav class="mobile-nav-list" :aria-label="$t('navigation.primaryNav')">
         <!-- Main Navigation -->
         <v-list-item
           v-for="item in mainNavItems"
@@ -66,7 +66,7 @@
         <!-- Data Entry Section -->
         <v-divider class="my-2" role="separator"></v-divider>
         <v-list-subheader id="data-entry-heading" class="mobile-section-header">
-          Data Entry
+          {{ $t('navigation.dataEntry') }}
         </v-list-subheader>
         <v-list-item
           v-for="item in dataEntryItems"
@@ -82,7 +82,7 @@
         <!-- KPI Reports Section -->
         <v-divider class="my-2" role="separator"></v-divider>
         <v-list-subheader id="kpi-reports-heading" class="mobile-section-header">
-          KPI Reports
+          {{ $t('navigation.kpiReports') }}
         </v-list-subheader>
         <v-list-item
           v-for="item in kpiReportItems"
@@ -105,10 +105,10 @@
             variant="outlined"
             @click="handleLogout"
             class="mobile-logout-btn"
-            aria-label="Logout from KPI Platform"
+            :aria-label="$t('navigation.logout')"
           >
             <v-icon left aria-hidden="true">mdi-logout</v-icon>
-            Logout
+            {{ $t('navigation.logout') }}
           </v-btn>
         </div>
       </template>
@@ -117,8 +117,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useResponsive } from '@/composables/useResponsive'
+
+const { t } = useI18n()
 
 const props = defineProps({
   shortcutsEnabled: {
@@ -132,30 +135,30 @@ const emit = defineEmits(['toggle-shortcuts', 'logout'])
 const { isMobile } = useResponsive()
 const drawer = ref(false)
 
-// Navigation items
-const mainNavItems = [
-  { title: 'Dashboard', icon: 'mdi-view-dashboard', to: '/' },
-  { title: 'Production Entry', icon: 'mdi-factory', to: '/production-entry' },
-  { title: 'KPI Dashboard', icon: 'mdi-chart-box', to: '/kpi-dashboard' }
-]
+// Navigation items with i18n support
+const mainNavItems = computed(() => [
+  { title: t('navigation.dashboard'), icon: 'mdi-view-dashboard', to: '/' },
+  { title: t('navigation.productionEntry'), icon: 'mdi-factory', to: '/production-entry' },
+  { title: t('navigation.kpiDashboard'), icon: 'mdi-chart-box', to: '/kpi-dashboard' }
+])
 
-const dataEntryItems = [
-  { title: 'Downtime', icon: 'mdi-clock-alert', to: '/data-entry/downtime' },
-  { title: 'Attendance', icon: 'mdi-account-group', to: '/data-entry/attendance' },
-  { title: 'Quality', icon: 'mdi-quality-high', to: '/data-entry/quality' },
-  { title: 'Hold/Resume', icon: 'mdi-pause-circle', to: '/data-entry/hold-resume' }
-]
+const dataEntryItems = computed(() => [
+  { title: t('navigation.downtime'), icon: 'mdi-clock-alert', to: '/data-entry/downtime' },
+  { title: t('navigation.attendance'), icon: 'mdi-account-group', to: '/data-entry/attendance' },
+  { title: t('navigation.quality'), icon: 'mdi-quality-high', to: '/data-entry/quality' },
+  { title: t('navigation.holdResume'), icon: 'mdi-pause-circle', to: '/data-entry/hold-resume' }
+])
 
-const kpiReportItems = [
-  { title: 'Efficiency', icon: 'mdi-chart-line', to: '/kpi/efficiency' },
-  { title: 'WIP Aging', icon: 'mdi-warehouse', to: '/kpi/wip-aging' },
-  { title: 'On-Time Delivery', icon: 'mdi-truck-delivery', to: '/kpi/on-time-delivery' },
-  { title: 'Availability', icon: 'mdi-checkbox-marked-circle', to: '/kpi/availability' },
-  { title: 'Performance', icon: 'mdi-speedometer', to: '/kpi/performance' },
-  { title: 'Quality', icon: 'mdi-star', to: '/kpi/quality' },
-  { title: 'Absenteeism', icon: 'mdi-account-off', to: '/kpi/absenteeism' },
+const kpiReportItems = computed(() => [
+  { title: t('kpi.efficiency'), icon: 'mdi-chart-line', to: '/kpi/efficiency' },
+  { title: t('kpi.wipAging'), icon: 'mdi-warehouse', to: '/kpi/wip-aging' },
+  { title: t('kpi.otdFull'), icon: 'mdi-truck-delivery', to: '/kpi/on-time-delivery' },
+  { title: t('kpi.availability'), icon: 'mdi-checkbox-marked-circle', to: '/kpi/availability' },
+  { title: t('kpi.performance'), icon: 'mdi-speedometer', to: '/kpi/performance' },
+  { title: t('navigation.quality'), icon: 'mdi-star', to: '/kpi/quality' },
+  { title: t('kpi.absenteeism'), icon: 'mdi-account-off', to: '/kpi/absenteeism' },
   { title: 'OEE', icon: 'mdi-gauge', to: '/kpi/oee' }
-]
+])
 
 const toggleDrawer = () => {
   drawer.value = !drawer.value

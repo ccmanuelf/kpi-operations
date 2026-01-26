@@ -1,18 +1,18 @@
 <template>
   <v-card role="region" aria-labelledby="csv-upload-title">
-    <v-card-title id="csv-upload-title">Bulk Upload via CSV</v-card-title>
+    <v-card-title id="csv-upload-title">{{ $t('csv.title') }}</v-card-title>
     <v-card-text>
       <v-file-input
         v-model="file"
         accept=".csv"
-        label="Select CSV File"
+        :label="$t('csv.selectFile')"
         prepend-icon="mdi-file-delimited"
         @change="handleFileChange"
         :loading="loading"
         show-size
         aria-describedby="csv-upload-help"
       ></v-file-input>
-      <span id="csv-upload-help" class="sr-only">Select a CSV file to upload production entries in bulk</span>
+      <span id="csv-upload-help" class="sr-only">{{ $t('csv.dragDrop') }}</span>
 
       <v-alert
         v-if="uploadResult"
@@ -23,17 +23,17 @@
       >
         {{ uploadResult.message }}
         <div v-if="uploadResult.details" class="mt-2">
-          <strong>Details:</strong>
+          <strong>{{ $t('common.details') }}:</strong>
           <ul aria-label="Upload statistics">
-            <li>Total Rows: {{ uploadResult.details.total_rows }}</li>
-            <li>Successful: {{ uploadResult.details.successful }}</li>
-            <li>Failed: {{ uploadResult.details.failed }}</li>
+            <li>{{ $t('csv.rowCount') }}: {{ uploadResult.details.total_rows }}</li>
+            <li>{{ $t('dataEntry.rowsValid') }}: {{ uploadResult.details.successful }}</li>
+            <li>{{ $t('dataEntry.rowsInvalid') }}: {{ uploadResult.details.failed }}</li>
           </ul>
           <div v-if="uploadResult.details.errors && uploadResult.details.errors.length > 0">
-            <strong>Errors:</strong>
-            <v-list dense aria-label="Upload errors">
+            <strong>{{ $t('common.error') }}:</strong>
+            <v-list dense :aria-label="$t('common.error')">
               <v-list-item v-for="(error, idx) in uploadResult.details.errors.slice(0, 5)" :key="idx">
-                Row {{ error.row }}: {{ error.error }}
+                {{ $t('csv.rowError', { row: error.row, error: error.error }) }}
               </v-list-item>
             </v-list>
           </div>
@@ -46,21 +46,21 @@
         :disabled="!file || loading"
         :loading="loading"
         class="mt-4"
-        aria-label="Upload selected CSV file"
+        :aria-label="$t('common.upload')"
         :aria-busy="loading"
       >
         <v-icon left aria-hidden="true">mdi-upload</v-icon>
-        Upload CSV
+        {{ $t('dataEntry.uploadCsv') }}
       </v-btn>
 
       <v-btn
         text
         @click="downloadTemplate"
         class="mt-4 ml-2"
-        aria-label="Download CSV template file"
+        :aria-label="$t('dataEntry.downloadTemplate')"
       >
         <v-icon left aria-hidden="true">mdi-download</v-icon>
-        Download Template
+        {{ $t('dataEntry.downloadTemplate') }}
       </v-btn>
     </v-card-text>
   </v-card>
@@ -68,8 +68,10 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKPIStore } from '@/stores/kpiStore'
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 
 const file = ref(null)
@@ -93,14 +95,14 @@ const uploadFile = async () => {
   if (result.success) {
     uploadResult.value = {
       type: 'success',
-      message: 'CSV uploaded successfully!',
+      message: t('csv.success', { count: result.data?.successful || 0 }),
       details: result.data
     }
     file.value = null
   } else {
     uploadResult.value = {
       type: 'error',
-      message: result.error
+      message: result.error || t('csv.error')
     }
   }
 }

@@ -4,8 +4,8 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">Quality Metrics Dashboard</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">Comprehensive quality analysis: PPM, DPMO, FPY, RTY</p>
+        <h1 class="text-h3">{{ $t('kpi.quality') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.qualityDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="fpyColor" size="large" class="mr-2 text-white" variant="flat">
@@ -23,7 +23,7 @@
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          label="Filter by Client"
+          :label="$t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -34,7 +34,7 @@
         <v-text-field
           v-model="startDate"
           type="date"
-          label="Start Date"
+          :label="$t('filters.startDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -44,7 +44,7 @@
         <v-text-field
           v-model="endDate"
           type="date"
-          label="End Date"
+          :label="$t('filters.endDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -52,7 +52,7 @@
       </v-col>
       <v-col cols="12" md="2">
         <v-btn color="primary" block @click="refreshData" :loading="loading">
-          <v-icon left>mdi-refresh</v-icon> Refresh
+          <v-icon left>mdi-refresh</v-icon> {{ $t('common.refresh') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" :color="fpyColor" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">First Pass Yield (FPY)</div>
+                <div class="text-caption">{{ $t('kpi.fpy') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.fpy) }}%</div>
                 <div class="text-caption text-grey-darken-1">Target: 99% | First attempt pass rate</div>
               </v-card-text>
@@ -83,7 +83,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" :color="rtyColor" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">Rolled Throughput Yield (RTY)</div>
+                <div class="text-caption">{{ $t('kpi.rty') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.rty) }}%</div>
                 <div class="text-caption text-grey-darken-1">Target: 95% | All stages combined</div>
               </v-card-text>
@@ -102,7 +102,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" :color="finalYieldColor" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">Final Yield</div>
+                <div class="text-caption">{{ $t('kpi.finalYield') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.final_yield) }}%</div>
                 <div class="text-caption text-grey-darken-1">Target: 99% | After rework</div>
               </v-card-text>
@@ -125,7 +125,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Total Units Inspected</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalUnitsInspected') }}</div>
                 <div class="text-h4 font-weight-bold">{{ qualityData?.total_units || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -141,7 +141,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">First Pass Good</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.firstPassGood') }}</div>
                 <div class="text-h4 font-weight-bold text-success">{{ qualityData?.first_pass_good || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -157,7 +157,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Total Scrapped</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalScrapped') }}</div>
                 <div class="text-h4 font-weight-bold text-error">{{ qualityData?.total_scrapped || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -174,10 +174,10 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>Quality Trends</v-card-title>
+          <v-card-title>{{ $t('kpi.qualityTrends') }}</v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
-            <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+            <v-alert v-else type="info" variant="tonal">{{ $t('kpi.noTrendData') }}</v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -188,12 +188,12 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            Quality Inspection Records
+            {{ $t('quality.inspectionRecords') }}
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
               append-icon="mdi-magnify"
-              label="Search"
+              :label="$t('common.search')"
               single-line
               hide-details
               density="compact"
@@ -236,7 +236,7 @@
     <v-row class="mt-4">
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Top Defect Types</v-card-title>
+          <v-card-title>{{ $t('quality.topDefectTypes') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="defectHeaders"
@@ -262,7 +262,7 @@
 
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Quality by Product</v-card-title>
+          <v-card-title>{{ $t('quality.byProduct') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="productHeaders"
@@ -288,6 +288,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -305,6 +306,7 @@ import api from '@/services/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 const loading = ref(false)
 const clients = ref([])
@@ -364,7 +366,7 @@ const chartData = computed(() => ({
   labels: kpiStore.trends.quality.map(d => format(new Date(d.date), 'MMM dd')),
   datasets: [
     {
-      label: 'FPY %',
+      label: t('kpi.charts.qualityFPYPercent'),
       data: kpiStore.trends.quality.map(d => d.value),
       borderColor: '#1976d2',
       backgroundColor: 'rgba(25, 118, 210, 0.1)',
@@ -372,7 +374,7 @@ const chartData = computed(() => ({
       fill: true
     },
     {
-      label: 'Target (99%)',
+      label: t('kpi.charts.targetValue', { value: 99 }),
       data: Array(kpiStore.trends.quality.length).fill(99),
       borderColor: '#2e7d32',
       borderDash: [5, 5],

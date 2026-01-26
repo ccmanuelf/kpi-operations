@@ -8,7 +8,7 @@
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-clipboard-check</v-icon>
-        Quality Inspection Entry
+        {{ $t('quality.entry') }}
       </div>
       <CSVUploadDialogQuality @imported="onImported" />
     </v-card-title>
@@ -21,7 +21,7 @@
               :items="clients"
               item-title="client_name"
               item-value="client_id"
-              label="Client *"
+              :label="`${$t('workOrders.client')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -33,7 +33,7 @@
               :items="workOrders"
               item-title="work_order"
               item-value="id"
-              label="Work Order *"
+              :label="`${$t('production.workOrder')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -45,7 +45,7 @@
               :items="products"
               item-title="name"
               item-value="id"
-              label="Product *"
+              :label="`${$t('workOrders.product')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -58,7 +58,7 @@
             <v-text-field
               v-model.number="formData.inspected_quantity"
               type="number"
-              label="Inspected Quantity *"
+              :label="`${$t('quality.inspectedQty')} *`"
               :rules="[rules.required, rules.positive]"
               variant="outlined"
               density="comfortable"
@@ -68,7 +68,7 @@
             <v-text-field
               v-model.number="formData.defect_quantity"
               type="number"
-              label="Defect Quantity"
+              :label="$t('quality.defectQty')"
               variant="outlined"
               density="comfortable"
             />
@@ -191,7 +191,7 @@
         :loading="loading"
         @click="submitEntry"
       >
-        Submit Quality Entry
+        {{ $t('common.submit') }} {{ $t('quality.entry') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -199,9 +199,12 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogQuality from '@/components/CSVUploadDialogQuality.vue'
 import { useKPIStore } from '@/stores/kpi'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['submitted'])
 const kpiStore = useKPIStore()
@@ -234,8 +237,8 @@ const formData = ref({
 })
 
 const rules = {
-  required: value => !!value || 'Field is required',
-  positive: value => value > 0 || 'Must be greater than 0'
+  required: value => !!value || t('validation.required'),
+  positive: value => value > 0 || t('validation.positive')
 }
 
 const onImported = () => {

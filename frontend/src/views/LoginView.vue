@@ -1,16 +1,18 @@
 <template>
-  <v-container class="fill-height" fluid role="main" aria-label="Login page">
+  <v-container class="fill-height" fluid role="main" :aria-label="$t('auth.login')">
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="4">
         <v-card class="elevation-12" role="region" aria-labelledby="login-title">
           <v-toolbar color="primary" dark flat>
-            <v-toolbar-title id="login-title">Manufacturing KPI Platform</v-toolbar-title>
+            <v-toolbar-title id="login-title">{{ $t('navigation.manufacturingKpi') }}</v-toolbar-title>
+            <v-spacer></v-spacer>
+            <LanguageToggle />
           </v-toolbar>
           <v-card-text>
-            <v-form @submit.prevent="handleLogin" aria-label="Login form">
+            <v-form @submit.prevent="handleLogin" :aria-label="$t('auth.login')">
               <v-text-field
                 v-model="username"
-                label="Username"
+                :label="$t('auth.username')"
                 prepend-icon="mdi-account"
                 type="text"
                 required
@@ -24,7 +26,7 @@
 
               <v-text-field
                 v-model="password"
-                label="Password"
+                :label="$t('auth.password')"
                 prepend-icon="mdi-lock"
                 type="password"
                 required
@@ -49,10 +51,10 @@
               block
               size="large"
               class="mb-3"
-              aria-label="Sign in to your account"
+              :aria-label="$t('auth.loginButton')"
               :aria-busy="loading"
             >
-              Login
+              {{ $t('auth.loginButton') }}
             </v-btn>
             <div class="d-flex justify-space-between w-100 px-2">
               <v-btn
@@ -60,9 +62,9 @@
                 color="primary"
                 size="small"
                 @click="showForgotPassword = true"
-                aria-label="Open forgot password dialog"
+                :aria-label="$t('auth.forgotPassword')"
               >
-                Forgot Password?
+                {{ $t('auth.forgotPassword') }}
               </v-btn>
               <v-btn
                 variant="text"
@@ -71,7 +73,7 @@
                 @click="showRegister = true"
                 aria-label="Open account registration dialog"
               >
-                Create Account
+                {{ $t('common.add') }} {{ $t('admin.users') }}
               </v-btn>
             </div>
           </v-card-actions>
@@ -88,12 +90,12 @@
       aria-modal="true"
     >
       <v-card>
-        <v-card-title id="reset-password-title" class="text-h6">Reset Password</v-card-title>
+        <v-card-title id="reset-password-title" class="text-h6">{{ $t('auth.forgotPassword') }}</v-card-title>
         <v-card-text>
-          <p id="reset-instructions" class="mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+          <p id="reset-instructions" class="mb-4">{{ $t('auth.email') }}</p>
           <v-text-field
             v-model="resetEmail"
-            label="Email Address"
+            :label="$t('auth.email')"
             type="email"
             prepend-icon="mdi-email"
             :error-messages="resetErrors.email"
@@ -108,9 +110,9 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="showForgotPassword = false" aria-label="Cancel password reset">Cancel</v-btn>
-          <v-btn color="primary" @click="handleForgotPassword" :loading="resetLoading" :aria-busy="resetLoading" aria-label="Send password reset link">
-            Send Reset Link
+          <v-btn text @click="showForgotPassword = false" :aria-label="$t('common.cancel')">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" @click="handleForgotPassword" :loading="resetLoading" :aria-busy="resetLoading">
+            {{ $t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -125,12 +127,12 @@
       aria-modal="true"
     >
       <v-card>
-        <v-card-title id="register-title" class="text-h6">Create Account</v-card-title>
+        <v-card-title id="register-title" class="text-h6">{{ $t('common.add') }} {{ $t('admin.users') }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="handleRegister" aria-label="Registration form">
             <v-text-field
               v-model="registerForm.username"
-              label="Username"
+              :label="$t('auth.username')"
               prepend-icon="mdi-account"
               :error-messages="registerErrors.username"
               required
@@ -140,7 +142,7 @@
             ></v-text-field>
             <v-text-field
               v-model="registerForm.email"
-              label="Email"
+              :label="$t('auth.email')"
               type="email"
               prepend-icon="mdi-email"
               :error-messages="registerErrors.email"
@@ -151,7 +153,7 @@
             ></v-text-field>
             <v-text-field
               v-model="registerForm.full_name"
-              label="Full Name"
+              :label="$t('navigation.profile')"
               prepend-icon="mdi-badge-account"
               :error-messages="registerErrors.full_name"
               required
@@ -161,21 +163,21 @@
             ></v-text-field>
             <v-text-field
               v-model="registerForm.password"
-              label="Password"
+              :label="$t('auth.password')"
               type="password"
               prepend-icon="mdi-lock"
               :error-messages="registerErrors.password"
-              hint="Min 8 chars, uppercase, lowercase, number, special char"
+              :hint="$t('validation.minLength', { min: 8 })"
               required
               aria-required="true"
               :aria-invalid="!!registerErrors.password"
               aria-describedby="password-requirements"
               autocomplete="new-password"
             ></v-text-field>
-            <span id="password-requirements" class="sr-only">Password must be minimum 8 characters with uppercase, lowercase, number, and special character</span>
+            <span id="password-requirements" class="sr-only">{{ $t('validation.minLength', { min: 8 }) }}</span>
             <v-text-field
               v-model="registerForm.confirmPassword"
-              label="Confirm Password"
+              :label="$t('common.confirm') + ' ' + $t('auth.password')"
               type="password"
               prepend-icon="mdi-lock-check"
               :error-messages="registerErrors.confirmPassword"
@@ -194,9 +196,9 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn text @click="showRegister = false" aria-label="Cancel registration">Cancel</v-btn>
-          <v-btn color="primary" @click="handleRegister" :loading="registerLoading" :aria-busy="registerLoading" aria-label="Submit registration">
-            Create Account
+          <v-btn text @click="showRegister = false" :aria-label="$t('common.cancel')">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="primary" @click="handleRegister" :loading="registerLoading" :aria-busy="registerLoading">
+            {{ $t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -207,8 +209,12 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/services/api'
+import LanguageToggle from '@/components/LanguageToggle.vue'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const authStore = useAuthStore()

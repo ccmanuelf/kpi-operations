@@ -8,14 +8,14 @@
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-pause-circle</v-icon>
-        Hold/Resume Management
+        {{ $t('navigation.holdResume') }}
       </div>
       <CSVUploadDialogHold @imported="onImported" />
     </v-card-title>
     <v-card-text>
       <v-tabs v-model="tab" class="mb-4">
-        <v-tab value="hold">Create Hold</v-tab>
-        <v-tab value="resume">Resume Hold</v-tab>
+        <v-tab value="hold">{{ $t('common.add') }} {{ $t('holds.title') }}</v-tab>
+        <v-tab value="resume">{{ $t('holds.resumed') }}</v-tab>
       </v-tabs>
 
       <v-window v-model="tab">
@@ -29,7 +29,7 @@
                   :items="workOrders"
                   item-title="work_order"
                   item-value="id"
-                  label="Work Order *"
+                  :label="`${$t('production.workOrder')} *`"
                   :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
@@ -39,7 +39,7 @@
                 <v-text-field
                   v-model.number="holdData.quantity"
                   type="number"
-                  label="Quantity to Hold *"
+                  :label="`${$t('workOrders.quantity')} *`"
                   :rules="[rules.required, rules.positive]"
                   variant="outlined"
                   density="comfortable"
@@ -52,7 +52,7 @@
                 <v-select
                   v-model="holdData.reason"
                   :items="holdReasons"
-                  label="Hold Reason *"
+                  :label="`${$t('holds.holdReason')} *`"
                   :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
@@ -215,7 +215,7 @@
         :loading="loading"
         @click="submitHold"
       >
-        Create Hold
+        {{ $t('common.add') }} {{ $t('holds.title') }}
       </v-btn>
       <v-btn
         v-else
@@ -224,7 +224,7 @@
         :loading="loading"
         @click="submitResume"
       >
-        Resume Hold
+        {{ $t('holds.resumed') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -232,9 +232,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import api from '@/services/api'
 import CSVUploadDialogHold from '@/components/CSVUploadDialogHold.vue'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['submitted'])
 
@@ -284,8 +287,8 @@ const resumeData = ref({
 })
 
 const rules = {
-  required: value => !!value || 'Field is required',
-  positive: value => value > 0 || 'Must be greater than 0'
+  required: value => !!value || t('validation.required'),
+  positive: value => value > 0 || t('validation.positive')
 }
 
 const onImported = () => {

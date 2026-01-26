@@ -4,8 +4,8 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">Workforce Absenteeism</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">Track employee attendance patterns and absence rates</p>
+        <h1 class="text-h3">{{ $t('kpi.absenteeism') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.absenteeismDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -23,7 +23,7 @@
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          label="Filter by Client"
+          :label="$t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -34,7 +34,7 @@
         <v-text-field
           v-model="startDate"
           type="date"
-          label="Start Date"
+          :label="$t('filters.startDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -44,7 +44,7 @@
         <v-text-field
           v-model="endDate"
           type="date"
-          label="End Date"
+          :label="$t('filters.endDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -52,7 +52,7 @@
       </v-col>
       <v-col cols="12" md="2">
         <v-btn color="primary" block @click="refreshData" :loading="loading">
-          <v-icon left>mdi-refresh</v-icon> Refresh
+          <v-icon left>mdi-refresh</v-icon> {{ $t('common.refresh') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Total Employees</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('attendance.totalEmployees') }}</div>
                 <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_employees || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -80,7 +80,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" color="error" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">Total Absences</div>
+                <div class="text-caption">{{ $t('attendance.totalAbsences') }}</div>
                 <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_absences || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -96,7 +96,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Scheduled Hours</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('attendance.scheduledHours') }}</div>
                 <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_scheduled_hours || 0 }}h</div>
               </v-card-text>
             </v-card>
@@ -114,7 +114,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Absent Hours</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('attendance.absentHours') }}</div>
                 <div class="text-h4 font-weight-bold text-error">{{ absenteeismData?.total_hours_absent || 0 }}h</div>
               </v-card-text>
             </v-card>
@@ -131,10 +131,10 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>Absenteeism Trend</v-card-title>
+          <v-card-title>{{ $t('kpi.absenteeismTrend') }}</v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
-            <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+            <v-alert v-else type="info" variant="tonal">{{ $t('kpi.noTrendData') }}</v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -145,12 +145,12 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            Attendance Records
+            {{ $t('attendance.records') }}
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
               append-icon="mdi-magnify"
-              label="Search"
+              :label="$t('common.search')"
               single-line
               hide-details
               density="compact"
@@ -184,7 +184,7 @@
     <v-row class="mt-4">
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Absence Reasons</v-card-title>
+          <v-card-title>{{ $t('attendance.absenceReasons') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="reasonHeaders"
@@ -206,7 +206,7 @@
 
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Absenteeism by Department</v-card-title>
+          <v-card-title>{{ $t('attendance.byDepartment') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="deptHeaders"
@@ -228,7 +228,7 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>High Absence Alerts</v-card-title>
+          <v-card-title>{{ $t('attendance.highAbsenceAlerts') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="alertHeaders"
@@ -252,6 +252,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -269,6 +270,7 @@ import api from '@/services/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 const loading = ref(false)
 const clients = ref([])
@@ -319,7 +321,7 @@ const chartData = computed(() => ({
   labels: kpiStore.trends.absenteeism.map(d => format(new Date(d.date), 'MMM dd')),
   datasets: [
     {
-      label: 'Absenteeism Rate %',
+      label: t('kpi.charts.absenteeismRatePercent'),
       data: kpiStore.trends.absenteeism.map(d => d.value),
       borderColor: '#d32f2f',
       backgroundColor: 'rgba(211, 47, 47, 0.1)',
@@ -327,7 +329,7 @@ const chartData = computed(() => ({
       fill: true
     },
     {
-      label: 'Target (5%)',
+      label: t('kpi.charts.targetValue', { value: 5 }),
       data: Array(kpiStore.trends.absenteeism.length).fill(5),
       borderColor: '#2e7d32',
       borderDash: [5, 5],

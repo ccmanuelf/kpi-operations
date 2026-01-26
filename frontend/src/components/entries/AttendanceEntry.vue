@@ -8,7 +8,7 @@
     <v-card-title class="d-flex justify-space-between align-center">
       <div>
         <v-icon class="mr-2">mdi-account-clock</v-icon>
-        Attendance Entry
+        {{ $t('attendance.entry') }}
       </div>
       <CSVUploadDialogAttendance @imported="onImported" />
     </v-card-title>
@@ -18,7 +18,7 @@
           <v-col cols="12" md="6">
             <v-text-field
               v-model="formData.employee_id"
-              label="Employee ID *"
+              :label="`${$t('attendance.employee')} ID *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -28,7 +28,7 @@
             <v-text-field
               v-model="formData.date"
               type="date"
-              label="Date *"
+              :label="`${$t('common.date')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -43,7 +43,7 @@
               :items="shifts"
               item-title="name"
               item-value="id"
-              label="Shift *"
+              :label="`${$t('production.shift')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -53,7 +53,7 @@
             <v-select
               v-model="formData.status"
               :items="statuses"
-              label="Status *"
+              :label="`${$t('common.status')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -66,7 +66,7 @@
             <v-select
               v-model="formData.absence_reason"
               :items="absenceReasons"
-              label="Absence Reason *"
+              :label="`${$t('downtime.reason')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -75,7 +75,7 @@
           <v-col cols="12" md="6">
             <v-checkbox
               v-model="formData.is_excused"
-              label="Excused Absence"
+              :label="$t('attendance.excused')"
               density="comfortable"
             />
           </v-col>
@@ -86,7 +86,7 @@
             <v-text-field
               v-model.number="formData.late_minutes"
               type="number"
-              label="Minutes Late"
+              :label="`${$t('downtime.minutes')} ${$t('attendance.late')}`"
               variant="outlined"
               density="comfortable"
             />
@@ -98,7 +98,7 @@
             <v-text-field
               v-model="formData.clock_in"
               type="time"
-              label="Clock In Time"
+              :label="$t('common.time')"
               variant="outlined"
               density="comfortable"
             />
@@ -107,7 +107,7 @@
             <v-text-field
               v-model="formData.clock_out"
               type="time"
-              label="Clock Out Time"
+              :label="$t('common.time')"
               variant="outlined"
               density="comfortable"
             />
@@ -118,7 +118,7 @@
           <v-col cols="12">
             <v-textarea
               v-model="formData.notes"
-              label="Notes"
+              :label="$t('production.notes')"
               rows="3"
               variant="outlined"
               density="comfortable"
@@ -135,16 +135,19 @@
         :loading="loading"
         @click="submitEntry"
       >
-        Submit Attendance
+        {{ $t('common.submit') }} {{ $t('attendance.title') }}
       </v-btn>
     </v-card-actions>
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogAttendance from '@/components/CSVUploadDialogAttendance.vue'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['submitted'])
 
@@ -179,7 +182,7 @@ const formData = ref({
 })
 
 const rules = {
-  required: value => !!value || 'Field is required'
+  required: value => !!value || t('validation.required')
 }
 
 const onImported = () => {

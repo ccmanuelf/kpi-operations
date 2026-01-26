@@ -4,7 +4,7 @@
       <div class="d-flex align-center justify-space-between" style="width: 100%;">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-clipboard-check</v-icon>
-          <span class="text-h5">Quality Inspection - Batch Entry</span>
+          <span class="text-h5">{{ $t('grids.quality.title') }}</span>
         </div>
         <div>
           <v-btn
@@ -14,7 +14,7 @@
             class="mr-2"
           >
             <v-icon left>mdi-plus</v-icon>
-            Add Inspection
+            {{ $t('grids.quality.addInspection') }}
           </v-btn>
           <v-btn
             color="success"
@@ -23,7 +23,7 @@
             :disabled="!hasChanges"
           >
             <v-icon left>mdi-content-save</v-icon>
-            Save All ({{ changedRowsCount }})
+            {{ $t('grids.quality.saveAll') }} ({{ changedRowsCount }})
           </v-btn>
         </div>
       </div>
@@ -35,7 +35,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Inspected</div>
+              <div class="text-caption">{{ $t('grids.quality.totalInspected') }}</div>
               <div class="text-h6">{{ totalInspected.toLocaleString() }}</div>
             </v-card-text>
           </v-card>
@@ -43,7 +43,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Defects</div>
+              <div class="text-caption">{{ $t('grids.quality.totalDefects') }}</div>
               <div class="text-h6 error--text">{{ totalDefects.toLocaleString() }}</div>
             </v-card-text>
           </v-card>
@@ -51,7 +51,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" :color="avgFPY >= 99 ? 'success' : avgFPY >= 95 ? 'warning' : 'error'">
             <v-card-text>
-              <div class="text-caption">Avg FPY</div>
+              <div class="text-caption">{{ $t('grids.quality.avgFpy') }}</div>
               <div class="text-h6">{{ avgFPY.toFixed(2) }}%</div>
             </v-card-text>
           </v-card>
@@ -59,7 +59,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Avg PPM</div>
+              <div class="text-caption">{{ $t('grids.quality.avgPpm') }}</div>
               <div class="text-h6">{{ avgPPM.toLocaleString() }}</div>
             </v-card-text>
           </v-card>
@@ -68,10 +68,7 @@
 
       <!-- Info Alert -->
       <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-        <strong>Quality Metrics:</strong>
-        FPY (First Pass Yield) = (1 - Defects/Inspected) × 100% |
-        PPM (Parts Per Million) = (Defects/Inspected) × 1,000,000 |
-        Target: FPY ≥ 99%, PPM ≤ 10,000
+        {{ $t('grids.quality.metricsInfo') }}
       </v-alert>
 
       <AGGridBase
@@ -89,12 +86,12 @@
     <!-- Read-Back Confirmation Dialog -->
     <ReadBackConfirmation
       v-model="showConfirmDialog"
-      title="Confirm Quality Inspection - Read Back"
-      subtitle="Please verify the following quality inspection data before saving:"
+      :title="$t('grids.quality.confirmTitle')"
+      :subtitle="$t('grids.quality.confirmSubtitle')"
       :data="pendingData"
       :field-config="confirmationFieldConfig"
       :loading="saving"
-      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} quality inspections.` : ''"
+      :warning-message="pendingRowsCount > 1 ? $t('grids.quality.confirmWarning', { count: pendingRowsCount }) : ''"
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
@@ -108,10 +105,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import api from '@/services/api'
 import { format } from 'date-fns'
+
+const { t } = useI18n()
 
 const gridRef = ref(null)
 const qualityData = ref([])
@@ -180,9 +180,9 @@ const avgPPM = computed(() => {
   return (totalDefects.value / totalInspected.value) * 1000000
 })
 
-const columnDefs = [
+const columnDefs = computed(() => [
   {
-    headerName: 'Inspection Date',
+    headerName: t('grids.columns.inspectionDate'),
     field: 'inspection_date',
     editable: true,
     cellEditor: 'agDateStringCellEditor',
@@ -192,13 +192,13 @@ const columnDefs = [
     width: 140
   },
   {
-    headerName: 'Work Order',
+    headerName: t('grids.columns.workOrder'),
     field: 'work_order_id',
     editable: true,
     width: 150
   },
   {
-    headerName: 'Product',
+    headerName: t('grids.columns.product'),
     field: 'product_id',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -212,7 +212,7 @@ const columnDefs = [
     width: 200
   },
   {
-    headerName: 'Inspected Qty',
+    headerName: t('grids.columns.inspectedQty'),
     field: 'inspected_quantity',
     editable: true,
     type: 'numericColumn',
@@ -227,7 +227,7 @@ const columnDefs = [
     width: 140
   },
   {
-    headerName: 'Defect Qty',
+    headerName: t('grids.columns.defectQty'),
     field: 'defect_quantity',
     editable: true,
     type: 'numericColumn',
@@ -242,7 +242,7 @@ const columnDefs = [
     width: 130
   },
   {
-    headerName: 'FPY %',
+    headerName: t('grids.columns.fpyPercent'),
     field: 'fpy',
     editable: false,
     valueGetter: (params) => {
@@ -260,7 +260,7 @@ const columnDefs = [
     width: 110
   },
   {
-    headerName: 'PPM',
+    headerName: t('grids.columns.ppm'),
     field: 'ppm',
     editable: false,
     valueGetter: (params) => {
@@ -281,7 +281,7 @@ const columnDefs = [
     width: 110
   },
   {
-    headerName: 'Defect Type',
+    headerName: t('grids.columns.defectType'),
     field: 'defect_type_id',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -295,7 +295,7 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Severity',
+    headerName: t('grids.columns.severity'),
     field: 'severity',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -314,7 +314,7 @@ const columnDefs = [
     width: 120
   },
   {
-    headerName: 'Disposition',
+    headerName: t('grids.columns.disposition'),
     field: 'disposition',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -333,13 +333,13 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Inspector',
+    headerName: t('grids.columns.inspector'),
     field: 'inspector_id',
     editable: true,
     width: 130
   },
   {
-    headerName: 'Notes',
+    headerName: t('grids.columns.notes'),
     field: 'defect_description',
     editable: true,
     cellEditor: 'agLargeTextCellEditor',
@@ -347,7 +347,7 @@ const columnDefs = [
     width: 250
   },
   {
-    headerName: 'Actions',
+    headerName: t('grids.columns.actions'),
     field: 'actions',
     editable: false,
     sortable: false,
@@ -363,7 +363,7 @@ const columnDefs = [
           border-radius: 4px;
           cursor: pointer;
           font-size: 12px;
-        ">Delete</button>
+        ">${t('common.delete')}</button>
       `
       div.querySelector('.ag-grid-delete-btn').addEventListener('click', () => {
         deleteRow(params.data)
@@ -373,7 +373,7 @@ const columnDefs = [
     width: 100,
     pinned: 'right'
   }
-]
+])
 
 const onGridReady = (params) => {
   setTimeout(() => {
@@ -425,13 +425,13 @@ const addRow = () => {
 }
 
 const deleteRow = (rowData) => {
-  if (!confirm('Are you sure you want to delete this inspection?')) return
+  if (!confirm(t('grids.quality.deleteConfirm'))) return
 
   const api = gridRef.value?.gridApi
   if (!api) return
 
   api.applyTransaction({ remove: [rowData] })
-  showSnackbar('Inspection removed', 'info')
+  showSnackbar(t('grids.quality.inspectionRemoved'), 'info')
 }
 
 const saveInspections = async () => {
@@ -446,7 +446,7 @@ const saveInspections = async () => {
   })
 
   if (changedRows.length === 0) {
-    showSnackbar('No changes to save', 'info')
+    showSnackbar(t('grids.noChanges'), 'info')
     return
   }
 
@@ -496,9 +496,9 @@ const onConfirmSave = async () => {
     }
 
     if (errorCount === 0) {
-      showSnackbar(`${successCount} quality inspections saved successfully!`, 'success')
+      showSnackbar(t('grids.quality.savedInspections', { count: successCount }), 'success')
     } else {
-      showSnackbar(`${successCount} saved, ${errorCount} failed`, 'warning')
+      showSnackbar(t('grids.attendance.savedWithErrors', { success: successCount, failed: errorCount }), 'warning')
     }
   } catch (error) {
     showSnackbar('Error saving inspections: ' + error.message, 'error')
@@ -513,7 +513,7 @@ const onCancelSave = () => {
   showConfirmDialog.value = false
   pendingRows.value = []
   pendingData.value = {}
-  showSnackbar('Save cancelled', 'info')
+  showSnackbar(t('grids.saveCancelled'), 'info')
 }
 
 const showSnackbar = (message, color = 'success') => {

@@ -4,8 +4,8 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">Production Performance</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">Monitor production speed and throughput efficiency</p>
+        <h1 class="text-h3">{{ $t('kpi.performance') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.performanceDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -23,7 +23,7 @@
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          label="Filter by Client"
+          :label="$t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -34,7 +34,7 @@
         <v-text-field
           v-model="startDate"
           type="date"
-          label="Start Date"
+          :label="$t('filters.startDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -44,7 +44,7 @@
         <v-text-field
           v-model="endDate"
           type="date"
-          label="End Date"
+          :label="$t('filters.endDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -52,7 +52,7 @@
       </v-col>
       <v-col cols="12" md="2">
         <v-btn color="primary" block @click="refreshData" :loading="loading">
-          <v-icon left>mdi-refresh</v-icon> Refresh
+          <v-icon left>mdi-refresh</v-icon> {{ $t('common.refresh') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Actual Rate</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.actualRate') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.actual_rate || 0 }} u/h</div>
               </v-card-text>
             </v-card>
@@ -82,7 +82,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Standard Rate</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.standardRate') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.standard_rate || 0 }} u/h</div>
               </v-card-text>
             </v-card>
@@ -98,7 +98,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Total Units</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalUnits') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.total_units || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -114,7 +114,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">Production Hours</div>
+                <div class="text-caption text-grey-darken-1">{{ $t('kpi.productionHours') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.production_hours || 0 }}h</div>
               </v-card-text>
             </v-card>
@@ -132,11 +132,11 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center">
-            <span>Performance Trend</span>
+            <span>{{ $t('kpi.performanceTrend') }}</span>
             <v-spacer />
             <v-switch
               v-model="showForecast"
-              label="Show Forecast"
+              :label="$t('kpi.showForecast')"
               color="purple"
               density="compact"
               hide-details
@@ -147,7 +147,7 @@
               v-if="showForecast"
               v-model="forecastDays"
               :items="[3, 7, 14, 21, 30]"
-              label="Forecast Days"
+              :label="$t('kpi.forecastDays')"
               density="compact"
               variant="outlined"
               style="max-width: 120px"
@@ -157,7 +157,7 @@
           </v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
-            <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+            <v-alert v-else type="info" variant="tonal">{{ $t('kpi.noTrendData') }}</v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -260,12 +260,12 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            Historical Production Data
+            {{ $t('kpi.productionHistory') }}
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
               append-icon="mdi-magnify"
-              label="Search"
+              :label="$t('common.search')"
               single-line
               hide-details
               density="compact"
@@ -304,7 +304,7 @@
     <v-row class="mt-4">
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Performance by Shift</v-card-title>
+          <v-card-title>{{ $t('kpi.performanceByShift') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="shiftHeaders"
@@ -323,7 +323,7 @@
 
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>Performance by Product</v-card-title>
+          <v-card-title>{{ $t('kpi.performanceByProduct') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="productHeaders"
@@ -349,6 +349,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -366,6 +367,7 @@ import api from '@/services/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 const loading = ref(false)
 const clients = ref([])
@@ -415,7 +417,7 @@ const chartData = computed(() => {
 
   const datasets = [
     {
-      label: 'Performance %',
+      label: t('kpi.charts.performancePercent'),
       data: trendData,
       borderColor: '#0d47a1',
       backgroundColor: 'rgba(13, 71, 161, 0.1)',
@@ -423,7 +425,7 @@ const chartData = computed(() => {
       fill: true
     },
     {
-      label: 'Target (95%)',
+      label: t('kpi.charts.targetValue', { value: 95 }),
       data: Array(trendLabels.length).fill(95),
       borderColor: '#2e7d32',
       borderDash: [5, 5],
@@ -458,7 +460,7 @@ const chartData = computed(() => {
       labels: allLabels,
       datasets: [
         {
-          label: 'Performance %',
+          label: t('kpi.charts.performancePercent'),
           data: paddedTrendData,
           borderColor: '#0d47a1',
           backgroundColor: 'rgba(13, 71, 161, 0.1)',
@@ -466,14 +468,14 @@ const chartData = computed(() => {
           fill: true
         },
         {
-          label: 'Target (95%)',
+          label: t('kpi.charts.targetValue', { value: 95 }),
           data: paddedTarget,
           borderColor: '#2e7d32',
           borderDash: [5, 5],
           pointRadius: 0
         },
         {
-          label: 'Forecast',
+          label: t('kpi.charts.forecast'),
           data: paddedForecast,
           borderColor: '#9c27b0',
           backgroundColor: 'rgba(156, 39, 176, 0.1)',
@@ -485,7 +487,7 @@ const chartData = computed(() => {
           pointBackgroundColor: '#9c27b0'
         },
         {
-          label: 'Confidence Upper',
+          label: t('kpi.charts.confidenceUpper'),
           data: paddedUpper,
           borderColor: 'rgba(156, 39, 176, 0.3)',
           backgroundColor: 'rgba(156, 39, 176, 0.05)',
@@ -495,7 +497,7 @@ const chartData = computed(() => {
           pointRadius: 0
         },
         {
-          label: 'Confidence Lower',
+          label: t('kpi.charts.confidenceLower'),
           data: paddedLower,
           borderColor: 'rgba(156, 39, 176, 0.3)',
           backgroundColor: 'transparent',

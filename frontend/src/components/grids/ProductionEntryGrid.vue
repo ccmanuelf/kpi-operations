@@ -3,12 +3,12 @@
     <v-card-title class="d-flex justify-space-between align-center bg-primary">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-factory</v-icon>
-        <span class="text-h5">Production Data Entry</span>
+        <span class="text-h5">{{ $t('production.entry') }}</span>
       </div>
       <div>
         <v-btn color="white" variant="outlined" @click="addNewEntry" class="mr-2">
           <v-icon left>mdi-plus</v-icon>
-          Add Entry
+          {{ $t('dataEntry.addRow') }}
         </v-btn>
         <v-btn
           color="success"
@@ -17,7 +17,7 @@
           :loading="saving"
         >
           <v-icon left>mdi-content-save</v-icon>
-          Save All ({{ unsavedChanges.size }})
+          {{ $t('common.save') }} ({{ unsavedChanges.size }})
         </v-btn>
       </div>
     </v-card-title>
@@ -28,9 +28,8 @@
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-keyboard</v-icon>
           <div>
-            <strong>Excel-like Shortcuts:</strong>
-            Tab (next cell) | Enter (move down) | Ctrl+C/V (copy/paste) | Delete (clear) |
-            Ctrl+Z (undo) | Drag fill handle (copy values)
+            <strong>{{ $t('grids.keyboardShortcuts') }}:</strong>
+            {{ $t('grids.shortcutsList') }}
           </div>
         </div>
       </v-alert>
@@ -41,7 +40,7 @@
           <v-text-field
             v-model="dateFilter"
             type="date"
-            label="Filter by Date"
+            :label="$t('grids.filterByDate')"
             variant="outlined"
             density="compact"
             clearable
@@ -54,7 +53,7 @@
             :items="products"
             item-title="product_name"
             item-value="product_id"
-            label="Filter by Product"
+            :label="$t('grids.filterByProduct')"
             variant="outlined"
             density="compact"
             clearable
@@ -67,7 +66,7 @@
             :items="shifts"
             item-title="shift_name"
             item-value="shift_id"
-            label="Filter by Shift"
+            :label="$t('grids.filterByShift')"
             variant="outlined"
             density="compact"
             clearable
@@ -77,7 +76,7 @@
         <v-col cols="12" md="3">
           <v-btn color="primary" @click="applyFilters" block>
             <v-icon left>mdi-filter</v-icon>
-            Apply Filters
+            {{ $t('filters.apply') }}
           </v-btn>
         </v-col>
       </v-row>
@@ -98,7 +97,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Entries</div>
+              <div class="text-caption">{{ $t('grids.totalEntries') }}</div>
               <div class="text-h6">{{ filteredEntries.length }}</div>
             </v-card-text>
           </v-card>
@@ -106,7 +105,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Units</div>
+              <div class="text-caption">{{ $t('kpi.totalUnits') }}</div>
               <div class="text-h6">{{ totalUnits.toLocaleString() }}</div>
             </v-card-text>
           </v-card>
@@ -114,7 +113,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Runtime</div>
+              <div class="text-caption">{{ $t('grids.totalRuntime') }}</div>
               <div class="text-h6">{{ totalRuntime.toFixed(1) }} hrs</div>
             </v-card-text>
           </v-card>
@@ -122,7 +121,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Avg Efficiency</div>
+              <div class="text-caption">{{ $t('grids.avgEfficiency') }}</div>
               <div class="text-h6">{{ avgEfficiency.toFixed(1) }}%</div>
             </v-card-text>
           </v-card>
@@ -151,11 +150,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 const gridRef = ref(null)
 const unsavedChanges = ref(new Set())
@@ -217,9 +218,9 @@ const avgEfficiency = computed(() => {
 })
 
 // Column definitions
-const columnDefs = [
+const columnDefs = computed(() => [
   {
-    headerName: 'Date',
+    headerName: t('grids.columns.date'),
     field: 'production_date',
     editable: true,
     cellEditor: 'agDateStringCellEditor',
@@ -232,7 +233,7 @@ const columnDefs = [
     sort: 'desc'
   },
   {
-    headerName: 'Product',
+    headerName: t('grids.columns.product'),
     field: 'product_id',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -246,7 +247,7 @@ const columnDefs = [
     width: 200
   },
   {
-    headerName: 'Shift',
+    headerName: t('grids.columns.shift'),
     field: 'shift_id',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -260,13 +261,13 @@ const columnDefs = [
     width: 120
   },
   {
-    headerName: 'Work Order',
+    headerName: t('grids.columns.workOrder'),
     field: 'work_order_number',
     editable: true,
     width: 150
   },
   {
-    headerName: 'Units Produced',
+    headerName: t('grids.columns.unitsProduced'),
     field: 'units_produced',
     editable: true,
     type: 'numericColumn',
@@ -286,7 +287,7 @@ const columnDefs = [
     width: 160
   },
   {
-    headerName: 'Runtime (hrs)',
+    headerName: t('grids.columns.runtimeHrs'),
     field: 'run_time_hours',
     editable: true,
     type: 'numericColumn',
@@ -302,7 +303,7 @@ const columnDefs = [
     width: 140
   },
   {
-    headerName: 'Employees',
+    headerName: t('grids.columns.employees'),
     field: 'employees_assigned',
     editable: true,
     type: 'numericColumn',
@@ -314,7 +315,7 @@ const columnDefs = [
     width: 130
   },
   {
-    headerName: 'Defects',
+    headerName: t('grids.columns.defects'),
     field: 'defect_count',
     editable: true,
     type: 'numericColumn',
@@ -329,7 +330,7 @@ const columnDefs = [
     width: 110
   },
   {
-    headerName: 'Scrap',
+    headerName: t('grids.columns.scrap'),
     field: 'scrap_count',
     editable: true,
     type: 'numericColumn',
@@ -344,7 +345,7 @@ const columnDefs = [
     width: 110
   },
   {
-    headerName: 'Actions',
+    headerName: t('grids.columns.actions'),
     field: 'actions',
     editable: false,
     sortable: false,
@@ -360,7 +361,7 @@ const columnDefs = [
           border-radius: 4px;
           cursor: pointer;
           font-size: 12px;
-        ">Delete</button>
+        ">${t('common.delete')}</button>
       `
       div.querySelector('.ag-grid-delete-btn').addEventListener('click', () => {
         deleteEntry(params.data)
@@ -370,7 +371,7 @@ const columnDefs = [
     width: 100,
     pinned: 'right'
   }
-]
+])
 
 const onGridReady = (params) => {
   // Auto-fit columns initially
@@ -423,7 +424,7 @@ const addNewEntry = () => {
 }
 
 const deleteEntry = async (rowData) => {
-  if (!confirm('Are you sure you want to delete this entry?')) return
+  if (!confirm(t('grids.deleteConfirm'))) return
 
   const api = gridRef.value?.gridApi
   if (!api) return
@@ -432,7 +433,7 @@ const deleteEntry = async (rowData) => {
   if (rowData._isNew) {
     api.applyTransaction({ remove: [rowData] })
     unsavedChanges.value.delete(rowData.entry_id)
-    showSnackbar('Entry removed', 'info')
+    showSnackbar(t('grids.entryRemoved'), 'info')
     return
   }
 
@@ -441,9 +442,9 @@ const deleteEntry = async (rowData) => {
     await kpiStore.deleteProductionEntry(rowData.entry_id)
     api.applyTransaction({ remove: [rowData] })
     unsavedChanges.value.delete(rowData.entry_id)
-    showSnackbar('Entry deleted successfully', 'success')
+    showSnackbar(t('grids.entryDeleted'), 'success')
   } catch (error) {
-    showSnackbar('Error deleting entry: ' + error.message, 'error')
+    showSnackbar(t('grids.deleteError') + ': ' + error.message, 'error')
   }
 }
 
@@ -459,7 +460,7 @@ const saveChanges = async () => {
   })
 
   if (rowsToSave.length === 0) {
-    showSnackbar('No changes to save', 'info')
+    showSnackbar(t('grids.noChanges'), 'info')
     return
   }
 
@@ -522,9 +523,9 @@ const onConfirmSave = async () => {
     applyFilters()
 
     if (errorCount === 0) {
-      showSnackbar(`${successCount} entries saved successfully!`, 'success')
+      showSnackbar(t('grids.entriesSaved', { count: successCount }), 'success')
     } else {
-      showSnackbar(`${successCount} saved, ${errorCount} failed`, 'warning')
+      showSnackbar(`${successCount} ${t('success.saved')}, ${errorCount} ${t('dataEntry.rowsInvalid')}`, 'warning')
     }
   } catch (error) {
     showSnackbar('Error saving changes: ' + error.message, 'error')
@@ -539,7 +540,7 @@ const onCancelSave = () => {
   showConfirmDialog.value = false
   pendingRows.value = []
   pendingData.value = {}
-  showSnackbar('Save cancelled', 'info')
+  showSnackbar(t('grids.saveCancelled'), 'info')
 }
 
 const applyFilters = () => {

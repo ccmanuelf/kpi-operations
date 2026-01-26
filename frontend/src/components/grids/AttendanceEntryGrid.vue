@@ -3,7 +3,7 @@
     <v-card-title class="bg-primary">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-account-clock</v-icon>
-        <span class="text-h5">Attendance Entry - Bulk Grid (50-200 employees)</span>
+        <span class="text-h5">{{ $t('grids.attendance.title') }}</span>
       </div>
     </v-card-title>
 
@@ -14,7 +14,7 @@
           <v-text-field
             v-model="selectedDate"
             type="date"
-            label="Attendance Date"
+            :label="$t('grids.attendance.attendanceDate')"
             variant="outlined"
             density="compact"
             :disabled="loading"
@@ -26,7 +26,7 @@
             :items="shifts"
             item-title="shift_name"
             item-value="shift_id"
-            label="Shift"
+            :label="$t('filters.shift')"
             variant="outlined"
             density="compact"
             :disabled="loading"
@@ -41,7 +41,7 @@
             block
           >
             <v-icon left>mdi-account-multiple</v-icon>
-            Load Employees
+            {{ $t('grids.attendance.loadEmployees') }}
           </v-btn>
         </v-col>
         <v-col cols="12" md="3">
@@ -52,7 +52,7 @@
             block
           >
             <v-icon left>mdi-check-all</v-icon>
-            Mark All Present
+            {{ $t('grids.attendance.markAllPresent') }}
           </v-btn>
         </v-col>
       </v-row>
@@ -62,45 +62,44 @@
         <v-col cols="12" md="2">
           <v-chip color="success" label>
             <v-icon left small>mdi-check</v-icon>
-            Present: {{ statusCounts.present }}
+            {{ $t('grids.attendance.present') }}: {{ statusCounts.present }}
           </v-chip>
         </v-col>
         <v-col cols="12" md="2">
           <v-chip color="error" label>
             <v-icon left small>mdi-close</v-icon>
-            Absent: {{ statusCounts.absent }}
+            {{ $t('grids.attendance.absent') }}: {{ statusCounts.absent }}
           </v-chip>
         </v-col>
         <v-col cols="12" md="2">
           <v-chip color="warning" label>
             <v-icon left small>mdi-clock-alert</v-icon>
-            Late: {{ statusCounts.late }}
+            {{ $t('grids.attendance.late') }}: {{ statusCounts.late }}
           </v-chip>
         </v-col>
         <v-col cols="12" md="2">
           <v-chip color="info" label>
             <v-icon left small>mdi-calendar-remove</v-icon>
-            Leave: {{ statusCounts.leave }}
+            {{ $t('grids.attendance.leave') }}: {{ statusCounts.leave }}
           </v-chip>
         </v-col>
         <v-col cols="12" md="2">
           <v-chip color="purple" label>
             <v-icon left small>mdi-briefcase-clock</v-icon>
-            Half Day: {{ statusCounts.halfDay }}
+            {{ $t('grids.attendance.halfDay') }}: {{ statusCounts.halfDay }}
           </v-chip>
         </v-col>
         <v-col cols="12" md="2">
           <v-chip label>
-            Total: {{ attendanceData.length }}
+            {{ $t('grids.attendance.total') }}: {{ attendanceData.length }}
           </v-chip>
         </v-col>
       </v-row>
 
       <!-- Info Alert -->
       <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-        <strong>Bulk Entry Tips:</strong>
-        Use Tab to navigate | Copy/Paste from Excel | Press Delete to clear cells |
-        Ctrl+D to fill down selected cells
+        <strong>{{ $t('grids.bulkEntryTips') }}:</strong>
+        {{ $t('grids.bulkEntryHints') }}
       </v-alert>
 
       <AGGridBase
@@ -124,19 +123,19 @@
         block
       >
         <v-icon left>mdi-content-save</v-icon>
-        Save {{ changedRowsCount }} Attendance Records
+        {{ $t('grids.attendance.saveRecords', { count: changedRowsCount }) }}
       </v-btn>
     </v-card-text>
 
     <!-- Read-Back Confirmation Dialog -->
     <ReadBackConfirmation
       v-model="showConfirmDialog"
-      title="Confirm Attendance Entry - Read Back"
-      subtitle="Please verify the following attendance data before saving:"
+      :title="$t('grids.attendance.confirmTitle')"
+      :subtitle="$t('grids.attendance.confirmSubtitle')"
       :data="pendingData"
       :field-config="confirmationFieldConfig"
       :loading="saving"
-      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} attendance records.` : ''"
+      :warning-message="pendingRowsCount > 1 ? $t('grids.attendance.confirmWarning', { count: pendingRowsCount }) : ''"
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
@@ -150,10 +149,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import api from '@/services/api'
 import { format } from 'date-fns'
+
+const { t } = useI18n()
 
 const gridRef = ref(null)
 const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
@@ -221,9 +223,9 @@ const statusCounts = computed(() => {
   return counts
 })
 
-const columnDefs = [
+const columnDefs = computed(() => [
   {
-    headerName: 'Employee ID',
+    headerName: t('grids.columns.employeeId'),
     field: 'employee_id',
     editable: false,
     pinned: 'left',
@@ -231,7 +233,7 @@ const columnDefs = [
     cellClass: 'font-weight-bold'
   },
   {
-    headerName: 'Name',
+    headerName: t('grids.columns.employeeName'),
     field: 'employee_name',
     editable: false,
     pinned: 'left',
@@ -239,13 +241,13 @@ const columnDefs = [
     cellClass: 'font-weight-bold'
   },
   {
-    headerName: 'Department',
+    headerName: t('grids.columns.department'),
     field: 'department',
     editable: false,
     width: 150
   },
   {
-    headerName: 'Status',
+    headerName: t('grids.columns.status'),
     field: 'status',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -265,7 +267,7 @@ const columnDefs = [
     width: 130
   },
   {
-    headerName: 'Clock In',
+    headerName: t('grids.columns.clockIn'),
     field: 'clock_in',
     editable: true,
     cellEditor: 'agTextCellEditor',
@@ -275,7 +277,7 @@ const columnDefs = [
     width: 120
   },
   {
-    headerName: 'Clock Out',
+    headerName: t('grids.columns.clockOut'),
     field: 'clock_out',
     editable: true,
     cellEditor: 'agTextCellEditor',
@@ -285,7 +287,7 @@ const columnDefs = [
     width: 120
   },
   {
-    headerName: 'Late (min)',
+    headerName: t('grids.columns.lateMinutes'),
     field: 'late_minutes',
     editable: true,
     type: 'numericColumn',
@@ -300,7 +302,7 @@ const columnDefs = [
     width: 120
   },
   {
-    headerName: 'Absence Reason',
+    headerName: t('grids.columns.absenceReason'),
     field: 'absence_reason',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -319,7 +321,7 @@ const columnDefs = [
     width: 180
   },
   {
-    headerName: 'Excused',
+    headerName: t('grids.columns.excused'),
     field: 'is_excused',
     editable: true,
     cellRenderer: (params) => {
@@ -330,14 +332,14 @@ const columnDefs = [
     width: 100
   },
   {
-    headerName: 'Notes',
+    headerName: t('grids.columns.notes'),
     field: 'notes',
     editable: true,
     cellEditor: 'agLargeTextCellEditor',
     cellEditorPopup: true,
     width: 250
   }
-]
+])
 
 const onGridReady = (params) => {
   // Auto-fit columns
@@ -399,7 +401,7 @@ const loadEmployees = async () => {
       }
     })
 
-    showSnackbar(`Loaded ${attendanceData.value.length} employees`, 'success')
+    showSnackbar(t('grids.attendance.loadedEmployees', { count: attendanceData.value.length }), 'success')
   } catch (error) {
     console.error('Error loading employees:', error)
     showSnackbar('Error loading employees: ' + error.message, 'error')
@@ -432,7 +434,7 @@ const bulkSetStatus = () => {
   })
 
   api.refreshCells()
-  showSnackbar('All employees marked as present', 'success')
+  showSnackbar(t('grids.attendance.markedPresent'), 'success')
 }
 
 const saveAttendance = async () => {
@@ -447,7 +449,7 @@ const saveAttendance = async () => {
   })
 
   if (changedRows.length === 0) {
-    showSnackbar('No changes to save', 'info')
+    showSnackbar(t('grids.noChanges'), 'info')
     return
   }
 
@@ -500,10 +502,10 @@ const onConfirmSave = async () => {
     }
 
     if (errorCount === 0) {
-      showSnackbar(`${successCount} attendance records saved successfully!`, 'success')
+      showSnackbar(t('grids.attendance.savedRecords', { success: successCount }), 'success')
       attendanceData.value = []
     } else {
-      showSnackbar(`${successCount} saved, ${errorCount} failed`, 'warning')
+      showSnackbar(t('grids.attendance.savedWithErrors', { success: successCount, failed: errorCount }), 'warning')
     }
   } catch (error) {
     showSnackbar('Error saving attendance: ' + error.message, 'error')
@@ -518,7 +520,7 @@ const onCancelSave = () => {
   showConfirmDialog.value = false
   pendingRows.value = []
   pendingData.value = {}
-  showSnackbar('Save cancelled', 'info')
+  showSnackbar(t('grids.saveCancelled'), 'info')
 }
 
 const showSnackbar = (message, color = 'success') => {

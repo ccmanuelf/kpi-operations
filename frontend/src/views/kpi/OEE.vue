@@ -4,8 +4,8 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">Overall Equipment Effectiveness (OEE)</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">Comprehensive productivity metric combining Availability, Performance, and Quality</p>
+        <h1 class="text-h3">{{ $t('kpi.oee') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.oeeDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -23,7 +23,7 @@
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          label="Filter by Client"
+          :label="$t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -34,7 +34,7 @@
         <v-text-field
           v-model="startDate"
           type="date"
-          label="Start Date"
+          :label="$t('filters.startDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -44,7 +44,7 @@
         <v-text-field
           v-model="endDate"
           type="date"
-          label="End Date"
+          :label="$t('filters.endDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -52,7 +52,7 @@
       </v-col>
       <v-col cols="12" md="2">
         <v-btn color="primary" block @click="refreshData" :loading="loading">
-          <v-icon left>mdi-refresh</v-icon> Refresh
+          <v-icon left>mdi-refresh</v-icon> {{ $t('common.refresh') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -83,7 +83,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption text-grey-darken-1">Availability</div>
+                    <div class="text-caption text-grey-darken-1">{{ $t('kpi.availability') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
                     <div class="text-caption">Equipment uptime</div>
                   </div>
@@ -107,7 +107,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption text-grey-darken-1">Performance</div>
+                    <div class="text-caption text-grey-darken-1">{{ $t('kpi.performance') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
                     <div class="text-caption">Speed efficiency</div>
                   </div>
@@ -131,7 +131,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption text-grey-darken-1">Quality (FPY)</div>
+                    <div class="text-caption text-grey-darken-1">{{ $t('kpi.qualityFPY') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
                     <div class="text-caption">First pass yield</div>
                   </div>
@@ -154,10 +154,10 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>OEE Trend</v-card-title>
+          <v-card-title>{{ $t('kpi.oeeTrend') }}</v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
-            <v-alert v-else type="info" variant="tonal">No trend data available</v-alert>
+            <v-alert v-else type="info" variant="tonal">{{ $t('kpi.noTrendData') }}</v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -168,12 +168,12 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            Historical Production Data
+            {{ $t('kpi.productionHistory') }}
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
               append-icon="mdi-magnify"
-              label="Search"
+              :label="$t('common.search')"
               single-line
               hide-details
               density="compact"
@@ -216,6 +216,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -233,6 +234,7 @@ import api from '@/services/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 const loading = ref(false)
 const clients = ref([])
@@ -268,7 +270,7 @@ const chartData = computed(() => ({
   labels: kpiStore.trends.oee.map(d => format(new Date(d.date), 'MMM dd')),
   datasets: [
     {
-      label: 'OEE %',
+      label: t('kpi.charts.oeePercent'),
       data: kpiStore.trends.oee.map(d => d.value),
       borderColor: '#1976d2',
       backgroundColor: 'rgba(25, 118, 210, 0.1)',
@@ -276,7 +278,7 @@ const chartData = computed(() => ({
       fill: true
     },
     {
-      label: 'World Class (85%)',
+      label: t('kpi.charts.worldClass', { value: 85 }),
       data: Array(kpiStore.trends.oee.length).fill(85),
       borderColor: '#2e7d32',
       borderDash: [5, 5],

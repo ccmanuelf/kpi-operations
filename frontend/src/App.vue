@@ -2,23 +2,26 @@
   <v-app>
     <!-- Skip to main content link for keyboard users -->
     <a href="#main-content" class="skip-to-main sr-only-focusable">
-      Skip to main content
+      {{ $t('navigation.skipToMain') }}
     </a>
 
     <!-- App Bar - Full Width -->
     <v-app-bar v-if="isAuthenticated" color="primary" density="default" role="banner">
       <v-app-bar-nav-icon
         @click="drawer = !drawer"
-        aria-label="Toggle navigation menu"
+        :aria-label="$t('navigation.toggleNav')"
         :aria-expanded="drawer.toString()"
       ></v-app-bar-nav-icon>
-      <v-toolbar-title>KPI Platform</v-toolbar-title>
+      <v-toolbar-title>{{ $t('navigation.kpiDashboard') }}</v-toolbar-title>
       <v-spacer></v-spacer>
 
-      <v-btn icon @click="toggleShortcutsHelp" aria-label="View keyboard shortcuts">
+      <!-- Language Toggle -->
+      <LanguageToggle class="mr-2" />
+
+      <v-btn icon @click="toggleShortcutsHelp" :aria-label="$t('common.view') + ' ' + $t('navigation.settings')">
         <v-icon aria-hidden="true">mdi-keyboard</v-icon>
       </v-btn>
-      <v-btn icon @click="logout" aria-label="Logout from application">
+      <v-btn icon @click="logout" :aria-label="$t('navigation.logout')">
         <v-icon aria-hidden="true">mdi-logout</v-icon>
       </v-btn>
     </v-app-bar>
@@ -30,15 +33,15 @@
       :rail="rail"
       permanent
       role="navigation"
-      aria-label="Main navigation"
+      :aria-label="$t('navigation.mainNav')"
     >
       <v-list-item
         prepend-icon="mdi-factory"
-        :title="rail ? '' : 'Manufacturing KPI'"
+        :title="rail ? '' : $t('navigation.manufacturingKpi')"
         nav
         @click="rail = !rail"
         class="cursor-pointer"
-        :aria-label="rail ? 'Expand navigation' : 'Collapse navigation'"
+        :aria-label="rail ? $t('navigation.expandNav') : $t('navigation.collapseNav')"
       >
         <template v-slot:append>
           <v-btn
@@ -46,47 +49,47 @@
             variant="text"
             size="small"
             @click.stop="rail = !rail"
-            :aria-label="rail ? 'Expand navigation sidebar' : 'Collapse navigation sidebar'"
+            :aria-label="rail ? $t('navigation.expandNav') : $t('navigation.collapseNav')"
           ></v-btn>
         </template>
       </v-list-item>
 
       <v-divider role="separator"></v-divider>
 
-      <v-list density="compact" nav aria-label="Primary navigation">
-        <v-list-item prepend-icon="mdi-view-dashboard" title="Dashboard" value="dashboard" to="/" aria-label="Go to Dashboard" />
-        <v-list-item prepend-icon="mdi-account-hard-hat" title="My Shift" value="my-shift" to="/my-shift" aria-label="Go to My Shift Dashboard - personalized operator view" />
-        <v-list-item prepend-icon="mdi-clipboard-list" title="Work Orders" value="work-orders" to="/work-orders" aria-label="Go to Work Order Management" />
-        <v-list-item prepend-icon="mdi-factory" title="Production Entry" value="production" to="/production-entry" aria-label="Go to Production Entry" />
-        <v-list-item prepend-icon="mdi-chart-box" title="KPI Dashboard" value="kpi-dashboard" to="/kpi-dashboard" aria-label="Go to KPI Dashboard" />
+      <v-list density="compact" nav :aria-label="$t('navigation.primaryNav')">
+        <v-list-item prepend-icon="mdi-view-dashboard" :title="$t('navigation.dashboard')" value="dashboard" to="/" />
+        <v-list-item prepend-icon="mdi-account-hard-hat" :title="$t('navigation.myShift')" value="my-shift" to="/my-shift" />
+        <v-list-item prepend-icon="mdi-clipboard-list" :title="$t('navigation.workOrders')" value="work-orders" to="/work-orders" />
+        <v-list-item prepend-icon="mdi-factory" :title="$t('navigation.productionEntry')" value="production" to="/production-entry" />
+        <v-list-item prepend-icon="mdi-chart-box" :title="$t('navigation.kpiDashboard')" value="kpi-dashboard" to="/kpi-dashboard" />
 
         <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="data-entry-nav">DATA ENTRY</v-list-subheader>
+        <v-list-subheader v-if="!rail" id="data-entry-nav">{{ $t('navigation.dataEntry').toUpperCase() }}</v-list-subheader>
 
-        <v-list-item prepend-icon="mdi-clock-alert" title="Downtime" value="downtime" to="/data-entry/downtime" aria-label="Go to Downtime data entry" />
-        <v-list-item prepend-icon="mdi-account-group" title="Attendance" value="attendance" to="/data-entry/attendance" aria-label="Go to Attendance data entry" />
-        <v-list-item prepend-icon="mdi-quality-high" title="Quality" value="quality" to="/data-entry/quality" aria-label="Go to Quality data entry" />
-        <v-list-item prepend-icon="mdi-pause-circle" title="Hold/Resume" value="hold" to="/data-entry/hold-resume" aria-label="Go to Hold and Resume data entry" />
-
-        <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="kpi-reports-nav">KPI REPORTS</v-list-subheader>
-
-        <v-list-item prepend-icon="mdi-chart-line" title="Efficiency" value="efficiency" to="/kpi/efficiency" aria-label="View Efficiency KPI report" />
-        <v-list-item prepend-icon="mdi-warehouse" title="WIP Aging" value="wip" to="/kpi/wip-aging" aria-label="View WIP Aging KPI report" />
-        <v-list-item prepend-icon="mdi-truck-delivery" title="On-Time Delivery" value="otd" to="/kpi/on-time-delivery" aria-label="View On-Time Delivery KPI report" />
-        <v-list-item prepend-icon="mdi-checkbox-marked-circle" title="Availability" value="availability" to="/kpi/availability" aria-label="View Availability KPI report" />
-        <v-list-item prepend-icon="mdi-speedometer" title="Performance" value="performance" to="/kpi/performance" aria-label="View Performance KPI report" />
-        <v-list-item prepend-icon="mdi-star" title="Quality" value="quality-kpi" to="/kpi/quality" aria-label="View Quality KPI report" />
-        <v-list-item prepend-icon="mdi-account-off" title="Absenteeism" value="absenteeism" to="/kpi/absenteeism" aria-label="View Absenteeism KPI report" />
-        <v-list-item prepend-icon="mdi-gauge" title="OEE" value="oee" to="/kpi/oee" aria-label="View OEE KPI report" />
+        <v-list-item prepend-icon="mdi-clock-alert" :title="$t('navigation.downtime')" value="downtime" to="/data-entry/downtime" />
+        <v-list-item prepend-icon="mdi-account-group" :title="$t('navigation.attendance')" value="attendance" to="/data-entry/attendance" />
+        <v-list-item prepend-icon="mdi-quality-high" :title="$t('navigation.quality')" value="quality" to="/data-entry/quality" />
+        <v-list-item prepend-icon="mdi-pause-circle" :title="$t('navigation.holdResume')" value="hold" to="/data-entry/hold-resume" />
 
         <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="admin-nav">ADMIN</v-list-subheader>
+        <v-list-subheader v-if="!rail" id="kpi-reports-nav">{{ $t('navigation.kpiReports').toUpperCase() }}</v-list-subheader>
 
-        <v-list-item prepend-icon="mdi-cog" title="Settings" value="settings" to="/admin/settings" aria-label="Go to Settings" />
-        <v-list-item prepend-icon="mdi-account-multiple" title="Users" value="users" to="/admin/users" aria-label="Go to User management" />
-        <v-list-item prepend-icon="mdi-domain" title="Clients" value="clients" to="/admin/clients" aria-label="Go to Client management" />
-        <v-list-item prepend-icon="mdi-alert-circle-outline" title="Defect Types" value="defect-types" to="/admin/defect-types" aria-label="Go to Defect Types management" />
+        <v-list-item prepend-icon="mdi-chart-line" :title="$t('kpi.efficiency')" value="efficiency" to="/kpi/efficiency" />
+        <v-list-item prepend-icon="mdi-warehouse" :title="$t('kpi.wipAging')" value="wip" to="/kpi/wip-aging" />
+        <v-list-item prepend-icon="mdi-truck-delivery" :title="$t('kpi.otdFull')" value="otd" to="/kpi/on-time-delivery" />
+        <v-list-item prepend-icon="mdi-checkbox-marked-circle" :title="$t('kpi.availability')" value="availability" to="/kpi/availability" />
+        <v-list-item prepend-icon="mdi-speedometer" :title="$t('kpi.performance')" value="performance" to="/kpi/performance" />
+        <v-list-item prepend-icon="mdi-star" :title="$t('navigation.quality')" value="quality-kpi" to="/kpi/quality" />
+        <v-list-item prepend-icon="mdi-account-off" :title="$t('kpi.absenteeism')" value="absenteeism" to="/kpi/absenteeism" />
+        <v-list-item prepend-icon="mdi-gauge" title="OEE" value="oee" to="/kpi/oee" />
+
+        <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader v-if="!rail" id="admin-nav">{{ $t('navigation.admin').toUpperCase() }}</v-list-subheader>
+
+        <v-list-item prepend-icon="mdi-cog" :title="$t('navigation.settings')" value="settings" to="/admin/settings" />
+        <v-list-item prepend-icon="mdi-account-multiple" :title="$t('navigation.users')" value="users" to="/admin/users" />
+        <v-list-item prepend-icon="mdi-domain" :title="$t('navigation.clients')" value="clients" to="/admin/clients" />
+        <v-list-item prepend-icon="mdi-alert-circle-outline" :title="$t('navigation.defectTypes')" value="defect-types" to="/admin/defect-types" />
       </v-list>
     </v-navigation-drawer>
 
@@ -126,9 +129,9 @@
           variant="text"
           size="small"
           @click="notificationStore.hide()"
-          aria-label="Close notification"
+          :aria-label="$t('common.close')"
         >
-          Close
+          {{ $t('common.close') }}
         </v-btn>
       </template>
     </v-snackbar>
@@ -141,13 +144,16 @@
 <script setup>
 import { ref, computed, onMounted, onErrorCaptured } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
 import QuickActionsFAB from '@/components/QuickActionsFAB.vue'
+import LanguageToggle from '@/components/LanguageToggle.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()

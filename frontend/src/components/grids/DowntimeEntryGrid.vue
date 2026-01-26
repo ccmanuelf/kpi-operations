@@ -3,12 +3,12 @@
     <v-card-title class="d-flex justify-space-between align-center bg-primary">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-alert-circle</v-icon>
-        <span class="text-h5">Downtime Entry - Excel-like Grid</span>
+        <span class="text-h5">{{ $t('grids.downtime.title') }}</span>
       </div>
       <div>
         <v-btn color="white" variant="outlined" @click="addNewEntry" class="mr-2">
           <v-icon left>mdi-plus</v-icon>
-          Add Downtime
+          {{ $t('grids.downtime.addDowntime') }}
         </v-btn>
         <v-btn
           color="success"
@@ -17,7 +17,7 @@
           :loading="saving"
         >
           <v-icon left>mdi-content-save</v-icon>
-          Save All ({{ unsavedChanges.size }})
+          {{ $t('grids.downtime.saveAll') }} ({{ unsavedChanges.size }})
         </v-btn>
       </div>
     </v-card-title>
@@ -28,9 +28,8 @@
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-keyboard</v-icon>
           <div>
-            <strong>Excel-like Shortcuts:</strong>
-            Tab (next cell) | Enter (move down) | Ctrl+C/V (copy/paste) | Delete (clear) |
-            Ctrl+Z (undo) | F1 (help) | Drag fill handle (copy values)
+            <strong>{{ $t('grids.keyboardShortcuts') }}:</strong>
+            {{ $t('grids.shortcutsList') }}
           </div>
         </div>
       </v-alert>
@@ -41,7 +40,7 @@
           <v-text-field
             v-model="dateFilter"
             type="date"
-            label="Filter by Date"
+            :label="$t('grids.filterByDate')"
             variant="outlined"
             density="compact"
             clearable
@@ -52,7 +51,7 @@
           <v-select
             v-model="categoryFilter"
             :items="categories"
-            label="Filter by Category"
+            :label="$t('grids.filterByCategory')"
             variant="outlined"
             density="compact"
             clearable
@@ -63,7 +62,7 @@
           <v-select
             v-model="statusFilter"
             :items="['Resolved', 'Unresolved']"
-            label="Filter by Status"
+            :label="$t('grids.filterByStatus')"
             variant="outlined"
             density="compact"
             clearable
@@ -73,7 +72,7 @@
         <v-col cols="12" md="3">
           <v-btn color="primary" @click="applyFilters" block>
             <v-icon left>mdi-filter</v-icon>
-            Apply Filters
+            {{ $t('grids.applyFilters') }}
           </v-btn>
         </v-col>
       </v-row>
@@ -94,7 +93,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Downtime Entries</div>
+              <div class="text-caption">{{ $t('grids.downtime.totalDowntimeEntries') }}</div>
               <div class="text-h6">{{ filteredEntries.length }}</div>
             </v-card-text>
           </v-card>
@@ -102,7 +101,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" color="error">
             <v-card-text>
-              <div class="text-caption">Total Hours Lost</div>
+              <div class="text-caption">{{ $t('grids.downtime.totalHoursLost') }}</div>
               <div class="text-h6">{{ totalHours.toFixed(1) }} hrs</div>
             </v-card-text>
           </v-card>
@@ -110,7 +109,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" color="warning">
             <v-card-text>
-              <div class="text-caption">Unresolved Issues</div>
+              <div class="text-caption">{{ $t('grids.downtime.unresolvedIssues') }}</div>
               <div class="text-h6">{{ unresolvedCount }}</div>
             </v-card-text>
           </v-card>
@@ -118,7 +117,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" color="success">
             <v-card-text>
-              <div class="text-caption">Resolved Issues</div>
+              <div class="text-caption">{{ $t('grids.downtime.resolvedIssues') }}</div>
               <div class="text-h6">{{ resolvedCount }}</div>
             </v-card-text>
           </v-card>
@@ -129,12 +128,12 @@
     <!-- Read-Back Confirmation Dialog -->
     <ReadBackConfirmation
       v-model="showConfirmDialog"
-      title="Confirm Downtime Entry - Read Back"
-      subtitle="Please verify the following downtime data before saving:"
+      :title="$t('grids.downtime.confirmTitle')"
+      :subtitle="$t('grids.downtime.confirmSubtitle')"
       :data="pendingData"
       :field-config="confirmationFieldConfig"
       :loading="saving"
-      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} downtime entries.` : ''"
+      :warning-message="pendingRowsCount > 1 ? $t('grids.downtime.confirmWarning', { count: pendingRowsCount }) : ''"
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
@@ -148,10 +147,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
+
+const { t } = useI18n()
 
 const kpiStore = useKPIStore()
 const gridRef = ref(null)
@@ -171,14 +173,14 @@ const confirmationFieldConfig = computed(() => {
   const workOrderNumber = workOrders.value.find(w => w.work_order_id === pendingData.value.work_order_id)?.work_order_number || 'N/A'
 
   return [
-    { key: 'downtime_start_time', label: 'Start Time', type: 'datetime' },
-    { key: 'work_order_id', label: 'Work Order', type: 'text', displayValue: workOrderNumber },
-    { key: 'downtime_reason', label: 'Reason', type: 'text' },
-    { key: 'category', label: 'Category', type: 'text' },
-    { key: 'duration_hours', label: 'Duration (hours)', type: 'number' },
-    { key: 'impact_on_wip_hours', label: 'WIP Impact (hours)', type: 'number' },
-    { key: 'is_resolved', label: 'Resolved', type: 'boolean' },
-    { key: 'resolution_notes', label: 'Resolution Notes', type: 'text' }
+    { key: 'downtime_start_time', label: t('grids.columns.startTime'), type: 'datetime' },
+    { key: 'work_order_id', label: t('grids.columns.workOrder'), type: 'text', displayValue: workOrderNumber },
+    { key: 'downtime_reason', label: t('grids.columns.reason'), type: 'text' },
+    { key: 'category', label: t('grids.columns.category'), type: 'text' },
+    { key: 'duration_hours', label: t('grids.columns.duration'), type: 'number' },
+    { key: 'impact_on_wip_hours', label: t('grids.columns.wipImpact'), type: 'number' },
+    { key: 'is_resolved', label: t('grids.columns.resolved'), type: 'boolean' },
+    { key: 'resolution_notes', label: t('grids.columns.resolutionNotes'), type: 'text' }
   ]
 })
 
@@ -218,10 +220,10 @@ const resolvedCount = computed(() => {
   return filteredEntries.value.filter(e => e.is_resolved).length
 })
 
-// Column definitions
-const columnDefs = [
+// Column definitions (computed for reactive translations)
+const columnDefs = computed(() => [
   {
-    headerName: 'Start Time',
+    headerName: t('grids.columns.startTime'),
     field: 'downtime_start_time',
     editable: true,
     cellEditor: 'agDateStringCellEditor',
@@ -234,7 +236,7 @@ const columnDefs = [
     sort: 'desc'
   },
   {
-    headerName: 'Work Order',
+    headerName: t('grids.columns.workOrder'),
     field: 'work_order_id',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -248,7 +250,7 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Reason',
+    headerName: t('grids.columns.reason'),
     field: 'downtime_reason',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -258,7 +260,7 @@ const columnDefs = [
     width: 200
   },
   {
-    headerName: 'Category',
+    headerName: t('grids.columns.category'),
     field: 'category',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -279,7 +281,7 @@ const columnDefs = [
     width: 180
   },
   {
-    headerName: 'Duration (hrs)',
+    headerName: t('grids.columns.durationHrs'),
     field: 'duration_hours',
     editable: true,
     type: 'numericColumn',
@@ -300,7 +302,7 @@ const columnDefs = [
     width: 140
   },
   {
-    headerName: 'WIP Impact (hrs)',
+    headerName: t('grids.columns.wipImpactHrs'),
     field: 'impact_on_wip_hours',
     editable: true,
     type: 'numericColumn',
@@ -315,11 +317,11 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Status',
+    headerName: t('grids.columns.status'),
     field: 'is_resolved',
     editable: true,
     cellRenderer: (params) => {
-      return params.value ? 'Resolved' : 'Unresolved'
+      return params.value ? t('grids.downtime.resolved') : t('grids.downtime.unresolved')
     },
     cellEditor: 'agCheckboxCellEditor',
     cellStyle: (params) => {
@@ -330,7 +332,7 @@ const columnDefs = [
     width: 130
   },
   {
-    headerName: 'Resolution Notes',
+    headerName: t('grids.columns.resolutionNotes'),
     field: 'resolution_notes',
     editable: true,
     cellEditor: 'agLargeTextCellEditor',
@@ -338,7 +340,7 @@ const columnDefs = [
     width: 250
   },
   {
-    headerName: 'Actions',
+    headerName: t('grids.columns.actions'),
     field: 'actions',
     editable: false,
     sortable: false,
@@ -354,7 +356,7 @@ const columnDefs = [
           border-radius: 4px;
           cursor: pointer;
           font-size: 12px;
-        ">Delete</button>
+        ">${t('common.delete')}</button>
       `
       div.querySelector('.ag-grid-delete-btn').addEventListener('click', () => {
         deleteEntry(params.data)
@@ -364,7 +366,7 @@ const columnDefs = [
     width: 100,
     pinned: 'right'
   }
-]
+])
 
 const onGridReady = (params) => {
   // Auto-fit columns initially
@@ -416,7 +418,7 @@ const addNewEntry = () => {
 }
 
 const deleteEntry = async (rowData) => {
-  if (!confirm('Are you sure you want to delete this downtime entry?')) return
+  if (!confirm(t('grids.downtime.confirmDelete'))) return
 
   const api = gridRef.value?.gridApi
   if (!api) return
@@ -425,7 +427,7 @@ const deleteEntry = async (rowData) => {
   if (rowData._isNew) {
     api.applyTransaction({ remove: [rowData] })
     unsavedChanges.value.delete(rowData.downtime_id)
-    showSnackbar('Entry removed', 'info')
+    showSnackbar(t('grids.downtime.entryRemoved'), 'info')
     return
   }
 
@@ -434,9 +436,9 @@ const deleteEntry = async (rowData) => {
     await kpiStore.deleteDowntimeEntry(rowData.downtime_id)
     api.applyTransaction({ remove: [rowData] })
     unsavedChanges.value.delete(rowData.downtime_id)
-    showSnackbar('Entry deleted successfully', 'success')
+    showSnackbar(t('grids.downtime.deleteSuccess'), 'success')
   } catch (error) {
-    showSnackbar('Error deleting entry: ' + error.message, 'error')
+    showSnackbar(t('grids.downtime.deleteError', { error: error.message }), 'error')
   }
 }
 
@@ -452,7 +454,7 @@ const saveChanges = async () => {
   })
 
   if (rowsToSave.length === 0) {
-    showSnackbar('No changes to save', 'info')
+    showSnackbar(t('grids.downtime.noChanges'), 'info')
     return
   }
 
@@ -514,12 +516,12 @@ const onConfirmSave = async () => {
     applyFilters()
 
     if (errorCount === 0) {
-      showSnackbar(`${successCount} downtime entries saved successfully!`, 'success')
+      showSnackbar(t('grids.downtime.saveSuccess', { count: successCount }), 'success')
     } else {
-      showSnackbar(`${successCount} saved, ${errorCount} failed`, 'warning')
+      showSnackbar(t('grids.downtime.savePartial', { success: successCount, failed: errorCount }), 'warning')
     }
   } catch (error) {
-    showSnackbar('Error saving changes: ' + error.message, 'error')
+    showSnackbar(t('grids.downtime.saveError', { error: error.message }), 'error')
   } finally {
     saving.value = false
     pendingRows.value = []
@@ -531,7 +533,7 @@ const onCancelSave = () => {
   showConfirmDialog.value = false
   pendingRows.value = []
   pendingData.value = {}
-  showSnackbar('Save cancelled', 'info')
+  showSnackbar(t('grids.downtime.saveCancelled'), 'info')
 }
 
 const applyFilters = () => {

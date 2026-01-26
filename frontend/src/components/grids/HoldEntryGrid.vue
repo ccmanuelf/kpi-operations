@@ -3,12 +3,12 @@
     <v-card-title class="d-flex justify-space-between align-center bg-primary">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-pause-circle</v-icon>
-        <span class="text-h5">Hold/Resume Entry - Excel-like Grid</span>
+        <span class="text-h5">{{ $t('grids.holds.title') }}</span>
       </div>
       <div>
         <v-btn color="white" variant="outlined" @click="addNewHold" class="mr-2">
           <v-icon left>mdi-plus</v-icon>
-          Add Hold
+          {{ $t('grids.holds.addHold') }}
         </v-btn>
         <v-btn
           color="success"
@@ -17,7 +17,7 @@
           :loading="saving"
         >
           <v-icon left>mdi-content-save</v-icon>
-          Save All ({{ unsavedChanges.size }})
+          {{ $t('grids.holds.saveAll') }} ({{ unsavedChanges.size }})
         </v-btn>
       </div>
     </v-card-title>
@@ -28,9 +28,8 @@
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-keyboard</v-icon>
           <div>
-            <strong>Excel-like Shortcuts:</strong>
-            Tab (next cell) | Enter (move down) | Ctrl+C/V (copy/paste) | Delete (clear) |
-            Ctrl+Z (undo) | F1 (help) | Click Resume button to mark hold as resumed
+            <strong>{{ $t('grids.keyboardShortcuts') }}:</strong>
+            {{ $t('grids.shortcutsList') }}
           </div>
         </div>
       </v-alert>
@@ -41,7 +40,7 @@
           <v-text-field
             v-model="dateFilter"
             type="date"
-            label="Filter by Hold Date"
+            :label="$t('grids.filterByDate')"
             variant="outlined"
             density="compact"
             clearable
@@ -52,7 +51,7 @@
           <v-select
             v-model="statusFilter"
             :items="['ACTIVE', 'RESUMED']"
-            label="Filter by Status"
+            :label="$t('grids.filterByStatus')"
             variant="outlined"
             density="compact"
             clearable
@@ -63,7 +62,7 @@
           <v-select
             v-model="reasonFilter"
             :items="holdReasons"
-            label="Filter by Reason"
+            :label="$t('grids.filterByReason')"
             variant="outlined"
             density="compact"
             clearable
@@ -73,7 +72,7 @@
         <v-col cols="12" md="3">
           <v-btn color="primary" @click="applyFilters" block>
             <v-icon left>mdi-filter</v-icon>
-            Apply Filters
+            {{ $t('grids.applyFilters') }}
           </v-btn>
         </v-col>
       </v-row>
@@ -94,7 +93,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined">
             <v-card-text>
-              <div class="text-caption">Total Holds</div>
+              <div class="text-caption">{{ $t('grids.holds.totalHolds') }}</div>
               <div class="text-h6">{{ filteredEntries.length }}</div>
             </v-card-text>
           </v-card>
@@ -102,7 +101,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" color="warning">
             <v-card-text>
-              <div class="text-caption">Active Holds</div>
+              <div class="text-caption">{{ $t('grids.holds.activeHolds') }}</div>
               <div class="text-h6">{{ activeCount }}</div>
             </v-card-text>
           </v-card>
@@ -110,7 +109,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" color="success">
             <v-card-text>
-              <div class="text-caption">Resumed Holds</div>
+              <div class="text-caption">{{ $t('grids.holds.resumedHolds') }}</div>
               <div class="text-h6">{{ resumedCount }}</div>
             </v-card-text>
           </v-card>
@@ -118,7 +117,7 @@
         <v-col cols="12" md="3">
           <v-card variant="outlined" color="info">
             <v-card-text>
-              <div class="text-caption">Avg Days on Hold</div>
+              <div class="text-caption">{{ $t('grids.holds.avgDaysOnHold') }}</div>
               <div class="text-h6">{{ avgDaysOnHold.toFixed(1) }}</div>
             </v-card-text>
           </v-card>
@@ -130,7 +129,7 @@
     <v-dialog v-model="resumeDialog.show" max-width="600">
       <v-card>
         <v-card-title class="bg-primary">
-          Resume Hold - {{ resumeDialog.hold?.work_order_number }}
+          {{ $t('grids.holds.resumeDialog.title') }} - {{ resumeDialog.hold?.work_order_number }}
         </v-card-title>
         <v-card-text class="pt-4">
           <v-row>
@@ -138,7 +137,7 @@
               <v-text-field
                 v-model="resumeDialog.actual_resume_date"
                 type="datetime-local"
-                label="Resume Date/Time *"
+                :label="$t('grids.holds.resumeDialog.resumeDateTime') + ' *'"
                 variant="outlined"
                 density="compact"
               />
@@ -146,7 +145,7 @@
             <v-col cols="12">
               <v-text-field
                 v-model="resumeDialog.resumed_by_user_id"
-                label="Resumed By User ID *"
+                :label="$t('grids.holds.resumeDialog.resumedByUserId') + ' *'"
                 variant="outlined"
                 density="compact"
               />
@@ -155,7 +154,7 @@
               <v-text-field
                 v-model="resumeDialog.resume_approved_at"
                 type="datetime-local"
-                label="Resume Approved At"
+                :label="$t('grids.holds.resumeDialog.resumeApprovedAt')"
                 variant="outlined"
                 density="compact"
               />
@@ -164,8 +163,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="resumeDialog.show = false">Cancel</v-btn>
-          <v-btn color="success" @click="confirmResume">Resume Hold</v-btn>
+          <v-btn @click="resumeDialog.show = false">{{ $t('common.cancel') }}</v-btn>
+          <v-btn color="success" @click="confirmResume">{{ $t('grids.holds.resumeDialog.confirm') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -173,12 +172,12 @@
     <!-- Read-Back Confirmation Dialog -->
     <ReadBackConfirmation
       v-model="showConfirmDialog"
-      title="Confirm Hold Entry - Read Back"
-      subtitle="Please verify the following hold/resume data before saving:"
+      :title="$t('grids.holds.confirmTitle')"
+      :subtitle="$t('grids.holds.confirmSubtitle')"
       :data="pendingData"
       :field-config="confirmationFieldConfig"
       :loading="saving"
-      :warning-message="pendingRowsCount > 1 ? `This will save ${pendingRowsCount} hold entries.` : ''"
+      :warning-message="pendingRowsCount > 1 ? $t('grids.holds.confirmWarning', { count: pendingRowsCount }) : ''"
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
@@ -192,10 +191,13 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format, differenceInDays } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
+
+const { t } = useI18n()
 
 const kpiStore = useKPIStore()
 const gridRef = ref(null)
@@ -285,9 +287,9 @@ const avgDaysOnHold = computed(() => {
 })
 
 // Column definitions
-const columnDefs = [
+const columnDefs = computed(() => [
   {
-    headerName: 'Hold Date',
+    headerName: t('grids.columns.holdDate'),
     field: 'placed_on_hold_date',
     editable: true,
     cellEditor: 'agDateStringCellEditor',
@@ -300,7 +302,7 @@ const columnDefs = [
     sort: 'desc'
   },
   {
-    headerName: 'Work Order',
+    headerName: t('grids.columns.workOrder'),
     field: 'work_order_id',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -314,7 +316,7 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Hold Reason',
+    headerName: t('grids.columns.holdReason'),
     field: 'hold_reason',
     editable: true,
     cellEditor: 'agSelectCellEditor',
@@ -324,21 +326,21 @@ const columnDefs = [
     width: 200
   },
   {
-    headerName: 'Status',
+    headerName: t('grids.columns.status'),
     field: 'status',
     editable: false,
     valueGetter: (params) => {
-      return params.data.actual_resume_date ? 'RESUMED' : 'ACTIVE'
+      return params.data.actual_resume_date ? t('grids.holds.resumed') : t('grids.holds.active')
     },
     cellStyle: (params) => {
-      return params.value === 'ACTIVE'
+      return params.value === t('grids.holds.active')
         ? { backgroundColor: '#fff3e0', color: '#f57c00', fontWeight: 'bold' }
         : { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }
     },
     width: 130
   },
   {
-    headerName: 'Expected Resume',
+    headerName: t('grids.columns.expectedResume'),
     field: 'expected_resume_date',
     editable: true,
     cellEditor: 'agDateStringCellEditor',
@@ -348,11 +350,11 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Actual Resume',
+    headerName: t('grids.columns.actualResume'),
     field: 'actual_resume_date',
     editable: false,
     valueFormatter: (params) => {
-      return params.value ? format(new Date(params.value), 'MMM dd, yyyy HH:mm') : 'Not Yet Resumed'
+      return params.value ? format(new Date(params.value), 'MMM dd, yyyy HH:mm') : t('grids.holds.notYetResumed')
     },
     cellStyle: (params) => {
       return params.value ? { backgroundColor: '#e8f5e9', color: '#2e7d32' } : {}
@@ -360,7 +362,7 @@ const columnDefs = [
     width: 180
   },
   {
-    headerName: 'Days on Hold',
+    headerName: t('grids.columns.daysOnHold'),
     field: 'days_on_hold',
     editable: false,
     valueGetter: (params) => {
@@ -379,23 +381,23 @@ const columnDefs = [
     width: 130
   },
   {
-    headerName: 'Resumed By',
+    headerName: t('grids.columns.resumedBy'),
     field: 'resumed_by_user_id',
     editable: false,
     width: 130
   },
   {
-    headerName: 'Hold Approved',
+    headerName: t('grids.columns.holdApproved'),
     field: 'hold_approved_at',
     editable: true,
     cellEditor: 'agDateStringCellEditor',
     valueFormatter: (params) => {
-      return params.value ? format(new Date(params.value), 'MMM dd HH:mm') : 'Pending'
+      return params.value ? format(new Date(params.value), 'MMM dd HH:mm') : t('grids.holds.pending')
     },
     width: 150
   },
   {
-    headerName: 'Resume Approved',
+    headerName: t('grids.columns.resumeApproved'),
     field: 'resume_approved_at',
     editable: false,
     valueFormatter: (params) => {
@@ -404,7 +406,7 @@ const columnDefs = [
     width: 150
   },
   {
-    headerName: 'Actions',
+    headerName: t('grids.columns.actions'),
     field: 'actions',
     editable: false,
     sortable: false,
@@ -424,7 +426,7 @@ const columnDefs = [
               border-radius: 4px;
               cursor: pointer;
               font-size: 12px;
-            ">Resume</button>
+            ">${t('grids.holds.resumeDialog.confirm')}</button>
           ` : ''}
           <button class="ag-grid-delete-btn" style="
             background: #c62828;
@@ -434,7 +436,7 @@ const columnDefs = [
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
-          ">Delete</button>
+          ">${t('common.delete')}</button>
         </div>
       `
 
@@ -454,7 +456,7 @@ const columnDefs = [
     width: 150,
     pinned: 'right'
   }
-]
+])
 
 const onGridReady = (params) => {
   // Auto-fit columns initially
@@ -519,7 +521,7 @@ const confirmResume = () => {
   const { hold, actual_resume_date, resumed_by_user_id, resume_approved_at } = resumeDialog.value
 
   if (!resumed_by_user_id) {
-    showSnackbar('Please enter User ID who resumed the hold', 'warning')
+    showSnackbar(t('grids.holds.resumeDialog.enterUserId'), 'warning')
     return
   }
 
@@ -538,11 +540,11 @@ const confirmResume = () => {
   }
 
   resumeDialog.value.show = false
-  showSnackbar('Hold marked for resume. Click Save All to persist changes.', 'info')
+  showSnackbar(t('grids.holds.resumeDialog.markedForResume'), 'info')
 }
 
 const deleteEntry = async (rowData) => {
-  if (!confirm('Are you sure you want to delete this hold entry?')) return
+  if (!confirm(t('grids.holds.deleteConfirm'))) return
 
   const api = gridRef.value?.gridApi
   if (!api) return
@@ -551,7 +553,7 @@ const deleteEntry = async (rowData) => {
   if (rowData._isNew) {
     api.applyTransaction({ remove: [rowData] })
     unsavedChanges.value.delete(rowData.hold_id)
-    showSnackbar('Entry removed', 'info')
+    showSnackbar(t('grids.entryRemoved'), 'info')
     return
   }
 
@@ -560,7 +562,7 @@ const deleteEntry = async (rowData) => {
     await kpiStore.deleteHoldEntry(rowData.hold_id)
     api.applyTransaction({ remove: [rowData] })
     unsavedChanges.value.delete(rowData.hold_id)
-    showSnackbar('Entry deleted successfully', 'success')
+    showSnackbar(t('grids.entryDeleted'), 'success')
   } catch (error) {
     showSnackbar('Error deleting entry: ' + error.message, 'error')
   }
@@ -578,7 +580,7 @@ const saveChanges = async () => {
   })
 
   if (rowsToSave.length === 0) {
-    showSnackbar('No changes to save', 'info')
+    showSnackbar(t('grids.noChanges'), 'info')
     return
   }
 
@@ -640,9 +642,9 @@ const onConfirmSave = async () => {
     applyFilters()
 
     if (errorCount === 0) {
-      showSnackbar(`${successCount} hold entries saved successfully!`, 'success')
+      showSnackbar(t('grids.holds.savedEntries', { count: successCount }), 'success')
     } else {
-      showSnackbar(`${successCount} saved, ${errorCount} failed`, 'warning')
+      showSnackbar(t('grids.attendance.savedWithErrors', { success: successCount, failed: errorCount }), 'warning')
     }
   } catch (error) {
     showSnackbar('Error saving changes: ' + error.message, 'error')
@@ -657,7 +659,7 @@ const onCancelSave = () => {
   showConfirmDialog.value = false
   pendingRows.value = []
   pendingData.value = {}
-  showSnackbar('Save cancelled', 'info')
+  showSnackbar(t('grids.saveCancelled'), 'info')
 }
 
 const applyFilters = () => {
