@@ -404,9 +404,15 @@ const confirmImport = async () => {
 }
 
 const downloadTemplate = () => {
-  const csvContent = `placed_on_hold_date,work_order_id,hold_reason,units_on_hold,released_date,notes
-2026-01-01,WO-2026-001,Quality issue,50,,Example hold event
-2026-01-01,WO-2026-002,Material defect,25,2026-01-05,Another example`
+  // CSV Template aligned with backend/schemas/hold_entry.py
+  // Required: client_id, work_order_id, hold_date
+  // Optional: job_id, hold_reason (enum), hold_reason_category, hold_reason_description,
+  //           quality_issue_type, expected_resolution_date, notes
+  // hold_reason enum: MATERIAL_INSPECTION, QUALITY_ISSUE, ENGINEERING_REVIEW, CUSTOMER_REQUEST,
+  //                   MISSING_SPECIFICATION, EQUIPMENT_UNAVAILABLE, CAPACITY_CONSTRAINT, OTHER
+  const csvContent = `client_id,work_order_id,hold_date,hold_reason,hold_reason_category,hold_reason_description,quality_issue_type,expected_resolution_date,job_id,notes
+CLIENT001,WO-2026-001,2026-01-20,QUALITY_ISSUE,Quality,Found defects during inspection,Visual Defect,2026-01-25,,Awaiting quality review
+CLIENT001,WO-2026-002,2026-01-20,MATERIAL_INSPECTION,Material,Raw material quality check,,,JOB-001,Supplier batch inspection`
 
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)

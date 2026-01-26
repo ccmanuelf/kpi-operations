@@ -4,6 +4,8 @@ PHASE 4: Six Sigma quality metrics
 
 DPMO = (Total Defects / (Total Units × Opportunities per Unit)) * 1,000,000
 Sigma Level = derived from DPMO using lookup table
+
+Phase 6.7 Enhancement: Uses PART_OPPORTUNITIES table for part-specific opportunities
 """
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -13,6 +15,7 @@ from typing import Optional
 import math
 
 from backend.schemas.quality import QualityInspection
+from backend.schemas.part_opportunities import PartOpportunities
 
 
 # DPMO to Sigma Level lookup table
@@ -25,6 +28,91 @@ DPMO_TO_SIGMA = [
     (690000, 1.0),
 ]
 
+# Default opportunities per unit when no part-specific data exists
+DEFAULT_OPPORTUNITIES_PER_UNIT = 10
+
+
+def get_opportunities_for_part(
+    db: Session,
+    part_number: str,
+    client_id: Optional[str] = None
+) -> int:
+    """
+    Look up opportunities per unit from PART_OPPORTUNITIES table.
+
+    Phase 6.7: Uses PART_OPPORTUNITIES table for part-specific opportunities.
+    Falls back to DEFAULT_OPPORTUNITIES_PER_UNIT if part not configured.
+
+    Args:
+        db: Database session
+        part_number: Part number to look up
+        client_id: Optional client ID for multi-tenant filtering
+
+    Returns:
+        Opportunities per unit for the part (or default if not found)
+    """
+    if not part_number:
+        return DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    query = db.query(PartOpportunities).filter(
+        PartOpportunities.part_number == part_number
+    )
+
+    if client_id:
+        query = query.filter(PartOpportunities.client_id_fk == client_id)
+
+    part_opp = query.first()
+
+    if part_opp and part_opp.opportunities_per_unit:
+        return part_opp.opportunities_per_unit
+
+    return DEFAULT_OPPORTUNITIES_PER_UNIT
+
+
+def get_opportunities_for_parts(
+    db: Session,
+    part_numbers: list,
+    client_id: Optional[str] = None
+) -> dict:
+    """
+    Batch lookup of opportunities per unit for multiple parts.
+
+    Phase 6.7: Efficient batch query for multiple parts.
+
+    Args:
+        db: Database session
+        part_numbers: List of part numbers to look up
+        client_id: Optional client ID for multi-tenant filtering
+
+    Returns:
+        Dictionary mapping part_number -> opportunities_per_unit
+    """
+    if not part_numbers:
+        return {}
+
+    query = db.query(PartOpportunities).filter(
+        PartOpportunities.part_number.in_(part_numbers)
+    )
+
+    if client_id:
+        query = query.filter(PartOpportunities.client_id_fk == client_id)
+
+    results = query.all()
+
+    # Build lookup dictionary
+    opportunities_map = {
+        po.part_number: po.opportunities_per_unit
+        for po in results
+        if po.opportunities_per_unit
+    }
+
+    # Fill in defaults for parts not found
+    for part in part_numbers:
+        if part not in opportunities_map:
+            opportunities_map[part] = DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    return opportunities_map
+
 
 def calculate_dpmo(
     db: Session,
@@ -32,16 +120,41 @@ def calculate_dpmo(
     shift_id: int,
     start_date: date,
     end_date: date,
-    opportunities_per_unit: int = 10
+    opportunities_per_unit: int = None,
+    part_number: Optional[str] = None,
+    client_id: Optional[str] = None
 ) -> tuple[Decimal, Decimal, int, int]:
     """
     Calculate DPMO and Sigma Level
 
-    opportunities_per_unit: Number of potential defect points per unit
-    (e.g., for apparel: seams, buttons, zippers, fabric quality, etc.)
+    Phase 6.7 Enhancement: Can look up opportunities from PART_OPPORTUNITIES table.
+
+    Args:
+        db: Database session
+        product_id: Product ID to filter inspections
+        shift_id: Shift ID to filter inspections
+        start_date: Start of date range
+        end_date: End of date range
+        opportunities_per_unit: Manual override for opportunities (optional)
+        part_number: Part number to look up opportunities from PART_OPPORTUNITIES table
+        client_id: Client ID for multi-tenant filtering
+
+    If part_number is provided and opportunities_per_unit is None,
+    looks up opportunities from PART_OPPORTUNITIES table.
+    Falls back to DEFAULT_OPPORTUNITIES_PER_UNIT (10) if not found.
 
     Returns: (dpmo, sigma_level, total_units, total_defects)
     """
+    # Determine opportunities per unit
+    if opportunities_per_unit is not None:
+        # Manual override provided
+        effective_opportunities = opportunities_per_unit
+    elif part_number:
+        # Look up from PART_OPPORTUNITIES table
+        effective_opportunities = get_opportunities_for_part(db, part_number, client_id)
+    else:
+        # Use default
+        effective_opportunities = DEFAULT_OPPORTUNITIES_PER_UNIT
 
     # Get all inspections for period
     inspections = db.query(QualityInspection).filter(
@@ -60,7 +173,7 @@ def calculate_dpmo(
     total_defects = sum(i.defects_found for i in inspections)
 
     # Calculate total opportunities
-    total_opportunities = total_units * opportunities_per_unit
+    total_opportunities = total_units * effective_opportunities
 
     # Calculate DPMO
     if total_opportunities > 0:
@@ -72,6 +185,145 @@ def calculate_dpmo(
     sigma_level = calculate_sigma_level(dpmo)
 
     return (dpmo, sigma_level, total_units, total_defects)
+
+
+def calculate_dpmo_with_part_lookup(
+    db: Session,
+    start_date: date,
+    end_date: date,
+    client_id: Optional[str] = None
+) -> dict:
+    """
+    Calculate DPMO using part-specific opportunities from PART_OPPORTUNITIES table.
+
+    Phase 6.7: Enhanced DPMO calculation that:
+    1. Groups quality entries by part_number (from work order or job)
+    2. Looks up opportunities_per_unit for each part
+    3. Calculates weighted DPMO across all parts
+
+    Args:
+        db: Database session
+        start_date: Start of date range
+        end_date: End of date range
+        client_id: Client ID for multi-tenant filtering
+
+    Returns:
+        Dictionary with DPMO breakdown by part and overall metrics
+    """
+    from backend.schemas.quality_entry import QualityEntry
+    from backend.schemas.job import Job
+    from datetime import datetime
+
+    start_datetime = datetime.combine(start_date, datetime.min.time())
+    end_datetime = datetime.combine(end_date, datetime.max.time())
+
+    # Get quality entries with job/part info
+    query = db.query(QualityEntry).filter(
+        and_(
+            QualityEntry.shift_date >= start_datetime,
+            QualityEntry.shift_date <= end_datetime
+        )
+    )
+
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
+
+    quality_entries = query.all()
+
+    if not quality_entries:
+        return {
+            "overall_dpmo": Decimal("0"),
+            "overall_sigma_level": Decimal("0"),
+            "total_units": 0,
+            "total_defects": 0,
+            "total_opportunities": 0,
+            "by_part": [],
+            "using_part_specific_opportunities": False
+        }
+
+    # Collect unique job_ids to get part numbers
+    job_ids = [qe.job_id for qe in quality_entries if qe.job_id]
+    part_numbers = []
+
+    if job_ids:
+        jobs = db.query(Job).filter(Job.job_id.in_(job_ids)).all()
+        part_numbers = [j.part_number for j in jobs if j.part_number]
+
+    # Batch lookup opportunities
+    opportunities_map = get_opportunities_for_parts(db, part_numbers, client_id)
+
+    # Calculate per-part DPMO
+    part_metrics = {}
+    for qe in quality_entries:
+        # Get part_number from job if available
+        part_number = None
+        if qe.job_id and job_ids:
+            for j in jobs:
+                if j.job_id == qe.job_id:
+                    part_number = j.part_number
+                    break
+
+        key = part_number or "UNKNOWN"
+        if key not in part_metrics:
+            opportunities = opportunities_map.get(part_number, DEFAULT_OPPORTUNITIES_PER_UNIT)
+            part_metrics[key] = {
+                "part_number": key,
+                "opportunities_per_unit": opportunities,
+                "units_inspected": 0,
+                "defects_found": 0
+            }
+
+        part_metrics[key]["units_inspected"] += qe.units_inspected or 0
+        part_metrics[key]["defects_found"] += qe.total_defects_count or qe.units_defective or 0
+
+    # Calculate DPMO per part and overall
+    total_opportunities = 0
+    total_defects = 0
+    total_units = 0
+    by_part = []
+
+    for key, metrics in part_metrics.items():
+        units = metrics["units_inspected"]
+        defects = metrics["defects_found"]
+        opps = metrics["opportunities_per_unit"]
+        part_opportunities = units * opps
+
+        total_units += units
+        total_defects += defects
+        total_opportunities += part_opportunities
+
+        if part_opportunities > 0:
+            part_dpmo = (Decimal(str(defects)) / Decimal(str(part_opportunities))) * Decimal("1000000")
+        else:
+            part_dpmo = Decimal("0")
+
+        by_part.append({
+            "part_number": key,
+            "units_inspected": units,
+            "defects_found": defects,
+            "opportunities_per_unit": opps,
+            "total_opportunities": part_opportunities,
+            "dpmo": float(part_dpmo),
+            "sigma_level": float(calculate_sigma_level(part_dpmo))
+        })
+
+    # Overall DPMO
+    if total_opportunities > 0:
+        overall_dpmo = (Decimal(str(total_defects)) / Decimal(str(total_opportunities))) * Decimal("1000000")
+    else:
+        overall_dpmo = Decimal("0")
+
+    overall_sigma = calculate_sigma_level(overall_dpmo)
+
+    return {
+        "overall_dpmo": float(overall_dpmo),
+        "overall_sigma_level": float(overall_sigma),
+        "total_units": total_units,
+        "total_defects": total_defects,
+        "total_opportunities": total_opportunities,
+        "by_part": by_part,
+        "using_part_specific_opportunities": len(part_numbers) > 0
+    }
 
 
 def calculate_sigma_level(dpmo: Decimal) -> Decimal:

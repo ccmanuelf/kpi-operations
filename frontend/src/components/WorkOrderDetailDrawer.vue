@@ -191,6 +191,17 @@
 
         <v-divider v-if="workOrder.notes" />
 
+        <!-- Job Line Items (RTY) -->
+        <div class="px-6 py-4">
+          <JobLineItems
+            :work-order-id="workOrder.work_order_id"
+            :show-rty-button="true"
+            @rty-loaded="onRtyLoaded"
+          />
+        </div>
+
+        <v-divider />
+
         <!-- Activity Timeline -->
         <div class="px-6 py-4">
           <div class="text-subtitle-2 font-weight-bold mb-3">Activity Timeline</div>
@@ -300,10 +311,11 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { format, parseISO, isAfter, startOfDay } from 'date-fns'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
+import JobLineItems from '@/components/JobLineItems.vue'
 
 const props = defineProps({
   modelValue: {
@@ -319,6 +331,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'update', 'edit'])
 
 const notificationStore = useNotificationStore()
+const workOrderRty = ref(null)
+
+// Handle RTY data loaded from JobLineItems
+const onRtyLoaded = (rtyData) => {
+  workOrderRty.value = rtyData
+}
 
 // Computed
 const progressPercent = computed(() => {

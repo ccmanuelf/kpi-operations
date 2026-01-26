@@ -132,8 +132,8 @@
     <!-- Read-Back Confirmation Dialog -->
     <ReadBackConfirmation
       v-model="showConfirmDialog"
-      title="Confirm Production Entry - Read Back"
-      subtitle="Please verify the following production data before saving:"
+      :title="$t('grids.production.confirmTitle')"
+      :subtitle="$t('grids.production.confirmSubtitle')"
       :data="pendingData"
       :field-config="confirmationFieldConfig"
       :loading="saving"

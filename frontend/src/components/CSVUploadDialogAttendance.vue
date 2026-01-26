@@ -413,9 +413,15 @@ const confirmImport = async () => {
 }
 
 const downloadTemplate = () => {
-  const csvContent = `attendance_date,employee_id,shift_id,is_absent,is_late,scheduled_hours,actual_hours,notes
-2026-01-01,EMP-001,1,0,0,8.0,8.0,Full day attendance
-2026-01-01,EMP-002,1,0,1,8.0,7.5,Late arrival`
+  // CSV Template aligned with backend/schemas/attendance_entry.py
+  // Required: client_id, employee_id, shift_date, scheduled_hours, is_absent
+  // Optional: shift_id, actual_hours, absence_hours, absence_type, absence_reason,
+  //           is_late, is_early_departure, arrival_time, departure_time, covered_by_employee_id, notes
+  // absence_type enum: UNSCHEDULED_ABSENCE, VACATION, MEDICAL_LEAVE, PERSONAL_LEAVE
+  const csvContent = `client_id,employee_id,shift_date,scheduled_hours,is_absent,actual_hours,absence_hours,absence_type,is_late,is_early_departure,shift_id,notes
+CLIENT001,101,2026-01-20,8.0,0,8.0,0.0,,0,0,1,Full day attendance
+CLIENT001,102,2026-01-20,8.0,0,7.5,0.5,,1,0,1,Late arrival by 30 min
+CLIENT001,103,2026-01-20,8.0,1,0.0,8.0,UNSCHEDULED_ABSENCE,0,0,1,Absent - no call no show`
 
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)

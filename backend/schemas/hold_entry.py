@@ -10,9 +10,11 @@ import enum
 
 
 class HoldStatus(str, enum.Enum):
-    """Hold status tracking"""
-    ON_HOLD = "ON_HOLD"
-    RESUMED = "RESUMED"
+    """Hold status tracking with approval workflow"""
+    PENDING_HOLD_APPROVAL = "PENDING_HOLD_APPROVAL"  # Operator requested hold, awaiting supervisor approval
+    ON_HOLD = "ON_HOLD"  # Hold approved and active
+    PENDING_RESUME_APPROVAL = "PENDING_RESUME_APPROVAL"  # Resume requested, awaiting supervisor approval
+    RESUMED = "RESUMED"  # Resume approved and completed
     CANCELLED = "CANCELLED"
 
 

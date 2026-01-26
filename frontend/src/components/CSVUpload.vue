@@ -108,9 +108,12 @@ const uploadFile = async () => {
 }
 
 const downloadTemplate = () => {
-  const csvContent = `product_id,shift_id,production_date,work_order_number,units_produced,run_time_hours,employees_assigned,defect_count,scrap_count,notes
-1,1,2025-12-31,WO-2025-001,250,7.5,3,5,2,Example entry
-2,2,2025-12-31,WO-2025-002,180,7.0,2,3,1,Another example`
+  // CSV Template aligned with backend/routes/production.py and backend/schemas/production_entry.py
+  // Required columns: client_id, product_id, shift_id, production_date, units_produced, run_time_hours, employees_assigned
+  // Optional columns: shift_date, work_order_id, job_id, employees_present, defect_count, scrap_count, rework_count, setup_time_hours, downtime_hours, maintenance_hours, ideal_cycle_time, notes
+  const csvContent = `client_id,product_id,shift_id,production_date,units_produced,run_time_hours,employees_assigned,work_order_id,job_id,employees_present,defect_count,scrap_count,rework_count,setup_time_hours,downtime_hours,maintenance_hours,ideal_cycle_time,shift_date,notes
+CLIENT001,1,1,2026-01-20,250,7.5,5,WO-2026-001,,5,3,1,0,0.25,0.5,0.1,0.03,2026-01-20,Example production entry
+CLIENT001,2,2,2026-01-20,180,7.0,4,WO-2026-002,,4,2,1,1,0.15,0.25,0,0.04,2026-01-20,Second shift production`
 
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)

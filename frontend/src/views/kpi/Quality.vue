@@ -170,6 +170,271 @@
       </v-col>
     </v-row>
 
+    <!-- Repair vs Rework Breakdown - Phase 6.5 -->
+    <v-row class="mt-4">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-tools</v-icon>
+            {{ $t('kpi.repairReworkBreakdown') }}
+            <v-chip v-if="repairBreakdown?.rty_breakdown?.interpretation" class="ml-3" :color="getInterpretationColor(repairBreakdown?.rty_breakdown?.interpretation)" size="small" variant="tonal">
+              {{ repairBreakdown?.rty_breakdown?.interpretation }}
+            </v-chip>
+          </v-card-title>
+          <v-card-text>
+            <v-row>
+              <!-- Rework Rate -->
+              <v-col cols="6" md="3">
+                <v-tooltip location="bottom" max-width="350">
+                  <template v-slot:activator="{ props }">
+                    <v-card variant="outlined" color="info" v-bind="props" class="cursor-help">
+                      <v-card-text class="text-center">
+                        <v-icon color="info" size="24" class="mb-1">mdi-wrench</v-icon>
+                        <div class="text-caption">{{ $t('kpi.reworkRate') }}</div>
+                        <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.rework_rate) }}%</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_reworked || 0 }} {{ $t('common.units') }}</div>
+                      </v-card-text>
+                    </v-card>
+                  </template>
+                  <div>
+                    <div class="tooltip-title">{{ $t('kpi.reworkRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ $t('kpi.reworkRateTooltipMeaning') }}</div>
+                  </div>
+                </v-tooltip>
+              </v-col>
+
+              <!-- Repair Rate -->
+              <v-col cols="6" md="3">
+                <v-tooltip location="bottom" max-width="350">
+                  <template v-slot:activator="{ props }">
+                    <v-card variant="outlined" color="warning" v-bind="props" class="cursor-help">
+                      <v-card-text class="text-center">
+                        <v-icon color="warning" size="24" class="mb-1">mdi-hammer-wrench</v-icon>
+                        <div class="text-caption">{{ $t('kpi.repairRate') }}</div>
+                        <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.repair_rate) }}%</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_requiring_repair || 0 }} {{ $t('common.units') }}</div>
+                      </v-card-text>
+                    </v-card>
+                  </template>
+                  <div>
+                    <div class="tooltip-title">{{ $t('kpi.repairRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ $t('kpi.repairRateTooltipMeaning') }}</div>
+                  </div>
+                </v-tooltip>
+              </v-col>
+
+              <!-- Scrap Rate -->
+              <v-col cols="6" md="3">
+                <v-tooltip location="bottom" max-width="350">
+                  <template v-slot:activator="{ props }">
+                    <v-card variant="outlined" color="error" v-bind="props" class="cursor-help">
+                      <v-card-text class="text-center">
+                        <v-icon color="error" size="24" class="mb-1">mdi-delete</v-icon>
+                        <div class="text-caption">{{ $t('kpi.scrapRate') }}</div>
+                        <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.scrap_rate) }}%</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_scrapped || 0 }} {{ $t('common.units') }}</div>
+                      </v-card-text>
+                    </v-card>
+                  </template>
+                  <div>
+                    <div class="tooltip-title">{{ $t('kpi.scrapRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ $t('kpi.scrapRateTooltipMeaning') }}</div>
+                  </div>
+                </v-tooltip>
+              </v-col>
+
+              <!-- Recovery Rate -->
+              <v-col cols="6" md="3">
+                <v-tooltip location="bottom" max-width="350">
+                  <template v-slot:activator="{ props }">
+                    <v-card variant="outlined" color="success" v-bind="props" class="cursor-help">
+                      <v-card-text class="text-center">
+                        <v-icon color="success" size="24" class="mb-1">mdi-recycle</v-icon>
+                        <div class="text-caption">{{ $t('kpi.recoveryRate') }}</div>
+                        <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.recovery_rate) }}%</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.recovered_units || 0 }} {{ $t('common.recovered') }}</div>
+                      </v-card-text>
+                    </v-card>
+                  </template>
+                  <div>
+                    <div class="tooltip-title">{{ $t('kpi.recoveryRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ $t('kpi.recoveryRateTooltipMeaning') }}</div>
+                  </div>
+                </v-tooltip>
+              </v-col>
+            </v-row>
+
+            <!-- Throughput Impact -->
+            <v-row class="mt-3">
+              <v-col cols="12">
+                <v-alert type="info" variant="tonal" density="compact">
+                  <div class="d-flex align-center">
+                    <v-icon class="mr-2">mdi-chart-timeline-variant</v-icon>
+                    <div>
+                      <strong>{{ $t('kpi.throughputLoss') }}:</strong>
+                      {{ formatValue(repairBreakdown?.rty_breakdown?.throughput_loss_percentage) }}%
+                      <span class="text-caption ml-2">
+                        ({{ $t('kpi.rework') }}: {{ formatValue(repairBreakdown?.rty_breakdown?.rework_impact_percentage) }}% +
+                        {{ $t('kpi.repair') }}: {{ formatValue(repairBreakdown?.rty_breakdown?.repair_impact_percentage) }}%)
+                      </span>
+                    </div>
+                  </div>
+                </v-alert>
+              </v-col>
+            </v-row>
+
+            <!-- Stage Details Expansion Panel -->
+            <v-expansion-panels v-if="repairBreakdown?.rty_breakdown?.step_details?.length" class="mt-3">
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
+                  {{ $t('kpi.stageBreakdown') }} ({{ repairBreakdown?.rty_breakdown?.step_details?.length || 0 }} {{ $t('common.stages') }})
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-table density="compact">
+                    <thead>
+                      <tr>
+                        <th>{{ $t('common.stage') }}</th>
+                        <th class="text-right">{{ $t('kpi.fpy') }}</th>
+                        <th class="text-right">{{ $t('kpi.inspected') }}</th>
+                        <th class="text-right">{{ $t('kpi.rework') }}</th>
+                        <th class="text-right">{{ $t('kpi.repair') }}</th>
+                        <th class="text-right">{{ $t('kpi.scrap') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="step in repairBreakdown?.rty_breakdown?.step_details" :key="step.step">
+                        <td>
+                          <v-chip :color="getStageColor(step.step)" size="small" variant="tonal">
+                            {{ step.step }}
+                          </v-chip>
+                        </td>
+                        <td class="text-right">
+                          <v-chip :color="getFPYColor(step.fpy_percentage)" size="small">
+                            {{ step.fpy_percentage?.toFixed(1) }}%
+                          </v-chip>
+                        </td>
+                        <td class="text-right">{{ step.total_inspected }}</td>
+                        <td class="text-right">
+                          <span :class="step.units_reworked > 0 ? 'text-info' : ''">{{ step.units_reworked }}</span>
+                        </td>
+                        <td class="text-right">
+                          <span :class="step.units_requiring_repair > 0 ? 'text-warning' : ''">{{ step.units_requiring_repair }}</span>
+                        </td>
+                        <td class="text-right">
+                          <span :class="step.units_scrapped > 0 ? 'text-error' : ''">{{ step.units_scrapped }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Job RTY Summary - Phase 6.6 -->
+    <v-row class="mt-4">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon class="mr-2">mdi-format-list-numbered</v-icon>
+            {{ $t('kpi.jobRtySummary') }}
+            <v-spacer />
+            <v-btn
+              color="primary"
+              variant="outlined"
+              size="small"
+              @click="loadJobRtySummary"
+              :loading="loadingJobRty"
+            >
+              <v-icon left>mdi-refresh</v-icon>
+              {{ $t('common.refresh') }}
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <v-row v-if="jobRtySummary">
+              <v-col cols="6" md="3">
+                <v-card variant="outlined">
+                  <v-card-text class="text-center">
+                    <div class="text-caption text-grey-darken-1">{{ $t('jobs.totalJobsCompleted') }}</div>
+                    <div class="text-h4 font-weight-bold">{{ jobRtySummary.total_jobs_completed || 0 }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="outlined" :color="getYieldColor(jobRtySummary.average_job_yield)">
+                  <v-card-text class="text-center">
+                    <div class="text-caption">{{ $t('jobs.avgJobYield') }}</div>
+                    <div class="text-h4 font-weight-bold">{{ formatValue(jobRtySummary.average_job_yield) }}%</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="outlined" :color="getYieldColor(jobRtySummary.overall_yield)">
+                  <v-card-text class="text-center">
+                    <div class="text-caption">{{ $t('jobs.overallYield') }}</div>
+                    <div class="text-h4 font-weight-bold">{{ formatValue(jobRtySummary.overall_yield) }}%</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6" md="3">
+                <v-card variant="outlined" color="error">
+                  <v-card-text class="text-center">
+                    <div class="text-caption">{{ $t('jobs.jobsBelowTarget') }}</div>
+                    <div class="text-h4 font-weight-bold">{{ jobRtySummary.jobs_below_target || 0 }}</div>
+                    <div class="text-caption">({{ $t('jobs.target') }}: {{ jobRtySummary.target_threshold }}%)</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Top Scrap Operations -->
+            <v-expansion-panels v-if="jobRtySummary?.top_scrap_operations?.length" class="mt-3">
+              <v-expansion-panel>
+                <v-expansion-panel-title>
+                  <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
+                  {{ $t('jobs.topScrapOperations') }} ({{ jobRtySummary.top_scrap_operations.length }})
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-table density="compact">
+                    <thead>
+                      <tr>
+                        <th>{{ $t('jobs.jobId') }}</th>
+                        <th>{{ $t('workOrders.workOrderId') }}</th>
+                        <th class="text-right">{{ $t('jobs.completed') }}</th>
+                        <th class="text-right">{{ $t('jobs.scrapped') }}</th>
+                        <th class="text-right">{{ $t('jobs.yield') }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="job in jobRtySummary.top_scrap_operations" :key="job.job_id">
+                        <td class="font-weight-medium">{{ job.job_id }}</td>
+                        <td>{{ job.work_order_id }}</td>
+                        <td class="text-right">{{ job.completed }}</td>
+                        <td class="text-right text-error font-weight-medium">{{ job.scrapped }}</td>
+                        <td class="text-right">
+                          <v-chip :color="getYieldColor(job.yield_percentage)" size="small">
+                            {{ job.yield_percentage?.toFixed(1) }}%
+                          </v-chip>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+
+            <v-alert v-if="!jobRtySummary && !loadingJobRty" type="info" variant="tonal" class="mt-2">
+              {{ $t('jobs.noJobRtyData') }}
+            </v-alert>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
     <!-- Quality Trend Chart -->
     <v-row class="mt-4">
       <v-col cols="12">
@@ -309,12 +574,15 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 const { t } = useI18n()
 const kpiStore = useKPIStore()
 const loading = ref(false)
+const loadingJobRty = ref(false)
 const clients = ref([])
 const selectedClient = ref(null)
 const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
 const endDate = ref(new Date().toISOString().split('T')[0])
 const tableSearch = ref('')
 const qualityHistory = ref([])
+const repairBreakdown = ref(null)
+const jobRtySummary = ref(null)
 
 const qualityData = computed(() => kpiStore.quality)
 
@@ -432,6 +700,67 @@ const formatFPY = (item) => {
   return fpy.toFixed(1)
 }
 
+const getInterpretationColor = (interpretation) => {
+  if (!interpretation) return 'grey'
+  const lower = interpretation.toLowerCase()
+  if (lower.includes('excellent')) return 'success'
+  if (lower.includes('good')) return 'light-green'
+  if (lower.includes('acceptable')) return 'amber'
+  if (lower.includes('warning')) return 'orange'
+  if (lower.includes('critical') || lower.includes('poor')) return 'error'
+  return 'info'
+}
+
+const getStageColor = (stage) => {
+  if (stage === 'Final') return 'success'
+  if (stage === 'In-Process') return 'info'
+  if (stage === 'Incoming') return 'warning'
+  return 'grey'
+}
+
+const getYieldColor = (yieldPct) => {
+  if (yieldPct >= 99) return 'success'
+  if (yieldPct >= 95) return 'amber-darken-3'
+  return 'error'
+}
+
+const loadJobRtySummary = async () => {
+  loadingJobRty.value = true
+  try {
+    const params = {
+      start_date: startDate.value,
+      end_date: endDate.value
+    }
+    if (selectedClient.value) {
+      params.client_id = selectedClient.value
+    }
+    const response = await api.get('/api/jobs/kpi/rty-summary', { params })
+    jobRtySummary.value = response.data
+  } catch (error) {
+    console.error('Failed to load job RTY summary:', error)
+    jobRtySummary.value = null
+  } finally {
+    loadingJobRty.value = false
+  }
+}
+
+const loadRepairBreakdown = async () => {
+  try {
+    const params = {
+      start_date: startDate.value,
+      end_date: endDate.value
+    }
+    if (selectedClient.value) {
+      params.client_id = selectedClient.value
+    }
+    const response = await api.get('/api/quality/kpi/fpy-rty-breakdown', { params })
+    repairBreakdown.value = response.data
+  } catch (error) {
+    console.error('Failed to load repair breakdown:', error)
+    repairBreakdown.value = null
+  }
+}
+
 const loadClients = async () => {
   try {
     const response = await api.getClients()
@@ -473,7 +802,9 @@ const refreshData = async () => {
   try {
     await Promise.all([
       kpiStore.fetchQuality(),
-      loadQualityHistory()
+      loadQualityHistory(),
+      loadRepairBreakdown(),
+      loadJobRtySummary()
     ])
   } catch (error) {
     console.error('Failed to refresh data:', error)

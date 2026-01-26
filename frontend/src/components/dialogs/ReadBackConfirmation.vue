@@ -17,8 +17,8 @@
         <v-table density="comfortable" class="read-back-table">
           <thead>
             <tr>
-              <th class="text-left font-weight-bold">Field</th>
-              <th class="text-left font-weight-bold">Value</th>
+              <th class="text-left font-weight-bold">{{ $t('readBack.field') }}</th>
+              <th class="text-left font-weight-bold">{{ $t('readBack.value') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -29,7 +29,7 @@
                   <v-icon :color="item.value ? 'success' : 'error'" size="small">
                     {{ item.value ? 'mdi-check-circle' : 'mdi-close-circle' }}
                   </v-icon>
-                  {{ item.value ? 'Yes' : 'No' }}
+                  {{ item.value ? $t('common.yes') : $t('common.no') }}
                 </template>
                 <template v-else-if="item.type === 'currency'">
                   {{ formatCurrency(item.value) }}
@@ -75,7 +75,7 @@
           :disabled="loading"
         >
           <v-icon left>mdi-close</v-icon>
-          Cancel
+          {{ $t('common.cancel') }}
         </v-btn>
         <v-spacer />
         <v-btn
@@ -85,7 +85,7 @@
           :loading="loading"
         >
           <v-icon left>mdi-check</v-icon>
-          Confirm & Save
+          {{ $t('readBack.confirmAndSave') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -94,7 +94,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {

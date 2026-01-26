@@ -136,6 +136,12 @@ const router = createRouter({
       name: 'admin-defect-types',
       component: () => import('@/views/admin/AdminDefectTypes.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/part-opportunities',
+      name: 'admin-part-opportunities',
+      component: () => import('@/views/admin/PartOpportunities.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })

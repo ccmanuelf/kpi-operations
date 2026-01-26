@@ -26,8 +26,14 @@ from backend.crud.quality import (
     delete_quality_inspection
 )
 from backend.calculations.ppm import calculate_ppm, identify_top_defects
-from backend.calculations.dpmo import calculate_dpmo
-from backend.calculations.fpy_rty import calculate_fpy, calculate_rty, calculate_quality_score
+from backend.calculations.dpmo import calculate_dpmo, calculate_dpmo_with_part_lookup
+from backend.calculations.fpy_rty import (
+    calculate_fpy,
+    calculate_rty,
+    calculate_quality_score,
+    calculate_fpy_with_repair_breakdown,
+    calculate_rty_with_repair_impact
+)
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
@@ -335,6 +341,54 @@ def calculate_dpmo_kpi(
     )
 
 
+@router.get("/kpi/dpmo-by-part")
+def calculate_dpmo_by_part(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calculate DPMO using part-specific opportunities from PART_OPPORTUNITIES table.
+
+    Phase 6.7: Enhanced DPMO calculation that:
+    1. Groups quality entries by part_number (from job/work order)
+    2. Looks up opportunities_per_unit for each part from PART_OPPORTUNITIES table
+    3. Calculates weighted DPMO across all parts
+    4. Falls back to default (10) if part not configured
+
+    Returns:
+    - Overall DPMO and Sigma level
+    - Per-part DPMO breakdown
+    - Whether part-specific opportunities were used
+    """
+    from datetime import timedelta
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    result = calculate_dpmo_with_part_lookup(db, start_date, end_date, effective_client_id)
+
+    return {
+        "period": {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat()
+        },
+        "client_id": effective_client_id,
+        **result,
+        "calculation_timestamp": datetime.utcnow().isoformat()
+    }
+
+
 @router.get("/kpi/fpy-rty", response_model=FPYRTYCalculationResponse)
 def calculate_fpy_rty_kpi(
     product_id: Optional[int] = None,
@@ -467,6 +521,110 @@ def calculate_fpy_rty_kpi(
         calculation_timestamp=datetime.utcnow(),
         inference=inference
     )
+
+
+@router.get("/kpi/fpy-rty-breakdown")
+def get_fpy_rty_breakdown(
+    product_id: Optional[int] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    inspection_stage: Optional[str] = None,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Calculate FPY and RTY with detailed repair vs rework breakdown
+
+    Phase 6.5: Repair vs Rework Distinction
+
+    Returns:
+    - FPY with repair/rework/scrap breakdown per inspection stage
+    - RTY with repair impact analysis across all stages
+    - Recovery rate (rework + repair saved vs scrapped)
+    - Human-readable interpretation of quality performance
+
+    Key Metrics:
+    - fpy_percentage: First Pass Yield (excludes rework AND repair)
+    - rework_rate: % of units that needed in-line correction
+    - repair_rate: % of units requiring significant resources/external repair
+    - scrap_rate: % of units that could not be recovered
+    - recovery_rate: % of failed units that were successfully recovered
+    - throughput_loss_percentage: Total impact on throughput from rework + repair
+    """
+    from datetime import timedelta
+
+    # Default to last 30 days if dates not provided
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+
+    # Determine effective client filter
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # Use product_id=0 as placeholder if not specified (calculation functions accept it)
+    effective_product_id = product_id or 0
+
+    # Get FPY breakdown for specific stage or overall
+    fpy_breakdown = calculate_fpy_with_repair_breakdown(
+        db, effective_product_id, start_date, end_date, inspection_stage
+    )
+
+    # Get RTY with repair impact across all stages
+    rty_breakdown = calculate_rty_with_repair_impact(
+        db, effective_product_id, start_date, end_date
+    )
+
+    return {
+        "period": {
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat()
+        },
+        "product_id": product_id,
+        "client_id": effective_client_id,
+        "inspection_stage_filter": inspection_stage,
+        "fpy_breakdown": {
+            "fpy_percentage": float(fpy_breakdown["fpy_percentage"]),
+            "first_pass_good": fpy_breakdown["first_pass_good"],
+            "total_inspected": fpy_breakdown["total_inspected"],
+            "units_reworked": fpy_breakdown["units_reworked"],
+            "units_requiring_repair": fpy_breakdown["units_requiring_repair"],
+            "units_scrapped": fpy_breakdown["units_scrapped"],
+            "rework_rate": float(fpy_breakdown["rework_rate"]),
+            "repair_rate": float(fpy_breakdown["repair_rate"]),
+            "scrap_rate": float(fpy_breakdown["scrap_rate"]),
+            "recovered_units": fpy_breakdown["recovered_units"],
+            "recovery_rate": float(fpy_breakdown["recovery_rate"])
+        },
+        "rty_breakdown": {
+            "rty_percentage": float(rty_breakdown["rty_percentage"]),
+            "step_details": [
+                {
+                    "step": step["step"],
+                    "fpy_percentage": float(step["fpy_percentage"]),
+                    "first_pass_good": step["first_pass_good"],
+                    "total_inspected": step["total_inspected"],
+                    "units_reworked": step["units_reworked"],
+                    "units_requiring_repair": step["units_requiring_repair"],
+                    "units_scrapped": step["units_scrapped"],
+                    "rework_rate": float(step["rework_rate"]),
+                    "repair_rate": float(step["repair_rate"])
+                }
+                for step in rty_breakdown["step_details"]
+            ],
+            "total_rework": rty_breakdown["total_rework"],
+            "total_repair": rty_breakdown["total_repair"],
+            "total_scrap": rty_breakdown["total_scrap"],
+            "rework_impact_percentage": float(rty_breakdown["rework_impact_percentage"]),
+            "repair_impact_percentage": float(rty_breakdown["repair_impact_percentage"]),
+            "throughput_loss_percentage": float(rty_breakdown["throughput_loss_percentage"]),
+            "interpretation": rty_breakdown["interpretation"]
+        },
+        "calculation_timestamp": datetime.utcnow().isoformat()
+    }
 
 
 @router.get("/kpi/quality-score")

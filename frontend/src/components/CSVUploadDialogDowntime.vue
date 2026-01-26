@@ -411,9 +411,12 @@ const confirmImport = async () => {
 }
 
 const downloadTemplate = () => {
-  const csvContent = `downtime_date,work_order_id,shift_id,downtime_category,downtime_reason,downtime_duration_minutes,notes
-2026-01-01,WO-2026-001,1,Equipment,Machine breakdown,30,Example downtime event
-2026-01-01,WO-2026-002,2,Material,Material shortage,45,Another example`
+  // CSV Template aligned with backend/schemas/downtime_entry.py
+  // Required: client_id, work_order_id, shift_date, downtime_reason, downtime_duration_minutes
+  // Optional: machine_id, equipment_code, root_cause_category, corrective_action, notes
+  const csvContent = `client_id,work_order_id,shift_date,downtime_reason,downtime_duration_minutes,machine_id,equipment_code,root_cause_category,corrective_action,notes
+CLIENT001,WO-2026-001,2026-01-20,Machine breakdown,30,MACH-001,EQ-100,Equipment,Replaced motor,Example downtime event
+CLIENT001,WO-2026-002,2026-01-20,Material shortage,45,,,Material,Ordered from supplier,Waiting for material delivery`
 
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)

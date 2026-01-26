@@ -238,14 +238,15 @@ const steps = [
   { title: 'Confirm', value: 3 }
 ]
 
-// Required CSV columns
+// Required CSV columns - aligned with backend/routes/production.py
 const requiredColumns = [
-  'production_date',
-  'product_id',
-  'shift_id',
-  'units_produced',
-  'run_time_hours',
-  'employees_assigned'
+  'client_id',           // Multi-tenant isolation - REQUIRED
+  'product_id',          // Product reference
+  'shift_id',            // Shift reference
+  'production_date',     // Format: YYYY-MM-DD
+  'units_produced',      // Must be > 0
+  'run_time_hours',      // Decimal hours
+  'employees_assigned'   // Number of employees
 ]
 
 // AG Grid column definitions
@@ -262,6 +263,12 @@ const columnDefs = ref([
       }
       return ''
     }
+  },
+  {
+    headerName: 'Client ID',
+    field: 'client_id',
+    editable: true,
+    width: 120
   },
   {
     headerName: 'Date',
@@ -439,6 +446,13 @@ const validateAndParseCSV = (results) => {
     const rowErrors = []
     const rowData = { ...row }
 
+    // Validate client_id (REQUIRED)
+    if (!row.client_id || String(row.client_id).trim() === '') {
+      rowErrors.push('client_id is required')
+    } else {
+      rowData.client_id = String(row.client_id).trim()
+    }
+
     // Validate production_date
     if (!row.production_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.production_date)) {
       rowErrors.push('Invalid date format (use YYYY-MM-DD)')
@@ -588,18 +602,27 @@ const confirmImport = async () => {
     // Filter only valid rows
     const validRows = parsedData.value.filter(row => row._validationStatus === 'valid')
 
-    // Remove validation metadata
+    // Remove validation metadata - aligned with backend production schema
     const cleanedData = validRows.map(row => ({
+      client_id: row.client_id,
       production_date: row.production_date,
       product_id: row.product_id,
       shift_id: row.shift_id,
-      work_order_number: row.work_order_number,
+      work_order_id: row.work_order_id || row.work_order_number || '',
+      job_id: row.job_id || '',
       units_produced: row.units_produced,
       run_time_hours: row.run_time_hours,
       employees_assigned: row.employees_assigned,
-      defect_count: row.defect_count,
-      scrap_count: row.scrap_count,
-      notes: row.notes
+      employees_present: row.employees_present || null,
+      defect_count: row.defect_count || 0,
+      scrap_count: row.scrap_count || 0,
+      rework_count: row.rework_count || 0,
+      setup_time_hours: row.setup_time_hours || null,
+      downtime_hours: row.downtime_hours || null,
+      maintenance_hours: row.maintenance_hours || null,
+      ideal_cycle_time: row.ideal_cycle_time || null,
+      shift_date: row.shift_date || row.production_date,
+      notes: row.notes || ''
     }))
 
     importProgress.value = { percentage: 30, message: 'Uploading data...' }
@@ -645,11 +668,14 @@ const confirmImport = async () => {
   }
 }
 
-// Download template
+// Download template - aligned with backend/routes/production.py
 const downloadTemplate = () => {
-  const csvContent = `production_date,product_id,shift_id,work_order_number,units_produced,run_time_hours,employees_assigned,defect_count,scrap_count,notes
-2026-01-01,1,1,WO-2026-001,250,7.5,3,5,2,Example entry
-2026-01-01,2,2,WO-2026-002,180,7.0,2,3,1,Another example`
+  // Required: client_id, product_id, shift_id, production_date, units_produced, run_time_hours, employees_assigned
+  // Optional: shift_date, work_order_id, job_id, employees_present, defect_count, scrap_count, rework_count,
+  //           setup_time_hours, downtime_hours, maintenance_hours, ideal_cycle_time, notes
+  const csvContent = `client_id,product_id,shift_id,production_date,units_produced,run_time_hours,employees_assigned,work_order_id,job_id,employees_present,defect_count,scrap_count,rework_count,setup_time_hours,downtime_hours,maintenance_hours,ideal_cycle_time,shift_date,notes
+CLIENT001,1,1,2026-01-20,250,7.5,5,WO-2026-001,,5,3,1,0,0.25,0.5,0.1,0.03,2026-01-20,Example production entry
+CLIENT001,2,2,2026-01-20,180,7.0,4,WO-2026-002,,4,2,1,1,0.15,0.25,0,0.04,2026-01-20,Second shift production`
 
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)

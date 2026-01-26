@@ -3,20 +3,33 @@
  * Validates production entry data from CSV uploads
  */
 
+/**
+ * Production Entry CSV Columns - ALIGNED WITH backend/routes/production.py
+ */
 export const requiredColumns = [
-  'production_date',
-  'product_id',
-  'shift_id',
-  'units_produced',
-  'run_time_hours',
-  'employees_assigned'
+  'client_id',           // Multi-tenant isolation - REQUIRED
+  'product_id',          // Product reference
+  'shift_id',            // Shift reference
+  'production_date',     // Format: YYYY-MM-DD
+  'units_produced',      // Must be > 0
+  'run_time_hours',      // Decimal hours
+  'employees_assigned'   // Number of employees
 ]
 
 export const optionalColumns = [
-  'work_order_number',
-  'defect_count',
-  'scrap_count',
-  'notes'
+  'shift_date',          // Defaults to production_date if not provided
+  'work_order_id',       // Work order reference (or work_order_number)
+  'work_order_number',   // Alias for work_order_id
+  'job_id',              // Job-level tracking
+  'employees_present',   // Actual employees present
+  'defect_count',        // Default: 0
+  'scrap_count',         // Default: 0
+  'rework_count',        // Default: 0
+  'setup_time_hours',    // Setup time in hours
+  'downtime_hours',      // Downtime in hours
+  'maintenance_hours',   // Maintenance time in hours
+  'ideal_cycle_time',    // Ideal hours per unit
+  'notes'                // Free text notes
 ]
 
 /**
@@ -86,6 +99,13 @@ export const validateProductionEntry = (row, rowIndex) => {
   const validatedData = {}
 
   // Validate required fields
+  // client_id is required
+  if (!row.client_id || String(row.client_id).trim() === '') {
+    errors.push('Client ID is required')
+  } else {
+    validatedData.client_id = String(row.client_id).trim()
+  }
+
   const dateValidation = validateDate(row.production_date)
   if (!dateValidation.valid) {
     errors.push(dateValidation.error)
@@ -131,7 +151,15 @@ export const validateProductionEntry = (row, rowIndex) => {
   // Validate optional fields with defaults
   validatedData.defect_count = parseInt(row.defect_count || 0)
   validatedData.scrap_count = parseInt(row.scrap_count || 0)
-  validatedData.work_order_number = row.work_order_number || ''
+  validatedData.rework_count = parseInt(row.rework_count || 0)
+  validatedData.work_order_id = row.work_order_id || row.work_order_number || ''
+  validatedData.job_id = row.job_id || ''
+  validatedData.employees_present = row.employees_present ? parseInt(row.employees_present) : null
+  validatedData.setup_time_hours = row.setup_time_hours ? parseFloat(row.setup_time_hours) : null
+  validatedData.downtime_hours = row.downtime_hours ? parseFloat(row.downtime_hours) : null
+  validatedData.maintenance_hours = row.maintenance_hours ? parseFloat(row.maintenance_hours) : null
+  validatedData.ideal_cycle_time = row.ideal_cycle_time ? parseFloat(row.ideal_cycle_time) : null
+  validatedData.shift_date = row.shift_date || validatedData.production_date
   validatedData.notes = row.notes || ''
 
   return {

@@ -430,9 +430,13 @@ const confirmImport = async () => {
 }
 
 const downloadTemplate = () => {
-  const csvContent = `inspection_date,work_order_id,units_inspected,units_passed,units_failed,total_defects_count,notes
-2026-01-01,WO-2026-001,100,95,5,7,Example quality inspection
-2026-01-01,WO-2026-002,200,190,10,15,Another example`
+  // CSV Template aligned with backend/schemas/quality_entry.py
+  // Required: client_id, work_order_id, shift_date, units_inspected, units_passed, units_defective, total_defects_count
+  // Optional: job_id, inspection_date, inspection_stage, process_step, operation_checked, is_first_pass,
+  //           units_scrapped, units_reworked, units_requiring_repair, inspection_method, notes
+  const csvContent = `client_id,work_order_id,shift_date,units_inspected,units_passed,units_defective,total_defects_count,job_id,inspection_stage,is_first_pass,units_scrapped,units_reworked,units_requiring_repair,notes
+CLIENT001,WO-2026-001,2026-01-20,100,95,5,8,,Final,1,2,3,0,Example quality inspection
+CLIENT001,WO-2026-002,2026-01-20,200,190,10,15,,In-Process,1,4,6,2,With repair tracking`
 
   const blob = new Blob([csvContent], { type: 'text/csv' })
   const url = window.URL.createObjectURL(blob)

@@ -27,7 +27,12 @@ def create_wip_hold(
     hold: WIPHoldCreate,
     current_user: User
 ) -> WIPHoldResponse:
-    """Create new WIP hold record with P2-001 hold timestamp tracking"""
+    """
+    Create new WIP hold record with P2-001 hold timestamp tracking.
+    Phase 6.2: Approval workflow enforcement.
+    - Operators create with PENDING_HOLD_APPROVAL status
+    - Supervisors/Admins create with ON_HOLD status (auto-approved)
+    """
     # Verify user has access to this client
     verify_client_access(current_user, hold.client_id)
 
@@ -39,11 +44,23 @@ def create_wip_hold(
     if hold_data.get('hold_timestamp') is None:
         hold_data['hold_timestamp'] = datetime.now()
 
+    # Phase 6.2: Determine initial status based on user role
+    # Supervisors and admins can auto-approve holds
+    is_supervisor_or_admin = current_user.role in ['admin', 'supervisor', 'leader', 'poweruser']
+
+    if is_supervisor_or_admin:
+        initial_status = HoldStatus.ON_HOLD
+        hold_approved_by = current_user.user_id  # Auto-approved
+    else:
+        initial_status = HoldStatus.PENDING_HOLD_APPROVAL
+        hold_approved_by = None  # Pending approval
+
     db_hold = WIPHold(
         **hold_data,
         aging_days=aging_days,
         entered_by=current_user.user_id,
-        status=HoldStatus.ON_HOLD
+        status=initial_status,
+        hold_approved_by=hold_approved_by
     )
 
     db.add(db_hold)
