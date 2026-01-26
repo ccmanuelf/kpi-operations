@@ -84,8 +84,10 @@
         height="600px"
         :pagination="true"
         :paginationPageSize="50"
+        entry-type="downtime"
         @grid-ready="onGridReady"
         @cell-value-changed="onCellValueChanged"
+        @rows-pasted="onRowsPasted"
       />
 
       <!-- Summary stats -->
@@ -138,6 +140,18 @@
       @cancel="onCancelSave"
     />
 
+    <!-- Paste Preview Dialog -->
+    <PastePreviewDialog
+      v-model="showPasteDialog"
+      :parsed-data="parsedPasteData"
+      :converted-rows="convertedPasteRows"
+      :validation-result="pasteValidationResult"
+      :column-mapping="pasteColumnMapping"
+      :grid-columns="columnDefs"
+      @confirm="onPasteConfirm"
+      @cancel="onPasteCancel"
+    />
+
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -152,6 +166,7 @@ import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
+import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
 
 const { t } = useI18n()
 
@@ -165,6 +180,13 @@ const snackbar = ref({ show: false, message: '', color: 'success' })
 const showConfirmDialog = ref(false)
 const pendingData = ref({})
 const pendingRows = ref([])
+
+// Paste preview state
+const showPasteDialog = ref(false)
+const parsedPasteData = ref(null)
+const convertedPasteRows = ref([])
+const pasteValidationResult = ref(null)
+const pasteColumnMapping = ref(null)
 
 const pendingRowsCount = computed(() => pendingRows.value.length)
 
@@ -534,6 +556,48 @@ const onCancelSave = () => {
   pendingRows.value = []
   pendingData.value = {}
   showSnackbar(t('grids.downtime.saveCancelled'), 'info')
+}
+
+// Paste handlers
+const onRowsPasted = (pasteData) => {
+  parsedPasteData.value = pasteData.parsedData
+  convertedPasteRows.value = pasteData.convertedRows
+  pasteValidationResult.value = pasteData.validationResult
+  pasteColumnMapping.value = pasteData.columnMapping
+  showPasteDialog.value = true
+}
+
+const onPasteConfirm = (rowsToAdd) => {
+  const api = gridRef.value?.gridApi
+  if (!api) return
+
+  // Prepare rows with required fields
+  const preparedRows = rowsToAdd.map(row => ({
+    downtime_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    downtime_start_time: row.downtime_start_time || new Date().toISOString(),
+    work_order_id: row.work_order_id || workOrders.value[0]?.work_order_id || null,
+    downtime_reason: row.downtime_reason || downtimeReasons.value[0]?.reason_name || '',
+    category: row.category || 'Unplanned Breakdown',
+    duration_hours: row.duration_hours || 0,
+    impact_on_wip_hours: row.impact_on_wip_hours || 0,
+    is_resolved: row.is_resolved || false,
+    resolution_notes: row.resolution_notes || '',
+    _isNew: true,
+    _hasChanges: true
+  }))
+
+  api.applyTransaction({ add: preparedRows, addIndex: 0 })
+  preparedRows.forEach(row => unsavedChanges.value.add(row.downtime_id))
+  showPasteDialog.value = false
+  showSnackbar(t('paste.rowsAdded', { count: preparedRows.length }), 'success')
+}
+
+const onPasteCancel = () => {
+  showPasteDialog.value = false
+  parsedPasteData.value = null
+  convertedPasteRows.value = []
+  pasteValidationResult.value = null
+  pasteColumnMapping.value = null
 }
 
 const applyFilters = () => {

@@ -90,6 +90,9 @@
         <v-list-item prepend-icon="mdi-account-multiple" :title="$t('navigation.users')" value="users" to="/admin/users" />
         <v-list-item prepend-icon="mdi-domain" :title="$t('navigation.clients')" value="clients" to="/admin/clients" />
         <v-list-item prepend-icon="mdi-alert-circle-outline" :title="$t('navigation.defectTypes')" value="defect-types" to="/admin/defect-types" />
+        <v-list-item prepend-icon="mdi-tune-variant" :title="$t('navigation.clientConfig')" value="client-config" to="/admin/client-config" />
+        <v-list-item prepend-icon="mdi-chart-scatter-plot" :title="$t('navigation.partOpportunities')" value="part-opportunities" to="/admin/part-opportunities" />
+        <v-list-item prepend-icon="mdi-account-switch" :title="$t('navigation.floatingPool')" value="floating-pool" to="/admin/floating-pool" />
       </v-list>
     </v-navigation-drawer>
 

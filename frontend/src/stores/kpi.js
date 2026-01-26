@@ -19,6 +19,19 @@ export const useKPIStore = defineStore('kpi', {
     absenteeism: null,
     defectRates: null,
     throughputTime: null,
+    // Phase 7.3: Inference metadata for each KPI
+    inference: {
+      efficiency: { is_estimated: false, confidence_score: 1.0, details: {} },
+      wipAging: { is_estimated: false, confidence_score: 1.0, details: {} },
+      onTimeDelivery: { is_estimated: false, confidence_score: 1.0, details: {} },
+      availability: { is_estimated: false, confidence_score: 1.0, details: {} },
+      performance: { is_estimated: false, confidence_score: 1.0, details: {} },
+      quality: { is_estimated: false, confidence_score: 1.0, details: {} },
+      oee: { is_estimated: false, confidence_score: 1.0, details: {} },
+      absenteeism: { is_estimated: false, confidence_score: 1.0, details: {} },
+      defectRates: { is_estimated: false, confidence_score: 1.0, details: {} },
+      throughputTime: { is_estimated: false, confidence_score: 1.0, details: {} }
+    },
     trends: {
       efficiency: [],
       wipAging: [],
@@ -87,7 +100,9 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: true,
         icon: 'mdi-chart-line',
-        route: '/kpi/efficiency'
+        route: '/kpi/efficiency',
+        // Phase 7.3: Inference metadata
+        inference: state.inference.efficiency
       },
       {
         key: 'wipAging',
@@ -97,7 +112,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: 'days',
         higherBetter: false,
         icon: 'mdi-clock-alert',
-        route: '/kpi/wip-aging'
+        route: '/kpi/wip-aging',
+        inference: state.inference.wipAging
       },
       {
         key: 'onTimeDelivery',
@@ -107,7 +123,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: true,
         icon: 'mdi-truck-delivery',
-        route: '/kpi/on-time-delivery'
+        route: '/kpi/on-time-delivery',
+        inference: state.inference.onTimeDelivery
       },
       {
         key: 'availability',
@@ -117,7 +134,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: true,
         icon: 'mdi-server',
-        route: '/kpi/availability'
+        route: '/kpi/availability',
+        inference: state.inference.availability
       },
       {
         key: 'performance',
@@ -127,7 +145,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: true,
         icon: 'mdi-speedometer',
-        route: '/kpi/performance'
+        route: '/kpi/performance',
+        inference: state.inference.performance
       },
       {
         key: 'quality',
@@ -137,7 +156,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: true,
         icon: 'mdi-star-circle',
-        route: '/kpi/quality'
+        route: '/kpi/quality',
+        inference: state.inference.quality
       },
       {
         key: 'oee',
@@ -147,7 +167,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: true,
         icon: 'mdi-factory',
-        route: '/kpi/oee'
+        route: '/kpi/oee',
+        inference: state.inference.oee
       },
       {
         key: 'absenteeism',
@@ -157,7 +178,8 @@ export const useKPIStore = defineStore('kpi', {
         unit: '%',
         higherBetter: false,
         icon: 'mdi-account-alert',
-        route: '/kpi/absenteeism'
+        route: '/kpi/absenteeism',
+        inference: state.inference.absenteeism
       },
       {
         key: 'defectRates',
@@ -170,7 +192,8 @@ export const useKPIStore = defineStore('kpi', {
         route: '/kpi/quality',
         subtitle: state.defectRates?.defect_rate_percentage != null
           ? `${state.defectRates.defect_rate_percentage}% defect rate`
-          : null
+          : null,
+        inference: state.inference.defectRates
       },
       {
         key: 'throughputTime',
@@ -180,9 +203,29 @@ export const useKPIStore = defineStore('kpi', {
         unit: 'hrs',
         higherBetter: false,
         icon: 'mdi-timer',
-        route: '/kpi/efficiency'
+        route: '/kpi/efficiency',
+        inference: state.inference.throughputTime
       }
-    ]
+    ],
+
+    /**
+     * Phase 7.3: Check if any KPI has estimated/inferred data
+     */
+    hasAnyEstimatedKPIs: (state) => {
+      return Object.values(state.inference).some(inf => inf.is_estimated)
+    },
+
+    /**
+     * Phase 7.3: Get overall data quality score (average confidence)
+     */
+    overallDataQuality: (state) => {
+      const confidenceScores = Object.values(state.inference)
+        .filter(inf => inf.confidence_score !== undefined)
+        .map(inf => inf.confidence_score)
+
+      if (confidenceScores.length === 0) return 1.0
+      return confidenceScores.reduce((a, b) => a + b, 0) / confidenceScores.length
+    }
   },
 
   actions: {
@@ -204,6 +247,66 @@ export const useKPIStore = defineStore('kpi', {
         params.client_id = this.selectedClient
       }
       return params
+    },
+
+    /**
+     * Phase 7.3: Update inference metadata for a specific KPI
+     * @param {string} kpiKey - Key of the KPI (efficiency, quality, etc.)
+     * @param {Object} inferenceData - Inference data from API response
+     */
+    _updateInference(kpiKey, inferenceData) {
+      if (!inferenceData) {
+        // Reset to default (not estimated)
+        this.inference[kpiKey] = {
+          is_estimated: false,
+          confidence_score: 1.0,
+          details: {}
+        }
+        return
+      }
+
+      this.inference[kpiKey] = {
+        is_estimated: inferenceData.is_estimated || false,
+        confidence_score: inferenceData.confidence_score || 1.0,
+        details: {
+          cycle_time: inferenceData.cycle_time || null,
+          employees: inferenceData.employees || null,
+          scheduled_hours: inferenceData.scheduled_hours || null
+        }
+      }
+    },
+
+    /**
+     * Phase 7.3: Extract inference metadata from API response
+     * Handles various response formats
+     */
+    _extractInferenceFromResponse(response, kpiKey) {
+      // Check for explicit inference object
+      if (response?.inference) {
+        this._updateInference(kpiKey, response.inference)
+        return
+      }
+
+      // Check for was_inferred flag (legacy format)
+      if (response?.was_inferred !== undefined) {
+        this._updateInference(kpiKey, {
+          is_estimated: response.was_inferred,
+          confidence_score: response.was_inferred ? 0.7 : 1.0
+        })
+        return
+      }
+
+      // Check for has_estimated flag
+      if (response?.has_estimated !== undefined) {
+        this._updateInference(kpiKey, {
+          is_estimated: response.has_estimated,
+          confidence_score: response.data_quality || (response.has_estimated ? 0.7 : 1.0)
+        })
+        return
+      }
+
+      // Default: assume actual data
+      this._updateInference(kpiKey, null)
     },
 
     async fetchDashboard() {
@@ -233,6 +336,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.efficiency = dataRes.data
         this.trends.efficiency = trendRes.data || []
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'efficiency')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch efficiency'
@@ -253,6 +358,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.wipAging = dataRes.data
         this.trends.wipAging = trendRes.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'wipAging')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch WIP aging'
@@ -273,6 +380,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.onTimeDelivery = dataRes.data
         this.trends.onTimeDelivery = trendRes.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'onTimeDelivery')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch on-time delivery'
@@ -293,6 +402,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.availability = dataRes.data
         this.trends.availability = trendRes.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'availability')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch availability'
@@ -313,6 +424,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.performance = dataRes.data
         this.trends.performance = trendRes.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'performance')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch performance'
@@ -333,6 +446,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.quality = dataRes.data
         this.trends.quality = trendRes.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'quality')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch quality'
@@ -353,6 +468,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.oee = dataRes.data
         this.trends.oee = trendRes.data
+        // Phase 7.3: Extract inference metadata (OEE combines availability, performance, quality)
+        this._extractInferenceFromResponse(dataRes.data, 'oee')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch OEE'
@@ -373,6 +490,8 @@ export const useKPIStore = defineStore('kpi', {
         ])
         this.absenteeism = dataRes.data
         this.trends.absenteeism = trendRes.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(dataRes.data, 'absenteeism')
         return dataRes.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch absenteeism'
@@ -389,6 +508,8 @@ export const useKPIStore = defineStore('kpi', {
         const params = this._buildParams()
         const response = await api.getDefectRates(params)
         this.defectRates = response.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(response.data, 'defectRates')
         return response.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch defect rates'
@@ -405,6 +526,8 @@ export const useKPIStore = defineStore('kpi', {
         const params = this._buildParams()
         const response = await api.getThroughputTime(params)
         this.throughputTime = response.data
+        // Phase 7.3: Extract inference metadata
+        this._extractInferenceFromResponse(response.data, 'throughputTime')
         return response.data
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch throughput time'

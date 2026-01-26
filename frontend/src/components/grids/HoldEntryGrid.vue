@@ -50,12 +50,14 @@
         <v-col cols="12" md="3">
           <v-select
             v-model="statusFilter"
-            :items="['ACTIVE', 'RESUMED']"
+            :items="holdStatusOptions"
             :label="$t('grids.filterByStatus')"
             variant="outlined"
             density="compact"
             clearable
             hide-details
+            item-title="label"
+            item-value="value"
           />
         </v-col>
         <v-col cols="12" md="3">
@@ -84,41 +86,88 @@
         height="600px"
         :pagination="true"
         :paginationPageSize="50"
+        entry-type="hold"
         @grid-ready="onGridReady"
         @cell-value-changed="onCellValueChanged"
+        @rows-pasted="onRowsPasted"
       />
+
+      <!-- Pending Approvals Alert -->
+      <v-alert
+        v-if="pendingApprovalsCount > 0"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mb-3"
+        prominent
+      >
+        <div class="d-flex align-center justify-space-between">
+          <div>
+            <v-icon class="mr-2">mdi-alert-circle</v-icon>
+            <strong>{{ $t('grids.holds.approvalWorkflow.pendingApprovals', { count: pendingApprovalsCount }) }}</strong>
+            <span class="ml-2">
+              ({{ pendingHoldApprovalsCount }} {{ $t('grids.holds.approvalWorkflow.pendingHold') }},
+              {{ pendingResumeApprovalsCount }} {{ $t('grids.holds.approvalWorkflow.pendingResume') }})
+            </span>
+          </div>
+          <v-btn
+            size="small"
+            color="warning"
+            variant="flat"
+            @click="filterPendingApprovals"
+          >
+            {{ $t('grids.holds.approvalWorkflow.viewPending') }}
+          </v-btn>
+        </div>
+      </v-alert>
 
       <!-- Summary stats -->
       <v-row class="mt-3">
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-card variant="outlined">
-            <v-card-text>
+            <v-card-text class="text-center pa-2">
               <div class="text-caption">{{ $t('grids.holds.totalHolds') }}</div>
               <div class="text-h6">{{ filteredEntries.length }}</div>
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-card variant="outlined" color="warning">
-            <v-card-text>
+            <v-card-text class="text-center pa-2">
               <div class="text-caption">{{ $t('grids.holds.activeHolds') }}</div>
               <div class="text-h6">{{ activeCount }}</div>
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-card variant="outlined" color="success">
-            <v-card-text>
+            <v-card-text class="text-center pa-2">
               <div class="text-caption">{{ $t('grids.holds.resumedHolds') }}</div>
               <div class="text-h6">{{ resumedCount }}</div>
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-card variant="outlined" color="info">
-            <v-card-text>
+            <v-card-text class="text-center pa-2">
               <div class="text-caption">{{ $t('grids.holds.avgDaysOnHold') }}</div>
               <div class="text-h6">{{ avgDaysOnHold.toFixed(1) }}</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" md="2">
+          <v-card variant="outlined" color="deep-orange">
+            <v-card-text class="text-center pa-2">
+              <div class="text-caption">{{ $t('grids.holds.approvalWorkflow.pendingHold') }}</div>
+              <div class="text-h6">{{ pendingHoldApprovalsCount }}</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" md="2">
+          <v-card variant="outlined" color="purple">
+            <v-card-text class="text-center pa-2">
+              <div class="text-caption">{{ $t('grids.holds.approvalWorkflow.pendingResume') }}</div>
+              <div class="text-h6">{{ pendingResumeApprovalsCount }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -182,6 +231,18 @@
       @cancel="onCancelSave"
     />
 
+    <!-- Paste Preview Dialog -->
+    <PastePreviewDialog
+      v-model="showPasteDialog"
+      :parsed-data="parsedPasteData"
+      :converted-rows="convertedPasteRows"
+      :validation-result="pasteValidationResult"
+      :column-mapping="pasteColumnMapping"
+      :grid-columns="columnDefs"
+      @confirm="onPasteConfirm"
+      @cancel="onPasteCancel"
+    />
+
     <!-- Snackbar for notifications -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -196,6 +257,7 @@ import { useKPIStore } from '@/stores/kpiStore'
 import { format, differenceInDays } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
+import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
 
 const { t } = useI18n()
 
@@ -216,6 +278,13 @@ const resumeDialog = ref({
 const showConfirmDialog = ref(false)
 const pendingData = ref({})
 const pendingRows = ref([])
+
+// Paste preview state
+const showPasteDialog = ref(false)
+const parsedPasteData = ref(null)
+const convertedPasteRows = ref([])
+const pasteValidationResult = ref(null)
+const pasteColumnMapping = ref(null)
 
 const pendingRowsCount = computed(() => pendingRows.value.length)
 
@@ -258,6 +327,18 @@ const holdReasons = [
   'Other'
 ]
 
+// Hold status options for the filter - matches backend HoldStatus enum
+const holdStatusOptions = computed(() => [
+  { label: t('grids.holds.approvalWorkflow.pendingHold'), value: 'PENDING_HOLD_APPROVAL' },
+  { label: t('grids.holds.active'), value: 'ON_HOLD' },
+  { label: t('grids.holds.approvalWorkflow.pendingResume'), value: 'PENDING_RESUME_APPROVAL' },
+  { label: t('grids.holds.resumed'), value: 'RESUMED' },
+  { label: t('grids.holds.cancelled'), value: 'CANCELLED' }
+])
+
+// Approval workflow state
+const approving = ref(false)
+
 const entries = computed(() => kpiStore.holdEntries || [])
 const workOrders = computed(() => kpiStore.workOrders || [])
 const hasUnsavedChanges = computed(() => unsavedChanges.value.size > 0)
@@ -267,11 +348,24 @@ const filteredEntries = ref([])
 
 // Summary statistics
 const activeCount = computed(() => {
-  return filteredEntries.value.filter(e => !e.actual_resume_date).length
+  return entries.value.filter(e => e.hold_status === 'ON_HOLD' || (!e.actual_resume_date && !e.hold_status)).length
 })
 
 const resumedCount = computed(() => {
-  return filteredEntries.value.filter(e => e.actual_resume_date).length
+  return entries.value.filter(e => e.hold_status === 'RESUMED' || e.actual_resume_date).length
+})
+
+// Pending approvals counts
+const pendingHoldApprovalsCount = computed(() => {
+  return entries.value.filter(e => e.hold_status === 'PENDING_HOLD_APPROVAL').length
+})
+
+const pendingResumeApprovalsCount = computed(() => {
+  return entries.value.filter(e => e.hold_status === 'PENDING_RESUME_APPROVAL').length
+})
+
+const pendingApprovalsCount = computed(() => {
+  return pendingHoldApprovalsCount.value + pendingResumeApprovalsCount.value
 })
 
 const avgDaysOnHold = computed(() => {
@@ -327,17 +421,31 @@ const columnDefs = computed(() => [
   },
   {
     headerName: t('grids.columns.status'),
-    field: 'status',
+    field: 'hold_status',
     editable: false,
     valueGetter: (params) => {
-      return params.data.actual_resume_date ? t('grids.holds.resumed') : t('grids.holds.active')
+      const status = params.data.hold_status || (params.data.actual_resume_date ? 'RESUMED' : 'ON_HOLD')
+      const statusLabels = {
+        'PENDING_HOLD_APPROVAL': t('grids.holds.approvalWorkflow.pendingHold'),
+        'ON_HOLD': t('grids.holds.active'),
+        'PENDING_RESUME_APPROVAL': t('grids.holds.approvalWorkflow.pendingResume'),
+        'RESUMED': t('grids.holds.resumed'),
+        'CANCELLED': t('grids.holds.cancelled')
+      }
+      return statusLabels[status] || status
     },
     cellStyle: (params) => {
-      return params.value === t('grids.holds.active')
-        ? { backgroundColor: '#fff3e0', color: '#f57c00', fontWeight: 'bold' }
-        : { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }
+      const status = params.data.hold_status || (params.data.actual_resume_date ? 'RESUMED' : 'ON_HOLD')
+      const styles = {
+        'PENDING_HOLD_APPROVAL': { backgroundColor: '#fff3e0', color: '#e65100', fontWeight: 'bold' },
+        'ON_HOLD': { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' },
+        'PENDING_RESUME_APPROVAL': { backgroundColor: '#f3e5f5', color: '#7b1fa2', fontWeight: 'bold' },
+        'RESUMED': { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' },
+        'CANCELLED': { backgroundColor: '#eceff1', color: '#546e7a', fontWeight: 'bold' }
+      }
+      return styles[status] || {}
     },
-    width: 130
+    width: 160
   },
   {
     headerName: t('grids.columns.expectedResume'),
@@ -413,38 +521,55 @@ const columnDefs = computed(() => [
     filter: false,
     cellRenderer: (params) => {
       const div = document.createElement('div')
-      const isActive = !params.data.actual_resume_date
+      const status = params.data.hold_status || (params.data.actual_resume_date ? 'RESUMED' : 'ON_HOLD')
 
-      div.innerHTML = `
-        <div style="display: flex; gap: 4px;">
-          ${isActive ? `
-            <button class="ag-grid-resume-btn" style="
-              background: #4caf50;
-              color: white;
-              border: none;
-              padding: 4px 8px;
-              border-radius: 4px;
-              cursor: pointer;
-              font-size: 12px;
-            ">${t('grids.holds.resumeDialog.confirm')}</button>
-          ` : ''}
-          <button class="ag-grid-delete-btn" style="
-            background: #c62828;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-          ">${t('common.delete')}</button>
-        </div>
+      const btnStyle = (bg) => `
+        background: ${bg};
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        white-space: nowrap;
       `
 
-      const resumeBtn = div.querySelector('.ag-grid-resume-btn')
-      if (resumeBtn) {
-        resumeBtn.addEventListener('click', () => {
-          openResumeDialog(params.data)
-        })
+      let buttons = ''
+
+      // PENDING_HOLD_APPROVAL - Show "Approve Hold" button (supervisors)
+      if (status === 'PENDING_HOLD_APPROVAL') {
+        buttons += `<button class="ag-grid-approve-hold-btn" style="${btnStyle('#ff9800')}">${t('grids.holds.approvalWorkflow.approveHold')}</button>`
+      }
+
+      // ON_HOLD - Show "Request Resume" button
+      if (status === 'ON_HOLD') {
+        buttons += `<button class="ag-grid-request-resume-btn" style="${btnStyle('#2196f3')}">${t('grids.holds.approvalWorkflow.requestResume')}</button>`
+      }
+
+      // PENDING_RESUME_APPROVAL - Show "Approve Resume" button (supervisors)
+      if (status === 'PENDING_RESUME_APPROVAL') {
+        buttons += `<button class="ag-grid-approve-resume-btn" style="${btnStyle('#9c27b0')}">${t('grids.holds.approvalWorkflow.approveResume')}</button>`
+      }
+
+      // Always show delete button
+      buttons += `<button class="ag-grid-delete-btn" style="${btnStyle('#c62828')}">${t('common.delete')}</button>`
+
+      div.innerHTML = `<div style="display: flex; gap: 4px; flex-wrap: wrap;">${buttons}</div>`
+
+      // Add event listeners
+      const approveHoldBtn = div.querySelector('.ag-grid-approve-hold-btn')
+      if (approveHoldBtn) {
+        approveHoldBtn.addEventListener('click', () => approveHold(params.data))
+      }
+
+      const requestResumeBtn = div.querySelector('.ag-grid-request-resume-btn')
+      if (requestResumeBtn) {
+        requestResumeBtn.addEventListener('click', () => requestResume(params.data))
+      }
+
+      const approveResumeBtn = div.querySelector('.ag-grid-approve-resume-btn')
+      if (approveResumeBtn) {
+        approveResumeBtn.addEventListener('click', () => approveResume(params.data))
       }
 
       div.querySelector('.ag-grid-delete-btn').addEventListener('click', () => {
@@ -453,7 +578,7 @@ const columnDefs = computed(() => [
 
       return div
     },
-    width: 150,
+    width: 200,
     pinned: 'right'
   }
 ])
@@ -504,6 +629,103 @@ const addNewHold = () => {
         colKey: 'work_order_id'
       })
     }, 100)
+  }
+}
+
+// Approval workflow methods
+const filterPendingApprovals = () => {
+  statusFilter.value = null // Clear first to show both pending types
+  applyFilters()
+  // Filter to show only pending approvals
+  filteredEntries.value = filteredEntries.value.filter(e =>
+    e.hold_status === 'PENDING_HOLD_APPROVAL' || e.hold_status === 'PENDING_RESUME_APPROVAL'
+  )
+}
+
+const approveHold = async (holdEntry) => {
+  if (!confirm(t('grids.holds.approvalWorkflow.confirmApproveHold'))) return
+
+  approving.value = true
+  try {
+    const response = await fetch(`/api/holds/${holdEntry.hold_entry_id}/approve-hold`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to approve hold')
+    }
+
+    showSnackbar(t('grids.holds.approvalWorkflow.holdApproved'), 'success')
+    await kpiStore.fetchHoldEntries()
+    applyFilters()
+  } catch (error) {
+    console.error('Error approving hold:', error)
+    showSnackbar(t('common.error') + ': ' + error.message, 'error')
+  } finally {
+    approving.value = false
+  }
+}
+
+const requestResume = async (holdEntry) => {
+  if (!confirm(t('grids.holds.approvalWorkflow.confirmRequestResume'))) return
+
+  approving.value = true
+  try {
+    const response = await fetch(`/api/holds/${holdEntry.hold_entry_id}/request-resume`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to request resume')
+    }
+
+    showSnackbar(t('grids.holds.approvalWorkflow.resumeRequested'), 'success')
+    await kpiStore.fetchHoldEntries()
+    applyFilters()
+  } catch (error) {
+    console.error('Error requesting resume:', error)
+    showSnackbar(t('common.error') + ': ' + error.message, 'error')
+  } finally {
+    approving.value = false
+  }
+}
+
+const approveResume = async (holdEntry) => {
+  if (!confirm(t('grids.holds.approvalWorkflow.confirmApproveResume'))) return
+
+  approving.value = true
+  try {
+    const response = await fetch(`/api/holds/${holdEntry.hold_entry_id}/approve-resume`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+      }
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.detail || 'Failed to approve resume')
+    }
+
+    showSnackbar(t('grids.holds.approvalWorkflow.resumeApproved'), 'success')
+    await kpiStore.fetchHoldEntries()
+    applyFilters()
+  } catch (error) {
+    console.error('Error approving resume:', error)
+    showSnackbar(t('common.error') + ': ' + error.message, 'error')
+  } finally {
+    approving.value = false
   }
 }
 
@@ -662,6 +884,48 @@ const onCancelSave = () => {
   showSnackbar(t('grids.saveCancelled'), 'info')
 }
 
+// Paste handlers
+const onRowsPasted = (pasteData) => {
+  parsedPasteData.value = pasteData.parsedData
+  convertedPasteRows.value = pasteData.convertedRows
+  pasteValidationResult.value = pasteData.validationResult
+  pasteColumnMapping.value = pasteData.columnMapping
+  showPasteDialog.value = true
+}
+
+const onPasteConfirm = (rowsToAdd) => {
+  const api = gridRef.value?.gridApi
+  if (!api) return
+
+  // Prepare rows with required fields
+  const preparedRows = rowsToAdd.map(row => ({
+    hold_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    work_order_id: row.work_order_id || workOrders.value[0]?.work_order_id || null,
+    placed_on_hold_date: row.placed_on_hold_date || format(new Date(), 'yyyy-MM-dd'),
+    hold_reason: row.hold_reason || 'Quality Issue',
+    expected_resume_date: row.expected_resume_date || null,
+    actual_resume_date: row.actual_resume_date || null,
+    resumed_by_user_id: row.resumed_by_user_id || null,
+    hold_approved_at: row.hold_approved_at || null,
+    resume_approved_at: row.resume_approved_at || null,
+    _isNew: true,
+    _hasChanges: true
+  }))
+
+  api.applyTransaction({ add: preparedRows, addIndex: 0 })
+  preparedRows.forEach(row => unsavedChanges.value.add(row.hold_id))
+  showPasteDialog.value = false
+  showSnackbar(t('paste.rowsAdded', { count: preparedRows.length }), 'success')
+}
+
+const onPasteCancel = () => {
+  showPasteDialog.value = false
+  parsedPasteData.value = null
+  convertedPasteRows.value = []
+  pasteValidationResult.value = null
+  pasteColumnMapping.value = null
+}
+
 const applyFilters = () => {
   let filtered = [...entries.value]
 
@@ -673,11 +937,19 @@ const applyFilters = () => {
   }
 
   if (statusFilter.value) {
-    if (statusFilter.value === 'ACTIVE') {
-      filtered = filtered.filter(e => !e.actual_resume_date)
-    } else {
-      filtered = filtered.filter(e => e.actual_resume_date)
-    }
+    // Filter by actual hold_status field if available, otherwise fall back to computed status
+    filtered = filtered.filter(e => {
+      if (e.hold_status) {
+        return e.hold_status === statusFilter.value
+      }
+      // Fallback for legacy data without hold_status
+      if (statusFilter.value === 'ON_HOLD') {
+        return !e.actual_resume_date
+      } else if (statusFilter.value === 'RESUMED') {
+        return !!e.actual_resume_date
+      }
+      return false
+    })
   }
 
   if (reasonFilter.value) {

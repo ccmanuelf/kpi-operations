@@ -83,7 +83,9 @@
     "collapseNav": "Collapse navigation",
     "mainNav": "Main navigation",
     "primaryNav": "Primary navigation",
-    "defectTypes": "Defect Types"
+    "defectTypes": "Defect Types",
+    "clientConfig": "Client Config",
+    "partOpportunities": "Part Opportunities"
   },
   "auth": {
     "login": "Login",
@@ -221,6 +223,30 @@
       "forecast": "Forecast",
       "confidenceUpper": "Confidence Upper",
       "confidenceLower": "Confidence Lower"
+    }
+  },
+  "inferenceIndicator": {
+    "dataSourcesTitle": "Data Sources Used",
+    "hintText": "This value includes estimated data. For full accuracy, enter actual values in the data entry forms.",
+    "fields": {
+      "cycleTime": "Cycle Time",
+      "employees": "Employees",
+      "scheduledHours": "Scheduled Hours",
+      "opportunities": "Defect Opportunities",
+      "threshold": "Threshold"
+    },
+    "sources": {
+      "productStandard": "Product Standard",
+      "historicalAverage": "Historical Average",
+      "historicalShiftAverage": "Shift Historical Avg",
+      "clientDefault": "Client Default",
+      "globalDefault": "Global Default",
+      "systemDefault": "System Default",
+      "employeesAssigned": "Assigned Value",
+      "employeesPresent": "Employees Present",
+      "shiftTimes": "Shift Schedule",
+      "floatingPool": "Floating Pool",
+      "unknown": "Unknown"
     }
   },
   "production": {
@@ -594,9 +620,9 @@
         "enterUserId": "Please enter User ID who resumed the hold",
         "markedForResume": "Hold marked for resume. Click Save All to persist changes."
       },
-      "approval": {
-        "pendingHold": "PENDING HOLD APPROVAL",
-        "pendingResume": "PENDING RESUME APPROVAL",
+      "approvalWorkflow": {
+        "pendingHold": "PENDING HOLD",
+        "pendingResume": "PENDING RESUME",
         "approveHold": "Approve Hold",
         "approveResume": "Approve Resume",
         "requestResume": "Request Resume",
@@ -604,10 +630,15 @@
         "resumeApproved": "Resume approved successfully",
         "resumeRequested": "Resume request submitted for approval",
         "approvalRequired": "Supervisor approval required",
-        "viewPending": "View Pending Approvals"
+        "viewPending": "View Pending",
+        "pendingApprovals": "{count} Pending Approvals",
+        "confirmApproveHold": "Are you sure you want to approve this hold request?",
+        "confirmRequestResume": "Are you sure you want to request resume for this hold?",
+        "confirmApproveResume": "Are you sure you want to approve this resume request?"
       },
-      "active": "ACTIVE",
+      "active": "ON HOLD",
       "resumed": "RESUMED",
+      "cancelled": "CANCELLED",
       "pending": "Pending",
       "notYetResumed": "Not Yet Resumed",
       "savedEntries": "{count} hold entries saved successfully!",
@@ -707,7 +738,88 @@
     "totalParts": "Total Parts Configured",
     "avgOpportunities": "Avg Opportunities",
     "minOpportunities": "Min Opportunities",
-    "maxOpportunities": "Max Opportunities"
+    "maxOpportunities": "Max Opportunities",
+    "clientConfig": {
+      "title": "Client KPI Configuration",
+      "description": "Configure client-specific KPI calculation parameters. Each client can override global defaults.",
+      "globalDefaults": "Global Defaults",
+      "systemDefaults": "System Defaults",
+      "selectClient": "Select a Client",
+      "selectClientPrompt": "Select a client to view or edit their KPI configuration.",
+      "createConfig": "Create Config",
+      "editConfig": "Edit Configuration",
+      "resetToDefaults": "Reset to Defaults",
+      "confirmReset": "Confirm Reset",
+      "confirmResetMessage": "This will reset all KPI calculation parameters for {client} to global defaults. This action cannot be undone.",
+      "reset": "Reset",
+      "usingDefaults": "Using Defaults",
+      "customConfig": "Custom Config",
+      "configFor": "Configuration for",
+      "sections": {
+        "otd": "On-Time Delivery (OTD)",
+        "efficiency": "Efficiency",
+        "quality": "Quality Metrics",
+        "oee": "OEE Components",
+        "wipAging": "WIP Aging & Attendance"
+      },
+      "fields": {
+        "otdMode": "OTD Calculation Mode",
+        "defaultCycleTime": "Default Cycle Time",
+        "efficiencyTarget": "Efficiency Target",
+        "qualityTargetPpm": "Quality Target (PPM)",
+        "fpyTarget": "FPY Target",
+        "dpmoOpportunities": "DPMO Opportunities Default",
+        "availabilityTarget": "Availability Target",
+        "performanceTarget": "Performance Target",
+        "oeeTarget": "OEE Target",
+        "absenteeismTarget": "Absenteeism Target",
+        "wipAgingThreshold": "WIP Aging Threshold",
+        "wipCriticalThreshold": "WIP Critical Threshold"
+      },
+      "hints": {
+        "otdMode": "STANDARD: All orders, TRUE: Complete orders only, BOTH: Show both metrics"
+      },
+      "success": {
+        "created": "Configuration created successfully",
+        "updated": "Configuration updated successfully",
+        "reset": "Configuration reset to defaults"
+      },
+      "errors": {
+        "loadClients": "Failed to load clients",
+        "loadConfig": "Failed to load client configuration",
+        "save": "Failed to save configuration",
+        "reset": "Failed to reset configuration"
+      }
+    },
+    "floatingPool": {
+      "title": "Floating Pool Management",
+      "description": "Manage floating pool employees and their client assignments",
+      "totalEmployees": "Total Employees",
+      "available": "Available",
+      "currentlyAssigned": "Currently Assigned",
+      "utilization": "Utilization",
+      "filterByStatus": "Filter by Status",
+      "filterByClient": "Filter by Client",
+      "employeeId": "Employee ID",
+      "employeeName": "Employee Name",
+      "status": "Status",
+      "assignedTo": "Assigned To",
+      "availableFrom": "Available From",
+      "availableTo": "Available To",
+      "assigned": "Assigned",
+      "notAssigned": "Not Assigned",
+      "assign": "Assign",
+      "unassign": "Unassign",
+      "assignEmployee": "Assign Employee",
+      "selectEmployee": "Select Employee",
+      "selectClient": "Select Client",
+      "selectClientRequired": "Please select a client to assign",
+      "confirmAssignment": "Confirm Assignment",
+      "assignmentSuccess": "Employee assigned successfully",
+      "unassignmentSuccess": "Employee unassigned successfully",
+      "doubleAssignmentError": "This employee is already assigned to another client. Please unassign first.",
+      "conflictDetected": "Assignment conflict detected"
+    }
   },
   "csv": {
     "title": "Bulk Upload via CSV",
@@ -729,6 +841,30 @@
     "partOpportunitiesInfo": "Upload a CSV file with part_number and opportunities_per_unit columns to bulk configure part opportunities.",
     "replaceExisting": "Replace existing entries",
     "replaceExistingHint": "If checked, existing entries for matching part numbers will be updated"
+  },
+  "paste": {
+    "pasteFromExcel": "Paste from Excel",
+    "lastPasted": "Last pasted: {count} rows",
+    "shortcutHint": "Ctrl+Shift+V to paste from Excel",
+    "previewTitle": "Paste Preview",
+    "validRows": "valid",
+    "invalidRows": "invalid",
+    "rowsDetected": "rows detected",
+    "columnsDetected": "columns detected",
+    "headersDetected": "Headers detected",
+    "unmappedColumns": "Unmapped columns",
+    "validationErrors": "Validation Errors",
+    "row": "Row",
+    "andMore": "and {count} more...",
+    "skipInvalidRows": "Skip invalid rows",
+    "pasteRows": "Paste {count} Rows",
+    "noDataToPaste": "No data to paste",
+    "showingPreview": "Showing first {shown} of {total} rows",
+    "emptyClipboard": "Clipboard is empty. Copy data from Excel first.",
+    "parseError": "Could not parse clipboard data. Make sure you copied from Excel.",
+    "accessDenied": "Clipboard access denied. Please allow clipboard access in your browser.",
+    "noValidRows": "No valid rows to paste",
+    "rowsAdded": "{count} rows added to grid"
   },
   "common": {
     "save": "Save",

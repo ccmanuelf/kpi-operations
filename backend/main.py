@@ -89,6 +89,7 @@ from backend.routes import (
     work_orders_router,
     client_work_orders_router,
     clients_router,
+    client_config_router,
     employees_router,
     client_employees_router,
     floating_pool_router,
@@ -160,6 +161,11 @@ app.include_router(client_work_orders_router)
 # Register client routes
 # ============================================================================
 app.include_router(clients_router)
+
+# ============================================================================
+# Register client configuration routes (Phase 7.2 - Client-Level Overrides)
+# ============================================================================
+app.include_router(client_config_router)
 
 # ============================================================================
 # Register employee routes

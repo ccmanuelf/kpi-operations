@@ -37,6 +37,7 @@ from .jobs import work_order_jobs_router
 from .work_orders import router as work_orders_router
 from .work_orders import client_work_orders_router
 from .clients import router as clients_router
+from .client_config import router as client_config_router
 from .employees import router as employees_router
 from .employees import client_employees_router
 from .floating_pool import router as floating_pool_router
@@ -75,6 +76,7 @@ __all__ = [
     "work_orders_router",
     "client_work_orders_router",
     "clients_router",
+    "client_config_router",
     "employees_router",
     "client_employees_router",
     "floating_pool_router",

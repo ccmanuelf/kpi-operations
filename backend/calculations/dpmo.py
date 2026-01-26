@@ -6,6 +6,7 @@ DPMO = (Total Defects / (Total Units × Opportunities per Unit)) * 1,000,000
 Sigma Level = derived from DPMO using lookup table
 
 Phase 6.7 Enhancement: Uses PART_OPPORTUNITIES table for part-specific opportunities
+Phase 7.2 Enhancement: Uses client config for default opportunities per unit
 """
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -16,6 +17,7 @@ import math
 
 from backend.schemas.quality import QualityInspection
 from backend.schemas.part_opportunities import PartOpportunities
+from backend.crud.client_config import get_client_config_or_defaults
 
 
 # DPMO to Sigma Level lookup table
@@ -28,8 +30,32 @@ DPMO_TO_SIGMA = [
     (690000, 1.0),
 ]
 
-# Default opportunities per unit when no part-specific data exists
+# Fallback default opportunities per unit when no part-specific data exists
 DEFAULT_OPPORTUNITIES_PER_UNIT = 10
+
+
+def get_client_opportunities_default(db: Session, client_id: Optional[str] = None) -> int:
+    """
+    Get the default opportunities per unit for a client from their configuration.
+    Falls back to global default if no client config exists.
+
+    Phase 7.2: Client-level configuration overrides
+
+    Args:
+        db: Database session
+        client_id: Client ID (optional)
+
+    Returns:
+        Default opportunities per unit
+    """
+    if not client_id:
+        return DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    try:
+        config = get_client_config_or_defaults(db, client_id)
+        return config.get("dpmo_opportunities_default", DEFAULT_OPPORTUNITIES_PER_UNIT)
+    except Exception:
+        return DEFAULT_OPPORTUNITIES_PER_UNIT
 
 
 def get_opportunities_for_part(
@@ -41,7 +67,7 @@ def get_opportunities_for_part(
     Look up opportunities per unit from PART_OPPORTUNITIES table.
 
     Phase 6.7: Uses PART_OPPORTUNITIES table for part-specific opportunities.
-    Falls back to DEFAULT_OPPORTUNITIES_PER_UNIT if part not configured.
+    Phase 7.2: Falls back to client-specific default, then global default.
 
     Args:
         db: Database session
@@ -49,10 +75,13 @@ def get_opportunities_for_part(
         client_id: Optional client ID for multi-tenant filtering
 
     Returns:
-        Opportunities per unit for the part (or default if not found)
+        Opportunities per unit for the part (or client/global default if not found)
     """
+    # Get client-specific default (or global default)
+    client_default = get_client_opportunities_default(db, client_id)
+
     if not part_number:
-        return DEFAULT_OPPORTUNITIES_PER_UNIT
+        return client_default
 
     query = db.query(PartOpportunities).filter(
         PartOpportunities.part_number == part_number
@@ -66,7 +95,7 @@ def get_opportunities_for_part(
     if part_opp and part_opp.opportunities_per_unit:
         return part_opp.opportunities_per_unit
 
-    return DEFAULT_OPPORTUNITIES_PER_UNIT
+    return client_default
 
 
 def get_opportunities_for_parts(
@@ -78,6 +107,7 @@ def get_opportunities_for_parts(
     Batch lookup of opportunities per unit for multiple parts.
 
     Phase 6.7: Efficient batch query for multiple parts.
+    Phase 7.2: Uses client-specific default for parts not found.
 
     Args:
         db: Database session
@@ -89,6 +119,9 @@ def get_opportunities_for_parts(
     """
     if not part_numbers:
         return {}
+
+    # Get client-specific default (or global default)
+    client_default = get_client_opportunities_default(db, client_id)
 
     query = db.query(PartOpportunities).filter(
         PartOpportunities.part_number.in_(part_numbers)
@@ -106,10 +139,10 @@ def get_opportunities_for_parts(
         if po.opportunities_per_unit
     }
 
-    # Fill in defaults for parts not found
+    # Fill in client defaults for parts not found
     for part in part_numbers:
         if part not in opportunities_map:
-            opportunities_map[part] = DEFAULT_OPPORTUNITIES_PER_UNIT
+            opportunities_map[part] = client_default
 
     return opportunities_map
 
@@ -150,11 +183,11 @@ def calculate_dpmo(
         # Manual override provided
         effective_opportunities = opportunities_per_unit
     elif part_number:
-        # Look up from PART_OPPORTUNITIES table
+        # Look up from PART_OPPORTUNITIES table (includes client default fallback)
         effective_opportunities = get_opportunities_for_part(db, part_number, client_id)
     else:
-        # Use default
-        effective_opportunities = DEFAULT_OPPORTUNITIES_PER_UNIT
+        # Use client-specific default (or global default)
+        effective_opportunities = get_client_opportunities_default(db, client_id)
 
     # Get all inspections for period
     inspections = db.query(QualityInspection).filter(
@@ -265,7 +298,9 @@ def calculate_dpmo_with_part_lookup(
 
         key = part_number or "UNKNOWN"
         if key not in part_metrics:
-            opportunities = opportunities_map.get(part_number, DEFAULT_OPPORTUNITIES_PER_UNIT)
+            # Use client-specific default for parts not in opportunities_map
+            client_default = get_client_opportunities_default(db, client_id)
+            opportunities = opportunities_map.get(part_number, client_default)
             part_metrics[key] = {
                 "part_number": key,
                 "opportunities_per_unit": opportunities,

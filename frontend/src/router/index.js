@@ -142,6 +142,18 @@ const router = createRouter({
       name: 'admin-part-opportunities',
       component: () => import('@/views/admin/PartOpportunities.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/client-config',
+      name: 'admin-client-config',
+      component: () => import('@/views/admin/ClientConfigView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/floating-pool',
+      name: 'admin-floating-pool',
+      component: () => import('@/views/admin/FloatingPoolManagement.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })

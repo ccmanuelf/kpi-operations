@@ -83,7 +83,9 @@
     "collapseNav": "Contraer navegación",
     "mainNav": "Navegación principal",
     "primaryNav": "Navegación primaria",
-    "defectTypes": "Tipos de Defecto"
+    "defectTypes": "Tipos de Defecto",
+    "clientConfig": "Config. Cliente",
+    "partOpportunities": "Oport. por Parte"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -221,6 +223,30 @@
       "forecast": "Pronóstico",
       "confidenceUpper": "Límite Superior",
       "confidenceLower": "Límite Inferior"
+    }
+  },
+  "inferenceIndicator": {
+    "dataSourcesTitle": "Fuentes de Datos Utilizadas",
+    "hintText": "Este valor incluye datos estimados. Para mayor precisión, ingrese valores reales en los formularios de captura.",
+    "fields": {
+      "cycleTime": "Tiempo de Ciclo",
+      "employees": "Empleados",
+      "scheduledHours": "Horas Programadas",
+      "opportunities": "Oportunidades de Defecto",
+      "threshold": "Umbral"
+    },
+    "sources": {
+      "productStandard": "Estándar del Producto",
+      "historicalAverage": "Promedio Histórico",
+      "historicalShiftAverage": "Promedio Histórico del Turno",
+      "clientDefault": "Predeterminado del Cliente",
+      "globalDefault": "Predeterminado Global",
+      "systemDefault": "Predeterminado del Sistema",
+      "employeesAssigned": "Valor Asignado",
+      "employeesPresent": "Empleados Presentes",
+      "shiftTimes": "Horario de Turno",
+      "floatingPool": "Personal Flotante",
+      "unknown": "Desconocido"
     }
   },
   "production": {
@@ -594,20 +620,25 @@
         "enterUserId": "Por favor ingrese el ID del usuario que reanudó la retención",
         "markedForResume": "Retención marcada para reanudar. Haga clic en Guardar Todo para persistir los cambios."
       },
-      "approval": {
-        "pendingHold": "APROBACIÓN DE RETENCIÓN PENDIENTE",
-        "pendingResume": "APROBACIÓN DE REANUDACIÓN PENDIENTE",
+      "approvalWorkflow": {
+        "pendingHold": "RETENCIÓN PEND.",
+        "pendingResume": "REANUDAR PEND.",
         "approveHold": "Aprobar Retención",
         "approveResume": "Aprobar Reanudación",
-        "requestResume": "Solicitar Reanudación",
+        "requestResume": "Solicitar Reanudar",
         "holdApproved": "Retención aprobada exitosamente",
         "resumeApproved": "Reanudación aprobada exitosamente",
         "resumeRequested": "Solicitud de reanudación enviada para aprobación",
         "approvalRequired": "Se requiere aprobación del supervisor",
-        "viewPending": "Ver Aprobaciones Pendientes"
+        "viewPending": "Ver Pendientes",
+        "pendingApprovals": "{count} Aprobaciones Pendientes",
+        "confirmApproveHold": "¿Está seguro que desea aprobar esta solicitud de retención?",
+        "confirmRequestResume": "¿Está seguro que desea solicitar la reanudación de esta retención?",
+        "confirmApproveResume": "¿Está seguro que desea aprobar esta solicitud de reanudación?"
       },
-      "active": "ACTIVO",
+      "active": "EN RETENCIÓN",
       "resumed": "REANUDADO",
+      "cancelled": "CANCELADO",
       "pending": "Pendiente",
       "notYetResumed": "Aún No Reanudado",
       "savedEntries": "¡{count} registros de retención guardados exitosamente!",
@@ -707,7 +738,95 @@
     "totalParts": "Total de Partes Configuradas",
     "avgOpportunities": "Promedio de Oportunidades",
     "minOpportunities": "Mínimo de Oportunidades",
-    "maxOpportunities": "Máximo de Oportunidades"
+    "maxOpportunities": "Máximo de Oportunidades",
+    "clientConfig": {
+      "title": "Configuración de Cliente",
+      "description": "Configure parámetros de cálculo específicos por cliente para KPIs. Las configuraciones a nivel de cliente anulan los valores predeterminados del sistema.",
+      "globalDefaults": "Valores Predeterminados Globales",
+      "selectClient": "Seleccionar Cliente",
+      "selectClientHint": "Elija un cliente para ver y editar su configuración",
+      "noClientSelected": "Seleccione un cliente para gestionar su configuración",
+      "editConfiguration": "Editar Configuración",
+      "resetToDefaults": "Restablecer a Valores Predeterminados",
+      "resetConfirmTitle": "Confirmar Restablecimiento",
+      "resetConfirmMessage": "¿Está seguro de que desea restablecer la configuración de {client} a los valores predeterminados? Esta acción no se puede deshacer.",
+      "sections": {
+        "otd": "Configuración de Entrega a Tiempo (OTD)",
+        "efficiency": "Configuración de Eficiencia",
+        "quality": "Configuración de Calidad",
+        "oee": "Configuración de OEE",
+        "wipAging": "Configuración de Antigüedad WIP"
+      },
+      "fields": {
+        "otdMode": "Modo OTD",
+        "otdModeStandard": "Estándar (todas las órdenes)",
+        "otdModeTrue": "Verdadero (solo órdenes completas)",
+        "otdModeBoth": "Ambos (mostrar las dos métricas)",
+        "defaultCycleTimeHours": "Tiempo de Ciclo Predeterminado (horas)",
+        "efficiencyTargetPercent": "Meta de Eficiencia (%)",
+        "qualityTargetPpm": "Meta de Calidad (PPM)",
+        "dpmoOpportunitiesDefault": "Oportunidades DPMO Predeterminadas",
+        "fpyTargetPercent": "Meta de FPY (%)",
+        "rtyTargetPercent": "Meta de RTY (%)",
+        "oeeTargetPercent": "Meta de OEE (%)",
+        "availabilityTargetPercent": "Meta de Disponibilidad (%)",
+        "performanceTargetPercent": "Meta de Rendimiento (%)",
+        "wipAgingThresholdDays": "Umbral de Antigüedad WIP (días)",
+        "wipCriticalThresholdDays": "Umbral Crítico WIP (días)"
+      },
+      "hints": {
+        "otdMode": "Determina cómo se calcula la Entrega a Tiempo para este cliente",
+        "defaultCycleTimeHours": "Tiempo de ciclo predeterminado cuando no hay datos disponibles a nivel de estilo",
+        "efficiencyTargetPercent": "Meta de eficiencia de producción para tableros y alertas",
+        "qualityTargetPpm": "Defectos máximos aceptables por millón de unidades",
+        "dpmoOpportunitiesDefault": "Oportunidades de defecto por unidad cuando no se especifica a nivel de parte",
+        "fpyTargetPercent": "Meta de Rendimiento de Primera Pasada",
+        "rtyTargetPercent": "Meta de Rendimiento Acumulado",
+        "oeeTargetPercent": "Meta de Efectividad General del Equipo",
+        "availabilityTargetPercent": "Meta de disponibilidad del equipo",
+        "performanceTargetPercent": "Meta de velocidad de producción vs teórica",
+        "wipAgingThresholdDays": "Días después de los cuales el WIP se considera antiguo",
+        "wipCriticalThresholdDays": "Días después de los cuales el WIP es crítico"
+      },
+      "success": {
+        "saved": "Configuración de cliente guardada exitosamente",
+        "reset": "Configuración de cliente restablecida a valores predeterminados"
+      },
+      "errors": {
+        "loadFailed": "Error al cargar la configuración del cliente",
+        "saveFailed": "Error al guardar la configuración del cliente",
+        "resetFailed": "Error al restablecer la configuración del cliente"
+      }
+    },
+    "floatingPool": {
+      "title": "Gestión de Pool Flotante",
+      "description": "Administrar empleados del pool flotante y sus asignaciones a clientes",
+      "totalEmployees": "Total de Empleados",
+      "available": "Disponibles",
+      "currentlyAssigned": "Actualmente Asignados",
+      "utilization": "Utilización",
+      "filterByStatus": "Filtrar por Estado",
+      "filterByClient": "Filtrar por Cliente",
+      "employeeId": "ID de Empleado",
+      "employeeName": "Nombre del Empleado",
+      "status": "Estado",
+      "assignedTo": "Asignado A",
+      "availableFrom": "Disponible Desde",
+      "availableTo": "Disponible Hasta",
+      "assigned": "Asignado",
+      "notAssigned": "No Asignado",
+      "assign": "Asignar",
+      "unassign": "Desasignar",
+      "assignEmployee": "Asignar Empleado",
+      "selectEmployee": "Seleccionar Empleado",
+      "selectClient": "Seleccionar Cliente",
+      "selectClientRequired": "Por favor seleccione un cliente para asignar",
+      "confirmAssignment": "Confirmar Asignación",
+      "assignmentSuccess": "Empleado asignado exitosamente",
+      "unassignmentSuccess": "Empleado desasignado exitosamente",
+      "doubleAssignmentError": "Este empleado ya está asignado a otro cliente. Por favor desasigne primero.",
+      "conflictDetected": "Conflicto de asignación detectado"
+    }
   },
   "csv": {
     "title": "Carga Masiva vía CSV",
@@ -729,6 +848,30 @@
     "partOpportunitiesInfo": "Sube un archivo CSV con columnas part_number y opportunities_per_unit para configurar oportunidades de parte en lote.",
     "replaceExisting": "Reemplazar registros existentes",
     "replaceExistingHint": "Si está marcado, los registros existentes para números de parte coincidentes serán actualizados"
+  },
+  "paste": {
+    "pasteFromExcel": "Pegar desde Excel",
+    "lastPasted": "Última pegada: {count} filas",
+    "shortcutHint": "Ctrl+Shift+V para pegar desde Excel",
+    "previewTitle": "Vista Previa de Pegado",
+    "validRows": "válidas",
+    "invalidRows": "inválidas",
+    "rowsDetected": "filas detectadas",
+    "columnsDetected": "columnas detectadas",
+    "headersDetected": "Encabezados detectados",
+    "unmappedColumns": "Columnas no mapeadas",
+    "validationErrors": "Errores de Validación",
+    "row": "Fila",
+    "andMore": "y {count} más...",
+    "skipInvalidRows": "Omitir filas inválidas",
+    "pasteRows": "Pegar {count} Filas",
+    "noDataToPaste": "No hay datos para pegar",
+    "showingPreview": "Mostrando primeras {shown} de {total} filas",
+    "emptyClipboard": "Portapapeles vacío. Copia datos desde Excel primero.",
+    "parseError": "No se pudo analizar los datos del portapapeles. Asegúrate de haber copiado desde Excel.",
+    "accessDenied": "Acceso al portapapeles denegado. Por favor permite el acceso en tu navegador.",
+    "noValidRows": "No hay filas válidas para pegar",
+    "rowsAdded": "{count} filas agregadas a la tabla"
   },
   "common": {
     "save": "Guardar",

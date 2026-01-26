@@ -1,0 +1,453 @@
+<template>
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex justify-space-between align-center bg-primary">
+            <div class="d-flex align-center">
+              <v-icon class="mr-2">mdi-account-switch</v-icon>
+              <span>{{ $t('admin.floatingPool.title') }}</span>
+            </div>
+            <v-btn color="white" variant="outlined" @click="openAssignDialog">
+              <v-icon left>mdi-plus</v-icon>
+              {{ $t('admin.floatingPool.assignEmployee') }}
+            </v-btn>
+          </v-card-title>
+
+          <v-card-text>
+            <!-- Summary Cards -->
+            <v-row class="mb-4">
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" color="primary">
+                  <v-card-text class="text-center">
+                    <div class="text-h4">{{ summary.total }}</div>
+                    <div class="text-caption">{{ $t('admin.floatingPool.totalEmployees') }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" color="success">
+                  <v-card-text class="text-center">
+                    <div class="text-h4">{{ summary.available }}</div>
+                    <div class="text-caption">{{ $t('admin.floatingPool.available') }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" color="warning">
+                  <v-card-text class="text-center">
+                    <div class="text-h4">{{ summary.assigned }}</div>
+                    <div class="text-caption">{{ $t('admin.floatingPool.currentlyAssigned') }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-card variant="outlined" color="info">
+                  <v-card-text class="text-center">
+                    <div class="text-h4">{{ utilizationPercent }}%</div>
+                    <div class="text-caption">{{ $t('admin.floatingPool.utilization') }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Filter Controls -->
+            <v-row class="mb-3">
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="statusFilter"
+                  :items="statusOptions"
+                  :label="$t('admin.floatingPool.filterByStatus')"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="clientFilter"
+                  :items="clientOptions"
+                  :label="$t('admin.floatingPool.filterByClient')"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                  item-title="name"
+                  item-value="client_id"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-btn color="primary" @click="fetchData" :loading="loading">
+                  <v-icon left>mdi-refresh</v-icon>
+                  {{ $t('common.refresh') }}
+                </v-btn>
+              </v-col>
+            </v-row>
+
+            <!-- Floating Pool Table -->
+            <v-data-table
+              :headers="tableHeaders"
+              :items="filteredEntries"
+              :loading="loading"
+              :items-per-page="10"
+              class="elevation-1"
+            >
+              <template v-slot:item.status="{ item }">
+                <v-chip
+                  :color="item.current_assignment ? 'warning' : 'success'"
+                  size="small"
+                  variant="flat"
+                >
+                  {{ item.current_assignment ? $t('admin.floatingPool.assigned') : $t('admin.floatingPool.available') }}
+                </v-chip>
+              </template>
+
+              <template v-slot:item.current_assignment="{ item }">
+                <span v-if="item.current_assignment">
+                  {{ getClientName(item.current_assignment) }}
+                </span>
+                <span v-else class="text-grey">{{ $t('admin.floatingPool.notAssigned') }}</span>
+              </template>
+
+              <template v-slot:item.available_from="{ item }">
+                {{ formatDate(item.available_from) }}
+              </template>
+
+              <template v-slot:item.available_to="{ item }">
+                {{ formatDate(item.available_to) }}
+              </template>
+
+              <template v-slot:item.actions="{ item }">
+                <div class="d-flex gap-1">
+                  <v-btn
+                    v-if="!item.current_assignment"
+                    size="small"
+                    color="primary"
+                    variant="tonal"
+                    @click="openAssignDialog(item)"
+                  >
+                    <v-icon size="small">mdi-account-arrow-right</v-icon>
+                    {{ $t('admin.floatingPool.assign') }}
+                  </v-btn>
+                  <v-btn
+                    v-else
+                    size="small"
+                    color="warning"
+                    variant="tonal"
+                    @click="unassignEmployee(item)"
+                    :loading="unassigning === item.pool_id"
+                  >
+                    <v-icon size="small">mdi-account-remove</v-icon>
+                    {{ $t('admin.floatingPool.unassign') }}
+                  </v-btn>
+                  <v-btn
+                    size="small"
+                    color="info"
+                    variant="tonal"
+                    @click="openEditDialog(item)"
+                  >
+                    <v-icon size="small">mdi-pencil</v-icon>
+                  </v-btn>
+                </div>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- Assignment Dialog -->
+    <v-dialog v-model="assignDialog.show" max-width="500">
+      <v-card>
+        <v-card-title class="bg-primary">
+          <v-icon class="mr-2">mdi-account-arrow-right</v-icon>
+          {{ $t('admin.floatingPool.assignEmployee') }}
+        </v-card-title>
+        <v-card-text class="pt-4">
+          <v-alert
+            v-if="assignDialog.error"
+            type="error"
+            variant="tonal"
+            class="mb-4"
+            closable
+            @click:close="assignDialog.error = null"
+          >
+            {{ assignDialog.error }}
+          </v-alert>
+
+          <v-select
+            v-model="assignDialog.employee_id"
+            :items="availableEmployees"
+            :label="$t('admin.floatingPool.selectEmployee')"
+            item-title="employee_name"
+            item-value="employee_id"
+            variant="outlined"
+            :disabled="!!assignDialog.pool_id"
+            class="mb-3"
+          />
+
+          <v-select
+            v-model="assignDialog.client_id"
+            :items="clientOptions"
+            :label="$t('admin.floatingPool.selectClient')"
+            item-title="name"
+            item-value="client_id"
+            variant="outlined"
+            class="mb-3"
+            :rules="[v => !!v || $t('common.required')]"
+          />
+
+          <v-row>
+            <v-col cols="6">
+              <v-text-field
+                v-model="assignDialog.available_from"
+                :label="$t('admin.floatingPool.availableFrom')"
+                type="datetime-local"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model="assignDialog.available_to"
+                :label="$t('admin.floatingPool.availableTo')"
+                type="datetime-local"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+
+          <v-textarea
+            v-model="assignDialog.notes"
+            :label="$t('common.notes')"
+            variant="outlined"
+            rows="2"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="assignDialog.show = false">
+            {{ $t('common.cancel') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            @click="confirmAssignment"
+            :loading="assigning"
+            :disabled="!assignDialog.client_id"
+          >
+            {{ $t('admin.floatingPool.confirmAssignment') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbar for notifications -->
+    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
+      {{ snackbar.message }}
+    </v-snackbar>
+  </v-container>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { format } from 'date-fns'
+import api from '@/services/api'
+
+const { t } = useI18n()
+
+// State
+const loading = ref(false)
+const assigning = ref(false)
+const unassigning = ref(null)
+const entries = ref([])
+const clients = ref([])
+const statusFilter = ref(null)
+const clientFilter = ref(null)
+const snackbar = ref({ show: false, message: '', color: 'success' })
+
+// Assignment Dialog
+const assignDialog = ref({
+  show: false,
+  pool_id: null,
+  employee_id: null,
+  client_id: null,
+  available_from: null,
+  available_to: null,
+  notes: '',
+  error: null
+})
+
+// Computed
+const summary = computed(() => {
+  const total = entries.value.length
+  const assigned = entries.value.filter(e => e.current_assignment).length
+  return {
+    total,
+    available: total - assigned,
+    assigned
+  }
+})
+
+const utilizationPercent = computed(() => {
+  if (summary.value.total === 0) return 0
+  return Math.round((summary.value.assigned / summary.value.total) * 100)
+})
+
+const statusOptions = computed(() => [
+  { title: t('admin.floatingPool.available'), value: 'available' },
+  { title: t('admin.floatingPool.assigned'), value: 'assigned' }
+])
+
+const clientOptions = computed(() => clients.value)
+
+const availableEmployees = computed(() => {
+  return entries.value.filter(e => !e.current_assignment).map(e => ({
+    employee_id: e.employee_id,
+    employee_name: e.employee_name || `Employee #${e.employee_id}`
+  }))
+})
+
+const filteredEntries = computed(() => {
+  let result = [...entries.value]
+
+  if (statusFilter.value === 'available') {
+    result = result.filter(e => !e.current_assignment)
+  } else if (statusFilter.value === 'assigned') {
+    result = result.filter(e => e.current_assignment)
+  }
+
+  if (clientFilter.value) {
+    result = result.filter(e => e.current_assignment === clientFilter.value)
+  }
+
+  return result
+})
+
+const tableHeaders = computed(() => [
+  { title: t('admin.floatingPool.employeeId'), key: 'employee_id', width: '100px' },
+  { title: t('admin.floatingPool.employeeName'), key: 'employee_name' },
+  { title: t('admin.floatingPool.status'), key: 'status', width: '120px' },
+  { title: t('admin.floatingPool.assignedTo'), key: 'current_assignment' },
+  { title: t('admin.floatingPool.availableFrom'), key: 'available_from', width: '150px' },
+  { title: t('admin.floatingPool.availableTo'), key: 'available_to', width: '150px' },
+  { title: t('common.actions'), key: 'actions', sortable: false, width: '200px' }
+])
+
+// Methods
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const [poolResponse, clientsResponse] = await Promise.all([
+      api.get('/api/floating-pool'),
+      api.get('/api/clients')
+    ])
+    entries.value = poolResponse.data || []
+    clients.value = clientsResponse.data || []
+  } catch (error) {
+    console.error('Error fetching floating pool data:', error)
+    showSnackbar(t('common.error') + ': ' + (error.response?.data?.detail || error.message), 'error')
+  } finally {
+    loading.value = false
+  }
+}
+
+const getClientName = (clientId) => {
+  const client = clients.value.find(c => c.client_id === clientId)
+  return client?.name || clientId
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  try {
+    return format(new Date(dateStr), 'MMM dd, yyyy HH:mm')
+  } catch {
+    return dateStr
+  }
+}
+
+const openAssignDialog = (item = null) => {
+  assignDialog.value = {
+    show: true,
+    pool_id: item?.pool_id || null,
+    employee_id: item?.employee_id || null,
+    client_id: null,
+    available_from: item?.available_from ? format(new Date(item.available_from), "yyyy-MM-dd'T'HH:mm") : null,
+    available_to: item?.available_to ? format(new Date(item.available_to), "yyyy-MM-dd'T'HH:mm") : null,
+    notes: item?.notes || '',
+    error: null
+  }
+}
+
+const openEditDialog = (item) => {
+  openAssignDialog(item)
+}
+
+const confirmAssignment = async () => {
+  if (!assignDialog.value.client_id) {
+    assignDialog.value.error = t('admin.floatingPool.selectClientRequired')
+    return
+  }
+
+  assigning.value = true
+  assignDialog.value.error = null
+
+  try {
+    await api.post('/api/floating-pool/assign', {
+      employee_id: assignDialog.value.employee_id,
+      client_id: assignDialog.value.client_id,
+      available_from: assignDialog.value.available_from || null,
+      available_to: assignDialog.value.available_to || null,
+      notes: assignDialog.value.notes || null
+    })
+
+    showSnackbar(t('admin.floatingPool.assignmentSuccess'), 'success')
+    assignDialog.value.show = false
+    await fetchData()
+  } catch (error) {
+    console.error('Error assigning employee:', error)
+    const errorMessage = error.response?.data?.detail || error.message
+
+    // Check for double assignment error
+    if (errorMessage.includes('already assigned') || errorMessage.includes('double assignment')) {
+      assignDialog.value.error = t('admin.floatingPool.doubleAssignmentError')
+    } else {
+      assignDialog.value.error = errorMessage
+    }
+  } finally {
+    assigning.value = false
+  }
+}
+
+const unassignEmployee = async (item) => {
+  unassigning.value = item.pool_id
+  try {
+    await api.post('/api/floating-pool/unassign', {
+      pool_id: item.pool_id
+    })
+    showSnackbar(t('admin.floatingPool.unassignmentSuccess'), 'success')
+    await fetchData()
+  } catch (error) {
+    console.error('Error unassigning employee:', error)
+    showSnackbar(t('common.error') + ': ' + (error.response?.data?.detail || error.message), 'error')
+  } finally {
+    unassigning.value = null
+  }
+}
+
+const showSnackbar = (message, color = 'success') => {
+  snackbar.value = { show: true, message, color }
+}
+
+// Lifecycle
+onMounted(() => {
+  fetchData()
+})
+</script>
+
+<style scoped>
+.gap-1 {
+  gap: 4px;
+}
+</style>

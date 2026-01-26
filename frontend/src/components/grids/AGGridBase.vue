@@ -1,5 +1,24 @@
 <template>
   <div :class="`ag-theme-material ${customClass}`" :style="containerStyle">
+    <!-- Paste from Excel Toolbar -->
+    <div v-if="enableExcelPaste" class="paste-toolbar d-flex align-center ga-2 mb-2">
+      <v-btn
+        color="primary"
+        variant="outlined"
+        size="small"
+        @click="handlePasteFromExcel"
+        :loading="pasteLoading"
+      >
+        <v-icon left>mdi-microsoft-excel</v-icon>
+        {{ $t('paste.pasteFromExcel') }}
+      </v-btn>
+      <v-chip v-if="lastPasteCount > 0" size="small" color="success" variant="tonal">
+        {{ $t('paste.lastPasted', { count: lastPasteCount }) }}
+      </v-chip>
+      <v-spacer />
+      <span class="text-caption text-grey">{{ $t('paste.shortcutHint') }}</span>
+    </div>
+
     <ag-grid-vue
       :columnDefs="columnDefs"
       :rowData="rowData"
@@ -31,9 +50,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
+import { useI18n } from 'vue-i18n'
 import { useResponsive } from '@/composables/useResponsive'
+import {
+  parseClipboardData,
+  mapColumnsToGrid,
+  convertToGridRows,
+  validateRows,
+  readClipboard,
+  entrySchemas
+} from '@/utils/clipboardParser'
 
 // Responsive utilities
 const {
@@ -45,6 +73,8 @@ const {
   getRowHeight,
   isTouchDevice
 } = useResponsive()
+
+const { t } = useI18n()
 
 const props = defineProps({
   columnDefs: {
@@ -82,6 +112,15 @@ const props = defineProps({
   paginationPageSize: {
     type: Number,
     default: 50
+  },
+  enableExcelPaste: {
+    type: Boolean,
+    default: true
+  },
+  entryType: {
+    type: String,
+    default: 'production',
+    validator: (v) => ['production', 'quality', 'attendance', 'downtime', 'hold'].includes(v)
   }
 })
 
@@ -92,11 +131,21 @@ const emit = defineEmits([
   'row-editing-stopped',
   'cell-clicked',
   'paste-start',
-  'paste-end'
+  'paste-end',
+  'rows-pasted'
 ])
 
 const gridApi = ref(null)
 const columnApi = ref(null)
+
+// Excel paste state
+const pasteLoading = ref(false)
+const lastPasteCount = ref(0)
+const showPasteDialog = ref(false)
+const parsedPasteData = ref(null)
+const convertedPasteRows = ref([])
+const pasteValidationResult = ref(null)
+const pasteColumnMapping = ref(null)
 
 const containerStyle = computed(() => ({
   height: props.height || getGridHeight(),
@@ -239,6 +288,99 @@ const handlePasteEnd = (event) => {
   emit('paste-end', event)
 }
 
+// Excel paste functionality
+const handlePasteFromExcel = async () => {
+  pasteLoading.value = true
+
+  try {
+    // Read clipboard
+    const clipboardText = await readClipboard()
+
+    if (!clipboardText || clipboardText.trim() === '') {
+      alert(t('paste.emptyClipboard'))
+      return
+    }
+
+    // Parse clipboard data
+    const parsed = parseClipboardData(clipboardText)
+
+    if (parsed.error || parsed.rows.length === 0) {
+      alert(t('paste.parseError'))
+      return
+    }
+
+    parsedPasteData.value = parsed
+
+    // Map columns if headers detected
+    let columnMapping = { mapping: {}, unmappedClipboard: [], unmappedGrid: [] }
+
+    if (parsed.hasHeaders && parsed.headers.length > 0) {
+      columnMapping = mapColumnsToGrid(parsed.headers, props.columnDefs)
+    } else {
+      // Auto-map by column order if no headers
+      const editableColumns = props.columnDefs.filter(c => c.field && c.field !== 'actions')
+      editableColumns.forEach((col, idx) => {
+        if (idx < parsed.totalColumns) {
+          columnMapping.mapping[idx] = col.field
+        }
+      })
+    }
+
+    pasteColumnMapping.value = columnMapping
+
+    // Convert rows to grid format
+    const converted = convertToGridRows(parsed.rows, columnMapping.mapping, props.columnDefs)
+    convertedPasteRows.value = converted
+
+    // Validate rows
+    const schema = entrySchemas[props.entryType] || entrySchemas.production
+    const validation = validateRows(converted, schema)
+    pasteValidationResult.value = validation
+
+    // Emit event with paste data for parent to handle
+    emit('rows-pasted', {
+      parsedData: parsed,
+      convertedRows: converted,
+      validationResult: validation,
+      columnMapping,
+      gridColumns: props.columnDefs
+    })
+
+    // Show success feedback
+    if (validation.isValid) {
+      lastPasteCount.value = converted.length
+    } else {
+      lastPasteCount.value = validation.totalValid
+    }
+
+  } catch (error) {
+    console.error('Paste error:', error)
+    alert(t('paste.accessDenied'))
+  } finally {
+    pasteLoading.value = false
+  }
+}
+
+// Handle keyboard shortcut for paste
+const handleKeyboardPaste = (event) => {
+  // Check for Ctrl+Shift+V (custom paste from Excel)
+  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'V') {
+    event.preventDefault()
+    handlePasteFromExcel()
+  }
+}
+
+// Set up keyboard listener
+onMounted(() => {
+  if (props.enableExcelPaste) {
+    document.addEventListener('keydown', handleKeyboardPaste)
+  }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyboardPaste)
+})
+
 // Public methods for parent components
 const exportToCsv = (filename = 'export.csv') => {
   if (gridApi.value) {
@@ -271,6 +413,16 @@ const refreshCells = () => {
   }
 }
 
+// Add rows to grid (for paste functionality)
+const addRowsToGrid = (rows) => {
+  if (gridApi.value && rows.length > 0) {
+    gridApi.value.applyTransaction({ add: rows, addIndex: 0 })
+    lastPasteCount.value = rows.length
+    return true
+  }
+  return false
+}
+
 // Expose grid API and helper methods for parent components
 defineExpose({
   gridApi,
@@ -279,13 +431,25 @@ defineExpose({
   exportToExcel,
   clearSelection,
   getSelectedRows,
-  refreshCells
+  refreshCells,
+  addRowsToGrid,
+  handlePasteFromExcel
 })
 </script>
 
 <style scoped>
 /* AG Grid Material Theme is imported globally in main.js */
 /* Component-specific overrides can be added here */
+
+.paste-toolbar {
+  padding: 8px 12px;
+  background-color: rgba(var(--v-theme-surface-variant), 0.3);
+  border-radius: 4px;
+}
+
+.ga-2 {
+  gap: 8px;
+}
 
 .ag-theme-material {
   font-family: 'Roboto', sans-serif;

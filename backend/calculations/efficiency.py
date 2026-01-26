@@ -7,6 +7,8 @@ CORRECTED: Uses scheduled hours from shift, not actual run time
 
 Enhanced with employees_assigned fallback chain per audit requirement:
 employees_assigned → employees_present → historical_shift_average → default
+
+Phase 7.2: Enhanced with client-level configuration overrides
 """
 from decimal import Decimal
 from typing import Optional, Tuple
@@ -18,11 +20,35 @@ from backend.schemas.product import Product
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.shift import Shift
 from backend.schemas.coverage_entry import CoverageEntry
+from backend.crud.client_config import get_client_config_or_defaults
 
 
+# Fallback defaults (used only if client config lookup fails)
 DEFAULT_CYCLE_TIME = Decimal("0.25")  # 15 minutes per unit default
 DEFAULT_SHIFT_HOURS = Decimal("8.0")  # 8 hours standard shift
 DEFAULT_EMPLOYEES = 1  # Minimum employees for calculation
+
+
+def get_client_cycle_time_default(db: Session, client_id: Optional[str] = None) -> Decimal:
+    """
+    Get the default cycle time for a client from their configuration.
+    Falls back to global default if no client config exists.
+
+    Args:
+        db: Database session
+        client_id: Client ID (optional)
+
+    Returns:
+        Default cycle time in hours as Decimal
+    """
+    if not client_id:
+        return DEFAULT_CYCLE_TIME
+
+    try:
+        config = get_client_config_or_defaults(db, client_id)
+        return Decimal(str(config.get("default_cycle_time_hours", DEFAULT_CYCLE_TIME)))
+    except Exception:
+        return DEFAULT_CYCLE_TIME
 
 
 # =============================================================================
@@ -205,15 +231,19 @@ def calculate_shift_hours(shift_start: time, shift_end: time) -> Decimal:
 def infer_ideal_cycle_time(
     db: Session,
     product_id: int,
-    current_entry_id: Optional[int] = None
+    current_entry_id: Optional[int] = None,
+    client_id: Optional[str] = None
 ) -> Tuple[Decimal, bool]:
     """
     Infer ideal cycle time from historical data or use default
+
+    Phase 7.2: Uses client-specific default cycle time when available
 
     Args:
         db: Database session
         product_id: Product ID
         current_entry_id: Current entry ID to exclude from calculation
+        client_id: Client ID for client-specific defaults (optional)
 
     Returns:
         Tuple of (cycle_time, was_inferred)
@@ -259,8 +289,9 @@ def infer_ideal_cycle_time(
             avg_cycle_time = total_inferred / count
             return (avg_cycle_time, True)
 
-    # Use default if no historical data
-    return (DEFAULT_CYCLE_TIME, False)
+    # Use client-specific or global default if no historical data
+    default_cycle_time = get_client_cycle_time_default(db, client_id)
+    return (default_cycle_time, False)
 
 
 def calculate_efficiency(
@@ -277,6 +308,8 @@ def calculate_efficiency(
     Enhanced: Uses employees inference chain when employees_assigned is 0/missing
     employees_assigned → employees_present → historical_shift_avg → default
 
+    Phase 7.2: Uses client-specific default cycle time when no product/historical data
+
     Args:
         db: Database session
         entry: Production entry
@@ -292,13 +325,16 @@ def calculate_efficiency(
             Product.product_id == entry.product_id
         ).first()
 
+    # Get client_id from entry for client-specific defaults
+    client_id = getattr(entry, 'client_id', None)
+
     # Get ideal cycle time (with inference if needed)
     if product and product.ideal_cycle_time is not None:
         ideal_cycle_time = Decimal(str(product.ideal_cycle_time))
         cycle_time_inferred = False
     else:
         ideal_cycle_time, cycle_time_inferred = infer_ideal_cycle_time(
-            db, entry.product_id, entry.entry_id
+            db, entry.product_id, entry.entry_id, client_id
         )
 
     # Get scheduled hours from shift
@@ -344,6 +380,8 @@ def calculate_efficiency_with_metadata(
     Calculate efficiency with full inference metadata for API responses.
     This exposes the ESTIMATED flag per audit requirement.
 
+    Phase 7.2: Uses client-specific configuration for defaults
+
     Args:
         db: Database session
         entry: Production entry
@@ -358,6 +396,9 @@ def calculate_efficiency_with_metadata(
             Product.product_id == entry.product_id
         ).first()
 
+    # Get client_id from entry for client-specific defaults
+    client_id = getattr(entry, 'client_id', None)
+
     # Get ideal cycle time (with inference if needed)
     if product and product.ideal_cycle_time is not None:
         ideal_cycle_time = Decimal(str(product.ideal_cycle_time))
@@ -366,10 +407,10 @@ def calculate_efficiency_with_metadata(
         cycle_time_confidence = 1.0
     else:
         ideal_cycle_time, cycle_time_inferred = infer_ideal_cycle_time(
-            db, entry.product_id, entry.entry_id
+            db, entry.product_id, entry.entry_id, client_id
         )
-        cycle_time_source = "historical_avg" if cycle_time_inferred else "default"
-        cycle_time_confidence = 0.6 if cycle_time_inferred else 0.3
+        cycle_time_source = "historical_avg" if cycle_time_inferred else "client_default" if client_id else "global_default"
+        cycle_time_confidence = 0.6 if cycle_time_inferred else 0.4 if client_id else 0.3
 
     # Get scheduled hours from shift
     shift = db.query(Shift).filter(Shift.shift_id == entry.shift_id).first()

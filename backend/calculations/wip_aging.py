@@ -2,6 +2,7 @@
 WIP Aging Calculation
 PHASE 2: Work-in-process aging analysis
 Enhanced with P2-001: Hold-Time Adjusted WIP Aging
+Phase 7.2: Enhanced with client-level configuration overrides
 
 Tracks how long inventory sits in hold status
 """
@@ -9,34 +10,76 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from backend.schemas.hold_entry import HoldEntry, HoldStatus
 from backend.schemas.work_order import WorkOrder
+from backend.crud.client_config import get_client_config_or_defaults
+
+
+# Fallback default thresholds
+DEFAULT_AGING_THRESHOLD_DAYS = 7
+DEFAULT_CRITICAL_THRESHOLD_DAYS = 14
+
+
+def get_client_wip_thresholds(db: Session, client_id: Optional[str] = None) -> Tuple[int, int]:
+    """
+    Get WIP aging thresholds for a client from their configuration.
+    Falls back to global defaults if no client config exists.
+
+    Phase 7.2: Client-level configuration overrides
+
+    Args:
+        db: Database session
+        client_id: Client ID (optional)
+
+    Returns:
+        Tuple of (aging_threshold_days, critical_threshold_days)
+    """
+    if not client_id:
+        return (DEFAULT_AGING_THRESHOLD_DAYS, DEFAULT_CRITICAL_THRESHOLD_DAYS)
+
+    try:
+        config = get_client_config_or_defaults(db, client_id)
+        aging = config.get("wip_aging_threshold_days", DEFAULT_AGING_THRESHOLD_DAYS)
+        critical = config.get("wip_critical_threshold_days", DEFAULT_CRITICAL_THRESHOLD_DAYS)
+        return (aging, critical)
+    except Exception:
+        return (DEFAULT_AGING_THRESHOLD_DAYS, DEFAULT_CRITICAL_THRESHOLD_DAYS)
 
 
 def calculate_wip_aging(
     db: Session,
     product_id: Optional[int] = None,
-    as_of_date: date = None
+    as_of_date: date = None,
+    client_id: Optional[str] = None
 ) -> Dict:
     """
     Calculate WIP aging analysis
 
-    Returns aging buckets:
-    - 0-7 days
-    - 8-14 days
-    - 15-30 days
+    Phase 7.2: Uses client-specific thresholds for aging/critical buckets
+
+    Returns aging buckets based on client config:
+    - 0 to aging_threshold days (default 7)
+    - aging_threshold+1 to critical_threshold days (default 14)
+    - critical_threshold+1 to 30 days
     - Over 30 days
     """
 
     if as_of_date is None:
         as_of_date = date.today()
 
+    # Get client-specific thresholds
+    aging_threshold, critical_threshold = get_client_wip_thresholds(db, client_id)
+
     # Base query - only active holds (not resumed)
     query = db.query(HoldEntry).filter(
         HoldEntry.hold_status == HoldStatus.ON_HOLD
     )
+
+    # Filter by client_id if provided
+    if client_id:
+        query = query.filter(HoldEntry.client_id == client_id)
 
     # Note: HoldEntry doesn't have product_id - skip filter for now
     # if product_id:
@@ -44,16 +87,18 @@ def calculate_wip_aging(
 
     holds = query.all()
 
-    # Initialize buckets
+    # Initialize buckets with client-specific threshold labels
     aging_buckets = {
-        "0-7": {"quantity": 0, "count": 0},
-        "8-14": {"quantity": 0, "count": 0},
-        "15-30": {"quantity": 0, "count": 0},
+        f"0-{aging_threshold}": {"quantity": 0, "count": 0},
+        f"{aging_threshold + 1}-{critical_threshold}": {"quantity": 0, "count": 0},
+        f"{critical_threshold + 1}-30": {"quantity": 0, "count": 0},
         "over_30": {"quantity": 0, "count": 0}
     }
 
     total_quantity = 0
     total_aging_days = 0
+    flagged_aging = 0  # Items past aging threshold
+    flagged_critical = 0  # Items past critical threshold
 
     for hold in holds:
         # Calculate aging - hold_date is DateTime, need to convert to date
@@ -66,19 +111,24 @@ def calculate_wip_aging(
         total_quantity += quantity
         total_aging_days += aging_days * quantity
 
-        # Categorize
-        if aging_days <= 7:
-            aging_buckets["0-7"]["quantity"] += quantity
-            aging_buckets["0-7"]["count"] += 1
-        elif aging_days <= 14:
-            aging_buckets["8-14"]["quantity"] += quantity
-            aging_buckets["8-14"]["count"] += 1
+        # Categorize using client thresholds
+        if aging_days <= aging_threshold:
+            aging_buckets[f"0-{aging_threshold}"]["quantity"] += quantity
+            aging_buckets[f"0-{aging_threshold}"]["count"] += 1
+        elif aging_days <= critical_threshold:
+            aging_buckets[f"{aging_threshold + 1}-{critical_threshold}"]["quantity"] += quantity
+            aging_buckets[f"{aging_threshold + 1}-{critical_threshold}"]["count"] += 1
+            flagged_aging += quantity
         elif aging_days <= 30:
-            aging_buckets["15-30"]["quantity"] += quantity
-            aging_buckets["15-30"]["count"] += 1
+            aging_buckets[f"{critical_threshold + 1}-30"]["quantity"] += quantity
+            aging_buckets[f"{critical_threshold + 1}-30"]["count"] += 1
+            flagged_aging += quantity
+            flagged_critical += quantity
         else:
             aging_buckets["over_30"]["quantity"] += quantity
             aging_buckets["over_30"]["count"] += 1
+            flagged_aging += quantity
+            flagged_critical += quantity
 
     # Calculate average aging
     avg_aging = Decimal("0")
@@ -88,11 +138,20 @@ def calculate_wip_aging(
     return {
         "total_held_quantity": total_quantity,
         "average_aging_days": avg_aging,
-        "aging_0_7_days": aging_buckets["0-7"]["quantity"],
-        "aging_8_14_days": aging_buckets["8-14"]["quantity"],
-        "aging_15_30_days": aging_buckets["15-30"]["quantity"],
+        "aging_buckets": aging_buckets,
+        # Legacy fields for backward compatibility
+        "aging_0_7_days": aging_buckets.get(f"0-{aging_threshold}", {}).get("quantity", 0),
+        "aging_8_14_days": aging_buckets.get(f"{aging_threshold + 1}-{critical_threshold}", {}).get("quantity", 0),
+        "aging_15_30_days": aging_buckets.get(f"{critical_threshold + 1}-30", {}).get("quantity", 0),
         "aging_over_30_days": aging_buckets["over_30"]["quantity"],
-        "total_hold_events": len(holds)
+        "total_hold_events": len(holds),
+        # New fields for client config awareness
+        "flagged_aging_count": flagged_aging,
+        "flagged_critical_count": flagged_critical,
+        "config": {
+            "aging_threshold_days": aging_threshold,
+            "critical_threshold_days": critical_threshold
+        }
     }
 
 
@@ -100,13 +159,17 @@ def calculate_hold_resolution_rate(
     db: Session,
     start_date: date,
     end_date: date,
-    product_id: Optional[int] = None
-) -> Decimal:
+    product_id: Optional[int] = None,
+    client_id: Optional[str] = None
+) -> Dict:
     """
     Calculate what percentage of holds are resolved within target time
 
-    Target: 7 days
+    Phase 7.2: Uses client-specific aging threshold as resolution target
     """
+
+    # Get client-specific threshold
+    aging_threshold, _ = get_client_wip_thresholds(db, client_id)
 
     query = db.query(HoldEntry).filter(
         and_(
@@ -116,6 +179,10 @@ def calculate_hold_resolution_rate(
         )
     )
 
+    # Filter by client_id if provided
+    if client_id:
+        query = query.filter(HoldEntry.client_id == client_id)
+
     # Note: HoldEntry doesn't have product_id - skip filter
     # if product_id:
     #     query = query.filter(HoldEntry.product_id == product_id)
@@ -123,41 +190,67 @@ def calculate_hold_resolution_rate(
     holds = query.all()
 
     if not holds:
-        return Decimal("0")
+        return {
+            "resolution_rate": Decimal("0"),
+            "resolved_on_time": 0,
+            "total_resolved": 0,
+            "target_days": aging_threshold
+        }
 
-    # Count how many resolved within 7 days
+    # Count how many resolved within client threshold days
     resolved_on_time = 0
     for hold in holds:
         if hold.resume_date and hold.hold_date:
             hold_date = hold.hold_date.date() if hasattr(hold.hold_date, 'date') else hold.hold_date
             resume_date = hold.resume_date.date() if hasattr(hold.resume_date, 'date') else hold.resume_date
             resolution_days = (resume_date - hold_date).days
-            if resolution_days <= 7:
+            if resolution_days <= aging_threshold:
                 resolved_on_time += 1
 
     resolution_rate = (Decimal(str(resolved_on_time)) / Decimal(str(len(holds)))) * 100
-    return resolution_rate
+
+    return {
+        "resolution_rate": resolution_rate,
+        "resolved_on_time": resolved_on_time,
+        "total_resolved": len(holds),
+        "target_days": aging_threshold
+    }
 
 
 def identify_chronic_holds(
     db: Session,
-    threshold_days: int = 30
+    threshold_days: int = None,
+    client_id: Optional[str] = None
 ) -> List[Dict]:
     """
     Identify holds that have been open longer than threshold
+
+    Phase 7.2: Uses client-specific critical threshold if threshold_days not provided
     """
 
     today = date.today()
+
+    # Use client config if threshold not explicitly provided
+    if threshold_days is None:
+        _, critical_threshold = get_client_wip_thresholds(db, client_id)
+        threshold_days = critical_threshold * 2  # Chronic = 2x critical threshold (default 28 days)
+
     threshold_date = today - timedelta(days=threshold_days)
 
     # Use date comparison instead of datediff (SQLite compatible)
     threshold_datetime = datetime.combine(threshold_date, datetime.min.time())
-    chronic_holds = db.query(HoldEntry).filter(
+    query = db.query(HoldEntry).filter(
         and_(
             HoldEntry.hold_status == HoldStatus.ON_HOLD,
             HoldEntry.hold_date <= threshold_datetime
         )
-    ).all()
+    )
+
+    # Filter by client_id if provided
+    if client_id:
+        query = query.filter(HoldEntry.client_id == client_id)
+
+    chronic_holds = query.all()
 
     results = []
     for hold in chronic_holds:
@@ -172,7 +265,8 @@ def identify_chronic_holds(
             "quantity": 1,
             "aging_days": aging_days,
             "hold_reason": str(hold.hold_reason) if hold.hold_reason else hold.hold_reason_category,
-            "hold_category": hold.hold_reason_category
+            "hold_category": hold.hold_reason_category,
+            "threshold_days_used": threshold_days
         })
 
     # Sort by aging (oldest first)

@@ -169,14 +169,24 @@
               :color="getCardColor(kpi)"
               variant="outlined"
               class="kpi-card"
+              :class="{ 'estimated-card': kpi.inference?.is_estimated }"
               @click="navigateToDetail(kpi.route)"
               hover
             >
               <v-card-text>
                 <div class="d-flex justify-space-between align-start mb-3">
                   <div>
-                    <div class="text-caption text-grey-darken-1">{{ kpi.title }}</div>
-                    <div class="text-h4 font-weight-bold mt-1">
+                    <div class="d-flex align-center">
+                      <span class="text-caption text-grey-darken-1">{{ kpi.title }}</span>
+                      <!-- Phase 7.3: Inference Indicator -->
+                      <InferenceIndicator
+                        v-if="kpi.inference"
+                        :is-estimated="kpi.inference.is_estimated"
+                        :confidence-score="kpi.inference.confidence_score"
+                        :inference-details="kpi.inference.details"
+                      />
+                    </div>
+                    <div class="text-h4 font-weight-bold mt-1" :class="{ 'text-estimated': kpi.inference?.is_estimated }">
                       {{ formatValue(kpi.value, kpi.unit) }}
                     </div>
                     <div v-if="kpi.subtitle" class="text-caption text-grey-darken-2 mt-1">
@@ -209,6 +219,23 @@
                     {{ getStatusText(kpi) }}
                   </span>
                 </div>
+
+                <!-- Phase 7.3: Confidence indicator bar (subtle) -->
+                <div v-if="kpi.inference?.is_estimated" class="confidence-bar mt-2">
+                  <v-tooltip location="bottom">
+                    <template v-slot:activator="{ props }">
+                      <v-progress-linear
+                        v-bind="props"
+                        :model-value="kpi.inference.confidence_score * 100"
+                        :color="getConfidenceColor(kpi.inference.confidence_score)"
+                        height="3"
+                        rounded
+                        bg-opacity="0.2"
+                      />
+                    </template>
+                    <span>{{ $t('kpi.confidence') }}: {{ Math.round(kpi.inference.confidence_score * 100) }}%</span>
+                  </v-tooltip>
+                </div>
               </v-card-text>
             </v-card>
           </template>
@@ -217,6 +244,14 @@
             <div v-if="getKpiTooltip(kpi.key).formula" class="tooltip-formula">{{ getKpiTooltip(kpi.key).formula }}</div>
             <div class="tooltip-title">Meaning:</div>
             <div class="tooltip-meaning">{{ getKpiTooltip(kpi.key).meaning }}</div>
+            <!-- Phase 7.3: Show inference info in tooltip if estimated -->
+            <div v-if="kpi.inference?.is_estimated" class="tooltip-inference mt-2">
+              <v-divider class="my-2" />
+              <div class="tooltip-title">Data Quality:</div>
+              <div class="tooltip-meaning">
+                {{ $t('kpi.estimated') }} - {{ Math.round(kpi.inference.confidence_score * 100) }}% {{ $t('kpi.confidence') }}
+              </div>
+            </div>
           </div>
         </v-tooltip>
       </v-col>
@@ -540,6 +575,8 @@ import FilterBar from '@/components/filters/FilterBar.vue'
 import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer.vue'
 import FilterManager from '@/components/filters/FilterManager.vue'
 import QRCodeScanner from '@/components/QRCodeScanner.vue'
+// Phase 7.3: Inference indicator component
+import InferenceIndicator from '@/components/kpi/InferenceIndicator.vue'
 
 ChartJS.register(
   CategoryScale,
@@ -777,6 +814,13 @@ const getTrendIcon = (kpi) => {
 
 const getTrendColor = (kpi) => {
   return 'success'
+}
+
+// Phase 7.3: Get color based on confidence score
+const getConfidenceColor = (confidence) => {
+  if (confidence >= 0.8) return 'success'
+  if (confidence >= 0.5) return 'warning'
+  return 'error'
 }
 
 // KPI Tooltip descriptions
@@ -1112,6 +1156,20 @@ onMounted(async () => {
 .kpi-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Phase 7.3: Estimated card styling */
+.estimated-card {
+  border-style: dashed !important;
+  border-color: rgba(var(--v-theme-warning), 0.4) !important;
+}
+
+.text-estimated {
+  opacity: 0.9;
+}
+
+.confidence-bar {
+  opacity: 0.7;
 }
 </style>
 
