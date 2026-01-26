@@ -12,7 +12,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from backend.schemas.downtime_entry import DowntimeEntry, DowntimeReason
+from backend.schemas.downtime_entry import DowntimeEntry
 
 
 class TestDowntimeCRUD:
@@ -25,13 +25,12 @@ class TestDowntimeCRUD:
     @pytest.fixture
     def sample_downtime(self):
         entry = MagicMock(spec=DowntimeEntry)
-        entry.entry_id = 1
+        entry.downtime_entry_id = "DT-001"
         entry.client_id = "CLIENT-001"
         entry.machine_id = "MACHINE-001"
-        entry.start_time = datetime.now() - timedelta(hours=2)
-        entry.end_time = datetime.now()
-        entry.duration_minutes = 120
-        entry.reason = DowntimeReason.EQUIPMENT_FAILURE
+        entry.shift_date = datetime.now()
+        entry.downtime_duration_minutes = 120
+        entry.downtime_reason = "EQUIPMENT_FAILURE"  # String, not enum
         entry.is_planned = False
         entry.is_deleted = False
         return entry
