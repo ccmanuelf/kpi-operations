@@ -138,6 +138,18 @@
         {{ $t('common.submit') }} {{ $t('attendance.title') }}
       </v-btn>
     </v-card-actions>
+
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      :title="$t('readBack.confirmEntry')"
+      :subtitle="$t('readBack.verifyBeforeSaving')"
+      :data="formData"
+      :field-config="confirmationFieldConfig"
+      :loading="loading"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
   </v-card>
 </template>
 
@@ -146,6 +158,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogAttendance from '@/components/CSVUploadDialogAttendance.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
 const { t } = useI18n()
 
@@ -156,6 +169,7 @@ const valid = ref(false)
 const loading = ref(false)
 const initialLoading = ref(true)
 const shifts = ref([])
+const showConfirmDialog = ref(false)
 
 const statuses = ['Present', 'Absent', 'Late', 'Half Day', 'Leave']
 const absenceReasons = [
@@ -185,6 +199,24 @@ const rules = {
   required: value => !!value || t('validation.required')
 }
 
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const shiftName = shifts.value.find(s => s.id === formData.value.shift_id)?.name || 'N/A'
+
+  return [
+    { key: 'employee_id', label: t('attendance.employee') + ' ID', type: 'text' },
+    { key: 'date', label: t('common.date'), type: 'date' },
+    { key: 'shift_id', label: t('production.shift'), type: 'text', displayValue: shiftName },
+    { key: 'status', label: t('common.status'), type: 'text' },
+    { key: 'absence_reason', label: t('downtime.reason'), type: 'text' },
+    { key: 'is_excused', label: t('attendance.excused'), type: 'boolean' },
+    { key: 'late_minutes', label: t('downtime.minutes') + ' ' + t('attendance.late'), type: 'number' },
+    { key: 'clock_in', label: t('common.time') + ' In', type: 'text' },
+    { key: 'clock_out', label: t('common.time') + ' Out', type: 'text' },
+    { key: 'notes', label: t('production.notes'), type: 'text' }
+  ]
+})
+
 const onImported = () => {
   emit('submitted')
 }
@@ -193,11 +225,16 @@ const submitEntry = async () => {
   const { valid: isValid } = await form.value.validate()
   if (!isValid) return
 
+  // Show read-back confirmation dialog
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
   loading.value = true
+
   try {
     await api.createAttendanceEntry(formData.value)
-
-    alert('Attendance entry created successfully!')
 
     formData.value = {
       employee_id: '',
@@ -219,6 +256,10 @@ const submitEntry = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
 }
 
 const loadShifts = async () => {

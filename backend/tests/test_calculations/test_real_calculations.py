@@ -591,9 +591,10 @@ class TestWIPAgingModule:
             date.today()
         )
 
-        # Should return Decimal("0") when no holds found
-        assert isinstance(result, Decimal)
-        assert result == Decimal("0")
+        # Should return dict with resolution_rate when no holds found
+        assert isinstance(result, dict)
+        assert "resolution_rate" in result
+        assert result["resolution_rate"] == Decimal("0")
 
     def test_identify_chronic_holds(self):
         """Test identifying chronic holds"""

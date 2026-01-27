@@ -227,6 +227,30 @@
         {{ $t('holds.resumed') }}
       </v-btn>
     </v-card-actions>
+
+    <!-- Read-Back Confirmation Dialog for Hold -->
+    <ReadBackConfirmation
+      v-model="showHoldConfirmDialog"
+      :title="$t('readBack.confirmEntry')"
+      :subtitle="$t('readBack.verifyBeforeSaving')"
+      :data="holdData"
+      :field-config="holdConfirmationFieldConfig"
+      :loading="loading"
+      @confirm="onConfirmHold"
+      @cancel="onCancelHold"
+    />
+
+    <!-- Read-Back Confirmation Dialog for Resume -->
+    <ReadBackConfirmation
+      v-model="showResumeConfirmDialog"
+      :title="$t('readBack.confirmEntry')"
+      :subtitle="$t('readBack.verifyBeforeSaving')"
+      :data="resumeConfirmData"
+      :field-config="resumeConfirmationFieldConfig"
+      :loading="loading"
+      @confirm="onConfirmResume"
+      @cancel="onCancelResume"
+    />
   </v-card>
 </template>
 
@@ -236,6 +260,7 @@ import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import api from '@/services/api'
 import CSVUploadDialogHold from '@/components/CSVUploadDialogHold.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
 const { t } = useI18n()
 
@@ -252,6 +277,8 @@ const workOrders = ref([])
 const activeHolds = ref([])
 const selectedHoldId = ref(null)
 const selectedHold = ref(null)
+const showHoldConfirmDialog = ref(false)
+const showResumeConfirmDialog = ref(false)
 
 const holdReasons = [
   'Quality Issue',
@@ -291,6 +318,44 @@ const rules = {
   positive: value => value > 0 || t('validation.positive')
 }
 
+// Field configuration for hold confirmation dialog
+const holdConfirmationFieldConfig = computed(() => {
+  const workOrderName = workOrders.value.find(w => w.id === holdData.value.work_order_id)?.work_order || 'N/A'
+
+  return [
+    { key: 'work_order_id', label: t('production.workOrder'), type: 'text', displayValue: workOrderName },
+    { key: 'quantity', label: t('workOrders.quantity'), type: 'number' },
+    { key: 'reason', label: t('holds.holdReason'), type: 'text' },
+    { key: 'severity', label: 'Severity', type: 'text' },
+    { key: 'description', label: 'Hold Description', type: 'text' },
+    { key: 'required_action', label: 'Required Action', type: 'text' },
+    { key: 'initiated_by', label: 'Initiated By', type: 'text' },
+    { key: 'customer_notification_required', label: 'Customer Notification Required', type: 'boolean' }
+  ]
+})
+
+// Combined data for resume confirmation
+const resumeConfirmData = computed(() => ({
+  work_order: selectedHold.value?.work_order || 'N/A',
+  original_quantity: selectedHold.value?.quantity || 0,
+  hold_reason: selectedHold.value?.reason || 'N/A',
+  ...resumeData.value
+}))
+
+// Field configuration for resume confirmation dialog
+const resumeConfirmationFieldConfig = computed(() => {
+  return [
+    { key: 'work_order', label: t('production.workOrder'), type: 'text' },
+    { key: 'original_quantity', label: 'Original Quantity', type: 'number' },
+    { key: 'hold_reason', label: 'Original Hold Reason', type: 'text' },
+    { key: 'disposition', label: 'Disposition', type: 'text' },
+    { key: 'released_quantity', label: 'Released Quantity', type: 'number' },
+    { key: 'resolution_notes', label: 'Resolution Notes', type: 'text' },
+    { key: 'approved_by', label: 'Approved By', type: 'text' },
+    { key: 'customer_notified', label: 'Customer Notified', type: 'boolean' }
+  ]
+})
+
 const onImported = () => {
   loadActiveHolds()
   emit('submitted')
@@ -312,11 +377,16 @@ const submitHold = async () => {
   const { valid: isValid } = await holdForm.value.validate()
   if (!isValid) return
 
+  // Show read-back confirmation dialog
+  showHoldConfirmDialog.value = true
+}
+
+const onConfirmHold = async () => {
+  showHoldConfirmDialog.value = false
   loading.value = true
+
   try {
     await api.createHoldEntry(holdData.value)
-
-    alert('Hold created successfully!')
 
     holdData.value = {
       work_order_id: null,
@@ -339,15 +409,24 @@ const submitHold = async () => {
   }
 }
 
+const onCancelHold = () => {
+  showHoldConfirmDialog.value = false
+}
+
 const submitResume = async () => {
   const { valid: isValid } = await resumeForm.value.validate()
   if (!isValid || !selectedHoldId.value) return
 
+  // Show read-back confirmation dialog
+  showResumeConfirmDialog.value = true
+}
+
+const onConfirmResume = async () => {
+  showResumeConfirmDialog.value = false
   loading.value = true
+
   try {
     await api.resumeHold(selectedHoldId.value, resumeData.value)
-
-    alert('Hold resumed successfully!')
 
     selectedHoldId.value = null
     selectedHold.value = null
@@ -367,6 +446,10 @@ const submitResume = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const onCancelResume = () => {
+  showResumeConfirmDialog.value = false
 }
 
 const loadActiveHolds = async () => {

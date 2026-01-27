@@ -130,6 +130,18 @@
         {{ $t('common.submit') }} {{ $t('downtime.entry') }}
       </v-btn>
     </v-card-actions>
+
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      :title="$t('readBack.confirmEntry')"
+      :subtitle="$t('readBack.verifyBeforeSaving')"
+      :data="formData"
+      :field-config="confirmationFieldConfig"
+      :loading="loading"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
   </v-card>
 </template>
 
@@ -138,6 +150,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogDowntime from '@/components/CSVUploadDialogDowntime.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 
 const { t } = useI18n()
 
@@ -150,6 +163,7 @@ const initialLoading = ref(true)
 const equipmentList = ref([])
 const downtimeReasons = ref([])
 const inferenceData = ref(null)
+const showConfirmDialog = ref(false)
 
 const categories = [
   'Planned Maintenance',
@@ -174,6 +188,22 @@ const formData = ref({
 const rules = {
   required: value => !!value || t('validation.required')
 }
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const equipmentName = equipmentList.value.find(e => e.id === formData.value.equipment_id)?.name || 'N/A'
+  const reasonName = downtimeReasons.value.find(r => r.id === formData.value.reason_id)?.name || 'N/A'
+
+  return [
+    { key: 'equipment_id', label: t('production.line'), type: 'text', displayValue: equipmentName },
+    { key: 'reason_id', label: t('downtime.reason'), type: 'text', displayValue: reasonName },
+    { key: 'start_time', label: t('downtime.startTime'), type: 'datetime' },
+    { key: 'end_time', label: t('downtime.endTime'), type: 'datetime' },
+    { key: 'duration_minutes', label: t('downtime.duration') + ' (' + t('downtime.minutes') + ')', type: 'number' },
+    { key: 'category', label: 'Category', type: 'text' },
+    { key: 'notes', label: t('production.notes'), type: 'text' }
+  ]
+})
 
 const onImported = () => {
   emit('submitted')
@@ -214,12 +244,16 @@ const submitEntry = async () => {
   const { valid: isValid } = await form.value.validate()
   if (!isValid) return
 
+  // Show read-back confirmation dialog
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
   loading.value = true
+
   try {
     await api.createDowntimeEntry(formData.value)
-
-    // Show confirmation dialog
-    alert('Downtime entry created successfully!')
 
     // Reset form
     formData.value = {
@@ -239,6 +273,10 @@ const submitEntry = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
 }
 
 const loadReferenceData = async () => {

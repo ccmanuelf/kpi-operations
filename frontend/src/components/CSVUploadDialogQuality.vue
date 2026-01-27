@@ -204,13 +204,15 @@ const steps = [
   { title: 'Confirm', value: 3 }
 ]
 
-// Required CSV columns for quality inspections
+// Required CSV columns for quality inspections - aligned with backend/schemas/quality_entry.py
 const requiredColumns = [
-  'inspection_date',
+  'client_id',
   'work_order_id',
+  'shift_date',
   'units_inspected',
   'units_passed',
-  'units_failed'
+  'units_defective',  // Schema field name (not units_failed)
+  'total_defects_count'
 ]
 
 // AG Grid column definitions
@@ -225,12 +227,13 @@ const columnDefs = ref([
         : '<span style="color: red;">✗</span>'
     }
   },
-  { headerName: 'Date', field: 'inspection_date', editable: true, width: 120 },
+  { headerName: 'Client ID', field: 'client_id', editable: true, width: 110 },
+  { headerName: 'Shift Date', field: 'shift_date', editable: true, width: 120 },
   { headerName: 'Work Order', field: 'work_order_id', editable: true, width: 140 },
   { headerName: 'Inspected', field: 'units_inspected', editable: true, width: 100 },
   { headerName: 'Passed', field: 'units_passed', editable: true, width: 90 },
-  { headerName: 'Failed', field: 'units_failed', editable: true, width: 90 },
-  { headerName: 'Defects', field: 'total_defects_count', editable: true, width: 90 },
+  { headerName: 'Defective', field: 'units_defective', editable: true, width: 90 },
+  { headerName: 'Total Defects', field: 'total_defects_count', editable: true, width: 110 },
   { headerName: 'Notes', field: 'notes', editable: true, width: 180 },
   { headerName: 'Errors', field: '_validationErrors', editable: false, width: 200, cellStyle: { color: 'red', fontSize: '12px' } }
 ])
@@ -301,8 +304,13 @@ const validateAndParseCSV = (results) => {
     const rowErrors = []
     const rowData = { ...row }
 
-    if (!row.inspection_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.inspection_date)) {
-      rowErrors.push('Invalid date (YYYY-MM-DD)')
+    // Validate client_id
+    if (!row.client_id || row.client_id.trim() === '') {
+      rowErrors.push('Missing client_id')
+    }
+    // Validate shift_date (primary date field per schema)
+    if (!row.shift_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.shift_date)) {
+      rowErrors.push('Invalid shift_date (YYYY-MM-DD)')
     }
     if (!row.work_order_id || row.work_order_id.trim() === '') {
       rowErrors.push('Missing work_order_id')
@@ -313,17 +321,20 @@ const validateAndParseCSV = (results) => {
     if (row.units_passed === undefined || row.units_passed === '' || isNaN(parseInt(row.units_passed)) || parseInt(row.units_passed) < 0) {
       rowErrors.push('Invalid units_passed')
     }
-    if (row.units_failed === undefined || row.units_failed === '' || isNaN(parseInt(row.units_failed)) || parseInt(row.units_failed) < 0) {
-      rowErrors.push('Invalid units_failed')
+    if (row.units_defective === undefined || row.units_defective === '' || isNaN(parseInt(row.units_defective)) || parseInt(row.units_defective) < 0) {
+      rowErrors.push('Invalid units_defective')
+    }
+    if (row.total_defects_count === undefined || row.total_defects_count === '' || isNaN(parseInt(row.total_defects_count)) || parseInt(row.total_defects_count) < 0) {
+      rowErrors.push('Invalid total_defects_count')
     }
 
-    // Validate that passed + failed <= inspected
+    // Validate that passed + defective <= inspected
     if (!rowErrors.length) {
       const inspected = parseInt(row.units_inspected)
       const passed = parseInt(row.units_passed)
-      const failed = parseInt(row.units_failed)
-      if (passed + failed > inspected) {
-        rowErrors.push('Passed + Failed cannot exceed Inspected')
+      const defective = parseInt(row.units_defective)
+      if (passed + defective > inspected) {
+        rowErrors.push('Passed + Defective cannot exceed Inspected')
       }
     }
 
@@ -352,18 +363,20 @@ const onCellValueChanged = (event) => {
   const row = event.data
   const rowErrors = []
 
-  if (!row.inspection_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.inspection_date)) rowErrors.push('Invalid date')
+  if (!row.client_id) rowErrors.push('Missing client_id')
+  if (!row.shift_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.shift_date)) rowErrors.push('Invalid shift_date')
   if (!row.work_order_id) rowErrors.push('Missing work_order_id')
   if (!row.units_inspected || isNaN(parseInt(row.units_inspected))) rowErrors.push('Invalid units_inspected')
   if (row.units_passed === '' || isNaN(parseInt(row.units_passed))) rowErrors.push('Invalid units_passed')
-  if (row.units_failed === '' || isNaN(parseInt(row.units_failed))) rowErrors.push('Invalid units_failed')
+  if (row.units_defective === '' || isNaN(parseInt(row.units_defective))) rowErrors.push('Invalid units_defective')
+  if (row.total_defects_count === '' || isNaN(parseInt(row.total_defects_count))) rowErrors.push('Invalid total_defects_count')
 
   if (!rowErrors.length) {
     const inspected = parseInt(row.units_inspected)
     const passed = parseInt(row.units_passed)
-    const failed = parseInt(row.units_failed)
-    if (passed + failed > inspected) {
-      rowErrors.push('Passed + Failed > Inspected')
+    const defective = parseInt(row.units_defective)
+    if (passed + defective > inspected) {
+      rowErrors.push('Passed + Defective > Inspected')
     }
   }
 
@@ -389,12 +402,20 @@ const confirmImport = async () => {
   try {
     const validRows = parsedData.value.filter(row => row._validationStatus === 'valid')
     const csvContent = Papa.unparse(validRows.map(row => ({
-      inspection_date: row.inspection_date,
+      client_id: row.client_id,
       work_order_id: row.work_order_id,
+      shift_date: row.shift_date,
+      inspection_date: row.inspection_date || row.shift_date,
       units_inspected: row.units_inspected,
       units_passed: row.units_passed,
-      units_failed: row.units_failed,
+      units_defective: row.units_defective,
       total_defects_count: row.total_defects_count || '0',
+      job_id: row.job_id || '',
+      inspection_stage: row.inspection_stage || '',
+      is_first_pass: row.is_first_pass || '1',
+      units_scrapped: row.units_scrapped || '0',
+      units_reworked: row.units_reworked || '0',
+      units_requiring_repair: row.units_requiring_repair || '0',
       notes: row.notes || ''
     })))
 

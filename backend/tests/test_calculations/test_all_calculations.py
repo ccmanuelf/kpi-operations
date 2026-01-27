@@ -685,8 +685,11 @@ class TestWIPAgingCalculations:
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
 
-        # Rate should be a valid decimal or None if no data
-        assert rate is None or isinstance(rate, (int, float, Decimal))
+        # Rate should be a dict with resolution_rate key, or None if no data
+        assert rate is None or isinstance(rate, dict)
+        if isinstance(rate, dict):
+            assert "resolution_rate" in rate
+            assert isinstance(rate["resolution_rate"], (int, float, Decimal))
 
 
 # =============================================================================

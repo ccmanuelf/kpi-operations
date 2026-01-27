@@ -204,11 +204,11 @@ const steps = [
   { title: 'Confirm', value: 3 }
 ]
 
-// Required CSV columns for downtime
+// Required CSV columns for downtime - aligned with backend/schemas/downtime_entry.py
 const requiredColumns = [
-  'downtime_date',
+  'client_id',
   'work_order_id',
-  'shift_id',
+  'shift_date',  // Schema uses shift_date, not downtime_date
   'downtime_reason',
   'downtime_duration_minutes'
 ]
@@ -225,10 +225,11 @@ const columnDefs = ref([
         : '<span style="color: red;">✗</span>'
     }
   },
-  { headerName: 'Date', field: 'downtime_date', editable: true, width: 120 },
+  { headerName: 'Client ID', field: 'client_id', editable: true, width: 110 },
+  { headerName: 'Shift Date', field: 'shift_date', editable: true, width: 120 },
   { headerName: 'Work Order', field: 'work_order_id', editable: true, width: 140 },
-  { headerName: 'Shift', field: 'shift_id', editable: true, width: 80 },
-  { headerName: 'Category', field: 'downtime_category', editable: true, width: 120 },
+  { headerName: 'Machine ID', field: 'machine_id', editable: true, width: 100 },
+  { headerName: 'Root Cause', field: 'root_cause_category', editable: true, width: 120 },
   { headerName: 'Reason', field: 'downtime_reason', editable: true, width: 200 },
   { headerName: 'Duration (min)', field: 'downtime_duration_minutes', editable: true, width: 130 },
   { headerName: 'Notes', field: 'notes', editable: true, width: 180 },
@@ -301,20 +302,22 @@ const validateAndParseCSV = (results) => {
     const rowErrors = []
     const rowData = { ...row }
 
-    if (!row.downtime_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.downtime_date)) {
-      rowErrors.push('Invalid date (YYYY-MM-DD)')
+    // Validate client_id
+    if (!row.client_id || row.client_id.trim() === '') {
+      rowErrors.push('Missing client_id')
+    }
+    // Validate shift_date (schema field name)
+    if (!row.shift_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.shift_date)) {
+      rowErrors.push('Invalid shift_date (YYYY-MM-DD)')
     }
     if (!row.work_order_id || row.work_order_id.trim() === '') {
       rowErrors.push('Missing work_order_id')
-    }
-    if (!row.shift_id || isNaN(parseInt(row.shift_id))) {
-      rowErrors.push('Invalid shift_id')
     }
     if (!row.downtime_reason || row.downtime_reason.trim() === '') {
       rowErrors.push('Missing downtime_reason')
     }
     if (!row.downtime_duration_minutes || isNaN(parseInt(row.downtime_duration_minutes)) || parseInt(row.downtime_duration_minutes) <= 0) {
-      rowErrors.push('Invalid duration')
+      rowErrors.push('Invalid duration (must be > 0)')
     }
 
     rowData._validationStatus = rowErrors.length > 0 ? 'error' : 'valid'
@@ -342,9 +345,9 @@ const onCellValueChanged = (event) => {
   const row = event.data
   const rowErrors = []
 
-  if (!row.downtime_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.downtime_date)) rowErrors.push('Invalid date')
+  if (!row.client_id) rowErrors.push('Missing client_id')
+  if (!row.shift_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.shift_date)) rowErrors.push('Invalid shift_date')
   if (!row.work_order_id) rowErrors.push('Missing work_order_id')
-  if (!row.shift_id || isNaN(parseInt(row.shift_id))) rowErrors.push('Invalid shift_id')
   if (!row.downtime_reason) rowErrors.push('Missing reason')
   if (!row.downtime_duration_minutes || isNaN(parseInt(row.downtime_duration_minutes))) rowErrors.push('Invalid duration')
 
@@ -370,12 +373,15 @@ const confirmImport = async () => {
   try {
     const validRows = parsedData.value.filter(row => row._validationStatus === 'valid')
     const csvContent = Papa.unparse(validRows.map(row => ({
-      downtime_date: row.downtime_date,
+      client_id: row.client_id,
       work_order_id: row.work_order_id,
-      shift_id: row.shift_id,
-      downtime_category: row.downtime_category || '',
+      shift_date: row.shift_date,
       downtime_reason: row.downtime_reason,
       downtime_duration_minutes: row.downtime_duration_minutes,
+      machine_id: row.machine_id || '',
+      equipment_code: row.equipment_code || '',
+      root_cause_category: row.root_cause_category || '',
+      corrective_action: row.corrective_action || '',
       notes: row.notes || ''
     })))
 

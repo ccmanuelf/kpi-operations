@@ -204,13 +204,13 @@ const steps = [
   { title: 'Confirm', value: 3 }
 ]
 
-// Required CSV columns for attendance
+// Required CSV columns for attendance - aligned with backend/schemas/attendance_entry.py
 const requiredColumns = [
-  'attendance_date',
+  'client_id',
   'employee_id',
-  'shift_id',
+  'shift_date',  // Schema uses shift_date, not attendance_date
   'scheduled_hours',
-  'actual_hours'
+  'is_absent'
 ]
 
 // AG Grid column definitions
@@ -225,13 +225,16 @@ const columnDefs = ref([
         : '<span style="color: red;">✗</span>'
     }
   },
-  { headerName: 'Date', field: 'attendance_date', editable: true, width: 120 },
+  { headerName: 'Client ID', field: 'client_id', editable: true, width: 110 },
+  { headerName: 'Shift Date', field: 'shift_date', editable: true, width: 120 },
   { headerName: 'Employee ID', field: 'employee_id', editable: true, width: 140 },
   { headerName: 'Shift', field: 'shift_id', editable: true, width: 80 },
   { headerName: 'Absent', field: 'is_absent', editable: true, width: 80 },
   { headerName: 'Late', field: 'is_late', editable: true, width: 80 },
   { headerName: 'Sched. Hours', field: 'scheduled_hours', editable: true, width: 110 },
   { headerName: 'Actual Hours', field: 'actual_hours', editable: true, width: 110 },
+  { headerName: 'Absence Hours', field: 'absence_hours', editable: true, width: 110 },
+  { headerName: 'Absence Type', field: 'absence_type', editable: true, width: 150 },
   { headerName: 'Notes', field: 'notes', editable: true, width: 180 },
   { headerName: 'Errors', field: '_validationErrors', editable: false, width: 200, cellStyle: { color: 'red', fontSize: '12px' } }
 ])
@@ -302,20 +305,22 @@ const validateAndParseCSV = (results) => {
     const rowErrors = []
     const rowData = { ...row }
 
-    if (!row.attendance_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.attendance_date)) {
-      rowErrors.push('Invalid date (YYYY-MM-DD)')
+    // Validate client_id
+    if (!row.client_id || row.client_id.trim() === '') {
+      rowErrors.push('Missing client_id')
     }
-    if (!row.employee_id || row.employee_id.trim() === '') {
+    // Validate shift_date (schema field name)
+    if (!row.shift_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.shift_date)) {
+      rowErrors.push('Invalid shift_date (YYYY-MM-DD)')
+    }
+    if (!row.employee_id || String(row.employee_id).trim() === '') {
       rowErrors.push('Missing employee_id')
-    }
-    if (!row.shift_id || isNaN(parseInt(row.shift_id))) {
-      rowErrors.push('Invalid shift_id')
     }
     if (row.scheduled_hours === undefined || row.scheduled_hours === '' || isNaN(parseFloat(row.scheduled_hours))) {
       rowErrors.push('Invalid scheduled_hours')
     }
-    if (row.actual_hours === undefined || row.actual_hours === '' || isNaN(parseFloat(row.actual_hours))) {
-      rowErrors.push('Invalid actual_hours')
+    if (row.is_absent === undefined || row.is_absent === '' || !['0', '1', 0, 1].includes(row.is_absent)) {
+      rowErrors.push('Invalid is_absent (use 0 or 1)')
     }
 
     rowData._validationStatus = rowErrors.length > 0 ? 'error' : 'valid'
@@ -343,11 +348,11 @@ const onCellValueChanged = (event) => {
   const row = event.data
   const rowErrors = []
 
-  if (!row.attendance_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.attendance_date)) rowErrors.push('Invalid date')
+  if (!row.client_id) rowErrors.push('Missing client_id')
+  if (!row.shift_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.shift_date)) rowErrors.push('Invalid shift_date')
   if (!row.employee_id) rowErrors.push('Missing employee_id')
-  if (!row.shift_id || isNaN(parseInt(row.shift_id))) rowErrors.push('Invalid shift_id')
   if (row.scheduled_hours === '' || isNaN(parseFloat(row.scheduled_hours))) rowErrors.push('Invalid scheduled_hours')
-  if (row.actual_hours === '' || isNaN(parseFloat(row.actual_hours))) rowErrors.push('Invalid actual_hours')
+  if (row.is_absent === undefined || !['0', '1', 0, 1].includes(row.is_absent)) rowErrors.push('Invalid is_absent')
 
   row._validationStatus = rowErrors.length > 0 ? 'error' : 'valid'
   row._validationErrors = rowErrors.join('; ')
@@ -371,13 +376,17 @@ const confirmImport = async () => {
   try {
     const validRows = parsedData.value.filter(row => row._validationStatus === 'valid')
     const csvContent = Papa.unparse(validRows.map(row => ({
-      attendance_date: row.attendance_date,
+      client_id: row.client_id,
       employee_id: row.employee_id,
-      shift_id: row.shift_id,
-      is_absent: row.is_absent || '0',
-      is_late: row.is_late || '0',
+      shift_date: row.shift_date,
+      shift_id: row.shift_id || '',
       scheduled_hours: row.scheduled_hours,
-      actual_hours: row.actual_hours,
+      actual_hours: row.actual_hours || row.scheduled_hours,
+      absence_hours: row.absence_hours || '0',
+      is_absent: row.is_absent || '0',
+      absence_type: row.absence_type || '',
+      is_late: row.is_late || '0',
+      is_early_departure: row.is_early_departure || '0',
       notes: row.notes || ''
     })))
 

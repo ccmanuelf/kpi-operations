@@ -182,6 +182,142 @@ class TestUnassignFloatingPoolFromClient:
         assert exc_info.value.status_code == 404
 
 
+class TestDoubleAssignmentPrevention:
+    """Tests for double-assignment prevention (Phase 6.3)"""
+
+    def test_double_assignment_blocked_indefinite(self, db_session, admin_user):
+        """Test that double-assignment is blocked for indefinite assignments"""
+        from backend.crud.floating_pool import assign_floating_pool_to_client
+        from backend.schemas.floating_pool import FloatingPool
+        from backend.schemas.employee import Employee
+
+        admin_user.role = "admin"
+
+        # Create mock employee in floating pool
+        mock_employee = MagicMock(spec=Employee)
+        mock_employee.employee_id = 12345
+        mock_employee.is_floating_pool = True
+
+        # Create existing assignment
+        mock_existing = MagicMock(spec=FloatingPool)
+        mock_existing.employee_id = 12345
+        mock_existing.current_assignment = "CLIENT-EXISTING"
+        mock_existing.available_from = None
+        mock_existing.available_to = None
+
+        with patch('backend.crud.floating_pool.verify_client_access'):
+            with patch.object(db_session, 'query') as mock_query:
+                # First query returns employee, second returns existing assignment
+                mock_query.return_value.filter.return_value.first.side_effect = [
+                    mock_employee,
+                    mock_existing
+                ]
+
+                with pytest.raises(HTTPException) as exc_info:
+                    assign_floating_pool_to_client(
+                        db_session, 12345, "CLIENT-NEW", None, None, admin_user
+                    )
+
+                assert exc_info.value.status_code == 409
+                assert "already assigned" in exc_info.value.detail
+
+    def test_double_assignment_blocked_overlapping_dates(self, db_session, admin_user):
+        """Test that double-assignment is blocked for overlapping date ranges"""
+        from backend.crud.floating_pool import assign_floating_pool_to_client
+        from backend.schemas.floating_pool import FloatingPool
+        from backend.schemas.employee import Employee
+
+        admin_user.role = "admin"
+
+        # Create mock employee in floating pool
+        mock_employee = MagicMock(spec=Employee)
+        mock_employee.employee_id = 12346
+        mock_employee.is_floating_pool = True
+
+        # Create existing assignment with date range
+        mock_existing = MagicMock(spec=FloatingPool)
+        mock_existing.employee_id = 12346
+        mock_existing.current_assignment = "CLIENT-EXISTING"
+        mock_existing.available_from = datetime(2026, 1, 15)
+        mock_existing.available_to = datetime(2026, 1, 25)
+
+        with patch('backend.crud.floating_pool.verify_client_access'):
+            with patch.object(db_session, 'query') as mock_query:
+                mock_query.return_value.filter.return_value.first.side_effect = [
+                    mock_employee,
+                    mock_existing
+                ]
+
+                # Try to assign with overlapping dates
+                with pytest.raises(HTTPException) as exc_info:
+                    assign_floating_pool_to_client(
+                        db_session,
+                        12346,
+                        "CLIENT-NEW",
+                        datetime(2026, 1, 20),  # Overlaps with existing
+                        datetime(2026, 1, 30),
+                        admin_user
+                    )
+
+                assert exc_info.value.status_code == 409
+                assert "already assigned" in exc_info.value.detail
+                assert "CLIENT-EXISTING" in exc_info.value.detail
+
+    def test_assignment_allowed_non_overlapping_dates(self, db_session, admin_user):
+        """Test that assignment is allowed for non-overlapping date ranges"""
+        from backend.crud.floating_pool import is_employee_available_for_assignment
+        from backend.schemas.floating_pool import FloatingPool
+
+        # Create mock existing assignment with date range
+        mock_existing = MagicMock(spec=FloatingPool)
+        mock_existing.employee_id = 12347
+        mock_existing.current_assignment = "CLIENT-EXISTING"
+        mock_existing.available_from = datetime(2026, 1, 1)
+        mock_existing.available_to = datetime(2026, 1, 10)
+
+        with patch.object(db_session, 'query') as mock_query:
+            mock_query.return_value.filter.return_value.first.return_value = mock_existing
+
+            # Check availability for non-overlapping dates
+            result = is_employee_available_for_assignment(
+                db_session,
+                12347,
+                proposed_start=datetime(2026, 1, 15),  # After existing ends
+                proposed_end=datetime(2026, 1, 25)
+            )
+
+            assert result["is_available"] == True
+            assert "no overlap" in result["message"].lower()
+
+    def test_availability_check_returns_conflict_details(self, db_session):
+        """Test availability check returns proper conflict information"""
+        from backend.crud.floating_pool import is_employee_available_for_assignment
+        from backend.schemas.floating_pool import FloatingPool
+
+        # Create mock existing assignment
+        mock_existing = MagicMock(spec=FloatingPool)
+        mock_existing.employee_id = 12348
+        mock_existing.current_assignment = "CLIENT-A"
+        mock_existing.available_from = datetime(2026, 1, 10)
+        mock_existing.available_to = datetime(2026, 1, 20)
+
+        with patch.object(db_session, 'query') as mock_query:
+            mock_query.return_value.filter.return_value.first.return_value = mock_existing
+
+            result = is_employee_available_for_assignment(
+                db_session,
+                12348,
+                proposed_start=datetime(2026, 1, 15),  # Overlapping
+                proposed_end=datetime(2026, 1, 25)
+            )
+
+            assert result["is_available"] == False
+            assert result["current_assignment"] == "CLIENT-A"
+            assert result["conflict_dates"] is not None
+            assert "existing_start" in result["conflict_dates"]
+            assert "existing_end" in result["conflict_dates"]
+
+
 class TestGetAvailableFloatingPoolEmployees:
     """Tests for get_available_floating_pool_employees function"""
 

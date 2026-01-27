@@ -194,14 +194,27 @@
         {{ $t('common.submit') }} {{ $t('quality.entry') }}
       </v-btn>
     </v-card-actions>
+
+    <!-- Read-Back Confirmation Dialog -->
+    <ReadBackConfirmation
+      v-model="showConfirmDialog"
+      :title="$t('readBack.confirmEntry')"
+      :subtitle="$t('readBack.verifyBeforeSaving')"
+      :data="formData"
+      :field-config="confirmationFieldConfig"
+      :loading="loading"
+      @confirm="onConfirmSave"
+      @cancel="onCancelSave"
+    />
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogQuality from '@/components/CSVUploadDialogQuality.vue'
+import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import { useKPIStore } from '@/stores/kpi'
 
 const { t } = useI18n()
@@ -217,6 +230,7 @@ const products = ref([])
 const defectTypes = ref([])
 const workOrders = ref([])
 const clients = ref([])
+const showConfirmDialog = ref(false)
 
 const severities = ['Critical', 'Major', 'Minor', 'Cosmetic']
 const dispositions = ['Accept', 'Reject', 'Rework', 'Use As Is', 'Return to Supplier']
@@ -240,6 +254,29 @@ const rules = {
   required: value => !!value || t('validation.required'),
   positive: value => value > 0 || t('validation.positive')
 }
+
+// Field configuration for confirmation dialog
+const confirmationFieldConfig = computed(() => {
+  const clientName = clients.value.find(c => c.client_id === formData.value.client_id)?.client_name || 'N/A'
+  const productName = products.value.find(p => p.id === formData.value.product_id)?.name || 'N/A'
+  const workOrderName = workOrders.value.find(w => w.id === formData.value.work_order_id)?.work_order || 'N/A'
+  const defectTypeName = defectTypes.value.find(d => d.defect_type_id === formData.value.defect_type_id)?.defect_name || 'N/A'
+
+  return [
+    { key: 'client_id', label: t('workOrders.client'), type: 'text', displayValue: clientName },
+    { key: 'work_order_id', label: t('production.workOrder'), type: 'text', displayValue: workOrderName },
+    { key: 'product_id', label: t('workOrders.product'), type: 'text', displayValue: productName },
+    { key: 'inspected_quantity', label: t('quality.inspectedQty'), type: 'number' },
+    { key: 'defect_quantity', label: t('quality.defectQty'), type: 'number' },
+    { key: 'rejected_quantity', label: 'Rejected Quantity', type: 'number' },
+    { key: 'defect_type_id', label: 'Primary Defect Type', type: 'text', displayValue: defectTypeName },
+    { key: 'severity', label: 'Severity', type: 'text' },
+    { key: 'disposition', label: 'Disposition', type: 'text' },
+    { key: 'inspector_id', label: 'Inspector ID', type: 'text' },
+    { key: 'defect_description', label: 'Defect Description', type: 'text' },
+    { key: 'corrective_action', label: 'Corrective Action', type: 'text' }
+  ]
+})
 
 const onImported = () => {
   emit('submitted')
@@ -274,13 +311,19 @@ const submitEntry = async () => {
   const { valid: isValid } = await form.value.validate()
   if (!isValid) return
 
+  // Show read-back confirmation dialog
+  showConfirmDialog.value = true
+}
+
+const onConfirmSave = async () => {
+  showConfirmDialog.value = false
   loading.value = true
+
   try {
     await api.createQualityEntry(formData.value)
 
-    alert('Quality entry created successfully!')
-
     formData.value = {
+      client_id: null,
       work_order_id: null,
       product_id: null,
       inspected_quantity: 0,
@@ -301,6 +344,10 @@ const submitEntry = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const onCancelSave = () => {
+  showConfirmDialog.value = false
 }
 
 const loadReferenceData = async () => {

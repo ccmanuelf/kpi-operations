@@ -26,7 +26,9 @@ from backend.crud.floating_pool import (
     assign_floating_pool_to_client,
     unassign_floating_pool_from_client,
     get_available_floating_pool_employees,
-    get_floating_pool_assignments_by_client
+    get_floating_pool_assignments_by_client,
+    is_employee_available_for_assignment,
+    get_floating_pool_summary
 )
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
@@ -77,6 +79,53 @@ def get_available_floating_pool_list(
     Get all currently available floating pool employees
     """
     return get_available_floating_pool_employees(db, current_user, as_of_date)
+
+
+@router.get("/check-availability/{employee_id}")
+def check_employee_availability(
+    employee_id: int,
+    proposed_start: Optional[datetime] = None,
+    proposed_end: Optional[datetime] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Check if an employee is available for a new assignment.
+    Returns availability status with conflict details if any.
+
+    Use this before attempting to assign an employee to prevent double-assignment errors.
+
+    Returns:
+        {
+            "is_available": bool,
+            "current_assignment": str or None,
+            "conflict_dates": dict or None,
+            "message": str
+        }
+    """
+    return is_employee_available_for_assignment(
+        db, employee_id, proposed_start, proposed_end
+    )
+
+
+@router.get("/summary")
+def get_floating_pool_summary_endpoint(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get summary statistics for floating pool.
+    Useful for dashboard widgets.
+
+    Returns:
+        {
+            "total_floating_pool_employees": int,
+            "currently_available": int,
+            "currently_assigned": int,
+            "available_employees": list
+        }
+    """
+    return get_floating_pool_summary(db, current_user)
 
 
 @router.get("/{pool_id}", response_model=FloatingPoolResponse)

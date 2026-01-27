@@ -204,12 +204,12 @@ const steps = [
   { title: 'Confirm', value: 3 }
 ]
 
-// Required CSV columns for WIP holds
+// Required CSV columns for WIP holds - aligned with backend/schemas/hold_entry.py
 const requiredColumns = [
-  'placed_on_hold_date',
+  'client_id',
   'work_order_id',
-  'hold_reason',
-  'units_on_hold'
+  'hold_date'  // Schema uses hold_date, not placed_on_hold_date
+  // Note: units_on_hold is NOT in schema - removed from requirements
 ]
 
 // AG Grid column definitions
@@ -224,11 +224,13 @@ const columnDefs = ref([
         : '<span style="color: red;">✗</span>'
     }
   },
-  { headerName: 'Hold Date', field: 'placed_on_hold_date', editable: true, width: 120 },
+  { headerName: 'Client ID', field: 'client_id', editable: true, width: 110 },
+  { headerName: 'Hold Date', field: 'hold_date', editable: true, width: 120 },
   { headerName: 'Work Order', field: 'work_order_id', editable: true, width: 140 },
-  { headerName: 'Hold Reason', field: 'hold_reason', editable: true, width: 200 },
-  { headerName: 'Units', field: 'units_on_hold', editable: true, width: 100 },
-  { headerName: 'Release Date', field: 'released_date', editable: true, width: 120 },
+  { headerName: 'Job ID', field: 'job_id', editable: true, width: 100 },
+  { headerName: 'Hold Reason', field: 'hold_reason', editable: true, width: 180 },
+  { headerName: 'Reason Category', field: 'hold_reason_category', editable: true, width: 150 },
+  { headerName: 'Expected Resolution', field: 'expected_resolution_date', editable: true, width: 150 },
   { headerName: 'Notes', field: 'notes', editable: true, width: 180 },
   { headerName: 'Errors', field: '_validationErrors', editable: false, width: 200, cellStyle: { color: 'red', fontSize: '12px' } }
 ])
@@ -299,17 +301,21 @@ const validateAndParseCSV = (results) => {
     const rowErrors = []
     const rowData = { ...row }
 
-    if (!row.placed_on_hold_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.placed_on_hold_date)) {
-      rowErrors.push('Invalid date (YYYY-MM-DD)')
+    // Validate client_id
+    if (!row.client_id || row.client_id.trim() === '') {
+      rowErrors.push('Missing client_id')
+    }
+    // Validate hold_date (schema field name)
+    if (!row.hold_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.hold_date)) {
+      rowErrors.push('Invalid hold_date (YYYY-MM-DD)')
     }
     if (!row.work_order_id || row.work_order_id.trim() === '') {
       rowErrors.push('Missing work_order_id')
     }
-    if (!row.hold_reason || row.hold_reason.trim() === '') {
-      rowErrors.push('Missing hold_reason')
-    }
-    if (!row.units_on_hold || isNaN(parseInt(row.units_on_hold)) || parseInt(row.units_on_hold) <= 0) {
-      rowErrors.push('Invalid units_on_hold')
+    // hold_reason is optional per schema (enum-based), but we encourage it
+    // Validate expected_resolution_date format if provided
+    if (row.expected_resolution_date && !/^\d{4}-\d{2}-\d{2}$/.test(row.expected_resolution_date)) {
+      rowErrors.push('Invalid expected_resolution_date (YYYY-MM-DD)')
     }
 
     rowData._validationStatus = rowErrors.length > 0 ? 'error' : 'valid'
@@ -337,10 +343,10 @@ const onCellValueChanged = (event) => {
   const row = event.data
   const rowErrors = []
 
-  if (!row.placed_on_hold_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.placed_on_hold_date)) rowErrors.push('Invalid date')
+  if (!row.client_id) rowErrors.push('Missing client_id')
+  if (!row.hold_date || !/^\d{4}-\d{2}-\d{2}$/.test(row.hold_date)) rowErrors.push('Invalid hold_date')
   if (!row.work_order_id) rowErrors.push('Missing work_order_id')
-  if (!row.hold_reason) rowErrors.push('Missing hold_reason')
-  if (!row.units_on_hold || isNaN(parseInt(row.units_on_hold))) rowErrors.push('Invalid units')
+  if (row.expected_resolution_date && !/^\d{4}-\d{2}-\d{2}$/.test(row.expected_resolution_date)) rowErrors.push('Invalid expected_resolution_date')
 
   row._validationStatus = rowErrors.length > 0 ? 'error' : 'valid'
   row._validationErrors = rowErrors.join('; ')
@@ -364,11 +370,15 @@ const confirmImport = async () => {
   try {
     const validRows = parsedData.value.filter(row => row._validationStatus === 'valid')
     const csvContent = Papa.unparse(validRows.map(row => ({
-      placed_on_hold_date: row.placed_on_hold_date,
+      client_id: row.client_id,
       work_order_id: row.work_order_id,
-      hold_reason: row.hold_reason,
-      units_on_hold: row.units_on_hold,
-      released_date: row.released_date || '',
+      job_id: row.job_id || '',
+      hold_date: row.hold_date,
+      hold_reason: row.hold_reason || '',
+      hold_reason_category: row.hold_reason_category || '',
+      hold_reason_description: row.hold_reason_description || '',
+      quality_issue_type: row.quality_issue_type || '',
+      expected_resolution_date: row.expected_resolution_date || '',
       notes: row.notes || ''
     })))
 
