@@ -97,7 +97,8 @@ from backend.routes import (
     part_opportunities_router,
     reference_router,
     data_completeness_router,
-    my_shift_router
+    my_shift_router,
+    alerts_router
 )
 
 # Import defect type catalog router
@@ -198,6 +199,11 @@ app.include_router(data_completeness_router)
 # Register My Shift routes (operator personalized dashboard)
 # ============================================================================
 app.include_router(my_shift_router)
+
+# ============================================================================
+# Phase 10: Register intelligent alerts routes
+# ============================================================================
+app.include_router(alerts_router)
 
 # ============================================================================
 # Register CSV upload routes for all resources

@@ -46,6 +46,7 @@ from .part_opportunities import router as part_opportunities_router
 from .reference import router as reference_router
 from .data_completeness import router as data_completeness_router
 from .my_shift import router as my_shift_router
+from .alerts import router as alerts_router
 
 __all__ = [
     # Existing routers
@@ -84,5 +85,6 @@ __all__ = [
     "part_opportunities_router",
     "reference_router",
     "data_completeness_router",
-    "my_shift_router"
+    "my_shift_router",
+    "alerts_router"
 ]

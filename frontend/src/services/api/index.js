@@ -14,6 +14,7 @@ export * from './qr'
 export * from './predictions'
 export * from './workOrders'
 export * from './myShift'
+export * from './alerts'
 
 // Import all modules for default export object
 import * as auth from './auth'
@@ -28,6 +29,7 @@ import * as qr from './qr'
 import * as predictions from './predictions'
 import * as workOrders from './workOrders'
 import * as myShift from './myShift'
+import * as alerts from './alerts'
 
 // Default export object with all methods for backward compatibility
 // This allows: import api from '@/services/api' + api.login(...)
@@ -43,5 +45,6 @@ export default {
   ...qr,
   ...predictions,
   ...workOrders,
-  ...myShift
+  ...myShift,
+  ...alerts
 }

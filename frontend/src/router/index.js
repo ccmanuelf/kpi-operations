@@ -112,6 +112,13 @@ const router = createRouter({
       component: () => import('@/views/MyShiftDashboard.vue'),
       meta: { requiresAuth: true }
     },
+    // Intelligent Alerts Dashboard - Phase 10.3
+    {
+      path: '/alerts',
+      name: 'alerts',
+      component: () => import('@/views/AlertsView.vue'),
+      meta: { requiresAuth: true }
+    },
     // Admin Routes
     {
       path: '/admin/settings',
