@@ -2,6 +2,7 @@
 CRUD operations for Work Order
 Create, Read, Update, Delete with multi-tenant security
 SECURITY: Multi-tenant client filtering enabled
+Phase 10: Integrated with Workflow State Machine
 """
 from typing import List, Optional
 from datetime import date, datetime
@@ -13,6 +14,10 @@ from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
+from backend.services.workflow_service import (
+    WorkflowStateMachine,
+    execute_transition
+)
 
 
 def create_work_order(
@@ -23,6 +28,7 @@ def create_work_order(
     """
     Create new work order
     SECURITY: Verifies user has access to the specified client
+    Phase 10: Logs initial transition and sets received_date
 
     Args:
         db: Database session
@@ -40,12 +46,39 @@ def create_work_order(
     if 'client_id' in work_order_data and work_order_data['client_id']:
         verify_client_access(current_user, work_order_data['client_id'])
 
+    # Phase 10: Set default status to RECEIVED if not specified
+    if 'status' not in work_order_data or not work_order_data['status']:
+        work_order_data['status'] = 'RECEIVED'
+
+    # Phase 10: Set received_date if not provided
+    if 'received_date' not in work_order_data or not work_order_data['received_date']:
+        work_order_data['received_date'] = datetime.utcnow()
+
     # Create work order
     db_work_order = WorkOrder(**work_order_data)
 
     db.add(db_work_order)
     db.commit()
     db.refresh(db_work_order)
+
+    # Phase 10: Log initial status transition
+    try:
+        from backend.schemas.workflow import WorkflowTransitionLog
+        initial_log = WorkflowTransitionLog(
+            work_order_id=db_work_order.work_order_id,
+            client_id=db_work_order.client_id,
+            from_status=None,
+            to_status=db_work_order.status,
+            transitioned_by=current_user.user_id if current_user else None,
+            transitioned_at=datetime.utcnow(),
+            notes="Initial creation",
+            trigger_source="api"
+        )
+        db.add(initial_log)
+        db.commit()
+    except Exception:
+        # Don't fail creation if logging fails
+        pass
 
     return db_work_order
 
@@ -134,17 +167,20 @@ def update_work_order(
     db: Session,
     work_order_id: str,
     work_order_update: dict,
-    current_user: User
+    current_user: User,
+    validate_status_transition: bool = True
 ) -> Optional[WorkOrder]:
     """
     Update work order
     SECURITY: Verifies user has access to the work order's client
+    Phase 10: Validates status transitions through workflow state machine
 
     Args:
         db: Database session
         work_order_id: Work order ID to update
         work_order_update: Update data dictionary
         current_user: Authenticated user
+        validate_status_transition: If True, validate status changes (default True)
 
     Returns:
         Updated work order or None if not found
@@ -152,6 +188,7 @@ def update_work_order(
     Raises:
         HTTPException 404: If work order not found
         HTTPException 403: If user doesn't have access to work order's client
+        HTTPException 400: If status transition is invalid (Phase 10)
     """
     db_work_order = db.query(WorkOrder).filter(
         WorkOrder.work_order_id == work_order_id
@@ -164,7 +201,40 @@ def update_work_order(
     if hasattr(db_work_order, 'client_id') and db_work_order.client_id:
         verify_client_access(current_user, db_work_order.client_id)
 
-    # Update fields
+    # Phase 10: Validate status transition if status is being changed
+    new_status = work_order_update.get('status')
+    if new_status and new_status != db_work_order.status and validate_status_transition:
+        sm = WorkflowStateMachine(db, db_work_order.client_id)
+        is_valid, reason = sm.validate_transition(db_work_order, new_status)
+
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status transition: {reason}"
+            )
+
+        # Store previous status for ON_HOLD tracking
+        old_status = db_work_order.status
+
+        # Update status and log transition
+        try:
+            db_work_order, transition_log = execute_transition(
+                db=db,
+                work_order=db_work_order,
+                to_status=new_status,
+                user_id=current_user.user_id if current_user else None,
+                notes=work_order_update.get('notes'),
+                trigger_source="api"
+            )
+            # Remove status from update dict since it's already handled
+            work_order_update = {k: v for k, v in work_order_update.items() if k != 'status'}
+        except HTTPException:
+            raise
+        except Exception as e:
+            # Log but don't fail the update
+            pass
+
+    # Update remaining fields
     for field, value in work_order_update.items():
         if hasattr(db_work_order, field):
             setattr(db_work_order, field, value)

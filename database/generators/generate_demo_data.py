@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
 KPI Operations Platform - Comprehensive Demo Data Generator
-Phase 10.5: Creates demonstration-ready sample data for all modules
+Phase 14: Enhanced demonstration-ready sample data for all modules
 
 This generator creates realistic scenarios for platform demonstrations:
 - OTD at-risk work orders
-- Quality alerts (low FPY)
+- Quality alerts (low FPY) with granular defect details
 - Capacity alerts (overload scenarios)
-- Floating pool coverage workflows
+- Floating pool coverage workflows with availability tracking
 - Hold approval workflows
 - Active alerts for dashboard demonstration
+- Workflow transition audit trail (Phase 10)
+- Shift coverage records for simulation scenarios
+- Detailed defect breakdown for quality analytics
 
 Author: KPI Operations Platform
-Version: 3.1.0 (Phase 10.5 - Schema Aligned)
-Date: 2026-01-26
+Version: 4.0.0 (Phase 14 - Enhanced Demo Data)
+Date: 2026-01-27
 """
 
 import os
@@ -152,6 +155,24 @@ DEFECT_TYPES = [
     ("SEAM", "Seam Issue", "Seam puckering or opening")
 ]
 
+# Defect severities for DEFECT_DETAIL generation
+DEFECT_SEVERITIES = ["CRITICAL", "MAJOR", "MINOR"]
+
+# Product locations for defects
+DEFECT_LOCATIONS = [
+    "Front panel", "Back panel", "Left sleeve", "Right sleeve",
+    "Collar", "Cuff", "Pocket", "Waistband", "Hem", "Zipper area",
+    "Button line", "Seam line", "Label area"
+]
+
+# Work order status transitions for workflow log
+WORKFLOW_TRANSITIONS = [
+    ("RECEIVED", "IN_PROGRESS", "automatic", "Started production"),
+    ("IN_PROGRESS", "ON_HOLD", "manual", "Quality issue detected"),
+    ("ON_HOLD", "IN_PROGRESS", "manual", "Issue resolved, resuming production"),
+    ("IN_PROGRESS", "COMPLETED", "automatic", "Production completed"),
+]
+
 
 class DemoDataGenerator:
     """Generates comprehensive demonstration data for KPI platform."""
@@ -188,6 +209,7 @@ class DemoDataGenerator:
 
         tables_to_clear = [
             "ALERT_HISTORY", "ALERT_CONFIG", "ALERT",
+            "WORKFLOW_TRANSITION_LOG",
             "DEFECT_DETAIL", "HOLD_ENTRY", "DOWNTIME_ENTRY",
             "COVERAGE_ENTRY", "SHIFT_COVERAGE", "ATTENDANCE_ENTRY",
             "QUALITY_ENTRY", "PRODUCTION_ENTRY", "JOB",
@@ -730,6 +752,285 @@ class DemoDataGenerator:
         self.conn.commit()
         print(f"   ✓ Created {quality_count} quality entries")
 
+    def generate_defect_details(self):
+        """Generate granular defect details linked to quality entries."""
+        print("\n🔎 Generating Defect Details...")
+
+        defect_count = 0
+        detail_num = 0
+
+        # Get all quality entries with defects
+        self.cursor.execute("""
+            SELECT quality_entry_id, client_id, total_defects_count
+            FROM QUALITY_ENTRY
+            WHERE total_defects_count > 0
+        """)
+        quality_entries = self.cursor.fetchall()
+
+        for qe_id, client_id, total_defects in quality_entries:
+            # Distribute defects across 2-4 defect types
+            num_defect_types = min(random.randint(2, 4), len(DEFECT_TYPES))
+            selected_types = random.sample(DEFECT_TYPES, num_defect_types)
+
+            remaining = total_defects
+            for i, (defect_code, defect_name, description) in enumerate(selected_types):
+                if i == len(selected_types) - 1:
+                    # Last type gets remaining defects
+                    defect_qty = remaining
+                else:
+                    # Random portion for this type
+                    defect_qty = random.randint(1, max(1, remaining // 2))
+                    remaining -= defect_qty
+
+                if defect_qty <= 0:
+                    continue
+
+                detail_num += 1
+                detail_id = f"DD-{detail_num:08d}"
+                severity = random.choice(DEFECT_SEVERITIES)
+                location = random.choice(DEFECT_LOCATIONS)
+
+                try:
+                    self.cursor.execute("""
+                        INSERT INTO DEFECT_DETAIL (
+                            defect_detail_id, quality_entry_id, client_id_fk,
+                            defect_type, defect_category, defect_count,
+                            severity, location, description, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                    """, (
+                        detail_id, qe_id, client_id,
+                        defect_name, defect_code, defect_qty,
+                        severity, location, description
+                    ))
+                    defect_count += 1
+                except sqlite3.IntegrityError as e:
+                    print(f"      Warning: Could not insert defect detail {detail_id}: {e}")
+
+        self.conn.commit()
+        print(f"   ✓ Created {defect_count} defect detail entries")
+
+    def generate_shift_coverage(self):
+        """Generate daily shift coverage records for simulation scenarios."""
+        print("\n📊 Generating Shift Coverage Records...")
+
+        coverage_count = 0
+
+        # Generate 60 days of shift coverage data
+        for day_offset in range(60):
+            coverage_date = DATA_END_DATE - timedelta(days=day_offset)
+
+            # Skip some weekends
+            if coverage_date.weekday() >= 5 and random.random() > 0.3:
+                continue
+
+            for client_id in self.client_ids:
+                for shift in SHIFTS:
+                    # Calculate realistic staffing levels
+                    scheduled = random.randint(8, 15)
+
+                    # 80% of time fully staffed, 20% understaffed
+                    if random.random() < 0.8:
+                        present = scheduled + random.randint(-1, 1)
+                    else:
+                        present = max(1, scheduled - random.randint(2, 4))
+
+                    coverage_pct = round(min(present / scheduled * 100, 100), 2) if scheduled > 0 else 100
+
+                    try:
+                        # Schema uses: employees_scheduled, employees_present, entered_by (VARCHAR)
+                        self.cursor.execute("""
+                            INSERT INTO SHIFT_COVERAGE (
+                                client_id, shift_id, coverage_date,
+                                employees_scheduled, employees_present,
+                                coverage_percentage, notes, entered_by,
+                                created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                        """, (
+                            client_id, shift["shift_id"], coverage_date.strftime('%Y-%m-%d'),
+                            scheduled, present, coverage_pct,
+                            "Auto-generated shift coverage" if coverage_pct >= 90 else "Understaffed shift",
+                            "SYSTEM"  # entered_by is VARCHAR
+                        ))
+                        coverage_count += 1
+                    except sqlite3.IntegrityError:
+                        pass  # Skip duplicates
+
+        self.conn.commit()
+        print(f"   ✓ Created {coverage_count} shift coverage records")
+
+    def generate_floating_pool_entries(self):
+        """Generate FLOATING_POOL availability tracking entries."""
+        print("\n🏊 Generating Floating Pool Availability...")
+
+        pool_count = 0
+
+        for emp_code, emp_id in self.floating_pool_map.items():
+            # Each floating pool employee has 3-5 availability windows
+            num_windows = random.randint(3, 5)
+
+            for w_idx in range(num_windows):
+                start_offset = random.randint(0, 60)
+                duration_days = random.randint(1, 7)
+
+                available_from = DATA_END_DATE - timedelta(days=start_offset)
+                available_to = available_from + timedelta(days=duration_days)
+
+                # Some are currently assigned
+                if random.random() < 0.3:
+                    current_assignment = random.choice(self.client_ids)
+                else:
+                    current_assignment = None
+
+                try:
+                    self.cursor.execute("""
+                        INSERT INTO FLOATING_POOL (
+                            client_id, employee_id, available_from, available_to,
+                            current_assignment, notes, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                    """, (
+                        None,  # Floating pool not assigned to specific client
+                        emp_id,
+                        available_from.strftime('%Y-%m-%d %H:%M:%S'),
+                        available_to.strftime('%Y-%m-%d %H:%M:%S'),
+                        current_assignment,
+                        f"Availability window {w_idx + 1} for {emp_code}"
+                    ))
+                    pool_count += 1
+                except sqlite3.IntegrityError as e:
+                    pass
+
+        self.conn.commit()
+        print(f"   ✓ Created {pool_count} floating pool availability entries")
+
+    def generate_workflow_transitions(self):
+        """Generate WORKFLOW_TRANSITION_LOG entries for audit trail."""
+        print("\n🔄 Generating Workflow Transition Log...")
+
+        # Check if table exists, create if not (Phase 10 migration may not have run)
+        self.cursor.execute("""
+            SELECT name FROM sqlite_master
+            WHERE type='table' AND name='WORKFLOW_TRANSITION_LOG'
+        """)
+        if not self.cursor.fetchone():
+            print("   Creating WORKFLOW_TRANSITION_LOG table...")
+            self.cursor.execute("""
+                CREATE TABLE WORKFLOW_TRANSITION_LOG (
+                    transition_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    work_order_id VARCHAR(50) NOT NULL,
+                    client_id VARCHAR(50) NOT NULL,
+                    from_status VARCHAR(20),
+                    to_status VARCHAR(20) NOT NULL,
+                    transitioned_by INTEGER,
+                    transitioned_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    notes TEXT,
+                    trigger_source VARCHAR(50),
+                    elapsed_from_received_hours INTEGER,
+                    elapsed_from_previous_hours INTEGER,
+                    FOREIGN KEY (work_order_id) REFERENCES WORK_ORDER(work_order_id),
+                    FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
+                )
+            """)
+            self.cursor.execute("CREATE INDEX IF NOT EXISTS ix_transition_workorder ON WORKFLOW_TRANSITION_LOG(work_order_id)")
+            self.cursor.execute("CREATE INDEX IF NOT EXISTS ix_transition_client_date ON WORKFLOW_TRANSITION_LOG(client_id, transitioned_at)")
+            self.conn.commit()
+
+        transition_count = 0
+
+        # Get system user
+        system_user_id = 1
+        self.cursor.execute("SELECT user_id FROM USER WHERE username = 'system' LIMIT 1")
+        row = self.cursor.fetchone()
+        if row:
+            system_user_id = row[0]
+
+        for wo in self.work_order_data:
+            # Initial state: RECEIVED
+            transition_time = wo["start_date"]
+            elapsed_from_received = 0
+
+            try:
+                # First transition: NULL -> RECEIVED (creation)
+                self.cursor.execute("""
+                    INSERT INTO WORKFLOW_TRANSITION_LOG (
+                        work_order_id, client_id, from_status, to_status,
+                        transitioned_by, transitioned_at, notes, trigger_source,
+                        elapsed_from_received_hours, elapsed_from_previous_hours
+                    ) VALUES (?, ?, NULL, 'RECEIVED', ?, ?, ?, 'automatic', 0, 0)
+                """, (
+                    wo["id"], wo["client_id"],
+                    system_user_id,
+                    transition_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    "Work order created"
+                ))
+                transition_count += 1
+
+                # RECEIVED -> IN_PROGRESS
+                transition_time = transition_time + timedelta(hours=random.randint(2, 24))
+                hours_since_received = int((transition_time - wo["start_date"]).total_seconds() / 3600)
+
+                self.cursor.execute("""
+                    INSERT INTO WORKFLOW_TRANSITION_LOG (
+                        work_order_id, client_id, from_status, to_status,
+                        transitioned_by, transitioned_at, notes, trigger_source,
+                        elapsed_from_received_hours, elapsed_from_previous_hours
+                    ) VALUES (?, ?, 'RECEIVED', 'IN_PROGRESS', ?, ?, ?, 'automatic', ?, ?)
+                """, (
+                    wo["id"], wo["client_id"],
+                    system_user_id,
+                    transition_time.strftime('%Y-%m-%d %H:%M:%S'),
+                    "Production started",
+                    hours_since_received, hours_since_received
+                ))
+                transition_count += 1
+
+                # If ON_HOLD status, add hold/resume transitions
+                if wo["status"] == "ON_HOLD":
+                    hold_time = transition_time + timedelta(days=random.randint(1, 5))
+                    hours_since_received = int((hold_time - wo["start_date"]).total_seconds() / 3600)
+
+                    self.cursor.execute("""
+                        INSERT INTO WORKFLOW_TRANSITION_LOG (
+                            work_order_id, client_id, from_status, to_status,
+                            transitioned_by, transitioned_at, notes, trigger_source,
+                            elapsed_from_received_hours, elapsed_from_previous_hours
+                        ) VALUES (?, ?, 'IN_PROGRESS', 'ON_HOLD', ?, ?, ?, 'manual', ?, ?)
+                    """, (
+                        wo["id"], wo["client_id"],
+                        system_user_id,
+                        hold_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        random.choice(["Quality issue detected", "Material shortage", "Customer request"]),
+                        hours_since_received,
+                        int((hold_time - transition_time).total_seconds() / 3600)
+                    ))
+                    transition_count += 1
+
+                # If COMPLETED, add completion transition
+                if wo["status"] == "COMPLETED":
+                    complete_time = wo["ship_date"] - timedelta(days=random.randint(0, 2))
+                    hours_since_received = int((complete_time - wo["start_date"]).total_seconds() / 3600)
+
+                    self.cursor.execute("""
+                        INSERT INTO WORKFLOW_TRANSITION_LOG (
+                            work_order_id, client_id, from_status, to_status,
+                            transitioned_by, transitioned_at, notes, trigger_source,
+                            elapsed_from_received_hours, elapsed_from_previous_hours
+                        ) VALUES (?, ?, 'IN_PROGRESS', 'COMPLETED', ?, ?, ?, 'automatic', ?, ?)
+                    """, (
+                        wo["id"], wo["client_id"],
+                        system_user_id,
+                        complete_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        "Production completed successfully",
+                        hours_since_received,
+                        int((complete_time - transition_time).total_seconds() / 3600)
+                    ))
+                    transition_count += 1
+
+            except sqlite3.IntegrityError as e:
+                print(f"      Warning: Could not insert workflow transition: {e}")
+
+        self.conn.commit()
+        print(f"   ✓ Created {transition_count} workflow transition log entries")
+
     def generate_attendance_entries(self):
         """Generate 90 days of attendance data with realistic patterns."""
         print("\n📅 Generating Attendance Entries...")
@@ -1187,9 +1488,10 @@ class DemoDataGenerator:
         tables = [
             "CLIENT", "USER", "EMPLOYEE", "SHIFT", "PRODUCT",
             "WORK_ORDER", "JOB", "PART_OPPORTUNITIES",
-            "PRODUCTION_ENTRY", "QUALITY_ENTRY",
-            "ATTENDANCE_ENTRY", "COVERAGE_ENTRY", "DOWNTIME_ENTRY",
-            "HOLD_ENTRY", "ALERT", "ALERT_CONFIG", "KPI_THRESHOLD"
+            "PRODUCTION_ENTRY", "QUALITY_ENTRY", "DEFECT_DETAIL",
+            "ATTENDANCE_ENTRY", "COVERAGE_ENTRY", "SHIFT_COVERAGE",
+            "FLOATING_POOL", "DOWNTIME_ENTRY", "HOLD_ENTRY",
+            "WORKFLOW_TRANSITION_LOG", "ALERT", "ALERT_CONFIG", "KPI_THRESHOLD"
         ]
 
         print("\nRecord Counts:")
@@ -1236,10 +1538,14 @@ class DemoDataGenerator:
             self.generate_part_opportunities()  # Phase 6.7: PART_OPPORTUNITIES for DPMO
             self.generate_production_entries()
             self.generate_quality_entries()
+            self.generate_defect_details()  # Phase 14: Granular defect tracking
             self.generate_attendance_entries()
             self.generate_coverage_entries()
+            self.generate_shift_coverage()  # Phase 14: Shift staffing records
+            self.generate_floating_pool_entries()  # Phase 14: Pool availability
             self.generate_downtime_entries()
             self.generate_hold_entries()
+            self.generate_workflow_transitions()  # Phase 14: Workflow audit trail
             self.generate_alerts()
             self.generate_alert_configs()
             self.generate_kpi_thresholds()
@@ -1268,8 +1574,8 @@ def main():
     args = parser.parse_args()
 
     print("=" * 70)
-    print("KPI Operations Platform - Demo Data Generator v3.2.0")
-    print("Phase 10.5: Comprehensive Sample Data Regeneration")
+    print("KPI Operations Platform - Demo Data Generator v4.0.0")
+    print("Phase 14: Enhanced Demo Data with Workflow & Quality Details")
     print("=" * 70)
 
     generator = DemoDataGenerator(args.db, args.seed)

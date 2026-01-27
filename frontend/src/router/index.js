@@ -119,6 +119,13 @@ const router = createRouter({
       component: () => import('@/views/AlertsView.vue'),
       meta: { requiresAuth: true }
     },
+    // Simulation & Capacity Planning - Phase 11
+    {
+      path: '/simulation',
+      name: 'simulation',
+      component: () => import('@/views/SimulationView.vue'),
+      meta: { requiresAuth: true }
+    },
     // Admin Routes
     {
       path: '/admin/settings',
@@ -160,6 +167,19 @@ const router = createRouter({
       path: '/admin/floating-pool',
       name: 'admin-floating-pool',
       component: () => import('@/views/admin/FloatingPoolManagement.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/workflow-config',
+      name: 'admin-workflow-config',
+      component: () => import('@/views/admin/WorkflowConfigView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    // Visual Workflow Designer
+    {
+      path: '/admin/workflow-designer/:clientId?',
+      name: 'admin-workflow-designer',
+      component: () => import('@/views/admin/WorkflowDesignerView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]

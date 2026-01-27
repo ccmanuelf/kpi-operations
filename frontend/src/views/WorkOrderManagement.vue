@@ -210,13 +210,14 @@
 
           <!-- Status -->
           <template v-slot:item.status="{ item }">
-            <v-chip
-              :color="getStatusColor(item.status)"
+            <WorkOrderStatusChip
+              :work-order-id="item.work_order_id"
+              :status="item.status"
               size="small"
-              variant="flat"
-            >
-              {{ formatStatus(item.status) }}
-            </v-chip>
+              :allow-transitions="true"
+              @transitioned="onStatusTransitioned"
+              @click.stop
+            />
           </template>
 
           <!-- Priority -->
@@ -515,8 +516,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { format, parseISO, isAfter, startOfDay } from 'date-fns'
 import api from '@/services/api'
+import { transitionWorkOrder } from '@/services/api/workflow'
 import { useNotificationStore } from '@/stores/notificationStore'
 import WorkOrderDetailDrawer from '@/components/WorkOrderDetailDrawer.vue'
+import WorkOrderStatusChip from '@/components/workflow/WorkOrderStatusChip.vue'
 
 // Simple debounce utility
 const debounce = (fn, delay) => {
@@ -792,14 +795,27 @@ const saveWorkOrder = async () => {
   }
 }
 
+// Handle status transition from WorkOrderStatusChip
+const onStatusTransitioned = () => {
+  loadWorkOrders()
+}
+
 const updateStatus = async (workOrder, newStatus) => {
   try {
-    await api.updateWorkOrder(workOrder.work_order_id, { status: newStatus })
+    // Use workflow API for proper transition logging
+    await transitionWorkOrder(workOrder.work_order_id, newStatus)
     notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
     await loadWorkOrders()
   } catch (error) {
     console.error('Error updating status:', error)
-    notificationStore.showError('Failed to update status')
+    // Fallback to direct update if workflow API fails
+    try {
+      await api.updateWorkOrder(workOrder.work_order_id, { status: newStatus })
+      notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
+      await loadWorkOrders()
+    } catch (fallbackError) {
+      notificationStore.showError('Failed to update status')
+    }
   }
 }
 

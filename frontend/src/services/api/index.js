@@ -15,6 +15,8 @@ export * from './predictions'
 export * from './workOrders'
 export * from './myShift'
 export * from './alerts'
+export * from './workflow'
+export * from './simulation'
 
 // Import all modules for default export object
 import * as auth from './auth'
@@ -30,6 +32,8 @@ import * as predictions from './predictions'
 import * as workOrders from './workOrders'
 import * as myShift from './myShift'
 import * as alerts from './alerts'
+import * as workflow from './workflow'
+import * as simulation from './simulation'
 
 // Default export object with all methods for backward compatibility
 // This allows: import api from '@/services/api' + api.login(...)
@@ -46,5 +50,7 @@ export default {
   ...predictions,
   ...workOrders,
   ...myShift,
-  ...alerts
+  ...alerts,
+  ...workflow,
+  ...simulation
 }

@@ -20,6 +20,31 @@ from .preferences import (
     ResetPreferencesRequest,
     ResetPreferencesResponse
 )
+from .work_order import (
+    WorkOrderCreate,
+    WorkOrderUpdate,
+    WorkOrderResponse,
+    WorkOrderWithMetrics,
+    WorkOrderStatusEnum,
+)
+from .workflow import (
+    WorkflowStatusEnum,
+    ClosureTriggerEnum,
+    TriggerSourceEnum,
+    WorkflowTransitionCreate,
+    WorkflowTransitionResponse,
+    WorkflowTransitionHistory,
+    WorkflowConfigCreate,
+    WorkflowConfigResponse,
+    WorkflowConfigUpdate,
+    TransitionValidationRequest,
+    TransitionValidationResponse,
+    AllowedTransitionsResponse,
+    BulkTransitionRequest,
+    BulkTransitionResponse,
+    WorkflowTemplate,
+    WORKFLOW_TEMPLATES,
+)
 
 __all__ = [
     "UserCreate",
@@ -41,4 +66,27 @@ __all__ = [
     "RoleDefaultsResponse",
     "ResetPreferencesRequest",
     "ResetPreferencesResponse",
+    # Work Order models (Phase 10)
+    "WorkOrderCreate",
+    "WorkOrderUpdate",
+    "WorkOrderResponse",
+    "WorkOrderWithMetrics",
+    "WorkOrderStatusEnum",
+    # Workflow models (Phase 10)
+    "WorkflowStatusEnum",
+    "ClosureTriggerEnum",
+    "TriggerSourceEnum",
+    "WorkflowTransitionCreate",
+    "WorkflowTransitionResponse",
+    "WorkflowTransitionHistory",
+    "WorkflowConfigCreate",
+    "WorkflowConfigResponse",
+    "WorkflowConfigUpdate",
+    "TransitionValidationRequest",
+    "TransitionValidationResponse",
+    "AllowedTransitionsResponse",
+    "BulkTransitionRequest",
+    "BulkTransitionResponse",
+    "WorkflowTemplate",
+    "WORKFLOW_TEMPLATES",
 ]

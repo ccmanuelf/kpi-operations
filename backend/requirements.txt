@@ -51,3 +51,4 @@ psutil>=5.9.0
 
 # QR Code Generation
 qrcode[pil]>=7.4.0
+simpy==4.1.1

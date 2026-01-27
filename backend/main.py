@@ -98,7 +98,9 @@ from backend.routes import (
     reference_router,
     data_completeness_router,
     my_shift_router,
-    alerts_router
+    alerts_router,
+    workflow_router,
+    simulation_router
 )
 
 # Import defect type catalog router
@@ -204,6 +206,16 @@ app.include_router(my_shift_router)
 # Phase 10: Register intelligent alerts routes
 # ============================================================================
 app.include_router(alerts_router)
+
+# ============================================================================
+# Phase 10: Register workflow management routes
+# ============================================================================
+app.include_router(workflow_router)
+
+# ============================================================================
+# Phase 11: Register simulation and capacity planning routes
+# ============================================================================
+app.include_router(simulation_router)
 
 # ============================================================================
 # Register CSV upload routes for all resources

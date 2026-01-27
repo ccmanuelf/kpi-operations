@@ -51,6 +51,104 @@
               </v-col>
             </v-row>
 
+            <!-- Simulation Insights Panel -->
+            <v-expansion-panels v-model="insightsPanel" class="mb-4">
+              <v-expansion-panel value="insights">
+                <v-expansion-panel-title>
+                  <div class="d-flex align-center">
+                    <v-icon class="mr-2" color="info">mdi-chart-timeline-variant</v-icon>
+                    <span>{{ $t('admin.floatingPool.simulationInsights') }}</span>
+                    <v-chip v-if="insights.recommendations?.length" size="small" color="warning" class="ml-2">
+                      {{ insights.recommendations.length }} {{ $t('admin.floatingPool.recommendations') }}
+                    </v-chip>
+                  </div>
+                </v-expansion-panel-title>
+                <v-expansion-panel-text>
+                  <v-row v-if="loadingInsights" class="py-4">
+                    <v-col cols="12" class="text-center">
+                      <v-progress-circular indeterminate color="primary" />
+                      <div class="mt-2 text-grey">{{ $t('common.loading') }}</div>
+                    </v-col>
+                  </v-row>
+
+                  <template v-else>
+                    <!-- Staffing Scenarios -->
+                    <div v-if="insights.staffing_scenarios?.length" class="mb-4">
+                      <div class="text-subtitle-2 mb-2">
+                        <v-icon size="small" class="mr-1">mdi-account-group</v-icon>
+                        {{ $t('admin.floatingPool.staffingScenarios') }}
+                      </div>
+                      <v-table density="compact">
+                        <thead>
+                          <tr>
+                            <th>{{ $t('simulation.staffing.scenario') }}</th>
+                            <th>{{ $t('simulation.staffing.employees') }}</th>
+                            <th>{{ $t('simulation.staffing.output') }}</th>
+                            <th>{{ $t('simulation.staffing.efficiency') }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr v-for="scenario in insights.staffing_scenarios" :key="scenario.scenario">
+                            <td>{{ scenario.scenario }}</td>
+                            <td>{{ scenario.employees }}</td>
+                            <td>{{ Math.round(scenario.units_per_shift || 0) }} {{ $t('common.units') }}</td>
+                            <td>
+                              <v-chip
+                                :color="scenario.efficiency >= 85 ? 'success' : scenario.efficiency >= 70 ? 'warning' : 'error'"
+                                size="small"
+                              >
+                                {{ scenario.efficiency?.toFixed(1) || 0 }}%
+                              </v-chip>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </v-table>
+                    </div>
+
+                    <!-- Recommendations -->
+                    <div v-if="insights.recommendations?.length">
+                      <div class="text-subtitle-2 mb-2">
+                        <v-icon size="small" class="mr-1">mdi-lightbulb-outline</v-icon>
+                        {{ $t('admin.floatingPool.recommendations') }}
+                      </div>
+                      <v-alert
+                        v-for="(rec, idx) in insights.recommendations"
+                        :key="idx"
+                        :type="rec.priority === 'high' ? 'warning' : rec.priority === 'medium' ? 'info' : 'success'"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-2"
+                      >
+                        <div class="font-weight-medium">{{ rec.message }}</div>
+                        <div class="text-caption text-grey-darken-1 mt-1">
+                          <v-icon size="x-small" class="mr-1">mdi-arrow-right</v-icon>
+                          {{ rec.action }}
+                        </div>
+                      </v-alert>
+                    </div>
+
+                    <div v-if="!insights.recommendations?.length && !insights.staffing_scenarios?.length" class="text-center py-4 text-grey">
+                      <v-icon size="large" class="mb-2">mdi-information-outline</v-icon>
+                      <div>{{ $t('admin.floatingPool.noInsightsAvailable') }}</div>
+                    </div>
+
+                    <div class="d-flex justify-end mt-3">
+                      <v-btn
+                        size="small"
+                        variant="tonal"
+                        color="primary"
+                        @click="fetchInsights"
+                        :loading="loadingInsights"
+                      >
+                        <v-icon left size="small">mdi-refresh</v-icon>
+                        {{ $t('common.refresh') }}
+                      </v-btn>
+                    </div>
+                  </template>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+
             <!-- Filter Controls -->
             <v-row class="mb-3">
               <v-col cols="12" md="4">
@@ -254,11 +352,19 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import api from '@/services/api'
+import { getFloatingPoolSimulationInsights } from '@/services/api/simulation'
 
 const { t } = useI18n()
 
 // State
 const loading = ref(false)
+const loadingInsights = ref(false)
+const insightsPanel = ref(null)
+const insights = ref({
+  current_status: {},
+  staffing_scenarios: [],
+  recommendations: []
+})
 const assigning = ref(false)
 const unassigning = ref(null)
 const entries = ref([])
@@ -440,9 +546,28 @@ const showSnackbar = (message, color = 'success') => {
   snackbar.value = { show: true, message, color }
 }
 
+// Fetch simulation insights
+const fetchInsights = async () => {
+  loadingInsights.value = true
+  try {
+    const response = await getFloatingPoolSimulationInsights({})
+    insights.value = response.data || {
+      current_status: {},
+      staffing_scenarios: [],
+      recommendations: []
+    }
+  } catch (error) {
+    console.error('Error fetching simulation insights:', error)
+    // Don't show error for insights - it's optional
+  } finally {
+    loadingInsights.value = false
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   fetchData()
+  fetchInsights()
 })
 </script>
 

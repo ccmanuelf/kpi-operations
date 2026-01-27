@@ -1,9 +1,10 @@
 """
 Client Configuration Pydantic models for request/response validation
 Implements Phase 7.2: Client-Level Calculation Overrides
+Implements Phase 10: Flexible Workflow Foundation
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
 
@@ -47,6 +48,25 @@ class ClientConfigCreate(BaseModel):
     wip_aging_threshold_days: int = Field(default=7, ge=1, description="Days before WIP is flagged as aging")
     wip_critical_threshold_days: int = Field(default=14, ge=1, description="Days before WIP is flagged as critical")
 
+    # Workflow Configuration (Phase 10)
+    workflow_statuses: Optional[List[str]] = Field(
+        default=["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"],
+        description="Ordered list of workflow statuses for this client"
+    )
+    workflow_transitions: Optional[Dict[str, List[str]]] = Field(
+        default=None,
+        description="Map of TO_STATUS to list of allowed FROM_STATUS values"
+    )
+    workflow_optional_statuses: Optional[List[str]] = Field(
+        default=["SHIPPED", "DEMOTED"],
+        description="Statuses that can be skipped"
+    )
+    workflow_closure_trigger: Optional[str] = Field(
+        default="at_shipment",
+        pattern="^(at_shipment|at_client_receipt|at_completion|manual)$",
+        description="When to close orders"
+    )
+
 
 class ClientConfigUpdate(BaseModel):
     """Client configuration update model (all fields optional)"""
@@ -62,6 +82,12 @@ class ClientConfigUpdate(BaseModel):
     absenteeism_target_percent: Optional[float] = Field(None, ge=0.0, le=100.0)
     wip_aging_threshold_days: Optional[int] = Field(None, ge=1)
     wip_critical_threshold_days: Optional[int] = Field(None, ge=1)
+
+    # Workflow Configuration (Phase 10)
+    workflow_statuses: Optional[List[str]] = None
+    workflow_transitions: Optional[Dict[str, List[str]]] = None
+    workflow_optional_statuses: Optional[List[str]] = None
+    workflow_closure_trigger: Optional[str] = Field(None, pattern="^(at_shipment|at_client_receipt|at_completion|manual)$")
 
 
 class ClientConfigResponse(BaseModel):
@@ -80,6 +106,14 @@ class ClientConfigResponse(BaseModel):
     absenteeism_target_percent: float
     wip_aging_threshold_days: int
     wip_critical_threshold_days: int
+
+    # Workflow Configuration (Phase 10)
+    workflow_statuses: Optional[List[str]] = None
+    workflow_transitions: Optional[Dict[str, List[str]]] = None
+    workflow_optional_statuses: Optional[List[str]] = None
+    workflow_closure_trigger: Optional[str] = None
+    workflow_version: Optional[int] = None
+
     created_at: datetime
     updated_at: Optional[datetime]
 
@@ -107,3 +141,20 @@ class GlobalDefaults(BaseModel):
     absenteeism_target_percent: float = 3.0
     wip_aging_threshold_days: int = 7
     wip_critical_threshold_days: int = 14
+
+    # Workflow defaults (Phase 10)
+    workflow_statuses: List[str] = ["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"]
+    workflow_transitions: Dict[str, List[str]] = {
+        "RELEASED": ["RECEIVED"],
+        "IN_PROGRESS": ["RELEASED"],
+        "COMPLETED": ["IN_PROGRESS"],
+        "SHIPPED": ["COMPLETED"],
+        "CLOSED": ["SHIPPED", "COMPLETED"],
+        "ON_HOLD": ["RECEIVED", "RELEASED", "IN_PROGRESS"],
+        "DEMOTED": ["RELEASED"],
+        "CANCELLED": ["RECEIVED", "RELEASED", "IN_PROGRESS", "ON_HOLD", "DEMOTED"],
+        "REJECTED": ["IN_PROGRESS", "COMPLETED"]
+    }
+    workflow_optional_statuses: List[str] = ["SHIPPED", "DEMOTED"]
+    workflow_closure_trigger: str = "at_shipment"
+    workflow_version: int = 1

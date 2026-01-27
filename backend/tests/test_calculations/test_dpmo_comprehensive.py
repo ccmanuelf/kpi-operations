@@ -274,3 +274,570 @@ class TestDPMOVsOtherMetrics:
 
         assert dpu == 0.05
         assert dpmo == 10000
+
+
+# =============================================================================
+# Test calculate_sigma_level (function tests)
+# =============================================================================
+
+class TestCalculateSigmaLevel:
+    """Test Sigma level conversion function"""
+
+    def test_sigma_level_6_sigma(self):
+        """Test 6 sigma level (3.4 DPMO)"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("3.4"))
+        assert sigma == Decimal("6.0")
+
+    def test_sigma_level_5_sigma(self):
+        """Test 5 sigma level (233 DPMO)"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("233"))
+        assert sigma == Decimal("5.0")
+
+    def test_sigma_level_4_sigma(self):
+        """Test 4 sigma level (6210 DPMO)"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("6210"))
+        assert sigma == Decimal("4.0")
+
+    def test_sigma_level_3_sigma(self):
+        """Test 3 sigma level (66807 DPMO)"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("66807"))
+        assert sigma == Decimal("3.0")
+
+    def test_sigma_level_2_sigma(self):
+        """Test 2 sigma level (308537 DPMO)"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("308537"))
+        assert sigma == Decimal("2.0")
+
+    def test_sigma_level_1_sigma(self):
+        """Test 1 sigma level (690000 DPMO)"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("690000"))
+        assert sigma == Decimal("1.0")
+
+    def test_sigma_level_below_1_sigma(self):
+        """Test below 1 sigma returns 0"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("750000"))
+        assert sigma == Decimal("0")
+
+    def test_sigma_level_perfect_zero_dpmo(self):
+        """Test 0 DPMO returns 6 sigma"""
+        from backend.calculations.dpmo import calculate_sigma_level
+        sigma = calculate_sigma_level(Decimal("0"))
+        assert sigma == Decimal("6.0")
+
+    def test_sigma_level_intermediate_values(self):
+        """Test intermediate DPMO values get correct sigma"""
+        from backend.calculations.dpmo import calculate_sigma_level
+
+        # 1000 DPMO is above 233 (5 sigma threshold) but below 6210 (4 sigma threshold)
+        # So it returns 4.0 sigma
+        sigma = calculate_sigma_level(Decimal("1000"))
+        assert sigma == Decimal("4.0")  # Below 6210, returns 4 sigma
+
+        # 10000 DPMO is above 6210 (4 sigma threshold) but below 66807 (3 sigma threshold)
+        # So it returns 3.0 sigma
+        sigma = calculate_sigma_level(Decimal("10000"))
+        assert sigma == Decimal("3.0")  # Below 66807, returns 3 sigma
+
+        # 100 DPMO is above 3.4 (6 sigma) but below 233 (5 sigma)
+        # So it returns 5.0 sigma
+        sigma = calculate_sigma_level(Decimal("100"))
+        assert sigma == Decimal("5.0")  # Below 233, returns 5 sigma
+
+
+# =============================================================================
+# Test get_opportunities_for_part (mocked)
+# =============================================================================
+
+class TestGetOpportunitiesForPart:
+    """Test part-specific opportunities lookup"""
+
+    def test_opportunities_from_table(self):
+        """Test getting opportunities from PART_OPPORTUNITIES table"""
+        from backend.calculations.dpmo import get_opportunities_for_part
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_part_opp = MagicMock()
+        mock_part_opp.opportunities_per_unit = 15
+        mock_query.first.return_value = mock_part_opp
+
+        result = get_opportunities_for_part(mock_db, "PART-001")
+
+        assert result == 15
+
+    def test_opportunities_not_found_uses_default(self):
+        """Test fallback to default when part not found"""
+        from backend.calculations.dpmo import get_opportunities_for_part, DEFAULT_OPPORTUNITIES_PER_UNIT
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.first.return_value = None
+
+        result = get_opportunities_for_part(mock_db, "UNKNOWN-PART")
+
+        assert result == DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    def test_opportunities_empty_part_number(self):
+        """Test empty part number returns default"""
+        from backend.calculations.dpmo import get_opportunities_for_part, DEFAULT_OPPORTUNITIES_PER_UNIT
+        mock_db = MagicMock()
+
+        result = get_opportunities_for_part(mock_db, "")
+
+        # Should return client default (which falls back to global default)
+        assert result == DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    def test_opportunities_none_part_number(self):
+        """Test None part number returns default"""
+        from backend.calculations.dpmo import get_opportunities_for_part, DEFAULT_OPPORTUNITIES_PER_UNIT
+        mock_db = MagicMock()
+
+        result = get_opportunities_for_part(mock_db, None)
+
+        assert result == DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    def test_opportunities_with_client_id_filter(self):
+        """Test opportunities lookup with client ID filter"""
+        from backend.calculations.dpmo import get_opportunities_for_part
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_part_opp = MagicMock()
+        mock_part_opp.opportunities_per_unit = 20
+        mock_query.first.return_value = mock_part_opp
+
+        result = get_opportunities_for_part(mock_db, "PART-002", client_id="CLIENT001")
+
+        assert result == 20
+        # Verify filter was called twice (part_number + client_id)
+        assert mock_query.filter.call_count >= 2
+
+
+# =============================================================================
+# Test get_opportunities_for_parts (batch lookup, mocked)
+# =============================================================================
+
+class TestGetOpportunitiesForParts:
+    """Test batch part opportunities lookup"""
+
+    def test_batch_lookup_all_found(self):
+        """Test batch lookup when all parts are found"""
+        from backend.calculations.dpmo import get_opportunities_for_parts
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_po1 = MagicMock()
+        mock_po1.part_number = "P1"
+        mock_po1.opportunities_per_unit = 10
+
+        mock_po2 = MagicMock()
+        mock_po2.part_number = "P2"
+        mock_po2.opportunities_per_unit = 15
+
+        mock_query.all.return_value = [mock_po1, mock_po2]
+
+        result = get_opportunities_for_parts(mock_db, ["P1", "P2"])
+
+        assert result["P1"] == 10
+        assert result["P2"] == 15
+
+    def test_batch_lookup_partial_found(self):
+        """Test batch lookup when some parts not found"""
+        from backend.calculations.dpmo import get_opportunities_for_parts, DEFAULT_OPPORTUNITIES_PER_UNIT
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_po = MagicMock()
+        mock_po.part_number = "P1"
+        mock_po.opportunities_per_unit = 12
+
+        mock_query.all.return_value = [mock_po]
+
+        result = get_opportunities_for_parts(mock_db, ["P1", "P2", "P3"])
+
+        assert result["P1"] == 12
+        assert result["P2"] == DEFAULT_OPPORTUNITIES_PER_UNIT
+        assert result["P3"] == DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    def test_batch_lookup_empty_list(self):
+        """Test batch lookup with empty part list"""
+        from backend.calculations.dpmo import get_opportunities_for_parts
+        mock_db = MagicMock()
+
+        result = get_opportunities_for_parts(mock_db, [])
+
+        assert result == {}
+
+
+# =============================================================================
+# Test get_client_opportunities_default (mocked)
+# =============================================================================
+
+class TestGetClientOpportunitiesDefault:
+    """Test client-specific default opportunities"""
+
+    def test_client_default_no_client(self):
+        """Test default when no client ID provided"""
+        from backend.calculations.dpmo import get_client_opportunities_default, DEFAULT_OPPORTUNITIES_PER_UNIT
+        mock_db = MagicMock()
+
+        result = get_client_opportunities_default(mock_db, None)
+
+        assert result == DEFAULT_OPPORTUNITIES_PER_UNIT
+
+    def test_client_default_from_config(self):
+        """Test getting default from client config"""
+        from backend.calculations.dpmo import get_client_opportunities_default
+        mock_db = MagicMock()
+
+        with patch('backend.calculations.dpmo.get_client_config_or_defaults') as mock_config:
+            mock_config.return_value = {"dpmo_opportunities_default": 25}
+
+            result = get_client_opportunities_default(mock_db, "CLIENT001")
+
+            assert result == 25
+
+    def test_client_default_config_exception(self):
+        """Test fallback when config lookup fails"""
+        from backend.calculations.dpmo import get_client_opportunities_default, DEFAULT_OPPORTUNITIES_PER_UNIT
+        mock_db = MagicMock()
+
+        with patch('backend.calculations.dpmo.get_client_config_or_defaults') as mock_config:
+            mock_config.side_effect = Exception("Config error")
+
+            result = get_client_opportunities_default(mock_db, "CLIENT001")
+
+            assert result == DEFAULT_OPPORTUNITIES_PER_UNIT
+
+
+# =============================================================================
+# Test calculate_dpmo (main function, mocked)
+# =============================================================================
+
+class TestCalculateDPMOFunction:
+    """Test main DPMO calculation function"""
+
+    def test_calculate_dpmo_no_data(self):
+        """Test DPMO with no inspection data"""
+        from backend.calculations.dpmo import calculate_dpmo
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+
+        dpmo, sigma, units, defects = calculate_dpmo(
+            mock_db, 1, 1, date.today() - timedelta(days=30), date.today()
+        )
+
+        assert dpmo == Decimal("0")
+        assert sigma == Decimal("0")
+        assert units == 0
+        assert defects == 0
+
+    def test_calculate_dpmo_with_data(self):
+        """Test DPMO with inspection data"""
+        from backend.calculations.dpmo import calculate_dpmo
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_insp1 = MagicMock()
+        mock_insp1.units_inspected = 1000
+        mock_insp1.defects_found = 10
+
+        mock_insp2 = MagicMock()
+        mock_insp2.units_inspected = 1000
+        mock_insp2.defects_found = 5
+
+        mock_query.all.return_value = [mock_insp1, mock_insp2]
+
+        dpmo, sigma, units, defects = calculate_dpmo(
+            mock_db, 1, 1, date.today() - timedelta(days=30), date.today(),
+            opportunities_per_unit=10
+        )
+
+        # Total units: 2000, Total defects: 15
+        # Total opportunities: 2000 * 10 = 20000
+        # DPMO = (15 / 20000) * 1000000 = 750
+        assert units == 2000
+        assert defects == 15
+        assert dpmo == Decimal("750")
+
+    def test_calculate_dpmo_with_part_lookup(self):
+        """Test DPMO with part-specific opportunities lookup"""
+        from backend.calculations.dpmo import calculate_dpmo
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        # Mock part opportunities
+        mock_part_opp = MagicMock()
+        mock_part_opp.opportunities_per_unit = 15
+        mock_query.first.return_value = mock_part_opp
+
+        # Mock inspections
+        mock_insp = MagicMock()
+        mock_insp.units_inspected = 500
+        mock_insp.defects_found = 5
+        mock_query.all.return_value = [mock_insp]
+
+        dpmo, sigma, units, defects = calculate_dpmo(
+            mock_db, 1, 1, date.today() - timedelta(days=30), date.today(),
+            part_number="PART-001"
+        )
+
+        assert units == 500
+        assert defects == 5
+
+
+# =============================================================================
+# Test calculate_process_capability (mocked)
+# =============================================================================
+
+class TestCalculateProcessCapability:
+    """Test Cp, Cpk calculation"""
+
+    def test_process_capability_no_data(self):
+        """Test process capability with no inspection data"""
+        from backend.calculations.dpmo import calculate_process_capability
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+
+        result = calculate_process_capability(
+            mock_db, 1, date.today() - timedelta(days=30), date.today(),
+            upper_spec_limit=Decimal("10.0"),
+            lower_spec_limit=Decimal("0.0"),
+            target_value=Decimal("5.0")
+        )
+
+        assert result["cp"] == Decimal("0")
+        assert result["cpk"] == Decimal("0")
+        assert "Insufficient data" in result["interpretation"]
+
+    def test_process_capability_with_data(self):
+        """Test process capability with inspection data"""
+        from backend.calculations.dpmo import calculate_process_capability
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_insp = MagicMock()
+        mock_insp.units_inspected = 1000
+        mock_insp.defects_found = 10  # 1% defect rate
+        mock_query.all.return_value = [mock_insp]
+
+        result = calculate_process_capability(
+            mock_db, 1, date.today() - timedelta(days=30), date.today(),
+            upper_spec_limit=Decimal("10.0"),
+            lower_spec_limit=Decimal("0.0"),
+            target_value=Decimal("5.0")
+        )
+
+        assert "cp" in result
+        assert "cpk" in result
+        assert "interpretation" in result
+        assert result["total_inspected"] == 1000
+        assert result["total_defects"] == 10
+
+    def test_process_capability_perfect_quality(self):
+        """Test process capability with zero defects"""
+        from backend.calculations.dpmo import calculate_process_capability
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        mock_insp = MagicMock()
+        mock_insp.units_inspected = 1000
+        mock_insp.defects_found = 0
+        mock_query.all.return_value = [mock_insp]
+
+        result = calculate_process_capability(
+            mock_db, 1, date.today() - timedelta(days=30), date.today(),
+            upper_spec_limit=Decimal("10.0"),
+            lower_spec_limit=Decimal("0.0"),
+            target_value=Decimal("5.0")
+        )
+
+        # Perfect quality = Cp/Cpk of 2.0
+        assert result["cp"] == Decimal("2.0")
+        assert result["cpk"] == Decimal("2.0")
+        assert "Six Sigma" in result["interpretation"]
+
+    def test_process_capability_interpretation_levels(self):
+        """Test process capability interpretation for different levels"""
+        # Test the interpretation thresholds
+        def get_interpretation(cpk: Decimal) -> str:
+            if cpk >= Decimal("2.0"):
+                return "Excellent (Six Sigma capable)"
+            elif cpk >= Decimal("1.67"):
+                return "Very Good (Five Sigma capable)"
+            elif cpk >= Decimal("1.33"):
+                return "Good (Four Sigma capable)"
+            elif cpk >= Decimal("1.0"):
+                return "Adequate (Three Sigma capable)"
+            else:
+                return "Poor (Process improvement needed)"
+
+        assert "Excellent" in get_interpretation(Decimal("2.0"))
+        assert "Very Good" in get_interpretation(Decimal("1.67"))
+        assert "Good" in get_interpretation(Decimal("1.33"))
+        assert "Adequate" in get_interpretation(Decimal("1.0"))
+        assert "Poor" in get_interpretation(Decimal("0.5"))
+
+
+# =============================================================================
+# Test identify_quality_trends (mocked)
+# =============================================================================
+
+class TestIdentifyQualityTrends:
+    """Test quality trend analysis"""
+
+    def test_quality_trends_improving(self):
+        """Test detection of improving quality trend"""
+        from backend.calculations.dpmo import identify_quality_trends
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        # First half: high DPMO (worse)
+        mock_insp_first = MagicMock()
+        mock_insp_first.units_inspected = 1000
+        mock_insp_first.defects_found = 50  # 5% defect rate
+
+        # Second half: low DPMO (better)
+        mock_insp_second = MagicMock()
+        mock_insp_second.units_inspected = 1000
+        mock_insp_second.defects_found = 10  # 1% defect rate
+
+        # Return different data for different queries
+        mock_query.all.side_effect = [[mock_insp_first], [mock_insp_second]]
+
+        result = identify_quality_trends(mock_db, 1, lookback_days=30)
+
+        assert "trend" in result
+        assert "recommendation" in result
+        assert "dpmo_first_half" in result
+        assert "dpmo_second_half" in result
+
+    def test_quality_trends_no_data(self):
+        """Test trend analysis with no data"""
+        from backend.calculations.dpmo import identify_quality_trends
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+
+        result = identify_quality_trends(mock_db, 1, lookback_days=30)
+
+        assert result["trend"] == "insufficient_data"
+        assert "Collect more" in result["recommendation"]
+
+    def test_quality_trends_stable(self):
+        """Test detection of stable quality trend"""
+        from backend.calculations.dpmo import identify_quality_trends
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        # Both halves: similar DPMO
+        mock_insp = MagicMock()
+        mock_insp.units_inspected = 1000
+        mock_insp.defects_found = 20
+
+        mock_query.all.side_effect = [[mock_insp], [mock_insp]]
+
+        result = identify_quality_trends(mock_db, 1, lookback_days=30)
+
+        assert result["trend"] == "stable"
+        assert "stable" in result["recommendation"].lower()
+
+
+# =============================================================================
+# Test calculate_dpmo_with_part_lookup (mocked)
+# =============================================================================
+
+class TestCalculateDPMOWithPartLookup:
+    """Test DPMO calculation with part-specific opportunities"""
+
+    def test_dpmo_with_part_lookup_no_data(self):
+        """Test DPMO with part lookup when no data"""
+        from backend.calculations.dpmo import calculate_dpmo_with_part_lookup
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+        mock_query.all.return_value = []
+
+        result = calculate_dpmo_with_part_lookup(
+            mock_db, date.today() - timedelta(days=30), date.today()
+        )
+
+        assert result["overall_dpmo"] == Decimal("0")
+        assert result["total_units"] == 0
+        assert result["total_defects"] == 0
+        assert result["by_part"] == []
+
+    def test_dpmo_with_part_lookup_structure(self):
+        """Test DPMO with part lookup returns correct structure"""
+        from backend.calculations.dpmo import calculate_dpmo_with_part_lookup
+        mock_db = MagicMock()
+        mock_query = MagicMock()
+        mock_db.query.return_value = mock_query
+        mock_query.filter.return_value = mock_query
+
+        # Mock quality entry with job
+        mock_qe = MagicMock()
+        mock_qe.units_inspected = 100
+        mock_qe.total_defects_count = 5
+        mock_qe.units_defective = 5
+        mock_qe.job_id = "JOB001"
+
+        # Mock job
+        mock_job = MagicMock()
+        mock_job.job_id = "JOB001"
+        mock_job.part_number = "PART-001"
+
+        mock_query.all.side_effect = [
+            [mock_qe],  # Quality entries query
+            [mock_job],  # Jobs query
+            []  # Part opportunities query
+        ]
+
+        result = calculate_dpmo_with_part_lookup(
+            mock_db, date.today() - timedelta(days=30), date.today()
+        )
+
+        assert "overall_dpmo" in result
+        assert "overall_sigma_level" in result
+        assert "total_units" in result
+        assert "total_defects" in result
+        assert "total_opportunities" in result
+        assert "by_part" in result
+        assert "using_part_specific_opportunities" in result

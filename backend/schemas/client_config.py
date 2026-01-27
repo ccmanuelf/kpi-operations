@@ -2,8 +2,9 @@
 CLIENT_CONFIG table ORM schema (SQLAlchemy)
 Client-level KPI calculation configuration overrides
 Implements Phase 7.2: Client-Level Calculation Overrides
+Implements Phase 10: Flexible Workflow Foundation
 """
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Enum as SQLEnum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from backend.database import Base
@@ -59,6 +60,40 @@ class ClientConfig(Base):
     # WIP Aging Configuration
     wip_aging_threshold_days = Column(Integer, default=7)  # Default: 7 days before flagging as aged
     wip_critical_threshold_days = Column(Integer, default=14)  # Default: 14 days for critical aging
+
+    # ===========================================
+    # Workflow Configuration (Phase 10)
+    # ===========================================
+
+    # Workflow statuses allowed for this client (JSON array)
+    # Default: ["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"]
+    # Client can customize to subset or reorder
+    workflow_statuses = Column(Text, default='["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"]')
+
+    # Required status transitions (JSON object)
+    # Format: {"TO_STATUS": ["ALLOWED_FROM_STATUS_1", "ALLOWED_FROM_STATUS_2"]}
+    # Default allows standard linear flow with hold/cancel from any
+    workflow_transitions = Column(Text, default='''{
+        "RELEASED": ["RECEIVED"],
+        "IN_PROGRESS": ["RELEASED"],
+        "COMPLETED": ["IN_PROGRESS"],
+        "SHIPPED": ["COMPLETED"],
+        "CLOSED": ["SHIPPED", "COMPLETED"],
+        "ON_HOLD": ["RECEIVED", "RELEASED", "IN_PROGRESS"],
+        "DEMOTED": ["RELEASED"],
+        "CANCELLED": ["RECEIVED", "RELEASED", "IN_PROGRESS", "ON_HOLD", "DEMOTED"],
+        "REJECTED": ["IN_PROGRESS", "COMPLETED"]
+    }''')
+
+    # Optional statuses that can be skipped
+    # Default: SHIPPED can be skipped if closure_trigger is "at_completion"
+    workflow_optional_statuses = Column(Text, default='["SHIPPED", "DEMOTED"]')
+
+    # When to close the order: "at_shipment", "at_client_receipt", "at_completion", "manual"
+    workflow_closure_trigger = Column(String(30), default='at_shipment')
+
+    # Workflow version for future migrations
+    workflow_version = Column(Integer, default=1)
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

@@ -27,9 +27,11 @@
 
       <!-- Status Bar -->
       <div class="px-6 py-3 d-flex align-center justify-space-between bg-surface-light">
-        <v-chip :color="getStatusColor(workOrder.status)" variant="flat">
-          {{ formatStatus(workOrder.status) }}
-        </v-chip>
+        <WorkOrderStatusChip
+          :work-order-id="workOrder.work_order_id"
+          :status="workOrder.status"
+          @transitioned="onStatusTransitioned"
+        />
         <v-chip
           v-if="workOrder.priority"
           :color="getPriorityColor(workOrder.priority)"
@@ -202,56 +204,27 @@
 
         <v-divider />
 
-        <!-- Activity Timeline -->
+        <!-- Elapsed Time Metrics (Phase 10) -->
         <div class="px-6 py-4">
-          <div class="text-subtitle-2 font-weight-bold mb-3">Activity Timeline</div>
+          <WorkOrderElapsedTime
+            :work-order-id="workOrder.work_order_id"
+            :show-stages="true"
+            :show-dates="true"
+          />
+        </div>
 
-          <v-timeline density="compact" side="end">
-            <v-timeline-item
-              v-if="workOrder.created_at"
-              dot-color="primary"
-              size="small"
-            >
-              <div class="text-body-2 font-weight-medium">Work Order Created</div>
-              <div class="text-caption text-medium-emphasis">{{ formatDateTime(workOrder.created_at) }}</div>
-            </v-timeline-item>
+        <v-divider />
 
-            <v-timeline-item
-              v-if="workOrder.actual_start_date"
-              dot-color="info"
-              size="small"
-            >
-              <div class="text-body-2 font-weight-medium">Production Started</div>
-              <div class="text-caption text-medium-emphasis">{{ formatDateTime(workOrder.actual_start_date) }}</div>
-            </v-timeline-item>
-
-            <v-timeline-item
-              v-if="workOrder.qc_approved"
-              dot-color="success"
-              size="small"
-            >
-              <div class="text-body-2 font-weight-medium">QC Approved</div>
-              <div class="text-caption text-medium-emphasis">{{ formatDateTime(workOrder.qc_approved_date) }}</div>
-            </v-timeline-item>
-
-            <v-timeline-item
-              v-if="workOrder.status === 'COMPLETED'"
-              dot-color="success"
-              size="small"
-            >
-              <div class="text-body-2 font-weight-medium">Work Order Completed</div>
-              <div class="text-caption text-medium-emphasis">{{ formatDateTime(workOrder.updated_at) }}</div>
-            </v-timeline-item>
-
-            <v-timeline-item
-              v-if="workOrder.status === 'REJECTED'"
-              dot-color="error"
-              size="small"
-            >
-              <div class="text-body-2 font-weight-medium">Work Order Rejected</div>
-              <div class="text-caption text-medium-emphasis">{{ formatDateTime(workOrder.rejected_date) }}</div>
-            </v-timeline-item>
-          </v-timeline>
+        <!-- Transition History (Phase 10) -->
+        <div class="px-6 py-4">
+          <WorkOrderTransitionHistory
+            ref="transitionHistoryRef"
+            :work-order-id="workOrder.work_order_id"
+            :max-display="5"
+            :show-user="true"
+            :show-notes="true"
+            :show-elapsed-time="true"
+          />
         </div>
       </v-card-text>
 
@@ -316,6 +289,9 @@ import { format, parseISO, isAfter, startOfDay } from 'date-fns'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
 import JobLineItems from '@/components/JobLineItems.vue'
+import WorkOrderStatusChip from '@/components/workflow/WorkOrderStatusChip.vue'
+import WorkOrderTransitionHistory from '@/components/workflow/WorkOrderTransitionHistory.vue'
+import WorkOrderElapsedTime from '@/components/workflow/WorkOrderElapsedTime.vue'
 
 const props = defineProps({
   modelValue: {
@@ -332,10 +308,21 @@ const emit = defineEmits(['update:modelValue', 'update', 'edit'])
 
 const notificationStore = useNotificationStore()
 const workOrderRty = ref(null)
+const transitionHistoryRef = ref(null)
 
 // Handle RTY data loaded from JobLineItems
 const onRtyLoaded = (rtyData) => {
   workOrderRty.value = rtyData
+}
+
+// Handle status transition from WorkOrderStatusChip
+const onStatusTransitioned = (event) => {
+  // Refresh transition history
+  if (transitionHistoryRef.value) {
+    transitionHistoryRef.value.refresh()
+  }
+  // Emit update to parent to refresh work order list
+  emit('update')
 }
 
 // Computed
@@ -415,13 +402,25 @@ const formatDateTime = (dateStr) => {
 
 const updateStatus = async (newStatus) => {
   try {
-    await api.updateWorkOrder(props.workOrder.work_order_id, { status: newStatus })
+    await api.transitionWorkOrder(props.workOrder.work_order_id, newStatus)
     notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
+    // Refresh transition history
+    if (transitionHistoryRef.value) {
+      transitionHistoryRef.value.refresh()
+    }
     emit('update')
     emit('update:modelValue', false)
   } catch (error) {
     console.error('Error updating status:', error)
-    notificationStore.showError('Failed to update status')
+    // Fallback to direct update if workflow API fails
+    try {
+      await api.updateWorkOrder(props.workOrder.work_order_id, { status: newStatus })
+      notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
+      emit('update')
+      emit('update:modelValue', false)
+    } catch (fallbackError) {
+      notificationStore.showError(error.response?.data?.detail || 'Failed to update status')
+    }
   }
 }
 </script>

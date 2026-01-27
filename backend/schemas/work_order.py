@@ -10,12 +10,39 @@ import enum
 
 
 class WorkOrderStatus(str, enum.Enum):
-    """Work order status"""
-    ACTIVE = "ACTIVE"
-    ON_HOLD = "ON_HOLD"
-    COMPLETED = "COMPLETED"
-    REJECTED = "REJECTED"
-    CANCELLED = "CANCELLED"
+    """
+    Work order status - Flexible workflow states
+
+    Workflow lifecycle (configurable per client):
+    RECEIVED → RELEASED → IN_PROGRESS → COMPLETED → SHIPPED → CLOSED
+
+    Optional branches:
+    - Any → ON_HOLD → (previous state)
+    - Any → CANCELLED
+    - RELEASED → DEMOTED → RECEIVED
+    """
+    # Initial states
+    RECEIVED = "RECEIVED"           # Order acknowledged/received
+
+    # Pre-production states
+    RELEASED = "RELEASED"           # Released/dispatched to shopfloor
+    DEMOTED = "DEMOTED"             # Priority lowered, pushed back
+
+    # Production states (legacy + new)
+    ACTIVE = "ACTIVE"               # Legacy: In active production (alias for IN_PROGRESS)
+    IN_PROGRESS = "IN_PROGRESS"     # Currently being worked on
+    ON_HOLD = "ON_HOLD"             # Paused/held
+
+    # Completion states
+    COMPLETED = "COMPLETED"         # Production completed
+
+    # Post-production states
+    SHIPPED = "SHIPPED"             # Shipped to client
+    CLOSED = "CLOSED"               # Formally closed (terminal)
+
+    # Termination states
+    REJECTED = "REJECTED"           # QC rejection (terminal)
+    CANCELLED = "CANCELLED"         # Order cancelled (terminal)
 
 
 class WorkOrder(Base):
@@ -40,12 +67,24 @@ class WorkOrder(Base):
     planned_quantity = Column(Integer, nullable=False)
     actual_quantity = Column(Integer, default=0)
 
-    # Date tracking for OTD calculation
+    # Workflow lifecycle dates
+    received_date = Column(DateTime, index=True)      # When order was received/acknowledged
+    planned_date = Column(DateTime)                    # When work is planned to start
+    expected_date = Column(DateTime)                   # Expected completion date
+    dispatch_date = Column(DateTime, index=True)       # When released/dispatched to shopfloor
+    shipped_date = Column(DateTime)                    # When shipped to client
+    closure_date = Column(DateTime)                    # When formally closed
+    closed_by = Column(Integer)                        # USER.user_id who closed the order
+
+    # Date tracking for OTD calculation (legacy + enhanced)
     planned_start_date = Column(DateTime)
     actual_start_date = Column(DateTime, index=True)
     planned_ship_date = Column(DateTime, index=True)  # REQUIRED for OTD
     required_date = Column(DateTime)
     actual_delivery_date = Column(DateTime)  # REQUIRED for OTD
+
+    # Workflow state tracking
+    previous_status = Column(String(20))               # For ON_HOLD resume tracking
 
     # Performance calculation
     ideal_cycle_time = Column(Numeric(10, 4))  # Decimal hours (0.25 = 15 min)

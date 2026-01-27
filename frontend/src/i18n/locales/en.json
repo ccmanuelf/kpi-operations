@@ -47,7 +47,9 @@
     "units": "units",
     "recovered": "recovered",
     "stages": "stages",
-    "stage": "Stage"
+    "stage": "Stage",
+    "days": "days",
+    "hours": "hours"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -85,7 +87,11 @@
     "primaryNav": "Primary navigation",
     "defectTypes": "Defect Types",
     "clientConfig": "Client Config",
-    "partOpportunities": "Part Opportunities"
+    "partOpportunities": "Part Opportunities",
+    "workflowConfig": "Workflow Config",
+    "alerts": "Alerts",
+    "simulation": "Simulation",
+    "tools": "Tools"
   },
   "auth": {
     "login": "Login",
@@ -844,7 +850,67 @@
       "assignmentSuccess": "Employee assigned successfully",
       "unassignmentSuccess": "Employee unassigned successfully",
       "doubleAssignmentError": "This employee is already assigned to another client. Please unassign first.",
-      "conflictDetected": "Assignment conflict detected"
+      "conflictDetected": "Assignment conflict detected",
+      "simulationInsights": "Simulation Insights",
+      "staffingScenarios": "Staffing Scenarios",
+      "recommendations": "Recommendations",
+      "noInsightsAvailable": "Run a simulation to see staffing insights"
+    },
+    "workflowConfig": {
+      "title": "Workflow Configuration",
+      "description": "Configure work order workflow statuses, transitions, and closure triggers per client.",
+      "availableTemplates": "Available Templates",
+      "selectClient": "Select a Client",
+      "selectClientPrompt": "Select a client to view or edit their workflow configuration.",
+      "configFor": "Configuration for",
+      "workflowStatuses": "Workflow Statuses",
+      "statusOrderHint": "Select statuses that will be part of the workflow pipeline. The order determines the standard flow.",
+      "optionalStatuses": "Optional Statuses",
+      "optionalHint": "Select statuses that can be skipped in the workflow (e.g., shipping stage for direct pickup orders).",
+      "closureTrigger": "Closure Trigger",
+      "transitionRules": "Transition Rules",
+      "transitionHint": "Configure which statuses can transition to each target status.",
+      "toStatus": "To Status",
+      "allowedFromStatuses": "Allowed From",
+      "allowedFrom": "Allowed from",
+      "statuses": "statuses",
+      "applyTemplate": "Apply Template",
+      "selectTemplate": "Select a template",
+      "confirmApplyTemplate": "Apply Workflow Template",
+      "confirmApplyMessage": "Apply the \"{template}\" template to {client}?",
+      "templateWarning": "This will replace the current workflow configuration. Existing work orders will not be affected.",
+      "apply": "Apply",
+      "editConfig": "Edit Workflow Configuration",
+      "statusDistribution": "Status Distribution",
+      "averageTimes": "Average Processing Times",
+      "avgLifecycle": "Avg Lifecycle Time",
+      "avgLeadTime": "Avg Lead Time",
+      "avgProcessing": "Avg Processing Time",
+      "sampleSize": "Sample size",
+      "totalOrders": "Total orders",
+      "noAnalyticsData": "No analytics data available yet",
+      "closureTriggers": {
+        "atShipment": "At Shipment",
+        "atClientReceipt": "At Client Receipt",
+        "atCompletion": "At Completion",
+        "manual": "Manual"
+      },
+      "closureHints": {
+        "atShipment": "Orders automatically close when marked as shipped",
+        "atClientReceipt": "Orders close when client confirms receipt",
+        "atCompletion": "Orders close immediately when production completes (skip shipping)",
+        "manual": "Orders must be manually closed by operators"
+      },
+      "success": {
+        "updated": "Workflow configuration updated successfully",
+        "templateApplied": "Template applied successfully"
+      },
+      "errors": {
+        "loadClients": "Failed to load clients",
+        "loadConfig": "Failed to load workflow configuration",
+        "save": "Failed to save configuration",
+        "applyTemplate": "Failed to apply template"
+      }
     }
   },
   "csv": {
@@ -958,5 +1024,257 @@
     "dateRange": "End date must be after start date",
     "future": "Date must be in the future",
     "past": "Date cannot be in the future"
+  },
+  "simulation": {
+    "title": "Simulation & Capacity Planning",
+    "description": "Plan capacity requirements, analyze staffing scenarios, and run production line simulations",
+    "capacityPlanning": "Capacity Planning",
+    "productionLine": "Production Line Simulation",
+    "scenarioComparison": "Scenario Comparison",
+    "howToGuide": "How-To Guide",
+    "capacity": {
+      "title": "Capacity Requirements Calculator",
+      "description": "Calculate staffing and resource requirements to meet production targets",
+      "targetUnits": "Target Units",
+      "targetDate": "Target Date",
+      "cycleTimeHours": "Cycle Time (hours)",
+      "shiftHours": "Shift Hours",
+      "targetEfficiency": "Target Efficiency (%)",
+      "absenteeismRate": "Absenteeism Rate (%)",
+      "includeBuffer": "Include Safety Buffer",
+      "calculate": "Calculate Requirements",
+      "results": "Capacity Results",
+      "employeesRequired": "Employees Required",
+      "dailyCapacity": "Daily Capacity",
+      "daysNeeded": "Days Needed",
+      "totalHoursNeeded": "Total Hours Needed",
+      "recommendation": "Recommendation"
+    },
+    "staffing": {
+      "title": "Staffing Simulation",
+      "description": "Simulate production output with different staffing levels",
+      "baseEmployees": "Base Employees",
+      "scenarios": "Staffing Scenarios",
+      "addScenario": "Add Scenario",
+      "removeScenario": "Remove",
+      "runSimulation": "Run Simulation",
+      "results": "Staffing Simulation Results",
+      "scenario": "Scenario",
+      "employees": "Employees",
+      "output": "Output",
+      "efficiency": "Efficiency"
+    },
+    "productionLine": {
+      "title": "Production Line Simulation (SimPy)",
+      "description": "Discrete-event simulation of production line with work stations, floating pool, and bottleneck analysis",
+      "configuration": "Line Configuration",
+      "numStations": "Number of Stations",
+      "workersPerStation": "Workers per Station",
+      "floatingPoolSize": "Floating Pool Size",
+      "baseCycleTime": "Base Cycle Time (min)",
+      "durationHours": "Simulation Duration (hours)",
+      "runSimulation": "Run Production Simulation",
+      "results": "Simulation Results",
+      "unitsProduced": "Units Produced",
+      "throughput": "Throughput (units/hr)",
+      "avgWaitTime": "Average Wait Time",
+      "avgProcessTime": "Average Process Time",
+      "utilizationRate": "Utilization Rate",
+      "bottleneckStation": "Bottleneck Station",
+      "floatingPoolAssignments": "Floating Pool Assignments",
+      "stationMetrics": "Station Metrics",
+      "station": "Station",
+      "utilization": "Utilization",
+      "queueLength": "Queue Length",
+      "processedUnits": "Processed Units"
+    },
+    "bottleneck": {
+      "title": "Bottleneck Analysis",
+      "description": "Identify production bottlenecks and optimization opportunities",
+      "analyze": "Analyze Bottlenecks",
+      "results": "Bottleneck Analysis Results",
+      "bottleneckStations": "Bottleneck Stations",
+      "recommendations": "Recommendations",
+      "severity": "Severity",
+      "impact": "Impact on Throughput"
+    },
+    "floatingPool": {
+      "title": "Floating Pool Impact Analysis",
+      "description": "Analyze how floating pool size affects production output",
+      "poolSizes": "Pool Sizes to Analyze",
+      "analyze": "Analyze Impact",
+      "results": "Floating Pool Impact Results",
+      "poolSize": "Pool Size",
+      "throughputGain": "Throughput Gain",
+      "roi": "ROI Score"
+    },
+    "comparison": {
+      "title": "Scenario Comparison",
+      "description": "Compare multiple production scenarios side by side",
+      "baseConfig": "Base Configuration",
+      "scenarios": "Scenarios",
+      "addScenario": "Add Scenario",
+      "scenarioName": "Scenario Name",
+      "compare": "Compare Scenarios",
+      "results": "Comparison Results",
+      "metric": "Metric",
+      "difference": "Difference from Base"
+    },
+    "guide": {
+      "title": "Production Line Simulation Guide",
+      "close": "Close Guide",
+      "loading": "Loading guide..."
+    },
+    "common": {
+      "loading": "Running simulation...",
+      "error": "Simulation error",
+      "noResults": "No results yet. Run a simulation to see results.",
+      "export": "Export Results",
+      "reset": "Reset",
+      "advanced": "Advanced Options"
+    }
+  },
+  "workflow": {
+    "transitionHistory": "Status History",
+    "changeStatus": "Change Status",
+    "transitionNotes": "Transition Notes",
+    "transitionPrompt": "Transitioning to",
+    "notes": "Notes (optional)",
+    "confirm": "Confirm",
+    "transitionSuccess": "Status changed successfully",
+    "transitionError": "Failed to change status",
+    "noTransitions": "No status changes recorded",
+    "elapsedTime": "Elapsed Time",
+    "overdue": "Overdue",
+    "totalTime": "Total Time",
+    "stageBreakdown": "Stage Breakdown",
+    "leadTime": "Lead Time",
+    "processingTime": "Processing Time",
+    "shippingTime": "Shipping Time",
+    "receivedToDispatch": "Received → Dispatch",
+    "dispatchToComplete": "Dispatch → Complete",
+    "completeToShip": "Complete → Ship",
+    "keyDates": "Key Dates",
+    "received": "Received",
+    "dispatched": "Dispatched",
+    "expected": "Expected",
+    "closed": "Closed",
+    "noExpectedDate": "No target",
+    "daysLate": "Days Late",
+    "daysEarly": "Days Early",
+    "onTime": "On Time",
+    "noTimeData": "No elapsed time data available",
+    "status": {
+      "received": "Received",
+      "dispatched": "Dispatched",
+      "in_wip": "In WIP",
+      "on_hold": "On Hold",
+      "completed": "Completed",
+      "shipped": "Shipped",
+      "closed": "Closed",
+      "cancelled": "Cancelled",
+      "rejected": "Rejected",
+      "active": "Active"
+    },
+    "config": {
+      "title": "Workflow Configuration",
+      "statuses": "Available Statuses",
+      "transitions": "Allowed Transitions",
+      "template": "Apply Template",
+      "templates": {
+        "standard": "Standard Workflow",
+        "simple": "Simple Workflow",
+        "express": "Express Workflow"
+      }
+    }
+  },
+  "workflowDesigner": {
+    "title": "Workflow Designer",
+    "changeClient": "Change Client",
+    "selectClient": {
+      "title": "Visual Workflow Designer",
+      "subtitle": "Select a client to design their manufacturing workflow visually",
+      "label": "Select Client",
+      "clientId": "Client ID"
+    },
+    "toolbar": {
+      "templates": "Templates",
+      "applyTemplate": "Apply Template",
+      "addStatus": "Add Status",
+      "undo": "Undo",
+      "redo": "Redo",
+      "mermaid": "Mermaid",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "valid": "Valid"
+    },
+    "canvas": {
+      "emptyState": "No workflow defined",
+      "emptyStateHint": "Add statuses using the toolbar to start building your workflow"
+    },
+    "sidebar": {
+      "properties": "Properties",
+      "statusProperties": "Status Properties",
+      "transitionProperties": "Transition Properties",
+      "noSelection": "Select a status or transition to view its properties",
+      "statusType": "Status Type",
+      "incomingTransitions": "Incoming Transitions",
+      "outgoingTransitions": "Outgoing Transitions",
+      "noIncoming": "No incoming transitions",
+      "noOutgoing": "No outgoing transitions",
+      "deleteStatus": "Delete Status",
+      "cannotDeleteReceived": "The RECEIVED status cannot be deleted (entry point)",
+      "transition": "Transition",
+      "from": "From",
+      "to": "To",
+      "deleteTransition": "Delete Transition",
+      "issues": "Validation Issues"
+    },
+    "mermaid": {
+      "title": "Mermaid Code",
+      "edit": "Edit",
+      "preview": "Preview",
+      "apply": "Apply Changes",
+      "copy": "Copy to Clipboard",
+      "copied": "Copied to clipboard!",
+      "placeholder": "Enter Mermaid flowchart code...",
+      "statuses": "statuses",
+      "transitions": "transitions"
+    },
+    "validation": {
+      "title": "Validation Issues",
+      "affectedStatus": "Affected status"
+    },
+    "statusTypes": {
+      "start": "Entry Point",
+      "normal": "Standard Status",
+      "terminal": "Terminal Status",
+      "hold": "Hold Status",
+      "optional": "Optional Status"
+    },
+    "dialog": {
+      "addStatus": {
+        "title": "Add New Status",
+        "name": "Status Name",
+        "hint": "Use uppercase letters and underscores (e.g., IN_PROGRESS)"
+      },
+      "applyTemplate": {
+        "title": "Apply Workflow Template",
+        "warning": "This will replace the current workflow configuration. Existing work orders will not be affected.",
+        "confirm": "Apply the \"{template}\" template?"
+      },
+      "deleteStatus": {
+        "confirm": "Are you sure you want to delete the \"{status}\" status? This will also remove all connected transitions."
+      },
+      "deleteTransition": {
+        "confirm": "Are you sure you want to delete the transition from \"{from}\" to \"{to}\"?"
+      },
+      "unsavedChanges": {
+        "title": "Unsaved Changes",
+        "message": "You have unsaved changes. Do you want to save them before leaving?",
+        "save": "Save & Leave",
+        "discard": "Discard"
+      }
+    }
   }
 }

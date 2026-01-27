@@ -85,7 +85,11 @@
     "primaryNav": "Navegación primaria",
     "defectTypes": "Tipos de Defecto",
     "clientConfig": "Config. Cliente",
-    "partOpportunities": "Oport. por Parte"
+    "partOpportunities": "Oport. por Parte",
+    "workflowConfig": "Config. Flujo",
+    "alerts": "Alertas",
+    "simulation": "Simulación",
+    "tools": "Herramientas"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -851,7 +855,67 @@
       "assignmentSuccess": "Empleado asignado exitosamente",
       "unassignmentSuccess": "Empleado desasignado exitosamente",
       "doubleAssignmentError": "Este empleado ya está asignado a otro cliente. Por favor desasigne primero.",
-      "conflictDetected": "Conflicto de asignación detectado"
+      "conflictDetected": "Conflicto de asignación detectado",
+      "simulationInsights": "Análisis de Simulación",
+      "staffingScenarios": "Escenarios de Personal",
+      "recommendations": "Recomendaciones",
+      "noInsightsAvailable": "Ejecute una simulación para ver análisis de personal"
+    },
+    "workflowConfig": {
+      "title": "Configuración de Flujo de Trabajo",
+      "description": "Configure estados del flujo de trabajo, transiciones y disparadores de cierre por cliente.",
+      "availableTemplates": "Plantillas Disponibles",
+      "selectClient": "Seleccionar Cliente",
+      "selectClientPrompt": "Seleccione un cliente para ver o editar su configuración de flujo.",
+      "configFor": "Configuración para",
+      "workflowStatuses": "Estados del Flujo",
+      "statusOrderHint": "Seleccione los estados que formarán parte del flujo. El orden determina el flujo estándar.",
+      "optionalStatuses": "Estados Opcionales",
+      "optionalHint": "Seleccione estados que pueden omitirse en el flujo (ej., etapa de envío para órdenes con recolección directa).",
+      "closureTrigger": "Disparador de Cierre",
+      "transitionRules": "Reglas de Transición",
+      "transitionHint": "Configure qué estados pueden transicionar a cada estado destino.",
+      "toStatus": "Estado Destino",
+      "allowedFromStatuses": "Permitidos Desde",
+      "allowedFrom": "Permitido desde",
+      "statuses": "estados",
+      "applyTemplate": "Aplicar Plantilla",
+      "selectTemplate": "Seleccionar plantilla",
+      "confirmApplyTemplate": "Aplicar Plantilla de Flujo",
+      "confirmApplyMessage": "¿Aplicar la plantilla \"{template}\" a {client}?",
+      "templateWarning": "Esto reemplazará la configuración actual del flujo. Las órdenes existentes no se verán afectadas.",
+      "apply": "Aplicar",
+      "editConfig": "Editar Configuración de Flujo",
+      "statusDistribution": "Distribución de Estados",
+      "averageTimes": "Tiempos de Procesamiento Promedio",
+      "avgLifecycle": "Tiempo de Ciclo Prom.",
+      "avgLeadTime": "Tiempo de Espera Prom.",
+      "avgProcessing": "Tiempo de Proceso Prom.",
+      "sampleSize": "Tamaño de muestra",
+      "totalOrders": "Órdenes totales",
+      "noAnalyticsData": "Aún no hay datos analíticos disponibles",
+      "closureTriggers": {
+        "atShipment": "Al Enviar",
+        "atClientReceipt": "Al Recibir Cliente",
+        "atCompletion": "Al Completar",
+        "manual": "Manual"
+      },
+      "closureHints": {
+        "atShipment": "Las órdenes se cierran automáticamente al marcar como enviadas",
+        "atClientReceipt": "Las órdenes se cierran cuando el cliente confirma recepción",
+        "atCompletion": "Las órdenes se cierran inmediatamente al completar producción (omitir envío)",
+        "manual": "Las órdenes deben cerrarse manualmente por los operadores"
+      },
+      "success": {
+        "updated": "Configuración de flujo actualizada exitosamente",
+        "templateApplied": "Plantilla aplicada exitosamente"
+      },
+      "errors": {
+        "loadClients": "Error al cargar clientes",
+        "loadConfig": "Error al cargar configuración de flujo",
+        "save": "Error al guardar configuración",
+        "applyTemplate": "Error al aplicar plantilla"
+      }
     }
   },
   "csv": {
@@ -949,7 +1013,9 @@
     "stages": "etapas",
     "stage": "Etapa",
     "active": "Activo",
-    "confirmDelete": "Confirmar Eliminación"
+    "confirmDelete": "Confirmar Eliminación",
+    "days": "dias",
+    "hours": "horas"
   },
   "validation": {
     "required": "Este campo es requerido",
@@ -965,5 +1031,257 @@
     "dateRange": "La fecha de fin debe ser posterior a la de inicio",
     "future": "La fecha debe ser en el futuro",
     "past": "La fecha no puede ser en el futuro"
+  },
+  "simulation": {
+    "title": "Simulación y Planificación de Capacidad",
+    "description": "Planifica requisitos de capacidad, analiza escenarios de personal y ejecuta simulaciones de línea de producción",
+    "capacityPlanning": "Planificación de Capacidad",
+    "productionLine": "Simulación de Línea de Producción",
+    "scenarioComparison": "Comparación de Escenarios",
+    "howToGuide": "Guía de Uso",
+    "capacity": {
+      "title": "Calculadora de Requisitos de Capacidad",
+      "description": "Calcula los requisitos de personal y recursos para alcanzar metas de producción",
+      "targetUnits": "Unidades Meta",
+      "targetDate": "Fecha Meta",
+      "cycleTimeHours": "Tiempo de Ciclo (horas)",
+      "shiftHours": "Horas por Turno",
+      "targetEfficiency": "Eficiencia Meta (%)",
+      "absenteeismRate": "Tasa de Ausentismo (%)",
+      "includeBuffer": "Incluir Margen de Seguridad",
+      "calculate": "Calcular Requisitos",
+      "results": "Resultados de Capacidad",
+      "employeesRequired": "Empleados Requeridos",
+      "dailyCapacity": "Capacidad Diaria",
+      "daysNeeded": "Días Necesarios",
+      "totalHoursNeeded": "Horas Totales Necesarias",
+      "recommendation": "Recomendación"
+    },
+    "staffing": {
+      "title": "Simulación de Personal",
+      "description": "Simula producción con diferentes niveles de personal",
+      "baseEmployees": "Empleados Base",
+      "scenarios": "Escenarios de Personal",
+      "addScenario": "Agregar Escenario",
+      "removeScenario": "Eliminar",
+      "runSimulation": "Ejecutar Simulación",
+      "results": "Resultados de Simulación de Personal",
+      "scenario": "Escenario",
+      "employees": "Empleados",
+      "output": "Producción",
+      "efficiency": "Eficiencia"
+    },
+    "productionLine": {
+      "title": "Simulación de Línea de Producción (SimPy)",
+      "description": "Simulación de eventos discretos de línea de producción con estaciones de trabajo, pool flotante y análisis de cuellos de botella",
+      "configuration": "Configuración de Línea",
+      "numStations": "Número de Estaciones",
+      "workersPerStation": "Trabajadores por Estación",
+      "floatingPoolSize": "Tamaño del Pool Flotante",
+      "baseCycleTime": "Tiempo de Ciclo Base (min)",
+      "durationHours": "Duración de Simulación (horas)",
+      "runSimulation": "Ejecutar Simulación de Producción",
+      "results": "Resultados de Simulación",
+      "unitsProduced": "Unidades Producidas",
+      "throughput": "Rendimiento (unidades/hr)",
+      "avgWaitTime": "Tiempo de Espera Promedio",
+      "avgProcessTime": "Tiempo de Proceso Promedio",
+      "utilizationRate": "Tasa de Utilización",
+      "bottleneckStation": "Estación Cuello de Botella",
+      "floatingPoolAssignments": "Asignaciones del Pool Flotante",
+      "stationMetrics": "Métricas por Estación",
+      "station": "Estación",
+      "utilization": "Utilización",
+      "queueLength": "Longitud de Cola",
+      "processedUnits": "Unidades Procesadas"
+    },
+    "bottleneck": {
+      "title": "Análisis de Cuellos de Botella",
+      "description": "Identifica cuellos de botella de producción y oportunidades de optimización",
+      "analyze": "Analizar Cuellos de Botella",
+      "results": "Resultados del Análisis de Cuellos de Botella",
+      "bottleneckStations": "Estaciones Cuello de Botella",
+      "recommendations": "Recomendaciones",
+      "severity": "Severidad",
+      "impact": "Impacto en Rendimiento"
+    },
+    "floatingPool": {
+      "title": "Análisis de Impacto del Pool Flotante",
+      "description": "Analiza cómo el tamaño del pool flotante afecta la producción",
+      "poolSizes": "Tamaños de Pool a Analizar",
+      "analyze": "Analizar Impacto",
+      "results": "Resultados de Impacto del Pool Flotante",
+      "poolSize": "Tamaño del Pool",
+      "throughputGain": "Ganancia de Rendimiento",
+      "roi": "Puntuación ROI"
+    },
+    "comparison": {
+      "title": "Comparación de Escenarios",
+      "description": "Compara múltiples escenarios de producción lado a lado",
+      "baseConfig": "Configuración Base",
+      "scenarios": "Escenarios",
+      "addScenario": "Agregar Escenario",
+      "scenarioName": "Nombre del Escenario",
+      "compare": "Comparar Escenarios",
+      "results": "Resultados de Comparación",
+      "metric": "Métrica",
+      "difference": "Diferencia vs Base"
+    },
+    "guide": {
+      "title": "Guía de Simulación de Línea de Producción",
+      "close": "Cerrar Guía",
+      "loading": "Cargando guía..."
+    },
+    "common": {
+      "loading": "Ejecutando simulación...",
+      "error": "Error de simulación",
+      "noResults": "Sin resultados aún. Ejecuta una simulación para ver resultados.",
+      "export": "Exportar Resultados",
+      "reset": "Restablecer",
+      "advanced": "Opciones Avanzadas"
+    }
+  },
+  "workflow": {
+    "transitionHistory": "Historial de Estados",
+    "changeStatus": "Cambiar Estado",
+    "transitionNotes": "Notas de Transición",
+    "transitionPrompt": "Cambiando a",
+    "notes": "Notas (opcional)",
+    "confirm": "Confirmar",
+    "transitionSuccess": "Estado cambiado exitosamente",
+    "transitionError": "Error al cambiar estado",
+    "noTransitions": "Sin cambios de estado registrados",
+    "elapsedTime": "Tiempo Transcurrido",
+    "overdue": "Atrasado",
+    "totalTime": "Tiempo Total",
+    "stageBreakdown": "Desglose por Etapa",
+    "leadTime": "Tiempo de Espera",
+    "processingTime": "Tiempo de Proceso",
+    "shippingTime": "Tiempo de Envío",
+    "receivedToDispatch": "Recibido → Despachado",
+    "dispatchToComplete": "Despachado → Completado",
+    "completeToShip": "Completado → Enviado",
+    "keyDates": "Fechas Clave",
+    "received": "Recibido",
+    "dispatched": "Despachado",
+    "expected": "Esperado",
+    "closed": "Cerrado",
+    "noExpectedDate": "Sin objetivo",
+    "daysLate": "Días de Retraso",
+    "daysEarly": "Días de Adelanto",
+    "onTime": "A Tiempo",
+    "noTimeData": "Sin datos de tiempo disponibles",
+    "status": {
+      "received": "Recibido",
+      "dispatched": "Despachado",
+      "in_wip": "En Proceso",
+      "on_hold": "En Espera",
+      "completed": "Completado",
+      "shipped": "Enviado",
+      "closed": "Cerrado",
+      "cancelled": "Cancelado",
+      "rejected": "Rechazado",
+      "active": "Activo"
+    },
+    "config": {
+      "title": "Configuración de Flujo",
+      "statuses": "Estados Disponibles",
+      "transitions": "Transiciones Permitidas",
+      "template": "Aplicar Plantilla",
+      "templates": {
+        "standard": "Flujo Estándar",
+        "simple": "Flujo Simple",
+        "express": "Flujo Express"
+      }
+    }
+  },
+  "workflowDesigner": {
+    "title": "Diseñador de Flujo",
+    "changeClient": "Cambiar Cliente",
+    "selectClient": {
+      "title": "Diseñador Visual de Flujo de Trabajo",
+      "subtitle": "Seleccione un cliente para diseñar su flujo de manufactura visualmente",
+      "label": "Seleccionar Cliente",
+      "clientId": "ID de Cliente"
+    },
+    "toolbar": {
+      "templates": "Plantillas",
+      "applyTemplate": "Aplicar Plantilla",
+      "addStatus": "Agregar Estado",
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "mermaid": "Mermaid",
+      "errors": "Errores",
+      "warnings": "Advertencias",
+      "valid": "Válido"
+    },
+    "canvas": {
+      "emptyState": "Flujo no definido",
+      "emptyStateHint": "Agregue estados usando la barra de herramientas para comenzar a construir su flujo"
+    },
+    "sidebar": {
+      "properties": "Propiedades",
+      "statusProperties": "Propiedades del Estado",
+      "transitionProperties": "Propiedades de Transición",
+      "noSelection": "Seleccione un estado o transición para ver sus propiedades",
+      "statusType": "Tipo de Estado",
+      "incomingTransitions": "Transiciones Entrantes",
+      "outgoingTransitions": "Transiciones Salientes",
+      "noIncoming": "Sin transiciones entrantes",
+      "noOutgoing": "Sin transiciones salientes",
+      "deleteStatus": "Eliminar Estado",
+      "cannotDeleteReceived": "El estado RECEIVED no puede eliminarse (punto de entrada)",
+      "transition": "Transición",
+      "from": "Desde",
+      "to": "Hacia",
+      "deleteTransition": "Eliminar Transición",
+      "issues": "Problemas de Validación"
+    },
+    "mermaid": {
+      "title": "Código Mermaid",
+      "edit": "Editar",
+      "preview": "Vista Previa",
+      "apply": "Aplicar Cambios",
+      "copy": "Copiar al Portapapeles",
+      "copied": "¡Copiado al portapapeles!",
+      "placeholder": "Ingrese código de diagrama Mermaid...",
+      "statuses": "estados",
+      "transitions": "transiciones"
+    },
+    "validation": {
+      "title": "Problemas de Validación",
+      "affectedStatus": "Estado afectado"
+    },
+    "statusTypes": {
+      "start": "Punto de Entrada",
+      "normal": "Estado Estándar",
+      "terminal": "Estado Terminal",
+      "hold": "Estado de Espera",
+      "optional": "Estado Opcional"
+    },
+    "dialog": {
+      "addStatus": {
+        "title": "Agregar Nuevo Estado",
+        "name": "Nombre del Estado",
+        "hint": "Use letras mayúsculas y guiones bajos (ej., EN_PROGRESO)"
+      },
+      "applyTemplate": {
+        "title": "Aplicar Plantilla de Flujo",
+        "warning": "Esto reemplazará la configuración actual del flujo. Las órdenes de trabajo existentes no se verán afectadas.",
+        "confirm": "¿Aplicar la plantilla \"{template}\"?"
+      },
+      "deleteStatus": {
+        "confirm": "¿Está seguro de que desea eliminar el estado \"{status}\"? Esto también eliminará todas las transiciones conectadas."
+      },
+      "deleteTransition": {
+        "confirm": "¿Está seguro de que desea eliminar la transición de \"{from}\" a \"{to}\"?"
+      },
+      "unsavedChanges": {
+        "title": "Cambios Sin Guardar",
+        "message": "Tiene cambios sin guardar. ¿Desea guardarlos antes de salir?",
+        "save": "Guardar y Salir",
+        "discard": "Descartar"
+      }
+    }
   }
 }

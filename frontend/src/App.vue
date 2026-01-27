@@ -84,6 +84,12 @@
         <v-list-item prepend-icon="mdi-gauge" title="OEE" value="oee" to="/kpi/oee" />
 
         <v-divider class="my-2" role="separator"></v-divider>
+        <v-list-subheader v-if="!rail" id="tools-nav">{{ $t('navigation.tools').toUpperCase() }}</v-list-subheader>
+
+        <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
+        <v-list-item prepend-icon="mdi-calculator-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
+
+        <v-divider class="my-2" role="separator"></v-divider>
         <v-list-subheader v-if="!rail" id="admin-nav">{{ $t('navigation.admin').toUpperCase() }}</v-list-subheader>
 
         <v-list-item prepend-icon="mdi-cog" :title="$t('navigation.settings')" value="settings" to="/admin/settings" />
@@ -93,6 +99,7 @@
         <v-list-item prepend-icon="mdi-tune-variant" :title="$t('navigation.clientConfig')" value="client-config" to="/admin/client-config" />
         <v-list-item prepend-icon="mdi-chart-scatter-plot" :title="$t('navigation.partOpportunities')" value="part-opportunities" to="/admin/part-opportunities" />
         <v-list-item prepend-icon="mdi-account-switch" :title="$t('navigation.floatingPool')" value="floating-pool" to="/admin/floating-pool" />
+        <v-list-item prepend-icon="mdi-sitemap" :title="$t('navigation.workflowConfig')" value="workflow-config" to="/admin/workflow-config" />
       </v-list>
     </v-navigation-drawer>
 
