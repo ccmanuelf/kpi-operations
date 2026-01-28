@@ -563,13 +563,14 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from 'chart.js'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 const { t } = useI18n()
 const kpiStore = useKPIStore()
@@ -734,7 +735,7 @@ const loadJobRtySummary = async () => {
     if (selectedClient.value) {
       params.client_id = selectedClient.value
     }
-    const response = await api.get('/api/jobs/kpi/rty-summary', { params })
+    const response = await api.get('/jobs/kpi/rty-summary', { params })
     jobRtySummary.value = response.data
   } catch (error) {
     console.error('Failed to load job RTY summary:', error)
@@ -753,7 +754,7 @@ const loadRepairBreakdown = async () => {
     if (selectedClient.value) {
       params.client_id = selectedClient.value
     }
-    const response = await api.get('/api/quality/kpi/fpy-rty-breakdown', { params })
+    const response = await api.get('/quality/kpi/fpy-rty-breakdown', { params })
     repairBreakdown.value = response.data
   } catch (error) {
     console.error('Failed to load repair breakdown:', error)

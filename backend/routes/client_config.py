@@ -20,7 +20,7 @@ from backend.models.client_config import (
 from backend.crud import client_config as crud
 
 router = APIRouter(
-    prefix="/client-config",
+    prefix="/api/client-config",
     tags=["Client Configuration"],
     responses={404: {"description": "Not found"}}
 )
@@ -93,8 +93,9 @@ def get_client_config(
             is_default=True
         )
 
+    # Convert SQLAlchemy model to Pydantic model to trigger JSON field parsing
     return ClientConfigWithDefaults(
-        config=config,
+        config=ClientConfigResponse.model_validate(config),
         is_default=False
     )
 

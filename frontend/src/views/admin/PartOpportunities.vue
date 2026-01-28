@@ -480,7 +480,7 @@ const loadPartOpportunities = async () => {
     if (selectedClient.value) {
       params.client_id = selectedClient.value
     }
-    const res = await api.get('/api/part-opportunities', { params })
+    const res = await api.get('/part-opportunities', { params })
     partOpportunities.value = res.data || []
   } catch (error) {
     console.error('Failed to load part opportunities:', error)
@@ -521,10 +521,10 @@ const savePartOpportunity = async () => {
   saving.value = true
   try {
     if (isEditing.value) {
-      await api.put(`/api/part-opportunities/${formData.value.part_opportunities_id}`, formData.value)
+      await api.put(`/part-opportunities/${formData.value.part_opportunities_id}`, formData.value)
       showSnackbar(t('success.updated'), 'success')
     } else {
-      await api.post('/api/part-opportunities', formData.value)
+      await api.post('/part-opportunities', formData.value)
       showSnackbar(t('success.saved'), 'success')
     }
     closeEditDialog()
@@ -546,7 +546,7 @@ const deletePartOpportunity = async () => {
 
   deleting.value = true
   try {
-    await api.delete(`/api/part-opportunities/${deleteTarget.value.part_opportunities_id}`)
+    await api.delete(`/part-opportunities/${deleteTarget.value.part_opportunities_id}`)
     showSnackbar(t('success.deleted'), 'success')
     deleteDialog.value = false
     await loadPartOpportunities()
@@ -580,7 +580,7 @@ const uploadCSV = async () => {
       formDataUpload.append('client_id', selectedClient.value)
     }
 
-    const res = await api.post('/api/part-opportunities/upload', formDataUpload, {
+    const res = await api.post('/part-opportunities/upload', formDataUpload, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     showSnackbar(t('csv.success', { count: res.data.created || 0 }), 'success')

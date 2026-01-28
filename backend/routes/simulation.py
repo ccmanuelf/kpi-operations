@@ -56,7 +56,7 @@ from backend.schemas.simulation import (
     OptimizationGoal
 )
 
-router = APIRouter(prefix="/simulation", tags=["simulation"])
+router = APIRouter(prefix="/api/simulation", tags=["simulation"])
 
 
 # =============================================================================

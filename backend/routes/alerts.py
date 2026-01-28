@@ -25,7 +25,7 @@ from backend.calculations.alerts import (
 )
 from backend.auth.jwt import get_current_user
 
-router = APIRouter(prefix="/alerts", tags=["Alerts"])
+router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
 
 # ==================== Alert CRUD Operations ====================

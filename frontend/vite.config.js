@@ -153,11 +153,11 @@ export default defineConfig({
       'vue-router',
       'pinia',
       'axios',
-      'date-fns'
+      'date-fns',
+      'papaparse'
     ],
     // Exclude heavy libraries from pre-bundling (they'll be lazy loaded)
     exclude: [
-      'papaparse',
       'vue-qrcode-reader'
     ]
   },

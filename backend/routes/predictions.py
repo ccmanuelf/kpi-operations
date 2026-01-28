@@ -91,7 +91,7 @@ def get_historical_kpi_data(
         List of historical data points
     """
     from backend.middleware.client_auth import verify_client_access
-    from crud.analytics import get_kpi_time_series_data
+    from backend.crud.analytics import get_kpi_time_series_data
 
     # Verify client access
     verify_client_access(current_user, client_id)
@@ -313,16 +313,21 @@ def build_comprehensive_prediction(
 )
 async def get_kpi_prediction(
     kpi_type: str,
-    client_id: str = Query(..., description="Client ID to forecast"),
+    client_id: Optional[str] = Query(None, description="Client ID to forecast (defaults to user's client)"),
     forecast_days: int = Query(7, ge=1, le=30, description="Forecast horizon (1-30 days)"),
     historical_days: int = Query(30, ge=7, le=90, description="Historical data window (7-90 days)"),
-    method: Optional[str] = Query(None, regex="^(auto|simple|double|linear)$", description="Forecasting method"),
+    method: Optional[str] = Query(None, pattern="^(auto|simple|double|linear)$", description="Forecasting method"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ) -> ComprehensivePredictionResponse:
     """
     GET /api/predictions/{kpi_type} - Comprehensive KPI prediction with analytics
     """
+    # Use default client if not provided
+    if not client_id:
+        # Use user's associated client or a demo client
+        client_id = getattr(current_user, 'client_id', None) or "DEMO-CLIENT-001"
+
     # Validate KPI type
     valid_kpis = [e.value for e in KPIType] + [e.value for e in KPITypePhase5]
     if kpi_type not in valid_kpis:
@@ -386,7 +391,7 @@ async def get_kpi_prediction(
     }
 )
 async def get_all_kpi_predictions(
-    client_id: str = Query(..., description="Client ID to forecast"),
+    client_id: Optional[str] = Query(None, description="Client ID to forecast (defaults to user's client)"),
     forecast_days: int = Query(7, ge=1, le=30, description="Forecast horizon (1-30 days)"),
     historical_days: int = Query(30, ge=7, le=90, description="Historical data window (7-90 days)"),
     db: Session = Depends(get_db),
@@ -396,6 +401,10 @@ async def get_all_kpi_predictions(
     GET /api/predictions/dashboard/all - All KPI predictions dashboard
     """
     from backend.middleware.client_auth import verify_client_access
+
+    # Use default client if not provided
+    if not client_id:
+        client_id = getattr(current_user, 'client_id', None) or "DEMO-CLIENT-001"
 
     # Verify client access
     verify_client_access(current_user, client_id)
@@ -548,13 +557,17 @@ async def seed_demo_data(
 )
 async def get_kpi_health(
     kpi_type: str,
-    client_id: str = Query(..., description="Client ID"),
+    client_id: Optional[str] = Query(None, description="Client ID (defaults to user's client)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
     GET /api/predictions/health/{kpi_type} - Quick health check for KPI
     """
+    # Use default client if not provided
+    if not client_id:
+        client_id = getattr(current_user, 'client_id', None) or "DEMO-CLIENT-001"
+
     # Get recent data (7 days)
     end_date = date.today()
     start_date = end_date - timedelta(days=7)

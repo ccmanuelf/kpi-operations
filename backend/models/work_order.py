@@ -148,7 +148,7 @@ class WorkOrderResponse(BaseModel):
     previous_status: Optional[str] = None
     priority: Optional[str] = None
 
-    qc_approved: int = 0
+    qc_approved: Optional[int] = 0
     qc_approved_by: Optional[int] = None
     qc_approved_date: Optional[datetime] = None
     rejection_reason: Optional[str] = None

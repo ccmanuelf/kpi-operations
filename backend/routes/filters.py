@@ -70,16 +70,22 @@ def list_saved_filters(
     2. Most recently used
     3. Alphabetically by name
     """
-    filters = get_saved_filters(
-        db,
-        user_id=current_user.user_id,
-        filter_type=filter_type,
-        skip=skip,
-        limit=limit
-    )
+    try:
+        filters = get_saved_filters(
+            db,
+            user_id=current_user.user_id,
+            filter_type=filter_type,
+            skip=skip,
+            limit=limit
+        )
 
-    # Transform to response model with parsed config
-    return [_to_filter_response(f) for f in filters]
+        # Transform to response model with parsed config
+        return [_to_filter_response(f) for f in filters]
+    except Exception as e:
+        # Return empty list if table doesn't exist or other DB error
+        import logging
+        logging.getLogger(__name__).warning(f"Error fetching saved filters: {e}")
+        return []
 
 
 @router.post("", response_model=SavedFilterResponse, status_code=status.HTTP_201_CREATED)

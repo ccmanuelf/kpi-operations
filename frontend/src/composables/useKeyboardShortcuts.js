@@ -23,6 +23,11 @@ export function useKeyboardShortcuts(options = {}) {
    * Normalize keyboard event to handle cross-platform modifiers
    */
   const normalizeEvent = (event) => {
+    // Guard against events without key property (e.g., synthetic events, browser extensions)
+    if (!event.key) {
+      return { ctrl: false, shift: false, alt: false, key: '', originalEvent: event }
+    }
+
     const ctrl = event.ctrlKey || event.metaKey
     const shift = event.shiftKey
     const alt = event.altKey

@@ -446,8 +446,8 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [poolResponse, clientsResponse] = await Promise.all([
-      api.get('/api/floating-pool'),
-      api.get('/api/clients')
+      api.get('/floating-pool'),
+      api.get('/clients')
     ])
     entries.value = poolResponse.data || []
     clients.value = clientsResponse.data || []
@@ -500,7 +500,7 @@ const confirmAssignment = async () => {
   assignDialog.value.error = null
 
   try {
-    await api.post('/api/floating-pool/assign', {
+    await api.post('/floating-pool/assign', {
       employee_id: assignDialog.value.employee_id,
       client_id: assignDialog.value.client_id,
       available_from: assignDialog.value.available_from || null,
@@ -529,7 +529,7 @@ const confirmAssignment = async () => {
 const unassignEmployee = async (item) => {
   unassigning.value = item.pool_id
   try {
-    await api.post('/api/floating-pool/unassign', {
+    await api.post('/floating-pool/unassign', {
       pool_id: item.pool_id
     })
     showSnackbar(t('admin.floatingPool.unassignmentSuccess'), 'success')

@@ -1,4 +1,5 @@
 // Re-export the base axios client
+import axiosClient from './client'
 export { default as api, api as axiosInstance } from './client'
 
 // Re-export all domain modules
@@ -37,7 +38,15 @@ import * as simulation from './simulation'
 
 // Default export object with all methods for backward compatibility
 // This allows: import api from '@/services/api' + api.login(...)
+// Also includes axios methods (get, post, put, delete) for direct API calls
 export default {
+  // Axios instance methods for direct API calls
+  get: axiosClient.get.bind(axiosClient),
+  post: axiosClient.post.bind(axiosClient),
+  put: axiosClient.put.bind(axiosClient),
+  delete: axiosClient.delete.bind(axiosClient),
+  patch: axiosClient.patch.bind(axiosClient),
+  // All domain-specific functions
   ...auth,
   ...production,
   ...kpi,

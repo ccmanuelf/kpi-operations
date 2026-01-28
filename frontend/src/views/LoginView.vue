@@ -289,7 +289,7 @@ const handleForgotPassword = async () => {
   resetLoading.value = true
   
   try {
-    await api.post('/api/auth/forgot-password', { email: resetEmail.value })
+    await api.post('/auth/forgot-password', { email: resetEmail.value })
     resetSuccess.value = 'If your email is registered, you will receive a password reset link.'
     setTimeout(() => {
       showForgotPassword.value = false
@@ -337,7 +337,7 @@ const handleRegister = async () => {
   registerLoading.value = true
 
   try {
-    await api.post('/api/auth/register', {
+    await api.post('/auth/register', {
       username: registerForm.username,
       email: registerForm.email,
       full_name: registerForm.full_name,

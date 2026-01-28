@@ -120,14 +120,14 @@ export const analyzeFloatingPoolImpact = (config, params) =>
  * @param {Object} params - { target_date }
  */
 export const getFloatingPoolSimulationInsights = (params) =>
-  api.get('/api/floating-pool/simulation/insights', { params })
+  api.get('/floating-pool/simulation/insights', { params })
 
 /**
  * Optimize floating pool allocation across shifts
  * @param {Object} data - { shift_requirements, optimization_goal, target_date }
  */
 export const optimizeFloatingPoolAllocation = (data) =>
-  api.post('/api/floating-pool/simulation/optimize-allocation', data.shift_requirements, {
+  api.post('/floating-pool/simulation/optimize-allocation', data.shift_requirements, {
     params: {
       optimization_goal: data.optimization_goal,
       target_date: data.target_date
@@ -139,4 +139,4 @@ export const optimizeFloatingPoolAllocation = (data) =>
  * @param {Object} data - { shift_id, shift_name, regular_employees, floating_pool_available, required_employees, target_date }
  */
 export const simulateShiftCoverageWithPool = (data) =>
-  api.post('/api/floating-pool/simulation/shift-coverage', null, { params: data })
+  api.post('/floating-pool/simulation/shift-coverage', null, { params: data })

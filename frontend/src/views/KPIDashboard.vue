@@ -562,7 +562,8 @@ import {
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 } from 'chart.js'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
@@ -585,7 +586,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 )
 
 const router = useRouter()

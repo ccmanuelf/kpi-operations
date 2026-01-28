@@ -644,7 +644,7 @@ const getClosureTriggerHint = (trigger) => {
 const loadClients = async () => {
   loadingClients.value = true
   try {
-    const response = await api.get('/api/clients')
+    const response = await api.get('/clients')
     clients.value = response.data
   } catch (error) {
     console.error('Failed to load clients:', error)
@@ -765,6 +765,11 @@ const showSnackbar = (text, color) => {
 // Lifecycle
 onMounted(async () => {
   await Promise.all([loadClients(), loadTemplates()])
+  // Auto-select first client to show default workflow
+  if (clients.value.length > 0 && !selectedClientId.value) {
+    selectedClientId.value = clients.value[0].client_id
+    await loadClientConfig()
+  }
 })
 </script>
 

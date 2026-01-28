@@ -353,8 +353,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
       activeShift.value = response.data
       saveToLocalStorage()
     } catch (e) {
-      // No active shift is not an error
-      if (e.response?.status !== 404) {
+      // No active shift (404) or not authenticated (401/403) are not errors to log
+      const status = e.response?.status
+      if (status !== 404 && status !== 401 && status !== 403) {
         console.error('Failed to fetch active shift:', e)
       }
       activeShift.value = null

@@ -95,10 +95,23 @@ async def get_dashboard_preferences(
         )
 
     except Exception as e:
-        logger.error(f"Error retrieving dashboard preferences: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve dashboard preferences"
+        logger.warning(f"Error retrieving dashboard preferences (returning defaults): {e}")
+        # Return default preferences if DB is unavailable or table doesn't exist
+        from backend.crud.preferences import FALLBACK_DEFAULT_WIDGETS
+        default_prefs = DashboardPreferences(
+            layout="grid",
+            widgets=FALLBACK_DEFAULT_WIDGETS,
+            theme="light",
+            auto_refresh=0,
+            default_time_range="7d"
+        )
+        return PreferenceResponse(
+            preference_id=0,
+            user_id=current_user.user_id,
+            preference_type="dashboard",
+            preferences=default_prefs,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
 
 

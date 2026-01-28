@@ -117,10 +117,11 @@ class ProductionEntryResponse(BaseModel):
     performance_percentage: Optional[Decimal] = None
     quality_rate: Optional[Decimal] = None
     notes: Optional[str] = None
-    entered_by: Optional[int] = None
-    confirmed_by: Optional[int] = None
+    entered_by: Optional[str] = None
+    confirmed_by: Optional[str] = None
     confirmation_timestamp: Optional[datetime] = None
     entry_method: Optional[str] = None
+    updated_by: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

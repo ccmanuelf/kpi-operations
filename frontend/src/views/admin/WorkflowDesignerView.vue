@@ -110,7 +110,7 @@ onMounted(async () => {
 const loadClients = async () => {
   try {
     loadingClients.value = true
-    const response = await api.get('/api/clients')
+    const response = await api.get('/clients')
     clients.value = response.data || []
   } catch (error) {
     console.error('Failed to load clients:', error)

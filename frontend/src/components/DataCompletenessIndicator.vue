@@ -186,7 +186,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import api from '@/services/api'
 
 // Props interface
 interface DataCompletenessProps {
@@ -379,9 +379,7 @@ const fetchData = async () => {
       }
     })
 
-    const response = await axios.get('http://localhost:8000/api/data-completeness', {
-      params
-    })
+    const response = await api.get('/data-completeness', { params })
 
     completenessData.value = response.data
     emit('refresh', completenessData.value)

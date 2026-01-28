@@ -64,6 +64,21 @@ def list_holds(
     )
 
 
+@router.get("/active", response_model=List[WIPHoldResponse])
+def list_active_holds(
+    skip: int = 0,
+    limit: int = 100,
+    client_id: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all active (unreleased) WIP holds"""
+    return get_wip_holds(
+        db, current_user=current_user, skip=skip, limit=limit,
+        client_id=client_id, released=False
+    )
+
+
 @router.get("/{hold_id}", response_model=WIPHoldResponse)
 def get_hold(
     hold_id: int,

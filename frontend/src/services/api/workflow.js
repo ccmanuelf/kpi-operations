@@ -17,7 +17,7 @@ import api from './client'
  * @param {string} notes - Optional transition notes
  */
 export const transitionWorkOrder = (workOrderId, toStatus, notes = null) =>
-  api.post(`/api/workflow/work-orders/${workOrderId}/transition`, {
+  api.post(`/workflow/work-orders/${workOrderId}/transition`, {
     to_status: toStatus,
     notes
   })
@@ -28,7 +28,7 @@ export const transitionWorkOrder = (workOrderId, toStatus, notes = null) =>
  * @param {string} toStatus - Target status to validate
  */
 export const validateTransition = (workOrderId, toStatus) =>
-  api.post(`/api/workflow/work-orders/${workOrderId}/validate`, null, {
+  api.post(`/workflow/work-orders/${workOrderId}/validate`, null, {
     params: { to_status: toStatus }
   })
 
@@ -37,14 +37,14 @@ export const validateTransition = (workOrderId, toStatus) =>
  * @param {string} workOrderId - Work order ID
  */
 export const getAllowedTransitions = (workOrderId) =>
-  api.get(`/api/workflow/work-orders/${workOrderId}/allowed-transitions`)
+  api.get(`/workflow/work-orders/${workOrderId}/allowed-transitions`)
 
 /**
  * Get transition history for a work order
  * @param {string} workOrderId - Work order ID
  */
 export const getTransitionHistory = (workOrderId) =>
-  api.get(`/api/workflow/work-orders/${workOrderId}/history`)
+  api.get(`/workflow/work-orders/${workOrderId}/history`)
 
 // ============================================
 // Bulk Operations
@@ -58,7 +58,7 @@ export const getTransitionHistory = (workOrderId) =>
  * @param {string} notes - Optional notes
  */
 export const bulkTransition = (workOrderIds, toStatus, clientId, notes = null) =>
-  api.post('/api/workflow/bulk-transition', {
+  api.post('/workflow/bulk-transition', {
     work_order_ids: workOrderIds,
     to_status: toStatus,
     notes
@@ -75,7 +75,7 @@ export const bulkTransition = (workOrderIds, toStatus, clientId, notes = null) =
  * @param {string} clientId - Client ID
  */
 export const getWorkflowConfig = (clientId) =>
-  api.get(`/api/workflow/config/${clientId}`)
+  api.get(`/workflow/config/${clientId}`)
 
 /**
  * Update workflow configuration for a client
@@ -83,7 +83,7 @@ export const getWorkflowConfig = (clientId) =>
  * @param {object} config - Configuration updates
  */
 export const updateWorkflowConfig = (clientId, config) =>
-  api.put(`/api/workflow/config/${clientId}`, config)
+  api.put(`/workflow/config/${clientId}`, config)
 
 /**
  * Apply a workflow template to a client
@@ -91,7 +91,7 @@ export const updateWorkflowConfig = (clientId, config) =>
  * @param {string} templateId - Template ID to apply
  */
 export const applyWorkflowTemplate = (clientId, templateId) =>
-  api.post(`/api/workflow/config/${clientId}/apply-template`, null, {
+  api.post(`/workflow/config/${clientId}/apply-template`, null, {
     params: { template_id: templateId }
   })
 
@@ -99,7 +99,7 @@ export const applyWorkflowTemplate = (clientId, templateId) =>
  * List available workflow templates
  */
 export const getWorkflowTemplates = () =>
-  api.get('/api/workflow/templates')
+  api.get('/workflow/templates')
 
 // ============================================
 // Elapsed Time Analytics
@@ -110,14 +110,14 @@ export const getWorkflowTemplates = () =>
  * @param {string} workOrderId - Work order ID
  */
 export const getWorkOrderElapsedTime = (workOrderId) =>
-  api.get(`/api/workflow/work-orders/${workOrderId}/elapsed-time`)
+  api.get(`/workflow/work-orders/${workOrderId}/elapsed-time`)
 
 /**
  * Get transition times for a work order
  * @param {string} workOrderId - Work order ID
  */
 export const getWorkOrderTransitionTimes = (workOrderId) =>
-  api.get(`/api/workflow/work-orders/${workOrderId}/transition-times`)
+  api.get(`/workflow/work-orders/${workOrderId}/transition-times`)
 
 /**
  * Get average elapsed times for a client
@@ -125,7 +125,7 @@ export const getWorkOrderTransitionTimes = (workOrderId) =>
  * @param {object} params - Optional filters (status, start_date, end_date)
  */
 export const getClientAverageTimes = (clientId, params = {}) =>
-  api.get(`/api/workflow/analytics/${clientId}/average-times`, { params })
+  api.get(`/workflow/analytics/${clientId}/average-times`, { params })
 
 /**
  * Get stage duration summary for a client
@@ -133,7 +133,7 @@ export const getClientAverageTimes = (clientId, params = {}) =>
  * @param {object} params - Optional filters (start_date, end_date)
  */
 export const getClientStageDurations = (clientId, params = {}) =>
-  api.get(`/api/workflow/analytics/${clientId}/stage-durations`, { params })
+  api.get(`/workflow/analytics/${clientId}/stage-durations`, { params })
 
 // ============================================
 // Statistics & Reporting
@@ -144,14 +144,14 @@ export const getClientStageDurations = (clientId, params = {}) =>
  * @param {string} clientId - Client ID
  */
 export const getTransitionStatistics = (clientId) =>
-  api.get(`/api/workflow/statistics/${clientId}/transitions`)
+  api.get(`/workflow/statistics/${clientId}/transitions`)
 
 /**
  * Get status distribution for a client
  * @param {string} clientId - Client ID
  */
 export const getStatusDistribution = (clientId) =>
-  api.get(`/api/workflow/statistics/${clientId}/status-distribution`)
+  api.get(`/workflow/statistics/${clientId}/status-distribution`)
 
 /**
  * Get all transitions for a client
@@ -159,7 +159,7 @@ export const getStatusDistribution = (clientId) =>
  * @param {object} params - Query params (skip, limit, from_status, to_status, trigger_source)
  */
 export const getClientTransitions = (clientId, params = {}) =>
-  api.get(`/api/workflow/transitions/${clientId}`, { params })
+  api.get(`/workflow/transitions/${clientId}`, { params })
 
 // Export all functions as default object for backward compatibility
 export default {

@@ -2,9 +2,10 @@
 Reference Data API Routes
 Products, shifts, and inference engine endpoints
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime, time
 
 from backend.database import get_db
 from backend.calculations.inference import InferenceEngine
@@ -54,6 +55,66 @@ def list_shifts(
         }
         for s in shifts
     ]
+
+
+@router.get("/shifts/active", response_model=Optional[dict])
+def get_active_shift(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get the currently active shift based on current time"""
+    now = datetime.now().time()
+    shifts = db.query(Shift).filter(Shift.is_active == True).all()
+
+    for s in shifts:
+        start = s.start_time
+        end = s.end_time
+
+        # Handle overnight shifts (e.g., 22:00 - 06:00)
+        if start > end:
+            # Shift spans midnight
+            if now >= start or now < end:
+                return {
+                    "shift_id": s.shift_id,
+                    "shift_name": s.shift_name,
+                    "start_time": s.start_time.strftime("%H:%M"),
+                    "end_time": s.end_time.strftime("%H:%M"),
+                    "is_active": True
+                }
+        else:
+            # Normal shift within same day
+            if start <= now < end:
+                return {
+                    "shift_id": s.shift_id,
+                    "shift_name": s.shift_name,
+                    "start_time": s.start_time.strftime("%H:%M"),
+                    "end_time": s.end_time.strftime("%H:%M"),
+                    "is_active": True
+                }
+
+    # No active shift found
+    raise HTTPException(status_code=404, detail="No active shift at this time")
+
+
+@router.get("/downtime-reasons", response_model=List[dict])
+def list_downtime_reasons(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all downtime reason categories"""
+    # Standard downtime reason categories (can be extended from DB if needed)
+    reasons = [
+        {"id": "mechanical", "name": "Mechanical Failure", "category": "Equipment"},
+        {"id": "electrical", "name": "Electrical Failure", "category": "Equipment"},
+        {"id": "material", "name": "Material Shortage", "category": "Supply"},
+        {"id": "quality", "name": "Quality Issue", "category": "Quality"},
+        {"id": "changeover", "name": "Changeover/Setup", "category": "Planned"},
+        {"id": "maintenance", "name": "Scheduled Maintenance", "category": "Planned"},
+        {"id": "operator", "name": "Operator Unavailable", "category": "Labor"},
+        {"id": "break", "name": "Scheduled Break", "category": "Planned"},
+        {"id": "other", "name": "Other", "category": "Other"}
+    ]
+    return reasons
 
 
 @router.get("/inference/cycle-time/{product_id}")

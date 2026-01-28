@@ -3,10 +3,11 @@ Client Configuration Pydantic models for request/response validation
 Implements Phase 7.2: Client-Level Calculation Overrides
 Implements Phase 10: Flexible Workflow Foundation
 """
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from enum import Enum
+import json
 
 
 class OTDModeEnum(str, Enum):
@@ -114,8 +115,45 @@ class ClientConfigResponse(BaseModel):
     workflow_closure_trigger: Optional[str] = None
     workflow_version: Optional[int] = None
 
-    created_at: datetime
-    updated_at: Optional[datetime]
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+    # Validators to parse JSON strings from database
+    @field_validator('workflow_statuses', mode='before')
+    @classmethod
+    def parse_workflow_statuses(cls, v: Any) -> Optional[List[str]]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return None
+        return v
+
+    @field_validator('workflow_transitions', mode='before')
+    @classmethod
+    def parse_workflow_transitions(cls, v: Any) -> Optional[Dict[str, List[str]]]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return None
+        return v
+
+    @field_validator('workflow_optional_statuses', mode='before')
+    @classmethod
+    def parse_workflow_optional_statuses(cls, v: Any) -> Optional[List[str]]:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return None
+        return v
 
     class Config:
         from_attributes = True

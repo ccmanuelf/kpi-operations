@@ -36,6 +36,9 @@ from .defect_type_catalog import DefectTypeCatalog
 # Phase 6: User Preferences
 from .user_preferences import UserPreferences, DashboardWidgetDefaults
 
+# Phase 6: Saved Filters
+from .saved_filter import SavedFilter, FilterHistory
+
 # Phase 10: Workflow Foundation
 from .workflow import WorkflowTransitionLog
 
@@ -73,6 +76,8 @@ __all__ = [
     # Phase 6
     "UserPreferences",
     "DashboardWidgetDefaults",
+    "SavedFilter",
+    "FilterHistory",
     # Phase 10
     "WorkflowTransitionLog",
 ]
