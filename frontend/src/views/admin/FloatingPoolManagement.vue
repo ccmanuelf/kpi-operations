@@ -8,10 +8,16 @@
               <v-icon class="mr-2">mdi-account-switch</v-icon>
               <span>{{ $t('admin.floatingPool.title') }}</span>
             </div>
-            <v-btn color="white" variant="outlined" @click="openAssignDialog">
-              <v-icon left>mdi-plus</v-icon>
-              {{ $t('admin.floatingPool.assignEmployee') }}
-            </v-btn>
+            <div class="d-flex gap-2">
+              <v-btn color="white" variant="text" @click="showGuide = true">
+                <v-icon left>mdi-help-circle</v-icon>
+                How to Use
+              </v-btn>
+              <v-btn color="white" variant="outlined" @click="openAssignDialog">
+                <v-icon left>mdi-plus</v-icon>
+                {{ $t('admin.floatingPool.assignEmployee') }}
+              </v-btn>
+            </div>
           </v-card-title>
 
           <v-card-text>
@@ -255,6 +261,295 @@
       </v-col>
     </v-row>
 
+    <!-- How-to Guide Dialog -->
+    <v-dialog v-model="showGuide" max-width="900" scrollable>
+      <v-card>
+        <v-card-title class="bg-primary text-white d-flex justify-space-between">
+          <div class="d-flex align-center">
+            <v-icon class="mr-2">mdi-help-circle</v-icon>
+            Floating Pool Management Guide
+          </div>
+          <v-btn icon variant="text" color="white" @click="showGuide = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text class="pa-0">
+          <v-tabs v-model="guideTab" color="primary" grow>
+            <v-tab value="overview">Overview</v-tab>
+            <v-tab value="howto">How To Use</v-tab>
+            <v-tab value="workflows">Workflows</v-tab>
+            <v-tab value="insights">Simulation Insights</v-tab>
+          </v-tabs>
+
+          <v-tabs-window v-model="guideTab" class="pa-4">
+            <!-- Overview Tab -->
+            <v-tabs-window-item value="overview">
+              <v-alert type="info" variant="tonal" class="mb-4">
+                <strong>What is the Floating Pool?</strong><br>
+                The Floating Pool is a shared workforce that can be temporarily assigned to different clients based on demand. This helps optimize staffing levels across your organization.
+              </v-alert>
+
+              <h4 class="mb-2">Key Concepts</h4>
+              <v-list density="compact">
+                <v-list-item prepend-icon="mdi-account-group">
+                  <v-list-item-title><strong>Pool Employees</strong></v-list-item-title>
+                  <v-list-item-subtitle>Workers designated as flexible resources who can work across multiple clients</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-check-circle">
+                  <v-list-item-title><strong>Available</strong></v-list-item-title>
+                  <v-list-item-subtitle>Workers currently not assigned to any client, ready to be deployed</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-briefcase">
+                  <v-list-item-title><strong>Assigned</strong></v-list-item-title>
+                  <v-list-item-subtitle>Workers currently working for a specific client</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-percent">
+                  <v-list-item-title><strong>Utilization</strong></v-list-item-title>
+                  <v-list-item-subtitle>Percentage of pool employees currently assigned (higher = more efficient use)</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-2">Dashboard Cards Explained</h4>
+              <v-row>
+                <v-col cols="6" md="3">
+                  <v-card variant="outlined" color="primary" class="text-center pa-2">
+                    <v-icon>mdi-account-multiple</v-icon>
+                    <div class="text-caption">Total Employees</div>
+                    <div class="text-body-2">Total workers in the floating pool</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card variant="outlined" color="success" class="text-center pa-2">
+                    <v-icon>mdi-account-check</v-icon>
+                    <div class="text-caption">Available</div>
+                    <div class="text-body-2">Ready to be assigned</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card variant="outlined" color="warning" class="text-center pa-2">
+                    <v-icon>mdi-account-clock</v-icon>
+                    <div class="text-caption">Assigned</div>
+                    <div class="text-body-2">Currently working</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card variant="outlined" color="info" class="text-center pa-2">
+                    <v-icon>mdi-chart-donut</v-icon>
+                    <div class="text-caption">Utilization</div>
+                    <div class="text-body-2">Pool efficiency metric</div>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
+
+            <!-- How To Use Tab -->
+            <v-tabs-window-item value="howto">
+              <h4 class="mb-3">Assigning an Employee</h4>
+              <v-stepper :items="['Select', 'Configure', 'Confirm']" alt-labels class="elevation-0 mb-4">
+                <template v-slot:item.1>
+                  <v-card flat>
+                    <v-card-text>
+                      <ol>
+                        <li>Find an available employee in the table (green "Available" badge)</li>
+                        <li>Click the <v-btn size="x-small" color="primary" variant="tonal"><v-icon size="x-small">mdi-account-arrow-right</v-icon> Assign</v-btn> button</li>
+                      </ol>
+                    </v-card-text>
+                  </v-card>
+                </template>
+                <template v-slot:item.2>
+                  <v-card flat>
+                    <v-card-text>
+                      <ol>
+                        <li>Select the target client from the dropdown</li>
+                        <li>Optionally set availability dates (start and end)</li>
+                        <li>Add notes if needed</li>
+                      </ol>
+                    </v-card-text>
+                  </v-card>
+                </template>
+                <template v-slot:item.3>
+                  <v-card flat>
+                    <v-card-text>
+                      <ol>
+                        <li>Review the assignment details</li>
+                        <li>Click "Confirm Assignment"</li>
+                        <li>The employee status will change to "Assigned"</li>
+                      </ol>
+                    </v-card-text>
+                  </v-card>
+                </template>
+              </v-stepper>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-3">Unassigning an Employee</h4>
+              <v-alert type="warning" variant="tonal" class="mb-3">
+                Unassigning returns the employee to the available pool, making them ready for new assignments.
+              </v-alert>
+              <ol>
+                <li>Find the assigned employee in the table</li>
+                <li>Click the <v-btn size="x-small" color="warning" variant="tonal"><v-icon size="x-small">mdi-account-remove</v-icon> Unassign</v-btn> button</li>
+                <li>The employee will immediately become available</li>
+              </ol>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-3">Using Filters</h4>
+              <ul>
+                <li><strong>Filter by Status:</strong> Show only "Available" or "Assigned" employees</li>
+                <li><strong>Filter by Client:</strong> Show only employees assigned to a specific client</li>
+              </ul>
+            </v-tabs-window-item>
+
+            <!-- Workflows Tab -->
+            <v-tabs-window-item value="workflows">
+              <h4 class="mb-3">Common Workflow Scenarios</h4>
+
+              <v-expansion-panels>
+                <v-expansion-panel title="Scenario 1: Rush Order Coverage">
+                  <v-expansion-panel-text>
+                    <v-alert type="info" variant="tonal" class="mb-3">
+                      <strong>Situation:</strong> Client needs additional workers to meet a tight deadline
+                    </v-alert>
+                    <ol>
+                      <li>Check the "Available" count in the summary cards</li>
+                      <li>Filter by Status → "Available" to see all free workers</li>
+                      <li>Assign multiple workers to the client needing help</li>
+                      <li>Set the "Available To" date to when the rush period ends</li>
+                      <li>Monitor the Simulation Insights for staffing recommendations</li>
+                    </ol>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+
+                <v-expansion-panel title="Scenario 2: Covering Absenteeism">
+                  <v-expansion-panel-text>
+                    <v-alert type="warning" variant="tonal" class="mb-3">
+                      <strong>Situation:</strong> A client has unexpected absences
+                    </v-alert>
+                    <ol>
+                      <li>Check the absenteeism alert in the Alerts dashboard</li>
+                      <li>Navigate to Floating Pool Management</li>
+                      <li>Check available pool workers with relevant skills</li>
+                      <li>Assign workers for the day or shift needed</li>
+                      <li>Update attendance records accordingly</li>
+                    </ol>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+
+                <v-expansion-panel title="Scenario 3: Balancing Workload">
+                  <v-expansion-panel-text>
+                    <v-alert type="success" variant="tonal" class="mb-3">
+                      <strong>Situation:</strong> One client is over-staffed while another needs help
+                    </v-alert>
+                    <ol>
+                      <li>Filter by Client → Select the over-staffed client</li>
+                      <li>Identify workers who can be reassigned</li>
+                      <li>Unassign them from the current client</li>
+                      <li>Assign them to the client needing additional staff</li>
+                      <li>Review the Simulation Insights for optimal distribution</li>
+                    </ol>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-3">Best Practices</h4>
+              <v-list density="compact">
+                <v-list-item prepend-icon="mdi-check" class="text-success">
+                  Keep at least 10-15% of pool workers available for emergencies
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-check" class="text-success">
+                  Set end dates for temporary assignments to auto-track availability
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-check" class="text-success">
+                  Review Simulation Insights regularly for optimization opportunities
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-check" class="text-success">
+                  Add notes to assignments for context and tracking
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-close" class="text-error">
+                  Avoid assigning all pool workers - maintain flexibility buffer
+                </v-list-item>
+              </v-list>
+            </v-tabs-window-item>
+
+            <!-- Simulation Insights Tab -->
+            <v-tabs-window-item value="insights">
+              <v-alert type="info" variant="tonal" class="mb-4">
+                <strong>Simulation Insights</strong> uses production simulation data to provide staffing recommendations and scenario analysis.
+              </v-alert>
+
+              <h4 class="mb-3">Understanding Staffing Scenarios</h4>
+              <p class="mb-3">The system simulates different staffing levels and shows predicted outcomes:</p>
+              <v-table density="compact" class="mb-4">
+                <thead>
+                  <tr>
+                    <th>Scenario</th>
+                    <th>Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Current</strong></td>
+                    <td>Baseline with current assigned staff</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Minimum</strong></td>
+                    <td>Fewest workers that meet basic production needs</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Optimal</strong></td>
+                    <td>Best balance of efficiency and output</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Maximum</strong></td>
+                    <td>Full utilization of available pool</td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <h4 class="mb-3">Reading Recommendations</h4>
+              <v-list density="compact">
+                <v-list-item>
+                  <template #prepend>
+                    <v-chip size="small" color="warning">High Priority</v-chip>
+                  </template>
+                  <v-list-item-subtitle>Urgent actions that may impact production</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <template #prepend>
+                    <v-chip size="small" color="info">Medium Priority</v-chip>
+                  </template>
+                  <v-list-item-subtitle>Optimization suggestions for better efficiency</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <template #prepend>
+                    <v-chip size="small" color="success">Low Priority</v-chip>
+                  </template>
+                  <v-list-item-subtitle>Nice-to-have improvements</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+
+              <v-divider class="my-4" />
+
+              <v-alert type="success" variant="tonal">
+                <strong>Tip:</strong> Click "Refresh" in the Simulation Insights panel to get updated recommendations based on current data.
+              </v-alert>
+            </v-tabs-window-item>
+          </v-tabs-window>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" @click="showGuide = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Assignment Dialog -->
     <v-dialog v-model="assignDialog.show" max-width="500">
       <v-card>
@@ -359,6 +654,8 @@ const { t } = useI18n()
 // State
 const loading = ref(false)
 const loadingInsights = ref(false)
+const showGuide = ref(false)
+const guideTab = ref('overview')
 const insightsPanel = ref(null)
 const insights = ref({
   current_status: {},

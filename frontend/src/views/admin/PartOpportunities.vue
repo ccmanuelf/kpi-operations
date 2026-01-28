@@ -61,6 +61,14 @@
         >
           {{ $t('csv.downloadTemplate') }}
         </v-btn>
+        <v-btn
+          color="purple"
+          prepend-icon="mdi-help-circle"
+          variant="outlined"
+          @click="showGuide = true"
+        >
+          How to Use
+        </v-btn>
         <v-spacer />
         <v-text-field
           v-model="search"
@@ -348,6 +356,332 @@
       </v-card>
     </v-dialog>
 
+    <!-- How-to Guide Dialog -->
+    <v-dialog v-model="showGuide" max-width="900" scrollable>
+      <v-card>
+        <v-card-title class="bg-purple text-white d-flex justify-space-between">
+          <div class="d-flex align-center">
+            <v-icon class="mr-2">mdi-help-circle</v-icon>
+            Part Opportunities Guide
+          </div>
+          <v-btn icon variant="text" color="white" @click="showGuide = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text class="pa-0">
+          <v-tabs v-model="guideTab" color="purple" grow>
+            <v-tab value="overview">Overview</v-tab>
+            <v-tab value="dpmo">DPMO Calculation</v-tab>
+            <v-tab value="howto">How To Use</v-tab>
+            <v-tab value="examples">Examples</v-tab>
+          </v-tabs>
+
+          <v-tabs-window v-model="guideTab" class="pa-4">
+            <!-- Overview Tab -->
+            <v-tabs-window-item value="overview">
+              <v-alert type="info" variant="tonal" class="mb-4">
+                <strong>What are Part Opportunities?</strong><br>
+                Part Opportunities represent the number of potential defect points per unit of a product. This is a critical input for calculating DPMO (Defects Per Million Opportunities), a key Six Sigma quality metric.
+              </v-alert>
+
+              <h4 class="mb-3">Why Part Opportunities Matter</h4>
+              <v-list density="compact">
+                <v-list-item prepend-icon="mdi-target">
+                  <v-list-item-title><strong>Quality Measurement</strong></v-list-item-title>
+                  <v-list-item-subtitle>Enable accurate DPMO calculation for Six Sigma analysis</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-compare">
+                  <v-list-item-title><strong>Fair Comparison</strong></v-list-item-title>
+                  <v-list-item-subtitle>Compare quality across products with different complexity levels</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item prepend-icon="mdi-chart-line">
+                  <v-list-item-title><strong>Sigma Level</strong></v-list-item-title>
+                  <v-list-item-subtitle>Calculate process sigma level (1σ to 6σ)</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-3">Summary Cards Explained</h4>
+              <v-row>
+                <v-col cols="6" md="3">
+                  <v-card variant="tonal" color="primary" class="text-center pa-2">
+                    <v-icon>mdi-counter</v-icon>
+                    <div class="text-caption">Total Parts</div>
+                    <div class="text-body-2">Number of part definitions</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card variant="tonal" color="info" class="text-center pa-2">
+                    <v-icon>mdi-calculator</v-icon>
+                    <div class="text-caption">Avg Opportunities</div>
+                    <div class="text-body-2">Average defect points per unit</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card variant="tonal" color="success" class="text-center pa-2">
+                    <v-icon>mdi-arrow-down</v-icon>
+                    <div class="text-caption">Min Opportunities</div>
+                    <div class="text-body-2">Simplest product</div>
+                  </v-card>
+                </v-col>
+                <v-col cols="6" md="3">
+                  <v-card variant="tonal" color="warning" class="text-center pa-2">
+                    <v-icon>mdi-arrow-up</v-icon>
+                    <div class="text-caption">Max Opportunities</div>
+                    <div class="text-body-2">Most complex product</div>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-tabs-window-item>
+
+            <!-- DPMO Calculation Tab -->
+            <v-tabs-window-item value="dpmo">
+              <h4 class="mb-3">Understanding DPMO</h4>
+              <v-alert type="success" variant="tonal" class="mb-4">
+                <strong>DPMO Formula:</strong><br>
+                <code class="text-h6">DPMO = (Defects × 1,000,000) ÷ (Units × Opportunities per Unit)</code>
+              </v-alert>
+
+              <h4 class="mb-3">Example Calculation</h4>
+              <v-card variant="outlined" class="mb-4 pa-4">
+                <v-row>
+                  <v-col cols="12" md="6">
+                    <p><strong>Given:</strong></p>
+                    <ul>
+                      <li>Units produced: 1,000</li>
+                      <li>Defects found: 15</li>
+                      <li>Opportunities per unit: 20</li>
+                    </ul>
+                  </v-col>
+                  <v-col cols="12" md="6">
+                    <p><strong>Calculation:</strong></p>
+                    <p>Total opportunities = 1,000 × 20 = 20,000</p>
+                    <p>DPMO = (15 × 1,000,000) ÷ 20,000</p>
+                    <p class="text-h6 text-primary">DPMO = 750</p>
+                  </v-col>
+                </v-row>
+              </v-card>
+
+              <h4 class="mb-3">Sigma Level Reference</h4>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th>Sigma Level</th>
+                    <th>DPMO</th>
+                    <th>Yield %</th>
+                    <th>Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>6σ</td>
+                    <td>3.4</td>
+                    <td>99.99966%</td>
+                    <td><v-chip size="small" color="success">World Class</v-chip></td>
+                  </tr>
+                  <tr>
+                    <td>5σ</td>
+                    <td>233</td>
+                    <td>99.977%</td>
+                    <td><v-chip size="small" color="success">Excellent</v-chip></td>
+                  </tr>
+                  <tr>
+                    <td>4σ</td>
+                    <td>6,210</td>
+                    <td>99.379%</td>
+                    <td><v-chip size="small" color="info">Good</v-chip></td>
+                  </tr>
+                  <tr>
+                    <td>3σ</td>
+                    <td>66,807</td>
+                    <td>93.32%</td>
+                    <td><v-chip size="small" color="warning">Average</v-chip></td>
+                  </tr>
+                  <tr>
+                    <td>2σ</td>
+                    <td>308,538</td>
+                    <td>69.15%</td>
+                    <td><v-chip size="small" color="error">Poor</v-chip></td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <v-alert type="warning" variant="tonal" class="mt-4">
+                <strong>Important:</strong> Accurate opportunity counts are essential for meaningful DPMO calculations. Underestimating opportunities inflates DPMO, while overestimating deflates it.
+              </v-alert>
+            </v-tabs-window-item>
+
+            <!-- How To Use Tab -->
+            <v-tabs-window-item value="howto">
+              <h4 class="mb-3">Adding a New Part</h4>
+              <v-stepper :items="['Click Add', 'Fill Form', 'Save']" alt-labels class="elevation-0 mb-4">
+                <template v-slot:item.1>
+                  <v-card flat>
+                    <v-card-text>
+                      <p>Click the <v-btn size="x-small" color="primary"><v-icon size="x-small">mdi-plus</v-icon> Add Part Opportunity</v-btn> button</p>
+                    </v-card-text>
+                  </v-card>
+                </template>
+                <template v-slot:item.2>
+                  <v-card flat>
+                    <v-card-text>
+                      <ul>
+                        <li><strong>Part Number:</strong> Unique identifier (e.g., SKU-001)</li>
+                        <li><strong>Opportunities per Unit:</strong> Number of potential defect points</li>
+                        <li><strong>Description:</strong> Brief description of the part</li>
+                        <li><strong>Complexity:</strong> Simple, Standard, Complex, or Very Complex</li>
+                      </ul>
+                    </v-card-text>
+                  </v-card>
+                </template>
+                <template v-slot:item.3>
+                  <v-card flat>
+                    <v-card-text>
+                      <p>Review the data and click <strong>Save</strong></p>
+                      <p>The part will now be available for quality calculations</p>
+                    </v-card-text>
+                  </v-card>
+                </template>
+              </v-stepper>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-3">CSV Upload Format</h4>
+              <v-alert type="info" variant="tonal" class="mb-3">
+                Use CSV upload to import multiple parts at once. Click "Download Template" to get the correct format.
+              </v-alert>
+              <v-table density="compact">
+                <thead>
+                  <tr>
+                    <th>Column</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                    <th>Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>part_number</td>
+                    <td><v-icon color="success">mdi-check</v-icon></td>
+                    <td>Unique part identifier</td>
+                    <td>PART-001</td>
+                  </tr>
+                  <tr>
+                    <td>opportunities_per_unit</td>
+                    <td><v-icon color="success">mdi-check</v-icon></td>
+                    <td>Number of defect opportunities</td>
+                    <td>15</td>
+                  </tr>
+                  <tr>
+                    <td>part_description</td>
+                    <td><v-icon color="grey">mdi-minus</v-icon></td>
+                    <td>Description text</td>
+                    <td>Standard T-Shirt</td>
+                  </tr>
+                  <tr>
+                    <td>complexity</td>
+                    <td><v-icon color="grey">mdi-minus</v-icon></td>
+                    <td>Simple/Standard/Complex/Very Complex</td>
+                    <td>Standard</td>
+                  </tr>
+                  <tr>
+                    <td>notes</td>
+                    <td><v-icon color="grey">mdi-minus</v-icon></td>
+                    <td>Additional notes</td>
+                    <td>Basic garment</td>
+                  </tr>
+                </tbody>
+              </v-table>
+
+              <v-divider class="my-4" />
+
+              <h4 class="mb-3">Determining Opportunity Count</h4>
+              <p class="mb-3">Count all potential defect points in a product. Consider:</p>
+              <ul>
+                <li>Stitching/seam points</li>
+                <li>Material quality checks</li>
+                <li>Dimensional measurements</li>
+                <li>Finishing operations</li>
+                <li>Assembly points</li>
+                <li>Labeling and tagging</li>
+              </ul>
+            </v-tabs-window-item>
+
+            <!-- Examples Tab -->
+            <v-tabs-window-item value="examples">
+              <h4 class="mb-3">Industry Examples</h4>
+
+              <v-expansion-panels>
+                <v-expansion-panel title="Example: T-Shirt Manufacturing">
+                  <v-expansion-panel-text>
+                    <v-table density="compact">
+                      <tbody>
+                        <tr><td>Collar stitching</td><td>2 opportunities</td></tr>
+                        <tr><td>Shoulder seams (2)</td><td>4 opportunities</td></tr>
+                        <tr><td>Side seams (2)</td><td>4 opportunities</td></tr>
+                        <tr><td>Sleeve attachment (2)</td><td>4 opportunities</td></tr>
+                        <tr><td>Sleeve hem (2)</td><td>2 opportunities</td></tr>
+                        <tr><td>Bottom hem</td><td>2 opportunities</td></tr>
+                        <tr><td>Label attachment</td><td>1 opportunity</td></tr>
+                        <tr><td>Print/decoration</td><td>3 opportunities</td></tr>
+                        <tr class="font-weight-bold"><td>Total</td><td>22 opportunities</td></tr>
+                      </tbody>
+                    </v-table>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+
+                <v-expansion-panel title="Example: Boot Manufacturing">
+                  <v-expansion-panel-text>
+                    <v-table density="compact">
+                      <tbody>
+                        <tr><td>Upper stitching</td><td>8 opportunities</td></tr>
+                        <tr><td>Sole attachment</td><td>4 opportunities</td></tr>
+                        <tr><td>Heel attachment</td><td>2 opportunities</td></tr>
+                        <tr><td>Lace holes (12)</td><td>12 opportunities</td></tr>
+                        <tr><td>Tongue attachment</td><td>2 opportunities</td></tr>
+                        <tr><td>Inner lining</td><td>4 opportunities</td></tr>
+                        <tr><td>Logo/branding</td><td>2 opportunities</td></tr>
+                        <tr><td>Finishing</td><td>3 opportunities</td></tr>
+                        <tr class="font-weight-bold"><td>Total</td><td>37 opportunities</td></tr>
+                      </tbody>
+                    </v-table>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+
+                <v-expansion-panel title="Example: Simple Accessory (Belt)">
+                  <v-expansion-panel-text>
+                    <v-table density="compact">
+                      <tbody>
+                        <tr><td>Buckle attachment</td><td>2 opportunities</td></tr>
+                        <tr><td>Strap material</td><td>2 opportunities</td></tr>
+                        <tr><td>Stitching</td><td>2 opportunities</td></tr>
+                        <tr><td>Holes (5)</td><td>5 opportunities</td></tr>
+                        <tr><td>Edge finishing</td><td>2 opportunities</td></tr>
+                        <tr class="font-weight-bold"><td>Total</td><td>13 opportunities</td></tr>
+                      </tbody>
+                    </v-table>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+
+              <v-divider class="my-4" />
+
+              <v-alert type="success" variant="tonal">
+                <strong>Tip:</strong> Work with your quality team to establish consistent opportunity counting methods across all products. Document your counting methodology for consistency.
+              </v-alert>
+            </v-tabs-window-item>
+          </v-tabs-window>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="purple" @click="showGuide = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
@@ -370,6 +704,8 @@ const loading = ref(false)
 const saving = ref(false)
 const uploading = ref(false)
 const deleting = ref(false)
+const showGuide = ref(false)
+const guideTab = ref('overview')
 const clients = ref([])
 const selectedClient = ref(null)
 const partOpportunities = ref([])

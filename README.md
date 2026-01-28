@@ -4,8 +4,8 @@
 
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-1558%20passing-success)](https://github.com)
-[![Coverage](https://img.shields.io/badge/coverage-71%25+-yellowgreen)](https://github.com)
+[![Tests](https://img.shields.io/badge/tests-1846%20passing-success)](https://github.com)
+[![Coverage](https://img.shields.io/badge/coverage-52%25-yellow)](https://github.com)
 [![Design](https://img.shields.io/badge/design-IBM%20Carbon-blue)](https://carbondesignsystem.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
 
@@ -356,11 +356,13 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 ```
 
 ### **Current Test Coverage**
-- ✅ KPI Calculations: 95% coverage
+- ✅ KPI Calculations: 72% coverage (target: 85%)
 - ✅ Database Models: 80% coverage
-- ✅ API Endpoints: 71%+ coverage
-- ✅ E2E Tests: 120 Playwright scenarios (Chromium, Firefox, WebKit)
+- ✅ API Routes: 33% coverage (needs improvement)
+- ✅ CRUD Operations: 29% coverage (needs improvement)
+- ✅ E2E Tests: 180+ Playwright scenarios (Chromium, Firefox, WebKit)
 - ✅ Simulation Engine: Comprehensive test suite
+- ⚠️ Overall Backend: 52% (1846 passing, 19 failed, 891 errors)
 
 ---
 
@@ -522,28 +524,33 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 ```
 Frontend:
-- 35 Vue components (15,000+ lines)
+- 110 Vue components
 - 5 AG Grid implementations (2,000+ lines)
-- 7 KPI dashboard views
+- 10 KPI dashboard views
 - 100% responsive design
 
 Backend:
-- 28 database tables (multi-tenant architecture)
-- 12 KPI calculation engines + predictive forecasting
-- 197 API endpoints + 10 prediction endpoints + 4 email config endpoints
-- 71%+ test coverage (comprehensive backend tests)
+- 29 database tables (multi-tenant architecture)
+- 16 KPI calculation engines + predictive forecasting
+- 32 route modules + 19 CRUD modules
+- 52% test coverage (1846 tests passing, target: 85%)
 - 95%+ coverage on KPI calculations
-- Docker deployment ready (docker-compose.yml included)
+- Docker deployment ready (multi-stage Dockerfile + docker-compose.yml)
 - SimPy-based production line simulation engine
 
-Demo Data:
+Sample Data (8,274 total records):
 - 5 clients
 - 100 employees
-- 25 work orders
-- 75 production entries
-- 67 downtime events
-- 4800 attendance records
-- 25 quality inspections
+- 64 work orders
+- 301 jobs
+- 750 production entries
+- 120 quality entries
+- 5,200 attendance records
+- 975 shift coverage records
+- 115 downtime events
+- 55 hold entries
+- 204 defect details
+- 24 alerts + 37 alert history records
 
 Documentation:
 - 51 markdown files
@@ -558,7 +565,7 @@ Documentation:
 **Release Date:** January 25, 2026
 **Status:** Production Ready
 
-**Test Coverage:** Backend 71%+ | E2E Tests: 120 scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
+**Test Coverage:** Backend 52% (target: 85%) | E2E Tests: 180+ scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
 
 ### **Recent Updates (v1.0.3)**
 - ✅ **Predictive Analytics UI** - Added "Show Forecast" toggle on Efficiency and Performance KPI charts
