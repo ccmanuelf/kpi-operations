@@ -121,7 +121,7 @@ async def calculate_capacity_requirements_endpoint(
 
         result = calculate_capacity_requirements(
             db=db,
-            client_id=current_user.client_id,
+            client_id=current_user.client_id_assigned,
             target_units=request.target_units,
             target_date=target_date_val,
             cycle_time_hours=cycle_time,
@@ -458,7 +458,7 @@ async def optimize_floating_pool_endpoint(
 
         result = optimize_floating_pool_allocation(
             db=db,
-            client_id=current_user.client_id,
+            client_id=current_user.client_id_assigned,
             target_date=target_date_val,
             available_pool_employees=pool_employees,
             shift_requirements=shift_requirements,
@@ -533,7 +533,7 @@ async def run_comprehensive_simulation(
 
         result = run_capacity_simulation(
             db=db,
-            client_id=current_user.client_id,
+            client_id=current_user.client_id_assigned,
             simulation_config=config
         )
 
@@ -614,7 +614,7 @@ async def quick_staffing_calculation(
     """
     result = calculate_capacity_requirements(
         db=db,
-        client_id=current_user.client_id,
+        client_id=current_user.client_id_assigned,
         target_units=target_units,
         target_date=date.today(),
         cycle_time_hours=Decimal(str(cycle_time_hours)),
@@ -737,7 +737,7 @@ async def get_default_production_line_config(
     Use this as a starting point and customize for your specific needs.
     """
     config = create_default_production_line(
-        line_id=f"LINE-{current_user.client_id or 'DEFAULT'}",
+        line_id=f"LINE-{current_user.client_id_assigned or 'DEFAULT'}",
         num_stations=num_stations,
         workers_per_station=workers_per_station,
         floating_pool_size=floating_pool_size,

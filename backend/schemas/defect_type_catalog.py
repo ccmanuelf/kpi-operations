@@ -15,6 +15,7 @@ class DefectTypeCatalog(Base):
     Each client can have their own set of defect types appropriate for their industry
     """
     __tablename__ = "DEFECT_TYPE_CATALOG"
+    __table_args__ = {'extend_existing': True}
 
     # Primary key
     defect_type_id = Column(String(50), primary_key=True)

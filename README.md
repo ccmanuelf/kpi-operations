@@ -5,7 +5,7 @@
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-1558%20passing-success)](https://github.com)
-[![Coverage](https://img.shields.io/badge/coverage-77.48%25-yellowgreen)](https://github.com)
+[![Coverage](https://img.shields.io/badge/coverage-71%25+-yellowgreen)](https://github.com)
 [![Design](https://img.shields.io/badge/design-IBM%20Carbon-blue)](https://carbondesignsystem.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
 
@@ -54,6 +54,9 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 - ✅ **Responsive Design** - Works on desktop, tablet, mobile
 - ✅ **Keyboard Shortcuts** - Power-user productivity features
 - ✅ **Demo Data** - Sample data generator with 5 clients, 100 employees
+- ✅ **Production Line Simulation** - SimPy-based simulation with station modeling, bottleneck detection, and throughput analysis
+- ✅ **Capacity Planning** - Calculate staffing requirements based on target production, shift hours, and efficiency goals
+- ✅ **Scenario Comparison** - What-if analysis to compare different production configurations
 
 ---
 
@@ -72,7 +75,7 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
                      │ SQL
 ┌────────────────────▼────────────────────────────────────────┐
 │              Database (SQLite / MariaDB)                     │
-│     13 Normalized Tables + Indexes + Foreign Keys           │
+│     28 Normalized Tables + Indexes + Foreign Keys           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -250,6 +253,37 @@ kpi-operations/
 
 ---
 
+## 🔬 Simulation & Capacity Planning
+
+The platform includes a powerful simulation engine for production planning and optimization.
+
+### **Capacity Planning**
+Calculate staffing requirements based on production targets:
+- Target units per shift
+- Cycle time per unit
+- Efficiency goals (50-100%)
+- Absenteeism buffer calculation
+
+### **Production Line Simulation**
+Model production lines using SimPy discrete-event simulation:
+- Configure number of stations (2-10)
+- Set workers per station
+- Add floating pool workers
+- Simulate shifts (1-24 hours)
+- Identify bottleneck stations
+- Analyze throughput and quality yield
+
+### **Scenario Comparison**
+Compare what-if scenarios to optimize operations:
+- Create multiple configuration scenarios
+- Compare against baseline
+- View throughput improvements
+- Get best scenario recommendations
+
+**Access:** Navigate to the Simulation view in the dashboard and click "How to Use" for step-by-step guides.
+
+---
+
 ## 📖 API Documentation
 
 ### **Base URL**
@@ -324,9 +358,9 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 ### **Current Test Coverage**
 - ✅ KPI Calculations: 95% coverage
 - ✅ Database Models: 80% coverage
-- ✅ API Endpoints: 59.92% coverage (1,558 tests passing, 59 skipped)
+- ✅ API Endpoints: 71%+ coverage
 - ✅ E2E Tests: 120 Playwright scenarios (Chromium, Firefox, WebKit)
-- ⚠️ Target: 80% coverage (improvement in progress)
+- ✅ Simulation Engine: Comprehensive test suite
 
 ---
 
@@ -494,12 +528,13 @@ Frontend:
 - 100% responsive design
 
 Backend:
-- 16 database tables
+- 28 database tables (multi-tenant architecture)
 - 12 KPI calculation engines + predictive forecasting
 - 197 API endpoints + 10 prediction endpoints + 4 email config endpoints
-- 59.92% test coverage (1,558 tests passing, 59 skipped)
+- 71%+ test coverage (comprehensive backend tests)
 - 95%+ coverage on KPI calculations
-- Docker deployment ready
+- Docker deployment ready (docker-compose.yml included)
+- SimPy-based production line simulation engine
 
 Demo Data:
 - 5 clients
@@ -523,7 +558,7 @@ Documentation:
 **Release Date:** January 25, 2026
 **Status:** Production Ready
 
-**Test Coverage:** Backend 77.48% (1,558 tests) | E2E Tests: 120 scenarios | Docker Support: YES | Design System: IBM Carbon v11
+**Test Coverage:** Backend 71%+ | E2E Tests: 120 scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
 
 ### **Recent Updates (v1.0.3)**
 - ✅ **Predictive Analytics UI** - Added "Show Forecast" toggle on Efficiency and Performance KPI charts

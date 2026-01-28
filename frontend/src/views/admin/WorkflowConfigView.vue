@@ -260,7 +260,7 @@
             </div>
             <div v-else-if="statusDistribution">
               <div
-                v-for="item in statusDistribution.distribution"
+                v-for="item in statusDistribution.by_status"
                 :key="item.status"
                 class="d-flex align-center justify-space-between mb-2"
               >
@@ -283,7 +283,7 @@
               </div>
               <v-divider class="my-3" />
               <div class="text-body-2 text-medium-emphasis">
-                {{ $t('admin.workflowConfig.totalOrders') }}: <strong>{{ statusDistribution.total_orders }}</strong>
+                {{ $t('admin.workflowConfig.totalOrders') }}: <strong>{{ statusDistribution.total_work_orders }}</strong>
               </div>
             </div>
           </v-card-text>
@@ -301,37 +301,37 @@
             </div>
             <div v-else-if="averageTimes">
               <v-list density="compact" class="bg-transparent">
-                <v-list-item v-if="averageTimes.average_lifecycle_days != null">
+                <v-list-item v-if="averageTimes.averages?.lifecycle_days != null">
                   <template v-slot:prepend>
                     <v-icon size="small" color="primary">mdi-calendar-range</v-icon>
                   </template>
                   <v-list-item-title>{{ $t('admin.workflowConfig.avgLifecycle') }}</v-list-item-title>
                   <template v-slot:append>
-                    <span class="font-weight-bold">{{ averageTimes.average_lifecycle_days.toFixed(1) }} {{ $t('common.days') }}</span>
+                    <span class="font-weight-bold">{{ averageTimes.averages.lifecycle_days.toFixed(1) }} {{ $t('common.days') }}</span>
                   </template>
                 </v-list-item>
-                <v-list-item v-if="averageTimes.average_lead_time_hours != null">
+                <v-list-item v-if="averageTimes.averages?.lead_time_hours != null">
                   <template v-slot:prepend>
                     <v-icon size="small" color="info">mdi-inbox</v-icon>
                   </template>
                   <v-list-item-title>{{ $t('admin.workflowConfig.avgLeadTime') }}</v-list-item-title>
                   <template v-slot:append>
-                    <span class="font-weight-bold">{{ averageTimes.average_lead_time_hours.toFixed(1) }} {{ $t('common.hours') }}</span>
+                    <span class="font-weight-bold">{{ averageTimes.averages.lead_time_hours.toFixed(1) }} {{ $t('common.hours') }}</span>
                   </template>
                 </v-list-item>
-                <v-list-item v-if="averageTimes.average_processing_hours != null">
+                <v-list-item v-if="averageTimes.averages?.processing_time_hours != null">
                   <template v-slot:prepend>
                     <v-icon size="small" color="success">mdi-factory</v-icon>
                   </template>
                   <v-list-item-title>{{ $t('admin.workflowConfig.avgProcessing') }}</v-list-item-title>
                   <template v-slot:append>
-                    <span class="font-weight-bold">{{ averageTimes.average_processing_hours.toFixed(1) }} {{ $t('common.hours') }}</span>
+                    <span class="font-weight-bold">{{ averageTimes.averages.processing_time_hours.toFixed(1) }} {{ $t('common.hours') }}</span>
                   </template>
                 </v-list-item>
               </v-list>
               <v-divider class="my-3" />
               <div class="text-body-2 text-medium-emphasis">
-                {{ $t('admin.workflowConfig.sampleSize') }}: <strong>{{ averageTimes.sample_size }}</strong>
+                {{ $t('admin.workflowConfig.sampleSize') }}: <strong>{{ averageTimes.count }}</strong>
               </div>
             </div>
             <v-alert v-else type="info" variant="tonal" density="compact">
