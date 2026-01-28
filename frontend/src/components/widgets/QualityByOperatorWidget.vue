@@ -288,7 +288,7 @@ const fetchData = async () => {
 
   try {
     // Try to fetch quality by operator from API
-    const response = await axios.get('http://localhost:8000/api/v1/kpi/quality/by-operator', {
+    const response = await axios.get('/api/kpi/quality/by-operator', {
       params: {
         client_id: props.clientId,
         product_id: props.productId,
@@ -320,7 +320,7 @@ const fetchData = async () => {
 const fetchQualityAndAggregate = async () => {
   try {
     // Fallback: fetch quality inspections and aggregate by operator
-    const response = await axios.get('http://localhost:8000/api/v1/quality', {
+    const response = await axios.get('/api/quality', {
       params: {
         start_date: props.startDate,
         end_date: props.endDate,

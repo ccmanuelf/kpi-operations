@@ -9,7 +9,7 @@ async function login(page: Page) {
   await page.goto('/');
   await page.fill('input[type="text"]', 'admin');
   await page.fill('input[type="password"]', 'admin123');
-  await page.click('button:has-text("Login")');
+  await page.click('button:has-text("Sign In")');
   await expect(page.locator('nav')).toBeVisible({ timeout: 15000 });
 }
 

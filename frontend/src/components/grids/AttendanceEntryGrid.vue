@@ -167,6 +167,7 @@ import { useI18n } from 'vue-i18n'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
+import TimePickerCellEditor from './editors/TimePickerCellEditor.vue'
 import api from '@/services/api'
 import { format } from 'date-fns'
 
@@ -292,21 +293,19 @@ const columnDefs = computed(() => [
     headerName: t('grids.columns.clockIn'),
     field: 'clock_in',
     editable: true,
-    cellEditor: 'agTextCellEditor',
-    cellEditorParams: {
-      placeholder: 'HH:MM'
-    },
-    width: 120
+    cellEditor: TimePickerCellEditor,
+    cellEditorPopup: false,
+    width: 120,
+    valueFormatter: (params) => params.value || '--:--'
   },
   {
     headerName: t('grids.columns.clockOut'),
     field: 'clock_out',
     editable: true,
-    cellEditor: 'agTextCellEditor',
-    cellEditorParams: {
-      placeholder: 'HH:MM'
-    },
-    width: 120
+    cellEditor: TimePickerCellEditor,
+    cellEditorPopup: false,
+    width: 120,
+    valueFormatter: (params) => params.value || '--:--'
   },
   {
     headerName: t('grids.columns.lateMinutes'),

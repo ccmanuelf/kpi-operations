@@ -417,16 +417,16 @@ const fetchKPIData = async () => {
       fpyRes,
       rtyRes
     ] = await Promise.all([
-      axios.get('http://localhost:8000/api/v1/kpi/efficiency'),
-      axios.get('http://localhost:8000/api/v1/kpi/performance'),
-      axios.get('http://localhost:8000/api/v1/kpi/wip-aging'),
-      axios.get('http://localhost:8000/api/v1/kpi/on-time-delivery'),
-      axios.get('http://localhost:8000/api/v1/kpi/availability'),
-      axios.get('http://localhost:8000/api/v1/kpi/absenteeism'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/ppm'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/dpmo'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/fpy'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/rty')
+      axios.get('/api/kpi/efficiency/trend'),
+      axios.get('/api/kpi/performance/trend'),
+      axios.get('/api/kpi/wip-aging'),
+      axios.get('/api/kpi/otd'),
+      axios.get('/api/kpi/availability'),
+      axios.get('/api/attendance/kpi/absenteeism'),
+      axios.get('/api/quality/kpi/ppm'),
+      axios.get('/api/quality/kpi/dpmo'),
+      axios.get('/api/quality/kpi/fpy-rty'),
+      axios.get('/api/quality/kpi/fpy-rty')
     ])
 
     kpiData.value = {

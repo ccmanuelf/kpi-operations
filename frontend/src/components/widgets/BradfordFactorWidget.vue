@@ -252,7 +252,7 @@ const fetchData = async () => {
 
   try {
     // Try to fetch Bradford Factor from API
-    const response = await axios.get('http://localhost:8000/api/v1/kpi/bradford-factor', {
+    const response = await axios.get('/api/kpi/bradford-factor', {
       params: {
         employee_id: props.employeeId,
         start_date: props.startDate,
@@ -276,7 +276,7 @@ const fetchData = async () => {
 const fetchAttendanceAndCalculate = async () => {
   try {
     // Fallback: fetch attendance records and calculate locally
-    const response = await axios.get('http://localhost:8000/api/v1/attendance', {
+    const response = await axios.get('/api/attendance', {
       params: {
         employee_id: props.employeeId,
         start_date: props.startDate,

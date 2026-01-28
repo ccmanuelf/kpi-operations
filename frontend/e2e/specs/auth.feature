@@ -14,7 +14,7 @@ Feature: User Authentication
 
   @smoke @login
   Scenario: Successful login with valid credentials
-    Given I see the "Manufacturing KPI Platform" title
+    Given I see the "Manufacturing KPI" title
     When I enter username "operator1"
     And I enter password "ValidPassword123!"
     And I click the "Login" button

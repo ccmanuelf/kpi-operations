@@ -165,9 +165,9 @@ const holdSummary = ref({
 const fetchData = async () => {
   try {
     const [wipRes, otdRes, availRes] = await Promise.all([
-      axios.get('http://localhost:8000/api/v1/kpi/wip-aging'),
-      axios.get('http://localhost:8000/api/v1/kpi/on-time-delivery'),
-      axios.get('http://localhost:8000/api/v1/kpi/availability')
+      axios.get('/api/kpi/wip-aging'),
+      axios.get('/api/kpi/otd'),
+      axios.get('/api/kpi/availability')
     ])
 
     wipAging.value = parseFloat(wipRes.data.average_aging_days.toFixed(1))

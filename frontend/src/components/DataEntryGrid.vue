@@ -173,13 +173,56 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TableSkeleton from '@/components/ui/TableSkeleton.vue'
+import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const kpiStore = useKPIStore()
+
+// Unsaved changes warning when rows are being edited
+const { hasUnsavedChanges, markDirty, markClean } = useUnsavedChanges({
+  message: 'You have unsaved changes in the production grid. Are you sure you want to leave?'
+})
+
+// Keyboard shortcuts (Ctrl+S to save, Escape to cancel)
+const { registerShortcut } = useKeyboardShortcuts()
+
+// Track if any row is being edited
+const hasEditingRows = computed(() => entries.value.some(item => item.editing))
+
+// Sync editing state with unsaved changes
+watch(hasEditingRows, (isEditing) => {
+  if (isEditing) {
+    markDirty()
+  } else {
+    markClean()
+  }
+})
+
+// Save all editing rows via Ctrl+S
+const saveAllEditingRows = async () => {
+  const editingRows = entries.value.filter(item => item.editing)
+  if (editingRows.length === 0) return
+
+  for (const item of editingRows) {
+    await saveEntry(item)
+  }
+  announceStatus(`Saved ${editingRows.length} entries`)
+}
+
+// Cancel all editing via Escape
+const cancelAllEditing = () => {
+  const editingRows = [...entries.value.filter(item => item.editing)]
+  editingRows.forEach(item => cancelEdit(item))
+}
+
+// Register keyboard shortcuts
+registerShortcut('ctrl+s', saveAllEditingRows)
+registerShortcut('escape', cancelAllEditing)
 
 const initialLoading = ref(true)
 const loading = computed(() => kpiStore.loading)

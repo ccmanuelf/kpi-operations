@@ -241,12 +241,13 @@ const qualitySummary = ref({
 
 const fetchData = async () => {
   try {
-    const [ppmRes, dpmoRes, fpyRes, rtyRes] = await Promise.all([
-      axios.get('http://localhost:8000/api/v1/kpi/quality/ppm'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/dpmo'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/fpy'),
-      axios.get('http://localhost:8000/api/v1/kpi/quality/rty')
+    const [ppmRes, dpmoRes, fpyRtyRes] = await Promise.all([
+      axios.get('/api/quality/kpi/ppm'),
+      axios.get('/api/quality/kpi/dpmo'),
+      axios.get('/api/quality/kpi/fpy-rty')
     ])
+    const fpyRes = fpyRtyRes
+    const rtyRes = fpyRtyRes
 
     ppm.value = parseInt(ppmRes.data.ppm)
     dpmo.value = parseInt(dpmoRes.data.dpmo)

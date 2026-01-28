@@ -15,7 +15,7 @@ async function login(page: Page, role: 'admin' | 'operator' | 'leader' = 'admin'
   await page.goto('/');
   await page.fill('input[type="text"]', credentials[role].user);
   await page.fill('input[type="password"]', credentials[role].pass);
-  await page.click('button:has-text("Login")');
+  await page.click('button:has-text("Sign In")');
   await expect(page.locator('nav')).toBeVisible({ timeout: 15000 });
 }
 

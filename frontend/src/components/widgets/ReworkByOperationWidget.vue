@@ -317,7 +317,7 @@ const fetchData = async () => {
 
   try {
     // Try to fetch rework by operation from API
-    const response = await axios.get('http://localhost:8000/api/v1/kpi/quality/rework-by-operation', {
+    const response = await axios.get('/api/kpi/quality/rework-by-operation', {
       params: {
         client_id: props.clientId,
         product_id: props.productId,
@@ -352,7 +352,7 @@ const fetchData = async () => {
 const fetchQualityAndAggregate = async () => {
   try {
     // Fallback: fetch quality inspections and aggregate by operation/stage
-    const response = await axios.get('http://localhost:8000/api/v1/quality', {
+    const response = await axios.get('/api/quality', {
       params: {
         start_date: props.startDate,
         end_date: props.endDate,

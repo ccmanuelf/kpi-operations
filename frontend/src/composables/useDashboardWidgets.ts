@@ -5,7 +5,7 @@
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
-const API_BASE = 'http://localhost:8000/api/v1'
+const API_BASE = '/api'
 
 // Types
 export interface DowntimeImpactData {

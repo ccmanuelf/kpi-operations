@@ -147,9 +147,9 @@ const fetchData = async () => {
   loading.value = true
   try {
     const [effRes, perfRes, entriesRes] = await Promise.all([
-      axios.get('http://localhost:8000/api/v1/kpi/efficiency'),
-      axios.get('http://localhost:8000/api/v1/kpi/performance'),
-      axios.get('http://localhost:8000/api/v1/production-entries?limit=20')
+      axios.get('/api/kpi/efficiency/trend'),
+      axios.get('/api/kpi/performance/trend'),
+      axios.get('/api/production-entries?limit=20')
     ])
 
     efficiency.value = parseFloat(effRes.data.value.toFixed(1))

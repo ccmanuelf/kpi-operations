@@ -209,7 +209,7 @@ const fetchData = async () => {
 
   try {
     // Fetch downtime data from API
-    const response = await axios.get('http://localhost:8000/api/v1/kpi/downtime-impact', {
+    const response = await axios.get('/api/kpi/downtime-impact', {
       params: {
         client_id: props.clientId,
         start_date: props.startDate,
@@ -244,7 +244,7 @@ const fetchData = async () => {
 const fetchDowntimeEvents = async () => {
   try {
     // Fallback: aggregate from downtime events
-    const response = await axios.get('http://localhost:8000/api/v1/downtime', {
+    const response = await axios.get('/api/downtime', {
       params: {
         start_date: props.startDate,
         end_date: props.endDate,

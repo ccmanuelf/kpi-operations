@@ -217,7 +217,7 @@ const fetchData = async () => {
   if (!props.autoFetch) return
 
   try {
-    const response = await axios.get('http://localhost:8000/api/v1/kpi/absenteeism', {
+    const response = await axios.get('/api/attendance/kpi/absenteeism', {
       params: {
         client_id: props.clientId,
         start_date: props.startDate,

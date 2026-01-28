@@ -87,6 +87,9 @@ def get_test_engine():
             connect_args={"check_same_thread": False},
             poolclass=StaticPool,
         )
+        # CRITICAL: Drop all tables first to avoid index conflicts
+        # This prevents 'index ix_CLIENT_client_id already exists' errors
+        Base.metadata.drop_all(bind=_test_engine)
         Base.metadata.create_all(bind=_test_engine)
         _TestingSessionLocal = sessionmaker(
             autocommit=False,

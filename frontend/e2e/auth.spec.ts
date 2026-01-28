@@ -13,16 +13,16 @@ test.describe('Authentication', () => {
 
   test.describe('Login Page', () => {
     test('should display login page with all elements', async ({ page }) => {
-      await expect(page.locator('text=Manufacturing KPI Platform')).toBeVisible();
+      await expect(page.locator('text=Manufacturing KPI')).toBeVisible();
       await expect(page.locator('input[type="text"]').first()).toBeVisible();
       await expect(page.locator('input[type="password"]')).toBeVisible();
-      await expect(page.locator('button:has-text("Login")')).toBeVisible();
+      await expect(page.locator('button:has-text("Sign In")')).toBeVisible();
       await expect(page.locator('text=Forgot Password?')).toBeVisible();
       await expect(page.locator('text=Create Account')).toBeVisible();
     });
 
     test('should show error for empty credentials', async ({ page }) => {
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
 
       // Should show validation message
       const validation = page.locator('.v-messages__message').or(
@@ -34,7 +34,7 @@ test.describe('Authentication', () => {
     test('should show error for invalid credentials', async ({ page }) => {
       await page.fill('input[type="text"]', 'invaliduser');
       await page.fill('input[type="password"]', 'wrongpassword');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
 
       await expect(page.locator('.v-alert')).toBeVisible({ timeout: 10000 });
     });
@@ -42,7 +42,7 @@ test.describe('Authentication', () => {
     test('should show error for valid user but wrong password', async ({ page }) => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'wrongpassword');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
 
       await expect(page.locator('.v-alert')).toBeVisible({ timeout: 10000 });
     });
@@ -50,7 +50,7 @@ test.describe('Authentication', () => {
     test('should login successfully with valid credentials', async ({ page }) => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
 
       // Should redirect to dashboard
       await expect(page).toHaveURL('/', { timeout: 10000 });
@@ -62,7 +62,7 @@ test.describe('Authentication', () => {
       // Login
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
       await expect(page.locator('nav')).toBeVisible({ timeout: 15000 });
 
       // Refresh page
@@ -77,7 +77,7 @@ test.describe('Authentication', () => {
       await page.goto('/production');
 
       // Should redirect to login
-      await expect(page.locator('text=Manufacturing KPI Platform')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=Manufacturing KPI')).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -391,7 +391,7 @@ test.describe('Authentication', () => {
       // Login first
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
 
       await expect(page.locator('nav')).toBeVisible({ timeout: 10000 });
 
@@ -403,7 +403,7 @@ test.describe('Authentication', () => {
       );
       if (await logoutButton.isVisible()) {
         await logoutButton.click();
-        await expect(page.locator('text=Manufacturing KPI Platform')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('text=Manufacturing KPI')).toBeVisible({ timeout: 10000 });
       }
     });
 
@@ -411,7 +411,7 @@ test.describe('Authentication', () => {
       // Login
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
       await expect(page.locator('nav')).toBeVisible({ timeout: 10000 });
 
       // Logout
@@ -420,13 +420,13 @@ test.describe('Authentication', () => {
       );
       if (await logoutButton.isVisible()) {
         await logoutButton.click();
-        await expect(page.locator('text=Manufacturing KPI Platform')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('text=Manufacturing KPI')).toBeVisible({ timeout: 10000 });
 
         // Try to access protected page
         await page.goto('/production');
 
         // Should redirect to login
-        await expect(page.locator('text=Manufacturing KPI Platform')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('text=Manufacturing KPI')).toBeVisible({ timeout: 10000 });
       }
     });
 
@@ -434,7 +434,7 @@ test.describe('Authentication', () => {
       // Login
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
       await expect(page.locator('nav')).toBeVisible({ timeout: 10000 });
 
       // Click logout
@@ -462,7 +462,7 @@ test.describe('Authentication', () => {
       // Login
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
       await expect(page.locator('nav')).toBeVisible({ timeout: 10000 });
 
       // Clear token to simulate timeout
@@ -481,7 +481,7 @@ test.describe('Authentication', () => {
       // Login in first tab
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
       await expect(page.locator('nav')).toBeVisible({ timeout: 10000 });
 
       // Open new tab
@@ -499,7 +499,7 @@ test.describe('Authentication', () => {
     test('should not expose password in URL', async ({ page }) => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
-      await page.click('button:has-text("Login")');
+      await page.click('button:has-text("Sign In")');
 
       // URL should not contain password
       const url = page.url();

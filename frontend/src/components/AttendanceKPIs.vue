@@ -138,7 +138,7 @@ const floatingPool = ref({
 
 const fetchData = async () => {
   try {
-    const response = await axios.get('http://localhost:8000/api/v1/kpi/absenteeism')
+    const response = await axios.get('/api/attendance/kpi/absenteeism')
     absenteeism.value = parseFloat(response.data.absenteeism_rate.toFixed(1))
 
     // Mock absence breakdown (would come from API)
