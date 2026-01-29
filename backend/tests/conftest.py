@@ -399,8 +399,9 @@ class TestDataFactory:
 
 @pytest.fixture
 def test_data_factory():
-    """Provide test data factory"""
-    return TestDataFactory
+    """Provide test data factory - uses enhanced fixtures"""
+    from backend.tests.fixtures.factories import TestDataFactory as EnhancedFactory
+    return EnhancedFactory
 
 
 # Assertion Helpers
@@ -578,3 +579,349 @@ def authenticated_client(test_client, auth_headers):
             return self._client.options(url, headers=headers, **kwargs)
     
     return AuthenticatedTestClient(test_client, auth_headers)
+
+
+# ============================================================================
+# Enhanced Fixtures with Real Database Transactions
+# ============================================================================
+
+# Import fixtures package (factories, auth fixtures, seed data)
+from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.fixtures.auth_fixtures import (
+    create_test_user,
+    create_test_token,
+    AuthenticatedClient as AuthClientWrapper,
+    get_admin_client,
+    get_supervisor_client,
+    get_operator_client,
+    get_viewer_client,
+    get_leader_client,
+    get_multi_tenant_client,
+)
+from backend.tests.fixtures.seed_data import (
+    seed_minimal_data,
+    seed_comprehensive_data,
+    seed_multi_tenant_data,
+    cleanup_test_data,
+)
+
+
+@pytest.fixture(scope="function")
+def transactional_db():
+    """
+    Create a database session with automatic rollback after each test.
+    This ensures test isolation without needing to delete data.
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+
+    TestingSessionLocal = sessionmaker(
+        autocommit=False,
+        autoflush=False,
+        bind=engine
+    )
+    session = TestingSessionLocal()
+
+    # Reset factory counters for clean IDs
+    TestDataFactory.reset_counters()
+
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
+
+
+@pytest.fixture(scope="function")
+def seeded_db(transactional_db):
+    """
+    Provide a database session pre-seeded with minimal test data.
+    Useful for tests that need basic data setup.
+    """
+    data = seed_minimal_data(transactional_db)
+    yield transactional_db, data
+
+
+@pytest.fixture(scope="function")
+def comprehensive_db(transactional_db):
+    """
+    Provide a database session pre-seeded with comprehensive test data.
+    Useful for integration tests that need realistic data relationships.
+    """
+    data = seed_comprehensive_data(transactional_db, days_of_data=30)
+    yield transactional_db, data
+
+
+@pytest.fixture(scope="function")
+def multi_tenant_db(transactional_db):
+    """
+    Provide a database session pre-seeded with multi-tenant test data.
+    Useful for testing client isolation and tenant-specific access.
+    """
+    data = seed_multi_tenant_data(transactional_db)
+    yield transactional_db, data
+
+
+@pytest.fixture(scope="function")
+def factory(transactional_db):
+    """
+    Provide the TestDataFactory with an associated database session.
+    Allows tests to create specific data as needed.
+    """
+    return TestDataFactory
+
+
+# ============================================================================
+# Role-Based Authenticated Client Fixtures
+# ============================================================================
+
+@pytest.fixture(scope="function")
+def admin_authenticated_client(test_client, transactional_db):
+    """
+    Provide an authenticated client with admin role.
+    Admin users can access all clients.
+    """
+    # Override get_db to use transactional_db
+    from backend.main import app
+    app.dependency_overrides[get_db] = lambda: transactional_db
+
+    # Create client and admin user
+    client = TestDataFactory.create_client(
+        transactional_db,
+        client_id="ADMIN-TEST-CLIENT",
+        client_name="Admin Test Client"
+    )
+    transactional_db.commit()
+
+    auth_client = get_admin_client(
+        test_client,
+        transactional_db,
+        username="admin_test_user"
+    )
+
+    yield auth_client, transactional_db, client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def supervisor_authenticated_client(test_client, transactional_db):
+    """
+    Provide an authenticated client with supervisor role.
+    Supervisors have elevated access within their assigned client.
+    """
+    from backend.main import app
+    app.dependency_overrides[get_db] = lambda: transactional_db
+
+    # Create client
+    client = TestDataFactory.create_client(
+        transactional_db,
+        client_id="SUPERVISOR-TEST-CLIENT",
+        client_name="Supervisor Test Client"
+    )
+    transactional_db.commit()
+
+    auth_client = get_supervisor_client(
+        test_client,
+        transactional_db,
+        client_id=client.client_id,
+        username="supervisor_test_user"
+    )
+
+    yield auth_client, transactional_db, client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def operator_authenticated_client(test_client, transactional_db):
+    """
+    Provide an authenticated client with operator role.
+    Operators have basic access to their assigned client only.
+    """
+    from backend.main import app
+    app.dependency_overrides[get_db] = lambda: transactional_db
+
+    # Create client
+    client = TestDataFactory.create_client(
+        transactional_db,
+        client_id="OPERATOR-TEST-CLIENT",
+        client_name="Operator Test Client"
+    )
+    transactional_db.commit()
+
+    auth_client = get_operator_client(
+        test_client,
+        transactional_db,
+        client_id=client.client_id,
+        username="operator_test_user"
+    )
+
+    yield auth_client, transactional_db, client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def multi_tenant_authenticated_clients(test_client, transactional_db):
+    """
+    Provide authenticated clients for multi-tenant testing.
+    Returns dict with clients for different tenants.
+    """
+    from backend.main import app
+    app.dependency_overrides[get_db] = lambda: transactional_db
+
+    # Seed multi-tenant data
+    data = seed_multi_tenant_data(transactional_db)
+
+    # Create authenticated clients for each user
+    auth_clients = {}
+
+    for user_key, user in data["users"].items():
+        token = create_test_token(user)
+        auth_clients[user_key] = AuthClientWrapper(test_client, token)
+
+    yield auth_clients, transactional_db, data
+
+    app.dependency_overrides.clear()
+
+
+# ============================================================================
+# Production Route Testing Fixtures
+# ============================================================================
+
+@pytest.fixture(scope="function")
+def production_test_setup(test_client, transactional_db):
+    """
+    Complete setup for production route testing.
+    Creates all necessary entities: client, user, product, shift.
+    """
+    from backend.main import app
+    app.dependency_overrides[get_db] = lambda: transactional_db
+
+    # Create client
+    client = TestDataFactory.create_client(
+        transactional_db,
+        client_id="PROD-TEST-CLIENT",
+        client_name="Production Test Client"
+    )
+
+    # Create supervisor user
+    user = TestDataFactory.create_user(
+        transactional_db,
+        username="prod_supervisor",
+        role="supervisor",
+        client_id=client.client_id,
+        password="TestPass123!"
+    )
+
+    # Create product
+    product = TestDataFactory.create_product(
+        transactional_db,
+        client_id=client.client_id,
+        product_code="PROD-TEST-001",
+        product_name="Test Production Product",
+        ideal_cycle_time=Decimal("0.15")
+    )
+
+    # Create shift
+    shift = TestDataFactory.create_shift(
+        transactional_db,
+        client_id=client.client_id,
+        shift_name="Test Day Shift",
+        start_time="06:00:00",
+        end_time="14:00:00"
+    )
+
+    transactional_db.commit()
+
+    # Create authenticated client
+    auth_client = get_supervisor_client(
+        test_client,
+        transactional_db,
+        client_id=client.client_id,
+        username="prod_route_supervisor"
+    )
+
+    yield {
+        "auth_client": auth_client,
+        "db": transactional_db,
+        "client": client,
+        "user": user,
+        "product": product,
+        "shift": shift,
+    }
+
+    app.dependency_overrides.clear()
+
+
+# ============================================================================
+# Quality Route Testing Fixtures
+# ============================================================================
+
+@pytest.fixture(scope="function")
+def quality_test_setup(test_client, transactional_db):
+    """
+    Complete setup for quality route testing.
+    Creates client, user, work order, and related entities.
+    """
+    from backend.main import app
+    app.dependency_overrides[get_db] = lambda: transactional_db
+
+    # Create client
+    client = TestDataFactory.create_client(
+        transactional_db,
+        client_id="QUAL-TEST-CLIENT",
+        client_name="Quality Test Client"
+    )
+
+    # Create supervisor user
+    user = TestDataFactory.create_user(
+        transactional_db,
+        username="qual_supervisor",
+        role="supervisor",
+        client_id=client.client_id,
+        password="TestPass123!"
+    )
+
+    # Create product
+    product = TestDataFactory.create_product(
+        transactional_db,
+        client_id=client.client_id
+    )
+
+    transactional_db.flush()
+
+    # Create work order
+    work_order = TestDataFactory.create_work_order(
+        transactional_db,
+        client_id=client.client_id,
+        product_id=product.product_id
+    )
+
+    transactional_db.commit()
+
+    # Create authenticated client
+    auth_client = get_supervisor_client(
+        test_client,
+        transactional_db,
+        client_id=client.client_id,
+        username="qual_route_supervisor"
+    )
+
+    yield {
+        "auth_client": auth_client,
+        "db": transactional_db,
+        "client": client,
+        "user": user,
+        "product": product,
+        "work_order": work_order,
+    }
+
+    app.dependency_overrides.clear()
