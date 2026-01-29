@@ -12,6 +12,9 @@ import csv
 import json
 
 from backend.database import get_db
+from backend.utils.logging_utils import get_module_logger, log_operation, log_error
+
+logger = get_module_logger(__name__)
 from backend.models.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
@@ -67,7 +70,16 @@ def create_entry(
             detail=f"Shift ID {entry.shift_id} not found"
         )
 
-    return create_production_entry(db, entry, current_user)
+    try:
+        result = create_production_entry(db, entry, current_user)
+        log_operation(logger, "CREATE", "production",
+                     resource_id=str(result.production_entry_id),
+                     user_id=current_user.user_id,
+                     details={"units": entry.units_produced, "product_id": entry.product_id})
+        return result
+    except Exception as e:
+        log_error(logger, "CREATE", "production", e, user_id=current_user.user_id)
+        raise
 
 
 @router.get("", response_model=List[ProductionEntryResponse])
@@ -120,13 +132,23 @@ def update_entry(
     current_user: User = Depends(get_current_user)
 ):
     """Update production entry"""
-    updated_entry = update_production_entry(db, entry_id, entry_update, current_user)
-    if not updated_entry:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Production entry {entry_id} not found"
-        )
-    return updated_entry
+    try:
+        updated_entry = update_production_entry(db, entry_id, entry_update, current_user)
+        if not updated_entry:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Production entry {entry_id} not found"
+            )
+        log_operation(logger, "UPDATE", "production",
+                     resource_id=str(entry_id),
+                     user_id=current_user.user_id)
+        return updated_entry
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "UPDATE", "production", e,
+                 resource_id=str(entry_id), user_id=current_user.user_id)
+        raise
 
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -136,12 +158,22 @@ def delete_entry(
     current_user: User = Depends(get_current_active_supervisor)
 ):
     """Delete production entry (supervisor only)"""
-    success = delete_production_entry(db, entry_id, current_user)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Production entry {entry_id} not found"
-        )
+    try:
+        success = delete_production_entry(db, entry_id, current_user)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Production entry {entry_id} not found"
+            )
+        log_operation(logger, "DELETE", "production",
+                     resource_id=str(entry_id),
+                     user_id=current_user.user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "DELETE", "production", e,
+                 resource_id=str(entry_id), user_id=current_user.user_id)
+        raise
 
 
 @router.post("/upload/csv", response_model=CSVUploadResponse)
@@ -249,6 +281,11 @@ async def upload_csv(
                 "data": row
             })
 
+    log_operation(logger, "CSV_UPLOAD", "production",
+                 user_id=current_user.user_id,
+                 details={"total": total_rows, "successful": successful, "failed": failed,
+                         "filename": file.filename})
+
     return CSVUploadResponse(
         total_rows=total_rows,
         successful=successful,
@@ -339,6 +376,11 @@ def batch_import_production(
         # Don't fail the entire import if logging fails
         print(f"Warning: Failed to create import log: {log_error}")
         db.rollback()
+
+    log_operation(logger, "BATCH_IMPORT", "production",
+                 user_id=current_user.user_id,
+                 details={"total": total_rows, "successful": successful, "failed": failed,
+                         "import_log_id": import_log_id})
 
     return BatchImportResponse(
         total_rows=total_rows,

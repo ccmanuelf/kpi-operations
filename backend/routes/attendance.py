@@ -10,6 +10,9 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
+from backend.utils.logging_utils import get_module_logger, log_operation, log_error
+
+logger = get_module_logger(__name__)
 from backend.models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
@@ -45,7 +48,18 @@ def create_attendance(
     Create new attendance record
     SECURITY: Enforces client filtering through user authentication
     """
-    return create_attendance_record(db, attendance, current_user)
+    try:
+        result = create_attendance_record(db, attendance, current_user)
+        log_operation(logger, "CREATE", "attendance",
+                     resource_id=str(result.attendance_entry_id),
+                     user_id=current_user.user_id,
+                     client_id=getattr(attendance, 'client_id', None))
+        return result
+    except Exception as e:
+        log_error(logger, "CREATE", "attendance", e,
+                 user_id=current_user.user_id,
+                 client_id=getattr(attendance, 'client_id', None))
+        raise
 
 
 @router.get("", response_model=List[AttendanceRecordResponse])
@@ -207,10 +221,21 @@ def update_attendance(
     Update attendance record
     SECURITY: Verifies user has access to this attendance record
     """
-    updated = update_attendance_record(db, attendance_id, attendance_update, current_user)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-    return updated
+    try:
+        updated = update_attendance_record(db, attendance_id, attendance_update, current_user)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Attendance record not found")
+        log_operation(logger, "UPDATE", "attendance",
+                     resource_id=str(attendance_id),
+                     user_id=current_user.user_id)
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "UPDATE", "attendance", e,
+                 resource_id=str(attendance_id),
+                 user_id=current_user.user_id)
+        raise
 
 
 @router.delete("/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -223,9 +248,20 @@ def delete_attendance(
     Delete attendance record (supervisor only)
     SECURITY: Supervisor/admin only, verifies client access
     """
-    success = delete_attendance_record(db, attendance_id, current_user)
-    if not success:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
+    try:
+        success = delete_attendance_record(db, attendance_id, current_user)
+        if not success:
+            raise HTTPException(status_code=404, detail="Attendance record not found")
+        log_operation(logger, "DELETE", "attendance",
+                     resource_id=str(attendance_id),
+                     user_id=current_user.user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "DELETE", "attendance", e,
+                 resource_id=str(attendance_id),
+                 user_id=current_user.user_id)
+        raise
 
 
 # ============================================================================

@@ -8,6 +8,9 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
+from backend.utils.logging_utils import get_module_logger, log_operation, log_error
+
+logger = get_module_logger(__name__)
 from backend.models.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
@@ -39,7 +42,16 @@ def create_downtime(
     current_user: User = Depends(get_current_user)
 ):
     """Create downtime event"""
-    return create_downtime_event(db, downtime, current_user)
+    try:
+        result = create_downtime_event(db, downtime, current_user)
+        log_operation(logger, "CREATE", "downtime",
+                     resource_id=str(result.downtime_entry_id),
+                     user_id=current_user.user_id,
+                     details={"reason": getattr(downtime, 'downtime_reason', None)})
+        return result
+    except Exception as e:
+        log_error(logger, "CREATE", "downtime", e, user_id=current_user.user_id)
+        raise
 
 
 @router.get("", response_model=List[DowntimeEventResponse])
@@ -83,10 +95,20 @@ def update_downtime(
     current_user: User = Depends(get_current_user)
 ):
     """Update downtime event"""
-    updated = update_downtime_event(db, downtime_id, downtime_update, current_user)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Downtime event not found")
-    return updated
+    try:
+        updated = update_downtime_event(db, downtime_id, downtime_update, current_user)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Downtime event not found")
+        log_operation(logger, "UPDATE", "downtime",
+                     resource_id=str(downtime_id),
+                     user_id=current_user.user_id)
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "UPDATE", "downtime", e,
+                 resource_id=str(downtime_id), user_id=current_user.user_id)
+        raise
 
 
 @router.delete("/{downtime_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -96,9 +118,19 @@ def delete_downtime(
     current_user: User = Depends(get_current_active_supervisor)
 ):
     """Delete downtime event (supervisor only)"""
-    success = delete_downtime_event(db, downtime_id, current_user)
-    if not success:
-        raise HTTPException(status_code=404, detail="Downtime event not found")
+    try:
+        success = delete_downtime_event(db, downtime_id, current_user)
+        if not success:
+            raise HTTPException(status_code=404, detail="Downtime event not found")
+        log_operation(logger, "DELETE", "downtime",
+                     resource_id=str(downtime_id),
+                     user_id=current_user.user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "DELETE", "downtime", e,
+                 resource_id=str(downtime_id), user_id=current_user.user_id)
+        raise
 
 
 # Availability KPI endpoint (separate prefix for /api/kpi namespace)

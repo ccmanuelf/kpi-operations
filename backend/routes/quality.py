@@ -9,6 +9,9 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
+from backend.utils.logging_utils import get_module_logger, log_operation, log_error
+
+logger = get_module_logger(__name__)
 from backend.models.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
@@ -55,7 +58,16 @@ def create_quality(
     Create new quality inspection record
     SECURITY: Enforces client filtering through user authentication
     """
-    return create_quality_inspection(db, inspection, current_user)
+    try:
+        result = create_quality_inspection(db, inspection, current_user)
+        log_operation(logger, "CREATE", "quality",
+                     resource_id=str(result.quality_entry_id),
+                     user_id=current_user.user_id,
+                     details={"units_inspected": getattr(inspection, 'units_inspected', None)})
+        return result
+    except Exception as e:
+        log_error(logger, "CREATE", "quality", e, user_id=current_user.user_id)
+        raise
 
 
 @router.get("", response_model=List[QualityInspectionResponse])
@@ -200,10 +212,20 @@ def update_quality(
     Update quality inspection record
     SECURITY: Verifies user has access to this inspection record
     """
-    updated = update_quality_inspection(db, inspection_id, inspection_update, current_user)
-    if not updated:
-        raise HTTPException(status_code=404, detail="Quality inspection not found")
-    return updated
+    try:
+        updated = update_quality_inspection(db, inspection_id, inspection_update, current_user)
+        if not updated:
+            raise HTTPException(status_code=404, detail="Quality inspection not found")
+        log_operation(logger, "UPDATE", "quality",
+                     resource_id=str(inspection_id),
+                     user_id=current_user.user_id)
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "UPDATE", "quality", e,
+                 resource_id=str(inspection_id), user_id=current_user.user_id)
+        raise
 
 
 @router.delete("/{inspection_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -216,9 +238,19 @@ def delete_quality(
     Delete quality inspection record (supervisor only)
     SECURITY: Supervisor/admin only, verifies client access
     """
-    success = delete_quality_inspection(db, inspection_id, current_user)
-    if not success:
-        raise HTTPException(status_code=404, detail="Quality inspection not found")
+    try:
+        success = delete_quality_inspection(db, inspection_id, current_user)
+        if not success:
+            raise HTTPException(status_code=404, detail="Quality inspection not found")
+        log_operation(logger, "DELETE", "quality",
+                     resource_id=str(inspection_id),
+                     user_id=current_user.user_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(logger, "DELETE", "quality", e,
+                 resource_id=str(inspection_id), user_id=current_user.user_id)
+        raise
 
 
 # ============================================================================

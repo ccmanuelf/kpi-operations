@@ -10,6 +10,9 @@ import uuid
 
 from backend.database import get_db
 from backend.config import settings
+from backend.utils.logging_utils import get_module_logger, log_operation, log_security_event
+
+logger = get_module_logger(__name__)
 from backend.models.user import (
     UserCreate, UserLogin, UserResponse, Token,
     PasswordResetRequest, PasswordResetConfirm, PasswordChange
@@ -45,9 +48,14 @@ def is_token_blacklisted(token: str) -> bool:
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
 def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)):
     """Register new user (rate limited: 10 requests/minute)"""
+    client_ip = request.client.host if request.client else None
+
     # Check if username exists
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
+        log_security_event(logger, "REGISTER_DUPLICATE_USERNAME",
+                          details=f"Attempted registration with existing username: {user.username}",
+                          ip_address=client_ip)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
@@ -56,6 +64,9 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
     # Check if email exists
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
+        log_security_event(logger, "REGISTER_DUPLICATE_EMAIL",
+                          details=f"Attempted registration with existing email",
+                          ip_address=client_ip)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
@@ -77,6 +88,10 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
     db.commit()
     db.refresh(db_user)
 
+    log_security_event(logger, "USER_REGISTERED",
+                      user_id=user_id,
+                      details=f"New user registered: {user.username}",
+                      ip_address=client_ip)
     return db_user
 
 
@@ -84,9 +99,13 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
 def login(request: Request, user_credentials: UserLogin, db: Session = Depends(get_db)):
     """User login (rate limited: 10 requests/minute)"""
+    client_ip = request.client.host if request.client else None
     user = db.query(User).filter(User.username == user_credentials.username).first()
 
     if not user or not verify_password(user_credentials.password, user.password_hash):
+        log_security_event(logger, "LOGIN_FAILED",
+                          details=f"Failed login attempt for: {user_credentials.username}",
+                          ip_address=client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -94,6 +113,10 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
         )
 
     if not user.is_active:
+        log_security_event(logger, "LOGIN_INACTIVE_USER",
+                          user_id=user.user_id,
+                          details="Login attempt for inactive account",
+                          ip_address=client_ip)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
@@ -107,6 +130,11 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
         "client_ids": user.client_id_assigned  # Comma-separated or None for admin/poweruser
     }
     access_token = create_access_token(data=token_data)
+
+    log_security_event(logger, "LOGIN_SUCCESS",
+                      user_id=user.user_id,
+                      client_id=user.client_id_assigned,
+                      ip_address=client_ip)
 
     return Token(
         access_token=access_token,
@@ -136,9 +164,15 @@ def logout(
     Returns:
         Success message confirming logout
     """
+    client_ip = request.client.host if request.client else None
+
     # Add token to blacklist (JTI would be better, using full token for simplicity)
     # In production, use Redis with TTL matching token expiration
     _token_blacklist.add(token)
+
+    log_security_event(logger, "LOGOUT",
+                      user_id=current_user.user_id,
+                      ip_address=client_ip)
 
     return {
         "message": "Successfully logged out",
@@ -218,6 +252,9 @@ def change_password(
 ):
     """Change password for authenticated user"""
     if not verify_password(password_data.current_password, current_user.password_hash):
+        log_security_event(logger, "PASSWORD_CHANGE_FAILED",
+                          user_id=current_user.user_id,
+                          details="Incorrect current password provided")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
@@ -226,5 +263,8 @@ def change_password(
     current_user.password_hash = get_password_hash(password_data.new_password)
     current_user.updated_at = datetime.utcnow()
     db.commit()
+
+    log_security_event(logger, "PASSWORD_CHANGED",
+                      user_id=current_user.user_id)
 
     return {"message": "Password changed successfully"}
