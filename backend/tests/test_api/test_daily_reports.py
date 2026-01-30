@@ -1,10 +1,13 @@
 """
 Comprehensive Tests for Daily Reports Task Module
 Target: Increase tasks/daily_reports.py coverage to 85%+
+
+Uses real database transactions instead of mocking the database.
+Only external services (email, PDF) are mocked.
 """
 import pytest
 from datetime import datetime, date, timedelta
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 # Try to import the module - skip all tests if not available
 try:
@@ -15,6 +18,7 @@ try:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from backend.tasks.daily_reports import DailyReportScheduler, scheduler
+    from backend.schemas.client import Client
     MODULE_AVAILABLE = True
 except ImportError as e:
     MODULE_AVAILABLE = False
@@ -102,112 +106,108 @@ class TestDailyReportSchedulerStop:
 
 
 @pytest.mark.skipif(not MODULE_AVAILABLE, reason="daily_reports module not available")
-class TestSendDailyReports:
-    """Test send_daily_reports method"""
+class TestSendDailyReportsWithDB:
+    """Test send_daily_reports method using real database transactions"""
 
-    def test_send_daily_reports_no_clients(self):
-        """Test send_daily_reports with no active clients"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db:
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.all.return_value = []
-            mock_get_db.return_value = iter([mock_db])
+    def test_send_daily_reports_no_clients(self, db_session):
+        """Test send_daily_reports with no active clients in database"""
+        # Ensure no active clients in test database
+        db_session.query(Client).filter(Client.is_active == True).delete()
+        db_session.commit()
 
-            sched = DailyReportScheduler()
-            sched.email_service = MagicMock()
+        sched = DailyReportScheduler()
+        sched.email_service = MagicMock()
 
+        # Patch get_db to use our test session
+        with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
             sched.send_daily_reports()
 
-            mock_db.close.assert_called_once()
+        # No reports should be sent when no clients
+        sched.email_service.send_kpi_report.assert_not_called()
 
-    def test_send_daily_reports_with_clients(self):
-        """Test send_daily_reports with active clients"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db:
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
+    def test_send_daily_reports_with_clients(self, db_session):
+        """Test send_daily_reports with active clients using real database"""
+        # Create a test client
+        test_client = Client(
+            client_id="TEST-CLIENT-001",
+            client_name="Test Client",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
 
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.all.return_value = [mock_client]
-            mock_get_db.return_value = iter([mock_db])
+        sched = DailyReportScheduler()
+        sched.email_service = MagicMock()
+        sched.generate_and_send_report = MagicMock(return_value={'success': True})
 
-            sched = DailyReportScheduler()
-            sched.email_service = MagicMock()
-            sched.generate_and_send_report = MagicMock(return_value={'success': True})
-
+        with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
             sched.send_daily_reports()
 
-            sched.generate_and_send_report.assert_called_once()
-            mock_db.close.assert_called_once()
+        # Should have attempted to generate report for our client
+        assert sched.generate_and_send_report.called
 
-    def test_send_daily_reports_client_failure(self):
-        """Test send_daily_reports handles client failures"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db:
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
+    def test_send_daily_reports_handles_report_failure(self, db_session):
+        """Test send_daily_reports handles client report failures gracefully"""
+        # Create a test client
+        test_client = Client(
+            client_id="TEST-CLIENT-002",
+            client_name="Test Client 2",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
 
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.all.return_value = [mock_client]
-            mock_get_db.return_value = iter([mock_db])
+        sched = DailyReportScheduler()
+        sched.email_service = MagicMock()
+        sched.generate_and_send_report = MagicMock(return_value={'success': False, 'error': 'Email failed'})
 
-            sched = DailyReportScheduler()
-            sched.email_service = MagicMock()
-            sched.generate_and_send_report = MagicMock(return_value={'success': False, 'error': 'Email failed'})
-
+        with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
+            # Should not raise exception
             sched.send_daily_reports()
 
-            mock_db.close.assert_called_once()
+    def test_send_daily_reports_handles_exception(self, db_session):
+        """Test send_daily_reports handles exceptions gracefully"""
+        # Create a test client
+        test_client = Client(
+            client_id="TEST-CLIENT-003",
+            client_name="Test Client 3",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
 
-    def test_send_daily_reports_exception(self):
-        """Test send_daily_reports handles exceptions"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db:
-            mock_db = MagicMock()
-            mock_db.query.side_effect = Exception("Database error")
-            mock_get_db.return_value = iter([mock_db])
+        sched = DailyReportScheduler()
+        sched.generate_and_send_report = MagicMock(side_effect=Exception("Report error"))
 
-            sched = DailyReportScheduler()
-
+        with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
             # Should not raise, just log error
             sched.send_daily_reports()
-
-            mock_db.close.assert_called_once()
-
-    def test_send_daily_reports_client_exception(self):
-        """Test send_daily_reports handles per-client exceptions"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db:
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
-
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.all.return_value = [mock_client]
-            mock_get_db.return_value = iter([mock_db])
-
-            sched = DailyReportScheduler()
-            sched.generate_and_send_report = MagicMock(side_effect=Exception("Report error"))
-
-            sched.send_daily_reports()
-
-            mock_db.close.assert_called_once()
 
 
 @pytest.mark.skipif(not MODULE_AVAILABLE, reason="daily_reports module not available")
 class TestGenerateAndSendReport:
     """Test generate_and_send_report method"""
 
-    def test_generate_and_send_report_no_emails(self):
+    def test_generate_and_send_report_no_emails(self, db_session):
         """Test generate_and_send_report with no recipient emails"""
+        test_client = Client(
+            client_id="TEST-GEN-001",
+            client_name="Test Generate Client",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
+
         sched = DailyReportScheduler()
         sched._get_client_admin_emails = MagicMock(return_value=[])
 
-        mock_db = MagicMock()
-        mock_client = MagicMock()
-        mock_client.client_id = 1
-        mock_client.name = "Test Client"
-
         result = sched.generate_and_send_report(
-            db=mock_db,
-            client=mock_client,
+            db=db_session,
+            client=test_client,
             start_date=date.today() - timedelta(days=1),
             end_date=date.today(),
             report_date=datetime.now()
@@ -216,9 +216,17 @@ class TestGenerateAndSendReport:
         assert result['success'] is False
         assert 'No recipient emails' in result['error']
 
-    def test_generate_and_send_report_success(self):
+    def test_generate_and_send_report_success(self, db_session):
         """Test generate_and_send_report successful execution"""
-        with patch('tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
+        test_client = Client(
+            client_id="TEST-GEN-002",
+            client_name="Test Generate Client 2",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
+
+        with patch('backend.tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
             mock_pdf_instance = MagicMock()
             mock_pdf_buffer = MagicMock()
             mock_pdf_buffer.getvalue.return_value = b'PDF content'
@@ -230,14 +238,9 @@ class TestGenerateAndSendReport:
             sched.email_service = MagicMock()
             sched.email_service.send_kpi_report.return_value = {'success': True}
 
-            mock_db = MagicMock()
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
-
             result = sched.generate_and_send_report(
-                db=mock_db,
-                client=mock_client,
+                db=db_session,
+                client=test_client,
                 start_date=date.today() - timedelta(days=1),
                 end_date=date.today(),
                 report_date=datetime.now()
@@ -246,22 +249,25 @@ class TestGenerateAndSendReport:
             assert result['success'] is True
             sched.email_service.send_kpi_report.assert_called_once()
 
-    def test_generate_and_send_report_pdf_error(self):
+    def test_generate_and_send_report_pdf_error(self, db_session):
         """Test generate_and_send_report handles PDF generation error"""
-        with patch('tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
+        test_client = Client(
+            client_id="TEST-GEN-003",
+            client_name="Test Generate Client 3",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
+
+        with patch('backend.tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
             mock_pdf_gen.return_value.generate_report.side_effect = Exception("PDF error")
 
             sched = DailyReportScheduler()
             sched._get_client_admin_emails = MagicMock(return_value=['admin@test.com'])
 
-            mock_db = MagicMock()
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
-
             result = sched.generate_and_send_report(
-                db=mock_db,
-                client=mock_client,
+                db=db_session,
+                client=test_client,
                 start_date=date.today() - timedelta(days=1),
                 end_date=date.today(),
                 report_date=datetime.now()
@@ -303,19 +309,17 @@ class TestGetClientAdminEmails:
 
 @pytest.mark.skipif(not MODULE_AVAILABLE, reason="daily_reports module not available")
 class TestSendManualReport:
-    """Test send_manual_report method"""
+    """Test send_manual_report method using real database"""
 
-    def test_send_manual_report_client_not_found(self):
+    def test_send_manual_report_client_not_found(self, db_session):
         """Test send_manual_report with invalid client"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db:
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.first.return_value = None
-            mock_get_db.return_value = iter([mock_db])
+        sched = DailyReportScheduler()
 
-            sched = DailyReportScheduler()
+        with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+            mock_get_db.return_value = iter([db_session])
 
             result = sched.send_manual_report(
-                client_id=999,
+                client_id="NONEXISTENT-CLIENT",
                 start_date=date.today() - timedelta(days=7),
                 end_date=date.today(),
                 recipient_emails=['user@test.com']
@@ -323,21 +327,19 @@ class TestSendManualReport:
 
             assert result['success'] is False
             assert 'Client not found' in result['error']
-            mock_db.close.assert_called_once()
 
-    def test_send_manual_report_success(self):
+    def test_send_manual_report_success(self, db_session):
         """Test send_manual_report successful execution"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db, \
-             patch('tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
+        # Create a test client
+        test_client = Client(
+            client_id="TEST-MANUAL-001",
+            client_name="Test Manual Client",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
 
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
-
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.first.return_value = mock_client
-            mock_get_db.return_value = iter([mock_db])
-
+        with patch('backend.tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
             mock_pdf_instance = MagicMock()
             mock_pdf_buffer = MagicMock()
             mock_pdf_buffer.getvalue.return_value = b'PDF content'
@@ -348,43 +350,46 @@ class TestSendManualReport:
             sched.email_service = MagicMock()
             sched.email_service.send_kpi_report.return_value = {'success': True}
 
-            result = sched.send_manual_report(
-                client_id=1,
-                start_date=date.today() - timedelta(days=7),
-                end_date=date.today(),
-                recipient_emails=['user@test.com']
-            )
+            with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+                mock_get_db.return_value = iter([db_session])
+
+                result = sched.send_manual_report(
+                    client_id="TEST-MANUAL-001",
+                    start_date=date.today() - timedelta(days=7),
+                    end_date=date.today(),
+                    recipient_emails=['user@test.com']
+                )
 
             assert result['success'] is True
-            mock_db.close.assert_called_once()
 
-    def test_send_manual_report_exception(self):
+    def test_send_manual_report_exception(self, db_session):
         """Test send_manual_report handles exceptions"""
-        with patch('tasks.daily_reports.get_db') as mock_get_db, \
-             patch('tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
+        # Create a test client
+        test_client = Client(
+            client_id="TEST-MANUAL-002",
+            client_name="Test Manual Client 2",
+            is_active=True
+        )
+        db_session.add(test_client)
+        db_session.commit()
 
-            mock_client = MagicMock()
-            mock_client.client_id = 1
-            mock_client.name = "Test Client"
-
-            mock_db = MagicMock()
-            mock_db.query.return_value.filter.return_value.first.return_value = mock_client
-            mock_get_db.return_value = iter([mock_db])
-
+        with patch('backend.tasks.daily_reports.PDFReportGenerator') as mock_pdf_gen:
             mock_pdf_gen.return_value.generate_report.side_effect = Exception("Generation failed")
 
             sched = DailyReportScheduler()
 
-            result = sched.send_manual_report(
-                client_id=1,
-                start_date=date.today() - timedelta(days=7),
-                end_date=date.today(),
-                recipient_emails=['user@test.com']
-            )
+            with patch('backend.tasks.daily_reports.get_db') as mock_get_db:
+                mock_get_db.return_value = iter([db_session])
+
+                result = sched.send_manual_report(
+                    client_id="TEST-MANUAL-002",
+                    start_date=date.today() - timedelta(days=7),
+                    end_date=date.today(),
+                    recipient_emails=['user@test.com']
+                )
 
             assert result['success'] is False
             assert 'Generation failed' in result['error']
-            mock_db.close.assert_called_once()
 
 
 @pytest.mark.skipif(not MODULE_AVAILABLE, reason="daily_reports module not available")

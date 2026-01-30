@@ -88,14 +88,14 @@ class DailyReportScheduler:
 
                     if result['success']:
                         success_count += 1
-                        logger.info(f"Successfully sent report for client: {client.name}")
+                        logger.info(f"Successfully sent report for client: {client.client_name}")
                     else:
                         failure_count += 1
-                        logger.error(f"Failed to send report for client {client.name}: {result.get('error')}")
+                        logger.error(f"Failed to send report for client {client.client_name}: {result.get('error')}")
 
                 except Exception as e:
                     failure_count += 1
-                    logger.error(f"Error processing report for client {client.name}: {str(e)}")
+                    logger.error(f"Error processing report for client {client.client_name}: {str(e)}")
 
             logger.info(f"Daily report generation completed. Success: {success_count}, Failures: {failure_count}")
 
@@ -118,7 +118,7 @@ class DailyReportScheduler:
         recipient_emails = self._get_client_admin_emails(db, client.client_id)
 
         if not recipient_emails:
-            logger.warning(f"No admin emails found for client: {client.name}")
+            logger.warning(f"No admin emails found for client: {client.client_name}")
             return {'success': False, 'error': 'No recipient emails configured'}
 
         try:
@@ -133,7 +133,7 @@ class DailyReportScheduler:
             # Send email
             result = self.email_service.send_kpi_report(
                 to_emails=recipient_emails,
-                client_name=client.name,
+                client_name=client.client_name,
                 report_date=report_date,
                 pdf_content=pdf_buffer.getvalue()
             )
@@ -141,7 +141,7 @@ class DailyReportScheduler:
             return result
 
         except Exception as e:
-            logger.error(f"Error generating/sending report for {client.name}: {str(e)}")
+            logger.error(f"Error generating/sending report for {client.client_name}: {str(e)}")
             return {'success': False, 'error': str(e)}
 
     def _get_client_admin_emails(self, db: Session, client_id: int) -> List[str]:
@@ -188,7 +188,7 @@ class DailyReportScheduler:
             # Send email
             result = self.email_service.send_kpi_report(
                 to_emails=recipient_emails,
-                client_name=client.name,
+                client_name=client.client_name,
                 report_date=datetime.now(),
                 pdf_content=pdf_buffer.getvalue(),
                 additional_message="This is a manually requested report."
