@@ -21,8 +21,12 @@ export const useKPIStore = defineStore('productionData', {
     totalUnitsToday: (state) => {
       const today = format(new Date(), 'yyyy-MM-dd')
       return state.productionEntries
-        .filter(e => e.production_date === today)
-        .reduce((sum, e) => sum + e.units_produced, 0)
+        .filter(e => {
+          // Handle both "2026-01-30" and "2026-01-30T00:00:00" formats
+          const entryDate = e.production_date?.split('T')[0]
+          return entryDate === today
+        })
+        .reduce((sum, e) => sum + (e.units_produced || 0), 0)
     },
     averageEfficiency: (state) => {
       // Calculate from productionEntries for consistent filtering
