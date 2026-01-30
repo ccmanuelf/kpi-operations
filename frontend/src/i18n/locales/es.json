@@ -65,7 +65,8 @@
     "pending": "pendiente",
     "dismiss": "Descartar",
     "allSystemsNormal": "Todos los sistemas operando normalmente",
-    "noRecentActivity": "Sin actividad reciente"
+    "noRecentActivity": "Sin actividad reciente",
+    "standard": "Estándar"
   },
   "navigation": {
     "dashboard": "Tablero",

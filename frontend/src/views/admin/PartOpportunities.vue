@@ -67,7 +67,7 @@
           variant="outlined"
           @click="showGuide = true"
         >
-          How to Use
+          {{ $t('admin.floatingPool.howToUse') }}
         </v-btn>
         <v-spacer />
         <v-text-field
@@ -150,7 +150,7 @@
                 size="small"
                 variant="tonal"
               >
-                {{ item.complexity || 'Standard' }}
+                {{ item.complexity || $t('common.standard') }}
               </v-chip>
             </template>
 

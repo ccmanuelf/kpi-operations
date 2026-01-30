@@ -1236,7 +1236,8 @@
     "loadError": "Failed to load data",
     "apply": "Apply",
     "days": "days",
-    "hours": "hours"
+    "hours": "hours",
+    "standard": "Standard"
   },
   "validation": {
     "required": "This field is required",
