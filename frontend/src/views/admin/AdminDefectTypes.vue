@@ -20,7 +20,7 @@
           :items="clientOptions"
           item-title="client_name"
           item-value="client_id"
-          label="Select Client or Global"
+          :label="t('admin.defectTypes.selectClientOrGlobal')"
           variant="outlined"
           density="comfortable"
           prepend-inner-icon="mdi-domain"
@@ -44,7 +44,7 @@
           :disabled="!selectedClient"
           @click="openCreateDialog"
         >
-          Add Defect Type
+          {{ t('admin.defectTypes.addDefectType') }}
         </v-btn>
         <v-btn
           color="secondary"
@@ -52,7 +52,7 @@
           :disabled="!selectedClient"
           @click="openUploadDialog"
         >
-          Upload CSV
+          {{ t('admin.defectTypes.uploadCsv') }}
         </v-btn>
         <v-btn
           color="info"
@@ -60,13 +60,13 @@
           variant="outlined"
           @click="downloadTemplate"
         >
-          Download Template
+          {{ t('admin.defectTypes.downloadTemplate') }}
         </v-btn>
         <v-spacer />
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
-          label="Search"
+          :label="t('common.search')"
           single-line
           hide-details
           density="compact"
@@ -88,9 +88,9 @@
             <v-icon>{{ isGlobalSelected ? 'mdi-earth' : 'mdi-domain' }}</v-icon>
           </template>
           <strong>{{ selectedClientInfo.client_name }}</strong> -
-          {{ defectTypes.length }} defect types configured
+          {{ defectTypes.length }} {{ t('admin.defectTypes.defectTypesConfigured') }}
           <span v-if="isGlobalSelected" class="ml-2 text-caption">
-            (These defect types are available to ALL clients)
+            ({{ t('admin.defectTypes.availableToAllClients') }})
           </span>
         </v-alert>
       </v-col>
@@ -119,7 +119,7 @@
             </template>
             <template v-slot:item.category="{ item }">
               <v-chip size="small" variant="outlined">
-                {{ item.category || 'Uncategorized' }}
+                {{ item.category || t('admin.defectTypes.uncategorized') }}
               </v-chip>
             </template>
             <template v-slot:item.is_active="{ item }">
@@ -147,7 +147,7 @@
               <div class="text-center pa-4">
                 <v-icon size="48" color="grey">mdi-alert-circle-outline</v-icon>
                 <p class="mt-2 text-grey">
-                  {{ selectedClient ? 'No defect types found for this client' : 'Select a client to view defect types' }}
+                  {{ selectedClient ? t('admin.defectTypes.noDefectTypesForClient') : t('admin.defectTypes.selectClientToView') }}
                 </p>
               </div>
             </template>
@@ -161,7 +161,7 @@
       <v-card>
         <v-card-title>
           <v-icon class="mr-2">{{ isEditing ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          {{ isEditing ? 'Edit Defect Type' : 'Add Defect Type' }}
+          {{ isEditing ? t('admin.defectTypes.editDefectType') : t('admin.defectTypes.addDefectType') }}
         </v-card-title>
         <v-card-text>
           <v-form ref="form" v-model="formValid">
@@ -169,7 +169,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="formData.defect_code"
-                  label="Defect Code *"
+                  :label="t('admin.defectTypes.defectCode') + ' *'"
                   :rules="[rules.required, rules.maxLength20]"
                   variant="outlined"
                   density="comfortable"
@@ -180,7 +180,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="formData.defect_name"
-                  label="Defect Name *"
+                  :label="t('admin.defectTypes.defectName') + ' *'"
                   :rules="[rules.required, rules.maxLength100]"
                   variant="outlined"
                   density="comfortable"
@@ -192,7 +192,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="formData.description"
-                  label="Description"
+                  :label="t('admin.defectTypes.description')"
                   variant="outlined"
                   density="comfortable"
                   rows="2"
@@ -205,7 +205,7 @@
                 <v-select
                   v-model="formData.category"
                   :items="categories"
-                  label="Category"
+                  :label="t('admin.defectTypes.category')"
                   variant="outlined"
                   density="comfortable"
                   clearable
@@ -215,7 +215,7 @@
                 <v-select
                   v-model="formData.severity_default"
                   :items="severities"
-                  label="Default Severity *"
+                  :label="t('admin.defectTypes.defaultSeverity') + ' *'"
                   :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
@@ -226,7 +226,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="formData.industry_standard_code"
-                  label="Industry Standard Code"
+                  :label="t('admin.defectTypes.industryStandardCode')"
                   variant="outlined"
                   density="comfortable"
                   hint="e.g., IPC-A-610-5.2"
@@ -235,7 +235,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model.number="formData.sort_order"
-                  label="Sort Order"
+                  :label="t('admin.defectTypes.sortOrder')"
                   type="number"
                   variant="outlined"
                   density="comfortable"
@@ -247,7 +247,7 @@
               <v-col cols="12">
                 <v-switch
                   v-model="formData.is_active"
-                  label="Active"
+                  :label="t('common.active')"
                   color="success"
                   hide-details
                 />
@@ -257,14 +257,14 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeEditDialog">Cancel</v-btn>
+          <v-btn variant="text" @click="closeEditDialog">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="saving"
             :disabled="!formValid"
             @click="saveDefectType"
           >
-            {{ isEditing ? 'Update' : 'Create' }}
+            {{ isEditing ? t('common.update') : t('common.create') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -275,7 +275,7 @@
       <v-card>
         <v-card-title>
           <v-icon class="mr-2">mdi-upload</v-icon>
-          Upload Defect Types CSV
+          {{ t('admin.defectTypes.uploadDefectTypesCsv') }}
         </v-card-title>
         <v-card-text>
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
@@ -283,7 +283,7 @@
           </v-alert>
           <v-file-input
             v-model="uploadFile"
-            label="Select CSV File"
+            :label="t('admin.defectTypes.selectCsvFile')"
             accept=".csv"
             prepend-icon="mdi-file-delimited"
             variant="outlined"
@@ -291,22 +291,22 @@
           />
           <v-checkbox
             v-model="replaceExisting"
-            label="Replace existing defect types"
-            hint="If checked, all existing defect types for this client will be deactivated"
+            :label="t('admin.defectTypes.replaceExisting')"
+            :hint="t('admin.defectTypes.replaceExistingHint')"
             persistent-hint
             color="warning"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="closeUploadDialog">Cancel</v-btn>
+          <v-btn variant="text" @click="closeUploadDialog">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="uploading"
             :disabled="!uploadFile"
             @click="uploadCSV"
           >
-            Upload
+            {{ t('common.upload') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -317,18 +317,18 @@
       <v-card>
         <v-card-title class="text-error">
           <v-icon class="mr-2">mdi-alert</v-icon>
-          Confirm Delete
+          {{ t('admin.defectTypes.confirmDelete') }}
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete the defect type
+          {{ t('admin.defectTypes.confirmDeleteMessage') }}
           <strong>"{{ deleteTarget?.defect_name }}"</strong>?
-          <p class="mt-2 text-grey">This action will deactivate the defect type.</p>
+          <p class="mt-2 text-grey">{{ t('admin.defectTypes.deleteNote') }}</p>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn color="error" :loading="deleting" @click="deleteDefectType">
-            Delete
+            {{ t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -338,7 +338,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.message }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
+        <v-btn variant="text" @click="snackbar.show = false">{{ t('common.close') }}</v-btn>
       </template>
     </v-snackbar>
   </v-container>
@@ -440,7 +440,7 @@ const clientOptions = computed(() => {
   // Add Global option at the top
   const globalOption = {
     client_id: GLOBAL_CLIENT_ID,
-    client_name: 'Global (All Clients)'
+    client_name: t('admin.defectTypes.globalAllClients')
   }
   return [globalOption, ...clients.value]
 })
@@ -451,7 +451,7 @@ const isGlobalSelected = computed(() => {
 
 const selectedClientInfo = computed(() => {
   if (isGlobalSelected.value) {
-    return { client_id: GLOBAL_CLIENT_ID, client_name: 'Global (All Clients)' }
+    return { client_id: GLOBAL_CLIENT_ID, client_name: t('admin.defectTypes.globalAllClients') }
   }
   return clients.value.find(c => c.client_id === selectedClient.value)
 })
@@ -471,7 +471,7 @@ const loadClients = async () => {
     const res = await api.getClients()
     clients.value = res.data || []
   } catch (error) {
-    showSnackbar('Error loading clients', 'error')
+    showSnackbar(t('errors.general'), 'error')
   }
 }
 
@@ -489,7 +489,7 @@ const loadDefectTypes = async () => {
     const res = await api.getDefectTypesByClient(selectedClient.value, false, includeGlobal)
     defectTypes.value = res.data || []
   } catch (error) {
-    showSnackbar('Error loading defect types', 'error')
+    showSnackbar(t('errors.general'), 'error')
     defectTypes.value = []
   } finally {
     loading.value = false
@@ -529,18 +529,18 @@ const saveDefectType = async () => {
   try {
     if (isEditing.value) {
       await api.updateDefectType(formData.value.defect_type_id, formData.value)
-      showSnackbar('Defect type updated successfully', 'success')
+      showSnackbar(t('admin.defectTypes.defectTypeUpdated'), 'success')
     } else {
       await api.createDefectType({
         ...formData.value,
         client_id: selectedClient.value
       })
-      showSnackbar('Defect type created successfully', 'success')
+      showSnackbar(t('admin.defectTypes.defectTypeCreated'), 'success')
     }
     closeEditDialog()
     await loadDefectTypes()
   } catch (error) {
-    showSnackbar(error.response?.data?.detail || 'Error saving defect type', 'error')
+    showSnackbar(error.response?.data?.detail || t('errors.general'), 'error')
   } finally {
     saving.value = false
   }
@@ -557,11 +557,11 @@ const deleteDefectType = async () => {
   deleting.value = true
   try {
     await api.deleteDefectType(deleteTarget.value.defect_type_id)
-    showSnackbar('Defect type deleted successfully', 'success')
+    showSnackbar(t('admin.defectTypes.defectTypeDeleted'), 'success')
     deleteDialog.value = false
     await loadDefectTypes()
   } catch (error) {
-    showSnackbar(error.response?.data?.detail || 'Error deleting defect type', 'error')
+    showSnackbar(error.response?.data?.detail || t('errors.general'), 'error')
   } finally {
     deleting.value = false
   }
@@ -589,13 +589,13 @@ const uploadCSV = async () => {
       replaceExisting.value
     )
     showSnackbar(
-      `Upload complete: ${res.data.created} created, ${res.data.skipped} skipped`,
+      `${t('admin.defectTypes.uploadComplete')}: ${res.data.created} ${t('admin.defectTypes.created')}, ${res.data.skipped} ${t('admin.defectTypes.skipped')}`,
       'success'
     )
     closeUploadDialog()
     await loadDefectTypes()
   } catch (error) {
-    showSnackbar(error.response?.data?.detail || 'Error uploading CSV', 'error')
+    showSnackbar(error.response?.data?.detail || t('errors.general'), 'error')
   } finally {
     uploading.value = false
   }
@@ -625,9 +625,9 @@ const downloadTemplate = async () => {
     a.click()
     URL.revokeObjectURL(url)
 
-    showSnackbar('Template downloaded', 'success')
+    showSnackbar(t('admin.defectTypes.templateDownloaded'), 'success')
   } catch (error) {
-    showSnackbar('Error downloading template', 'error')
+    showSnackbar(t('errors.general'), 'error')
   }
 }
 

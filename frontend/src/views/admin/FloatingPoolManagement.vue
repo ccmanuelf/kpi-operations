@@ -11,7 +11,7 @@
             <div class="d-flex gap-2">
               <v-btn color="white" variant="text" @click="showGuide = true">
                 <v-icon left>mdi-help-circle</v-icon>
-                How to Use
+                {{ $t('admin.floatingPool.howToUse') }}
               </v-btn>
               <v-btn color="white" variant="outlined" @click="openAssignDialog">
                 <v-icon left>mdi-plus</v-icon>
@@ -267,7 +267,7 @@
         <v-card-title class="bg-primary text-white d-flex justify-space-between">
           <div class="d-flex align-center">
             <v-icon class="mr-2">mdi-help-circle</v-icon>
-            Floating Pool Management Guide
+            {{ $t('admin.floatingPool.guide') }}
           </div>
           <v-btn icon variant="text" color="white" @click="showGuide = false">
             <v-icon>mdi-close</v-icon>
@@ -276,10 +276,10 @@
 
         <v-card-text class="pa-0">
           <v-tabs v-model="guideTab" color="primary" grow>
-            <v-tab value="overview">Overview</v-tab>
-            <v-tab value="howto">How To Use</v-tab>
-            <v-tab value="workflows">Workflows</v-tab>
-            <v-tab value="insights">Simulation Insights</v-tab>
+            <v-tab value="overview">{{ $t('admin.floatingPool.guideOverview') }}</v-tab>
+            <v-tab value="howto">{{ $t('admin.floatingPool.guideHowTo') }}</v-tab>
+            <v-tab value="workflows">{{ $t('admin.floatingPool.guideWorkflows') }}</v-tab>
+            <v-tab value="insights">{{ $t('admin.floatingPool.guideInsights') }}</v-tab>
           </v-tabs>
 
           <v-tabs-window v-model="guideTab" class="pa-4">

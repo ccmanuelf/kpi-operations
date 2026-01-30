@@ -15,13 +15,13 @@
         <v-card>
           <v-card-title>
             <v-icon class="mr-2">mdi-tune</v-icon>
-            General Settings
+            {{ t('admin.settings.generalSettings') }}
           </v-card-title>
           <v-card-text>
             <v-form ref="generalForm">
               <v-text-field
                 v-model="settings.companyName"
-                label="Company Name"
+                :label="t('admin.settings.companyName')"
                 prepend-icon="mdi-domain"
                 variant="outlined"
                 density="comfortable"
@@ -29,7 +29,7 @@
               />
               <v-text-field
                 v-model="settings.timezone"
-                label="Timezone"
+                :label="t('admin.settings.timezone')"
                 prepend-icon="mdi-clock-outline"
                 variant="outlined"
                 density="comfortable"
@@ -38,7 +38,7 @@
               <v-select
                 v-model="settings.dateFormat"
                 :items="dateFormats"
-                label="Date Format"
+                :label="t('admin.settings.dateFormat')"
                 prepend-icon="mdi-calendar"
                 variant="outlined"
                 density="comfortable"
@@ -47,7 +47,7 @@
               <v-select
                 v-model="settings.language"
                 :items="languages"
-                label="Language"
+                :label="t('admin.settings.language')"
                 prepend-icon="mdi-translate"
                 variant="outlined"
                 density="comfortable"
@@ -57,7 +57,7 @@
           <v-card-actions>
             <v-spacer />
             <v-btn color="primary" @click="saveGeneralSettings" :loading="saving">
-              Save Changes
+              {{ t('admin.settings.saveChanges') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -68,13 +68,13 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-chart-line</v-icon>
-            <span>KPI Thresholds</span>
+            <span>{{ t('admin.settings.kpiThresholds') }}</span>
             <v-spacer />
             <v-chip v-if="selectedClientId" color="primary" size="small" class="ml-2">
               {{ selectedClientName }}
             </v-chip>
             <v-chip v-else color="grey" size="small" class="ml-2">
-              Global Defaults
+              {{ t('admin.settings.globalDefaults') }}
             </v-chip>
           </v-card-title>
           <v-card-text>
@@ -84,7 +84,7 @@
               :items="clientOptions"
               item-title="name"
               item-value="id"
-              label="Select Client (or Global)"
+              :label="t('admin.settings.selectClientOrGlobal')"
               prepend-icon="mdi-domain"
               variant="outlined"
               density="comfortable"
@@ -98,7 +98,7 @@
             <!-- Loading state -->
             <div v-if="loadingThresholds" class="text-center py-4">
               <v-progress-circular indeterminate color="primary" />
-              <div class="text-grey mt-2">Loading thresholds...</div>
+              <div class="text-grey mt-2">{{ t('admin.settings.loadingThresholds') }}</div>
             </div>
 
             <!-- Thresholds Form -->
@@ -130,7 +130,7 @@
                 <template v-slot:prepend>
                   <v-icon>mdi-information</v-icon>
                 </template>
-                Client-specific values override global defaults. Clear a value to revert to global.
+                {{ t('admin.settings.clientOverrideHint') }}
               </v-alert>
             </v-form>
           </v-card-text>
@@ -142,11 +142,11 @@
               @click="resetToGlobal"
               :disabled="!hasClientOverrides"
             >
-              Reset to Global
+              {{ t('admin.settings.resetToGlobal') }}
             </v-btn>
             <v-spacer />
             <v-btn color="primary" @click="saveThresholds" :loading="savingThresholds">
-              Save Thresholds
+              {{ t('admin.settings.saveThresholds') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -157,31 +157,31 @@
         <v-card>
           <v-card-title>
             <v-icon class="mr-2">mdi-bell</v-icon>
-            Notifications
+            {{ t('admin.settings.notifications') }}
           </v-card-title>
           <v-card-text>
             <v-switch
               v-model="settings.emailNotifications"
-              label="Email Notifications"
+              :label="t('admin.settings.emailNotifications')"
               color="primary"
               class="mb-2"
             />
             <v-switch
               v-model="settings.alertOnThresholdBreach"
-              label="Alert on KPI Threshold Breach"
+              :label="t('admin.settings.alertOnThresholdBreach')"
               color="primary"
               class="mb-2"
             />
             <v-switch
               v-model="settings.dailyReportEnabled"
-              label="Daily Summary Report"
+              :label="t('admin.settings.dailySummaryReport')"
               color="primary"
               class="mb-2"
             />
             <v-text-field
               v-if="settings.dailyReportEnabled"
               v-model="settings.reportRecipients"
-              label="Report Recipients (comma-separated emails)"
+              :label="t('admin.settings.reportRecipients')"
               prepend-icon="mdi-email-multiple"
               variant="outlined"
               density="comfortable"
@@ -190,7 +190,7 @@
           <v-card-actions>
             <v-spacer />
             <v-btn color="primary" @click="saveNotificationSettings" :loading="saving">
-              Save Notifications
+              {{ t('admin.settings.saveNotifications') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -201,13 +201,13 @@
         <v-card>
           <v-card-title>
             <v-icon class="mr-2">mdi-database</v-icon>
-            Data Management
+            {{ t('admin.settings.dataManagement') }}
           </v-card-title>
           <v-card-text>
             <v-select
               v-model="settings.dataRetentionPeriod"
               :items="retentionPeriods"
-              label="Data Retention Period"
+              :label="t('admin.settings.dataRetentionPeriod')"
               prepend-icon="mdi-calendar-clock"
               variant="outlined"
               density="comfortable"
@@ -215,7 +215,7 @@
             />
             <v-switch
               v-model="settings.autoBackup"
-              label="Automatic Backups"
+              :label="t('admin.settings.automaticBackups')"
               color="primary"
               class="mb-2"
             />
@@ -223,7 +223,7 @@
               v-if="settings.autoBackup"
               v-model="settings.backupFrequency"
               :items="backupFrequencies"
-              label="Backup Frequency"
+              :label="t('admin.settings.backupFrequency')"
               prepend-icon="mdi-backup-restore"
               variant="outlined"
               density="comfortable"
@@ -232,11 +232,11 @@
           <v-card-actions>
             <v-btn color="secondary" variant="outlined" @click="exportData">
               <v-icon left>mdi-download</v-icon>
-              Export Data
+              {{ t('admin.settings.exportData') }}
             </v-btn>
             <v-spacer />
             <v-btn color="primary" @click="saveDataSettings" :loading="saving">
-              Save Settings
+              {{ t('admin.settings.saveSettings') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -274,7 +274,7 @@ const selectedClientName = computed(() => {
 
 const clientOptions = computed(() => {
   return [
-    { id: null, name: 'Global Defaults (All Clients)' },
+    { id: null, name: t('admin.settings.globalDefaultsAll') },
     ...clients.value.map(c => ({ id: c.client_id, name: c.client_name }))
   ]
 })
@@ -384,7 +384,7 @@ const loadThresholds = async () => {
     }
   } catch (error) {
     console.error('Failed to load thresholds:', error)
-    showSnackbar('Failed to load thresholds', 'error')
+    showSnackbar(t('admin.settings.failedToLoad') + ' thresholds', 'error')
   } finally {
     loadingThresholds.value = false
   }
@@ -410,14 +410,14 @@ const saveThresholds = async () => {
 
     showSnackbar(
       selectedClientId.value
-        ? `Thresholds saved for ${selectedClientName.value}`
-        : 'Global thresholds saved'
+        ? `${t('admin.settings.thresholdsSavedFor')} ${selectedClientName.value}`
+        : t('admin.settings.globalThresholdsSaved')
     )
 
     // Reload to get updated data
     await loadThresholds()
   } catch (error) {
-    showSnackbar(error.response?.data?.detail || 'Failed to save thresholds', 'error')
+    showSnackbar(error.response?.data?.detail || t('admin.settings.failedToSave') + ' thresholds', 'error')
   } finally {
     savingThresholds.value = false
   }
@@ -435,10 +435,10 @@ const resetToGlobal = async () => {
       }
     }
 
-    showSnackbar(`Reset ${selectedClientName.value} to global defaults`)
+    showSnackbar(`${t('admin.settings.resetToGlobalSuccess')} - ${selectedClientName.value}`)
     await loadThresholds()
   } catch (error) {
-    showSnackbar('Failed to reset thresholds', 'error')
+    showSnackbar(t('admin.settings.failedToSave'), 'error')
   }
 }
 
@@ -446,9 +446,9 @@ const saveGeneralSettings = async () => {
   saving.value = true
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
-    showSnackbar('General settings saved successfully')
+    showSnackbar(t('admin.settings.generalSettingsSaved'))
   } catch (error) {
-    showSnackbar('Failed to save settings', 'error')
+    showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
   }
@@ -458,9 +458,9 @@ const saveNotificationSettings = async () => {
   saving.value = true
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
-    showSnackbar('Notification settings saved successfully')
+    showSnackbar(t('admin.settings.notificationSettingsSaved'))
   } catch (error) {
-    showSnackbar('Failed to save notification settings', 'error')
+    showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
   }
@@ -470,16 +470,16 @@ const saveDataSettings = async () => {
   saving.value = true
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
-    showSnackbar('Data settings saved successfully')
+    showSnackbar(t('admin.settings.dataSettingsSaved'))
   } catch (error) {
-    showSnackbar('Failed to save data settings', 'error')
+    showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
   }
 }
 
 const exportData = () => {
-  showSnackbar('Data export started. You will receive an email when ready.', 'info')
+  showSnackbar(t('admin.settings.exportStarted'), 'info')
 }
 
 onMounted(async () => {
