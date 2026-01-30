@@ -3,9 +3,9 @@
 **Enterprise Manufacturing KPI Tracking and Analytics**
 
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-1846%20passing-success)](https://github.com)
-[![Coverage](https://img.shields.io/badge/coverage-52%25-yellow)](https://github.com)
+[![Version](https://img.shields.io/badge/version-1.0.4-blue)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-1992%20passing-success)](https://github.com)
+[![Coverage](https://img.shields.io/badge/coverage-58%25-yellowgreen)](https://github.com)
 [![Design](https://img.shields.io/badge/design-IBM%20Carbon-blue)](https://carbondesignsystem.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
 
@@ -358,11 +358,11 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 ### **Current Test Coverage**
 - ✅ KPI Calculations: 72% coverage (target: 85%)
 - ✅ Database Models: 80% coverage
-- ✅ API Routes: 33% coverage (needs improvement)
-- ✅ CRUD Operations: 29% coverage (needs improvement)
+- ✅ API Routes: 45% coverage (improved in v1.0.4)
+- ✅ CRUD Operations: 40% coverage (improved in v1.0.4)
 - ✅ E2E Tests: 180+ Playwright scenarios (Chromium, Firefox, WebKit)
 - ✅ Simulation Engine: Comprehensive test suite
-- ⚠️ Overall Backend: 52% (1846 passing, 19 failed, 891 errors)
+- ✅ Overall Backend: 58% (1992 passing, 2 skipped, target: 85%)
 
 ---
 
@@ -533,7 +533,7 @@ Backend:
 - 29 database tables (multi-tenant architecture)
 - 16 KPI calculation engines + predictive forecasting
 - 32 route modules + 19 CRUD modules
-- 52% test coverage (1846 tests passing, target: 85%)
+- 58% test coverage (1992 tests passing, 2 skipped, target: 85%)
 - 95%+ coverage on KPI calculations
 - Docker deployment ready (multi-stage Dockerfile + docker-compose.yml)
 - SimPy-based production line simulation engine
@@ -561,13 +561,23 @@ Documentation:
 
 ---
 
-**Version:** 1.0.0
-**Release Date:** January 25, 2026
+**Version:** 1.0.4
+**Release Date:** January 30, 2026
 **Status:** Production Ready
 
-**Test Coverage:** Backend 52% (target: 85%) | E2E Tests: 180+ scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
+**Test Coverage:** Backend 58% (target: 85%) | E2E Tests: 180+ scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
 
-### **Recent Updates (v1.0.3)**
+### **Recent Updates (v1.0.4)**
+- ✅ **Schema Standardization** - Unified String-based UUIDs for all entry primary keys (production_entry_id, hold_entry_id)
+- ✅ **Production CRUD Fixes** - Fixed ID generation, shift_date handling, and ProductionEntryWithKPIs response model
+- ✅ **HoldEntry Schema Alignment** - Corrected field names (hold_entry_id, quantity_on_hold) and HoldStatus enum values
+- ✅ **KPI Route Improvements** - Fixed aggregated dashboard imports and field references for quality, downtime, and hold entries
+- ✅ **Daily Reports Module** - Fixed import paths for scheduled report generation
+- ✅ **Test Suite Improvements** - Reduced skipped tests from 108 to 2, increased passing tests from 1846 to 1992
+- ✅ **CRUD Coverage Boost** - Fixed function name mismatches across 15 CRUD modules
+- ✅ **API Response Consistency** - Aligned all response models with actual database schema fields
+
+### **Previous Updates (v1.0.3)**
 - ✅ **Predictive Analytics UI** - Added "Show Forecast" toggle on Efficiency and Performance KPI charts
 - ✅ **Forecast Visualization** - Displays 7-30 day predictions with confidence intervals on trend charts
 - ✅ **QR Scanner Quick-Access** - Added QR Scanner button directly in dashboard header
