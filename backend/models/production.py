@@ -152,7 +152,7 @@ class InferenceMetadata(BaseModel):
 
 class KPICalculationResponse(BaseModel):
     """KPI calculation result with inference metadata"""
-    entry_id: int
+    entry_id: str  # production_entry_id is String
     efficiency_percentage: Decimal
     performance_percentage: Decimal
     quality_rate: Decimal
@@ -169,4 +169,4 @@ class CSVUploadResponse(BaseModel):
     successful: int
     failed: int
     errors: List[dict]
-    created_entries: List[int]
+    created_entries: List[str]  # production_entry_id is String

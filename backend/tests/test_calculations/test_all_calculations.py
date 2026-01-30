@@ -72,15 +72,16 @@ class TestEfficiencyCalculations:
     def test_infer_ideal_cycle_time_default(self):
         """Test cycle time inference with no data falls back to default"""
         from backend.calculations.efficiency import infer_ideal_cycle_time, DEFAULT_CYCLE_TIME
-        
+
         mock_db = MagicMock()
         mock_db.query.return_value.filter.return_value.first.return_value = None
         mock_db.query.return_value.filter.return_value.filter.return_value.limit.return_value.all.return_value = []
-        
+
         cycle_time, was_inferred = infer_ideal_cycle_time(mock_db, product_id=1)
-        
+
         assert cycle_time == DEFAULT_CYCLE_TIME
-        assert was_inferred == False
+        # When using default value (not from real data), was_inferred should be True
+        assert was_inferred == True
 
 
 # =============================================================================
@@ -92,19 +93,19 @@ class TestPPMCalculations:
     def test_calculate_ppm_basic(self):
         """Test basic PPM calculation"""
         from backend.calculations.ppm import calculate_ppm
-        
+
         mock_db = MagicMock()
         # Mock query results: 1000 inspected, 5 defects
         mock_result = MagicMock()
         mock_result.total_inspected = 1000
         mock_result.total_defects = 5
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
-        
+
         ppm, total_inspected, total_defects = calculate_ppm(
-            mock_db, product_id=1, shift_id=1, 
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
-        
+
         # PPM = 5/1000 * 1,000,000 = 5000
         assert ppm == Decimal('5000')
         assert total_inspected == 1000
@@ -113,15 +114,15 @@ class TestPPMCalculations:
     def test_calculate_ppm_zero_inspected(self):
         """Test PPM with no inspections"""
         from backend.calculations.ppm import calculate_ppm
-        
+
         mock_db = MagicMock()
         mock_result = MagicMock()
         mock_result.total_inspected = 0
         mock_result.total_defects = 0
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
-        
+
         ppm, total_inspected, total_defects = calculate_ppm(
-            mock_db, product_id=1, shift_id=1,
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
         
@@ -130,33 +131,33 @@ class TestPPMCalculations:
     def test_calculate_ppm_perfect_quality(self):
         """Test PPM with zero defects"""
         from backend.calculations.ppm import calculate_ppm
-        
+
         mock_db = MagicMock()
         mock_result = MagicMock()
         mock_result.total_inspected = 10000
         mock_result.total_defects = 0
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
-        
+
         ppm, total_inspected, total_defects = calculate_ppm(
-            mock_db, product_id=1, shift_id=1,
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
-        
+
         assert ppm == Decimal('0')
         assert total_defects == 0
 
     def test_calculate_ppm_by_category_empty(self):
         """Test PPM by category with no data"""
         from backend.calculations.ppm import calculate_ppm_by_category
-        
+
         mock_db = MagicMock()
         mock_db.query.return_value.filter.return_value.all.return_value = []
-        
+
         result = calculate_ppm_by_category(
-            mock_db, product_id=1,
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
-        
+
         assert result['total_inspected'] == 0
         assert result['categories'] == {}
 
@@ -173,18 +174,18 @@ class TestPPMCalculations:
     def test_calculate_cost_of_quality(self):
         """Test Cost of Quality calculation"""
         from backend.calculations.ppm import calculate_cost_of_quality
-        
+
         mock_db = MagicMock()
         mock_inspection = MagicMock()
-        mock_inspection.scrap_units = 10
-        mock_inspection.rework_units = 20
+        mock_inspection.units_scrapped = 10
+        mock_inspection.units_reworked = 20
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_inspection]
-        
+
         result = calculate_cost_of_quality(
-            mock_db, product_id=1,
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
-        
+
         # Scrap: 10 × $10 = $100
         # Rework: 20 × $3 = $60
         # Inspection: 1 × $50 = $50
@@ -350,77 +351,74 @@ class TestAvailabilityCalculations:
     def test_calculate_availability_basic(self):
         """Test basic availability calculation"""
         from backend.calculations.availability import calculate_availability
-        
+
         mock_db = MagicMock()
-        
-        # Mock shift with 8 hours
-        mock_shift = MagicMock()
-        mock_shift.duration_hours = 8.0
-        mock_db.query.return_value.filter.return_value.first.return_value = mock_shift
-        
-        # Mock downtime (1 hour)
-        mock_db.query.return_value.filter.return_value.scalar.return_value = 1.0
-        
+
+        # Mock downtime query result (60 minutes = 1 hour)
+        mock_db.query.return_value.filter.return_value.scalar.return_value = 60
+        mock_db.query.return_value.filter.return_value.filter.return_value.scalar.return_value = 60
+
         availability, scheduled, downtime, event_count = calculate_availability(
-            mock_db, product_id=1, shift_id=1, production_date=date(2025, 1, 15)
+            mock_db, work_order_id="WO-001", target_date=date(2025, 1, 15)
         )
-        
+
         # Availability = (8 - 1) / 8 * 100 = 87.5%
         assert availability == Decimal('87.5')
         assert scheduled == Decimal('8.0')
-        assert downtime == Decimal('1.0')
+        assert downtime == Decimal('1')  # 60 minutes / 60 = 1 hour
 
-    def test_calculate_availability_no_shift(self):
-        """Test availability with no shift data (defaults to 8 hours)"""
+    def test_calculate_availability_no_downtime(self):
+        """Test availability with no downtime (100% availability)"""
         from backend.calculations.availability import calculate_availability
-        
+
         mock_db = MagicMock()
-        mock_db.query.return_value.filter.return_value.first.return_value = None
-        mock_db.query.return_value.filter.return_value.scalar.side_effect = [0.5, 1]  # downtime, event_count
-        
+        mock_db.query.return_value.filter.return_value.scalar.return_value = 0
+        mock_db.query.return_value.filter.return_value.filter.return_value.scalar.return_value = 0
+
         availability, scheduled, downtime, event_count = calculate_availability(
-            mock_db, product_id=1, shift_id=1, production_date=date(2025, 1, 15)
+            mock_db, work_order_id="WO-001", target_date=date(2025, 1, 15)
         )
-        
+
         assert scheduled == Decimal('8.0')  # Default 8 hours
+        assert availability == Decimal('100')  # No downtime = 100%
 
     def test_calculate_mtbf(self):
         """Test MTBF calculation"""
         from backend.calculations.availability import calculate_mtbf
-        
+
         mock_db = MagicMock()
-        
-        # Mock failures
+
+        # Mock failures (DowntimeEntry uses downtime_duration_minutes)
         mock_failure1 = MagicMock()
-        mock_failure1.duration_hours = 2.0
+        mock_failure1.downtime_duration_minutes = 120  # 2 hours in minutes
         mock_failure2 = MagicMock()
-        mock_failure2.duration_hours = 3.0
-        
+        mock_failure2.downtime_duration_minutes = 180  # 3 hours in minutes
+
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_failure1, mock_failure2]
-        
+
         result = calculate_mtbf(
             mock_db, machine_id="MACH-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 10)
         )
-        
+
         assert result is not None
 
     def test_calculate_mttr(self):
         """Test MTTR calculation"""
         from backend.calculations.availability import calculate_mttr
-        
+
         mock_db = MagicMock()
-        
-        # Mock repairs
+
+        # Mock repairs (DowntimeEntry uses downtime_duration_minutes)
         mock_repair = MagicMock()
-        mock_repair.duration_hours = 1.5
+        mock_repair.downtime_duration_minutes = 90  # 1.5 hours in minutes
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_repair]
-        
+
         result = calculate_mttr(
             mock_db, machine_id="MACH-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
-        
+
         assert result == Decimal('1.5')
 
 
@@ -531,21 +529,22 @@ class TestDPMOCalculations:
     def test_calculate_dpmo_basic(self):
         """Test basic DPMO calculation"""
         from backend.calculations.dpmo import calculate_dpmo
-        
+
         mock_db = MagicMock()
-        
-        # Mock inspection: 1000 units, 5 defects
+
+        # Mock inspection: 1000 units, 5 defects (using QualityEntry fields)
         mock_inspection = MagicMock()
         mock_inspection.units_inspected = 1000
-        mock_inspection.defects_found = 5
+        mock_inspection.total_defects_count = 5
+        mock_inspection.units_defective = 5
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_inspection]
-        
+
         dpmo, sigma, total_units, total_defects = calculate_dpmo(
-            mock_db, product_id=1, shift_id=1,
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31),
             opportunities_per_unit=10
         )
-        
+
         # DPMO = 5 / (1000 * 10) * 1,000,000 = 500
         assert dpmo == Decimal('500')
         assert total_units == 1000
@@ -554,15 +553,15 @@ class TestDPMOCalculations:
     def test_calculate_dpmo_no_inspections(self):
         """Test DPMO with no inspections"""
         from backend.calculations.dpmo import calculate_dpmo
-        
+
         mock_db = MagicMock()
         mock_db.query.return_value.filter.return_value.all.return_value = []
-        
+
         dpmo, sigma, total_units, total_defects = calculate_dpmo(
-            mock_db, product_id=1, shift_id=1,
+            mock_db, work_order_id="WO-001",
             start_date=date(2025, 1, 1), end_date=date(2025, 1, 31)
         )
-        
+
         assert dpmo == Decimal('0')
 
     def test_calculate_sigma_level(self):

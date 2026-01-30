@@ -15,7 +15,7 @@ from datetime import date
 from typing import Optional
 import math
 
-from backend.schemas.quality import QualityInspection
+from backend.schemas.quality_entry import QualityEntry
 from backend.schemas.part_opportunities import PartOpportunities
 from backend.crud.client_config import get_client_config_or_defaults
 
@@ -149,8 +149,7 @@ def get_opportunities_for_parts(
 
 def calculate_dpmo(
     db: Session,
-    product_id: int,
-    shift_id: int,
+    work_order_id: str,
     start_date: date,
     end_date: date,
     opportunities_per_unit: int = None,
@@ -164,8 +163,7 @@ def calculate_dpmo(
 
     Args:
         db: Database session
-        product_id: Product ID to filter inspections
-        shift_id: Shift ID to filter inspections
+        work_order_id: Work order ID to filter inspections
         start_date: Start of date range
         end_date: End of date range
         opportunities_per_unit: Manual override for opportunities (optional)
@@ -178,6 +176,8 @@ def calculate_dpmo(
 
     Returns: (dpmo, sigma_level, total_units, total_defects)
     """
+    from sqlalchemy import cast, Date
+
     # Determine opportunities per unit
     if opportunities_per_unit is not None:
         # Manual override provided
@@ -189,21 +189,26 @@ def calculate_dpmo(
         # Use client-specific default (or global default)
         effective_opportunities = get_client_opportunities_default(db, client_id)
 
-    # Get all inspections for period
-    inspections = db.query(QualityInspection).filter(
+    # Get all inspections for period (using correct QualityEntry fields)
+    query = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.shift_id == shift_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.work_order_id == work_order_id,
+            cast(QualityEntry.shift_date, Date) >= start_date,
+            cast(QualityEntry.shift_date, Date) <= end_date
         )
-    ).all()
+    )
+
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
+
+    inspections = query.all()
 
     if not inspections:
         return (Decimal("0"), Decimal("0"), 0, 0)
 
     total_units = sum(i.units_inspected for i in inspections)
-    total_defects = sum(i.defects_found for i in inspections)
+    # Use total_defects_count for DPMO (counts each defect, not just defective units)
+    total_defects = sum(i.total_defects_count or i.units_defective or 0 for i in inspections)
 
     # Calculate total opportunities
     total_opportunities = total_units * effective_opportunities
@@ -379,12 +384,13 @@ def calculate_sigma_level(dpmo: Decimal) -> Decimal:
 
 def calculate_process_capability(
     db: Session,
-    product_id: int,
+    work_order_id: str,
     start_date: date,
     end_date: date,
     upper_spec_limit: Decimal,
     lower_spec_limit: Decimal,
-    target_value: Decimal
+    target_value: Decimal,
+    client_id: Optional[str] = None
 ) -> dict:
     """
     Calculate Process Capability Indices (Cp, Cpk)
@@ -395,14 +401,20 @@ def calculate_process_capability(
     Note: This requires actual measurement data (not just pass/fail)
     For MVP, we use defect rates as proxy
     """
+    from sqlalchemy import cast, Date
 
-    inspections = db.query(QualityInspection).filter(
+    query = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.work_order_id == work_order_id,
+            cast(QualityEntry.shift_date, Date) >= start_date,
+            cast(QualityEntry.shift_date, Date) <= end_date
         )
-    ).all()
+    )
+
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
+
+    inspections = query.all()
 
     if not inspections:
         return {
@@ -413,7 +425,8 @@ def calculate_process_capability(
 
     # Calculate defect rate as proxy for variation
     total_inspected = sum(i.units_inspected for i in inspections)
-    total_defects = sum(i.defects_found for i in inspections)
+    # Use total_defects_count for process capability (counts each defect)
+    total_defects = sum(i.total_defects_count or i.units_defective or 0 for i in inspections)
 
     if total_inspected > 0:
         defect_rate = Decimal(str(total_defects)) / Decimal(str(total_inspected))
@@ -458,8 +471,9 @@ def calculate_process_capability(
 
 def identify_quality_trends(
     db: Session,
-    product_id: int,
-    lookback_days: int = 30
+    work_order_id: str,
+    lookback_days: int = 30,
+    client_id: Optional[str] = None
 ) -> dict:
     """
     Analyze quality trends over time
@@ -474,12 +488,12 @@ def identify_quality_trends(
 
     # First half
     dpmo_first, sigma_first, _, _ = calculate_dpmo(
-        db, product_id, None, start_date, mid_date
+        db, work_order_id=work_order_id, start_date=start_date, end_date=mid_date, client_id=client_id
     )
 
     # Second half
     dpmo_second, sigma_second, _, _ = calculate_dpmo(
-        db, product_id, None, mid_date, end_date
+        db, work_order_id=work_order_id, start_date=mid_date, end_date=end_date, client_id=client_id
     )
 
     # Calculate trend

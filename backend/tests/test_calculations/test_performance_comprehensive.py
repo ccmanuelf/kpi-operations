@@ -328,9 +328,775 @@ class TestPerformanceIntegration:
             MagicMock(shift_id=3, performance=94.0)
         ]
         mock_db.query.return_value.group_by.return_value.all.return_value = mock_shifts
-        
+
         shifts = mock_db.query().group_by().all()
         best_shift = max(shifts, key=lambda s: s.performance)
-        
+
         assert best_shift.shift_id == 3
         assert best_shift.performance == 94.0
+
+
+# =============================================================================
+# REAL DATABASE INTEGRATION TESTS
+# =============================================================================
+from decimal import Decimal
+from datetime import date, timedelta
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from backend.database import Base
+from backend.schemas import ClientType
+from backend.schemas.product import Product
+from backend.schemas.production_entry import ProductionEntry
+from backend.tests.fixtures.factories import TestDataFactory
+
+
+@pytest.fixture(scope="function")
+def perf_db():
+    """Create a fresh database for each test."""
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    TestingSession = sessionmaker(bind=engine)
+    session = TestingSession()
+    TestDataFactory.reset_counters()
+    try:
+        yield session
+    finally:
+        session.rollback()
+        session.close()
+        Base.metadata.drop_all(bind=engine)
+        engine.dispose()
+
+
+@pytest.fixture
+def perf_setup(perf_db):
+    """Create standard test data for performance tests."""
+    db = perf_db
+
+    # Create client
+    client = TestDataFactory.create_client(
+        db,
+        client_id="PERF-TEST-CLIENT",
+        client_name="Performance Test Client",
+        client_type=ClientType.HOURLY_RATE
+    )
+
+    # Create user
+    supervisor = TestDataFactory.create_user(
+        db,
+        user_id="perf-super-001",
+        username="perf_supervisor",
+        role="supervisor",
+        client_id=client.client_id
+    )
+
+    # Create product with known ideal cycle time
+    product = TestDataFactory.create_product(
+        db,
+        product_code="PERF-PROD-001",
+        product_name="Performance Test Product",
+        ideal_cycle_time=Decimal("0.10")  # 0.10 hours per unit = 10 units/hour
+    )
+
+    # Create shift
+    shift = TestDataFactory.create_shift(
+        db,
+        shift_name="Performance Shift",
+        start_time="06:00:00",
+        end_time="14:00:00"
+    )
+
+    db.commit()
+
+    return {
+        "db": db,
+        "client": client,
+        "supervisor": supervisor,
+        "product": product,
+        "shift": shift,
+    }
+
+
+class TestCalculatePerformanceReal:
+    """Tests for calculate_performance function with real database."""
+
+    def test_calculate_performance_100_percent(self, perf_setup):
+        """Test 100% performance calculation."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        # Create production entry with ideal output
+        # Ideal cycle time = 0.10 hours/unit
+        # Run time = 8 hours
+        # Expected output = 8 / 0.10 = 80 units
+        entry = ProductionEntry(
+            production_entry_id="PE-100-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=80,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, ideal_cycle_time, was_inferred = calculate_performance(
+            db, entry, product
+        )
+
+        # (0.10 * 80) / 8 * 100 = 100%
+        assert performance == Decimal("100.00")
+        assert ideal_cycle_time == Decimal("0.10")
+        assert was_inferred is False
+
+    def test_calculate_performance_above_100(self, perf_setup):
+        """Test performance above 100%."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        # Produce more than expected
+        entry = ProductionEntry(
+            production_entry_id="PE-ABOVE-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,  # 25% above expected
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, _, _ = calculate_performance(db, entry, product)
+
+        # (0.10 * 100) / 8 * 100 = 125%
+        assert performance == Decimal("125.00")
+
+    def test_calculate_performance_below_100(self, perf_setup):
+        """Test performance below 100%."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        # Produce less than expected
+        entry = ProductionEntry(
+            production_entry_id="PE-BELOW-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=60,  # 75% of expected
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, _, _ = calculate_performance(db, entry, product)
+
+        # (0.10 * 60) / 8 * 100 = 75%
+        assert performance == Decimal("75.00")
+
+    def test_calculate_performance_zero_run_time(self, perf_setup):
+        """Test performance with zero run time."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-ZERO-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("0"),  # Zero run time
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, _, _ = calculate_performance(db, entry, product)
+
+        assert performance == Decimal("0")
+
+    def test_calculate_performance_capped_at_150(self, perf_setup):
+        """Test performance is capped at 150%."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        # Extremely high production
+        entry = ProductionEntry(
+            production_entry_id="PE-CAP-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=200,  # Way above expected
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, _, _ = calculate_performance(db, entry, product)
+
+        # Would be 250% but capped at 150%
+        assert performance == Decimal("150")
+
+    def test_calculate_performance_without_product(self, perf_setup):
+        """Test performance calculation fetches product if not provided."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-NOPROD-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=80,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        # Don't pass product - let function fetch it
+        performance, ideal_cycle_time, _ = calculate_performance(db, entry, None)
+
+        assert performance == Decimal("100.00")
+        assert ideal_cycle_time == Decimal("0.10")
+
+
+class TestCalculateQualityRateReal:
+    """Tests for calculate_quality_rate function with real database."""
+
+    def test_quality_rate_100_percent(self, perf_setup):
+        """Test 100% quality rate (no defects or scrap)."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-QR100-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        assert quality_rate == Decimal("100.00")
+
+    def test_quality_rate_with_defects(self, perf_setup):
+        """Test quality rate with defects."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-QRDEF-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=5,  # 5 defects
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        # (100 - 5 - 0) / 100 * 100 = 95%
+        assert quality_rate == Decimal("95.00")
+
+    def test_quality_rate_with_scrap(self, perf_setup):
+        """Test quality rate with scrap."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-QRSCR-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=10,  # 10 scrap
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        # (100 - 0 - 10) / 100 * 100 = 90%
+        assert quality_rate == Decimal("90.00")
+
+    def test_quality_rate_with_defects_and_scrap(self, perf_setup):
+        """Test quality rate with both defects and scrap."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-QRDS-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=5,
+            scrap_count=3,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        # (100 - 5 - 3) / 100 * 100 = 92%
+        assert quality_rate == Decimal("92.00")
+
+    def test_quality_rate_zero_production(self, perf_setup):
+        """Test quality rate with zero production."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-QR0-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=0,  # Zero production
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        assert quality_rate == Decimal("0")
+
+
+class TestCalculateOEEReal:
+    """Tests for calculate_oee function with real database."""
+
+    def test_oee_perfect_performance_and_quality(self, perf_setup):
+        """Test OEE with 100% performance and quality."""
+        from backend.calculations.performance import calculate_oee
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-OEE100-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=80,  # 100% performance
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,  # 100% quality
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        oee, components = calculate_oee(db, entry, product)
+
+        # OEE = 100% * 100% * 100% = 100%
+        assert oee == Decimal("100.00")
+        assert components["availability"] == Decimal("100")
+        assert components["performance"] == Decimal("100.00")
+        assert components["quality"] == Decimal("100.00")
+
+    def test_oee_with_defects(self, perf_setup):
+        """Test OEE with defects affecting quality."""
+        from backend.calculations.performance import calculate_oee
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-OEEDEF-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=80,  # 100% performance
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=8,  # 10% defects -> 90% quality
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        oee, components = calculate_oee(db, entry, product)
+
+        # OEE = 100% * 100% * 90% = 90%
+        assert oee == Decimal("90.00")
+        assert components["quality"] == Decimal("90.00")
+
+    def test_oee_with_lower_performance(self, perf_setup):
+        """Test OEE with reduced performance."""
+        from backend.calculations.performance import calculate_oee
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-OEELP-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=64,  # 80% performance
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        oee, components = calculate_oee(db, entry, product)
+
+        # OEE = 100% * 80% * 100% = 80%
+        assert oee == Decimal("80.00")
+        assert components["performance"] == Decimal("80.00")
+
+    def test_oee_combined_factors(self, perf_setup):
+        """Test OEE with combined performance and quality issues."""
+        from backend.calculations.performance import calculate_oee
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-OEECOMB-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=72,  # 90% performance
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=7,  # ~90.3% quality (65 good / 72 produced)
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        oee, components = calculate_oee(db, entry, product)
+
+        # OEE = 100% * 90% * ~90% = ~81%
+        assert oee > Decimal("80") and oee < Decimal("82")
+
+
+class TestUpdatePerformanceForEntry:
+    """Tests for update_performance_for_entry function."""
+
+    def test_update_performance_entry_not_found(self, perf_setup):
+        """Test updating performance for nonexistent entry."""
+        from backend.calculations.performance import update_performance_for_entry
+
+        db = perf_setup["db"]
+
+        result = update_performance_for_entry(db, 99999)
+
+        assert result is None
+
+    def test_update_performance_success(self, perf_setup):
+        """Test successfully updating performance for an entry."""
+        from backend.calculations.performance import update_performance_for_entry
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-UPD-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=80,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+        entry_id = entry.production_entry_id
+
+        result = update_performance_for_entry(db, entry_id)
+
+        assert result is not None
+        assert result.performance_percentage == Decimal("100.00")
+
+
+class TestPerformanceWithInference:
+    """Tests for performance calculation with cycle time inference."""
+
+    def test_performance_with_inferred_cycle_time(self, perf_setup):
+        """Test performance when ideal cycle time needs inference."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        # Create product without ideal cycle time
+        product_no_ict = Product(
+            product_code="NO-ICT-001",
+            product_name="No Ideal Cycle Time Product",
+            ideal_cycle_time=None  # No ideal cycle time set
+        )
+        db.add(product_no_ict)
+        db.commit()
+
+        entry = ProductionEntry(
+            production_entry_id="PE-INFER-001",
+            client_id=client.client_id,
+            product_id=product_no_ict.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, ideal_cycle_time, was_inferred = calculate_performance(
+            db, entry, product_no_ict
+        )
+
+        # Should have inferred the cycle time
+        assert was_inferred is True
+        assert ideal_cycle_time > Decimal("0")
+
+
+class TestPerformanceEdgeCasesReal:
+    """Real database tests for performance edge cases."""
+
+    def test_performance_small_values(self, perf_setup):
+        """Test performance with small values."""
+        from backend.calculations.performance import calculate_performance
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-SMALL-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=1,
+            run_time_hours=Decimal("0.1"),  # 6 minutes
+            entered_by="perf-super-001",
+            defect_count=0,
+            scrap_count=0,
+            employees_assigned=1
+        )
+        db.add(entry)
+        db.commit()
+
+        performance, _, _ = calculate_performance(db, entry, product)
+
+        # (0.10 * 1) / 0.1 * 100 = 100%
+        assert performance == Decimal("100.00")
+
+    def test_performance_high_defect_quality(self, perf_setup):
+        """Test quality rate approaching zero."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-HIDEF-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=50,  # 50% defects
+            scrap_count=49,   # 49% scrap
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        # (100 - 50 - 49) / 100 * 100 = 1%
+        assert quality_rate == Decimal("1.00")
+
+    def test_quality_rate_capped_at_zero(self, perf_setup):
+        """Test quality rate doesn't go negative."""
+        from backend.calculations.performance import calculate_quality_rate
+
+        db = perf_setup["db"]
+        product = perf_setup["product"]
+        client = perf_setup["client"]
+        shift = perf_setup["shift"]
+
+        entry = ProductionEntry(
+            production_entry_id="PE-NEGQR-001",
+            client_id=client.client_id,
+            product_id=product.product_id,
+            shift_id=shift.shift_id,
+            production_date=date.today(),
+            shift_date=date.today(),
+            units_produced=100,
+            run_time_hours=Decimal("8.0"),
+            entered_by="perf-super-001",
+            defect_count=60,  # More defects/scrap than produced
+            scrap_count=60,
+            employees_assigned=5
+        )
+        db.add(entry)
+        db.commit()
+
+        quality_rate = calculate_quality_rate(entry)
+
+        # Should be capped at 0, not negative
+        assert quality_rate == Decimal("0")

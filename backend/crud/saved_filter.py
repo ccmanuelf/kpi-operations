@@ -501,20 +501,28 @@ def _cleanup_old_history(
         user_id: User ID
         max_entries: Maximum entries to keep
     """
-    # Get IDs of entries to keep
-    keep_ids = db.query(FilterHistory.history_id).filter(
+    # Get IDs of entries to keep (fetch as list to avoid SQLAlchemy subquery coercion warning)
+    keep_ids_query = db.query(FilterHistory.history_id).filter(
         FilterHistory.user_id == user_id
     ).order_by(
         FilterHistory.applied_at.desc()
-    ).limit(max_entries).subquery()
+    ).limit(max_entries)
+
+    keep_ids = [row.history_id for row in keep_ids_query.all()]
 
     # Delete entries not in keep list
-    db.query(FilterHistory).filter(
-        and_(
-            FilterHistory.user_id == user_id,
-            ~FilterHistory.history_id.in_(keep_ids)
-        )
-    ).delete(synchronize_session='fetch')
+    if keep_ids:
+        db.query(FilterHistory).filter(
+            and_(
+                FilterHistory.user_id == user_id,
+                ~FilterHistory.history_id.in_(keep_ids)
+            )
+        ).delete(synchronize_session='fetch')
+    else:
+        # If no entries to keep, delete all for user
+        db.query(FilterHistory).filter(
+            FilterHistory.user_id == user_id
+        ).delete(synchronize_session='fetch')
 
     db.commit()
 

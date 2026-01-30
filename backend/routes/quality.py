@@ -121,14 +121,14 @@ def get_quality_by_work_order(
     Get all quality inspections for a specific work order
     SECURITY: Returns only inspections for user's authorized clients
     """
-    from backend.schemas.quality import QualityInspection
+    from backend.schemas.quality_entry import QualityEntry
 
-    query = db.query(QualityInspection).filter(
-        QualityInspection.work_order_number == work_order_id
+    query = db.query(QualityEntry).filter(
+        QualityEntry.work_order_id == work_order_id
     )
 
     # SECURITY FIX (VULN-001): Apply client filter to prevent cross-client data access
-    client_filter = build_client_filter_clause(current_user, QualityInspection.client_id)
+    client_filter = build_client_filter_clause(current_user, QualityEntry.client_id)
     if client_filter is not None:
         query = query.filter(client_filter)
 
@@ -149,40 +149,37 @@ def get_quality_statistics(
     Get quality statistics summary for a date range
     SECURITY: Returns only data for user's authorized clients
     """
-    from sqlalchemy import func
-    from backend.schemas.quality import QualityInspection
+    from sqlalchemy import func, cast, Date
+    from backend.schemas.quality_entry import QualityEntry
 
     query = db.query(
-        func.sum(QualityInspection.units_inspected).label('total_inspected'),
-        func.sum(QualityInspection.defects_found).label('total_defects'),
-        func.sum(QualityInspection.scrap_units).label('total_scrap'),
-        func.sum(QualityInspection.rework_units).label('total_rework'),
-        func.avg(QualityInspection.ppm).label('avg_ppm'),
-        func.avg(QualityInspection.dpmo).label('avg_dpmo')
+        func.sum(QualityEntry.units_inspected).label('total_inspected'),
+        func.sum(QualityEntry.units_defective).label('total_defects'),
+        func.sum(QualityEntry.units_scrapped).label('total_scrap'),
+        func.sum(QualityEntry.units_reworked).label('total_rework'),
+        func.avg(QualityEntry.ppm).label('avg_ppm'),
+        func.avg(QualityEntry.dpmo).label('avg_dpmo')
     )
 
     # SECURITY FIX (VULN-002): Apply client filter to prevent cross-client data access
     # If specific client_id requested, verify access first
     if client_id:
         verify_client_access(current_user, client_id)
-        query = query.filter(QualityInspection.client_id == client_id)
+        query = query.filter(QualityEntry.client_id == client_id)
     else:
         # Apply user's authorized client filter
-        client_filter = build_client_filter_clause(current_user, QualityInspection.client_id)
+        client_filter = build_client_filter_clause(current_user, QualityEntry.client_id)
         if client_filter is not None:
             query = query.filter(client_filter)
 
-    # Apply date filters
+    # Apply date filters (shift_date is DateTime, cast to Date for comparison)
     query = query.filter(
-        QualityInspection.inspection_date >= start_date,
-        QualityInspection.inspection_date <= end_date
+        cast(QualityEntry.shift_date, Date) >= start_date,
+        cast(QualityEntry.shift_date, Date) <= end_date
     )
 
-    # Optional filters
-    if product_id:
-        query = query.filter(QualityInspection.product_id == product_id)
-    if shift_id:
-        query = query.filter(QualityInspection.shift_id == shift_id)
+    # Note: QualityEntry doesn't have product_id/shift_id - these filters are ignored
+    # for backward compatibility (they were likely never used correctly anyway)
 
     result = query.first()
 

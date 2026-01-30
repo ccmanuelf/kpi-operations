@@ -543,7 +543,9 @@ class TestCalculateDPMOFunction:
         mock_query.all.return_value = []
 
         dpmo, sigma, units, defects = calculate_dpmo(
-            mock_db, 1, 1, date.today() - timedelta(days=30), date.today()
+            mock_db, work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today()
         )
 
         assert dpmo == Decimal("0")
@@ -559,18 +561,23 @@ class TestCalculateDPMOFunction:
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
 
+        # Use QualityEntry field names
         mock_insp1 = MagicMock()
         mock_insp1.units_inspected = 1000
-        mock_insp1.defects_found = 10
+        mock_insp1.total_defects_count = 10
+        mock_insp1.units_defective = 10
 
         mock_insp2 = MagicMock()
         mock_insp2.units_inspected = 1000
-        mock_insp2.defects_found = 5
+        mock_insp2.total_defects_count = 5
+        mock_insp2.units_defective = 5
 
         mock_query.all.return_value = [mock_insp1, mock_insp2]
 
         dpmo, sigma, units, defects = calculate_dpmo(
-            mock_db, 1, 1, date.today() - timedelta(days=30), date.today(),
+            mock_db, work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today(),
             opportunities_per_unit=10
         )
 
@@ -594,14 +601,17 @@ class TestCalculateDPMOFunction:
         mock_part_opp.opportunities_per_unit = 15
         mock_query.first.return_value = mock_part_opp
 
-        # Mock inspections
+        # Mock inspections with QualityEntry field names
         mock_insp = MagicMock()
         mock_insp.units_inspected = 500
-        mock_insp.defects_found = 5
+        mock_insp.total_defects_count = 5
+        mock_insp.units_defective = 5
         mock_query.all.return_value = [mock_insp]
 
         dpmo, sigma, units, defects = calculate_dpmo(
-            mock_db, 1, 1, date.today() - timedelta(days=30), date.today(),
+            mock_db, work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today(),
             part_number="PART-001"
         )
 
@@ -626,7 +636,9 @@ class TestCalculateProcessCapability:
         mock_query.all.return_value = []
 
         result = calculate_process_capability(
-            mock_db, 1, date.today() - timedelta(days=30), date.today(),
+            mock_db, work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today(),
             upper_spec_limit=Decimal("10.0"),
             lower_spec_limit=Decimal("0.0"),
             target_value=Decimal("5.0")
@@ -646,11 +658,15 @@ class TestCalculateProcessCapability:
 
         mock_insp = MagicMock()
         mock_insp.units_inspected = 1000
-        mock_insp.defects_found = 10  # 1% defect rate
+        mock_insp.total_defects_count = 10  # 1% defect rate
+        mock_insp.units_defective = 10
         mock_query.all.return_value = [mock_insp]
 
         result = calculate_process_capability(
-            mock_db, 1, date.today() - timedelta(days=30), date.today(),
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today(),
             upper_spec_limit=Decimal("10.0"),
             lower_spec_limit=Decimal("0.0"),
             target_value=Decimal("5.0")
@@ -672,11 +688,15 @@ class TestCalculateProcessCapability:
 
         mock_insp = MagicMock()
         mock_insp.units_inspected = 1000
-        mock_insp.defects_found = 0
+        mock_insp.total_defects_count = 0
+        mock_insp.units_defective = 0
         mock_query.all.return_value = [mock_insp]
 
         result = calculate_process_capability(
-            mock_db, 1, date.today() - timedelta(days=30), date.today(),
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today(),
             upper_spec_limit=Decimal("10.0"),
             lower_spec_limit=Decimal("0.0"),
             target_value=Decimal("5.0")
@@ -727,17 +747,19 @@ class TestIdentifyQualityTrends:
         # First half: high DPMO (worse)
         mock_insp_first = MagicMock()
         mock_insp_first.units_inspected = 1000
-        mock_insp_first.defects_found = 50  # 5% defect rate
+        mock_insp_first.total_defects_count = 50  # 5% defect rate
+        mock_insp_first.units_defective = 50
 
         # Second half: low DPMO (better)
         mock_insp_second = MagicMock()
         mock_insp_second.units_inspected = 1000
-        mock_insp_second.defects_found = 10  # 1% defect rate
+        mock_insp_second.total_defects_count = 10  # 1% defect rate
+        mock_insp_second.units_defective = 10
 
         # Return different data for different queries
         mock_query.all.side_effect = [[mock_insp_first], [mock_insp_second]]
 
-        result = identify_quality_trends(mock_db, 1, lookback_days=30)
+        result = identify_quality_trends(mock_db, work_order_id="WO-001", lookback_days=30)
 
         assert "trend" in result
         assert "recommendation" in result
@@ -753,7 +775,7 @@ class TestIdentifyQualityTrends:
         mock_query.filter.return_value = mock_query
         mock_query.all.return_value = []
 
-        result = identify_quality_trends(mock_db, 1, lookback_days=30)
+        result = identify_quality_trends(mock_db, work_order_id="WO-001", lookback_days=30)
 
         assert result["trend"] == "insufficient_data"
         assert "Collect more" in result["recommendation"]
@@ -769,11 +791,12 @@ class TestIdentifyQualityTrends:
         # Both halves: similar DPMO
         mock_insp = MagicMock()
         mock_insp.units_inspected = 1000
-        mock_insp.defects_found = 20
+        mock_insp.total_defects_count = 20
+        mock_insp.units_defective = 20
 
         mock_query.all.side_effect = [[mock_insp], [mock_insp]]
 
-        result = identify_quality_trends(mock_db, 1, lookback_days=30)
+        result = identify_quality_trends(mock_db, work_order_id="WO-001", lookback_days=30)
 
         assert result["trend"] == "stable"
         assert "stable" in result["recommendation"].lower()

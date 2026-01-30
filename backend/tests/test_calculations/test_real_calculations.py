@@ -141,32 +141,30 @@ class TestAvailabilityModule:
 
         mock_db = MagicMock(spec=Session)
 
-        # Mock shift query
-        mock_shift = MagicMock()
-        mock_shift.duration_hours = 8.0
-        mock_db.query.return_value.filter.return_value.first.return_value = mock_shift
+        # Mock downtime sum query (function uses default 8 hours scheduled)
+        # The scalar returns total downtime in minutes
+        mock_db.query.return_value.filter.return_value.scalar.return_value = 90  # 90 minutes = 1.5 hours
 
-        # Mock downtime sum query
-        mock_downtime_query = MagicMock()
-        mock_db.query.return_value.filter.return_value.scalar.return_value = 1.5
-
-        result = calculate_availability(mock_db, 1, 1, date.today())
+        result = calculate_availability(
+            mock_db, work_order_id="WO-001", target_date=date.today()
+        )
 
         # Should return tuple of (availability_pct, scheduled_hours, downtime_hours, event_count)
         assert isinstance(result, tuple)
         assert len(result) == 4
 
-    def test_calculate_availability_no_shift(self):
-        """Test availability when shift not found (uses default 8 hours)"""
+    def test_calculate_availability_no_downtime(self):
+        """Test availability when no downtime (uses default 8 hours)"""
         from calculations.availability import calculate_availability
 
         mock_db = MagicMock(spec=Session)
 
-        # Mock no shift found
-        mock_db.query.return_value.filter.return_value.first.return_value = None
+        # Mock no downtime - scalar returns 0 minutes
         mock_db.query.return_value.filter.return_value.scalar.return_value = 0
 
-        result = calculate_availability(mock_db, 1, 1, date.today())
+        result = calculate_availability(
+            mock_db, work_order_id="WO-001", target_date=date.today()
+        )
 
         assert isinstance(result, tuple)
         # With 0 downtime and 8 hours default, availability should be 100%
@@ -178,12 +176,12 @@ class TestAvailabilityModule:
 
         mock_db = MagicMock(spec=Session)
 
-        mock_shift = MagicMock()
-        mock_shift.duration_hours = 8.0
-        mock_db.query.return_value.filter.return_value.first.return_value = mock_shift
+        # Mock zero downtime (scalar returns minutes)
         mock_db.query.return_value.filter.return_value.scalar.return_value = 0
 
-        result = calculate_availability(mock_db, 1, 1, date.today())
+        result = calculate_availability(
+            mock_db, work_order_id="WO-001", target_date=date.today()
+        )
 
         # Result should be a valid tuple
         assert isinstance(result, tuple)
@@ -248,9 +246,10 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db, 1, 1,
-            date.today() - timedelta(days=30),
-            date.today()
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today()
         )
 
         # Returns (ppm, total_inspected, total_defects)
@@ -273,9 +272,10 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db, 1, 1,
-            date.today() - timedelta(days=30),
-            date.today()
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today()
         )
 
         # Should return 0 PPM with no inspections
@@ -293,37 +293,39 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db, 1, 1,
-            date.today() - timedelta(days=30),
-            date.today()
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today()
         )
 
         # Should return 0 PPM with no defects
         assert result[0] == Decimal("0")
 
     def test_calculate_ppm_by_category(self):
-        """Test PPM calculation by defect category"""
+        """Test PPM calculation by inspection stage"""
         from calculations.ppm import calculate_ppm_by_category
 
         mock_db = MagicMock(spec=Session)
 
-        # Mock inspection results with categories
+        # Mock inspection results with inspection stages
         mock_insp1 = MagicMock()
         mock_insp1.units_inspected = 1000
-        mock_insp1.defects_found = 5
-        mock_insp1.defect_category = "Dimensional"
+        mock_insp1.units_defective = 5
+        mock_insp1.inspection_stage = "Incoming"
 
         mock_insp2 = MagicMock()
         mock_insp2.units_inspected = 1000
-        mock_insp2.defects_found = 3
-        mock_insp2.defect_category = "Surface"
+        mock_insp2.units_defective = 3
+        mock_insp2.inspection_stage = "Final"
 
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_insp1, mock_insp2]
 
         result = calculate_ppm_by_category(
-            mock_db, 1,
-            date.today() - timedelta(days=30),
-            date.today()
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today()
         )
 
         assert isinstance(result, dict)
@@ -633,9 +635,10 @@ class TestCalculationEdgeCases:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db, 1, 1,
-            date.today() - timedelta(days=30),
-            date.today()
+            mock_db,
+            work_order_id="WO-001",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today()
         )
 
         # Should handle gracefully, return 0 PPM

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 from decimal import Decimal
 from fastapi import HTTPException
+import uuid
 
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.product import Product
@@ -53,12 +54,17 @@ def create_production_entry(
     if hasattr(entry, 'client_id') and entry.client_id:
         verify_client_access(current_user, entry.client_id)
 
+    # Generate unique production_entry_id
+    entry_id = f"PE-{uuid.uuid4().hex[:8].upper()}"
+
     # Create entry
     db_entry = ProductionEntry(
+        production_entry_id=entry_id,
         product_id=entry.product_id,
         shift_id=entry.shift_id,
         production_date=entry.production_date,
-        work_order_number=entry.work_order_number,
+        shift_date=entry.shift_date,
+        work_order_id=entry.work_order_id,
         units_produced=entry.units_produced,
         run_time_hours=entry.run_time_hours,
         employees_assigned=entry.employees_assigned,
@@ -333,11 +339,13 @@ def get_production_entry_with_details(
     total_hours = entry.employees_assigned * float(entry.run_time_hours)
 
     return ProductionEntryWithKPIs(
-        entry_id=entry.production_entry_id,
+        production_entry_id=entry.production_entry_id,
+        client_id=entry.client_id,
         product_id=entry.product_id,
         shift_id=entry.shift_id,
         production_date=entry.production_date,
-        work_order_number=entry.work_order_id if hasattr(entry, 'work_order_id') else None,
+        shift_date=entry.shift_date,
+        work_order_id=entry.work_order_id,
         units_produced=entry.units_produced,
         run_time_hours=entry.run_time_hours,
         employees_assigned=entry.employees_assigned,

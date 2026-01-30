@@ -43,17 +43,17 @@ from backend.schemas import (
     DefectDetail, DefectType,
 )
 
-# CRITICAL: Also import alternative schemas that CRUD operations use
-# These have different table names (downtime_events, wip_holds) that tests expect
-from backend.schemas.downtime import DowntimeEvent
-from backend.schemas.hold import WIPHold, HoldStatus as WIPHoldStatus
+# Import log for batch imports
 from backend.schemas.import_log import ImportLog
 
-# Backward compatibility aliases
+# Backward compatibility aliases - use the correct _entry schemas
 QualityInspection = QualityEntry
 Downtime = DowntimeEntry
+DowntimeEvent = DowntimeEntry  # Alias for dead schema name
 Attendance = AttendanceEntry
 Hold = HoldEntry
+WIPHold = HoldEntry  # Alias for dead schema name
+WIPHoldStatus = HoldStatus  # Alias for dead status enum
 
 
 # Disable rate limiting for tests

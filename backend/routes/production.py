@@ -110,7 +110,7 @@ def list_entries(
 
 @router.get("/{entry_id}", response_model=ProductionEntryWithKPIs)
 def get_entry(
-    entry_id: int,
+    entry_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -126,7 +126,7 @@ def get_entry(
 
 @router.put("/{entry_id}", response_model=ProductionEntryResponse)
 def update_entry(
-    entry_id: int,
+    entry_id: str,
     entry_update: ProductionEntryUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -153,7 +153,7 @@ def update_entry(
 
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_entry(
-    entry_id: int,
+    entry_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor)
 ):

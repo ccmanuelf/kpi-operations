@@ -40,7 +40,7 @@ def calculate_performance(
         was_inferred = False
     else:
         ideal_cycle_time, was_inferred = infer_ideal_cycle_time(
-            db, entry.product_id, entry.entry_id
+            db, entry.product_id, entry.production_entry_id
         )
 
     # Calculate performance
@@ -61,20 +61,20 @@ def calculate_performance(
 
 def update_performance_for_entry(
     db: Session,
-    entry_id: int
+    entry_id: str
 ) -> Optional[ProductionEntry]:
     """
     Update performance for a specific production entry
 
     Args:
         db: Database session
-        entry_id: Production entry ID
+        entry_id: Production entry ID (string)
 
     Returns:
         Updated production entry or None if not found
     """
     entry = db.query(ProductionEntry).filter(
-        ProductionEntry.entry_id == entry_id
+        ProductionEntry.production_entry_id == entry_id
     ).first()
 
     if not entry:
@@ -107,8 +107,9 @@ def calculate_quality_rate(entry: ProductionEntry) -> Decimal:
     if entry.units_produced == 0:
         return Decimal("0")
 
-    good_units = entry.units_produced - entry.defect_count - entry.scrap_count
-    quality_rate = (good_units / entry.units_produced) * 100
+    good_units = entry.units_produced - (entry.defect_count or 0) - (entry.scrap_count or 0)
+    # Use Decimal for precise calculation
+    quality_rate = Decimal(str(good_units)) / Decimal(str(entry.units_produced)) * Decimal("100")
 
     return max(Decimal("0"), quality_rate.quantize(Decimal("0.01")))
 

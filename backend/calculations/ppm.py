@@ -5,39 +5,50 @@ PHASE 4: Quality metrics
 PPM = (Total Defects / Total Units Inspected) * 1,000,000
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, cast, Date
 from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from backend.schemas.quality import QualityInspection
+from backend.schemas.quality_entry import QualityEntry
 
 
 def calculate_ppm(
     db: Session,
-    product_id: int,
-    shift_id: int,
+    work_order_id: str,
     start_date: date,
-    end_date: date
+    end_date: date,
+    client_id: Optional[str] = None
 ) -> tuple[Decimal, int, int]:
     """
     Calculate PPM (Parts Per Million) defect rate
 
+    Args:
+        db: Database session
+        work_order_id: Work order to calculate PPM for
+        start_date: Start of date range
+        end_date: End of date range
+        client_id: Optional client filter
+
     Returns: (ppm, total_inspected, total_defects)
     """
 
-    # Sum all inspections for period
-    inspections = db.query(
-        func.sum(QualityInspection.units_inspected).label('total_inspected'),
-        func.sum(QualityInspection.defects_found).label('total_defects')
+    # Build query for quality entries
+    query = db.query(
+        func.sum(QualityEntry.units_inspected).label('total_inspected'),
+        func.sum(QualityEntry.units_defective).label('total_defects')
     ).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.shift_id == shift_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.work_order_id == work_order_id,
+            cast(QualityEntry.shift_date, Date) >= start_date,
+            cast(QualityEntry.shift_date, Date) <= end_date
         )
-    ).first()
+    )
+
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
+
+    inspections = query.first()
 
     total_inspected = inspections.total_inspected or 0
     total_defects = inspections.total_defects or 0
@@ -52,34 +63,40 @@ def calculate_ppm(
 
 def calculate_ppm_by_category(
     db: Session,
-    product_id: int,
+    work_order_id: str,
     start_date: date,
-    end_date: date
+    end_date: date,
+    client_id: Optional[str] = None
 ) -> dict:
     """
-    Calculate PPM broken down by defect category
+    Calculate PPM broken down by inspection stage (replaces defect_category)
     """
 
-    inspections = db.query(QualityInspection).filter(
+    query = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date,
-            QualityInspection.defect_category.isnot(None)
+            QualityEntry.work_order_id == work_order_id,
+            cast(QualityEntry.shift_date, Date) >= start_date,
+            cast(QualityEntry.shift_date, Date) <= end_date,
+            QualityEntry.inspection_stage.isnot(None)
         )
-    ).all()
+    )
+
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
+
+    inspections = query.all()
 
     # Calculate total inspected
     total_inspected = sum(i.units_inspected for i in inspections)
 
-    # Group by category
+    # Group by inspection stage (instead of defect_category)
     categories = {}
     for insp in inspections:
-        cat = insp.defect_category or "Uncategorized"
+        cat = insp.inspection_stage or "Uncategorized"
         if cat not in categories:
             categories[cat] = {"defects": 0, "ppm": Decimal("0")}
 
-        categories[cat]["defects"] += insp.defects_found
+        categories[cat]["defects"] += insp.units_defective
 
     # Calculate PPM per category
     if total_inspected > 0:
@@ -95,47 +112,52 @@ def calculate_ppm_by_category(
 
 def identify_top_defects(
     db: Session,
-    product_id: Optional[int] = None,
+    work_order_id: Optional[str] = None,
     start_date: date = None,
     end_date: date = None,
+    client_id: Optional[str] = None,
     limit: int = 10
 ) -> list[dict]:
     """
-    Identify top defect types by frequency (Pareto analysis)
+    Identify top defect types by process step (Pareto analysis)
+    Note: QualityEntry uses process_step instead of defect_type
     """
 
-    query = db.query(QualityInspection).filter(
-        QualityInspection.defect_type.isnot(None)
+    query = db.query(QualityEntry).filter(
+        QualityEntry.process_step.isnot(None)
     )
 
-    if product_id:
-        query = query.filter(QualityInspection.product_id == product_id)
+    if work_order_id:
+        query = query.filter(QualityEntry.work_order_id == work_order_id)
+
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
 
     if start_date and end_date:
         query = query.filter(
             and_(
-                QualityInspection.inspection_date >= start_date,
-                QualityInspection.inspection_date <= end_date
+                cast(QualityEntry.shift_date, Date) >= start_date,
+                cast(QualityEntry.shift_date, Date) <= end_date
             )
         )
 
     inspections = query.all()
 
-    # Group by defect type
+    # Group by process step (replaces defect_type)
     defect_types = {}
     total_defects = 0
 
     for insp in inspections:
-        defect_type = insp.defect_type or "Unknown"
-        if defect_type not in defect_types:
-            defect_types[defect_type] = {
-                "defect_type": defect_type,
+        process_step = insp.process_step or "Unknown"
+        if process_step not in defect_types:
+            defect_types[process_step] = {
+                "defect_type": process_step,
                 "count": 0,
-                "category": insp.defect_category
+                "category": insp.inspection_stage
             }
 
-        defect_types[defect_type]["count"] += insp.defects_found
-        total_defects += insp.defects_found
+        defect_types[process_step]["count"] += insp.units_defective
+        total_defects += insp.units_defective
 
     # Convert to list and calculate percentages
     results = list(defect_types.values())
@@ -158,9 +180,10 @@ def identify_top_defects(
 
 def calculate_cost_of_quality(
     db: Session,
-    product_id: int,
+    work_order_id: str,
     start_date: date,
     end_date: date,
+    client_id: Optional[str] = None,
     scrap_cost_per_unit: Optional[Decimal] = None,
     rework_cost_per_unit: Optional[Decimal] = None
 ) -> dict:
@@ -170,16 +193,21 @@ def calculate_cost_of_quality(
     COQ = Scrap Cost + Rework Cost + Inspection Cost
     """
 
-    inspections = db.query(QualityInspection).filter(
+    query = db.query(QualityEntry).filter(
         and_(
-            QualityInspection.product_id == product_id,
-            QualityInspection.inspection_date >= start_date,
-            QualityInspection.inspection_date <= end_date
+            QualityEntry.work_order_id == work_order_id,
+            cast(QualityEntry.shift_date, Date) >= start_date,
+            cast(QualityEntry.shift_date, Date) <= end_date
         )
-    ).all()
+    )
 
-    total_scrap = sum(i.scrap_units for i in inspections)
-    total_rework = sum(i.rework_units for i in inspections)
+    if client_id:
+        query = query.filter(QualityEntry.client_id == client_id)
+
+    inspections = query.all()
+
+    total_scrap = sum(i.units_scrapped for i in inspections)
+    total_rework = sum(i.units_reworked for i in inspections)
 
     # Use default costs if not provided
     if not scrap_cost_per_unit:

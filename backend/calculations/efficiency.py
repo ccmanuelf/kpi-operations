@@ -147,7 +147,7 @@ def infer_employees_count(
             ProductionEntry.shift_id == entry.shift_id,
             ProductionEntry.employees_assigned.isnot(None),
             ProductionEntry.employees_assigned > 0,
-            ProductionEntry.entry_id != (entry.entry_id if hasattr(entry, 'entry_id') else None)
+            ProductionEntry.production_entry_id != (entry.production_entry_id if hasattr(entry, 'production_entry_id') else None)
         ).scalar()
 
         if historical_avg is not None and historical_avg > 0:
@@ -231,7 +231,7 @@ def calculate_shift_hours(shift_start: time, shift_end: time) -> Decimal:
 def infer_ideal_cycle_time(
     db: Session,
     product_id: int,
-    current_entry_id: Optional[int] = None,
+    current_entry_id: Optional[str] = None,
     client_id: Optional[str] = None
 ) -> Tuple[Decimal, bool]:
     """
@@ -265,7 +265,7 @@ def infer_ideal_cycle_time(
 
     # Exclude current entry if updating
     if current_entry_id:
-        query = query.filter(ProductionEntry.entry_id != current_entry_id)
+        query = query.filter(ProductionEntry.production_entry_id != current_entry_id)
 
     historical_entries = query.limit(10).all()
 
@@ -290,8 +290,9 @@ def infer_ideal_cycle_time(
             return (avg_cycle_time, True)
 
     # Use client-specific or global default if no historical data
+    # Return True for was_inferred since this is a fallback value, not from product
     default_cycle_time = get_client_cycle_time_default(db, client_id)
-    return (default_cycle_time, False)
+    return (default_cycle_time, True)
 
 
 def calculate_efficiency(
@@ -334,7 +335,7 @@ def calculate_efficiency(
         cycle_time_inferred = False
     else:
         ideal_cycle_time, cycle_time_inferred = infer_ideal_cycle_time(
-            db, entry.product_id, entry.entry_id, client_id
+            db, entry.product_id, entry.production_entry_id, client_id
         )
 
     # Get scheduled hours from shift
@@ -407,7 +408,7 @@ def calculate_efficiency_with_metadata(
         cycle_time_confidence = 1.0
     else:
         ideal_cycle_time, cycle_time_inferred = infer_ideal_cycle_time(
-            db, entry.product_id, entry.entry_id, client_id
+            db, entry.product_id, entry.production_entry_id, client_id
         )
         cycle_time_source = "historical_avg" if cycle_time_inferred else "client_default" if client_id else "global_default"
         cycle_time_confidence = 0.6 if cycle_time_inferred else 0.4 if client_id else 0.3
@@ -478,20 +479,20 @@ def calculate_efficiency_with_metadata(
 
 def update_efficiency_for_entry(
     db: Session,
-    entry_id: int
+    entry_id: str
 ) -> Optional[ProductionEntry]:
     """
     Update efficiency for a specific production entry
 
     Args:
         db: Database session
-        entry_id: Production entry ID
+        entry_id: Production entry ID (string)
 
     Returns:
         Updated production entry or None if not found
     """
     entry = db.query(ProductionEntry).filter(
-        ProductionEntry.entry_id == entry_id
+        ProductionEntry.production_entry_id == entry_id
     ).first()
 
     if not entry:

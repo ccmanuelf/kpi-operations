@@ -10,11 +10,11 @@ from unittest.mock import MagicMock, patch, PropertyMock
 try:
     import sys
     import os
-    # Ensure the backend directory is in the path
-    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    if backend_dir not in sys.path:
-        sys.path.insert(0, backend_dir)
-    from tasks.daily_reports import DailyReportScheduler, scheduler
+    # Ensure the project root is in the path for 'backend' module resolution
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    if project_root not in sys.path:
+        sys.path.insert(0, project_root)
+    from backend.tasks.daily_reports import DailyReportScheduler, scheduler
     MODULE_AVAILABLE = True
 except ImportError as e:
     MODULE_AVAILABLE = False

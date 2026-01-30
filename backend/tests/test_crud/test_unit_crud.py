@@ -163,11 +163,6 @@ class TestQualityCRUD:
         
         result = get_quality_inspections(mock_db, mock_admin_user)
         assert isinstance(result, list)
-    
-    @pytest.mark.skip(reason="Function get_quality_metrics not yet implemented in CRUD")
-    def test_get_quality_metrics(self, mock_db):
-        """Test getting quality metrics"""
-        pass  # Placeholder for future implementation
 
 
 class TestAttendanceCRUD:
@@ -187,11 +182,6 @@ class TestAttendanceCRUD:
         
         result = get_attendance_records(mock_db, mock_admin_user)
         assert isinstance(result, list)
-    
-    @pytest.mark.skip(reason="Function get_absenteeism_rate not yet implemented in CRUD")
-    def test_get_absenteeism_rate(self, mock_db):
-        """Test getting absenteeism rate"""
-        pass  # Placeholder for future implementation
 
 
 class TestDowntimeCRUD:
@@ -211,11 +201,6 @@ class TestDowntimeCRUD:
         
         result = get_downtime_events(mock_db, mock_admin_user)
         assert isinstance(result, list)
-    
-    @pytest.mark.skip(reason="Function get_downtime_summary not yet implemented in CRUD")
-    def test_get_downtime_summary(self, mock_db):
-        """Test getting downtime summary"""
-        pass  # Placeholder for future implementation
 
 
 class TestHoldCRUD:
@@ -235,11 +220,6 @@ class TestHoldCRUD:
         
         result = get_wip_holds(mock_db, mock_admin_user)
         assert isinstance(result, list)
-    
-    @pytest.mark.skip(reason="Function get_wip_aging not yet implemented in CRUD hold.py")
-    def test_get_wip_aging(self, mock_db):
-        """Test getting WIP aging data"""
-        pass  # Use calculation module instead
 
 
 class TestEmployeeCRUD:

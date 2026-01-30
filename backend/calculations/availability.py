@@ -5,56 +5,66 @@ PHASE 2: Machine/Line availability tracking
 Availability = (Total Scheduled Time - Downtime) / Total Scheduled Time * 100
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, cast, Date
 from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from backend.schemas.downtime import DowntimeEvent
+from backend.schemas.downtime_entry import DowntimeEntry
 from backend.schemas.shift import Shift
 
 
 def calculate_availability(
     db: Session,
-    product_id: int,
-    shift_id: int,
-    production_date: date
+    work_order_id: str,
+    target_date: date,
+    client_id: Optional[str] = None
 ) -> tuple[Decimal, Decimal, Decimal, int]:
     """
-    Calculate availability for a specific product/shift/date
+    Calculate availability for a specific work order/date
+
+    Args:
+        db: Database session
+        work_order_id: Work order to calculate availability for
+        target_date: Date to calculate availability for
+        client_id: Optional client filter
 
     Returns: (availability_percentage, scheduled_hours, downtime_hours, event_count)
     """
 
-    # Get shift scheduled hours
-    shift = db.query(Shift).filter(Shift.shift_id == shift_id).first()
-    if not shift or not shift.duration_hours:
-        # Default to 8 hours if shift not found
-        scheduled_hours = Decimal("8.0")
-    else:
-        scheduled_hours = Decimal(str(shift.duration_hours))
+    # Default scheduled hours (8 hours per shift)
+    scheduled_hours = Decimal("8.0")
 
-    # Sum all downtime for this product/shift/date
-    total_downtime = db.query(
-        func.coalesce(func.sum(DowntimeEvent.duration_hours), 0)
+    # Build query for downtime entries
+    query = db.query(
+        func.coalesce(func.sum(DowntimeEntry.downtime_duration_minutes), 0)
     ).filter(
         and_(
-            DowntimeEvent.product_id == product_id,
-            DowntimeEvent.shift_id == shift_id,
-            DowntimeEvent.production_date == production_date
+            DowntimeEntry.work_order_id == work_order_id,
+            cast(DowntimeEntry.shift_date, Date) == target_date
         )
-    ).scalar()
+    )
 
-    downtime_hours = Decimal(str(total_downtime))
+    if client_id:
+        query = query.filter(DowntimeEntry.client_id == client_id)
+
+    total_downtime_minutes = query.scalar()
+
+    # Convert minutes to hours
+    downtime_hours = Decimal(str(total_downtime_minutes)) / Decimal("60")
 
     # Count downtime events
-    event_count = db.query(func.count(DowntimeEvent.downtime_id)).filter(
+    count_query = db.query(func.count(DowntimeEntry.downtime_entry_id)).filter(
         and_(
-            DowntimeEvent.product_id == product_id,
-            DowntimeEvent.shift_id == shift_id,
-            DowntimeEvent.production_date == production_date
+            DowntimeEntry.work_order_id == work_order_id,
+            cast(DowntimeEntry.shift_date, Date) == target_date
         )
-    ).scalar()
+    )
+
+    if client_id:
+        count_query = count_query.filter(DowntimeEntry.client_id == client_id)
+
+    event_count = count_query.scalar()
 
     # Calculate availability
     if scheduled_hours > 0:
@@ -73,7 +83,8 @@ def calculate_mtbf(
     db: Session,
     machine_id: str,
     start_date: date,
-    end_date: date
+    end_date: date,
+    client_id: Optional[str] = None
 ) -> Optional[Decimal]:
     """
     Calculate Mean Time Between Failures (MTBF)
@@ -81,21 +92,26 @@ def calculate_mtbf(
     MTBF = Total Operating Time / Number of Failures
     """
 
-    # Get all downtime events for machine
-    failures = db.query(DowntimeEvent).filter(
+    # Get all downtime events for machine (using DowntimeEntry with correct fields)
+    query = db.query(DowntimeEntry).filter(
         and_(
-            DowntimeEvent.machine_id == machine_id,
-            DowntimeEvent.production_date >= start_date,
-            DowntimeEvent.production_date <= end_date,
-            DowntimeEvent.downtime_category.in_(['Breakdown', 'Failure'])
+            DowntimeEntry.machine_id == machine_id,
+            cast(DowntimeEntry.shift_date, Date) >= start_date,
+            cast(DowntimeEntry.shift_date, Date) <= end_date,
+            DowntimeEntry.root_cause_category.in_(['Breakdown', 'Failure', 'Equipment Failure'])
         )
-    ).all()
+    )
+
+    if client_id:
+        query = query.filter(DowntimeEntry.client_id == client_id)
+
+    failures = query.all()
 
     if not failures:
         return None
 
-    # Calculate total operating time (scheduled - downtime)
-    total_downtime = sum(Decimal(str(f.duration_hours)) for f in failures)
+    # Calculate total downtime in hours (DowntimeEntry stores minutes)
+    total_downtime = sum(Decimal(str(f.downtime_duration_minutes or 0)) / Decimal("60") for f in failures)
 
     # Assume 24/7 operation (can be adjusted)
     days = (end_date - start_date).days + 1
@@ -115,7 +131,8 @@ def calculate_mttr(
     db: Session,
     machine_id: str,
     start_date: date,
-    end_date: date
+    end_date: date,
+    client_id: Optional[str] = None
 ) -> Optional[Decimal]:
     """
     Calculate Mean Time To Repair (MTTR)
@@ -123,19 +140,25 @@ def calculate_mttr(
     MTTR = Total Repair Time / Number of Repairs
     """
 
-    repairs = db.query(DowntimeEvent).filter(
+    query = db.query(DowntimeEntry).filter(
         and_(
-            DowntimeEvent.machine_id == machine_id,
-            DowntimeEvent.production_date >= start_date,
-            DowntimeEvent.production_date <= end_date,
-            DowntimeEvent.downtime_category.in_(['Breakdown', 'Failure', 'Maintenance'])
+            DowntimeEntry.machine_id == machine_id,
+            cast(DowntimeEntry.shift_date, Date) >= start_date,
+            cast(DowntimeEntry.shift_date, Date) <= end_date,
+            DowntimeEntry.root_cause_category.in_(['Breakdown', 'Failure', 'Maintenance', 'Equipment Failure'])
         )
-    ).all()
+    )
+
+    if client_id:
+        query = query.filter(DowntimeEntry.client_id == client_id)
+
+    repairs = query.all()
 
     if not repairs:
         return None
 
-    total_repair_time = sum(Decimal(str(r.duration_hours)) for r in repairs)
+    # DowntimeEntry stores minutes, convert to hours
+    total_repair_time = sum(Decimal(str(r.downtime_duration_minutes or 0)) / Decimal("60") for r in repairs)
 
     if len(repairs) > 0:
         mttr = total_repair_time / Decimal(str(len(repairs)))

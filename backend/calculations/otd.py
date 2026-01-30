@@ -150,7 +150,7 @@ def calculate_otd(
 
 def calculate_lead_time(
     db: Session,
-    work_order_number: str
+    work_order_id: str
 ) -> Optional[int]:
     """
     Calculate actual lead time for a work order
@@ -161,7 +161,7 @@ def calculate_lead_time(
     """
 
     entries = db.query(ProductionEntry).filter(
-        ProductionEntry.work_order_number == work_order_number
+        ProductionEntry.work_order_id == work_order_id
     ).order_by(ProductionEntry.production_date).all()
 
     if not entries or len(entries) < 1:
@@ -177,7 +177,7 @@ def calculate_lead_time(
 
 def calculate_cycle_time(
     db: Session,
-    work_order_number: str
+    work_order_id: str
 ) -> Optional[Decimal]:
     """
     Calculate total cycle time (production hours) for work order
@@ -186,7 +186,7 @@ def calculate_cycle_time(
     total_hours = db.query(
         func.sum(ProductionEntry.run_time_hours)
     ).filter(
-        ProductionEntry.work_order_number == work_order_number
+        ProductionEntry.work_order_id == work_order_id
     ).scalar()
 
     if total_hours:
@@ -250,11 +250,15 @@ def identify_late_orders(
     for entry in late_entries:
         wo = entry.work_order_id
         if wo not in work_orders:
+            # Handle both date and datetime types for production_date
+            prod_date = entry.production_date
+            if hasattr(prod_date, 'date'):
+                prod_date = prod_date.date()
             work_orders[wo] = {
                 "work_order": wo,
                 "product_id": entry.product_id,
                 "start_date": entry.production_date,
-                "days_pending": (as_of_date - entry.production_date).days,
+                "days_pending": (as_of_date - prod_date).days,
                 "total_units": 0
             }
         work_orders[wo]["total_units"] += entry.units_produced

@@ -152,13 +152,13 @@ def update_wip_hold(
     if 'client_id' in update_data:
         verify_client_access(current_user, update_data['client_id'])
 
-    # Update aging if release date is set
-    if 'release_date' in update_data and update_data['release_date']:
+    # Update aging if resume date is set
+    if 'resume_date' in update_data and update_data['resume_date']:
         update_data['aging_days'] = (
-            update_data['release_date'] - db_hold.hold_date
+            update_data['resume_date'] - db_hold.hold_date
         ).days
-    elif not db_hold.release_date:
-        # Update aging for unreleased holds
+    elif not db_hold.resume_date:
+        # Update aging for unresumed holds
         update_data['aging_days'] = (date.today() - db_hold.hold_date).days
 
     for field, value in update_data.items():
@@ -187,7 +187,7 @@ def delete_wip_hold(
 
 def bulk_update_aging(db: Session, current_user: User) -> int:
     """Update aging for all unreleased holds (batch job)"""
-    query = db.query(WIPHold).filter(WIPHold.release_date.is_(None))
+    query = db.query(WIPHold).filter(WIPHold.resume_date.is_(None))
 
     # Apply client filtering based on user role
     client_filter = build_client_filter_clause(current_user, WIPHold.client_id)
@@ -231,7 +231,7 @@ def resume_hold(
         Updated WIPHoldResponse with calculated duration
     """
     # Get the hold record
-    db_hold = db.query(WIPHold).filter(WIPHold.hold_id == hold_id).first()
+    db_hold = db.query(WIPHold).filter(WIPHold.hold_entry_id == hold_id).first()
 
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
@@ -240,16 +240,16 @@ def resume_hold(
     verify_client_access(current_user, db_hold.client_id)
 
     # Check if hold is in ON_HOLD status
-    if db_hold.status != HoldStatus.ON_HOLD:
+    if db_hold.hold_status != HoldStatus.ON_HOLD:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot resume hold with status {db_hold.status}. Only ON_HOLD status can be resumed."
+            detail=f"Cannot resume hold with status {db_hold.hold_status}. Only ON_HOLD status can be resumed."
         )
 
     # Set resume timestamp
     db_hold.resume_timestamp = datetime.now()
     db_hold.resumed_by = resumed_by
-    db_hold.status = HoldStatus.RESUMED
+    db_hold.hold_status = HoldStatus.RESUMED
 
     # AUTO-CALCULATE hold duration (P2-001)
     if db_hold.hold_timestamp:
@@ -291,7 +291,7 @@ def get_total_hold_duration(
         TotalHoldDurationResponse with aggregated duration
     """
     query = db.query(WIPHold).filter(
-        WIPHold.work_order_number == work_order_number
+        WIPHold.work_order_id == work_order_number
     )
 
     # Apply client filtering if user provided
@@ -308,7 +308,7 @@ def get_total_hold_duration(
 
     for hold in holds:
         # Count active (ON_HOLD) holds
-        if hold.status == HoldStatus.ON_HOLD:
+        if hold.hold_status == HoldStatus.ON_HOLD:
             active_holds += 1
             # For active holds, calculate duration from hold_timestamp to now
             if hold.hold_timestamp:
@@ -350,7 +350,7 @@ def get_holds_by_work_order(
         List of WIPHoldResponse for the work order
     """
     query = db.query(WIPHold).filter(
-        WIPHold.work_order_number == work_order_number
+        WIPHold.work_order_id == work_order_number
     )
 
     # Apply client filtering
@@ -386,7 +386,7 @@ def release_hold(
     Returns:
         Updated WIPHoldResponse
     """
-    db_hold = db.query(WIPHold).filter(WIPHold.hold_id == hold_id).first()
+    db_hold = db.query(WIPHold).filter(WIPHold.hold_entry_id == hold_id).first()
 
     if not db_hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
@@ -394,8 +394,8 @@ def release_hold(
     verify_client_access(current_user, db_hold.client_id)
 
     # Set release info
-    db_hold.release_date = date.today()
-    db_hold.status = HoldStatus.RELEASED
+    db_hold.resume_date = date.today()
+    db_hold.hold_status = HoldStatus.RESUMED
     db_hold.actual_resolution_date = date.today()
 
     if quantity_released is not None:
@@ -415,7 +415,7 @@ def release_hold(
             db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
 
     # Update aging
-    db_hold.aging_days = (db_hold.release_date - db_hold.hold_date).days
+    db_hold.aging_days = (db_hold.resume_date - db_hold.hold_date).days
 
     if notes:
         existing_notes = db_hold.notes or ""

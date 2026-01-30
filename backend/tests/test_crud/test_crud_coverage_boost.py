@@ -80,8 +80,9 @@ class TestDefectTypeCatalogCRUD:
     def test_get_defect_types(self, db_session, admin_user):
         """Test get defect types"""
         try:
-            from backend.crud.defect_type_catalog import get_defect_types
-            result = get_defect_types(db_session, admin_user)
+            from backend.crud.defect_type_catalog import get_defect_types_by_client
+            client_id = getattr(admin_user, 'client_id_assigned', None) or "TEST-CLIENT"
+            result = get_defect_types_by_client(db_session, client_id, admin_user)
             assert isinstance(result, list)
         except ImportError:
             pytest.skip("Function not available")
@@ -165,8 +166,8 @@ class TestPreferencesCRUD:
     def test_get_user_preferences(self, db_session, admin_user):
         """Test get user preferences"""
         try:
-            from backend.crud.preferences import get_user_preferences
-            result = get_user_preferences(db_session, admin_user.user_id)
+            from backend.crud.preferences import get_user_dashboard_preferences
+            result = get_user_dashboard_preferences(db_session, admin_user.user_id)
             # May return None if no preferences set
             assert result is None or hasattr(result, 'user_id')
         except ImportError:
@@ -202,8 +203,8 @@ class TestQualityCRUD:
     def test_get_quality_entries(self, db_session, admin_user):
         """Test get quality entries"""
         try:
-            from backend.crud.quality import get_quality_entries
-            result = get_quality_entries(db_session, admin_user)
+            from backend.crud.quality import get_quality_inspections
+            result = get_quality_inspections(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
             pytest.skip("Function not available")
@@ -238,8 +239,8 @@ class TestDowntimeCRUD:
     def test_get_downtime_entries(self, db_session, admin_user):
         """Test get downtime entries"""
         try:
-            from backend.crud.downtime import get_downtime_entries
-            result = get_downtime_entries(db_session, admin_user)
+            from backend.crud.downtime import get_downtime_events
+            result = get_downtime_events(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
             pytest.skip("Function not available")
@@ -256,8 +257,8 @@ class TestAttendanceCRUD:
     def test_get_attendance_entries(self, db_session, admin_user):
         """Test get attendance entries"""
         try:
-            from backend.crud.attendance import get_attendance_entries
-            result = get_attendance_entries(db_session, admin_user)
+            from backend.crud.attendance import get_attendance_records
+            result = get_attendance_records(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
             pytest.skip("Function not available")
@@ -272,16 +273,20 @@ class TestAnalyticsCRUD:
     """Tests for crud/analytics.py"""
 
     def test_get_analytics_summary(self, db_session, admin_user):
-        """Test get analytics summary"""
+        """Test get analytics time series data"""
         try:
-            from backend.crud.analytics import get_analytics_summary
-            result = get_analytics_summary(
+            from backend.crud.analytics import get_kpi_time_series_data
+            # Use admin_user's client_id or a test client_id
+            client_id = getattr(admin_user, 'client_id_assigned', None) or "TEST-CLIENT"
+            result = get_kpi_time_series_data(
                 db_session,
-                admin_user,
+                client_id,
+                'efficiency',
                 date.today() - timedelta(days=30),
-                date.today()
+                date.today(),
+                admin_user
             )
-            assert isinstance(result, dict)
+            assert isinstance(result, list)
         except ImportError:
             pytest.skip("Function not available")
         except Exception:

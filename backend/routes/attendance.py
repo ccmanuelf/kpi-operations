@@ -86,22 +86,6 @@ def list_attendance(
     )
 
 
-@router.get("/{attendance_id}", response_model=AttendanceRecordResponse)
-def get_attendance(
-    attendance_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Get attendance record by ID
-    SECURITY: Verifies user has access to this attendance record
-    """
-    record = get_attendance_record(db, attendance_id, current_user)
-    if not record:
-        raise HTTPException(status_code=404, detail="Attendance record not found")
-    return record
-
-
 @router.get("/by-employee/{employee_id}", response_model=List[AttendanceRecordResponse])
 def get_attendance_by_employee(
     employee_id: int,
@@ -163,36 +147,43 @@ def get_attendance_statistics(
     Get attendance statistics and summary for a date range
     SECURITY: Returns only data for user's authorized clients
     """
-    from sqlalchemy import func
-    from backend.schemas.attendance import AttendanceRecord
+    from sqlalchemy import func, case, cast, Date
+    from backend.schemas.attendance_entry import AttendanceEntry
 
-    query = db.query(
-        AttendanceRecord.status,
-        func.count(AttendanceRecord.attendance_id).label('count'),
-        func.sum(AttendanceRecord.actual_hours_worked).label('total_hours')
+    # Convert is_absent to status for backward compatibility
+    status_case = case(
+        (AttendanceEntry.is_absent == 1, 'Absent'),
+        (AttendanceEntry.is_late == 1, 'Late'),
+        else_='Present'
     )
 
-    # Apply date filters
+    query = db.query(
+        status_case.label('status'),
+        func.count(AttendanceEntry.attendance_entry_id).label('count'),
+        func.sum(AttendanceEntry.actual_hours).label('total_hours')
+    )
+
+    # Apply date filters (shift_date is DateTime, need to cast to Date for comparison)
     query = query.filter(
-        AttendanceRecord.attendance_date >= start_date,
-        AttendanceRecord.attendance_date <= end_date
+        cast(AttendanceEntry.shift_date, Date) >= start_date,
+        cast(AttendanceEntry.shift_date, Date) <= end_date
     )
 
     # Optional shift filter
     if shift_id:
-        query = query.filter(AttendanceRecord.shift_id == shift_id)
+        query = query.filter(AttendanceEntry.shift_id == shift_id)
 
     # SECURITY FIX (VULN-003): Apply client filter to prevent cross-client data access
     if client_id:
         verify_client_access(current_user, client_id)
-        query = query.filter(AttendanceRecord.client_id == client_id)
+        query = query.filter(AttendanceEntry.client_id == client_id)
     else:
-        client_filter = build_client_filter_clause(current_user, AttendanceRecord.client_id)
+        client_filter = build_client_filter_clause(current_user, AttendanceEntry.client_id)
         if client_filter is not None:
             query = query.filter(client_filter)
 
     # Group by status
-    results = query.group_by(AttendanceRecord.status).all()
+    results = query.group_by(status_case).all()
 
     return {
         "start_date": start_date,
@@ -208,6 +199,25 @@ def get_attendance_statistics(
         ],
         "calculation_timestamp": datetime.utcnow()
     }
+
+
+@router.get("/{attendance_id}", response_model=AttendanceRecordResponse)
+def get_attendance(
+    attendance_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get attendance record by ID
+    SECURITY: Verifies user has access to this attendance record
+
+    NOTE: This route is placed after specific path routes (/by-employee, /by-date-range,
+    /statistics, /kpi) to prevent the path parameter from catching those specific routes.
+    """
+    record = get_attendance_record(db, attendance_id, current_user)
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+    return record
 
 
 @router.put("/{attendance_id}", response_model=AttendanceRecordResponse)
