@@ -669,7 +669,10 @@ const shiftStatusText = computed(() => {
 const shiftDuration = computed(() => {
   if (!activeShift.value?.start_time) return ''
   const start = new Date(activeShift.value.start_time)
+  // Handle invalid date
+  if (isNaN(start.getTime())) return ''
   const diff = currentTime.value - start
+  if (diff < 0) return '' // Future date edge case
   const hours = Math.floor(diff / (1000 * 60 * 60))
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
   if (hours === 0) return `${minutes}m`
@@ -687,6 +690,8 @@ const workOrderOptions = computed(() => {
 const formatTime = (timeString) => {
   if (!timeString) return ''
   const date = new Date(timeString)
+  // Handle invalid date
+  if (isNaN(date.getTime())) return ''
   return date.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit'
@@ -696,6 +701,8 @@ const formatTime = (timeString) => {
 const formatRelativeTime = (timestamp) => {
   if (!timestamp) return ''
   const date = new Date(timestamp)
+  // Handle invalid date
+  if (isNaN(date.getTime())) return ''
   const now = new Date()
   const diff = now - date
   const minutes = Math.floor(diff / (1000 * 60))
