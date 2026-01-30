@@ -336,7 +336,7 @@
       <v-card>
         <v-card-title class="bg-primary text-white d-flex align-center">
           <v-icon class="mr-2">mdi-package-variant-plus</v-icon>
-          Log Production
+          {{ t('production.title') }}
         </v-card-title>
         <v-card-text class="pa-4">
           <v-select
@@ -344,17 +344,17 @@
             :items="workOrderOptions"
             item-title="text"
             item-value="value"
-            label="Work Order"
+            :label="t('production.workOrder')"
             variant="outlined"
             class="mb-3"
           />
           <v-text-field
             v-model.number="productionForm.quantity"
-            label="Units Produced"
+            :label="t('production.unitsProduced')"
             type="number"
             variant="outlined"
             min="1"
-            :rules="[v => v > 0 || 'Must be greater than 0']"
+            :rules="[v => v > 0 || t('common.required')]"
           />
           <div class="d-flex gap-2 justify-center mt-2">
             <v-btn
@@ -370,7 +370,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showProductionDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="showProductionDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             variant="elevated"
@@ -378,7 +378,7 @@
             :disabled="!productionForm.workOrderId || !productionForm.quantity"
             @click="submitProduction"
           >
-            Submit
+            {{ t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -389,7 +389,7 @@
       <v-card>
         <v-card-title class="bg-warning text-white d-flex align-center">
           <v-icon class="mr-2">mdi-clock-alert</v-icon>
-          Report Downtime
+          {{ t('downtime.title') }}
         </v-card-title>
         <v-card-text class="pa-4">
           <v-select
@@ -397,27 +397,27 @@
             :items="workOrderOptions"
             item-title="text"
             item-value="value"
-            label="Work Order"
+            :label="t('production.workOrder')"
             variant="outlined"
             class="mb-3"
           />
           <v-select
             v-model="downtimeForm.reason"
             :items="downtimeReasons"
-            label="Reason"
+            :label="t('downtime.reason')"
             variant="outlined"
             class="mb-3"
           />
           <v-text-field
             v-model.number="downtimeForm.minutes"
-            label="Duration (minutes)"
+            :label="t('downtime.duration')"
             type="number"
             variant="outlined"
             min="1"
           />
           <v-textarea
             v-model="downtimeForm.notes"
-            label="Notes (optional)"
+            :label="t('production.notes')"
             variant="outlined"
             rows="2"
             class="mt-3"
@@ -425,7 +425,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showDowntimeDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="showDowntimeDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="warning"
             variant="elevated"
@@ -433,7 +433,7 @@
             :disabled="!downtimeForm.workOrderId || !downtimeForm.reason"
             @click="submitDowntime"
           >
-            Submit
+            {{ t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -444,7 +444,7 @@
       <v-card>
         <v-card-title class="bg-success text-white d-flex align-center">
           <v-icon class="mr-2">mdi-check-decagram</v-icon>
-          Quality Check
+          {{ t('quality.title') }}
         </v-card-title>
         <v-card-text class="pa-4">
           <v-select
@@ -452,13 +452,13 @@
             :items="workOrderOptions"
             item-title="text"
             item-value="value"
-            label="Work Order"
+            :label="t('production.workOrder')"
             variant="outlined"
             class="mb-3"
           />
           <v-text-field
             v-model.number="qualityForm.inspectedQty"
-            label="Inspected Quantity"
+            :label="t('quality.inspectedQty')"
             type="number"
             variant="outlined"
             min="1"
@@ -466,7 +466,7 @@
           />
           <v-text-field
             v-model.number="qualityForm.defectQty"
-            label="Defect Quantity"
+            :label="t('quality.defectQty')"
             type="number"
             variant="outlined"
             min="0"
@@ -475,14 +475,14 @@
             v-if="qualityForm.defectQty > 0"
             v-model="qualityForm.defectType"
             :items="defectTypes"
-            label="Defect Type"
+            :label="t('quality.defectType')"
             variant="outlined"
             class="mt-3"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showQualityDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="showQualityDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="success"
             variant="elevated"
@@ -490,7 +490,7 @@
             :disabled="!qualityForm.workOrderId || !qualityForm.inspectedQty"
             @click="submitQuality"
           >
-            Submit
+            {{ t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -501,26 +501,26 @@
       <v-card>
         <v-card-title class="bg-error text-white d-flex align-center">
           <v-icon class="mr-2">mdi-hand-wave</v-icon>
-          Request Help
+          {{ t('common.help') }}
         </v-card-title>
         <v-card-text class="pa-4">
           <v-select
             v-model="helpForm.type"
             :items="helpTypes"
-            label="Help Type"
+            :label="t('common.select')"
             variant="outlined"
             class="mb-3"
           />
           <v-textarea
             v-model="helpForm.description"
-            label="Describe your issue"
+            :label="t('common.details')"
             variant="outlined"
             rows="3"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showHelpDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="showHelpDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="error"
             variant="elevated"
@@ -528,7 +528,7 @@
             :disabled="!helpForm.type || !helpForm.description"
             @click="submitHelpRequest"
           >
-            Send Request
+            {{ t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -543,7 +543,7 @@
     >
       {{ successMessage }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="showSuccess = false">Close</v-btn>
+        <v-btn variant="text" @click="showSuccess = false">{{ t('common.close') }}</v-btn>
       </template>
     </v-snackbar>
   </div>

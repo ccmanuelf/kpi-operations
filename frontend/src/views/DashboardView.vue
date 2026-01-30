@@ -57,8 +57,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of units produced on today's date across all production entries.</div>
+            <div class="tooltip-title">{{ t('common.details') }}:</div>
+            <div class="tooltip-meaning">{{ t('dashboard.todaySummary') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -75,10 +75,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Efficiency = (Actual Output / Expected Output) times 100</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Measures how well resources are utilized to produce output.</div>
+            <div class="tooltip-title">{{ t('kpi.efficiency') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.efficiencyDesc') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -95,10 +93,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Performance = (Actual Rate / Standard Rate) times 100</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Measures production speed compared to the ideal cycle time.</div>
+            <div class="tooltip-title">{{ t('kpi.performance') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.performanceDesc') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -115,8 +111,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of production records in the system for the selected filters.</div>
+            <div class="tooltip-title">{{ t('common.details') }}:</div>
+            <div class="tooltip-meaning">{{ t('grids.totalEntries') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -162,9 +158,9 @@
             <EmptyState
               v-else-if="!loading && productionEntries.length === 0"
               variant="no-data"
-              title="No production data available"
-              :description="selectedClient ? 'No entries found for the selected client filter. Try clearing the filter or selecting a different client.' : 'Production entries will appear here once data is recorded.'"
-              :action-text="selectedClient ? 'Clear Filter' : ''"
+              :title="t('common.noData')"
+              :description="selectedClient ? t('common.noData') : t('common.noData')"
+              :action-text="selectedClient ? t('common.clear') : ''"
               @action="selectedClient = null; onClientChange()"
             />
 
@@ -186,10 +182,10 @@
               <template v-slot:item.reference="{ item }">
                 <div class="d-flex flex-column">
                   <span v-if="item.work_order_id" class="font-weight-medium">
-                    WO: {{ item.work_order_id }}
+                    {{ item.work_order_id }}
                   </span>
                   <span v-else-if="item.job_id" class="font-weight-medium">
-                    Job: {{ item.job_id }}
+                    {{ item.job_id }}
                   </span>
                   <span v-else class="text-grey-darken-1">—</span>
                 </div>
@@ -296,15 +292,15 @@ const averagePerformance = computed(() => {
   return (sum / validEntries.length).toFixed(2)
 })
 
-const headers = [
-  { title: 'Date', key: 'production_date', sortable: true },
-  { title: 'Reference (WO/Job)', key: 'reference', sortable: false },
-  { title: 'Product', key: 'product_id', sortable: true },
-  { title: 'Shift', key: 'shift_id', sortable: true },
-  { title: 'Units', key: 'units_produced', sortable: true },
-  { title: 'Efficiency', key: 'efficiency_percentage', sortable: true },
-  { title: 'Performance', key: 'performance_percentage', sortable: true }
-]
+const headers = computed(() => [
+  { title: t('common.date'), key: 'production_date', sortable: true },
+  { title: t('production.workOrder'), key: 'reference', sortable: false },
+  { title: t('filters.product'), key: 'product_id', sortable: true },
+  { title: t('production.shift'), key: 'shift_id', sortable: true },
+  { title: t('common.units'), key: 'units_produced', sortable: true },
+  { title: t('kpi.efficiency'), key: 'efficiency_percentage', sortable: true },
+  { title: t('kpi.performance'), key: 'performance_percentage', sortable: true }
+])
 
 // Reference data for lookups
 const products = ref([])

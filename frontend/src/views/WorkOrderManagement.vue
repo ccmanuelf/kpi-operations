@@ -361,7 +361,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="formData.work_order_id"
-                  label="Work Order ID *"
+                  :label="t('workOrders.workOrderId') + ' *'"
                   variant="outlined"
                   :rules="[rules.required]"
                   :disabled="!!editingWorkOrder"
@@ -370,7 +370,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="formData.style_model"
-                  label="Style/Model *"
+                  :label="t('production.style') + ' *'"
                   variant="outlined"
                   :rules="[rules.required]"
                 />
@@ -381,7 +381,7 @@
                 <v-text-field
                   v-model.number="formData.planned_quantity"
                   type="number"
-                  label="Planned Quantity *"
+                  :label="t('workOrders.quantityOrdered') + ' *'"
                   variant="outlined"
                   :rules="[rules.required, rules.positive]"
                 />
@@ -390,7 +390,7 @@
                 <v-text-field
                   v-model.number="formData.actual_quantity"
                   type="number"
-                  label="Actual Quantity"
+                  :label="t('workOrders.quantityCompleted')"
                   variant="outlined"
                   :rules="[rules.nonNegative]"
                 />
@@ -401,7 +401,7 @@
                 <v-select
                   v-model="formData.status"
                   :items="statusOptions"
-                  label="Status *"
+                  :label="t('common.status') + ' *'"
                   variant="outlined"
                   :rules="[rules.required]"
                 />
@@ -410,7 +410,7 @@
                 <v-select
                   v-model="formData.priority"
                   :items="priorityOptions"
-                  label="Priority"
+                  :label="t('workOrders.priority')"
                   variant="outlined"
                   clearable
                 />
@@ -421,7 +421,7 @@
                 <v-text-field
                   v-model="formData.planned_start_date"
                   type="date"
-                  label="Planned Start Date"
+                  :label="t('workOrders.plannedStart')"
                   variant="outlined"
                 />
               </v-col>
@@ -429,7 +429,7 @@
                 <v-text-field
                   v-model="formData.planned_ship_date"
                   type="date"
-                  label="Planned Ship Date"
+                  :label="t('workOrders.plannedEnd')"
                   variant="outlined"
                 />
               </v-col>
@@ -438,7 +438,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="formData.customer_po_number"
-                  label="Customer PO Number"
+                  :label="t('production.workOrder')"
                   variant="outlined"
                 />
               </v-col>
@@ -447,7 +447,7 @@
                   v-model.number="formData.ideal_cycle_time"
                   type="number"
                   step="0.01"
-                  label="Ideal Cycle Time (hrs)"
+                  :label="t('production.cycleTime')"
                   variant="outlined"
                 />
               </v-col>
@@ -456,7 +456,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="formData.notes"
-                  label="Notes"
+                  :label="t('production.notes')"
                   variant="outlined"
                   rows="3"
                 />
@@ -597,16 +597,16 @@ const rules = {
 }
 
 // Table headers
-const headers = [
-  { title: 'WO Number', key: 'work_order_id', sortable: true },
-  { title: 'Style/Model', key: 'style_model', sortable: true },
-  { title: 'Progress', key: 'progress', sortable: false, width: '200px' },
+const headers = computed(() => [
+  { title: t('workOrders.workOrderId'), key: 'work_order_id', sortable: true },
+  { title: t('production.style'), key: 'style_model', sortable: true },
+  { title: t('jobs.progress'), key: 'progress', sortable: false, width: '200px' },
   { title: '%', key: 'progress_pct', sortable: true, width: '80px' },
-  { title: 'Status', key: 'status', sortable: true },
-  { title: 'Priority', key: 'priority', sortable: true },
-  { title: 'Due Date', key: 'planned_ship_date', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, width: '140px' }
-]
+  { title: t('common.status'), key: 'status', sortable: true },
+  { title: t('workOrders.priority'), key: 'priority', sortable: true },
+  { title: t('workOrders.dueDate'), key: 'planned_ship_date', sortable: true },
+  { title: t('common.actions'), key: 'actions', sortable: false, width: '140px' }
+])
 
 // Computed
 const summaryStats = computed(() => {
