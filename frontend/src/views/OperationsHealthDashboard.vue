@@ -27,7 +27,7 @@
           variant="text"
           :loading="loading"
           @click="refreshData"
-          aria-label="Refresh dashboard data"
+          :aria-label="t('operationsHealth.refreshDashboard')"
         />
         <v-chip
           v-if="lastUpdated"
@@ -59,7 +59,7 @@
                   :width="20"
                   :color="getOEEColor(oeeData.overall)"
                   class="my-4"
-                  :aria-label="`Overall Equipment Effectiveness: ${oeeData.overall} percent`"
+                  :aria-label="`${t('operationsHealth.oeeOverall')}: ${oeeData.overall}%`"
                 >
                   <div class="text-center">
                     <div class="text-h3 font-weight-bold">{{ oeeData.overall.toFixed(1) }}%</div>
@@ -68,9 +68,9 @@
                 </v-progress-circular>
               </template>
               <div>
-                <div class="tooltip-title">Formula:</div>
-                <div class="tooltip-formula">OEE = Availability x Performance x Quality</div>
-                <div class="tooltip-meaning">Comprehensive metric measuring manufacturing productivity</div>
+                <div class="tooltip-title">{{ t('common.formula') }}:</div>
+                <div class="tooltip-formula">{{ t('operationsHealth.tooltips.oeeFormula') }}</div>
+                <div class="tooltip-meaning">{{ t('operationsHealth.tooltips.oeeDescription') }}</div>
               </div>
             </v-tooltip>
 
@@ -83,7 +83,7 @@
                       <div class="text-h5 font-weight-bold" :class="getStatusTextClass(oeeData.availability, 90, 80)">
                         {{ oeeData.availability.toFixed(1) }}%
                       </div>
-                      <div class="text-caption text-grey-darken-1">Availability</div>
+                      <div class="text-caption text-grey-darken-1">{{ t('kpi.availability') }}</div>
                       <v-progress-linear
                         :model-value="oeeData.availability"
                         :color="getStatusColor(oeeData.availability, 90, 80)"
@@ -93,7 +93,7 @@
                       />
                     </div>
                   </template>
-                  <span>Equipment uptime vs scheduled production time</span>
+                  <span>{{ t('operationsHealth.tooltips.availabilityDescription') }}</span>
                 </v-tooltip>
               </v-col>
               <v-col cols="4" class="text-center">
@@ -103,7 +103,7 @@
                       <div class="text-h5 font-weight-bold" :class="getStatusTextClass(oeeData.performance, 95, 85)">
                         {{ oeeData.performance.toFixed(1) }}%
                       </div>
-                      <div class="text-caption text-grey-darken-1">Performance</div>
+                      <div class="text-caption text-grey-darken-1">{{ t('kpi.performance') }}</div>
                       <v-progress-linear
                         :model-value="oeeData.performance"
                         :color="getStatusColor(oeeData.performance, 95, 85)"
@@ -113,7 +113,7 @@
                       />
                     </div>
                   </template>
-                  <span>Actual production rate vs ideal rate</span>
+                  <span>{{ t('operationsHealth.tooltips.performanceDescription') }}</span>
                 </v-tooltip>
               </v-col>
               <v-col cols="4" class="text-center">
@@ -123,7 +123,7 @@
                       <div class="text-h5 font-weight-bold" :class="getStatusTextClass(oeeData.quality, 99, 95)">
                         {{ oeeData.quality.toFixed(1) }}%
                       </div>
-                      <div class="text-caption text-grey-darken-1">Quality</div>
+                      <div class="text-caption text-grey-darken-1">{{ t('quality.title') }}</div>
                       <v-progress-linear
                         :model-value="oeeData.quality"
                         :color="getStatusColor(oeeData.quality, 99, 95)"
@@ -133,7 +133,7 @@
                       />
                     </div>
                   </template>
-                  <span>Good units produced vs total units</span>
+                  <span>{{ t('operationsHealth.tooltips.qualityDescription') }}</span>
                 </v-tooltip>
               </v-col>
             </v-row>
@@ -142,7 +142,7 @@
             <v-divider class="my-3 w-100" />
             <div class="d-flex align-center justify-space-between w-100">
               <span class="text-body-2 text-grey-darken-1">
-                Target: {{ oeeData.target }}%
+                {{ t('kpi.target') }}: {{ oeeData.target }}%
               </span>
               <v-chip
                 :color="getOEEColor(oeeData.overall)"
@@ -161,7 +161,7 @@
         <v-card elevation="2" class="h-100">
           <v-card-title class="d-flex align-center bg-error-darken-1 text-white">
             <v-icon class="mr-2">mdi-alert-circle</v-icon>
-            Critical Alerts
+            {{ t('navigation.alerts') }}
             <v-chip class="ml-2" size="x-small" color="white" variant="flat">
               {{ criticalAlerts.length }}
             </v-chip>
@@ -173,7 +173,7 @@
               color="white"
               @click="clearDismissedAlerts"
             >
-              Clear All
+              {{ t('common.clear') }}
             </v-btn>
           </v-card-title>
           <v-card-text class="pa-0" style="max-height: 280px; overflow-y: auto;">
@@ -207,22 +207,22 @@
                     color="primary"
                     @click="navigateTo(alert.actionUrl)"
                   >
-                    View
+                    {{ t('common.view') }}
                   </v-btn>
                   <v-btn
                     icon="mdi-close"
                     size="x-small"
                     variant="text"
                     @click="dismissAlert(alert.id)"
-                    aria-label="Dismiss alert"
+                    :aria-label="t('common.dismiss')"
                   />
                 </template>
               </v-list-item>
             </v-list>
             <div v-else class="d-flex flex-column align-center justify-center pa-8 text-grey">
               <v-icon size="48" class="mb-2">mdi-check-circle-outline</v-icon>
-              <span>No critical alerts</span>
-              <span class="text-caption">All systems operating normally</span>
+              <span>{{ t('common.noData') }}</span>
+              <span class="text-caption">{{ t('common.allSystemsNormal') }}</span>
             </div>
           </v-card-text>
         </v-card>
@@ -262,7 +262,7 @@
                   {{ productionData.today }} / {{ productionData.target }}
                 </div>
                 <div id="metric-production-label" class="text-caption text-grey-darken-1">
-                  Production Today
+                  {{ t('operationsHealth.productionToday') }}
                 </div>
                 <v-progress-linear
                   :model-value="(productionData.today / productionData.target) * 100"
@@ -274,7 +274,7 @@
               </v-card-text>
             </v-card>
           </template>
-          <span>Units produced today vs daily target</span>
+          <span>{{ t('operationsHealth.tooltips.productionTodayDescription') }}</span>
         </v-tooltip>
       </v-col>
 
@@ -302,20 +302,20 @@
                     size="x-small"
                     variant="flat"
                   >
-                    ACTIVE
+                    {{ t('common.active').toUpperCase() }}
                   </v-chip>
                 </div>
                 <div class="text-h4 font-weight-bold" :class="getDowntimeTextClass(downtimeData.activeCount)">
                   {{ downtimeData.activeCount }}
                 </div>
-                <div class="text-caption text-grey-darken-1">Active Downtime</div>
+                <div class="text-caption text-grey-darken-1">{{ t('operationsHealth.activeDowntime') }}</div>
                 <div v-if="downtimeData.activeEvents.length > 0" class="text-caption text-grey mt-1">
                   {{ downtimeData.activeEvents[0]?.machine }} - {{ downtimeData.activeEvents[0]?.duration }}
                 </div>
               </v-card-text>
             </v-card>
           </template>
-          <span>Number of machines currently experiencing downtime</span>
+          <span>{{ t('operationsHealth.tooltips.downtimeDescription') }}</span>
         </v-tooltip>
       </v-col>
 
@@ -350,14 +350,14 @@
                 <div class="text-h4 font-weight-bold" :class="getQualityAlertTextClass(qualityData.alertCount)">
                   {{ qualityData.alertCount }}
                 </div>
-                <div class="text-caption text-grey-darken-1">Quality Alerts</div>
+                <div class="text-caption text-grey-darken-1">{{ t('operationsHealth.qualityAlerts') }}</div>
                 <div v-if="qualityData.holdCount > 0" class="text-caption text-warning mt-1">
-                  {{ qualityData.holdCount }} holds pending
+                  {{ qualityData.holdCount }} {{ t('operationsHealth.holdsPending') }}
                 </div>
               </v-card-text>
             </v-card>
           </template>
-          <span>Active quality issues and holds requiring attention</span>
+          <span>{{ t('operationsHealth.tooltips.qualityAlertsDescription') }}</span>
         </v-tooltip>
       </v-col>
 
@@ -382,7 +382,7 @@
                 <div class="text-h4 font-weight-bold">
                   {{ attendanceData.coveragePercent.toFixed(1) }}%
                 </div>
-                <div class="text-caption text-grey-darken-1">Attendance Coverage</div>
+                <div class="text-caption text-grey-darken-1">{{ t('operationsHealth.attendanceCoverage') }}</div>
                 <v-progress-linear
                   :model-value="attendanceData.coveragePercent"
                   :color="getStatusColor(attendanceData.coveragePercent, 95, 85)"
@@ -391,12 +391,12 @@
                   class="mt-2"
                 />
                 <div class="text-caption text-grey mt-1">
-                  {{ attendanceData.present }}/{{ attendanceData.scheduled }} present
+                  {{ attendanceData.present }}/{{ attendanceData.scheduled }} {{ t('common.present') }}
                 </div>
               </v-card-text>
             </v-card>
           </template>
-          <span>Percentage of scheduled workforce present today</span>
+          <span>{{ t('operationsHealth.tooltips.attendanceDescription') }}</span>
         </v-tooltip>
       </v-col>
 
@@ -419,7 +419,7 @@
                 <div class="text-h4 font-weight-bold">
                   {{ workOrdersData.activeCount }}
                 </div>
-                <div class="text-caption text-grey-darken-1">Work Orders Active</div>
+                <div class="text-caption text-grey-darken-1">{{ t('operationsHealth.workOrdersActive') }}</div>
                 <div class="d-flex ga-1 mt-2">
                   <v-chip
                     v-for="bucket in workOrdersData.agingDistribution"
@@ -434,7 +434,7 @@
               </v-card-text>
             </v-card>
           </template>
-          <span>Active work orders by aging: Green(&lt;7d), Yellow(7-14d), Red(&gt;14d)</span>
+          <span>{{ t('operationsHealth.tooltips.workOrdersDescription') }}</span>
         </v-tooltip>
       </v-col>
 
@@ -469,7 +469,7 @@
                 <div class="text-h4 font-weight-bold">
                   {{ otdData.percentage.toFixed(1) }}%
                 </div>
-                <div class="text-caption text-grey-darken-1">On-Time Delivery</div>
+                <div class="text-caption text-grey-darken-1">{{ t('operationsHealth.onTimeDelivery') }}</div>
                 <v-progress-linear
                   :model-value="otdData.percentage"
                   :color="getStatusColor(otdData.percentage, 95, 90)"
@@ -480,7 +480,7 @@
               </v-card-text>
             </v-card>
           </template>
-          <span>Percentage of orders delivered by promised date</span>
+          <span>{{ t('operationsHealth.tooltips.otdDescription') }}</span>
         </v-tooltip>
       </v-col>
     </v-row>
@@ -492,10 +492,10 @@
         <v-card elevation="2">
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-history</v-icon>
-            Recent Activity
+            {{ t('common.recentActivity') }}
             <v-spacer />
             <v-btn variant="text" size="small" @click="showAllActivity = !showAllActivity">
-              {{ showAllActivity ? 'Show Less' : 'View All' }}
+              {{ showAllActivity ? t('common.showLess') : t('common.viewAll') }}
             </v-btn>
           </v-card-title>
           <v-card-text class="pa-0">
@@ -513,11 +513,11 @@
                 <v-list-item-title>{{ activity.description }}</v-list-item-title>
                 <v-list-item-subtitle class="d-flex align-center ga-2">
                   <span>{{ formatActivityTime(activity.timestamp) }}</span>
-                  <span v-if="activity.user" class="text-grey">by {{ activity.user }}</span>
+                  <span v-if="activity.user" class="text-grey">{{ t('common.by') }} {{ activity.user }}</span>
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-if="recentActivity.length === 0" class="text-center text-grey">
-                No recent activity
+                {{ t('common.noRecentActivity') }}
               </v-list-item>
             </v-list>
           </v-card-text>
@@ -529,7 +529,7 @@
         <v-card elevation="2" class="h-100">
           <v-card-title>
             <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
-            Quick Actions
+            {{ t('operationsHealth.quickActions') }}
           </v-card-title>
           <v-card-text>
             <v-btn
@@ -540,7 +540,7 @@
               class="mb-3"
               @click="navigateTo('/production-entry')"
             >
-              Log Production
+              {{ t('operationsHealth.logProduction') }}
             </v-btn>
             <v-btn
               block
@@ -550,7 +550,7 @@
               class="mb-3"
               @click="navigateTo('/data-entry/downtime')"
             >
-              Report Downtime
+              {{ t('operationsHealth.reportDowntime') }}
             </v-btn>
             <v-btn
               block
@@ -560,7 +560,7 @@
               class="mb-3"
               @click="navigateTo('/data-entry/quality')"
             >
-              Quality Entry
+              {{ t('operationsHealth.qualityEntry') }}
             </v-btn>
             <v-btn
               block
@@ -569,7 +569,7 @@
               prepend-icon="mdi-chart-box"
               @click="navigateTo('/kpi-dashboard')"
             >
-              View All KPIs
+              {{ t('operationsHealth.viewAllKpis') }}
             </v-btn>
           </v-card-text>
         </v-card>
@@ -594,7 +594,7 @@
     >
       {{ snackbar.message }}
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false">Close</v-btn>
+        <v-btn variant="text" @click="snackbar.show = false">{{ t('common.close') }}</v-btn>
       </template>
     </v-snackbar>
   </v-container>
@@ -742,9 +742,9 @@ function getOEEColor(oee: number): string {
 }
 
 function getOEEStatusText(oee: number): string {
-  if (oee >= 85) return 'On Target'
-  if (oee >= 70) return 'At Risk'
-  return 'Critical'
+  if (oee >= 85) return t('operationsHealth.onTarget')
+  if (oee >= 70) return t('operationsHealth.atRisk')
+  return t('operationsHealth.critical')
 }
 
 function getDowntimeColor(count: number): string {
@@ -1046,7 +1046,7 @@ async function refreshData(): Promise<void> {
     console.error('Error refreshing dashboard data:', error)
     snackbar.value = {
       show: true,
-      message: 'Error refreshing data. Please try again.',
+      message: t('success.errorRefreshingData'),
       color: 'error'
     }
   } finally {

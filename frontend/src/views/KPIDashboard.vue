@@ -21,7 +21,7 @@
               {{ t('common.search') }}
             </v-btn>
           </template>
-          <span>Scan QR codes for quick data entry</span>
+          <span>{{ t('filters.scanQrForQuickEntry') }}</span>
         </v-tooltip>
 
         <!-- Saved Filters Quick Access -->
@@ -33,14 +33,14 @@
               prepend-icon="mdi-filter-check"
               :color="filtersStore.hasActiveFilter ? 'primary' : undefined"
             >
-              {{ filtersStore.hasActiveFilter ? filtersStore.activeFilter.filter_name : 'Saved Filters' }}
+              {{ filtersStore.hasActiveFilter ? filtersStore.activeFilter.filter_name : t('filters.savedFilters') }}
               <v-icon end>mdi-chevron-down</v-icon>
             </v-btn>
           </template>
           <v-list density="compact" max-width="300">
             <v-list-subheader>
               <v-icon start size="small">mdi-bookmark-multiple</v-icon>
-              Quick Apply Filter
+              {{ t('filters.quickApplyFilter') }}
             </v-list-subheader>
             <v-list-item
               v-for="filter in filtersStore.savedFilters.slice(0, 5)"
@@ -61,13 +61,13 @@
               <template v-slot:prepend>
                 <v-icon>mdi-cog-outline</v-icon>
               </template>
-              <v-list-item-title>Manage All Filters</v-list-item-title>
+              <v-list-item-title>{{ t('filters.manageAllFilters') }}</v-list-item-title>
             </v-list-item>
             <v-list-item v-if="filtersStore.hasActiveFilter" @click="filtersStore.clearActiveFilter()">
               <template v-slot:prepend>
                 <v-icon color="error">mdi-filter-off</v-icon>
               </template>
-              <v-list-item-title class="text-error">Clear Active Filter</v-list-item-title>
+              <v-list-item-title class="text-error">{{ t('filters.clearActiveFilter') }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -84,7 +84,7 @@
               <v-icon>mdi-content-save-outline</v-icon>
             </v-btn>
           </template>
-          <span>Save current filter configuration</span>
+          <span>{{ t('filters.saveFilterConfig') }}</span>
         </v-tooltip>
 
         <!-- Dashboard Customize Button -->
@@ -213,7 +213,7 @@
                 <!-- Target and status -->
                 <div class="d-flex justify-space-between text-caption">
                   <span class="text-grey-darken-1">
-                    Target: {{ kpi.target }}{{ kpi.unit }}
+                    {{ t('kpi.target') }}: {{ kpi.target }}{{ kpi.unit }}
                   </span>
                   <span :class="`text-${getStatusColor(kpi)}`">
                     {{ getStatusText(kpi) }}
@@ -242,12 +242,12 @@
           <div>
             <div class="tooltip-title">{{ getKpiTooltip(kpi.key).title }}</div>
             <div v-if="getKpiTooltip(kpi.key).formula" class="tooltip-formula">{{ getKpiTooltip(kpi.key).formula }}</div>
-            <div class="tooltip-title">Meaning:</div>
+            <div class="tooltip-title">{{ t('common.details') }}:</div>
             <div class="tooltip-meaning">{{ getKpiTooltip(kpi.key).meaning }}</div>
             <!-- Phase 7.3: Show inference info in tooltip if estimated -->
             <div v-if="kpi.inference?.is_estimated" class="tooltip-inference mt-2">
               <v-divider class="my-2" />
-              <div class="tooltip-title">Data Quality:</div>
+              <div class="tooltip-title">{{ t('quality.title') }}:</div>
               <div class="tooltip-meaning">
                 {{ $t('kpi.estimated') }} - {{ Math.round(kpi.inference.confidence_score * 100) }}% {{ $t('kpi.confidence') }}
               </div>
@@ -406,13 +406,13 @@
           <v-form ref="emailForm" v-model="emailFormValid">
             <v-combobox
               v-model="emailRecipients"
-              label="Recipients"
+              :label="t('filters.recipients')"
               chips
               multiple
               variant="outlined"
-              hint="Press Enter to add email addresses"
+              :hint="t('filters.pressEnterToAdd')"
               persistent-hint
-              :rules="[v => (v && v.length > 0) || 'At least one recipient required']"
+              :rules="[v => (v && v.length > 0) || t('filters.atLeastOneRecipient')]"
             >
               <template v-slot:chip="{ item, props }">
                 <v-chip v-bind="props" closable>
@@ -478,7 +478,7 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2" aria-hidden="true">mdi-qrcode-scan</v-icon>
-          <span id="qr-scanner-title">Quick QR Scanner</span>
+          <span id="qr-scanner-title">{{ t('filters.quickQrScanner') }}</span>
           <v-spacer />
           <v-btn icon variant="text" @click="showQRScanner = false" aria-label="Close QR scanner">
             <v-icon aria-hidden="true">mdi-close</v-icon>
@@ -504,28 +504,28 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2" aria-hidden="true">mdi-content-save</v-icon>
-          <span id="save-filter-title">Save Current Filter</span>
+          <span id="save-filter-title">{{ t('filters.saveCurrentFilter') }}</span>
         </v-card-title>
         <v-card-text>
           <v-form ref="saveFilterForm" v-model="saveFilterFormValid">
             <v-text-field
               v-model="newFilterName"
-              label="Filter Name"
-              placeholder="e.g., Last Week - Client A"
+              :label="t('filters.filterName')"
+              :placeholder="t('filters.filterNamePlaceholder')"
               variant="outlined"
-              :rules="[v => !!v || 'Name is required']"
+              :rules="[v => !!v || t('filters.nameRequired')]"
               class="mb-3"
             />
             <v-select
               v-model="newFilterType"
               :items="filterTypeOptions"
-              label="Filter Type"
+              :label="t('filters.filterType')"
               variant="outlined"
               class="mb-3"
             />
             <v-checkbox
               v-model="newFilterIsDefault"
-              label="Set as default for this filter type"
+              :label="t('filters.setAsDefault')"
               hide-details
             />
           </v-form>
@@ -533,7 +533,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" variant="text" @click="showSaveFilterDialog = false">
-            Cancel
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -542,7 +542,7 @@
             :loading="savingFilter"
             :disabled="!saveFilterFormValid"
           >
-            Save Filter
+            {{ t('filters.saveFilter') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -802,7 +802,7 @@ const getStatusColor = (kpi) => {
 
 const getStatusText = (kpi) => {
   const status = getStatusColor(kpi)
-  return status === 'success' ? 'On Target' : status === 'warning' ? 'At Risk' : 'Critical'
+  return status === 'success' ? t('operationsHealth.onTarget') : status === 'warning' ? t('operationsHealth.atRisk') : t('operationsHealth.critical')
 }
 
 const getProgress = (kpi) => {
@@ -955,10 +955,10 @@ const downloadPDF = async () => {
     link.remove()
     window.URL.revokeObjectURL(url)
 
-    showSnackbar('PDF report downloaded successfully', 'success')
+    showSnackbar(t('success.pdfDownloaded'), 'success')
   } catch (error) {
     console.error('Error downloading PDF:', error)
-    showSnackbar('Failed to download PDF report', 'error')
+    showSnackbar(t('success.pdfDownloadFailed'), 'error')
   } finally {
     downloadingPDF.value = false
   }
@@ -988,10 +988,10 @@ const downloadExcel = async () => {
     link.remove()
     window.URL.revokeObjectURL(url)
 
-    showSnackbar('Excel report downloaded successfully', 'success')
+    showSnackbar(t('success.excelDownloaded'), 'success')
   } catch (error) {
     console.error('Error downloading Excel:', error)
-    showSnackbar('Failed to download Excel report', 'error')
+    showSnackbar(t('success.excelDownloadFailed'), 'error')
   } finally {
     downloadingExcel.value = false
   }
@@ -999,7 +999,7 @@ const downloadExcel = async () => {
 
 const sendEmailReport = async () => {
   if (!emailFormValid.value || emailRecipients.value.length === 0) {
-    showSnackbar('Please add at least one recipient', 'warning')
+    showSnackbar(t('success.pleaseAddRecipient'), 'warning')
     return
   }
 
@@ -1019,12 +1019,12 @@ const sendEmailReport = async () => {
 
     await api.post('/reports/email', payload)
 
-    showSnackbar('Report sent successfully!', 'success')
+    showSnackbar(t('success.reportSent'), 'success')
     emailDialog.value = false
     emailRecipients.value = []
   } catch (error) {
     console.error('Error sending email:', error)
-    showSnackbar('Failed to send email report', 'error')
+    showSnackbar(t('success.reportSendFailed'), 'error')
   } finally {
     sendingEmail.value = false
   }
@@ -1069,7 +1069,7 @@ const handleFilterChange = (filterParams) => {
 }
 
 const onCustomizerSaved = () => {
-  showSnackbar('Dashboard preferences saved', 'success')
+  showSnackbar(t('success.dashboardPreferencesSaved'), 'success')
 }
 
 // QR Scanner handlers
@@ -1093,16 +1093,16 @@ const applyQuickSavedFilter = async (filter) => {
   try {
     const filterConfig = await filtersStore.applyFilter(filter)
     handleFilterChange(filterConfig)
-    showSnackbar(`Applied filter: ${filter.filter_name}`, 'success')
+    showSnackbar(`${t('success.filterApplied')}: ${filter.filter_name}`, 'success')
   } catch (error) {
     console.error('Error applying filter:', error)
-    showSnackbar('Failed to apply filter', 'error')
+    showSnackbar(t('success.filterApplyFailed'), 'error')
   }
 }
 
 const saveCurrentFilter = async () => {
   if (!saveFilterFormValid.value || !newFilterName.value) {
-    showSnackbar('Please enter a filter name', 'warning')
+    showSnackbar(t('success.pleaseEnterFilterName'), 'warning')
     return
   }
 
@@ -1126,17 +1126,17 @@ const saveCurrentFilter = async () => {
     })
 
     if (newFilter) {
-      showSnackbar(`Filter "${newFilterName.value}" saved successfully`, 'success')
+      showSnackbar(`"${newFilterName.value}" ${t('success.filterSaved')}`, 'success')
       showSaveFilterDialog.value = false
       // Reset form
       newFilterName.value = ''
       newFilterIsDefault.value = false
     } else {
-      showSnackbar('Failed to save filter', 'error')
+      showSnackbar(t('success.filterSaveFailed'), 'error')
     }
   } catch (error) {
     console.error('Error saving filter:', error)
-    showSnackbar('Failed to save filter', 'error')
+    showSnackbar(t('success.filterSaveFailed'), 'error')
   } finally {
     savingFilter.value = false
   }
