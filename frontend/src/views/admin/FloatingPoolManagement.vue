@@ -682,8 +682,24 @@ const assignDialog = ref({
   error: null
 })
 
+// Floating pool summary from API
+const poolSummary = ref({
+  total_floating_pool_employees: 0,
+  currently_available: 0,
+  currently_assigned: 0,
+  available_employees: []
+})
+
 // Computed
 const summary = computed(() => {
+  // Use API summary if available, otherwise fall back to entries
+  if (poolSummary.value.total_floating_pool_employees > 0) {
+    return {
+      total: poolSummary.value.total_floating_pool_employees,
+      available: poolSummary.value.currently_available,
+      assigned: poolSummary.value.currently_assigned
+    }
+  }
   const total = entries.value.length
   const assigned = entries.value.filter(e => e.current_assignment).length
   return {
@@ -706,6 +722,13 @@ const statusOptions = computed(() => [
 const clientOptions = computed(() => clients.value)
 
 const availableEmployees = computed(() => {
+  // Use pool summary's available employees if available
+  if (poolSummary.value.available_employees?.length > 0) {
+    return poolSummary.value.available_employees.map(e => ({
+      employee_id: e.employee_id,
+      employee_name: e.employee_name || `Employee #${e.employee_id}`
+    }))
+  }
   return entries.value.filter(e => !e.current_assignment).map(e => ({
     employee_id: e.employee_id,
     employee_name: e.employee_name || `Employee #${e.employee_id}`
@@ -742,12 +765,33 @@ const tableHeaders = computed(() => [
 const fetchData = async () => {
   loading.value = true
   try {
-    const [poolResponse, clientsResponse] = await Promise.all([
+    const [poolResponse, summaryResponse, clientsResponse] = await Promise.all([
       api.get('/floating-pool'),
+      api.get('/floating-pool/summary'),
       api.get('/clients')
     ])
     entries.value = poolResponse.data || []
     clients.value = clientsResponse.data || []
+
+    // Update summary from API (includes employees with is_floating_pool=1)
+    if (summaryResponse.data) {
+      poolSummary.value = summaryResponse.data
+
+      // If entries is empty but we have available employees, populate entries for display
+      if (entries.value.length === 0 && summaryResponse.data.available_employees?.length > 0) {
+        entries.value = summaryResponse.data.available_employees.map(emp => ({
+          pool_id: null,
+          employee_id: emp.employee_id,
+          employee_code: emp.employee_code,
+          employee_name: emp.employee_name,
+          position: emp.position,
+          current_assignment: null,
+          available_from: null,
+          available_to: null,
+          notes: null
+        }))
+      }
+    }
   } catch (error) {
     console.error('Error fetching floating pool data:', error)
     showSnackbar(t('common.error') + ': ' + (error.response?.data?.detail || error.message), 'error')

@@ -12,7 +12,9 @@ from enum import Enum
 class AlertSeverity(str, Enum):
     """Alert severity levels"""
     INFO = "info"           # Informational, no action needed
+    LOW = "low"             # Low priority, for monitoring
     WARNING = "warning"     # Trending toward issue, monitor
+    MEDIUM = "medium"       # Medium priority, needs attention soon
     CRITICAL = "critical"   # Requires immediate attention
     URGENT = "urgent"       # Immediate action required
 
@@ -20,11 +22,14 @@ class AlertSeverity(str, Enum):
 class AlertCategory(str, Enum):
     """Categories of alerts"""
     OTD = "otd"                    # On-Time Delivery alerts
+    DELIVERY = "delivery"         # Delivery-related alerts
     QUALITY = "quality"           # FPY, RTY, DPMO alerts
     EFFICIENCY = "efficiency"     # Production efficiency alerts
     CAPACITY = "capacity"         # Load%, bottleneck alerts
     ATTENDANCE = "attendance"     # Absenteeism, coverage alerts
     DOWNTIME = "downtime"         # Equipment/unplanned downtime
+    MAINTENANCE = "maintenance"   # Equipment maintenance alerts
+    AVAILABILITY = "availability" # Resource availability alerts
     HOLD = "hold"                 # Holds pending approval
     TREND = "trend"               # KPI trending alerts
 
