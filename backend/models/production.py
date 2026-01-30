@@ -2,7 +2,7 @@
 Production entry models (Pydantic)
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Union, Any
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -87,7 +87,7 @@ class ProductionEntryUpdate(BaseModel):
     defect_count: Optional[int] = Field(None, ge=0)
     scrap_count: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
-    confirmed_by: Optional[int] = None
+    confirmed_by: Optional[Union[str, int]] = None  # Can be user_id string or int
     entry_method: Optional[str] = None
 
 
@@ -117,11 +117,11 @@ class ProductionEntryResponse(BaseModel):
     performance_percentage: Optional[Decimal] = None
     quality_rate: Optional[Decimal] = None
     notes: Optional[str] = None
-    entered_by: Optional[int] = None
-    confirmed_by: Optional[int] = None
+    entered_by: Optional[Union[str, int]] = None  # Can be user_id string or int
+    confirmed_by: Optional[Union[str, int]] = None  # Can be user_id string or int
     confirmation_timestamp: Optional[datetime] = None
     entry_method: Optional[str] = None
-    updated_by: Optional[int] = None
+    updated_by: Optional[Union[str, int]] = None  # Can be user_id string or int
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
