@@ -9,7 +9,7 @@
       <v-row>
         <v-col cols="12">
           <div class="d-flex justify-space-between align-center mb-4">
-            <h1 class="text-h3">Production Entry</h1>
+            <h1 class="text-h3">{{ t('navigation.productionEntry') }}</h1>
             <CSVUploadDialog />
           </div>
         </v-col>
@@ -26,9 +26,11 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DataEntryGrid from '@/components/DataEntryGrid.vue'
 import CSVUploadDialog from '@/components/CSVUploadDialog.vue'
 
+const { t } = useI18n()
 const initialLoading = ref(true)
 
 onMounted(() => {

@@ -1,15 +1,18 @@
 <template>
   <div class="alerts-view">
     <div class="page-header">
-      <h1>Intelligent Alerts</h1>
-      <p class="subtitle">Proactive monitoring and early warning system for KPI management</p>
+      <h1>{{ t('navigation.alerts') }}</h1>
+      <p class="subtitle">{{ t('dashboard.alerts') }} - {{ t('kpi.recommendations') }}</p>
     </div>
     <AlertDashboard />
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import AlertDashboard from '@/components/alerts/AlertDashboard.vue'
+
+const { t } = useI18n()
 </script>
 
 <style scoped>

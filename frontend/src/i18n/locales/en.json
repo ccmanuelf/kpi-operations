@@ -49,7 +49,13 @@
     "stages": "stages",
     "stage": "Stage",
     "days": "days",
-    "hours": "hours"
+    "hours": "hours",
+    "active": "Active",
+    "start": "Start",
+    "end": "End",
+    "help": "Help",
+    "recentActivity": "Recent Activity",
+    "confirmDelete": "Confirm Delete"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -91,7 +97,8 @@
     "workflowConfig": "Workflow Config",
     "alerts": "Alerts",
     "simulation": "Simulation",
-    "tools": "Tools"
+    "tools": "Tools",
+    "operationsHealth": "Operations Health"
   },
   "auth": {
     "login": "Login",
@@ -755,16 +762,29 @@
   },
   "admin": {
     "title": "Administration",
-    "users": "Users",
+    "users": {
+      "title": "User Management",
+      "addUser": "Add User"
+    },
     "roles": "Roles",
     "permissions": "Permissions",
-    "clients": "Clients",
+    "clients": {
+      "title": "Client Management",
+      "addClient": "Add Client"
+    },
     "configuration": "Configuration",
+    "settings": {
+      "title": "System Settings"
+    },
     "systemSettings": "System Settings",
     "auditLog": "Audit Log",
     "dataManagement": "Data Management",
     "backup": "Backup",
     "restore": "Restore",
+    "defectTypes": {
+      "title": "Defect Type Catalog",
+      "subtitle": "Configure global and client-specific defect types"
+    },
     "partOpportunities": "Part Opportunities Management",
     "partOpportunitiesDescription": "Configure defect opportunities per part for accurate DPMO calculation",
     "partOpportunitiesInfo": "DPMO calculation uses opportunities per unit to measure defects per million opportunities. Different parts have different complexity levels affecting the number of potential defect opportunities.",

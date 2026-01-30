@@ -4,7 +4,7 @@
       <v-col cols="12">
         <h1 class="text-h4 mb-4">
           <v-icon class="mr-2">mdi-cog</v-icon>
-          System Settings
+          {{ t('admin.settings.title') }}
         </h1>
       </v-col>
     </v-row>
@@ -252,6 +252,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import api from '@/services/api'
 
 const saving = ref(false)

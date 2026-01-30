@@ -3,9 +3,9 @@
     <!-- Header Section -->
     <v-row class="mb-4">
       <v-col cols="12" md="6">
-        <h1 class="text-h3 font-weight-bold">Operations Health</h1>
+        <h1 class="text-h3 font-weight-bold">{{ t('navigation.operationsHealth') }}</h1>
         <p class="text-subtitle-1 text-grey-darken-1">
-          Real-time manufacturing performance overview
+          {{ t('dashboard.overview') }}
         </p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2">
@@ -14,7 +14,7 @@
           :items="shifts"
           item-title="shift_name"
           item-value="shift_id"
-          label="Shift"
+          :label="t('production.shift')"
           density="compact"
           variant="outlined"
           hide-details
@@ -46,7 +46,7 @@
       <v-col cols="12" lg="5">
         <v-card elevation="2" class="h-100">
           <v-card-title class="text-center pb-0">
-            <span class="text-h6">Overall Equipment Effectiveness</span>
+            <span class="text-h6">{{ t('kpi.oee') }}</span>
           </v-card-title>
           <v-card-text class="d-flex flex-column align-center">
             <!-- OEE Gauge -->
@@ -602,6 +602,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import { useRouter } from 'vue-router'
 import { format, formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'

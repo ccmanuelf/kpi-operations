@@ -4,10 +4,10 @@
       <v-col cols="12">
         <h1 class="text-h4 mb-2">
           <v-icon class="mr-2">mdi-alert-circle-outline</v-icon>
-          Defect Type Catalog Management
+          {{ t('admin.defectTypes.title') }}
         </h1>
         <p class="text-subtitle-1 text-grey">
-          Configure global and client-specific defect types
+          {{ t('admin.defectTypes.subtitle') }}
         </p>
       </v-col>
     </v-row>
@@ -346,6 +346,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import api from '@/services/api'
 
 // Global constant

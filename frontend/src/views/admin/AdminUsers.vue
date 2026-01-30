@@ -5,11 +5,11 @@
         <div class="d-flex align-center justify-space-between mb-4">
           <h1 class="text-h4">
             <v-icon class="mr-2">mdi-account-multiple</v-icon>
-            User Management
+            {{ t('admin.users.title') }}
           </h1>
           <v-btn color="primary" @click="openCreateDialog">
             <v-icon left>mdi-plus</v-icon>
-            Add User
+            {{ t('admin.users.addUser') }}
           </v-btn>
         </div>
       </v-col>
@@ -206,6 +206,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 import api from '@/services/api'
 
 const loading = ref(false)

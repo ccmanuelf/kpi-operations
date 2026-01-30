@@ -47,7 +47,15 @@
     "units": "unidades",
     "recovered": "recuperadas",
     "stages": "etapas",
-    "stage": "Etapa"
+    "stage": "Etapa",
+    "days": "días",
+    "hours": "horas",
+    "active": "Activo",
+    "start": "Iniciar",
+    "end": "Finalizar",
+    "help": "Ayuda",
+    "recentActivity": "Actividad Reciente",
+    "confirmDelete": "Confirmar Eliminación"
   },
   "navigation": {
     "dashboard": "Tablero",
@@ -89,7 +97,8 @@
     "workflowConfig": "Config. Flujo",
     "alerts": "Alertas",
     "simulation": "Simulación",
-    "tools": "Herramientas"
+    "tools": "Herramientas",
+    "operationsHealth": "Salud de Operaciones"
   },
   "auth": {
     "login": "Iniciar Sesión",
@@ -753,16 +762,29 @@
   },
   "admin": {
     "title": "Administración",
-    "users": "Usuarios",
+    "users": {
+      "title": "Gestión de Usuarios",
+      "addUser": "Agregar Usuario"
+    },
     "roles": "Roles",
     "permissions": "Permisos",
-    "clients": "Clientes",
+    "clients": {
+      "title": "Gestión de Clientes",
+      "addClient": "Agregar Cliente"
+    },
     "configuration": "Configuración",
+    "settings": {
+      "title": "Configuración del Sistema"
+    },
     "systemSettings": "Configuración del Sistema",
     "auditLog": "Registro de Auditoría",
     "dataManagement": "Gestión de Datos",
     "backup": "Respaldo",
     "restore": "Restaurar",
+    "defectTypes": {
+      "title": "Catálogo de Tipos de Defecto",
+      "subtitle": "Configure tipos de defecto globales y específicos por cliente"
+    },
     "partOpportunities": "Gestión de Oportunidades por Parte",
     "partOpportunitiesDescription": "Configure oportunidades de defecto por parte para cálculo preciso de DPMO",
     "partOpportunitiesInfo": "El cálculo de DPMO usa oportunidades por unidad para medir defectos por millón de oportunidades. Diferentes partes tienen diferentes niveles de complejidad que afectan el número de oportunidades potenciales de defecto.",

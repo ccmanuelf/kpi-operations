@@ -3,7 +3,7 @@
     <v-row>
       <v-col cols="12">
         <div class="d-flex justify-space-between align-center mb-4">
-          <h1 class="text-h3">Downtime Entry</h1>
+          <h1 class="text-h3">{{ t('downtime.title') }}</h1>
           <CSVUploadDialogDowntime @imported="refreshData" />
         </div>
       </v-col>
@@ -19,9 +19,11 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import DowntimeEntryGrid from '@/components/grids/DowntimeEntryGrid.vue'
 import CSVUploadDialogDowntime from '@/components/CSVUploadDialogDowntime.vue'
 
+const { t } = useI18n()
 const gridRef = ref(null)
 
 const refreshData = () => {

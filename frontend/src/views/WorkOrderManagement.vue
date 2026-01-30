@@ -11,9 +11,9 @@
         <v-col cols="12">
           <div class="d-flex justify-space-between align-center flex-wrap ga-2">
             <div>
-              <h1 class="text-h4 font-weight-bold">Work Order Management</h1>
+              <h1 class="text-h4 font-weight-bold">{{ t('workOrders.title') }}</h1>
               <p class="text-body-2 text-medium-emphasis mt-1">
-                Track and manage production work orders
+                {{ t('navigation.workOrders') }}
               </p>
             </div>
             <v-btn
@@ -22,7 +22,7 @@
               @click="openCreateDialog"
               aria-label="Create new work order"
             >
-              New Work Order
+              {{ t('common.add') }} {{ t('production.workOrder') }}
             </v-btn>
           </div>
         </v-col>
@@ -38,7 +38,7 @@
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.total }}</div>
-                <div id="stat-total-label" class="text-body-2">Total Orders</div>
+                <div id="stat-total-label" class="text-body-2">{{ t('common.total') }}</div>
               </div>
             </div>
           </v-card>
@@ -51,7 +51,7 @@
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.active }}</div>
-                <div id="stat-active-label" class="text-body-2">Active</div>
+                <div id="stat-active-label" class="text-body-2">{{ t('common.active') }}</div>
               </div>
             </div>
           </v-card>
@@ -64,7 +64,7 @@
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.onHold }}</div>
-                <div id="stat-hold-label" class="text-body-2">On Hold</div>
+                <div id="stat-hold-label" class="text-body-2">{{ t('holds.onHold') }}</div>
               </div>
             </div>
           </v-card>
@@ -77,7 +77,7 @@
               </v-avatar>
               <div>
                 <div class="text-h5 font-weight-bold" aria-live="polite">{{ summaryStats.completed }}</div>
-                <div id="stat-completed-label" class="text-body-2">Completed</div>
+                <div id="stat-completed-label" class="text-body-2">{{ t('workOrders.completed') }}</div>
               </div>
             </div>
           </v-card>
@@ -92,7 +92,7 @@
               <v-text-field
                 v-model="filters.search"
                 prepend-inner-icon="mdi-magnify"
-                label="Search work orders..."
+                :label="t('common.search')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -105,7 +105,7 @@
               <v-select
                 v-model="filters.status"
                 :items="statusOptions"
-                label="Status"
+                :label="t('common.status')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -117,7 +117,7 @@
               <v-select
                 v-model="filters.priority"
                 :items="priorityOptions"
-                label="Priority"
+                :label="t('workOrders.priority')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -129,7 +129,7 @@
               <v-text-field
                 v-model="filters.startDate"
                 type="date"
-                label="Start Date"
+                :label="t('filters.startDate')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -140,7 +140,7 @@
               <v-text-field
                 v-model="filters.endDate"
                 type="date"
-                label="End Date"
+                :label="t('filters.endDate')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -154,7 +154,7 @@
                 @click="resetFilters"
                 aria-label="Reset all filters"
               >
-                Reset
+                {{ t('common.reset') }}
               </v-btn>
             </v-col>
           </v-row>
@@ -293,21 +293,21 @@
                   prepend-icon="mdi-pause"
                   @click="updateStatus(item, 'ON_HOLD')"
                 >
-                  <v-list-item-title>Put On Hold</v-list-item-title>
+                  <v-list-item-title>{{ t('holds.onHold') }}</v-list-item-title>
                 </v-list-item>
                 <v-list-item
                   v-if="item.status === 'ON_HOLD'"
                   prepend-icon="mdi-play"
                   @click="updateStatus(item, 'ACTIVE')"
                 >
-                  <v-list-item-title>Resume</v-list-item-title>
+                  <v-list-item-title>{{ t('holds.resumed') }}</v-list-item-title>
                 </v-list-item>
                 <v-list-item
                   v-if="item.status === 'ACTIVE'"
                   prepend-icon="mdi-check"
                   @click="updateStatus(item, 'COMPLETED')"
                 >
-                  <v-list-item-title>Mark Complete</v-list-item-title>
+                  <v-list-item-title>{{ t('workOrders.completed') }}</v-list-item-title>
                 </v-list-item>
                 <v-divider />
                 <v-list-item
@@ -315,7 +315,7 @@
                   base-color="error"
                   @click="confirmDelete(item)"
                 >
-                  <v-list-item-title>Delete</v-list-item-title>
+                  <v-list-item-title>{{ t('common.delete') }}</v-list-item-title>
                 </v-list-item>
               </v-list>
             </v-menu>
@@ -344,7 +344,7 @@
       <v-card>
         <v-card-title class="d-flex justify-space-between align-center">
           <span :id="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'">
-            {{ editingWorkOrder ? 'Edit Work Order' : 'Create Work Order' }}
+            {{ editingWorkOrder ? t('common.edit') + ' ' + t('production.workOrder') : t('common.add') + ' ' + t('production.workOrder') }}
           </span>
           <v-btn
             icon
@@ -466,14 +466,14 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="formDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="formDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="saving"
             :disabled="!formValid"
             @click="saveWorkOrder"
           >
-            {{ editingWorkOrder ? 'Update' : 'Create' }}
+            {{ editingWorkOrder ? t('common.update') : t('common.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -489,22 +489,21 @@
       aria-describedby="delete-dialog-desc"
     >
       <v-card>
-        <v-card-title id="delete-dialog-title" class="text-h6">Confirm Delete</v-card-title>
+        <v-card-title id="delete-dialog-title" class="text-h6">{{ t('common.confirmDelete') }}</v-card-title>
         <v-card-text id="delete-dialog-desc">
-          Are you sure you want to delete work order
-          <strong>{{ workOrderToDelete?.work_order_id }}</strong>?
-          This action cannot be undone.
+          {{ t('grids.deleteConfirm') }}
+          <strong>{{ workOrderToDelete?.work_order_id }}</strong>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false" aria-label="Cancel deletion">Cancel</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false" aria-label="Cancel deletion">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="error"
             :loading="deleting"
             @click="deleteWorkOrder"
             aria-label="Confirm delete work order"
           >
-            Delete
+            {{ t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -514,12 +513,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, parseISO, isAfter, startOfDay } from 'date-fns'
 import api from '@/services/api'
 import { transitionWorkOrder } from '@/services/api/workflow'
 import { useNotificationStore } from '@/stores/notificationStore'
 import WorkOrderDetailDrawer from '@/components/WorkOrderDetailDrawer.vue'
 import WorkOrderStatusChip from '@/components/workflow/WorkOrderStatusChip.vue'
+
+const { t } = useI18n()
 
 // Simple debounce utility
 const debounce = (fn, delay) => {

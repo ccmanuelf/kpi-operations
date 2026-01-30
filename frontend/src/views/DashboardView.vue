@@ -3,8 +3,8 @@
     <!-- Page Header -->
     <v-row class="mb-2">
       <v-col cols="12" md="6">
-        <h1 id="dashboard-page-title" class="text-h3">Production Dashboard</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">Real-time manufacturing performance overview</p>
+        <h1 id="dashboard-page-title" class="text-h3">{{ t('dashboard.title') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ t('dashboard.overview') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex align-center justify-end flex-wrap ga-3">
         <v-btn
@@ -15,14 +15,14 @@
           aria-label="Open email reports dialog"
           prepend-icon="mdi-email-outline"
         >
-          Email Reports
+          {{ t('reports.title') }}
         </v-btn>
         <v-select
           v-model="selectedClient"
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          label="Filter by Client"
+          :label="t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -50,9 +50,9 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-units-label">
               <v-card-text>
-                <div id="kpi-units-label" class="text-overline">Today's Units</div>
+                <div id="kpi-units-label" class="text-overline">{{ t('dashboard.todaySummary') }}</div>
                 <div class="text-h4" aria-live="polite">{{ totalUnitsToday }}</div>
-                <span class="sr-only">units produced today</span>
+                <span class="sr-only">{{ t('common.units') }}</span>
               </v-card-text>
             </v-card>
           </template>
@@ -68,9 +68,9 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-efficiency-label">
               <v-card-text>
-                <div id="kpi-efficiency-label" class="text-overline">Avg Efficiency</div>
+                <div id="kpi-efficiency-label" class="text-overline">{{ t('kpi.efficiency') }}</div>
                 <div class="text-h4" aria-live="polite">{{ averageEfficiency }}%</div>
-                <span class="sr-only">average efficiency percentage</span>
+                <span class="sr-only">{{ t('kpi.efficiencyDesc') }}</span>
               </v-card-text>
             </v-card>
           </template>
@@ -88,9 +88,9 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-performance-label">
               <v-card-text>
-                <div id="kpi-performance-label" class="text-overline">Avg Performance</div>
+                <div id="kpi-performance-label" class="text-overline">{{ t('kpi.performance') }}</div>
                 <div class="text-h4" aria-live="polite">{{ averagePerformance }}%</div>
-                <span class="sr-only">average performance percentage</span>
+                <span class="sr-only">{{ t('kpi.performanceDesc') }}</span>
               </v-card-text>
             </v-card>
           </template>
@@ -108,9 +108,9 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" class="cursor-help" role="article" aria-labelledby="kpi-entries-label">
               <v-card-text>
-                <div id="kpi-entries-label" class="text-overline">Total Entries</div>
+                <div id="kpi-entries-label" class="text-overline">{{ t('grids.totalEntries') }}</div>
                 <div class="text-h4" aria-live="polite">{{ productionEntries.length }}</div>
-                <span class="sr-only">total production entries</span>
+                <span class="sr-only">{{ t('production.title') }}</span>
               </v-card-text>
             </v-card>
           </template>
@@ -128,7 +128,7 @@
       <v-col cols="12">
         <v-card>
           <v-card-title class="d-flex align-center flex-wrap ga-3">
-            <span class="text-h6">Production Entries</span>
+            <span class="text-h6">{{ t('production.title') }}</span>
             <v-spacer />
             <v-btn
               color="success"
@@ -140,7 +140,7 @@
               aria-label="Export production entries to CSV file"
             >
               <v-icon start aria-hidden="true">mdi-file-delimited</v-icon>
-              Export CSV
+              {{ t('reports.exportCsv') }}
             </v-btn>
             <v-btn
               color="primary"
@@ -151,7 +151,7 @@
               aria-label="Export production entries to Excel file"
             >
               <v-icon start aria-hidden="true">mdi-file-excel</v-icon>
-              Export Excel
+              {{ t('reports.exportExcel') }}
             </v-btn>
           </v-card-title>
           <v-card-text>
@@ -237,6 +237,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKPIStore } from '@/stores/kpiStore'
 import { format } from 'date-fns'
 import api from '@/services/api'
@@ -245,6 +246,7 @@ import EmptyState from '@/components/ui/EmptyState.vue'
 import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import CardSkeleton from '@/components/ui/CardSkeleton.vue'
 
+const { t } = useI18n()
 const kpiStore = useKPIStore()
 
 // Loading states

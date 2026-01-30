@@ -13,7 +13,7 @@
                 </v-avatar>
                 <div>
                   <h1 class="text-h5 font-weight-bold mb-1">
-                    {{ hasActiveShift ? `Shift ${activeShift?.shift_number || 1}` : 'No Active Shift' }}
+                    {{ hasActiveShift ? `${t('production.shift')} ${activeShift?.shift_number || 1}` : t('navigation.myShift') }}
                   </h1>
                   <div class="d-flex align-center gap-2 flex-wrap">
                     <v-chip
@@ -44,7 +44,7 @@
                   @click="handleStartShift"
                 >
                   <v-icon start>mdi-play-circle</v-icon>
-                  Start Shift
+                  {{ t('common.start') }} {{ t('production.shift') }}
                 </v-btn>
                 <v-btn
                   v-else
@@ -55,7 +55,7 @@
                   @click="handleEndShift"
                 >
                   <v-icon start>mdi-stop-circle</v-icon>
-                  End Shift
+                  {{ t('common.end') }} {{ t('production.shift') }}
                 </v-btn>
               </div>
             </div>
@@ -72,10 +72,10 @@
         <v-card class="mb-4" elevation="2">
           <v-card-title class="d-flex align-center bg-primary text-white py-3">
             <v-icon class="mr-2">mdi-clipboard-check-outline</v-icon>
-            My Tasks
+            {{ t('navigation.myShift') }}
             <v-spacer />
             <v-chip color="white" variant="flat" size="small" class="text-primary">
-              {{ assignedWorkOrders.length }} Active
+              {{ assignedWorkOrders.length }} {{ t('common.active') }}
             </v-chip>
           </v-card-title>
           <v-card-text class="pa-0">
@@ -122,9 +122,9 @@
 
             <div v-else class="pa-6 text-center">
               <v-icon size="48" color="grey-lighten-1" class="mb-3">mdi-clipboard-text-off-outline</v-icon>
-              <p class="text-body-1 text-grey">No work orders assigned for this shift</p>
+              <p class="text-body-1 text-grey">{{ t('common.noData') }}</p>
               <v-btn color="primary" variant="outlined" class="mt-2" @click="goToWorkOrders">
-                View All Work Orders
+                {{ t('navigation.workOrders') }}
               </v-btn>
             </div>
           </v-card-text>
@@ -134,7 +134,7 @@
         <v-card class="mb-4" elevation="2">
           <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3">
             <v-icon class="mr-2">mdi-chart-bar</v-icon>
-            My Stats Today
+            {{ t('dashboard.todaySummary') }}
           </v-card-title>
           <v-card-text class="pa-4">
             <v-row>
@@ -142,28 +142,28 @@
                 <div class="stat-card text-center pa-3">
                   <v-icon color="primary" size="32" class="mb-2">mdi-package-variant</v-icon>
                   <div class="text-h4 font-weight-bold text-primary">{{ myStats.unitsProduced }}</div>
-                  <div class="text-caption text-grey">Units Produced</div>
+                  <div class="text-caption text-grey">{{ t('production.unitsProduced') }}</div>
                 </div>
               </v-col>
               <v-col cols="6" sm="3">
                 <div class="stat-card text-center pa-3">
                   <v-icon color="success" size="32" class="mb-2">mdi-speedometer</v-icon>
                   <div class="text-h4 font-weight-bold text-success">{{ myStats.efficiency }}%</div>
-                  <div class="text-caption text-grey">Efficiency</div>
+                  <div class="text-caption text-grey">{{ t('kpi.efficiency') }}</div>
                 </div>
               </v-col>
               <v-col cols="6" sm="3">
                 <div class="stat-card text-center pa-3">
                   <v-icon color="warning" size="32" class="mb-2">mdi-clock-alert</v-icon>
                   <div class="text-h4 font-weight-bold text-warning">{{ myStats.downtimeIncidents }}</div>
-                  <div class="text-caption text-grey">Downtime Incidents</div>
+                  <div class="text-caption text-grey">{{ t('downtime.title') }}</div>
                 </div>
               </v-col>
               <v-col cols="6" sm="3">
                 <div class="stat-card text-center pa-3">
                   <v-icon color="info" size="32" class="mb-2">mdi-check-decagram</v-icon>
                   <div class="text-h4 font-weight-bold text-info">{{ myStats.qualityChecks }}</div>
-                  <div class="text-caption text-grey">Quality Checks</div>
+                  <div class="text-caption text-grey">{{ t('quality.title') }}</div>
                 </div>
               </v-col>
             </v-row>
@@ -174,7 +174,7 @@
         <v-card elevation="2">
           <v-card-title class="d-flex align-center bg-grey-darken-3 text-white py-3">
             <v-icon class="mr-2">mdi-history</v-icon>
-            Recent Activity
+            {{ t('common.recentActivity') }}
             <v-spacer />
             <v-btn icon variant="text" size="small" color="white" @click="refreshActivity">
               <v-icon>mdi-refresh</v-icon>
@@ -209,7 +209,7 @@
 
             <div v-else class="pa-6 text-center">
               <v-icon size="40" color="grey-lighten-1" class="mb-2">mdi-history</v-icon>
-              <p class="text-body-2 text-grey">No activity recorded today</p>
+              <p class="text-body-2 text-grey">{{ t('common.noData') }}</p>
             </div>
           </v-card-text>
         </v-card>
@@ -221,7 +221,7 @@
         <v-card class="mb-4" elevation="2">
           <v-card-title class="bg-grey-darken-3 text-white py-3">
             <v-icon class="mr-2">mdi-clipboard-check</v-icon>
-            Shift Data Status
+            {{ t('common.status') }}
           </v-card-title>
           <v-card-text class="pa-3">
             <DataCompletenessIndicator
@@ -237,7 +237,7 @@
         <v-card elevation="2">
           <v-card-title class="bg-primary text-white py-3">
             <v-icon class="mr-2">mdi-lightning-bolt</v-icon>
-            Quick Actions
+            {{ t('common.actions') }}
           </v-card-title>
           <v-card-text class="pa-4">
             <v-row class="quick-actions-grid">
@@ -252,7 +252,7 @@
                 >
                   <v-card-text class="text-center pa-4">
                     <v-icon size="40" color="white" class="mb-2">mdi-package-variant-plus</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">Log Production</div>
+                    <div class="text-body-1 font-weight-medium text-white">{{ t('production.title') }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -268,7 +268,7 @@
                 >
                   <v-card-text class="text-center pa-4">
                     <v-icon size="40" color="white" class="mb-2">mdi-clock-alert</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">Report Downtime</div>
+                    <div class="text-body-1 font-weight-medium text-white">{{ t('downtime.title') }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -284,7 +284,7 @@
                 >
                   <v-card-text class="text-center pa-4">
                     <v-icon size="40" color="white" class="mb-2">mdi-check-decagram</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">Quality Check</div>
+                    <div class="text-body-1 font-weight-medium text-white">{{ t('quality.title') }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -300,7 +300,7 @@
                 >
                   <v-card-text class="text-center pa-4">
                     <v-icon size="40" color="white" class="mb-2">mdi-hand-wave</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">Request Help</div>
+                    <div class="text-body-1 font-weight-medium text-white">{{ t('common.help') }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -308,7 +308,7 @@
 
             <!-- Quick Production Presets -->
             <v-divider class="my-4" />
-            <div class="text-subtitle-2 text-grey mb-3">Quick Log (units)</div>
+            <div class="text-subtitle-2 text-grey mb-3">{{ t('common.units') }}</div>
             <div class="d-flex gap-2 flex-wrap justify-center">
               <v-btn
                 v-for="preset in productionPresets"
@@ -551,6 +551,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -558,6 +559,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import DataCompletenessIndicator from '@/components/DataCompletenessIndicator.vue'
 import api from '@/services/api'
 
+const { t } = useI18n()
 const router = useRouter()
 const workflowStore = useWorkflowStore()
 const authStore = useAuthStore()

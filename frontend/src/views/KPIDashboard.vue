@@ -3,8 +3,8 @@
     <!-- Header with title and actions -->
     <v-row class="mb-2">
       <v-col cols="12" md="6">
-        <h1 id="kpi-dashboard-title" class="text-h3">KPI Dashboard</h1>
-        <p class="text-subtitle-1 text-grey">Real-time performance metrics across all operations</p>
+        <h1 id="kpi-dashboard-title" class="text-h3">{{ t('navigation.kpiDashboard') }}</h1>
+        <p class="text-subtitle-1 text-grey">{{ t('kpi.title') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex align-center justify-end ga-2">
         <!-- QR Scanner Quick Access Button -->
@@ -18,7 +18,7 @@
               @click="showQRScanner = true"
               aria-label="Open QR code scanner for quick data entry"
             >
-              QR Scanner
+              {{ t('common.search') }}
             </v-btn>
           </template>
           <span>Scan QR codes for quick data entry</span>
@@ -93,7 +93,7 @@
           prepend-icon="mdi-view-dashboard-edit"
           @click="showCustomizer = true"
         >
-          Customize
+          {{ t('common.edit') }}
         </v-btn>
 
         <!-- Report Actions Menu -->
@@ -105,7 +105,7 @@
               v-bind="props"
               prepend-icon="mdi-file-download"
             >
-              Reports
+              {{ t('reports.title') }}
             </v-btn>
           </template>
           <v-list>
@@ -113,19 +113,19 @@
               <template v-slot:prepend>
                 <v-icon>mdi-file-pdf-box</v-icon>
               </template>
-              <v-list-item-title>Download PDF</v-list-item-title>
+              <v-list-item-title>{{ t('reports.exportPdf') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="downloadExcel" :loading="downloadingExcel">
               <template v-slot:prepend>
                 <v-icon>mdi-file-excel</v-icon>
               </template>
-              <v-list-item-title>Download Excel</v-list-item-title>
+              <v-list-item-title>{{ t('reports.exportExcel') }}</v-list-item-title>
             </v-list-item>
             <v-list-item @click="emailDialog = true">
               <template v-slot:prepend>
                 <v-icon>mdi-email</v-icon>
               </template>
-              <v-list-item-title>Email Report</v-list-item-title>
+              <v-list-item-title>{{ t('reports.title') }}</v-list-item-title>
             </v-list-item>
           </v-list>
         </v-menu>
@@ -262,7 +262,7 @@
       <v-col cols="12">
         <v-card role="region" aria-labelledby="trends-title">
           <v-card-title class="d-flex justify-space-between align-center">
-            <span id="trends-title">Performance Trends</span>
+            <span id="trends-title">{{ t('kpi.performanceTrend') }}</span>
             <v-btn-toggle
               v-model="trendPeriod"
               mandatory
@@ -270,9 +270,9 @@
               @update:model-value="refreshData"
               aria-label="Select trend period"
             >
-              <v-btn value="7" size="small" aria-label="Show 7 days trend">7 Days</v-btn>
-              <v-btn value="30" size="small" aria-label="Show 30 days trend">30 Days</v-btn>
-              <v-btn value="90" size="small" aria-label="Show 90 days trend">90 Days</v-btn>
+              <v-btn value="7" size="small" aria-label="Show 7 days trend">7 {{ t('common.days') }}</v-btn>
+              <v-btn value="30" size="small" aria-label="Show 30 days trend">30 {{ t('common.days') }}</v-btn>
+              <v-btn value="90" size="small" aria-label="Show 90 days trend">90 {{ t('common.days') }}</v-btn>
             </v-btn-toggle>
           </v-card-title>
           <v-card-text>
@@ -339,7 +339,7 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>KPI Summary</v-card-title>
+          <v-card-title>{{ t('reports.summary') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="summaryHeaders"
@@ -401,7 +401,7 @@
       aria-labelledby="email-dialog-title"
     >
       <v-card>
-        <v-card-title id="email-dialog-title" class="text-h5">Email Report</v-card-title>
+        <v-card-title id="email-dialog-title" class="text-h5">{{ t('reports.title') }}</v-card-title>
         <v-card-text>
           <v-form ref="emailForm" v-model="emailFormValid">
             <v-combobox
@@ -425,7 +425,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn color="grey" variant="text" @click="emailDialog = false">
-            Cancel
+            {{ t('common.cancel') }}
           </v-btn>
           <v-btn
             color="primary"
@@ -434,7 +434,7 @@
             :loading="sendingEmail"
             :disabled="!emailFormValid"
           >
-            Send Report
+            {{ t('common.submit') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -451,7 +451,7 @@
       {{ snackbarMessage }}
       <template v-slot:actions>
         <v-btn variant="text" @click="snackbar = false" aria-label="Close notification">
-          Close
+          {{ t('common.close') }}
         </v-btn>
       </template>
     </v-snackbar>
@@ -552,6 +552,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { Line } from 'vue-chartjs'
 import {
@@ -590,6 +591,7 @@ ChartJS.register(
   Filler
 )
 
+const { t } = useI18n()
 const router = useRouter()
 const kpiStore = useKPIStore()
 const dashboardStore = useDashboardStore()
