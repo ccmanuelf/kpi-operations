@@ -71,7 +71,7 @@
                 color="primary"
                 size="small"
                 @click="showRegister = true"
-                aria-label="Open account registration dialog"
+                :aria-label="t('auth.registerAccount')"
               >
                 {{ $t('common.add') }} {{ $t('admin.users') }}
               </v-btn>
@@ -252,12 +252,12 @@ const handleLogin = async () => {
   errorMessage.value = ''
 
   if (!username.value) {
-    errors.value.username = ['Username is required']
+    errors.value.username = [t('validation.usernameRequired')]
     return
   }
 
   if (!password.value) {
-    errors.value.password = ['Password is required']
+    errors.value.password = [t('validation.passwordRequired')]
     return
   }
 
@@ -282,7 +282,7 @@ const handleForgotPassword = async () => {
   resetSuccess.value = ''
   
   if (!resetEmail.value) {
-    resetErrors.value.email = ['Email is required']
+    resetErrors.value.email = [t('validation.emailRequired')]
     return
   }
 
@@ -290,14 +290,14 @@ const handleForgotPassword = async () => {
   
   try {
     await api.post('/auth/forgot-password', { email: resetEmail.value })
-    resetSuccess.value = 'If your email is registered, you will receive a password reset link.'
+    resetSuccess.value = t('auth.resetEmailSent')
     setTimeout(() => {
       showForgotPassword.value = false
       resetEmail.value = ''
       resetSuccess.value = ''
     }, 3000)
   } catch (error) {
-    resetErrors.value.email = ['Failed to process request. Please try again.']
+    resetErrors.value.email = [t('auth.resetFailed')]
   } finally {
     resetLoading.value = false
   }
@@ -310,27 +310,27 @@ const handleRegister = async () => {
 
   // Validate form
   if (!registerForm.username) {
-    registerErrors.value.username = ['Username is required']
+    registerErrors.value.username = [t('validation.usernameRequired')]
     return
   }
   if (!registerForm.email) {
-    registerErrors.value.email = ['Email is required']
+    registerErrors.value.email = [t('validation.emailRequired')]
     return
   }
   if (!registerForm.full_name) {
-    registerErrors.value.full_name = ['Full name is required']
+    registerErrors.value.full_name = [t('validation.fullNameRequired')]
     return
   }
   if (!registerForm.password) {
-    registerErrors.value.password = ['Password is required']
+    registerErrors.value.password = [t('validation.passwordRequired')]
     return
   }
   if (registerForm.password.length < 8) {
-    registerErrors.value.password = ['Password must be at least 8 characters']
+    registerErrors.value.password = [t('validation.passwordMinLength')]
     return
   }
   if (registerForm.password !== registerForm.confirmPassword) {
-    registerErrors.value.confirmPassword = ['Passwords do not match']
+    registerErrors.value.confirmPassword = [t('validation.passwordsDoNotMatch')]
     return
   }
 
@@ -344,7 +344,7 @@ const handleRegister = async () => {
       password: registerForm.password,
       role: 'operator'
     })
-    registerSuccess.value = 'Account created successfully! You can now login.'
+    registerSuccess.value = t('auth.accountCreated')
     setTimeout(() => {
       showRegister.value = false
       Object.keys(registerForm).forEach(key => registerForm[key] = '')
@@ -354,7 +354,7 @@ const handleRegister = async () => {
     if (error.response?.data?.detail) {
       registerError.value = error.response.data.detail
     } else {
-      registerError.value = 'Failed to create account. Please try again.'
+      registerError.value = t('auth.accountCreationFailed')
     }
   } finally {
     registerLoading.value = false

@@ -21,7 +21,7 @@
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
-          label="Search clients..."
+          :label="t('admin.clients.searchClients')"
           variant="outlined"
           density="comfortable"
           clearable
@@ -32,7 +32,7 @@
         <v-select
           v-model="statusFilter"
           :items="statusOptions"
-          label="Filter by Status"
+          :label="t('admin.users.filterByStatus')"
           variant="outlined"
           density="comfortable"
           clearable
@@ -57,7 +57,7 @@
       >
         <template v-slot:item.is_active="{ item }">
           <v-chip :color="item.is_active ? 'success' : 'error'" size="small">
-            {{ item.is_active ? 'Active' : 'Inactive' }}
+            {{ item.is_active ? t('admin.users.active') : t('admin.users.inactive') }}
           </v-chip>
         </template>
 
@@ -87,7 +87,7 @@
       <v-card>
         <v-card-title>
           <v-icon class="mr-2">{{ editingClient ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          {{ editingClient ? 'Edit Client' : 'Create Client' }}
+          {{ editingClient ? t('admin.clients.editClient') : t('admin.clients.createClient') }}
         </v-card-title>
         <v-card-text>
           <v-form ref="clientForm" v-model="formValid">
@@ -95,7 +95,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="clientFormData.client_id"
-                  label="Client ID"
+                  :label="t('admin.clients.clientId')"
                   prepend-icon="mdi-identifier"
                   :rules="[rules.required]"
                   :disabled="!!editingClient"
@@ -106,7 +106,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="clientFormData.client_name"
-                  label="Client Name"
+                  :label="t('admin.clients.clientName')"
                   prepend-icon="mdi-domain"
                   :rules="[rules.required]"
                   variant="outlined"
@@ -116,7 +116,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="clientFormData.contact_name"
-                  label="Contact Name"
+                  :label="t('admin.clients.contactName')"
                   prepend-icon="mdi-account"
                   variant="outlined"
                   density="comfortable"
@@ -125,7 +125,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="clientFormData.contact_email"
-                  label="Contact Email"
+                  :label="t('admin.clients.contactEmail')"
                   prepend-icon="mdi-email"
                   :rules="[rules.email]"
                   variant="outlined"
@@ -135,7 +135,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="clientFormData.contact_phone"
-                  label="Contact Phone"
+                  :label="t('admin.clients.contactPhone')"
                   prepend-icon="mdi-phone"
                   variant="outlined"
                   density="comfortable"
@@ -144,7 +144,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="clientFormData.industry"
-                  label="Industry"
+                  :label="t('admin.clients.industry')"
                   prepend-icon="mdi-factory"
                   variant="outlined"
                   density="comfortable"

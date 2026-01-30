@@ -154,7 +154,12 @@
     "loggingIn": "Ingresando...",
     "loginError": "Credenciales inválidas",
     "sessionExpired": "Tu sesión ha expirado. Por favor inicia sesión nuevamente.",
-    "unauthorized": "No estás autorizado para acceder a este recurso."
+    "unauthorized": "No estás autorizado para acceder a este recurso.",
+    "resetEmailSent": "Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.",
+    "resetFailed": "Error al procesar la solicitud. Por favor intenta de nuevo.",
+    "accountCreated": "¡Cuenta creada exitosamente! Ya puedes iniciar sesión.",
+    "accountCreationFailed": "Error al crear la cuenta. Por favor intenta de nuevo.",
+    "registerAccount": "Registrar Cuenta"
   },
   "kpi": {
     "title": "Indicadores Clave de Desempeño",
@@ -837,13 +842,37 @@
     "title": "Administración",
     "users": {
       "title": "Gestión de Usuarios",
-      "addUser": "Agregar Usuario"
+      "addUser": "Agregar Usuario",
+      "editUser": "Editar Usuario",
+      "createUser": "Crear Usuario",
+      "searchUsers": "Buscar usuarios...",
+      "filterByRole": "Filtrar por Rol",
+      "filterByStatus": "Filtrar por Estado",
+      "username": "Usuario",
+      "email": "Correo",
+      "fullName": "Nombre Completo",
+      "password": "Contraseña",
+      "role": "Rol",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "confirmDeleteUser": "¿Está seguro que desea eliminar este usuario?"
     },
     "roles": "Roles",
     "permissions": "Permisos",
     "clients": {
       "title": "Gestión de Clientes",
-      "addClient": "Agregar Cliente"
+      "addClient": "Agregar Cliente",
+      "editClient": "Editar Cliente",
+      "createClient": "Crear Cliente",
+      "searchClients": "Buscar clientes...",
+      "clientId": "ID de Cliente",
+      "clientName": "Nombre del Cliente",
+      "contactName": "Nombre de Contacto",
+      "contactEmail": "Correo de Contacto",
+      "contactPhone": "Teléfono de Contacto",
+      "industry": "Industria",
+      "address": "Dirección",
+      "confirmDeleteClient": "¿Está seguro que desea eliminar este cliente?"
     },
     "configuration": "Configuración",
     "settings": {
@@ -1127,6 +1156,12 @@
   },
   "validation": {
     "required": "Este campo es requerido",
+    "usernameRequired": "El usuario es requerido",
+    "passwordRequired": "La contraseña es requerida",
+    "emailRequired": "El correo es requerido",
+    "fullNameRequired": "El nombre completo es requerido",
+    "passwordsDoNotMatch": "Las contraseñas no coinciden",
+    "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
     "minLength": "Mínimo {min} caracteres requeridos",
     "maxLength": "Máximo {max} caracteres permitidos",
     "min": "El valor mínimo es {min}",

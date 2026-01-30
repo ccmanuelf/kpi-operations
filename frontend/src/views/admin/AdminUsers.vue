@@ -21,7 +21,7 @@
         <v-text-field
           v-model="search"
           prepend-inner-icon="mdi-magnify"
-          label="Search users..."
+          :label="t('admin.users.searchUsers')"
           variant="outlined"
           density="comfortable"
           clearable
@@ -32,7 +32,7 @@
         <v-select
           v-model="roleFilter"
           :items="roleOptions"
-          label="Filter by Role"
+          :label="t('admin.users.filterByRole')"
           variant="outlined"
           density="comfortable"
           clearable
@@ -43,7 +43,7 @@
         <v-select
           v-model="statusFilter"
           :items="statusOptions"
-          label="Filter by Status"
+          :label="t('admin.users.filterByStatus')"
           variant="outlined"
           density="comfortable"
           clearable
@@ -68,7 +68,7 @@
       >
         <template v-slot:item.is_active="{ item }">
           <v-chip :color="item.is_active ? 'success' : 'error'" size="small">
-            {{ item.is_active ? 'Active' : 'Inactive' }}
+            {{ item.is_active ? t('admin.users.active') : t('admin.users.inactive') }}
           </v-chip>
         </template>
 
@@ -101,13 +101,13 @@
       <v-card>
         <v-card-title>
           <v-icon class="mr-2">{{ editingUser ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          {{ editingUser ? 'Edit User' : 'Create User' }}
+          {{ editingUser ? t('admin.users.editUser') : t('admin.users.createUser') }}
         </v-card-title>
         <v-card-text>
           <v-form ref="userForm" v-model="formValid">
             <v-text-field
               v-model="userFormData.username"
-              label="Username"
+              :label="t('admin.users.username')"
               prepend-icon="mdi-account"
               :rules="[rules.required]"
               variant="outlined"
@@ -116,7 +116,7 @@
             />
             <v-text-field
               v-model="userFormData.email"
-              label="Email"
+              :label="t('admin.users.email')"
               prepend-icon="mdi-email"
               :rules="[rules.required, rules.email]"
               variant="outlined"
@@ -125,7 +125,7 @@
             />
             <v-text-field
               v-model="userFormData.full_name"
-              label="Full Name"
+              :label="t('admin.users.fullName')"
               prepend-icon="mdi-card-account-details"
               :rules="[rules.required]"
               variant="outlined"
@@ -135,7 +135,7 @@
             <v-text-field
               v-if="!editingUser"
               v-model="userFormData.password"
-              label="Password"
+              :label="t('admin.users.password')"
               prepend-icon="mdi-lock"
               :rules="[rules.required, rules.password]"
               :type="showPassword ? 'text' : 'password'"

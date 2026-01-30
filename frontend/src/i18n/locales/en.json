@@ -154,7 +154,12 @@
     "loggingIn": "Signing in...",
     "loginError": "Invalid credentials",
     "sessionExpired": "Your session has expired. Please login again.",
-    "unauthorized": "You are not authorized to access this resource."
+    "unauthorized": "You are not authorized to access this resource.",
+    "resetEmailSent": "If your email is registered, you will receive a password reset link.",
+    "resetFailed": "Failed to process request. Please try again.",
+    "accountCreated": "Account created successfully! You can now login.",
+    "accountCreationFailed": "Failed to create account. Please try again.",
+    "registerAccount": "Register Account"
   },
   "kpi": {
     "title": "Key Performance Indicators",
@@ -837,13 +842,37 @@
     "title": "Administration",
     "users": {
       "title": "User Management",
-      "addUser": "Add User"
+      "addUser": "Add User",
+      "editUser": "Edit User",
+      "createUser": "Create User",
+      "searchUsers": "Search users...",
+      "filterByRole": "Filter by Role",
+      "filterByStatus": "Filter by Status",
+      "username": "Username",
+      "email": "Email",
+      "fullName": "Full Name",
+      "password": "Password",
+      "role": "Role",
+      "active": "Active",
+      "inactive": "Inactive",
+      "confirmDeleteUser": "Are you sure you want to delete this user?"
     },
     "roles": "Roles",
     "permissions": "Permissions",
     "clients": {
       "title": "Client Management",
-      "addClient": "Add Client"
+      "addClient": "Add Client",
+      "editClient": "Edit Client",
+      "createClient": "Create Client",
+      "searchClients": "Search clients...",
+      "clientId": "Client ID",
+      "clientName": "Client Name",
+      "contactName": "Contact Name",
+      "contactEmail": "Contact Email",
+      "contactPhone": "Contact Phone",
+      "industry": "Industry",
+      "address": "Address",
+      "confirmDeleteClient": "Are you sure you want to delete this client?"
     },
     "configuration": "Configuration",
     "settings": {
@@ -1120,6 +1149,12 @@
   },
   "validation": {
     "required": "This field is required",
+    "usernameRequired": "Username is required",
+    "passwordRequired": "Password is required",
+    "emailRequired": "Email is required",
+    "fullNameRequired": "Full name is required",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "passwordMinLength": "Password must be at least 8 characters",
     "minLength": "Minimum {min} characters required",
     "maxLength": "Maximum {max} characters allowed",
     "min": "Minimum value is {min}",
