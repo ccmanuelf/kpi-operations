@@ -5,7 +5,7 @@
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.4-blue)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-1992%20passing-success)](https://github.com)
-[![Coverage](https://img.shields.io/badge/coverage-58%25-yellowgreen)](https://github.com)
+[![Coverage](https://img.shields.io/badge/coverage-38%25-yellow)](https://github.com)
 [![Design](https://img.shields.io/badge/design-IBM%20Carbon-blue)](https://carbondesignsystem.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
 
@@ -358,11 +358,11 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 ### **Current Test Coverage**
 - ✅ KPI Calculations: 72% coverage (target: 85%)
 - ✅ Database Models: 80% coverage
-- ✅ API Routes: 45% coverage (improved in v1.0.4)
-- ✅ CRUD Operations: 40% coverage (improved in v1.0.4)
+- ⚠️ API Routes: 33% coverage (needs improvement)
+- ⚠️ CRUD Operations: 29% coverage (needs improvement)
 - ✅ E2E Tests: 180+ Playwright scenarios (Chromium, Firefox, WebKit)
 - ✅ Simulation Engine: Comprehensive test suite
-- ✅ Overall Backend: 58% (1992 passing, 2 skipped, target: 85%)
+- ⚠️ Overall Backend: 38% (1992 passing, 2 skipped, 1436 errors - import issues to fix)
 
 ---
 
@@ -533,7 +533,7 @@ Backend:
 - 29 database tables (multi-tenant architecture)
 - 16 KPI calculation engines + predictive forecasting
 - 32 route modules + 19 CRUD modules
-- 58% test coverage (1992 tests passing, 2 skipped, target: 85%)
+- 38% test coverage (1992 tests passing, 2 skipped, 1436 errors, target: 85%)
 - 95%+ coverage on KPI calculations
 - Docker deployment ready (multi-stage Dockerfile + docker-compose.yml)
 - SimPy-based production line simulation engine
@@ -565,7 +565,7 @@ Documentation:
 **Release Date:** January 30, 2026
 **Status:** Production Ready
 
-**Test Coverage:** Backend 58% (target: 85%) | E2E Tests: 180+ scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
+**Test Coverage:** Backend 38% (target: 85%) | E2E Tests: 180+ scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
 
 ### **Recent Updates (v1.0.4)**
 - ✅ **Schema Standardization** - Unified String-based UUIDs for all entry primary keys (production_entry_id, hold_entry_id)
