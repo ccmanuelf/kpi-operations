@@ -1,5 +1,5 @@
 <template>
-  <div :class="`ag-theme-material ag-grid-container ${customClass}`" :style="containerStyle">
+  <div class="ag-grid-wrapper">
     <!-- Paste from Excel Toolbar -->
     <div v-if="enableExcelPaste" class="paste-toolbar d-flex align-center ga-2 mb-2">
       <v-btn
@@ -19,8 +19,9 @@
       <span class="text-caption text-grey">{{ $t('paste.shortcutHint') }}</span>
     </div>
 
-    <ag-grid-vue
-      :style="gridStyle"
+    <div :class="`ag-theme-material ${customClass}`" :style="gridContainerStyle">
+      <ag-grid-vue
+        class="ag-grid-element"
       :columnDefs="columnDefs"
       :rowData="rowData"
       :defaultColDef="defaultColDef"
@@ -46,7 +47,8 @@
       @cell-clicked="handleCellClicked"
       @paste-start="handlePasteStart"
       @paste-end="handlePasteEnd"
-    />
+      />
+    </div>
   </div>
 </template>
 
@@ -148,17 +150,21 @@ const convertedPasteRows = ref([])
 const pasteValidationResult = ref(null)
 const pasteColumnMapping = ref(null)
 
-const containerStyle = computed(() => ({
-  height: props.height || getGridHeight(),
-  width: '100%',
-  overflowX: isMobile.value ? 'auto' : 'visible'
-}))
+// Calculate toolbar height (approximately 48px when visible)
+const toolbarHeight = computed(() => props.enableExcelPaste ? 56 : 0)
 
-// AG Grid v35+ needs explicit dimensions on the grid element for proper rendering
-const gridStyle = computed(() => ({
-  width: '100%',
-  height: '100%'
-}))
+// Container for the ag-theme-material div with explicit height
+const gridContainerStyle = computed(() => {
+  const totalHeight = props.height || getGridHeight()
+  // Parse the height value and subtract toolbar height
+  const heightValue = parseInt(totalHeight, 10) || 600
+  const gridHeight = heightValue - toolbarHeight.value
+
+  return {
+    height: `${gridHeight}px`,
+    width: '100%'
+  }
+})
 
 // Default column configuration for Excel-like behavior with responsive adjustments
 const defaultColDef = computed(() => ({
@@ -448,15 +454,15 @@ defineExpose({
 /* AG Grid Material Theme is imported globally in main.js */
 /* Component-specific overrides can be added here */
 
-/* Ensure proper height distribution between toolbar and grid */
-.ag-grid-container {
-  display: flex;
-  flex-direction: column;
+/* Wrapper for the entire grid component including toolbar */
+.ag-grid-wrapper {
+  width: 100%;
 }
 
-.ag-grid-container > :deep(.ag-root-wrapper) {
-  flex: 1;
-  min-height: 0;
+/* AG Grid v35 requires explicit dimensions on the grid element */
+.ag-grid-element {
+  width: 100%;
+  height: 100%;
 }
 
 .paste-toolbar {
