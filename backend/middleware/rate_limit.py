@@ -6,6 +6,9 @@ Configuration:
 - General endpoints: 100 requests/minute
 - Auth endpoints (login, register): 10 requests/minute
 - Adds X-RateLimit headers to responses
+
+Environment Variables:
+- DISABLE_RATE_LIMIT: Set to "1" or "true" to disable rate limiting (for E2E tests)
 """
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -15,6 +18,10 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Callable, Optional
 import time
+import os
+
+# Check if rate limiting should be disabled (for testing)
+RATE_LIMIT_DISABLED = os.environ.get("DISABLE_RATE_LIMIT", "").lower() in ("1", "true", "yes")
 
 
 # Create limiter instance with remote address as key
@@ -103,29 +110,47 @@ def get_rate_limit_key(request: Request) -> str:
     return client_ip
 
 
+# No-op decorator for when rate limiting is disabled
+def _noop_decorator():
+    """No-op decorator that does nothing (for disabled rate limiting)"""
+    def decorator(func):
+        return func
+    return decorator
+
+
 # Pre-defined rate limiters for different endpoint types
 def auth_rate_limit():
     """Rate limiter for authentication endpoints (login, register)"""
+    if RATE_LIMIT_DISABLED:
+        return _noop_decorator()
     return limiter.limit(RateLimitConfig.AUTH_LIMIT)
 
 
 def general_rate_limit():
     """Rate limiter for general API endpoints"""
+    if RATE_LIMIT_DISABLED:
+        return _noop_decorator()
     return limiter.limit(RateLimitConfig.GENERAL_LIMIT)
 
 
 def sensitive_rate_limit():
     """Rate limiter for sensitive operations (password reset)"""
+    if RATE_LIMIT_DISABLED:
+        return _noop_decorator()
     return limiter.limit(RateLimitConfig.SENSITIVE_LIMIT)
 
 
 def upload_rate_limit():
     """Rate limiter for CSV upload/batch operations"""
+    if RATE_LIMIT_DISABLED:
+        return _noop_decorator()
     return limiter.limit(RateLimitConfig.UPLOAD_LIMIT)
 
 
 def report_rate_limit():
     """Rate limiter for report generation"""
+    if RATE_LIMIT_DISABLED:
+        return _noop_decorator()
     return limiter.limit(RateLimitConfig.REPORT_LIMIT)
 
 
@@ -141,7 +166,14 @@ def configure_rate_limiting(app):
 
         app = FastAPI()
         configure_rate_limiting(app)
+
+    Environment:
+        Set DISABLE_RATE_LIMIT=1 to disable rate limiting (for E2E tests)
     """
+    if RATE_LIMIT_DISABLED:
+        # Skip rate limiting configuration entirely
+        return app
+
     # Add limiter to app state
     app.state.limiter = limiter
 
