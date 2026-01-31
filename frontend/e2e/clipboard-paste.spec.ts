@@ -10,7 +10,8 @@ async function login(page: Page) {
   await page.fill('input[type="text"]', 'admin');
   await page.fill('input[type="password"]', 'admin123');
   await page.click('button:has-text("Sign In")');
-  await expect(page.locator('nav')).toBeVisible({ timeout: 15000 });
+  // Use specific navigation selector to avoid matching pagination
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
 }
 
 async function navigateToDataEntry(page: Page, module: 'production' | 'quality' | 'attendance' | 'downtime') {

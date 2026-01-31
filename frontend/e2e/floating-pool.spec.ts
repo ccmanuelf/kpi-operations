@@ -16,7 +16,8 @@ async function login(page: Page, role: 'admin' | 'operator' | 'leader' = 'admin'
   await page.fill('input[type="text"]', credentials[role].user);
   await page.fill('input[type="password"]', credentials[role].pass);
   await page.click('button:has-text("Sign In")');
-  await expect(page.locator('nav')).toBeVisible({ timeout: 15000 });
+  // Use specific navigation selector to avoid matching pagination
+  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
 }
 
 async function navigateToFloatingPool(page: Page) {
