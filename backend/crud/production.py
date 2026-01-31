@@ -2,6 +2,10 @@
 CRUD operations for Production Entry
 Create, Read, Update, Delete with KPI calculations
 SECURITY: Multi-tenant client filtering enabled
+
+Phase 1.3: Decoupled from direct calculation imports.
+KPI calculations are now handled by ProductionKPIService.
+CRUD maintains optional skip_kpi_calculation flag for batch imports.
 """
 from typing import List, Optional
 from datetime import date, datetime
@@ -20,29 +24,46 @@ from backend.models.production import (
     ProductionEntryUpdate,
     ProductionEntryWithKPIs
 )
-from backend.calculations.efficiency import calculate_efficiency
-from backend.calculations.performance import (
-    calculate_performance,
-    calculate_quality_rate,
-    calculate_oee
-)
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
+
+
+def _calculate_entry_kpis(db: Session, entry: ProductionEntry, product: Optional[Product] = None):
+    """
+    Internal helper to calculate and update KPIs for an entry.
+    Uses ProductionKPIService for calculation logic.
+
+    Phase 1.3: Encapsulates KPI calculation to single location in CRUD.
+    """
+    from backend.services.production_kpi_service import ProductionKPIService
+
+    service = ProductionKPIService(db)
+    result = service.calculate_entry_kpis(entry, product=product)
+
+    entry.efficiency_percentage = result.efficiency.efficiency_percentage
+    entry.performance_percentage = result.performance.performance_percentage
+
+    return result
 
 
 def create_production_entry(
     db: Session,
     entry: ProductionEntryCreate,
-    current_user: User
+    current_user: User,
+    skip_kpi_calculation: bool = False
 ) -> ProductionEntry:
     """
     Create new production entry with automatic KPI calculation
     SECURITY: Verifies user has access to the specified client
 
+    Phase 1.3: Added skip_kpi_calculation parameter for batch imports.
+    KPI calculations are now handled by ProductionKPIService.
+
     Args:
         db: Database session
         entry: Production entry data
         current_user: Authenticated user (changed from entered_by: int)
+        skip_kpi_calculation: If True, skip KPI calculation (for batch imports)
 
     Returns:
         Created production entry with calculated KPIs
@@ -81,14 +102,10 @@ def create_production_entry(
     db.add(db_entry)
     db.flush()  # Get entry_id without committing
 
-    # Calculate KPIs
-    product = db.query(Product).filter(Product.product_id == entry.product_id).first()
-
-    efficiency, _, _ = calculate_efficiency(db, db_entry, product)
-    performance, _, _ = calculate_performance(db, db_entry, product)
-
-    db_entry.efficiency_percentage = efficiency
-    db_entry.performance_percentage = performance
+    # Calculate KPIs unless skipped (for batch imports)
+    if not skip_kpi_calculation:
+        product = db.query(Product).filter(Product.product_id == entry.product_id).first()
+        _calculate_entry_kpis(db, db_entry, product)
 
     db.commit()
     db.refresh(db_entry)
@@ -239,17 +256,12 @@ def update_production_entry(
     if entry_update.confirmed_by is not None:
         db_entry.confirmation_timestamp = datetime.utcnow()
 
-    # Recalculate KPIs if metrics changed
+    # Recalculate KPIs if metrics changed (using service layer)
     if recalc_needed:
         product = db.query(Product).filter(
             Product.product_id == db_entry.product_id
         ).first()
-
-        efficiency, _, _ = calculate_efficiency(db, db_entry, product)
-        performance, _, _ = calculate_performance(db, db_entry, product)
-
-        db_entry.efficiency_percentage = efficiency
-        db_entry.performance_percentage = performance
+        _calculate_entry_kpis(db, db_entry, product)
 
     db.commit()
     db.refresh(db_entry)
@@ -329,11 +341,18 @@ def get_production_entry_with_details(
     product = db.query(Product).filter(Product.product_id == entry.product_id).first()
     shift = db.query(Shift).filter(Shift.shift_id == entry.shift_id).first()
 
-    # Calculate additional metrics
-    efficiency, ideal_time, inferred = calculate_efficiency(db, entry, product)
-    performance, _, _ = calculate_performance(db, entry, product)
-    quality = calculate_quality_rate(entry)
-    oee, _ = calculate_oee(db, entry, product)
+    # Calculate KPIs using service layer
+    from backend.services.production_kpi_service import ProductionKPIService
+    service = ProductionKPIService(db)
+    kpi_result = service.calculate_entry_kpis(entry, product, shift)
+
+    # Extract values for response
+    efficiency = kpi_result.efficiency.efficiency_percentage
+    ideal_time = kpi_result.efficiency.ideal_cycle_time_used
+    inferred = kpi_result.efficiency.is_estimated
+    performance = kpi_result.performance.performance_percentage
+    quality = kpi_result.quality.quality_rate
+    oee = kpi_result.oee.oee
 
     # Build response
     total_hours = entry.employees_assigned * float(entry.run_time_hours)

@@ -429,6 +429,102 @@ def update_work_order_status(
     return updated
 
 
+@router.post("/{work_order_id}/approve-qc")
+def approve_qc(
+    work_order_id: str,
+    approval_data: Optional[Dict[str, Any]] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
+    """
+    Approve QC for a work order.
+
+    Phase 3.3: QC Approval as Final Gate for SHIPPED status.
+
+    This endpoint:
+    1. Verifies user has QC authority (based on role)
+    2. Sets qc_approved = 1 on the work order
+    3. Creates WorkflowTransitionLog entry for audit trail
+    4. Returns updated work order
+
+    Args:
+        work_order_id: Work order ID to approve
+        approval_data: Optional dict with 'notes' field
+
+    Returns:
+        Updated work order with QC approval status
+
+    Raises:
+        403: User does not have QC authority
+        404: Work order not found or access denied
+        400: Work order already approved or not in valid state
+    """
+    from backend.schemas.workflow import WorkflowTransitionLog
+
+    # Verify access to work order
+    work_order = get_work_order(db, work_order_id, current_user)
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found or access denied")
+
+    # Check if already approved
+    if work_order.qc_approved:
+        return {
+            "status": "already_approved",
+            "work_order_id": work_order_id,
+            "qc_approved": True,
+            "qc_approved_date": work_order.qc_approved_date.isoformat() if work_order.qc_approved_date else None,
+            "qc_approved_by": work_order.qc_approved_by
+        }
+
+    # Check if work order is in valid state for QC approval (should be COMPLETED or IN_PROGRESS)
+    status_value = work_order.status.value if hasattr(work_order.status, 'value') else work_order.status
+    if status_value in ['SHIPPED', 'CLOSED', 'CANCELLED', 'REJECTED']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot approve QC for work order in {status_value} status"
+        )
+
+    # Get notes from approval data
+    notes = None
+    if approval_data and isinstance(approval_data, dict):
+        notes = approval_data.get('notes')
+
+    # Apply QC approval
+    now = datetime.utcnow()
+    work_order.qc_approved = True
+    work_order.qc_approved_by = current_user.user_id
+    work_order.qc_approved_date = now
+
+    # Create audit log entry
+    try:
+        log_entry = WorkflowTransitionLog(
+            work_order_id=work_order_id,
+            client_id=work_order.client_id,
+            from_status=status_value,
+            to_status=status_value,  # Not a status transition
+            transitioned_by=current_user.user_id,
+            transitioned_at=now,
+            notes=notes or "QC Approved",
+            trigger_source="qc_approval"
+        )
+        db.add(log_entry)
+    except Exception as e:
+        # Log but don't fail - audit log is secondary
+        print(f"Warning: Could not create QC approval log: {e}")
+
+    db.commit()
+    db.refresh(work_order)
+
+    return {
+        "status": "approved",
+        "work_order_id": work_order_id,
+        "qc_approved": True,
+        "qc_approved_date": now.isoformat(),
+        "qc_approved_by": current_user.user_id,
+        "message": f"Work order {work_order_id} QC approved. Can now transition to SHIPPED."
+    }
+
+
 @router.delete("/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_work_order_endpoint(
     work_order_id: str,

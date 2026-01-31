@@ -9,6 +9,7 @@ Enhanced with employees_assigned fallback chain per audit requirement:
 employees_assigned → employees_present → historical_shift_average → default
 
 Phase 7.2: Enhanced with client-level configuration overrides
+Phase 1.2: Added pure calculation functions for service layer separation
 """
 from decimal import Decimal
 from typing import Optional, Tuple
@@ -27,6 +28,88 @@ from backend.crud.client_config import get_client_config_or_defaults
 DEFAULT_CYCLE_TIME = Decimal("0.25")  # 15 minutes per unit default
 DEFAULT_SHIFT_HOURS = Decimal("8.0")  # 8 hours standard shift
 DEFAULT_EMPLOYEES = 1  # Minimum employees for calculation
+
+
+# =============================================================================
+# PURE CALCULATION FUNCTIONS (No Database Access)
+# Phase 1.2: These functions can be unit tested without database
+# =============================================================================
+
+def calculate_efficiency_pure(
+    units_produced: int,
+    ideal_cycle_time: Decimal,
+    employees_count: int,
+    scheduled_hours: Decimal
+) -> Decimal:
+    """
+    Pure efficiency calculation - no database access.
+
+    Formula: (units_produced × ideal_cycle_time) / (employees × scheduled_hours) × 100
+
+    Args:
+        units_produced: Number of units produced
+        ideal_cycle_time: Ideal cycle time in hours per unit
+        employees_count: Number of employees assigned
+        scheduled_hours: Total scheduled hours for the shift
+
+    Returns:
+        Efficiency percentage as Decimal (capped at 150%)
+
+    Examples:
+        >>> calculate_efficiency_pure(100, Decimal("0.1"), 5, Decimal("8"))
+        Decimal('25.00')  # (100 × 0.1) / (5 × 8) × 100 = 25%
+    """
+    if employees_count <= 0 or scheduled_hours <= 0:
+        return Decimal("0")
+
+    efficiency = (
+        Decimal(str(units_produced)) * ideal_cycle_time
+    ) / (
+        Decimal(str(employees_count)) * scheduled_hours
+    ) * 100
+
+    # Cap at 150% (reasonable max efficiency accounting for learning/improvements)
+    efficiency = min(efficiency, Decimal("150"))
+
+    return efficiency.quantize(Decimal("0.01"))
+
+
+def calculate_shift_hours_pure(
+    shift_start_hour: int,
+    shift_start_minute: int,
+    shift_end_hour: int,
+    shift_end_minute: int
+) -> Decimal:
+    """
+    Pure shift hours calculation from time components.
+
+    Handles overnight shifts correctly.
+
+    Args:
+        shift_start_hour: Start hour (0-23)
+        shift_start_minute: Start minute (0-59)
+        shift_end_hour: End hour (0-23)
+        shift_end_minute: End minute (0-59)
+
+    Returns:
+        Decimal hours for the shift
+
+    Examples:
+        >>> calculate_shift_hours_pure(7, 0, 15, 30)  # 7am to 3:30pm
+        Decimal('8.5')
+        >>> calculate_shift_hours_pure(23, 0, 7, 0)   # 11pm to 7am (overnight)
+        Decimal('8.0')
+    """
+    start_minutes = shift_start_hour * 60 + shift_start_minute
+    end_minutes = shift_end_hour * 60 + shift_end_minute
+
+    # Handle overnight shifts
+    if end_minutes < start_minutes:
+        total_minutes = (24 * 60 - start_minutes) + end_minutes
+    else:
+        total_minutes = end_minutes - start_minutes
+
+    return Decimal(str(total_minutes / 60.0))
 
 
 def get_client_cycle_time_default(db: Session, client_id: Optional[str] = None) -> Decimal:

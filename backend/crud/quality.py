@@ -2,6 +2,9 @@
 CRUD operations for quality inspection tracking
 PHASE 4
 SECURITY: Multi-tenant client filtering enabled
+
+Phase 1.3: Decoupled inline PPM/DPMO calculations.
+Quality KPI calculations are now handled by QualityKPIService.
 """
 from sqlalchemy.orm import Session
 from typing import Optional, List
@@ -20,6 +23,33 @@ from backend.schemas.user import User
 from backend.utils.soft_delete import soft_delete
 
 
+def _calculate_quality_kpis(
+    units_inspected: int,
+    units_defective: int,
+    opportunities_per_unit: int = 10
+) -> tuple[Decimal, Decimal]:
+    """
+    Internal helper to calculate PPM and DPMO for a quality entry.
+
+    Phase 1.3: Uses pure calculation functions instead of inline logic.
+
+    Args:
+        units_inspected: Total units inspected
+        units_defective: Units found defective
+        opportunities_per_unit: Defect opportunities per unit (default: 10)
+
+    Returns:
+        Tuple of (ppm, dpmo)
+    """
+    from backend.calculations.ppm import calculate_ppm_pure
+    from backend.calculations.dpmo import calculate_dpmo_pure
+
+    ppm = calculate_ppm_pure(units_inspected, units_defective)
+    dpmo, _ = calculate_dpmo_pure(units_defective, units_inspected, opportunities_per_unit)
+
+    return ppm, dpmo
+
+
 def create_quality_inspection(
     db: Session,
     inspection: QualityInspectionCreate,
@@ -33,26 +63,11 @@ def create_quality_inspection(
     if hasattr(inspection, 'client_id') and inspection.client_id:
         verify_client_access(current_user, inspection.client_id)
 
-    # Calculate PPM and DPMO
+    # Calculate PPM and DPMO using pure functions
     units_inspected = getattr(inspection, 'units_inspected', 0) or 0
     units_defective = getattr(inspection, 'units_defective', 0) or getattr(inspection, 'defects_found', 0) or 0
 
-    if units_inspected > 0:
-        ppm = (
-            Decimal(str(units_defective)) /
-            Decimal(str(units_inspected))
-        ) * Decimal("1000000")
-
-        # DPMO (assume 10 opportunities per unit for apparel)
-        opportunities_per_unit = 10
-        total_opportunities = units_inspected * opportunities_per_unit
-        dpmo = (
-            Decimal(str(units_defective)) /
-            Decimal(str(total_opportunities))
-        ) * Decimal("1000000")
-    else:
-        ppm = Decimal("0")
-        dpmo = Decimal("0")
+    ppm, dpmo = _calculate_quality_kpis(units_inspected, units_defective)
 
     db_inspection = QualityEntry(
         **inspection.dict(),
@@ -157,23 +172,13 @@ def update_quality_inspection(
 
     update_data = inspection_update.dict(exclude_unset=True)
 
-    # Recalculate PPM and DPMO if values changed
+    # Recalculate PPM and DPMO if values changed (using pure functions)
     units = update_data.get('units_inspected', db_inspection.units_inspected)
     defects = update_data.get('units_defective', db_inspection.units_defective)
 
-    if units > 0:
-        update_data['ppm'] = (
-            Decimal(str(defects)) / Decimal(str(units))
-        ) * Decimal("1000000")
-
-        opportunities_per_unit = 10
-        total_opportunities = units * opportunities_per_unit
-        update_data['dpmo'] = (
-            Decimal(str(defects)) / Decimal(str(total_opportunities))
-        ) * Decimal("1000000")
-    else:
-        update_data['ppm'] = Decimal("0")
-        update_data['dpmo'] = Decimal("0")
+    ppm, dpmo = _calculate_quality_kpis(units, defects)
+    update_data['ppm'] = ppm
+    update_data['dpmo'] = dpmo
 
     for field, value in update_data.items():
         if hasattr(db_inspection, field):

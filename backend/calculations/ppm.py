@@ -3,6 +3,8 @@ PPM (Parts Per Million) Calculation
 PHASE 4: Quality metrics
 
 PPM = (Total Defects / Total Units Inspected) * 1,000,000
+
+Phase 1.2: Added pure calculation functions for service layer separation
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, cast, Date
@@ -11,6 +13,80 @@ from decimal import Decimal
 from typing import Optional
 
 from backend.schemas.quality_entry import QualityEntry
+
+
+# =============================================================================
+# PURE CALCULATION FUNCTIONS (No Database Access)
+# Phase 1.2: These functions can be unit tested without database
+# =============================================================================
+
+def calculate_ppm_pure(
+    total_inspected: int,
+    total_defects: int
+) -> Decimal:
+    """
+    Pure PPM calculation - no database access.
+
+    Formula: (Total Defects / Total Units Inspected) * 1,000,000
+
+    Args:
+        total_inspected: Total units inspected
+        total_defects: Total defective units found
+
+    Returns:
+        PPM value as Decimal
+
+    Examples:
+        >>> calculate_ppm_pure(10000, 5)
+        Decimal('500')  # 5 defects in 10000 = 500 PPM
+    """
+    if total_inspected <= 0:
+        return Decimal("0")
+
+    ppm = (Decimal(str(total_defects)) / Decimal(str(total_inspected))) * Decimal("1000000")
+    return ppm.quantize(Decimal("0.01"))
+
+
+def calculate_category_ppm_pure(
+    category_defects: int,
+    total_inspected: int
+) -> Decimal:
+    """
+    Pure PPM calculation for a specific category - no database access.
+
+    Args:
+        category_defects: Defects in this category
+        total_inspected: Total units inspected
+
+    Returns:
+        PPM value for this category
+    """
+    if total_inspected <= 0:
+        return Decimal("0")
+
+    ppm = (Decimal(str(category_defects)) / Decimal(str(total_inspected))) * Decimal("1000000")
+    return ppm.quantize(Decimal("0.01"))
+
+
+def calculate_defect_percentage_pure(
+    defect_count: int,
+    total_defects: int
+) -> Decimal:
+    """
+    Pure defect percentage calculation for Pareto analysis.
+
+    Args:
+        defect_count: Count for this defect type
+        total_defects: Total defects across all types
+
+    Returns:
+        Percentage of total defects
+    """
+    if total_defects <= 0:
+        return Decimal("0")
+
+    percentage = (Decimal(str(defect_count)) / Decimal(str(total_defects))) * 100
+    return percentage.quantize(Decimal("0.01"))
 
 
 def calculate_ppm(

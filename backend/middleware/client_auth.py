@@ -1,9 +1,14 @@
 """
 Client Authorization Middleware
 Multi-tenant access control and client isolation
+
+Phase 2.2: Updated to support both:
+- Junction table (USER_CLIENT_ASSIGNMENT) - new normalized approach
+- Comma-separated client_id_assigned field - legacy fallback
 """
 from typing import Optional, List
 from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
 from backend.schemas.user import User, UserRole
 
 
@@ -16,12 +21,62 @@ class ClientAccessError(HTTPException):
         )
 
 
-def get_user_client_filter(user: User) -> Optional[List[str]]:
+def _get_clients_from_junction_table(db: Session, user_id: str) -> Optional[List[str]]:
+    """
+    Get client assignments from junction table (Phase 2 normalized approach).
+
+    Args:
+        db: Database session
+        user_id: User ID
+
+    Returns:
+        List of client IDs or None if no assignments found
+    """
+    try:
+        from backend.schemas.user_client_assignment import UserClientAssignment
+
+        assignments = db.query(UserClientAssignment.client_id).filter(
+            UserClientAssignment.user_id == user_id,
+            UserClientAssignment.is_active == True
+        ).all()
+
+        if assignments:
+            return [a.client_id for a in assignments]
+        return None
+    except Exception:
+        # Table doesn't exist yet or other error - fall back to legacy
+        return None
+
+
+def _get_clients_from_legacy_field(user: User) -> Optional[List[str]]:
+    """
+    Get client assignments from legacy comma-separated field.
+
+    Args:
+        user: User object
+
+    Returns:
+        List of client IDs or None if no assignments
+    """
+    if not user.client_id_assigned:
+        return None
+
+    # Parse comma-separated client IDs
+    user_clients = [c.strip() for c in user.client_id_assigned.split(',') if c.strip()]
+
+    return user_clients if user_clients else None
+
+
+def get_user_client_filter(user: User, db: Session = None) -> Optional[List[str]]:
     """
     Get list of client IDs the user can access
 
+    Phase 2.2: Supports both junction table and legacy comma-separated field.
+    Tries junction table first, falls back to legacy field.
+
     Args:
         user: Authenticated user object
+        db: Optional database session for junction table lookup
 
     Returns:
         None for ADMIN/POWERUSER (access all clients)
@@ -34,31 +89,34 @@ def get_user_client_filter(user: User) -> Optional[List[str]]:
     if user.role in [UserRole.ADMIN, UserRole.POWERUSER]:
         return None  # None = no filtering, access all
 
-    # LEADER and OPERATOR must have client_id_assigned
-    if not user.client_id_assigned:
-        raise ClientAccessError(
-            detail=f"User {user.username} has no client assignment. Contact administrator."
-        )
+    # Try junction table first (if db session available)
+    user_clients = None
+    if db is not None:
+        user_clients = _get_clients_from_junction_table(db, user.user_id)
 
-    # Parse comma-separated client IDs
-    # Example: "BOOT-LINE-A,CLIENT-B,CLIENT-C" -> ["BOOT-LINE-A", "CLIENT-B", "CLIENT-C"]
-    user_clients = [c.strip() for c in user.client_id_assigned.split(',') if c.strip()]
+    # Fall back to legacy comma-separated field
+    if user_clients is None:
+        user_clients = _get_clients_from_legacy_field(user)
 
+    # LEADER and OPERATOR must have client assignment
     if not user_clients:
         raise ClientAccessError(
-            detail=f"User {user.username} has invalid client assignment. Contact administrator."
+            detail=f"User {user.username} has no client assignment. Contact administrator."
         )
 
     return user_clients
 
 
-def verify_client_access(user: User, resource_client_id: str) -> bool:
+def verify_client_access(user: User, resource_client_id: str, db: Session = None) -> bool:
     """
     Verify user has access to a specific client's resource
+
+    Phase 2.2: Added db parameter for junction table support.
 
     Args:
         user: Authenticated user object
         resource_client_id: Client ID of the resource being accessed
+        db: Optional database session for junction table lookup
 
     Returns:
         True if user has access
@@ -68,7 +126,7 @@ def verify_client_access(user: User, resource_client_id: str) -> bool:
 
     Usage:
         # In API endpoint:
-        verify_client_access(current_user, work_order.client_id)
+        verify_client_access(current_user, work_order.client_id, db)
 
     Examples:
         >>> admin = User(role=UserRole.ADMIN)
@@ -86,7 +144,7 @@ def verify_client_access(user: User, resource_client_id: str) -> bool:
         return True
 
     # Get user's authorized client list
-    user_clients = get_user_client_filter(user)
+    user_clients = get_user_client_filter(user, db)
 
     # Check if resource's client is in user's authorized list
     if resource_client_id not in user_clients:

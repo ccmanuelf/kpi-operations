@@ -7,12 +7,13 @@ Sigma Level = derived from DPMO using lookup table
 
 Phase 6.7 Enhancement: Uses PART_OPPORTUNITIES table for part-specific opportunities
 Phase 7.2 Enhancement: Uses client config for default opportunities per unit
+Phase 1.2: Added pure calculation functions for service layer separation
 """
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import date
-from typing import Optional
+from typing import Optional, Tuple
 import math
 
 from backend.schemas.quality_entry import QualityEntry
@@ -32,6 +33,73 @@ DPMO_TO_SIGMA = [
 
 # Fallback default opportunities per unit when no part-specific data exists
 DEFAULT_OPPORTUNITIES_PER_UNIT = 10
+
+
+# =============================================================================
+# PURE CALCULATION FUNCTIONS (No Database Access)
+# Phase 1.2: These functions can be unit tested without database
+# =============================================================================
+
+def calculate_dpmo_pure(
+    total_defects: int,
+    total_units: int,
+    opportunities_per_unit: int
+) -> Tuple[Decimal, int]:
+    """
+    Pure DPMO calculation - no database access.
+
+    Formula: (Total Defects / (Total Units × Opportunities per Unit)) * 1,000,000
+
+    Args:
+        total_defects: Total defects found (counts each defect, not just defective units)
+        total_units: Total units inspected
+        opportunities_per_unit: Number of defect opportunities per unit
+
+    Returns:
+        Tuple of (dpmo_value, total_opportunities)
+
+    Examples:
+        >>> calculate_dpmo_pure(5, 1000, 10)
+        (Decimal('500.00'), 10000)  # 5 defects in 10000 opportunities = 500 DPMO
+    """
+    if total_units <= 0 or opportunities_per_unit <= 0:
+        return (Decimal("0"), 0)
+
+    total_opportunities = total_units * opportunities_per_unit
+
+    if total_opportunities <= 0:
+        return (Decimal("0"), 0)
+
+    dpmo = (Decimal(str(total_defects)) / Decimal(str(total_opportunities))) * Decimal("1000000")
+    return (dpmo.quantize(Decimal("0.01")), total_opportunities)
+
+
+def calculate_sigma_level_pure(dpmo: Decimal) -> Decimal:
+    """
+    Pure sigma level calculation from DPMO - no database access.
+
+    Uses lookup table to convert DPMO to Sigma Level.
+
+    Args:
+        dpmo: DPMO value
+
+    Returns:
+        Sigma level (0-6)
+
+    Examples:
+        >>> calculate_sigma_level_pure(Decimal("3.4"))
+        Decimal('6.0')  # World class - Six Sigma
+        >>> calculate_sigma_level_pure(Decimal("66807"))
+        Decimal('3.0')  # Three Sigma
+    """
+    dpmo_float = float(dpmo)
+
+    for threshold, sigma in DPMO_TO_SIGMA:
+        if dpmo_float <= threshold:
+            return Decimal(str(sigma))
+
+    # If worse than 1 sigma, return 0
+    return Decimal("0")
 
 
 def get_client_opportunities_default(db: Session, client_id: Optional[str] = None) -> int:

@@ -304,6 +304,67 @@ def auto_forecast(
         return simple_exponential_smoothing(values, forecast_periods=forecast_periods)
 
 
+# =============================================================================
+# PURE HELPER FUNCTIONS for Analytics Service
+# Phase 1.2: Functions used by AnalyticsService
+# =============================================================================
+
+def predict_metric_value(
+    values: List[float],
+    dates: List[date],
+    days_ahead: int
+) -> Tuple[float, str]:
+    """
+    Predict a metric value for a future date.
+
+    Args:
+        values: Historical values
+        dates: Corresponding dates
+        days_ahead: Number of days in the future to predict
+
+    Returns:
+        Tuple of (predicted_value, model_type)
+    """
+    if len(values) < 7:
+        # Insufficient data - use simple average
+        return (sum(values) / len(values) if values else 0.0, "average")
+
+    # Use auto_forecast
+    decimal_values = [Decimal(str(v)) for v in values]
+    result = auto_forecast(decimal_values, forecast_periods=max(1, days_ahead))
+
+    predicted = float(result.predictions[min(days_ahead - 1, len(result.predictions) - 1)])
+    return (predicted, result.method)
+
+
+def calculate_confidence_interval(
+    values: List[float],
+    predicted: float
+) -> Dict[str, float]:
+    """
+    Calculate confidence interval for a prediction.
+
+    Args:
+        values: Historical values
+        predicted: Predicted value
+
+    Returns:
+        Dictionary with 'lower' and 'upper' bounds (95% CI)
+    """
+    if len(values) < 2:
+        return {"lower": predicted, "upper": predicted}
+
+    std_dev = statistics.stdev(values)
+
+    # 95% confidence interval approximation
+    margin = std_dev * 2
+
+    return {
+        "lower": predicted - margin,
+        "upper": predicted + margin
+    }
+
+
 def calculate_forecast_accuracy(
     actual: List[Decimal],
     predicted: List[Decimal]

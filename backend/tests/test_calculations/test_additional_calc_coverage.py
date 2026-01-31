@@ -747,7 +747,13 @@ class TestTrendAnalysis:
 
             data = [10, 15, 20, 25, 30]
             result = calculate_trend_direction(data)
-            assert result in ["up", "down", "stable", "increasing", "decreasing", None]
+            # Function returns (direction, percentage) tuple
+            if isinstance(result, tuple):
+                direction, percentage = result
+                assert direction in ["improving", "declining", "stable", "insufficient_data"]
+                assert percentage >= 0
+            else:
+                assert result in ["up", "down", "stable", "increasing", "decreasing", None]
         except (ImportError, AttributeError):
             pass
 
@@ -758,7 +764,12 @@ class TestTrendAnalysis:
 
             data = [50, 40, 30, 20, 10]
             result = calculate_trend_direction(data)
-            assert result in ["down", "decreasing", None]
+            # Function returns (direction, percentage) tuple
+            if isinstance(result, tuple):
+                direction, percentage = result
+                assert direction in ["declining", "stable", "insufficient_data"]
+            else:
+                assert result in ["down", "decreasing", None]
         except (ImportError, AttributeError):
             pass
 

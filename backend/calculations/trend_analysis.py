@@ -319,6 +319,73 @@ def calculate_seasonal_decomposition(
     }
 
 
+# =============================================================================
+# PURE HELPER FUNCTIONS for Analytics Service
+# Phase 1.2: Functions used by AnalyticsService
+# =============================================================================
+
+def calculate_trend_direction(values: List[float]) -> Tuple[str, float]:
+    """
+    Calculate trend direction from a list of values.
+
+    Args:
+        values: List of metric values over time
+
+    Returns:
+        Tuple of (direction, percentage_change)
+        - direction: "improving", "declining", "stable", "insufficient_data"
+        - percentage_change: Absolute percentage change from start to end
+    """
+    if len(values) < 2:
+        return ("insufficient_data", 0.0)
+
+    start_value = values[0]
+    end_value = values[-1]
+
+    if start_value == 0:
+        if end_value > 0:
+            return ("improving", 100.0)
+        return ("stable", 0.0)
+
+    percentage_change = ((end_value - start_value) / start_value) * 100
+
+    # Threshold for stable: less than 5% change
+    if abs(percentage_change) < 5:
+        return ("stable", abs(percentage_change))
+    elif percentage_change > 0:
+        return ("improving", percentage_change)
+    else:
+        return ("declining", abs(percentage_change))
+
+
+def get_trend_interpretation(
+    metric: str,
+    direction: str,
+    percentage: float
+) -> str:
+    """
+    Generate human-readable interpretation of a trend.
+
+    Args:
+        metric: Name of the metric (e.g., "efficiency", "ppm")
+        direction: Trend direction from calculate_trend_direction
+        percentage: Percentage change
+
+    Returns:
+        Human-readable interpretation string
+    """
+    if direction == "insufficient_data":
+        return f"Insufficient data to determine {metric} trend."
+
+    if direction == "stable":
+        return f"{metric.title()} is stable (±{percentage:.1f}% change)."
+
+    if direction == "improving":
+        return f"{metric.title()} is improving, up {percentage:.1f}%. Continue current practices."
+    else:  # declining
+        return f"{metric.title()} is declining, down {percentage:.1f}%. Investigation recommended."
+
+
 def analyze_trend(
     dates: List[date],
     values: List[Decimal]

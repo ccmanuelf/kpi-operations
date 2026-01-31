@@ -3,6 +3,8 @@ KPI #9: Performance Calculation
 Formula: (ideal_cycle_time × units_produced) / run_time_hours × 100
 
 Includes inference engine for missing ideal_cycle_time
+
+Phase 1.2: Added pure calculation functions for service layer separation
 """
 from decimal import Decimal
 from typing import Optional, Tuple
@@ -10,6 +12,111 @@ from sqlalchemy.orm import Session
 from backend.schemas.product import Product
 from backend.schemas.production_entry import ProductionEntry
 from backend.calculations.efficiency import infer_ideal_cycle_time
+
+
+# =============================================================================
+# PURE CALCULATION FUNCTIONS (No Database Access)
+# Phase 1.2: These functions can be unit tested without database
+# =============================================================================
+
+def calculate_performance_pure(
+    units_produced: int,
+    run_time_hours: Decimal,
+    ideal_cycle_time: Decimal
+) -> Tuple[Decimal, Decimal]:
+    """
+    Pure performance calculation - no database access.
+
+    Formula: (ideal_cycle_time × units_produced) / run_time_hours × 100
+
+    Args:
+        units_produced: Number of units produced
+        run_time_hours: Actual run time in hours
+        ideal_cycle_time: Ideal cycle time in hours per unit
+
+    Returns:
+        Tuple of (performance_percentage, actual_rate)
+        - performance_percentage: Performance as percentage (capped at 150%)
+        - actual_rate: Actual units per hour achieved
+
+    Examples:
+        >>> calculate_performance_pure(100, Decimal("8"), Decimal("0.1"))
+        (Decimal('125.00'), Decimal('12.50'))
+    """
+    if run_time_hours <= 0:
+        return (Decimal("0"), Decimal("0"))
+
+    # Calculate actual rate (units per hour)
+    actual_rate = Decimal(str(units_produced)) / run_time_hours
+
+    # Calculate performance percentage
+    performance = (
+        ideal_cycle_time * Decimal(str(units_produced))
+    ) / run_time_hours * 100
+
+    # Cap at 150% (reasonable max performance)
+    performance = min(performance, Decimal("150"))
+
+    return (performance.quantize(Decimal("0.01")), actual_rate.quantize(Decimal("0.01")))
+
+
+def calculate_quality_rate_pure(
+    units_produced: int,
+    defect_count: int,
+    scrap_count: int
+) -> Tuple[Decimal, int]:
+    """
+    Pure quality rate calculation - no database access.
+
+    Formula: ((units_produced - defects - scrap) / units_produced) × 100
+
+    Args:
+        units_produced: Total units produced
+        defect_count: Number of defective units
+        scrap_count: Number of scrapped units
+
+    Returns:
+        Tuple of (quality_rate_percentage, good_units)
+
+    Examples:
+        >>> calculate_quality_rate_pure(100, 5, 3)
+        (Decimal('92.00'), 92)
+    """
+    if units_produced == 0:
+        return (Decimal("0"), 0)
+
+    good_units = units_produced - defect_count - scrap_count
+    good_units = max(0, good_units)  # Ensure non-negative
+
+    quality_rate = Decimal(str(good_units)) / Decimal(str(units_produced)) * Decimal("100")
+
+    return (max(Decimal("0"), quality_rate.quantize(Decimal("0.01"))), good_units)
+
+
+def calculate_oee_pure(
+    availability: Decimal,
+    performance: Decimal,
+    quality: Decimal
+) -> Decimal:
+    """
+    Pure OEE calculation - no database access.
+
+    Formula: Availability × Performance × Quality (all as percentages)
+
+    Args:
+        availability: Availability percentage (0-100)
+        performance: Performance percentage (0-100)
+        quality: Quality rate percentage (0-100)
+
+    Returns:
+        OEE percentage
+
+    Examples:
+        >>> calculate_oee_pure(Decimal("95"), Decimal("85"), Decimal("99"))
+        Decimal('79.92')
+    """
+    oee = (availability / 100) * (performance / 100) * (quality / 100) * 100
+    return oee.quantize(Decimal("0.01"))
 
 
 def calculate_performance(

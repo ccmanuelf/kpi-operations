@@ -6,6 +6,7 @@ FPY = (Units Passed First Time / Total Units Processed) * 100
 RTY = FPY1 × FPY2 × FPY3 × ... × FPYn (for all process steps)
 
 Phase 6.6 Enhancement: RTY can be calculated at JOB (line item) level within work orders
+Phase 1.2: Added pure calculation functions for service layer separation
 """
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -17,6 +18,135 @@ import math
 from backend.schemas.quality_entry import QualityEntry
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.job import Job
+
+
+# =============================================================================
+# PURE CALCULATION FUNCTIONS (No Database Access)
+# Phase 1.2: These functions can be unit tested without database
+# =============================================================================
+
+def calculate_fpy_pure(
+    total_passed: int,
+    total_inspected: int
+) -> Decimal:
+    """
+    Pure FPY (First Pass Yield) calculation - no database access.
+
+    Formula: (Units Passed First Time / Total Units Inspected) * 100
+
+    CRITICAL: First Pass units should EXCLUDE both rework AND repair.
+    This function assumes total_passed already excludes rework/repair.
+
+    Args:
+        total_passed: Units that passed first time (without rework/repair)
+        total_inspected: Total units inspected
+
+    Returns:
+        FPY percentage as Decimal
+
+    Examples:
+        >>> calculate_fpy_pure(95, 100)
+        Decimal('95.00')  # 95% first pass yield
+    """
+    if total_inspected <= 0:
+        return Decimal("0")
+
+    fpy = (Decimal(str(total_passed)) / Decimal(str(total_inspected))) * 100
+    return fpy.quantize(Decimal("0.01"))
+
+
+def calculate_rty_pure(step_fpys: List[Decimal]) -> Decimal:
+    """
+    Pure RTY (Rolled Throughput Yield) calculation - no database access.
+
+    Formula: FPY_step1 × FPY_step2 × ... × FPY_stepN
+    (all FPYs as decimals, not percentages)
+
+    Args:
+        step_fpys: List of FPY percentages for each step
+
+    Returns:
+        RTY percentage as Decimal
+
+    Examples:
+        >>> calculate_rty_pure([Decimal("95"), Decimal("90"), Decimal("98")])
+        Decimal('83.79')  # 0.95 × 0.90 × 0.98 × 100 = 83.79%
+    """
+    if not step_fpys:
+        return Decimal("0")
+
+    rty_decimal = Decimal("1.0")
+
+    for fpy in step_fpys:
+        # Convert percentage to decimal and multiply
+        fpy_decimal = fpy / 100
+        rty_decimal = rty_decimal * fpy_decimal
+
+    # Convert back to percentage
+    rty_percentage = rty_decimal * 100
+    return rty_percentage.quantize(Decimal("0.01"))
+
+
+def calculate_job_yield_pure(
+    completed_quantity: int,
+    quantity_scrapped: int
+) -> Decimal:
+    """
+    Pure job yield calculation - no database access.
+
+    Formula: (completed_quantity - quantity_scrapped) / completed_quantity * 100
+
+    Args:
+        completed_quantity: Total completed quantity
+        quantity_scrapped: Quantity scrapped
+
+    Returns:
+        Yield percentage as Decimal
+
+    Examples:
+        >>> calculate_job_yield_pure(100, 5)
+        Decimal('95.00')  # 95% yield
+    """
+    if completed_quantity <= 0:
+        return Decimal("0")
+
+    good = completed_quantity - quantity_scrapped
+    good = max(0, good)  # Ensure non-negative
+
+    yield_pct = (Decimal(str(good)) / Decimal(str(completed_quantity))) * 100
+    return yield_pct.quantize(Decimal("0.01"))
+
+
+def calculate_recovery_rate_pure(
+    units_reworked: int,
+    units_repaired: int,
+    units_scrapped: int
+) -> Decimal:
+    """
+    Pure recovery rate calculation - no database access.
+
+    Recovery Rate = (Rework + Repair) / (Rework + Repair + Scrap) * 100
+
+    Args:
+        units_reworked: Units that were reworked (recovered in-line)
+        units_repaired: Units requiring significant repair
+        units_scrapped: Units that couldn't be recovered
+
+    Returns:
+        Recovery rate percentage
+
+    Examples:
+        >>> calculate_recovery_rate_pure(10, 5, 5)
+        Decimal('75.00')  # 15 recovered out of 20 = 75%
+    """
+    total_failed = units_reworked + units_repaired + units_scrapped
+
+    if total_failed <= 0:
+        return Decimal("100")  # Nothing failed, 100% recovery
+
+    recovered = units_reworked + units_repaired
+    rate = (Decimal(str(recovered)) / Decimal(str(total_failed))) * 100
+    return rate.quantize(Decimal("0.01"))
 
 
 def calculate_fpy(
