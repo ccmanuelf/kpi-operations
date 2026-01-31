@@ -13,7 +13,10 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:sqlite": "playwright test --config=playwright.sqlite.config.ts",
+    "test:e2e:sqlite:headed": "playwright test --config=playwright.sqlite.config.ts --headed",
+    "test:e2e:sqlite:report": "playwright show-report playwright-report-sqlite"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

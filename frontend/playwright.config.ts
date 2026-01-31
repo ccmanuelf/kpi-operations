@@ -1,7 +1,15 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * KPI Operations Platform - Playwright E2E Test Configuration
+ * KPI Operations Platform - Playwright E2E Test Configuration (Parallel)
+ *
+ * This configuration runs tests in parallel across multiple browsers.
+ * Optimized for MariaDB/PostgreSQL backends that handle concurrent access well.
+ *
+ * For SQLite development/testing (sequential execution), use:
+ *   npm run test:e2e:sqlite
+ * Which uses playwright.sqlite.config.ts
+ *
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
