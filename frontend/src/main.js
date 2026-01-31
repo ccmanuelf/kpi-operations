@@ -6,6 +6,10 @@ import vuetify from './plugins/vuetify'
 import i18n from './i18n'
 import './assets/main.css'
 
+// AG Grid v35+ requires explicit module registration
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community'
+ModuleRegistry.registerModules([AllCommunityModule])
+
 // AG Grid styles
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'

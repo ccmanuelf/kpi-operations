@@ -1,5 +1,5 @@
 <template>
-  <div :class="`ag-theme-material ${customClass}`" :style="containerStyle">
+  <div :class="`ag-theme-material ag-grid-container ${customClass}`" :style="containerStyle">
     <!-- Paste from Excel Toolbar -->
     <div v-if="enableExcelPaste" class="paste-toolbar d-flex align-center ga-2 mb-2">
       <v-btn
@@ -20,6 +20,7 @@
     </div>
 
     <ag-grid-vue
+      :style="gridStyle"
       :columnDefs="columnDefs"
       :rowData="rowData"
       :defaultColDef="defaultColDef"
@@ -151,6 +152,12 @@ const containerStyle = computed(() => ({
   height: props.height || getGridHeight(),
   width: '100%',
   overflowX: isMobile.value ? 'auto' : 'visible'
+}))
+
+// AG Grid v35+ needs explicit dimensions on the grid element for proper rendering
+const gridStyle = computed(() => ({
+  width: '100%',
+  height: '100%'
 }))
 
 // Default column configuration for Excel-like behavior with responsive adjustments
@@ -440,6 +447,17 @@ defineExpose({
 <style scoped>
 /* AG Grid Material Theme is imported globally in main.js */
 /* Component-specific overrides can be added here */
+
+/* Ensure proper height distribution between toolbar and grid */
+.ag-grid-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.ag-grid-container > :deep(.ag-root-wrapper) {
+  flex: 1;
+  min-height: 0;
+}
 
 .paste-toolbar {
   padding: 8px 12px;
