@@ -58,13 +58,13 @@ class QualityEntry(Base):
 
     # Quality details
     inspection_method = Column(String(100))
-    inspector_id = Column(Integer, ForeignKey('USER.user_id'))
+    inspector_id = Column(String(50), ForeignKey('USER.user_id'))
 
     # Metadata
     notes = Column(Text)
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(Integer, ForeignKey('USER.user_id'))
+    updated_by = Column(String(50), ForeignKey('USER.user_id'))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

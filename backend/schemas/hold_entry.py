@@ -67,15 +67,15 @@ class HoldEntry(Base):
     expected_resolution_date = Column(DateTime)
 
     # Responsible parties
-    hold_initiated_by = Column(Integer, ForeignKey('USER.user_id'))
-    hold_approved_by = Column(Integer, ForeignKey('USER.user_id'))
-    resumed_by = Column(Integer, ForeignKey('USER.user_id'))
+    hold_initiated_by = Column(String(50), ForeignKey('USER.user_id'))
+    hold_approved_by = Column(String(50), ForeignKey('USER.user_id'))
+    resumed_by = Column(String(50), ForeignKey('USER.user_id'))
 
     # Metadata
     notes = Column(Text)
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(Integer, ForeignKey('USER.user_id'))
+    updated_by = Column(String(50), ForeignKey('USER.user_id'))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

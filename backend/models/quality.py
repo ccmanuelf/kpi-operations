@@ -106,7 +106,7 @@ class QualityInspectionResponse(BaseModel):
     dpmo: Optional[Decimal] = None
     fpy_percentage: Optional[Decimal] = None
     inspection_method: Optional[str] = None
-    inspector_id: Optional[int] = None
+    inspector_id: Optional[str] = None
     notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

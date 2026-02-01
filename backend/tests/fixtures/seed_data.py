@@ -202,6 +202,9 @@ def seed_comprehensive_data(
     # Production Entries (Historical Data)
     # ========================================================================
 
+    # Get work order IDs for linking production entries
+    work_order_id_list = [wo.work_order_id for wo in work_orders]
+
     production_entries = TestDataFactory.create_production_entries_batch(
         db,
         client_id=client.client_id,
@@ -209,7 +212,8 @@ def seed_comprehensive_data(
         shift_id=shifts[0].shift_id,
         entered_by=supervisor.user_id,
         count=days_of_data,
-        base_date=base_date
+        base_date=base_date,
+        work_order_ids=work_order_id_list  # Link to work orders
     )
 
     # ========================================================================

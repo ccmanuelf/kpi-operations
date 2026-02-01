@@ -73,7 +73,7 @@
                 @click="showRegister = true"
                 :aria-label="t('auth.registerAccount')"
               >
-                {{ $t('common.add') }} {{ $t('admin.users') }}
+                {{ $t('auth.registerAccount') }}
               </v-btn>
             </div>
           </v-card-actions>
@@ -127,7 +127,7 @@
       aria-modal="true"
     >
       <v-card>
-        <v-card-title id="register-title" class="text-h6">{{ $t('common.add') }} {{ $t('admin.users') }}</v-card-title>
+        <v-card-title id="register-title" class="text-h6">{{ $t('auth.registerAccount') }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="handleRegister" aria-label="Registration form">
             <v-text-field

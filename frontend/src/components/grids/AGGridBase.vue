@@ -19,18 +19,15 @@
       <span class="text-caption text-grey">{{ $t('paste.shortcutHint') }}</span>
     </div>
 
-    <div :class="`ag-theme-material ${customClass}`" :style="gridContainerStyle">
+    <div :class="`ag-theme-material ${customClass}`" :style="gridStyle">
       <ag-grid-vue
-        class="ag-grid-element"
+        style="width: 100%; height: 100%;"
       :columnDefs="columnDefs"
       :rowData="rowData"
       :defaultColDef="defaultColDef"
       :gridOptions="mergedGridOptions"
-      :rowSelection="rowSelection"
-      :suppressRowClickSelection="true"
-      :enableRangeSelection="true"
-      :enableFillHandle="true"
-      :enableClipboard="true"
+      :rowSelection="rowSelectionConfig"
+      :enableCellTextSelection="true"
       :singleClickEdit="true"
       :enterMovesDownAfterEdit="true"
       :enterNavigatesVertically="true"
@@ -97,8 +94,8 @@ const props = defineProps({
     default: ''
   },
   rowSelection: {
-    type: String,
-    default: 'multiple'
+    type: [String, Object],
+    default: 'multiRow'
   },
   gridOptions: {
     type: Object,
@@ -150,19 +147,39 @@ const convertedPasteRows = ref([])
 const pasteValidationResult = ref(null)
 const pasteColumnMapping = ref(null)
 
-// Calculate toolbar height (approximately 48px when visible)
+// Calculate toolbar height (approximately 56px when visible including margin)
 const toolbarHeight = computed(() => props.enableExcelPaste ? 56 : 0)
 
-// Container for the ag-theme-material div with explicit height
-const gridContainerStyle = computed(() => {
+// AG Grid requires explicit dimensions directly on the ag-grid-vue component
+// Setting height on a parent wrapper doesn't work reliably
+const gridStyle = computed(() => {
   const totalHeight = props.height || getGridHeight()
   // Parse the height value and subtract toolbar height
   const heightValue = parseInt(totalHeight, 10) || 600
   const gridHeight = heightValue - toolbarHeight.value
 
   return {
-    height: `${gridHeight}px`,
-    width: '100%'
+    width: '100%',
+    height: `${gridHeight}px`
+  }
+})
+
+// AG Grid v32.2+ requires object format for rowSelection
+// Convert string prop to new object format
+const rowSelectionConfig = computed(() => {
+  // If already an object, use as-is
+  if (typeof props.rowSelection === 'object') {
+    return props.rowSelection
+  }
+
+  // Convert legacy string values to new object format
+  const mode = props.rowSelection === 'single' ? 'singleRow' : 'multiRow'
+
+  return {
+    mode,
+    enableClickSelection: false, // Replaces suppressRowClickSelection
+    checkboxes: false,
+    headerCheckbox: false
   }
 })
 
@@ -196,6 +213,9 @@ const defaultColDef = computed(() => ({
 // Merge user grid options with defaults and responsive settings
 const mergedGridOptions = computed(() => ({
   ...props.gridOptions,
+  // Use legacy theme mode to work with CSS file themes (ag-grid.css)
+  // This fixes AG Grid error #239 about theme conflict
+  theme: 'legacy',
   pagination: props.pagination,
   paginationPageSize: props.paginationPageSize,
 
@@ -236,16 +256,10 @@ const mergedGridOptions = computed(() => ({
     return suggestedNextCell
   },
 
-  // Handle range selection for multi-cell operations
-  fillOperation: (params) => {
-    return params.initialValues[0]
-  },
-
   // Mobile-specific options
   ...(isMobile.value && {
     suppressMenuHide: false,
     suppressMovableColumns: true,
-    enableRangeSelection: false, // Disable range selection on mobile
     suppressRowClickSelection: false
   })
 }))
@@ -457,12 +471,6 @@ defineExpose({
 /* Wrapper for the entire grid component including toolbar */
 .ag-grid-wrapper {
   width: 100%;
-}
-
-/* AG Grid v35 requires explicit dimensions on the grid element */
-.ag-grid-element {
-  width: 100%;
-  height: 100%;
 }
 
 .paste-toolbar {

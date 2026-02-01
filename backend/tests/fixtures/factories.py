@@ -290,13 +290,13 @@ class TestDataFactory:
         job = Job(
             job_id=job_id,
             work_order_id=work_order_id,
-            client_id=client_id,
+            client_id_fk=client_id,  # Use client_id_fk as per schema
             part_number=part_number,
-            quantity_required=quantity_required,
-            quantity_completed=kwargs.get("quantity_completed", 0),
-            status=kwargs.get("status", "pending"),
+            planned_quantity=quantity_required,  # Use planned_quantity as per schema
+            completed_quantity=kwargs.get("quantity_completed", 0),
             operation_code=kwargs.get("operation_code", "ASSY"),
             operation_name=kwargs.get("operation_name", "Assembly"),
+            sequence_number=kwargs.get("sequence_number", 1),
         )
         db.add(job)
         db.flush()
@@ -313,9 +313,9 @@ class TestDataFactory:
         """Create part opportunities (defect opportunities per unit)"""
         part_opp = PartOpportunities(
             part_number=part_number,
-            client_id=client_id,
+            client_id_fk=client_id,  # Use client_id_fk as per schema
             opportunities_per_unit=opportunities_per_unit,
-            description=kwargs.get("description", f"Part {part_number}"),
+            part_description=kwargs.get("description", f"Part {part_number}"),
         )
         db.add(part_opp)
         db.flush()
@@ -379,25 +379,25 @@ class TestDataFactory:
         work_order_id: str,
         client_id: str,
         created_by: str,
-        hold_reason: str = "Quality Issue",
+        hold_reason: str = "QUALITY_ISSUE",
         hold_status: HoldStatus = HoldStatus.PENDING_HOLD_APPROVAL,
         **kwargs
     ) -> HoldEntry:
         """Create a hold entry"""
+        from backend.schemas.hold_entry import HoldReason
         hold_id = TestDataFactory._next_id("HOLD")
 
         hold = HoldEntry(
-            hold_id=hold_id,
+            hold_entry_id=hold_id,
             work_order_id=work_order_id,
             client_id=client_id,
-            created_by=created_by,
-            hold_reason=hold_reason,
+            hold_initiated_by=created_by,
+            hold_reason=HoldReason[hold_reason] if hold_reason in HoldReason.__members__ else HoldReason.QUALITY_ISSUE,
             hold_reason_category=kwargs.get("hold_reason_category", "QUALITY"),
             hold_status=hold_status,
-            hold_start=kwargs.get("hold_start", datetime.now()),
-            hold_end=kwargs.get("hold_end"),
-            approved_by=kwargs.get("approved_by"),
-            approval_date=kwargs.get("approval_date"),
+            hold_date=kwargs.get("hold_date", datetime.now()),
+            resume_date=kwargs.get("resume_date"),
+            hold_approved_by=kwargs.get("hold_approved_by"),
             job_id=kwargs.get("job_id"),
         )
         db.add(hold)
@@ -408,32 +408,30 @@ class TestDataFactory:
     def create_downtime_entry(
         db: Session,
         client_id: str,
+        work_order_id: str,
         reported_by: str,
         downtime_reason: str = "EQUIPMENT_FAILURE",
-        downtime_start: Optional[datetime] = None,
-        downtime_end: Optional[datetime] = None,
+        shift_date: Optional[datetime] = None,
+        duration_minutes: int = 60,
         **kwargs
     ) -> DowntimeEntry:
         """Create a downtime entry"""
         entry_id = TestDataFactory._next_id("DT")
 
-        if downtime_start is None:
-            downtime_start = datetime.now() - timedelta(hours=1)
-        if downtime_end is None:
-            downtime_end = datetime.now()
-
-        duration_minutes = int((downtime_end - downtime_start).total_seconds() / 60)
+        if shift_date is None:
+            shift_date = datetime.now()
 
         entry = DowntimeEntry(
             downtime_entry_id=entry_id,
             client_id=client_id,
+            work_order_id=work_order_id,
             reported_by=reported_by,
             downtime_reason=downtime_reason,
-            downtime_start=downtime_start,
-            downtime_end=downtime_end,
-            duration_minutes=duration_minutes,
-            production_line=kwargs.get("production_line", "LINE-A"),
-            description=kwargs.get("description", "Test downtime event"),
+            shift_date=shift_date,
+            downtime_duration_minutes=duration_minutes,
+            machine_id=kwargs.get("machine_id", "MACH-001"),
+            equipment_code=kwargs.get("equipment_code"),
+            notes=kwargs.get("notes", "Test downtime event"),
         )
         db.add(entry)
         db.flush()
@@ -449,28 +447,32 @@ class TestDataFactory:
         employee_id: int,
         client_id: str,
         shift_id: int,
-        attendance_date: Optional[date] = None,
+        shift_date: Optional[date] = None,
         **kwargs
     ) -> AttendanceEntry:
         """Create an attendance entry"""
-        if attendance_date is None:
-            attendance_date = date.today()
+        if shift_date is None:
+            shift_date = date.today()
 
         entry_id = TestDataFactory._next_id("ATT")
+
+        # Convert date to datetime for shift_date field
+        from datetime import datetime
+        shift_datetime = datetime.combine(shift_date, datetime.min.time())
 
         entry = AttendanceEntry(
             attendance_entry_id=entry_id,
             employee_id=employee_id,
             client_id=client_id,
             shift_id=shift_id,
-            attendance_date=attendance_date,
+            shift_date=shift_datetime,
             scheduled_hours=kwargs.get("scheduled_hours", Decimal("8.0")),
             actual_hours=kwargs.get("actual_hours", Decimal("8.0")),
             absence_hours=kwargs.get("absence_hours", Decimal("0")),
             absence_type=kwargs.get("absence_type"),
-            is_present=kwargs.get("is_present", 1),  # Integer boolean
-            clock_in=kwargs.get("clock_in"),
-            clock_out=kwargs.get("clock_out"),
+            is_absent=kwargs.get("is_absent", 0),  # Integer boolean (0=present, 1=absent)
+            arrival_time=kwargs.get("arrival_time"),
+            departure_time=kwargs.get("departure_time"),
         )
         db.add(entry)
         db.flush()
@@ -720,7 +722,8 @@ class TestDataFactory:
         shift_id: int,
         entered_by: str,
         count: int = 10,
-        base_date: Optional[date] = None
+        base_date: Optional[date] = None,
+        work_order_ids: Optional[List[str]] = None
     ) -> List[ProductionEntry]:
         """Create multiple production entries over consecutive days"""
         if base_date is None:
@@ -728,6 +731,11 @@ class TestDataFactory:
 
         entries = []
         for i in range(count):
+            # Rotate through work orders if provided
+            work_order_id = None
+            if work_order_ids:
+                work_order_id = work_order_ids[i % len(work_order_ids)]
+
             entry = cls.create_production_entry(
                 db,
                 client_id=client_id,
@@ -736,6 +744,7 @@ class TestDataFactory:
                 entered_by=entered_by,
                 production_date=base_date + timedelta(days=i),
                 units_produced=1000 + (i * 50),
+                work_order_id=work_order_id,
             )
             entries.append(entry)
 
@@ -857,11 +866,11 @@ class TestDataFactory:
                 employee_id=employee_id,
                 client_id=client_id,
                 shift_id=shift_id,
-                attendance_date=current_date,
-                is_present=1 if is_present else 0,
+                shift_date=current_date,
+                is_absent=0 if is_present else 1,
                 actual_hours=Decimal("8.0") if is_present else Decimal("0"),
                 absence_hours=Decimal("0") if is_present else Decimal("8.0"),
-                absence_type=AbsenceType.UNEXCUSED if not is_present else None,
+                absence_type=AbsenceType.UNSCHEDULED_ABSENCE if not is_present else None,
             )
             entries.append(entry)
 

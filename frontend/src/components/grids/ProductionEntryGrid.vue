@@ -201,7 +201,7 @@ const confirmationFieldConfig = computed(() => {
     { key: 'production_date', label: 'Production Date', type: 'date' },
     { key: 'product_id', label: 'Product', type: 'text', displayValue: productName },
     { key: 'shift_id', label: 'Shift', type: 'text', displayValue: shiftName },
-    { key: 'work_order_number', label: 'Work Order', type: 'text' },
+    { key: 'work_order_id', label: 'Work Order', type: 'text' },
     { key: 'units_produced', label: 'Units Produced', type: 'number' },
     { key: 'run_time_hours', label: 'Runtime (hours)', type: 'number' },
     { key: 'employees_assigned', label: 'Employees Assigned', type: 'number' },
@@ -229,16 +229,20 @@ const totalUnits = computed(() => {
 })
 
 const totalRuntime = computed(() => {
-  return filteredEntries.value.reduce((sum, e) => sum + (e.run_time_hours || 0), 0)
+  const total = filteredEntries.value.reduce((sum, e) => sum + (Number(e.run_time_hours) || 0), 0)
+  return Number(total) || 0
 })
 
 const avgEfficiency = computed(() => {
   if (filteredEntries.value.length === 0) return 0
   const totalEff = filteredEntries.value.reduce((sum, e) => {
-    const efficiency = (e.units_produced || 0) / ((e.run_time_hours || 1) * (e.employees_assigned || 1))
+    const units = Number(e.units_produced) || 0
+    const runtime = Number(e.run_time_hours) || 1
+    const employees = Number(e.employees_assigned) || 1
+    const efficiency = units / (runtime * employees)
     return sum + efficiency
   }, 0)
-  return (totalEff / filteredEntries.value.length) * 100
+  return Number((totalEff / filteredEntries.value.length) * 100) || 0
 })
 
 // Column definitions
@@ -286,7 +290,7 @@ const columnDefs = computed(() => [
   },
   {
     headerName: t('grids.columns.workOrder'),
-    field: 'work_order_number',
+    field: 'work_order_id',
     editable: true,
     width: 150
   },
@@ -322,7 +326,8 @@ const columnDefs = computed(() => [
       precision: 2
     },
     valueFormatter: (params) => {
-      return params.value ? params.value.toFixed(2) : '0.00'
+      const val = Number(params.value)
+      return !isNaN(val) ? val.toFixed(2) : '0.00'
     },
     width: 140
   },
@@ -422,7 +427,7 @@ const addNewEntry = () => {
     production_date: format(new Date(), 'yyyy-MM-dd'),
     product_id: products.value[0]?.product_id || null,
     shift_id: shifts.value[0]?.shift_id || null,
-    work_order_number: '',
+    work_order_id: '',
     units_produced: 0,
     run_time_hours: 0,
     employees_assigned: 1,
@@ -507,7 +512,7 @@ const onConfirmSave = async () => {
         product_id: row.product_id,
         shift_id: row.shift_id,
         production_date: row.production_date,
-        work_order_number: row.work_order_number || '',
+        work_order_id: row.work_order_id || '',
         units_produced: row.units_produced || 0,
         run_time_hours: row.run_time_hours || 0,
         employees_assigned: row.employees_assigned || 1,

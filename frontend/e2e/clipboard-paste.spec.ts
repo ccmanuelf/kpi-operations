@@ -44,8 +44,18 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('should display production data grid', async ({ page }) => {
+      // Check grid container is visible
       const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
       await expect(grid).toBeVisible({ timeout: 10000 });
+
+      // Verify actual row data is visible (not just headers)
+      // Wait for at least one data row to be visible
+      const dataRow = page.locator('.ag-row[role="row"]').first();
+      await expect(dataRow).toBeVisible({ timeout: 10000 });
+
+      // Verify row contains actual cell data
+      const dataCell = page.locator('.ag-cell[col-id]').first();
+      await expect(dataCell).toBeVisible({ timeout: 5000 });
     });
 
     test('should show paste from Excel button', async ({ page }) => {

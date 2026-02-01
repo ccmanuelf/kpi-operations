@@ -129,9 +129,9 @@ class WIPHoldResponse(BaseModel):
     hold_reason_description: Optional[str] = None
     quality_issue_type: Optional[str] = None
     expected_resolution_date: Optional[datetime] = None
-    hold_initiated_by: Optional[int] = None
-    hold_approved_by: Optional[int] = None
-    resumed_by: Optional[int] = None
+    hold_initiated_by: Optional[str] = None
+    hold_approved_by: Optional[str] = None
+    resumed_by: Optional[str] = None
     notes: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
