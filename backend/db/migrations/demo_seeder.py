@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, date
 import random
 import logging
 import hashlib
+import uuid
 
 from sqlalchemy.orm import Session
 
@@ -73,6 +74,13 @@ class DemoDataSeeder:
             ("quality_entries", self._seed_quality_entries),
             ("hold_entries", self._seed_hold_entries),
             ("defect_type_catalog", self._seed_defect_type_catalog),
+            # Phase 6.3: Floating Pool & Coverage
+            ("floating_pool", self._seed_floating_pool),
+            ("coverage_entries", self._seed_coverage_entries),
+            # Phase 10: Workflow Transitions
+            ("workflow_transitions", self._seed_workflow_transitions),
+            # Phase 3: Domain Events
+            ("event_store", self._seed_event_store),
         ]
 
         logger.info(f"Starting demo data seeding ({len(seeders)} entities)")
@@ -461,6 +469,327 @@ class DemoDataSeeder:
         ]
         self.session.add_all(defect_types)
         return len(defect_types)
+
+    def _seed_floating_pool(self) -> int:
+        """Seed demo floating pool entries (Phase 6.3).
+
+        Creates floating pool employees who can be assigned across clients.
+        """
+        from backend.schemas.floating_pool import FloatingPool
+
+        entries = []
+        today = datetime.now()
+
+        # Mark employees 8-10 as floating pool (cross-client resources)
+        for emp_num in range(8, 11):
+            entry = FloatingPool(
+                employee_id=emp_num,
+                client_id=None,  # NULL = available for any client
+                available_from=today - timedelta(days=30),
+                available_to=None,  # Open-ended availability
+                current_assignment=None if emp_num == 10 else "DEMO-001",
+                notes=f"Floating pool employee {emp_num} - cross-trained for multiple operations"
+            )
+            entries.append(entry)
+
+        # Add one entry with specific date range assignment
+        entries.append(FloatingPool(
+            employee_id=7,
+            client_id="TEST-001",
+            available_from=today - timedelta(days=14),
+            available_to=today + timedelta(days=14),
+            current_assignment="TEST-001",
+            notes="Temporary assignment to TEST-001 for capacity support"
+        ))
+
+        self.session.add_all(entries)
+        return len(entries)
+
+    def _seed_coverage_entries(self) -> int:
+        """Seed demo shift coverage entries.
+
+        Creates records of floating pool employees covering for absent employees.
+        """
+        from backend.schemas.coverage_entry import CoverageEntry
+
+        entries = []
+        today = datetime.now()
+
+        # Create coverage records for past 7 days
+        coverage_reasons = [
+            "Absence - Sick Leave",
+            "Absence - Personal Day",
+            "Additional Support - High Volume",
+            "Training Coverage",
+            "Vacation Coverage"
+        ]
+
+        for day_offset in range(7):
+            entry_date = today - timedelta(days=day_offset)
+
+            # 50% chance of coverage each day
+            if random.random() > 0.5:
+                entry = CoverageEntry(
+                    coverage_entry_id=f"COV-{entry_date.strftime('%Y%m%d')}-{random.randint(1, 99):02d}",
+                    client_id="DEMO-001",
+                    floating_employee_id=random.randint(8, 10),  # Floating pool employees
+                    covered_employee_id=random.randint(1, 5),    # Regular employees
+                    shift_date=entry_date,
+                    shift_id=random.randint(1, 3),
+                    coverage_start_time=entry_date.replace(hour=6, minute=0),
+                    coverage_end_time=entry_date.replace(hour=14, minute=0),
+                    coverage_hours=8,
+                    coverage_reason=random.choice(coverage_reasons),
+                    notes=f"Coverage record for {entry_date.strftime('%Y-%m-%d')}",
+                    assigned_by=1  # Admin user
+                )
+                entries.append(entry)
+
+        self.session.add_all(entries)
+        return len(entries)
+
+    def _seed_workflow_transitions(self) -> int:
+        """Seed demo workflow transition history (Phase 10).
+
+        Creates realistic status progression for demo work orders.
+        """
+        from backend.schemas.workflow import WorkflowTransitionLog
+
+        entries = []
+        today = datetime.now()
+
+        # Work order status progressions (realistic business flow)
+        status_progressions = {
+            "WO-0001": [
+                ("RECEIVED", "RELEASED", -5, "Released for production"),
+                ("RELEASED", "IN_PROGRESS", -4, "Production started"),
+            ],
+            "WO-0002": [
+                ("RECEIVED", "RELEASED", -7, "Quality review passed"),
+                ("RELEASED", "IN_PROGRESS", -6, "Started manufacturing"),
+                ("IN_PROGRESS", "QC_REVIEW", -2, "Batch completed, sent for QC"),
+            ],
+            "WO-0003": [
+                ("RECEIVED", "RELEASED", -10, "Materials received"),
+                ("RELEASED", "IN_PROGRESS", -9, None),
+                ("IN_PROGRESS", "ON_HOLD", -3, "Quality issue detected - pending resolution"),
+            ],
+            "WO-0004": [
+                ("RECEIVED", "RELEASED", -14, "Rush order approved"),
+                ("RELEASED", "IN_PROGRESS", -13, None),
+                ("IN_PROGRESS", "QC_REVIEW", -8, None),
+                ("QC_REVIEW", "COMPLETED", -7, "All inspections passed"),
+            ],
+            "WO-0005": [
+                ("RECEIVED", "CANCELLED", -3, "Customer cancelled order"),
+            ],
+        }
+
+        transition_id = 1
+        for work_order_id, transitions in status_progressions.items():
+            from_status = None
+            elapsed_from_received = 0
+
+            for idx, (from_st, to_st, days_ago, notes) in enumerate(transitions):
+                transition_time = today + timedelta(days=days_ago)
+                elapsed_from_received = abs(days_ago) * 24  # Hours
+
+                entry = WorkflowTransitionLog(
+                    work_order_id=work_order_id,
+                    client_id="DEMO-001",
+                    from_status=from_st if idx > 0 else None,
+                    to_status=to_st,
+                    transitioned_by=random.randint(1, 3),  # User IDs 1-3
+                    transitioned_at=transition_time,
+                    notes=notes,
+                    trigger_source=random.choice(["manual", "automatic", "bulk"]),
+                    elapsed_from_received_hours=elapsed_from_received,
+                    elapsed_from_previous_hours=24 if idx > 0 else 0,
+                )
+                entries.append(entry)
+                transition_id += 1
+
+        self.session.add_all(entries)
+        return len(entries)
+
+    def _seed_event_store(self) -> int:
+        """Seed demo domain events (Phase 3).
+
+        Creates sample events for testing event sourcing and audit trails.
+        """
+        from backend.schemas.event_store import EventStore
+
+        entries = []
+        today = datetime.now()
+
+        # Define sample events that would be generated by domain operations
+        sample_events = [
+            # Work Order Events
+            {
+                "event_type": "WorkOrderCreated",
+                "aggregate_type": "WorkOrder",
+                "aggregate_id": "WO-0001",
+                "days_ago": 10,
+                "payload": {
+                    "work_order_id": "WO-0001",
+                    "product_id": "PROD-001",
+                    "quantity_ordered": 500,
+                    "priority": 3
+                }
+            },
+            {
+                "event_type": "WorkOrderStatusChanged",
+                "aggregate_type": "WorkOrder",
+                "aggregate_id": "WO-0001",
+                "days_ago": 8,
+                "payload": {
+                    "work_order_id": "WO-0001",
+                    "from_status": "RECEIVED",
+                    "to_status": "RELEASED",
+                    "reason": "Materials ready"
+                }
+            },
+            {
+                "event_type": "WorkOrderStatusChanged",
+                "aggregate_type": "WorkOrder",
+                "aggregate_id": "WO-0001",
+                "days_ago": 7,
+                "payload": {
+                    "work_order_id": "WO-0001",
+                    "from_status": "RELEASED",
+                    "to_status": "IN_PROGRESS",
+                    "reason": "Production started"
+                }
+            },
+            # Production Events
+            {
+                "event_type": "ProductionEntryCreated",
+                "aggregate_type": "ProductionEntry",
+                "aggregate_id": "PE-0001",
+                "days_ago": 6,
+                "payload": {
+                    "work_order_id": "WO-0001",
+                    "quantity_produced": 150,
+                    "shift_id": "SHIFT-1"
+                }
+            },
+            {
+                "event_type": "ProductionEntryCreated",
+                "aggregate_type": "ProductionEntry",
+                "aggregate_id": "PE-0002",
+                "days_ago": 5,
+                "payload": {
+                    "work_order_id": "WO-0001",
+                    "quantity_produced": 175,
+                    "shift_id": "SHIFT-2"
+                }
+            },
+            # Quality Events
+            {
+                "event_type": "QualityInspectionRecorded",
+                "aggregate_type": "QualityEntry",
+                "aggregate_id": "QE-0001",
+                "days_ago": 4,
+                "payload": {
+                    "work_order_id": "WO-0001",
+                    "quantity_inspected": 100,
+                    "quantity_passed": 98,
+                    "quantity_failed": 2,
+                    "ppm": 20000
+                }
+            },
+            # Hold Events
+            {
+                "event_type": "HoldCreated",
+                "aggregate_type": "HoldEntry",
+                "aggregate_id": "HE-0001",
+                "days_ago": 3,
+                "payload": {
+                    "work_order_id": "WO-0003",
+                    "quantity_on_hold": 50,
+                    "hold_reason": "Quality inspection required"
+                }
+            },
+            {
+                "event_type": "HoldResumed",
+                "aggregate_type": "HoldEntry",
+                "aggregate_id": "HE-0002",
+                "days_ago": 1,
+                "payload": {
+                    "work_order_id": "WO-0002",
+                    "quantity_released": 25,
+                    "resolution": "Rework completed"
+                }
+            },
+            # KPI Events
+            {
+                "event_type": "KPIThresholdViolated",
+                "aggregate_type": "KPIAlert",
+                "aggregate_id": "KPI-EFF-001",
+                "days_ago": 2,
+                "payload": {
+                    "kpi_type": "efficiency",
+                    "threshold": 85.0,
+                    "actual_value": 78.5,
+                    "shift_id": "SHIFT-1",
+                    "severity": "warning"
+                }
+            },
+            {
+                "event_type": "KPITargetAchieved",
+                "aggregate_type": "KPIAlert",
+                "aggregate_id": "KPI-QUAL-001",
+                "days_ago": 1,
+                "payload": {
+                    "kpi_type": "first_pass_yield",
+                    "target": 95.0,
+                    "actual_value": 97.2,
+                    "celebration": True
+                }
+            },
+            # Employee Assignment Events
+            {
+                "event_type": "EmployeeAssignedToFloatingPool",
+                "aggregate_type": "Employee",
+                "aggregate_id": "EMP-008",
+                "days_ago": 14,
+                "payload": {
+                    "employee_id": "EMP-008",
+                    "skills": ["assembly", "inspection", "packaging"],
+                    "availability": "full_time"
+                }
+            },
+            {
+                "event_type": "EmployeeAssignedToClient",
+                "aggregate_type": "Employee",
+                "aggregate_id": "EMP-008",
+                "days_ago": 5,
+                "payload": {
+                    "employee_id": "EMP-008",
+                    "client_id": "DEMO-001",
+                    "assignment_type": "temporary",
+                    "duration_days": 14
+                }
+            },
+        ]
+
+        for event_data in sample_events:
+            event_time = today - timedelta(days=event_data["days_ago"])
+
+            entry = EventStore(
+                event_id=str(uuid.uuid4()),
+                event_type=event_data["event_type"],
+                aggregate_type=event_data["aggregate_type"],
+                aggregate_id=event_data["aggregate_id"],
+                client_id="DEMO-001",
+                triggered_by=random.randint(1, 3),
+                occurred_at=event_time,
+                payload=event_data["payload"]
+            )
+            entries.append(entry)
+
+        self.session.add_all(entries)
+        return len(entries)
 
     def get_seeded_counts(self) -> dict:
         """Get counts of seeded records.

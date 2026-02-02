@@ -12,11 +12,12 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import logging
 
-from backend.database import get_db, Base
+from backend.database import get_db, Base, engine as current_engine
 from backend.db.factory import DatabaseProviderFactory
 from backend.db.state import ProviderStateManager, MigrationState
 from backend.db.migrations.schema_initializer import SchemaInitializer
 from backend.db.migrations.demo_seeder import DemoDataSeeder
+from backend.db.migrations.data_migrator import DataMigrator, DataMigrationError
 from sqlalchemy.orm import Session, sessionmaker
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,14 @@ class MigrationRequest(BaseModel):
     target_provider: str = Field(..., description="Target provider: 'mariadb' or 'mysql'")
     target_url: str = Field(..., description="Database connection URL")
     confirmation_text: str = Field(..., description="Must be 'MIGRATE' to confirm")
+    preserve_data: bool = Field(
+        default=True,
+        description="If True, copy existing data from source. If False, only seed demo data."
+    )
+    include_demo_data: bool = Field(
+        default=True,
+        description="If True, seed demo data after migration (recommended for new installs)."
+    )
 
 
 class MigrationStatusResponse(BaseModel):
@@ -67,6 +76,8 @@ class MigrationStatusResponse(BaseModel):
     tables_migrated: int = 0
     total_tables: int = 0
     current_table: Optional[str] = None
+    rows_migrated: int = 0
+    data_preserved: bool = False
     error_message: Optional[str] = None
 
 
@@ -226,12 +237,20 @@ async def start_migration(
         state_manager,
         request.target_url,
         request.target_provider,
+        request.preserve_data,
+        request.include_demo_data,
     )
 
-    logger.info(f"Migration started: SQLite → {request.target_provider}")
+    migration_type = []
+    if request.preserve_data:
+        migration_type.append("data preservation")
+    if request.include_demo_data:
+        migration_type.append("demo data")
+
+    logger.info(f"Migration started: SQLite → {request.target_provider} ({', '.join(migration_type)})")
     return MigrationStartResponse(
         status="started",
-        message=f"Migration to {request.target_provider} started. Monitor progress at /migration/status"
+        message=f"Migration to {request.target_provider} started with {', '.join(migration_type)}. Monitor progress at /migration/status"
     )
 
 
@@ -271,16 +290,21 @@ async def get_full_status():
 async def run_migration(
     state_manager: ProviderStateManager,
     target_url: str,
-    target_provider: str
+    target_provider: str,
+    preserve_data: bool = True,
+    include_demo_data: bool = True
 ):
-    """Background migration: create schema + seed demo data.
+    """Background migration: create schema, optionally copy data, optionally seed demo data.
 
     Args:
         state_manager: State manager for tracking progress.
         target_url: Database URL for target.
         target_provider: Target provider name.
+        preserve_data: If True, copy existing data from source database.
+        include_demo_data: If True, seed demo data after migration.
     """
     factory = DatabaseProviderFactory.get_instance()
+    total_rows_migrated = 0
 
     try:
         # Initialize migration state
@@ -319,33 +343,83 @@ async def run_migration(
         created_tables = initializer.create_all_tables(Base.metadata, schema_progress)
         logger.info(f"Created {len(created_tables)} tables")
 
-        # Step 2: Seed demo data
-        state_manager.update_migration_state(MigrationState(
-            status='in_progress',
-            source_provider='sqlite',
-            target_provider=target_provider,
-            current_step='Seeding demo data...',
-            tables_migrated=len(created_tables),
-            total_tables=len(created_tables),
-        ))
+        # Step 2: Copy existing data (if preserve_data is True)
+        if preserve_data:
+            state_manager.update_migration_state(MigrationState(
+                status='in_progress',
+                source_provider='sqlite',
+                target_provider=target_provider,
+                current_step='Copying existing data from source database...',
+                tables_migrated=len(created_tables),
+                total_tables=len(created_tables),
+            ))
 
-        Session = sessionmaker(bind=target_engine)
-        with Session() as session:
-            seeder = DemoDataSeeder(session)
+            # Get source engine (current SQLite database)
+            source_engine = current_engine
 
-            def seed_progress(entity_name: str):
+            # Create data migrator
+            data_migrator = DataMigrator(
+                source_engine=source_engine,
+                target_engine=target_engine,
+                source_provider='sqlite',
+                target_provider=target_provider
+            )
+
+            def data_progress(table_name: str, current: int, total: int, rows: int):
+                nonlocal total_rows_migrated
+                total_rows_migrated = rows
                 state_manager.update_migration_state(MigrationState(
                     status='in_progress',
                     source_provider='sqlite',
                     target_provider=target_provider,
-                    current_step=f'Seeding {entity_name}...',
-                    tables_migrated=len(created_tables),
-                    total_tables=len(created_tables),
+                    current_step=f'Copying data: {table_name}...',
+                    current_table=table_name,
+                    tables_migrated=current,
+                    total_tables=total,
                 ))
 
-            seeder.seed_all(seed_progress)
+            migration_result = data_migrator.migrate_all_data(
+                progress_callback=data_progress,
+                skip_empty_tables=True
+            )
 
-        # Step 3: Update provider configuration
+            total_rows_migrated = migration_result.get("total_rows", 0)
+            logger.info(f"Copied {total_rows_migrated} rows from source database")
+
+            # Verify data migration
+            verification = data_migrator.verify_migration()
+            if not verification["verified"]:
+                logger.warning(f"Data verification found mismatches: {verification['mismatches']}")
+
+        # Step 3: Seed demo data (if include_demo_data is True)
+        if include_demo_data:
+            state_manager.update_migration_state(MigrationState(
+                status='in_progress',
+                source_provider='sqlite',
+                target_provider=target_provider,
+                current_step='Seeding demo data...',
+                tables_migrated=len(created_tables),
+                total_tables=len(created_tables),
+            ))
+
+            SessionLocal = sessionmaker(bind=target_engine)
+            with SessionLocal() as session:
+                seeder = DemoDataSeeder(session)
+
+                def seed_progress(entity_name: str):
+                    state_manager.update_migration_state(MigrationState(
+                        status='in_progress',
+                        source_provider='sqlite',
+                        target_provider=target_provider,
+                        current_step=f'Seeding {entity_name}...',
+                        tables_migrated=len(created_tables),
+                        total_tables=len(created_tables),
+                    ))
+
+                seeder.seed_all(seed_progress)
+                logger.info(f"Demo data seeded: {seeder.get_seeded_counts()}")
+
+        # Step 4: Update provider configuration
         state_manager.set_current_provider(target_provider)
         state_manager.set_database_url(target_url)
 
@@ -356,16 +430,40 @@ async def run_migration(
             success=True
         )
 
+        completion_msg = "Migration complete!"
+        if preserve_data:
+            completion_msg += f" ({total_rows_migrated} rows preserved)"
+        if include_demo_data:
+            completion_msg += " (demo data seeded)"
+
         state_manager.update_migration_state(MigrationState(
             status='completed',
             source_provider='sqlite',
             target_provider=target_provider,
-            current_step='Migration complete!',
+            current_step=completion_msg,
             tables_migrated=len(created_tables),
             total_tables=len(created_tables),
         ))
 
         logger.info(f"Migration completed successfully: sqlite → {target_provider}")
+
+    except DataMigrationError as e:
+        logger.error(f"Data migration failed: {e}")
+
+        state_manager.add_migration_history(
+            source='sqlite',
+            target=target_provider,
+            success=False,
+            error=str(e)
+        )
+
+        state_manager.update_migration_state(MigrationState(
+            status='failed',
+            source_provider='sqlite',
+            target_provider=target_provider,
+            current_step='Data migration failed',
+            error_message=str(e),
+        ))
 
     except Exception as e:
         logger.error(f"Migration failed: {e}")

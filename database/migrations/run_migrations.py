@@ -16,11 +16,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 DB_PATH = os.path.join(os.path.dirname(__file__), '../kpi_platform.db')
 BACKUP_DIR = os.path.join(os.path.dirname(__file__), '../backups')
 
-# Migration files
+# Migration files (in execution order)
 MIGRATIONS = [
     '002_phase2_schema_fix.sql',
     '003_phase3_schema_fix.sql',
-    '004_phase4_schema_fix.sql'
+    '004_phase4_schema_fix.sql',
+    '005_phase10_workflow_foundation.sql',  # Phase 10: Workflow audit trail
+    '006_event_store.sql',                   # Phase 3: Domain events persistence
 ]
 
 def create_backup():
@@ -158,6 +160,17 @@ def main():
         'DEFECT_DETAIL': [
             'is_rework_required', 'is_repair_in_current_op', 'is_scrapped',
             'root_cause', 'unit_serial_or_id'
+        ],
+        # Phase 10: Workflow Foundation
+        'WORKFLOW_TRANSITION_LOG': [
+            'transition_id', 'work_order_id', 'client_id', 'from_status',
+            'to_status', 'transitioned_by', 'transitioned_at', 'notes',
+            'trigger_source', 'elapsed_from_received_hours', 'elapsed_from_previous_hours'
+        ],
+        # Phase 3: Domain Events
+        'EVENT_STORE': [
+            'id', 'event_id', 'event_type', 'aggregate_type', 'aggregate_id',
+            'client_id', 'triggered_by', 'occurred_at', 'payload', 'created_at'
         ]
     }
 
@@ -171,12 +184,16 @@ def main():
     cursor = conn.cursor()
 
     tables = ['DOWNTIME_ENTRY', 'HOLD_ENTRY', 'ATTENDANCE_ENTRY',
-              'SHIFT_COVERAGE', 'QUALITY_ENTRY', 'DEFECT_DETAIL']
+              'SHIFT_COVERAGE', 'QUALITY_ENTRY', 'DEFECT_DETAIL',
+              'WORKFLOW_TRANSITION_LOG', 'EVENT_STORE']
 
     for table in tables:
-        cursor.execute(f"SELECT COUNT(*) FROM {table}")
-        count = cursor.fetchone()[0]
-        print(f"   {table}: {count} records")
+        try:
+            cursor.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cursor.fetchone()[0]
+            print(f"   {table}: {count} records")
+        except sqlite3.OperationalError:
+            print(f"   {table}: (table not yet created)")
 
     conn.close()
 
