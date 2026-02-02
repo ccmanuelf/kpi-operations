@@ -150,7 +150,7 @@ class TestAssignFloatingPoolToClient:
 
         admin_user.role = "admin"
 
-        with patch('backend.crud.floating_pool.verify_client_access'):
+        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
             with pytest.raises(HTTPException) as exc_info:
                 assign_floating_pool_to_client(
                     db_session, 99999, "CLIENT-1", None, None, admin_user
@@ -205,7 +205,7 @@ class TestDoubleAssignmentPrevention:
         mock_existing.available_from = None
         mock_existing.available_to = None
 
-        with patch('backend.crud.floating_pool.verify_client_access'):
+        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
             with patch.object(db_session, 'query') as mock_query:
                 # First query returns employee, second returns existing assignment
                 mock_query.return_value.filter.return_value.first.side_effect = [
@@ -241,7 +241,7 @@ class TestDoubleAssignmentPrevention:
         mock_existing.available_from = datetime(2026, 1, 15)
         mock_existing.available_to = datetime(2026, 1, 25)
 
-        with patch('backend.crud.floating_pool.verify_client_access'):
+        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
             with patch.object(db_session, 'query') as mock_query:
                 mock_query.return_value.filter.return_value.first.side_effect = [
                     mock_employee,
@@ -347,7 +347,7 @@ class TestGetFloatingPoolAssignmentsByClient:
         """Test get assignments for client"""
         from backend.crud.floating_pool import get_floating_pool_assignments_by_client
 
-        with patch('backend.crud.floating_pool.verify_client_access'):
+        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
             result = get_floating_pool_assignments_by_client(
                 db_session,
                 "TEST-CLIENT",

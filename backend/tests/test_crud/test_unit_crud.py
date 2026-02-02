@@ -461,7 +461,7 @@ class TestCRUDPagination:
 class TestCRUDFiltering:
     """Test CRUD filtering functionality"""
     
-    @patch('backend.crud.production.build_client_filter_clause')
+    @patch('backend.crud.production.queries.build_client_filter_clause')
     def test_filter_by_date_range(self, mock_client_filter, mock_db, mock_admin_user):
         """Test filtering by date range"""
         from backend.crud.production import get_production_entries

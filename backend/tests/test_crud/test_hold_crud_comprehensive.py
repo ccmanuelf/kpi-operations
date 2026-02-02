@@ -29,7 +29,7 @@ class TestCreateWIPHold:
                 quantity_on_hold=100
             )
 
-            with patch('backend.crud.hold.verify_client_access'):
+            with patch('backend.crud.hold.core.verify_client_access'):
                 result = create_wip_hold(db_session, hold_data, admin_user)
                 assert result is not None
         except Exception:
@@ -53,7 +53,7 @@ class TestCreateWIPHold:
                 quantity_on_hold=50
             )
 
-            with patch('backend.crud.hold.verify_client_access'):
+            with patch('backend.crud.hold.core.verify_client_access'):
                 result = create_wip_hold(db_session, hold_data, admin_user)
                 assert result is not None
         except Exception:
@@ -69,7 +69,7 @@ class TestGetWIPHold:
         from backend.crud.hold import get_wip_hold
         from fastapi import HTTPException
 
-        with patch('backend.crud.hold.verify_client_access'):
+        with patch('backend.crud.hold.core.verify_client_access'):
             with pytest.raises(HTTPException) as exc_info:
                 get_wip_hold(db_session, "NONEXISTENT-ID", admin_user)
             assert exc_info.value.status_code == 404
@@ -82,7 +82,7 @@ class TestGetWIPHolds:
         """Test get holds with no filters"""
         from backend.crud.hold import get_wip_holds
 
-        with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+        with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
             result = get_wip_holds(db_session, admin_user)
             assert isinstance(result, list)
 
@@ -90,7 +90,7 @@ class TestGetWIPHolds:
         """Test get holds with date range filter"""
         from backend.crud.hold import get_wip_holds
 
-        with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+        with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
             result = get_wip_holds(
                 db_session,
                 admin_user,
@@ -103,7 +103,7 @@ class TestGetWIPHolds:
         """Test get holds filtered by client"""
         from backend.crud.hold import get_wip_holds
 
-        with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+        with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
             result = get_wip_holds(
                 db_session,
                 admin_user,
@@ -115,7 +115,7 @@ class TestGetWIPHolds:
         """Test get holds filtered by work order"""
         from backend.crud.hold import get_wip_holds
 
-        with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+        with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
             result = get_wip_holds(
                 db_session,
                 admin_user,
@@ -127,7 +127,7 @@ class TestGetWIPHolds:
         """Test get holds with released filter"""
         from backend.crud.hold import get_wip_holds
 
-        with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+        with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
             # Test released=True
             result = get_wip_holds(db_session, admin_user, released=True)
             assert isinstance(result, list)
@@ -140,7 +140,7 @@ class TestGetWIPHolds:
         """Test get holds filtered by reason category"""
         from backend.crud.hold import get_wip_holds
 
-        with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+        with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
             result = get_wip_holds(
                 db_session,
                 admin_user,
@@ -174,7 +174,7 @@ class TestBulkUpdateAging:
         try:
             from backend.crud.hold import bulk_update_aging
 
-            with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+            with patch('backend.crud.hold.aging.build_client_filter_clause', return_value=None):
                 result = bulk_update_aging(db_session, admin_user)
                 assert isinstance(result, int)
                 assert result >= 0
@@ -211,7 +211,7 @@ class TestGetTotalHoldDuration:
         try:
             from backend.crud.hold import get_total_hold_duration
 
-            with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+            with patch('backend.crud.hold.duration.build_client_filter_clause', return_value=None):
                 result = get_total_hold_duration(
                     db_session,
                     "NONEXISTENT-WO",
@@ -231,7 +231,7 @@ class TestGetHoldsByWorkOrder:
         try:
             from backend.crud.hold import get_holds_by_work_order
 
-            with patch('backend.crud.hold.build_client_filter_clause', return_value=None):
+            with patch('backend.crud.hold.queries.build_client_filter_clause', return_value=None):
                 result = get_holds_by_work_order(db_session, "WO-TEST", admin_user)
                 assert isinstance(result, list)
         except AttributeError as e:

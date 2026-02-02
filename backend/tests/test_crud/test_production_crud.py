@@ -44,7 +44,7 @@ class TestProductionCRUD:
         mock_db.refresh = MagicMock(side_effect=lambda x: setattr(x, 'id', 1))
 
         # Act - Mock the function behavior
-        with patch('crud.production.ProductionEntry') as MockEntry:
+        with patch('backend.crud.production.core.ProductionEntry') as MockEntry:
             mock_entry = MagicMock()
             mock_entry.id = 1
             MockEntry.return_value = mock_entry

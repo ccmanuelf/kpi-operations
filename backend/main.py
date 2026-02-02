@@ -11,6 +11,10 @@ from pydantic import BaseModel
 
 from backend.config import settings
 from backend.database import get_db, engine, Base
+
+# Domain Events Infrastructure (Phase 3)
+from backend.events import register_all_handlers, get_event_bus
+from backend.schemas.event_store import create_event_persistence_handler
 from backend.middleware.rate_limit import (
     limiter,
     configure_rate_limiting,
@@ -304,6 +308,21 @@ except ImportError:
 @app.on_event("startup")
 async def startup_event():
     """Initialize application services"""
+    # Initialize Domain Events Infrastructure (Phase 3)
+    try:
+        # Register all event handlers
+        register_all_handlers()
+
+        # Set up event persistence to EVENT_STORE
+        from backend.database import SessionLocal
+        event_bus = get_event_bus()
+        event_bus.set_persistence_handler(
+            create_event_persistence_handler(SessionLocal)
+        )
+        print("[EVENTS] Domain events infrastructure initialized")
+    except Exception as e:
+        print(f"Warning: Failed to initialize event infrastructure: {e}")
+
     # Start daily report scheduler
     if report_scheduler is not None:
         try:
