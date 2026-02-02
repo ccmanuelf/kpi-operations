@@ -106,6 +106,7 @@
     "clientConfig": "Config. Cliente",
     "partOpportunities": "Oport. por Parte",
     "workflowConfig": "Config. Flujo",
+    "databaseConfig": "Config. Base de Datos",
     "alerts": "Alertas",
     "simulation": "Simulación",
     "tools": "Herramientas",

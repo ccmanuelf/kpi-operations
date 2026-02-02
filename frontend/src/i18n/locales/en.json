@@ -110,6 +110,7 @@
     "clientConfig": "Client Config",
     "partOpportunities": "Part Opportunities",
     "workflowConfig": "Workflow Config",
+    "databaseConfig": "Database Config",
     "alerts": "Alerts",
     "simulation": "Simulation",
     "tools": "Tools",
