@@ -181,6 +181,13 @@ const router = createRouter({
       name: 'admin-workflow-designer',
       component: () => import('@/views/admin/WorkflowDesignerView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true }
+    },
+    // Database Configuration (Phase 12)
+    {
+      path: '/admin/database',
+      name: 'admin-database',
+      component: () => import('@/views/admin/DatabaseConfigView.vue'),
+      meta: { requiresAuth: true, requiresAdmin: true }
     }
   ]
 })

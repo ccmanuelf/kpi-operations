@@ -100,7 +100,9 @@ from backend.routes import (
     my_shift_router,
     alerts_router,
     workflow_router,
-    simulation_router
+    simulation_router,
+    # Database configuration router (Phase 12)
+    database_config_router,
 )
 
 # Import defect type catalog router
@@ -276,6 +278,11 @@ app.include_router(filters_router)
 # Phase 9: Register defect type catalog routes (client-specific defect types)
 # ============================================================================
 app.include_router(defect_type_catalog_router)
+
+# ============================================================================
+# Phase 12: Register database configuration routes (Admin only)
+# ============================================================================
+app.include_router(database_config_router)
 
 
 # ============================================================================

@@ -49,6 +49,7 @@ from .my_shift import router as my_shift_router
 from .alerts import router as alerts_router
 from .workflow import router as workflow_router
 from .simulation import router as simulation_router
+from .database_config import router as database_config_router
 
 __all__ = [
     # Existing routers
@@ -90,5 +91,6 @@ __all__ = [
     "my_shift_router",
     "alerts_router",
     "workflow_router",
-    "simulation_router"
+    "simulation_router",
+    "database_config_router"
 ]
