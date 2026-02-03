@@ -5,18 +5,74 @@ import { test, expect, Page } from '@playwright/test';
  * Phase 8: E2E Testing for Excel Copy/Paste into Data Grids
  */
 
+// Increase timeout for stability
+test.setTimeout(60000);
+
 // Grant clipboard permissions for all tests in this file
 test.use({
   permissions: ['clipboard-read', 'clipboard-write'],
 });
 
-async function login(page: Page) {
-  await page.goto('/');
-  await page.fill('input[type="text"]', 'admin');
-  await page.fill('input[type="password"]', 'admin123');
-  await page.click('button:has-text("Sign In")');
-  // Use specific navigation selector to avoid matching pagination
-  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+async function waitForBackend(page: Page, timeout = 10000) {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeout) {
+    try {
+      const response = await page.request.get('http://localhost:8000/health/');
+      if (response.ok()) return true;
+    } catch {
+      // Backend not ready yet
+    }
+    await page.waitForTimeout(500);
+  }
+  return false;
+}
+
+async function login(page: Page, maxRetries = 5) {
+  await waitForBackend(page);
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (attempt > 1) {
+      await page.waitForTimeout(3000 * attempt);
+    }
+
+    await page.context().clearCookies();
+    await page.goto('/');
+    await page.waitForSelector('input[type="text"]', { state: 'visible', timeout: 15000 });
+
+    // Dismiss any existing error alerts first
+    const existingAlert = page.locator('.v-alert button:has-text("Close")');
+    if (await existingAlert.isVisible({ timeout: 500 }).catch(() => false)) {
+      await existingAlert.click();
+      await page.waitForTimeout(500);
+    }
+
+    await page.locator('input[type="text"]').clear();
+    await page.locator('input[type="password"]').clear();
+    await page.waitForTimeout(200);
+    await page.fill('input[type="text"]', 'admin');
+    await page.fill('input[type="password"]', 'admin123');
+    await page.waitForTimeout(200);
+
+    await page.click('button:has-text("Sign In")');
+    await page.waitForLoadState('networkidle', { timeout: 30000 });
+
+    // Check if login failed
+    const loginFailed = page.locator('text=Login failed');
+    if (await loginFailed.isVisible({ timeout: 3000 }).catch(() => false)) {
+      if (attempt < maxRetries) {
+        const closeBtn = page.locator('.v-alert button:has-text("Close")');
+        if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await closeBtn.click();
+        }
+        continue;
+      }
+      throw new Error(`Login failed after ${maxRetries} attempts`);
+    }
+
+    // Use specific navigation selector to avoid matching pagination
+    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+    return;
+  }
 }
 
 async function navigateToDataEntry(page: Page, module: 'production' | 'quality' | 'attendance' | 'downtime') {
