@@ -1194,6 +1194,37 @@
     "description": "Plan capacity requirements, analyze staffing scenarios, and run production line simulations",
     "capacityPlanning": "Capacity Planning",
     "productionLine": "Production Line Simulation",
+    "operations": {
+      "title": "Operations",
+      "addOperation": "Add Operation",
+      "importCsv": "Import CSV",
+      "emptyState": "Add operations manually or paste from Excel/CSV. Each product needs sequential steps starting from 1.",
+      "emptyTitle": "No Operations Configured",
+      "emptyDescription": "Add operations manually, import from CSV, or load sample data to get started.",
+      "addManually": "Add Manually"
+    },
+    "schedule": {
+      "title": "Schedule Configuration",
+      "shifts": "Shifts",
+      "workDays": "Work Days",
+      "overtime": "Overtime"
+    },
+    "demand": {
+      "title": "Demand Configuration",
+      "mode": "Demand Mode",
+      "horizon": "Horizon Days"
+    },
+    "breakdowns": {
+      "title": "Equipment Breakdowns",
+      "optional": "Optional",
+      "emptyState": "No breakdown rules configured. Perfect reliability assumed."
+    },
+    "sampleData": {
+      "welcomeTitle": "Welcome!",
+      "welcomeMessage": "Sample T-Shirt manufacturing data has been loaded to help you get started.",
+      "loadSample": "Load Sample Data",
+      "clearAll": "Clear All"
+    },
     "scenarioComparison": "Scenario Comparison",
     "howToGuide": "How-To Guide",
     "addScenario": "Add Scenario",

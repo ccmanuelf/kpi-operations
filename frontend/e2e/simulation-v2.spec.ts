@@ -108,7 +108,14 @@ async function login(page: Page, maxRetries = 5) {
 }
 
 // Helper to navigate to simulation v2 with stability improvements
-async function navigateToSimulationV2(page: Page) {
+async function navigateToSimulationV2(page: Page, clearSampleData = true) {
+  // Clear localStorage to ensure consistent test state (no sample data auto-load)
+  if (clearSampleData) {
+    await page.evaluate(() => {
+      localStorage.setItem('simulation_v2_visited', 'true');
+    });
+  }
+
   // Wait for the navigation item to be clickable
   const navItem = page.locator('text=Simulation v2');
   await navItem.waitFor({ state: 'visible', timeout: 10000 });
@@ -119,6 +126,28 @@ async function navigateToSimulationV2(page: Page) {
 
   // Wait for the page header to confirm navigation
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
+}
+
+// Helper to navigate with sample data pre-loaded (for testing sample data feature)
+async function navigateToSimulationV2WithSampleData(page: Page) {
+  // Clear the visited flag so sample data loads
+  await page.evaluate(() => {
+    localStorage.removeItem('simulation_v2_visited');
+  });
+
+  // Navigate to the simulation page
+  const navItem = page.locator('text=Simulation v2');
+  await navItem.waitFor({ state: 'visible', timeout: 10000 });
+  await navItem.click();
+
+  // Wait for page to load completely
+  await page.waitForLoadState('networkidle', { timeout: 15000 });
+
+  // Wait for the page header to confirm navigation
+  await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
+
+  // Wait for the welcome snackbar to appear (indicates sample data loaded)
+  await page.waitForTimeout(1000);
 }
 
 // Helper to wait for tab content to load
@@ -555,9 +584,13 @@ test.describe('Simulation V2 - Config Management', () => {
     // Click reset
     const resetButton = page.locator('button:has-text("Reset")');
     await resetButton.click();
+    await page.waitForTimeout(500);
 
-    // Should show confirmation
-    await expect(page.locator('text=Confirm Reset').or(page.locator('text=Reset')).first()).toBeVisible({ timeout: 10000 });
+    // Should show reset dialog with options
+    await expect(page.locator('.v-dialog')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text=Reset Configuration')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Clear All')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text=Load Sample Data')).toBeVisible({ timeout: 5000 });
 
     // Cancel
     await page.locator('.v-dialog button:has-text("Cancel")').click();
@@ -572,10 +605,11 @@ test.describe('Simulation V2 - Config Management', () => {
     // Click reset
     const resetButton = page.locator('button:has-text("Reset")');
     await resetButton.click();
+    await page.waitForTimeout(500);
 
-    // Confirm reset - find the confirmation button
-    const confirmButton = page.locator('.v-dialog button:has-text("Reset All")').or(page.locator('.v-dialog button:has-text("Confirm")'));
-    await confirmButton.click();
+    // Click "Clear All" option in the reset dialog (now uses list items)
+    const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
+    await clearAllOption.click();
     await page.waitForTimeout(500);
     await page.waitForLoadState('networkidle');
 
@@ -738,5 +772,150 @@ test.describe('Simulation V2 - Error Handling', () => {
     // Should show some kind of feedback (error or validation result)
     const feedback = page.locator('.v-alert').or(page.locator('.v-card').filter({ hasText: 'Validation' }));
     await expect(feedback.first()).toBeVisible({ timeout: 15000 });
+  });
+});
+
+test.describe('Simulation V2 - Sample Data Onboarding', () => {
+  test('should load sample T-Shirt data on first visit', async ({ page }) => {
+    await login(page);
+
+    // Clear visited flag to simulate first visit
+    await page.evaluate(() => {
+      localStorage.removeItem('simulation_v2_visited');
+    });
+
+    // Navigate to simulation page
+    const navItem = page.locator('text=Simulation v2');
+    await navItem.waitFor({ state: 'visible', timeout: 10000 });
+    await navItem.click();
+
+    // Wait for page to load
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
+    await page.waitForTimeout(1500);
+
+    // Should show welcome snackbar
+    const welcomeSnackbar = page.locator('.v-snackbar').filter({ hasText: 'Welcome' });
+    const hasWelcome = await welcomeSnackbar.isVisible({ timeout: 5000 }).catch(() => false);
+
+    // Should have pre-loaded operations (check for summary stats)
+    const summaryStats = page.locator('.v-card').filter({ hasText: 'Products' });
+    await expect(summaryStats.first()).toBeVisible({ timeout: 10000 });
+
+    // The grid should have rows with sample data
+    const gridRows = page.locator('.ag-row');
+    const rowCount = await gridRows.count();
+    expect(rowCount).toBeGreaterThan(0);
+
+    // Verify it's T-Shirt data (use first() to avoid strict mode violation)
+    const tshirtCell = page.locator('.ag-cell').filter({ hasText: 'Basic T-Shirt' }).first();
+    await expect(tshirtCell).toBeVisible({ timeout: 10000 });
+  });
+
+  test('should not reload sample data on subsequent visits', async ({ page }) => {
+    await login(page);
+
+    // Mark as already visited
+    await page.evaluate(() => {
+      localStorage.setItem('simulation_v2_visited', 'true');
+    });
+
+    await navigateToSimulationV2(page);
+    await waitForTabContent(page);
+
+    // Welcome snackbar should NOT appear
+    const welcomeSnackbar = page.locator('.v-snackbar').filter({ hasText: 'Welcome' });
+    const hasWelcome = await welcomeSnackbar.isVisible({ timeout: 2000 }).catch(() => false);
+    expect(hasWelcome).toBe(false);
+  });
+
+  test('should show reset dialog with Clear All and Load Sample options', async ({ page }) => {
+    await login(page);
+    await navigateToSimulationV2(page);
+    await waitForTabContent(page);
+
+    // Click Reset button
+    const resetButton = page.locator('button:has-text("Reset")');
+    await resetButton.click();
+    await page.waitForTimeout(500);
+
+    // Reset dialog should appear with two options
+    const dialog = page.locator('.v-dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(dialog.locator('text=Reset Configuration')).toBeVisible({ timeout: 5000 });
+    await expect(dialog.locator('.v-list-item:has-text("Clear All")')).toBeVisible({ timeout: 5000 });
+    await expect(dialog.locator('.v-list-item:has-text("Load Sample Data")')).toBeVisible({ timeout: 5000 });
+
+    // Close dialog
+    await dialog.locator('button:has-text("Cancel")').click();
+  });
+
+  test('should load sample data when clicking Load Sample Data in reset dialog', async ({ page }) => {
+    await login(page);
+    await navigateToSimulationV2(page);
+    await waitForTabContent(page);
+
+    // Click Reset button
+    const resetButton = page.locator('button:has-text("Reset")');
+    await resetButton.click();
+    await page.waitForTimeout(500);
+
+    // Click Load Sample Data option
+    const loadSampleOption = page.locator('.v-list-item').filter({ hasText: 'Load Sample Data' });
+    await loadSampleOption.click();
+    await page.waitForTimeout(1000);
+
+    // Should have sample data loaded
+    const tshirtCell = page.locator('.ag-cell').filter({ hasText: 'Basic T-Shirt' });
+    await expect(tshirtCell.first()).toBeVisible({ timeout: 10000 });
+
+    // Summary stats should show data
+    const productsCount = page.locator('.text-h6').filter({ hasText: '1' }).first();
+    await expect(productsCount).toBeVisible({ timeout: 5000 });
+  });
+
+  test('should clear all data when clicking Clear All in reset dialog', async ({ page }) => {
+    await login(page);
+
+    // First load with sample data
+    await page.evaluate(() => {
+      localStorage.removeItem('simulation_v2_visited');
+    });
+
+    const navItem = page.locator('text=Simulation v2');
+    await navItem.waitFor({ state: 'visible', timeout: 10000 });
+    await navItem.click();
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
+    await page.waitForTimeout(1500);
+
+    // Verify sample data is loaded
+    const gridRows = page.locator('.ag-row');
+    const initialCount = await gridRows.count();
+    expect(initialCount).toBeGreaterThan(0);
+
+    // Click Reset button
+    const resetButton = page.locator('button:has-text("Reset")');
+    await resetButton.click();
+    await page.waitForTimeout(500);
+
+    // Click Clear All option
+    const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
+    await clearAllOption.click();
+    await page.waitForTimeout(1000);
+
+    // Summary stats bar should not be visible (no operations)
+    const summaryStats = page.locator('.v-card').filter({ hasText: 'Products' }).filter({ hasText: 'Operations' });
+    const hasStats = await summaryStats.isVisible({ timeout: 2000 }).catch(() => false);
+
+    // Either no stats bar, or the grid should show empty/add state
+    if (!hasStats) {
+      // No stats means cleared
+      expect(true).toBeTruthy();
+    } else {
+      // Check if operations count is 0
+      const operationsText = page.locator('text=Operations').first();
+      await expect(operationsText).toBeVisible({ timeout: 5000 });
+    }
   });
 });

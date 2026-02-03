@@ -8,7 +8,6 @@ from typing import Callable, Optional, List, Any
 from datetime import datetime, timedelta, date
 import random
 import logging
-import hashlib
 import uuid
 
 from sqlalchemy.orm import Session
@@ -17,19 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 def _hash_password(password: str) -> str:
-    """Simple password hash for demo data.
+    """Hash password for demo data using bcrypt.
 
-    Note: In production, use proper bcrypt hashing.
-    This is just for seeding demo data.
+    Uses the same hashing mechanism as the auth system
+    to ensure compatibility with login verification.
 
     Args:
         password: Plain text password.
 
     Returns:
-        str: Hashed password.
+        str: Bcrypt hashed password.
     """
-    # Use sha256 for demo - actual app uses bcrypt
-    return hashlib.sha256(password.encode()).hexdigest()
+    # Use bcrypt from auth module for compatibility with login
+    from backend.auth.jwt import get_password_hash
+    return get_password_hash(password)
 
 
 class DemoDataSeeder:
@@ -162,9 +162,9 @@ class DemoDataSeeder:
                 username="supervisor",
                 email="supervisor@kpi-platform.com",
                 password_hash=_hash_password("super123"),
-                role=UserRole.SUPERVISOR,
+                role=UserRole.LEADER,  # Leader role for multi-client supervisors
                 is_active=1,
-                client_id="DEMO-001",
+                client_id_assigned="DEMO-001",
             ),
             User(
                 user_id="operator-001",
@@ -173,16 +173,35 @@ class DemoDataSeeder:
                 password_hash=_hash_password("oper123"),
                 role=UserRole.OPERATOR,
                 is_active=1,
-                client_id="DEMO-001",
+                client_id_assigned="DEMO-001",
+            ),
+            # E2E test users with standard test passwords
+            User(
+                user_id="operator1-001",
+                username="operator1",
+                email="operator1@kpi-platform.com",
+                password_hash=_hash_password("password123"),
+                role=UserRole.OPERATOR,
+                is_active=1,
+                client_id_assigned="DEMO-001",
+            ),
+            User(
+                user_id="leader1-001",
+                username="leader1",
+                email="leader1@kpi-platform.com",
+                password_hash=_hash_password("password123"),
+                role=UserRole.LEADER,
+                is_active=1,
+                client_id_assigned="DEMO-001",
             ),
             User(
                 user_id="viewer-001",
                 username="viewer",
                 email="viewer@kpi-platform.com",
                 password_hash=_hash_password("view123"),
-                role=UserRole.VIEWER,
+                role=UserRole.OPERATOR,  # Read-only operator role
                 is_active=1,
-                client_id="DEMO-001",
+                client_id_assigned="DEMO-001",
             ),
         ]
         self.session.add_all(users)
@@ -199,7 +218,7 @@ class DemoDataSeeder:
                 first_name=f"Employee{i}",
                 last_name=f"Demo{i}",
                 badge_number=f"BADGE-{i:04d}",
-                client_id="DEMO-001",
+                client_id_assigned="DEMO-001",
                 is_active=1,
                 hire_date=date(2023, 1, 1) + timedelta(days=i * 30),
             )
@@ -214,13 +233,10 @@ class DemoDataSeeder:
 
         products = [
             Product(
-                product_id=f"PROD-{i:03d}",
-                product_name=f"Product {i}",
                 product_code=f"P{i:03d}",
-                client_id="DEMO-001",
-                standard_rate=random.uniform(50, 150),
+                product_name=f"Product {i}",
                 unit_of_measure="pieces",
-                is_active=1,
+                is_active=True,
             )
             for i in range(1, 6)
         ]
@@ -233,28 +249,22 @@ class DemoDataSeeder:
 
         shifts = [
             Shift(
-                shift_id="SHIFT-1",
                 shift_name="Day Shift",
                 start_time="06:00:00",
                 end_time="14:00:00",
-                client_id="DEMO-001",
-                is_active=1,
+                is_active=True,
             ),
             Shift(
-                shift_id="SHIFT-2",
                 shift_name="Swing Shift",
                 start_time="14:00:00",
                 end_time="22:00:00",
-                client_id="DEMO-001",
-                is_active=1,
+                is_active=True,
             ),
             Shift(
-                shift_id="SHIFT-3",
                 shift_name="Night Shift",
                 start_time="22:00:00",
                 end_time="06:00:00",
-                client_id="DEMO-001",
-                is_active=1,
+                is_active=True,
             ),
         ]
         self.session.add_all(shifts)
@@ -292,7 +302,7 @@ class DemoDataSeeder:
                     operation_name=f"Operation {job_num}",
                     sequence_number=job_num,
                     estimated_hours=random.uniform(2, 8),
-                    client_id="DEMO-001",
+                    client_id_fk="DEMO-001",
                 )
                 jobs.append(job)
 

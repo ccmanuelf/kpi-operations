@@ -2,15 +2,52 @@
 Manufacturing KPI Platform - FastAPI Backend
 Main application with modular routes
 """
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 from pydantic import BaseModel
 
 from backend.config import settings
 from backend.database import get_db, engine, Base
+
+
+# =============================================================================
+# V1 Simulation API Deprecation Middleware
+# =============================================================================
+
+class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
+    """
+    Middleware to add deprecation headers to v1 simulation API responses.
+
+    Adds HTTP headers per IETF deprecation header draft:
+    - Deprecation: indicates the API is deprecated
+    - Sunset: when the API will be discontinued
+    - Link: pointer to the successor API
+    """
+
+    V1_SUNSET_DATE = "2025-08-01T00:00:00Z"
+    V2_API_URL = "/api/v2/simulation"
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+
+        # Only add deprecation headers for v1 simulation routes
+        if request.url.path.startswith("/api/simulation"):
+            response.headers["Deprecation"] = "true"
+            response.headers["Sunset"] = self.V1_SUNSET_DATE
+            response.headers["Link"] = (
+                f'<{self.V2_API_URL}>; rel="successor-version", '
+                f'</api/docs#/simulation-v2>; rel="deprecation"'
+            )
+            response.headers["X-API-Deprecation-Info"] = (
+                "This API version is deprecated. Please migrate to /api/v2/simulation "
+                "for enhanced SimPy-based simulation with multi-product support."
+            )
+
+        return response
 
 # Domain Events Infrastructure (Phase 3)
 from backend.events import register_all_handlers, get_event_bus
@@ -39,6 +76,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# V1 Simulation API Deprecation middleware
+app.add_middleware(V1SimulationDeprecationMiddleware)
 
 # Rate limiting middleware (SEC-001)
 configure_rate_limiting(app)
@@ -105,6 +145,7 @@ from backend.routes import (
     alerts_router,
     workflow_router,
     simulation_router,
+    simulation_v2_router,
     # Database configuration router (Phase 12)
     database_config_router,
 )
@@ -222,6 +263,11 @@ app.include_router(workflow_router)
 # Phase 11: Register simulation and capacity planning routes
 # ============================================================================
 app.include_router(simulation_router)
+
+# ============================================================================
+# Simulation v2.0: Ephemeral production line simulation (no DB dependencies)
+# ============================================================================
+app.include_router(simulation_v2_router)
 
 # ============================================================================
 # Register CSV upload routes for all resources

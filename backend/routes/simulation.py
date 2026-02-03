@@ -2,6 +2,13 @@
 Simulation & Capacity Planning API Routes
 Phase 11: REST endpoints for simulation and capacity planning
 
+**DEPRECATION NOTICE**: This API (v1) is deprecated in favor of /api/v2/simulation
+which provides enhanced SimPy-based discrete-event simulation with:
+- Multi-product support (up to 5 products)
+- Configurable variability (triangular/deterministic)
+- 8 output blocks with comprehensive analytics
+- Rebalancing suggestions and bottleneck detection
+
 Provides endpoints for:
 - Capacity requirement calculations
 - Production capacity analysis
@@ -14,7 +21,7 @@ Provides endpoints for:
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from backend.database import get_db
@@ -56,7 +63,11 @@ from backend.schemas.simulation import (
     OptimizationGoal
 )
 
-router = APIRouter(prefix="/api/simulation", tags=["simulation"])
+router = APIRouter(
+    prefix="/api/simulation",
+    tags=["simulation"],
+    deprecated=True  # Marks all endpoints as deprecated in OpenAPI docs
+)
 
 
 # =============================================================================
@@ -69,6 +80,10 @@ async def get_simulation_overview(
 ) -> SimulationSummary:
     """
     Get simulation capabilities overview.
+
+    **DEPRECATED**: This endpoint is deprecated. Please use /api/v2/simulation/info
+    for the enhanced simulation API with multi-product support and SimPy-based
+    discrete-event simulation.
 
     Returns available simulation types and use cases.
     """
@@ -83,13 +98,18 @@ async def get_simulation_overview(
             "floating_pool_optimization",
             "comprehensive_simulation"
         ],
-        description="Simulation and capacity planning module for production forecasting and what-if analysis",
+        description=(
+            "[DEPRECATED] Simulation and capacity planning module for production forecasting "
+            "and what-if analysis. Please migrate to /api/v2/simulation for enhanced "
+            "multi-product SimPy-based simulation with 8 output blocks."
+        ),
         example_use_cases=[
             "Calculate staffing requirements for production targets",
             "Simulate production capacity with different staffing levels",
             "Analyze shift coverage gaps and floating pool allocation",
             "Run what-if scenarios for efficiency improvements",
-            "Optimize floating pool employee distribution"
+            "Optimize floating pool employee distribution",
+            "[RECOMMENDED] Use /api/v2/simulation/run for enhanced discrete-event simulation"
         ]
     )
 

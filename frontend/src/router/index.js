@@ -126,6 +126,13 @@ const router = createRouter({
       component: () => import('@/views/SimulationView.vue'),
       meta: { requiresAuth: true }
     },
+    // Simulation v2.0 - SimPy-based discrete-event simulation
+    {
+      path: '/simulation-v2',
+      name: 'simulation-v2',
+      component: () => import('@/views/SimulationV2View.vue'),
+      meta: { requiresAuth: true }
+    },
     // Admin Routes
     {
       path: '/admin/settings',

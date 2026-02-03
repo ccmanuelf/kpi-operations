@@ -88,6 +88,7 @@
 
         <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
         <v-list-item prepend-icon="mdi-calculator-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
+        <v-list-item prepend-icon="mdi-chart-timeline-variant" title="Simulation v2" value="simulation-v2" to="/simulation-v2" />
 
         <v-divider class="my-2" role="separator"></v-divider>
         <v-list-subheader v-if="!rail" id="admin-nav">{{ $t('navigation.admin').toUpperCase() }}</v-list-subheader>

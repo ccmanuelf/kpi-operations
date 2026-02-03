@@ -49,6 +49,7 @@ from .my_shift import router as my_shift_router
 from .alerts import router as alerts_router
 from .workflow import router as workflow_router
 from .simulation import router as simulation_router
+from .simulation_v2 import router as simulation_v2_router
 from .database_config import router as database_config_router
 
 __all__ = [
@@ -92,5 +93,6 @@ __all__ = [
     "alerts_router",
     "workflow_router",
     "simulation_router",
+    "simulation_v2_router",
     "database_config_router"
 ]

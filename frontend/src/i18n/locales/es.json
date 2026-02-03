@@ -1271,6 +1271,43 @@
   "simulation": {
     "title": "Simulación y Planificación de Capacidad",
     "description": "Planifica requisitos de capacidad, analiza escenarios de personal y ejecuta simulaciones de línea de producción",
+    "operations": {
+      "title": "Operaciones",
+      "addOperation": "Agregar Operación",
+      "importCsv": "Importar CSV",
+      "emptyState": "Agregue operaciones manualmente o pegue desde Excel/CSV. Copie filas de su hoja de cálculo y péguelas directamente en la tabla.",
+      "emptyTitle": "Sin Operaciones Configuradas",
+      "emptyDescription": "Agregue operaciones manualmente, importe desde CSV o cargue datos de ejemplo para comenzar.",
+      "addManually": "Agregar Manual"
+    },
+    "schedule": {
+      "title": "Configuración de Horario",
+      "shiftsEnabled": "Turnos Habilitados",
+      "shift1Hours": "Horas Turno 1",
+      "shift2Hours": "Horas Turno 2",
+      "shift3Hours": "Horas Turno 3",
+      "workDays": "Días de Trabajo",
+      "overtime": "Tiempo Extra"
+    },
+    "demand": {
+      "title": "Configuración de Demanda",
+      "addDemand": "Agregar Demanda",
+      "product": "Producto",
+      "bundleSize": "Tamaño de Lote",
+      "dailyDemand": "Demanda Diaria"
+    },
+    "breakdowns": {
+      "title": "Averías de Equipo",
+      "addBreakdown": "Agregar Avería",
+      "machine": "Máquina",
+      "breakdownPct": "% de Avería"
+    },
+    "sampleData": {
+      "welcomeTitle": "¡Bienvenido!",
+      "welcomeMessage": "Se han cargado datos de muestra de fabricación de camisetas. ¡Explore la herramienta de simulación con datos realistas!",
+      "loadSample": "Cargar Datos de Muestra",
+      "clearAll": "Limpiar Todo"
+    },
     "capacityPlanning": "Planificación de Capacidad",
     "productionLine": "Simulación de Línea de Producción",
     "scenarioComparison": "Comparación de Escenarios",
