@@ -102,6 +102,16 @@ class Settings(BaseSettings):
     REPORT_EMAIL_ENABLED: bool = True
     REPORT_EMAIL_TIME: str = "06:00"  # Daily report time (HH:MM format)
 
+    # Cache Configuration
+    CACHE_TTL_CLIENT_CONFIG: int = 900  # 15 minutes
+    CACHE_TTL_REFERENCE_DATA: int = 1800  # 30 minutes
+    CACHE_TTL_AGGREGATIONS: int = 300  # 5 minutes
+    CACHE_MAX_ENTRIES: int = 1000
+
+    # Feature Flags
+    CAPACITY_PLANNING_ENABLED: bool = True
+    CAPACITY_CACHING_ENABLED: bool = True
+
     model_config = {
         "env_file": ".env",
         "case_sensitive": True

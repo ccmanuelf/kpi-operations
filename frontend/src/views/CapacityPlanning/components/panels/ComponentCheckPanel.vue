@@ -1,0 +1,181 @@
+<template>
+  <v-card>
+    <v-card-title class="d-flex align-center">
+      <v-icon start>mdi-check-decagram</v-icon>
+      Component Requirements Check (MRP)
+      <v-spacer />
+      <v-btn
+        color="primary"
+        size="small"
+        variant="elevated"
+        :loading="store.isRunningMRP"
+        @click="runCheck"
+      >
+        <v-icon start>mdi-play</v-icon>
+        Run Component Check
+      </v-btn>
+    </v-card-title>
+    <v-card-text>
+      <!-- Summary Cards -->
+      <v-row v-if="components.length" class="mb-4">
+        <v-col cols="4">
+          <v-card variant="tonal" color="success">
+            <v-card-text class="text-center">
+              <div class="text-h4">{{ availableCount }}</div>
+              <div class="text-subtitle-1">Available</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="4">
+          <v-card variant="tonal" color="warning">
+            <v-card-text class="text-center">
+              <div class="text-h4">{{ partialCount }}</div>
+              <div class="text-subtitle-1">Partial</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="4">
+          <v-card variant="tonal" color="error">
+            <v-card-text class="text-center">
+              <div class="text-h4">{{ shortageCount }}</div>
+              <div class="text-subtitle-1">Shortage</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+      </v-row>
+
+      <!-- MRP Error -->
+      <v-alert v-if="store.mrpError" type="error" class="mb-4" closable>
+        {{ store.mrpError }}
+      </v-alert>
+
+      <!-- Results Table -->
+      <v-data-table
+        v-if="components.length"
+        :headers="headers"
+        :items="components"
+        :items-per-page="15"
+        :search="searchTerm"
+        class="elevation-1"
+        density="compact"
+      >
+        <template v-slot:top>
+          <div class="d-flex align-center pa-2">
+            <v-text-field
+              v-model="searchTerm"
+              prepend-inner-icon="mdi-magnify"
+              label="Search components..."
+              variant="outlined"
+              density="compact"
+              style="max-width: 300px"
+              clearable
+            />
+            <v-spacer />
+            <v-btn-toggle v-model="statusFilter" color="primary" variant="outlined" density="compact">
+              <v-btn value="all">All</v-btn>
+              <v-btn value="SHORTAGE" color="error">Shortages</v-btn>
+              <v-btn value="PARTIAL" color="warning">Partial</v-btn>
+            </v-btn-toggle>
+          </div>
+        </template>
+
+        <template v-slot:item.status="{ item }">
+          <v-chip
+            :color="getStatusColor(item.status)"
+            size="small"
+            variant="tonal"
+          >
+            {{ item.status }}
+          </v-chip>
+        </template>
+
+        <template v-slot:item.shortage_quantity="{ item }">
+          <span :class="item.shortage_quantity > 0 ? 'text-error font-weight-bold' : ''">
+            {{ item.shortage_quantity || 0 }}
+          </span>
+        </template>
+
+        <template v-slot:item.required_quantity="{ item }">
+          {{ item.required_quantity?.toLocaleString() }}
+        </template>
+
+        <template v-slot:item.available_quantity="{ item }">
+          {{ item.available_quantity?.toLocaleString() }}
+        </template>
+      </v-data-table>
+
+      <!-- Empty State -->
+      <div v-else class="text-center pa-8 text-grey">
+        <v-icon size="64" color="grey-lighten-1">mdi-check-decagram-outline</v-icon>
+        <div class="text-h6 mt-4">No Component Check Results</div>
+        <div class="text-body-2 mt-2">
+          Click "Run Component Check" to analyze material requirements for your orders.
+        </div>
+        <v-btn
+          color="primary"
+          variant="tonal"
+          class="mt-4"
+          :loading="store.isRunningMRP"
+          @click="runCheck"
+        >
+          Run Component Check
+        </v-btn>
+      </div>
+    </v-card-text>
+  </v-card>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+
+const store = useCapacityPlanningStore()
+
+const searchTerm = ref('')
+const statusFilter = ref('all')
+
+const headers = [
+  { title: 'Order #', key: 'order_number', width: '120px' },
+  { title: 'Component Code', key: 'component_item_code', width: '150px' },
+  { title: 'Description', key: 'component_description', width: '200px' },
+  { title: 'Required', key: 'required_quantity', width: '100px' },
+  { title: 'Available', key: 'available_quantity', width: '100px' },
+  { title: 'Shortage', key: 'shortage_quantity', width: '100px' },
+  { title: 'Status', key: 'status', width: '100px' }
+]
+
+const components = computed(() => {
+  const data = store.worksheets.componentCheck.data
+  if (statusFilter.value === 'all') return data
+  return data.filter(c => c.status === statusFilter.value)
+})
+
+const availableCount = computed(() =>
+  store.worksheets.componentCheck.data.filter(c => c.status === 'AVAILABLE').length
+)
+
+const partialCount = computed(() =>
+  store.worksheets.componentCheck.data.filter(c => c.status === 'PARTIAL').length
+)
+
+const shortageCount = computed(() =>
+  store.worksheets.componentCheck.data.filter(c => c.status === 'SHORTAGE').length
+)
+
+const getStatusColor = (status) => {
+  const colors = {
+    AVAILABLE: 'success',
+    PARTIAL: 'warning',
+    SHORTAGE: 'error'
+  }
+  return colors[status] || 'grey'
+}
+
+const runCheck = async () => {
+  try {
+    await store.runComponentCheck()
+  } catch (error) {
+    console.error('Component check failed:', error)
+  }
+}
+</script>

@@ -113,6 +113,7 @@
     "databaseConfig": "Database Config",
     "alerts": "Alerts",
     "simulation": "Simulation",
+    "capacityPlanning": "Capacity Planning",
     "tools": "Tools",
     "operationsHealth": "Operations Health"
   },

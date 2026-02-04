@@ -1,0 +1,142 @@
+<template>
+  <v-card>
+    <v-card-title class="d-flex align-center">
+      <v-icon start>mdi-factory</v-icon>
+      Production Lines
+      <v-spacer />
+      <v-btn color="primary" size="small" variant="tonal" @click="addRow">
+        <v-icon start>mdi-plus</v-icon>
+        Add Line
+      </v-btn>
+    </v-card-title>
+    <v-card-text>
+      <v-data-table
+        :headers="headers"
+        :items="lines"
+        :items-per-page="10"
+        class="elevation-1"
+        density="compact"
+      >
+        <template v-slot:item.line_code="{ item, index }">
+          <v-text-field
+            v-model="item.line_code"
+            density="compact"
+            variant="plain"
+            hide-details
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.line_name="{ item, index }">
+          <v-text-field
+            v-model="item.line_name"
+            density="compact"
+            variant="plain"
+            hide-details
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.department="{ item, index }">
+          <v-text-field
+            v-model="item.department"
+            density="compact"
+            variant="plain"
+            hide-details
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.standard_capacity_units_per_hour="{ item, index }">
+          <v-text-field
+            v-model.number="item.standard_capacity_units_per_hour"
+            type="number"
+            density="compact"
+            variant="plain"
+            hide-details
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.max_operators="{ item, index }">
+          <v-text-field
+            v-model.number="item.max_operators"
+            type="number"
+            density="compact"
+            variant="plain"
+            hide-details
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.efficiency_factor="{ item, index }">
+          <v-text-field
+            v-model.number="item.efficiency_factor"
+            type="number"
+            step="0.01"
+            density="compact"
+            variant="plain"
+            hide-details
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.is_active="{ item, index }">
+          <v-checkbox
+            v-model="item.is_active"
+            hide-details
+            density="compact"
+            @update:modelValue="markDirty(index)"
+          />
+        </template>
+
+        <template v-slot:item.actions="{ index }">
+          <v-btn
+            icon="mdi-content-copy"
+            size="x-small"
+            variant="text"
+            @click="duplicateRow(index)"
+          />
+          <v-btn
+            icon="mdi-delete"
+            size="x-small"
+            variant="text"
+            color="error"
+            @click="removeRow(index)"
+          />
+        </template>
+      </v-data-table>
+
+      <div v-if="!lines.length" class="text-center pa-4 text-grey">
+        No production lines configured. Click "Add Line" to create one.
+      </div>
+    </v-card-text>
+  </v-card>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+
+const store = useCapacityPlanningStore()
+
+const headers = [
+  { title: 'Code', key: 'line_code', width: '100px' },
+  { title: 'Name', key: 'line_name', width: '150px' },
+  { title: 'Department', key: 'department', width: '120px' },
+  { title: 'Capacity (units/hr)', key: 'standard_capacity_units_per_hour', width: '140px' },
+  { title: 'Max Operators', key: 'max_operators', width: '110px' },
+  { title: 'Efficiency', key: 'efficiency_factor', width: '100px' },
+  { title: 'Active', key: 'is_active', width: '80px' },
+  { title: 'Actions', key: 'actions', width: '100px', sortable: false }
+]
+
+const lines = computed(() => store.worksheets.productionLines.data)
+
+const addRow = () => store.addRow('productionLines')
+const removeRow = (index) => store.removeRow('productionLines', index)
+const duplicateRow = (index) => store.duplicateRow('productionLines', index)
+const markDirty = () => {
+  store.worksheets.productionLines.dirty = true
+}
+</script>

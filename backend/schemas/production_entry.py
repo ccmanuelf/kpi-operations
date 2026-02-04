@@ -3,8 +3,11 @@ PRODUCTION_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation with all 26 fields for KPI #3 Efficiency and #9 Performance
 Source: 02-Phase1_Production_Inventory.csv
 Enhanced with composite indexes for query performance (per audit requirement)
+
+Phase A.2: Added relationships with joined loading for query optimization
 """
 from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Index
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from backend.database import Base
 
@@ -75,3 +78,18 @@ class ProductionEntry(Base):
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships with joined loading for query optimization (Phase A.2)
+    # Using lazy="joined" pre-fetches related data in a single query
+    product = relationship(
+        "Product",
+        lazy="joined",
+        foreign_keys=[product_id],
+        primaryjoin="ProductionEntry.product_id == Product.product_id"
+    )
+    shift = relationship(
+        "Shift",
+        lazy="joined",
+        foreign_keys=[shift_id],
+        primaryjoin="ProductionEntry.shift_id == Shift.shift_id"
+    )

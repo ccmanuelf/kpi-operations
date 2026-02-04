@@ -2,6 +2,8 @@
 CRUD operations for ClientConfig
 Create, Read, Update, Delete for client-level KPI calculation overrides
 Implements Phase 7.2: Client-Level Calculation Overrides
+
+Phase A.1: Added caching for client config lookups
 """
 from typing import Optional
 from sqlalchemy.orm import Session
@@ -11,6 +13,8 @@ from backend.schemas.client_config import ClientConfig
 from backend.schemas.client import Client
 from backend.schemas.user import User
 from backend.middleware.client_auth import verify_client_access
+from backend.cache import get_cache
+from backend.cache.kpi_cache import build_cache_key
 
 
 # Global default values (used when no config exists)
@@ -136,6 +140,8 @@ def get_client_config_or_defaults(
     Get client configuration values, falling back to global defaults.
     This function is for use by calculation modules - no auth required.
 
+    Phase A.1: Added caching with 15 minute TTL to reduce database queries.
+
     Args:
         db: Database session
         client_id: Client ID
@@ -143,29 +149,35 @@ def get_client_config_or_defaults(
     Returns:
         Dictionary with configuration values (client-specific or defaults)
     """
-    config = db.query(ClientConfig).filter(
-        ClientConfig.client_id == client_id
-    ).first()
+    cache = get_cache()
+    cache_key = build_cache_key("client_config", client_id)
 
-    if config:
-        return {
-            "otd_mode": config.otd_mode.value if hasattr(config.otd_mode, 'value') else str(config.otd_mode),
-            "default_cycle_time_hours": config.default_cycle_time_hours,
-            "efficiency_target_percent": config.efficiency_target_percent,
-            "quality_target_ppm": config.quality_target_ppm,
-            "fpy_target_percent": config.fpy_target_percent,
-            "dpmo_opportunities_default": config.dpmo_opportunities_default,
-            "availability_target_percent": config.availability_target_percent,
-            "performance_target_percent": config.performance_target_percent,
-            "oee_target_percent": config.oee_target_percent,
-            "absenteeism_target_percent": config.absenteeism_target_percent,
-            "wip_aging_threshold_days": config.wip_aging_threshold_days,
-            "wip_critical_threshold_days": config.wip_critical_threshold_days,
-            "is_default": False
-        }
+    def fetch_config():
+        config = db.query(ClientConfig).filter(
+            ClientConfig.client_id == client_id
+        ).first()
 
-    # Return global defaults
-    return {**GLOBAL_DEFAULTS, "is_default": True}
+        if config:
+            return {
+                "otd_mode": config.otd_mode.value if hasattr(config.otd_mode, 'value') else str(config.otd_mode),
+                "default_cycle_time_hours": config.default_cycle_time_hours,
+                "efficiency_target_percent": config.efficiency_target_percent,
+                "quality_target_ppm": config.quality_target_ppm,
+                "fpy_target_percent": config.fpy_target_percent,
+                "dpmo_opportunities_default": config.dpmo_opportunities_default,
+                "availability_target_percent": config.availability_target_percent,
+                "performance_target_percent": config.performance_target_percent,
+                "oee_target_percent": config.oee_target_percent,
+                "absenteeism_target_percent": config.absenteeism_target_percent,
+                "wip_aging_threshold_days": config.wip_aging_threshold_days,
+                "wip_critical_threshold_days": config.wip_critical_threshold_days,
+                "is_default": False
+            }
+
+        # Return global defaults
+        return {**GLOBAL_DEFAULTS, "is_default": True}
+
+    return cache.get_or_set(cache_key, fetch_config, ttl_seconds=900)
 
 
 def update_client_config(
@@ -212,6 +224,11 @@ def update_client_config(
     db.commit()
     db.refresh(db_config)
 
+    # Phase A.1: Invalidate cache after update
+    cache = get_cache()
+    cache_key = build_cache_key("client_config", client_id)
+    cache.delete(cache_key)
+
     return db_config
 
 
@@ -255,6 +272,11 @@ def delete_client_config(
 
     db.delete(db_config)
     db.commit()
+
+    # Phase A.1: Invalidate cache after delete
+    cache = get_cache()
+    cache_key = build_cache_key("client_config", client_id)
+    cache.delete(cache_key)
 
     return True
 

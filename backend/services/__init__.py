@@ -8,6 +8,14 @@ Services coordinate CRUD operations with business logic:
 - Workflow state machines
 - Hold/resume workflows
 - Client assignment logic
+
+Phase B.2: Capacity Planning Services
+- BOM explosion
+- Component availability checking (MRP)
+- Capacity analysis (12-step calculation)
+- Schedule generation and management
+- What-if scenarios
+- KPI integration
 """
 
 # KPI Calculation Services
@@ -24,6 +32,18 @@ from backend.services.employee_service import EmployeeService, get_employee_serv
 from backend.services.attendance_service import AttendanceService, get_attendance_service
 from backend.services.downtime_service import DowntimeService, get_downtime_service
 
+# Capacity Planning Services (Phase B.2)
+from backend.services.capacity import (
+    CapacityPlanningService,
+    BOMService,
+    MRPService,
+    SchedulingService,
+    CapacityAnalysisService,
+    ScenarioService,
+    KPIIntegrationService,
+)
+from backend.services.capacity.capacity_service import get_capacity_planning_service
+
 __all__ = [
     # KPI Services
     "ProductionKPIService",
@@ -37,6 +57,14 @@ __all__ = [
     "EmployeeService",
     "AttendanceService",
     "DowntimeService",
+    # Capacity Planning Services
+    "CapacityPlanningService",
+    "BOMService",
+    "MRPService",
+    "SchedulingService",
+    "CapacityAnalysisService",
+    "ScenarioService",
+    "KPIIntegrationService",
     # Dependency Injection Factories
     "get_production_service",
     "get_quality_service",
@@ -45,4 +73,5 @@ __all__ = [
     "get_employee_service",
     "get_attendance_service",
     "get_downtime_service",
+    "get_capacity_planning_service",
 ]

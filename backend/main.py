@@ -148,6 +148,10 @@ from backend.routes import (
     simulation_v2_router,
     # Database configuration router (Phase 12)
     database_config_router,
+    # Cache management router (Phase A.1)
+    cache_router,
+    # Capacity Planning router (Phase B.3)
+    capacity_router,
 )
 
 # Import defect type catalog router
@@ -333,6 +337,16 @@ app.include_router(defect_type_catalog_router)
 # Phase 12: Register database configuration routes (Admin only)
 # ============================================================================
 app.include_router(database_config_router)
+
+# ============================================================================
+# Phase A.1: Register cache management routes
+# ============================================================================
+app.include_router(cache_router)
+
+# ============================================================================
+# Phase B.3: Register capacity planning routes
+# ============================================================================
+app.include_router(capacity_router)
 
 
 # ============================================================================

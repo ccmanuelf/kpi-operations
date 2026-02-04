@@ -65,6 +65,25 @@ class DataMigrator:
 
         # Tier 7: Domain events (no FK constraints, but logical dependency)
         "EVENT_STORE",
+
+        # Tier 8: Capacity Planning - Base tables (depend on CLIENT only)
+        "capacity_calendar",
+        "capacity_production_lines",
+        "capacity_production_standards",
+        "capacity_stock_snapshot",
+
+        # Tier 9: Capacity Planning - Orders and headers (depend on CLIENT only)
+        "capacity_orders",
+        "capacity_bom_header",
+        "capacity_schedule",
+
+        # Tier 10: Capacity Planning - Child tables with FK to parent capacity tables
+        "capacity_bom_detail",          # depends on capacity_bom_header
+        "capacity_scenario",            # depends on capacity_schedule (optional FK)
+        "capacity_component_check",     # depends on capacity_orders
+        "capacity_analysis",            # depends on capacity_production_lines
+        "capacity_schedule_detail",     # depends on capacity_schedule, capacity_orders, capacity_production_lines
+        "capacity_kpi_commitment",      # depends on capacity_schedule
     ]
 
     def __init__(

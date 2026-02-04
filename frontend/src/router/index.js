@@ -133,6 +133,13 @@ const router = createRouter({
       component: () => import('@/views/SimulationV2View.vue'),
       meta: { requiresAuth: true }
     },
+    // Capacity Planning Module - Phase B
+    {
+      path: '/capacity-planning',
+      name: 'capacity-planning',
+      component: () => import('@/views/CapacityPlanning/CapacityPlanningView.vue'),
+      meta: { requiresAuth: true }
+    },
     // Admin Routes
     {
       path: '/admin/settings',

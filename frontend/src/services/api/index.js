@@ -18,6 +18,7 @@ export * from './myShift'
 export * from './alerts'
 export * from './workflow'
 export * from './simulation'
+export * as capacityPlanning from './capacityPlanning'
 
 // Import all modules for default export object
 import * as auth from './auth'
@@ -35,6 +36,7 @@ import * as myShift from './myShift'
 import * as alerts from './alerts'
 import * as workflow from './workflow'
 import * as simulation from './simulation'
+import * as capacityPlanning from './capacityPlanning'
 
 // Default export object with all methods for backward compatibility
 // This allows: import api from '@/services/api' + api.login(...)
@@ -61,5 +63,7 @@ export default {
   ...myShift,
   ...alerts,
   ...workflow,
-  ...simulation
+  ...simulation,
+  // Capacity Planning module (namespaced to avoid conflicts)
+  capacityPlanning
 }

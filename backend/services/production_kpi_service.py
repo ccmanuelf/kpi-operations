@@ -4,18 +4,23 @@ Orchestrates efficiency, performance, and quality rate calculations.
 
 Phase 1.1: Service Orchestration Layer
 Decouples routes from domain calculations for better testability and maintainability.
+
+Phase A.1: Added caching for reference data and daily summaries
+Phase A.2: Added batch calculation methods to eliminate N+1 query patterns
 """
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_
 
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.product import Product
 from backend.schemas.shift import Shift
 from backend.crud.client_config import get_client_config_or_defaults
+from backend.cache import get_cache
+from backend.cache.kpi_cache import build_cache_key
 
 
 @dataclass
@@ -83,6 +88,8 @@ class ProductionKPIService:
 
     Coordinates data fetching and delegates to pure calculation functions.
     This separation enables unit testing without database access.
+
+    Phase A.1: Added caching for reference data (products, shifts) and daily summaries
     """
 
     def __init__(self, db: Session):
@@ -93,6 +100,81 @@ class ProductionKPIService:
             db: SQLAlchemy database session
         """
         self.db = db
+        self._cache = get_cache()
+
+    def _get_product_cached(self, product_id: str) -> Optional[Product]:
+        """
+        Get product by ID with caching.
+
+        Phase A.1: Cache product lookups for 30 minutes (1800s).
+
+        Args:
+            product_id: Product ID
+
+        Returns:
+            Product or None if not found
+        """
+        cache_key = build_cache_key("product", product_id)
+
+        def fetch_product():
+            product = self.db.query(Product).filter(
+                Product.product_id == product_id
+            ).first()
+            if product:
+                # Return a dict representation for caching (ORM objects can't be pickled)
+                return {
+                    "product_id": product.product_id,
+                    "ideal_cycle_time": product.ideal_cycle_time,
+                    "name": getattr(product, 'name', None),
+                    "part_number": getattr(product, 'part_number', None),
+                    "client_id": getattr(product, 'client_id', None),
+                }
+            return None
+
+        cached_data = self._cache.get_or_set(cache_key, fetch_product, ttl_seconds=1800)
+
+        if cached_data is None:
+            return None
+
+        # Create a minimal Product-like object for compatibility
+        return _CachedProduct(cached_data)
+
+    def _get_shift_cached(self, shift_id: str) -> Optional[Shift]:
+        """
+        Get shift by ID with caching.
+
+        Phase A.1: Cache shift lookups for 30 minutes (1800s).
+
+        Args:
+            shift_id: Shift ID
+
+        Returns:
+            Shift or None if not found
+        """
+        cache_key = build_cache_key("shift", shift_id)
+
+        def fetch_shift():
+            shift = self.db.query(Shift).filter(
+                Shift.shift_id == shift_id
+            ).first()
+            if shift:
+                # Return a dict representation for caching
+                return {
+                    "shift_id": shift.shift_id,
+                    "start_time": str(shift.start_time) if shift.start_time else None,
+                    "end_time": str(shift.end_time) if shift.end_time else None,
+                    "name": getattr(shift, 'name', None),
+                    "client_id": getattr(shift, 'client_id', None),
+                }
+            return None
+
+        cached_data = self._cache.get_or_set(cache_key, fetch_shift, ttl_seconds=1800)
+
+        if cached_data is None:
+            return None
+
+        # Create a minimal Shift-like object for compatibility
+        return _CachedShift(cached_data)
 
     def calculate_entry_kpis(
         self,
@@ -108,6 +190,8 @@ class ProductionKPIService:
         2. Calls pure calculation functions
         3. Returns results with full metadata
 
+        Phase A.1: Uses cached product and shift lookups.
+
         Args:
             entry: Production entry to calculate KPIs for
             product: Optional pre-fetched product (avoids extra query)
@@ -116,18 +200,14 @@ class ProductionKPIService:
         Returns:
             ProductionKPIResult with all KPIs and metadata
         """
-        # Fetch data if not provided
+        # Fetch data with caching if not provided
         if product is None:
-            product = self.db.query(Product).filter(
-                Product.product_id == entry.product_id
-            ).first()
+            product = self._get_product_cached(entry.product_id)
 
         if shift is None:
-            shift = self.db.query(Shift).filter(
-                Shift.shift_id == entry.shift_id
-            ).first()
+            shift = self._get_shift_cached(entry.shift_id)
 
-        # Get client configuration for defaults
+        # Get client configuration for defaults (already cached)
         client_id = getattr(entry, 'client_id', None)
         client_config = self._get_client_config(client_id)
 
@@ -157,14 +237,10 @@ class ProductionKPIService:
         Use this when only efficiency is needed.
         """
         if product is None:
-            product = self.db.query(Product).filter(
-                Product.product_id == entry.product_id
-            ).first()
+            product = self._get_product_cached(entry.product_id)
 
         if shift is None:
-            shift = self.db.query(Shift).filter(
-                Shift.shift_id == entry.shift_id
-            ).first()
+            shift = self._get_shift_cached(entry.shift_id)
 
         client_id = getattr(entry, 'client_id', None)
         client_config = self._get_client_config(client_id)
@@ -182,14 +258,87 @@ class ProductionKPIService:
         Use this when only performance is needed.
         """
         if product is None:
-            product = self.db.query(Product).filter(
-                Product.product_id == entry.product_id
-            ).first()
+            product = self._get_product_cached(entry.product_id)
 
         client_id = getattr(entry, 'client_id', None)
         client_config = self._get_client_config(client_id)
 
         return self._calculate_performance(entry, product, client_config)
+
+    def calculate_batch_kpis(
+        self,
+        entries: List[ProductionEntry]
+    ) -> Dict[str, ProductionKPIResult]:
+        """
+        Calculate KPIs for multiple entries efficiently using batch pre-fetching.
+
+        Phase A.2: Eliminates N+1 query patterns by:
+        1. Pre-fetching all unique products in a single query
+        2. Pre-fetching all unique shifts in a single query
+        3. Pre-fetching client configs for all unique client_ids
+        4. Calculating KPIs using pre-fetched data
+
+        Args:
+            entries: List of ProductionEntry objects to calculate KPIs for
+
+        Returns:
+            Dictionary mapping entry_id to ProductionKPIResult
+        """
+        if not entries:
+            return {}
+
+        # Pre-fetch all unique IDs
+        product_ids = list(set(e.product_id for e in entries if e.product_id))
+        shift_ids = list(set(e.shift_id for e in entries if e.shift_id))
+        client_ids = list(set(
+            getattr(e, 'client_id', None) for e in entries
+            if getattr(e, 'client_id', None)
+        ))
+
+        # Batch fetch all products (single query)
+        products_by_id: Dict[int, Product] = {}
+        if product_ids:
+            products = self.db.query(Product).filter(
+                Product.product_id.in_(product_ids)
+            ).all()
+            products_by_id = {p.product_id: p for p in products}
+
+        # Batch fetch all shifts (single query)
+        shifts_by_id: Dict[int, Shift] = {}
+        if shift_ids:
+            shifts = self.db.query(Shift).filter(
+                Shift.shift_id.in_(shift_ids)
+            ).all()
+            shifts_by_id = {s.shift_id: s for s in shifts}
+
+        # Batch fetch client configs (using cache for each)
+        configs_by_client: Dict[str, Dict[str, Any]] = {}
+        for client_id in client_ids:
+            configs_by_client[client_id] = self._get_client_config(client_id)
+
+        # Calculate KPIs for each entry using pre-fetched data
+        results: Dict[str, ProductionKPIResult] = {}
+        for entry in entries:
+            product = products_by_id.get(entry.product_id)
+            shift = shifts_by_id.get(entry.shift_id)
+            client_id = getattr(entry, 'client_id', None)
+            client_config = configs_by_client.get(client_id, {})
+
+            # Calculate each KPI component using pre-fetched data
+            efficiency = self._calculate_efficiency(entry, product, shift, client_config)
+            performance = self._calculate_performance(entry, product, client_config)
+            quality = self._calculate_quality_rate(entry)
+            oee = self._calculate_oee(efficiency, performance, quality)
+
+            results[entry.production_entry_id] = ProductionKPIResult(
+                efficiency=efficiency,
+                performance=performance,
+                quality=quality,
+                oee=oee,
+                entry_id=entry.production_entry_id
+            )
+
+        return results
 
     def recalculate_batch(
         self,
@@ -199,7 +348,9 @@ class ProductionKPIService:
         """
         Batch recalculate KPIs for multiple entries.
 
-        Useful for deferred calculation or bulk updates.
+        Phase A.2 Optimized: Uses batch pre-fetching to eliminate N+1 queries.
+        - Pre-fetches all entries with relationships in a single query using joinedload
+        - Uses calculate_batch_kpis for efficient batch calculation
 
         Args:
             entry_ids: List of production entry IDs
@@ -215,43 +366,92 @@ class ProductionKPIService:
             "entries": []
         }
 
-        for entry_id in entry_ids:
-            try:
-                entry = self.db.query(ProductionEntry).filter(
-                    ProductionEntry.production_entry_id == entry_id
-                ).first()
+        if not entry_ids:
+            return results
 
-                if not entry:
+        # Pre-fetch all entries with relationships in a single query (Phase A.2 optimization)
+        entries = self.db.query(ProductionEntry).options(
+            joinedload(ProductionEntry.product),
+            joinedload(ProductionEntry.shift)
+        ).filter(
+            ProductionEntry.production_entry_id.in_(entry_ids)
+        ).all()
+
+        # Build lookup for found entries
+        entries_by_id = {e.production_entry_id: e for e in entries}
+
+        # Track which entry_ids were not found
+        found_ids = set(entries_by_id.keys())
+        missing_ids = set(entry_ids) - found_ids
+
+        # Record missing entries as failures
+        for missing_id in missing_ids:
+            results["entries"].append({
+                "entry_id": missing_id,
+                "success": False,
+                "error": "Entry not found"
+            })
+            results["failed"] += 1
+
+        # Calculate KPIs in batch for all found entries
+        try:
+            kpi_results = self.calculate_batch_kpis(entries)
+
+            # Process results and optionally save
+            for entry_id, kpi_result in kpi_results.items():
+                try:
+                    if not skip_save:
+                        entry = entries_by_id[entry_id]
+                        entry.efficiency_percentage = kpi_result.efficiency.efficiency_percentage
+                        entry.performance_percentage = kpi_result.performance.performance_percentage
+
+                    results["entries"].append({
+                        "entry_id": entry_id,
+                        "success": True,
+                        "efficiency": float(kpi_result.efficiency.efficiency_percentage),
+                        "performance": float(kpi_result.performance.performance_percentage),
+                        "is_estimated": kpi_result.efficiency.is_estimated
+                    })
+                    results["successful"] += 1
+
+                except Exception as e:
                     results["entries"].append({
                         "entry_id": entry_id,
                         "success": False,
-                        "error": "Entry not found"
+                        "error": str(e)
                     })
                     results["failed"] += 1
-                    continue
 
-                kpi_result = self.calculate_entry_kpis(entry)
+        except Exception as e:
+            # If batch calculation fails, fall back to individual processing
+            for entry in entries:
+                try:
+                    kpi_result = self.calculate_entry_kpis(
+                        entry,
+                        product=getattr(entry, 'product', None),
+                        shift=getattr(entry, 'shift', None)
+                    )
 
-                if not skip_save:
-                    entry.efficiency_percentage = kpi_result.efficiency.efficiency_percentage
-                    entry.performance_percentage = kpi_result.performance.performance_percentage
+                    if not skip_save:
+                        entry.efficiency_percentage = kpi_result.efficiency.efficiency_percentage
+                        entry.performance_percentage = kpi_result.performance.performance_percentage
 
-                results["entries"].append({
-                    "entry_id": entry_id,
-                    "success": True,
-                    "efficiency": float(kpi_result.efficiency.efficiency_percentage),
-                    "performance": float(kpi_result.performance.performance_percentage),
-                    "is_estimated": kpi_result.efficiency.is_estimated
-                })
-                results["successful"] += 1
+                    results["entries"].append({
+                        "entry_id": entry.production_entry_id,
+                        "success": True,
+                        "efficiency": float(kpi_result.efficiency.efficiency_percentage),
+                        "performance": float(kpi_result.performance.performance_percentage),
+                        "is_estimated": kpi_result.efficiency.is_estimated
+                    })
+                    results["successful"] += 1
 
-            except Exception as e:
-                results["entries"].append({
-                    "entry_id": entry_id,
-                    "success": False,
-                    "error": str(e)
-                })
-                results["failed"] += 1
+                except Exception as entry_error:
+                    results["entries"].append({
+                        "entry_id": entry.production_entry_id,
+                        "success": False,
+                        "error": str(entry_error)
+                    })
+                    results["failed"] += 1
 
         if not skip_save:
             self.db.commit()
@@ -266,6 +466,8 @@ class ProductionKPIService:
         """
         Get aggregated KPI summary for a day.
 
+        Phase A.1: Results are cached for 5 minutes (300s).
+
         Args:
             target_date: Date to summarize
             client_id: Optional client filter
@@ -273,43 +475,53 @@ class ProductionKPIService:
         Returns:
             Dictionary with daily KPI averages and totals
         """
-        query = self.db.query(
-            func.sum(ProductionEntry.units_produced).label("total_units"),
-            func.avg(ProductionEntry.efficiency_percentage).label("avg_efficiency"),
-            func.avg(ProductionEntry.performance_percentage).label("avg_performance"),
-            func.sum(ProductionEntry.defect_count).label("total_defects"),
-            func.sum(ProductionEntry.scrap_count).label("total_scrap"),
-            func.count(ProductionEntry.production_entry_id).label("entry_count")
-        ).filter(
-            func.date(ProductionEntry.production_date) == target_date
+        # Build cache key
+        cache_key = build_cache_key(
+            "daily_summary",
+            client_id or "all",
+            target_date.isoformat()
         )
 
-        if client_id:
-            query = query.filter(ProductionEntry.client_id == client_id)
+        def compute_summary():
+            query = self.db.query(
+                func.sum(ProductionEntry.units_produced).label("total_units"),
+                func.avg(ProductionEntry.efficiency_percentage).label("avg_efficiency"),
+                func.avg(ProductionEntry.performance_percentage).label("avg_performance"),
+                func.sum(ProductionEntry.defect_count).label("total_defects"),
+                func.sum(ProductionEntry.scrap_count).label("total_scrap"),
+                func.count(ProductionEntry.production_entry_id).label("entry_count")
+            ).filter(
+                func.date(ProductionEntry.production_date) == target_date
+            )
 
-        result = query.first()
+            if client_id:
+                query = query.filter(ProductionEntry.client_id == client_id)
 
-        total_units = result.total_units or 0
-        total_defects = result.total_defects or 0
-        total_scrap = result.total_scrap or 0
+            result = query.first()
 
-        # Calculate quality rate from aggregates
-        if total_units > 0:
-            good_units = total_units - total_defects - total_scrap
-            quality_rate = (Decimal(str(good_units)) / Decimal(str(total_units))) * 100
-        else:
-            quality_rate = Decimal("0")
+            total_units = result.total_units or 0
+            total_defects = result.total_defects or 0
+            total_scrap = result.total_scrap or 0
 
-        return {
-            "date": target_date.isoformat(),
-            "total_units_produced": total_units,
-            "avg_efficiency": float(result.avg_efficiency or 0),
-            "avg_performance": float(result.avg_performance or 0),
-            "quality_rate": float(quality_rate),
-            "total_defects": total_defects,
-            "total_scrap": total_scrap,
-            "entry_count": result.entry_count or 0
-        }
+            # Calculate quality rate from aggregates
+            if total_units > 0:
+                good_units = total_units - total_defects - total_scrap
+                quality_rate = (Decimal(str(good_units)) / Decimal(str(total_units))) * 100
+            else:
+                quality_rate = Decimal("0")
+
+            return {
+                "date": target_date.isoformat(),
+                "total_units_produced": total_units,
+                "avg_efficiency": float(result.avg_efficiency or 0),
+                "avg_performance": float(result.avg_performance or 0),
+                "quality_rate": float(quality_rate),
+                "total_defects": total_defects,
+                "total_scrap": total_scrap,
+                "entry_count": result.entry_count or 0
+            }
+
+        return self._cache.get_or_set(cache_key, compute_summary, ttl_seconds=300)
 
     # ========================================================================
     # Private calculation methods
@@ -488,7 +700,7 @@ class ProductionKPIService:
         """
         Calculate OEE from component values.
 
-        OEE = Availability × Performance × Quality
+        OEE = Availability x Performance x Quality
 
         Note: For Phase 1, we assume 100% availability.
         Full availability tracking requires downtime integration (Phase 2).
@@ -511,3 +723,50 @@ class ProductionKPIService:
             quality=quality.quality_rate,
             is_estimated=performance.is_estimated or efficiency.is_estimated
         )
+
+
+# =============================================================================
+# Helper classes for cached data
+# =============================================================================
+
+class _CachedProduct:
+    """Minimal Product-like object reconstructed from cached data."""
+
+    def __init__(self, data: dict):
+        self.product_id = data.get("product_id")
+        self.ideal_cycle_time = data.get("ideal_cycle_time")
+        self.name = data.get("name")
+        self.part_number = data.get("part_number")
+        self.client_id = data.get("client_id")
+
+
+class _CachedShift:
+    """Minimal Shift-like object reconstructed from cached data."""
+
+    def __init__(self, data: dict):
+        from datetime import time
+        self.shift_id = data.get("shift_id")
+        self.name = data.get("name")
+        self.client_id = data.get("client_id")
+
+        # Parse time strings back to time objects
+        start_str = data.get("start_time")
+        end_str = data.get("end_time")
+
+        if start_str and start_str != "None":
+            try:
+                parts = start_str.split(":")
+                self.start_time = time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
+            except (ValueError, IndexError):
+                self.start_time = None
+        else:
+            self.start_time = None
+
+        if end_str and end_str != "None":
+            try:
+                parts = end_str.split(":")
+                self.end_time = time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
+            except (ValueError, IndexError):
+                self.end_time = None
+        else:
+            self.end_time = None

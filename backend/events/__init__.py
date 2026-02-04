@@ -51,6 +51,15 @@ from backend.events.domain_events import (
     # Employee events
     EmployeeAssignedToFloatingPool,
     EmployeeAssignedToClient,
+    # Capacity Planning events
+    OrderScheduled,
+    ComponentShortageDetected,
+    CapacityOverloadDetected,
+    ScheduleCommitted,
+    KPIVarianceAlert,
+    BOMExploded,
+    CapacityScenarioCreated,
+    CapacityScenarioCompared,
 )
 
 # Session hooks
@@ -92,6 +101,15 @@ __all__ = [
     # Employee events
     "EmployeeAssignedToFloatingPool",
     "EmployeeAssignedToClient",
+    # Capacity Planning events
+    "OrderScheduled",
+    "ComponentShortageDetected",
+    "CapacityOverloadDetected",
+    "ScheduleCommitted",
+    "KPIVarianceAlert",
+    "BOMExploded",
+    "CapacityScenarioCreated",
+    "CapacityScenarioCompared",
     # Session hooks
     "setup_session_hooks",
     "setup_scoped_session_hooks",

@@ -187,3 +187,103 @@ class EmployeeAssignedToClient(DomainEvent):
     assigned_client_id: str
     available_from: Optional[date] = None
     available_to: Optional[date] = None
+
+
+# =============================================================================
+# Capacity Planning Events
+# =============================================================================
+
+class OrderScheduled(DomainEvent):
+    """Event raised when an order is scheduled to a production line."""
+    event_type: str = "capacity.order_scheduled"
+    aggregate_type: str = "CapacitySchedule"
+
+    order_id: str
+    line_id: str
+    scheduled_date: date
+    scheduled_quantity: int = 0
+    notes: Optional[str] = None
+
+
+class ComponentShortageDetected(DomainEvent):
+    """Event raised when component check detects a shortage."""
+    event_type: str = "capacity.component_shortage"
+    aggregate_type: str = "ComponentCheck"
+
+    order_id: str
+    component_item_code: str
+    shortage_quantity: Decimal
+    required_quantity: Decimal
+    available_quantity: Decimal
+    affected_orders_count: int = 1
+
+
+class CapacityOverloadDetected(DomainEvent):
+    """Event raised when capacity analysis detects overload."""
+    event_type: str = "capacity.overload_detected"
+    aggregate_type: str = "CapacityAnalysis"
+
+    line_id: str
+    line_name: Optional[str] = None
+    analysis_date: date
+    utilization_percent: Decimal
+    available_hours: Decimal
+    required_hours: Decimal
+
+
+class ScheduleCommitted(DomainEvent):
+    """Event raised when a production schedule is committed for KPI tracking."""
+    event_type: str = "capacity.schedule_committed"
+    aggregate_type: str = "CapacitySchedule"
+
+    schedule_id: int
+    schedule_name: Optional[str] = None
+    committed_by: Optional[int] = None
+    kpi_commitments: Dict[str, Any] = Field(default_factory=dict)
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+
+
+class KPIVarianceAlert(DomainEvent):
+    """Event raised when KPI variance exceeds threshold."""
+    event_type: str = "capacity.kpi_variance"
+    aggregate_type: str = "KPICommitment"
+
+    kpi_key: str
+    kpi_name: Optional[str] = None
+    committed_value: Decimal
+    actual_value: Decimal
+    variance_percent: Decimal
+    threshold_percent: Decimal = Decimal("10.0")
+    alert_level: str = "warning"  # 'warning', 'critical'
+
+
+class BOMExploded(DomainEvent):
+    """Event raised when BOM explosion is completed."""
+    event_type: str = "capacity.bom_exploded"
+    aggregate_type: str = "BOM"
+
+    parent_item_code: str
+    quantity_requested: Decimal
+    components_count: int = 0
+    explosion_depth: int = 1
+
+
+class CapacityScenarioCreated(DomainEvent):
+    """Event raised when a what-if scenario is created."""
+    event_type: str = "capacity.scenario_created"
+    aggregate_type: str = "CapacityScenario"
+
+    scenario_id: int
+    scenario_name: str
+    base_schedule_id: Optional[int] = None
+    scenario_type: Optional[str] = None  # 'overtime', 'new_line', etc.
+
+
+class CapacityScenarioCompared(DomainEvent):
+    """Event raised when scenarios are compared."""
+    event_type: str = "capacity.scenario_compared"
+    aggregate_type: str = "CapacityScenario"
+
+    scenario_ids: list = Field(default_factory=list)
+    comparison_metrics: Dict[str, Any] = Field(default_factory=dict)

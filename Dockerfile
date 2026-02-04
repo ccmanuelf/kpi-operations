@@ -20,6 +20,11 @@ FROM python:3.11-slim as production
 
 WORKDIR /app
 
+# Install runtime dependencies (curl for healthcheck)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user for security
 RUN groupadd -r kpiuser && useradd -r -g kpiuser kpiuser
 
@@ -33,24 +38,35 @@ ENV PATH=/root/.local/bin:$PATH
 COPY backend/ ./backend/
 COPY database/ ./database/
 
+# Copy entrypoint script
+COPY backend/scripts/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Create necessary directories
-RUN mkdir -p /app/uploads /app/reports /app/database && \
+RUN mkdir -p /app/uploads /app/reports /app/database /app/logs && \
     chown -R kpiuser:kpiuser /app
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    # Feature flags
+    CAPACITY_PLANNING_ENABLED=true \
+    # Default log level
+    LOG_LEVEL=INFO
 
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+# Health check using the /health/live endpoint for liveness
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health/live || exit 1
 
 # Run as non-root user
 USER kpiuser
 
-# Start uvicorn server
+# Use entrypoint script for initialization
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+# Default command - start uvicorn server
 CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

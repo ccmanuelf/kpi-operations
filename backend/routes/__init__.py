@@ -51,6 +51,10 @@ from .workflow import router as workflow_router
 from .simulation import router as simulation_router
 from .simulation_v2 import router as simulation_v2_router
 from .database_config import router as database_config_router
+from .cache import router as cache_router
+
+# Capacity Planning module (Phase B.3)
+from .capacity import router as capacity_router
 
 __all__ = [
     # Existing routers
@@ -94,5 +98,8 @@ __all__ = [
     "workflow_router",
     "simulation_router",
     "simulation_v2_router",
-    "database_config_router"
+    "database_config_router",
+    "cache_router",
+    # Capacity Planning
+    "capacity_router"
 ]

@@ -3,9 +3,12 @@ Demo Data Seeder
 
 Seeds demo data after schema creation during migration.
 Creates sample data for demonstration and testing purposes.
+
+Phase C.2: Added capacity planning demo data seeding.
 """
 from typing import Callable, Optional, List, Any
 from datetime import datetime, timedelta, date
+from decimal import Decimal
 import random
 import logging
 import uuid
@@ -81,6 +84,8 @@ class DemoDataSeeder:
             ("workflow_transitions", self._seed_workflow_transitions),
             # Phase 3: Domain Events
             ("event_store", self._seed_event_store),
+            # Phase C.2: Capacity Planning Demo Data
+            ("capacity_planning", self._seed_capacity_planning),
         ]
 
         logger.info(f"Starting demo data seeding ({len(seeders)} entities)")
@@ -800,6 +805,232 @@ class DemoDataSeeder:
 
         self.session.add_all(entries)
         return len(entries)
+
+    def _seed_capacity_planning(self) -> int:
+        """Seed demo data for capacity planning module.
+
+        Phase C.2: Capacity Planning Demo Seeding
+
+        Creates:
+        - Master calendar (next 12 weeks)
+        - 4 production lines
+        - 5 sample orders
+        - 10 production standards
+        - 3 BOMs with components
+        - Stock snapshots
+        """
+        from backend.schemas.capacity import (
+            CapacityCalendar,
+            CapacityProductionLine,
+            CapacityOrder,
+            CapacityProductionStandard,
+            CapacityBOMHeader,
+            CapacityBOMDetail,
+            CapacityStockSnapshot,
+        )
+        from backend.schemas.capacity.orders import OrderStatus, OrderPriority
+
+        client_id = "DEMO-001"
+        entries = []
+        today = date.today()
+
+        logger.info(f"Seeding capacity planning demo data for client: {client_id}")
+
+        # 1. Master Calendar - next 12 weeks (84 days)
+        calendar_entries = []
+        for i in range(84):
+            cal_date = today + timedelta(days=i)
+            is_working = cal_date.weekday() < 5  # Mon-Fri
+
+            entry = CapacityCalendar(
+                client_id=client_id,
+                calendar_date=cal_date,
+                is_working_day=is_working,
+                shifts_available=2 if is_working else 0,
+                shift1_hours=8.0 if is_working else 0,
+                shift2_hours=8.0 if is_working else 0,
+                shift3_hours=0,
+                holiday_name=None if is_working else "Weekend"
+            )
+            calendar_entries.append(entry)
+        self.session.add_all(calendar_entries)
+
+        # 2. Production Lines
+        lines_data = [
+            {"code": "CUTTING_01", "name": "Cutting Line 1", "dept": "CUTTING", "capacity": 500, "ops": 8},
+            {"code": "SEWING_01", "name": "Sewing Line 1", "dept": "SEWING", "capacity": 120, "ops": 25},
+            {"code": "SEWING_02", "name": "Sewing Line 2", "dept": "SEWING", "capacity": 100, "ops": 20},
+            {"code": "FINISHING_01", "name": "Finishing Line 1", "dept": "FINISHING", "capacity": 200, "ops": 12},
+        ]
+        line_entries = []
+        for line in lines_data:
+            line_entry = CapacityProductionLine(
+                client_id=client_id,
+                line_code=line["code"],
+                line_name=line["name"],
+                department=line["dept"],
+                standard_capacity_units_per_hour=line["capacity"],
+                max_operators=line["ops"],
+                efficiency_factor=0.85,
+                absenteeism_factor=0.05,
+                is_active=True
+            )
+            line_entries.append(line_entry)
+        self.session.add_all(line_entries)
+
+        # 3. Sample Orders
+        orders_data = [
+            {"num": "ORD-2024-001", "cust": "ABC Corp", "style": "TSHIRT-001", "qty": 5000, "days": 21, "priority": OrderPriority.HIGH},
+            {"num": "ORD-2024-002", "cust": "XYZ Inc", "style": "POLO-001", "qty": 3000, "days": 28, "priority": OrderPriority.NORMAL},
+            {"num": "ORD-2024-003", "cust": "Fashion Co", "style": "TSHIRT-001", "qty": 2000, "days": 14, "priority": OrderPriority.URGENT},
+            {"num": "ORD-2024-004", "cust": "Style Ltd", "style": "JACKET-001", "qty": 1000, "days": 35, "priority": OrderPriority.NORMAL},
+            {"num": "ORD-2024-005", "cust": "Retail Plus", "style": "POLO-001", "qty": 4000, "days": 42, "priority": OrderPriority.LOW},
+        ]
+        order_entries = []
+        for order in orders_data:
+            order_entry = CapacityOrder(
+                client_id=client_id,
+                order_number=order["num"],
+                customer_name=order["cust"],
+                style_code=order["style"],
+                order_quantity=order["qty"],
+                required_date=today + timedelta(days=order["days"]),
+                priority=order["priority"],
+                status=OrderStatus.CONFIRMED
+            )
+            order_entries.append(order_entry)
+        self.session.add_all(order_entries)
+
+        # 4. Production Standards (SAM per operation per style)
+        standards_data = [
+            {"style": "TSHIRT-001", "op": "CUT", "dept": "CUTTING", "sam": 0.5},
+            {"style": "TSHIRT-001", "op": "SEW", "dept": "SEWING", "sam": 8.0},
+            {"style": "TSHIRT-001", "op": "FINISH", "dept": "FINISHING", "sam": 2.0},
+            {"style": "POLO-001", "op": "CUT", "dept": "CUTTING", "sam": 0.6},
+            {"style": "POLO-001", "op": "SEW", "dept": "SEWING", "sam": 12.0},
+            {"style": "POLO-001", "op": "FINISH", "dept": "FINISHING", "sam": 3.0},
+            {"style": "JACKET-001", "op": "CUT", "dept": "CUTTING", "sam": 1.2},
+            {"style": "JACKET-001", "op": "SEW", "dept": "SEWING", "sam": 25.0},
+            {"style": "JACKET-001", "op": "FINISH", "dept": "FINISHING", "sam": 5.0},
+        ]
+        standard_entries = []
+        for std in standards_data:
+            std_entry = CapacityProductionStandard(
+                client_id=client_id,
+                style_code=std["style"],
+                operation_code=std["op"],
+                operation_name=f"{std['op']} Operation",
+                department=std["dept"],
+                sam_minutes=std["sam"]
+            )
+            standard_entries.append(std_entry)
+        self.session.add_all(standard_entries)
+        self.session.flush()
+
+        # 5. BOMs with components
+        boms_data = [
+            {
+                "item": "TSHIRT-001",
+                "desc": "Basic T-Shirt",
+                "components": [
+                    {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "qty": 0.5, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {"code": "THREAD-WHT", "desc": "White Thread", "qty": 50, "uom": "M", "waste": 2, "type": "TRIM"},
+                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                ]
+            },
+            {
+                "item": "POLO-001",
+                "desc": "Polo Shirt",
+                "components": [
+                    {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "qty": 0.6, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {"code": "THREAD-WHT", "desc": "White Thread", "qty": 75, "uom": "M", "waste": 2, "type": "TRIM"},
+                    {"code": "BUTTON-SM", "desc": "Small Button", "qty": 3, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
+                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                ]
+            },
+            {
+                "item": "JACKET-001",
+                "desc": "Basic Jacket",
+                "components": [
+                    {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": 1.5, "uom": "M", "waste": 8, "type": "FABRIC"},
+                    {"code": "FABRIC-LINING", "desc": "Lining Fabric", "qty": 1.2, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {"code": "THREAD-BLK", "desc": "Black Thread", "qty": 100, "uom": "M", "waste": 2, "type": "TRIM"},
+                    {"code": "ZIPPER-LG", "desc": "Large Zipper", "qty": 1, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
+                    {"code": "BUTTON-LG", "desc": "Large Button", "qty": 6, "uom": "EA", "waste": 2, "type": "ACCESSORY"},
+                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                ]
+            },
+        ]
+
+        bom_count = 0
+        for bom in boms_data:
+            header = CapacityBOMHeader(
+                client_id=client_id,
+                parent_item_code=bom["item"],
+                parent_item_description=bom["desc"],
+                style_code=bom["item"],
+                revision="1.0",
+                is_active=True
+            )
+            self.session.add(header)
+            self.session.flush()
+
+            for comp in bom["components"]:
+                detail = CapacityBOMDetail(
+                    header_id=header.id,
+                    client_id=client_id,
+                    component_item_code=comp["code"],
+                    component_description=comp["desc"],
+                    quantity_per=Decimal(str(comp["qty"])),
+                    unit_of_measure=comp["uom"],
+                    waste_percentage=Decimal(str(comp["waste"])),
+                    component_type=comp["type"]
+                )
+                self.session.add(detail)
+                bom_count += 1
+
+        # 6. Stock Snapshots
+        stock_items = [
+            {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "oh": 10000, "uom": "M"},
+            {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "oh": 5000, "uom": "M"},
+            {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "oh": 3000, "uom": "M"},
+            {"code": "FABRIC-LINING", "desc": "Lining Fabric", "oh": 2500, "uom": "M"},
+            {"code": "THREAD-WHT", "desc": "White Thread", "oh": 500000, "uom": "M"},
+            {"code": "THREAD-BLK", "desc": "Black Thread", "oh": 300000, "uom": "M"},
+            {"code": "BUTTON-SM", "desc": "Small Button", "oh": 50000, "uom": "EA"},
+            {"code": "BUTTON-LG", "desc": "Large Button", "oh": 20000, "uom": "EA"},
+            {"code": "ZIPPER-LG", "desc": "Large Zipper", "oh": 5000, "uom": "EA"},
+            {"code": "LABEL-CARE", "desc": "Care Label", "oh": 100000, "uom": "EA"},
+        ]
+
+        stock_entries = []
+        for item in stock_items:
+            stock_entry = CapacityStockSnapshot(
+                client_id=client_id,
+                snapshot_date=today,
+                item_code=item["code"],
+                item_description=item["desc"],
+                on_hand_quantity=Decimal(str(item["oh"])),
+                allocated_quantity=Decimal("0"),
+                on_order_quantity=Decimal("0"),
+                available_quantity=Decimal(str(item["oh"])),
+                unit_of_measure=item["uom"]
+            )
+            stock_entries.append(stock_entry)
+        self.session.add_all(stock_entries)
+
+        # Calculate total entries seeded
+        total_entries = (
+            len(calendar_entries) +
+            len(line_entries) +
+            len(order_entries) +
+            len(standard_entries) +
+            len(boms_data) + bom_count +  # Headers + Details
+            len(stock_entries)
+        )
+
+        logger.info(f"Capacity planning demo data seeded: {total_entries} records")
+        return total_entries
 
     def get_seeded_counts(self) -> dict:
         """Get counts of seeded records.
