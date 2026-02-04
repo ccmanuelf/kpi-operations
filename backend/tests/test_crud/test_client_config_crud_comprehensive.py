@@ -267,7 +267,14 @@ class TestGetClientConfigOrDefaults:
     def test_get_client_config_or_defaults_returns_defaults(self, config_setup):
         """Test returns defaults when no config exists."""
         db = config_setup["db"]
-        client = config_setup["client_a"]
+        # Use client_b which has no config created (client_a may have cached config from prior test)
+        client = config_setup["client_b"]
+
+        # Clear cache to ensure we're testing fresh lookup
+        from backend.cache import get_cache, build_cache_key
+        cache = get_cache()
+        cache_key = build_cache_key("client_config", client.client_id)
+        cache.delete(cache_key)
 
         result = client_config_crud.get_client_config_or_defaults(
             db, client.client_id
