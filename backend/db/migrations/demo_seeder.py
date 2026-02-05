@@ -213,19 +213,26 @@ class DemoDataSeeder:
         return len(users)
 
     def _seed_employees(self) -> int:
-        """Seed demo employees."""
+        """Seed demo employees.
+
+        Creates employees linked to:
+        - Client (DEMO-001 or floating pool)
+        - Production Entries (via employee_id)
+        - Coverage Entries (via employee_id)
+        """
         from backend.schemas.employee import Employee
 
         employees = []
         for i in range(1, 11):
             emp = Employee(
-                employee_id=f"EMP-{i:03d}",
-                first_name=f"Employee{i}",
-                last_name=f"Demo{i}",
-                badge_number=f"BADGE-{i:04d}",
-                client_id_assigned="DEMO-001",
+                employee_code=f"EMP-{i:03d}",
+                employee_name=f"Employee Demo {i}",
+                client_id_assigned="DEMO-001" if i <= 7 else None,  # 8-10 are floating pool
+                is_floating_pool=1 if i > 7 else 0,
                 is_active=1,
-                hire_date=date(2023, 1, 1) + timedelta(days=i * 30),
+                department=["CUTTING", "SEWING", "FINISHING"][(i - 1) % 3],
+                position="Operator" if i <= 7 else "Floating Operator",
+                hire_date=datetime(2023, 1, 1) + timedelta(days=i * 30),
             )
             employees.append(emp)
 
@@ -233,17 +240,36 @@ class DemoDataSeeder:
         return len(employees)
 
     def _seed_products(self) -> int:
-        """Seed demo products."""
+        """Seed demo products.
+
+        Creates products that link to Capacity Planning BOMs and styles.
+        These product codes are used across:
+        - Work Orders (style_model)
+        - Capacity Orders (style_code)
+        - BOM Headers (style_code)
+        - Production Standards (style_code)
+        """
         from backend.schemas.product import Product
+
+        # Products with meaningful names that match capacity planning styles
+        products_data = [
+            {"code": "TSHIRT-001", "name": "Basic T-Shirt", "uom": "pieces", "cycle_time": 0.15},
+            {"code": "POLO-001", "name": "Classic Polo Shirt", "uom": "pieces", "cycle_time": 0.20},
+            {"code": "JACKET-001", "name": "Lightweight Jacket", "uom": "pieces", "cycle_time": 0.45},
+            {"code": "TSHIRT-002", "name": "Premium T-Shirt", "uom": "pieces", "cycle_time": 0.18},
+            {"code": "POLO-002", "name": "Performance Polo", "uom": "pieces", "cycle_time": 0.25},
+        ]
 
         products = [
             Product(
-                product_code=f"P{i:03d}",
-                product_name=f"Product {i}",
-                unit_of_measure="pieces",
+                product_code=p["code"],
+                product_name=p["name"],
+                description=f"Standard {p['name']} for manufacturing operations",
+                unit_of_measure=p["uom"],
+                ideal_cycle_time=Decimal(str(p["cycle_time"])),
                 is_active=True,
             )
-            for i in range(1, 6)
+            for p in products_data
         ]
         self.session.add_all(products)
         return len(products)
@@ -251,24 +277,25 @@ class DemoDataSeeder:
     def _seed_shifts(self) -> int:
         """Seed demo shifts."""
         from backend.schemas.shift import Shift
+        from datetime import time as dt_time
 
         shifts = [
             Shift(
                 shift_name="Day Shift",
-                start_time="06:00:00",
-                end_time="14:00:00",
+                start_time=dt_time(6, 0, 0),
+                end_time=dt_time(14, 0, 0),
                 is_active=True,
             ),
             Shift(
                 shift_name="Swing Shift",
-                start_time="14:00:00",
-                end_time="22:00:00",
+                start_time=dt_time(14, 0, 0),
+                end_time=dt_time(22, 0, 0),
                 is_active=True,
             ),
             Shift(
                 shift_name="Night Shift",
-                start_time="22:00:00",
-                end_time="06:00:00",
+                start_time=dt_time(22, 0, 0),
+                end_time=dt_time(6, 0, 0),
                 is_active=True,
             ),
         ]
@@ -276,38 +303,81 @@ class DemoDataSeeder:
         return len(shifts)
 
     def _seed_work_orders(self) -> int:
-        """Seed demo work orders."""
+        """Seed demo work orders.
+
+        Creates work orders that link to:
+        - Products (via style_model matching product_code)
+        - Capacity Orders (can be conceptually linked via matching style)
+        - Production Entries (via work_order_id)
+        """
         from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 
-        work_orders = [
-            WorkOrder(
-                work_order_id=f"WO-{i:04d}",
-                client_id="DEMO-001",
-                product_id=f"PROD-{(i % 5) + 1:03d}",
-                quantity_ordered=random.randint(100, 1000),
-                status=WorkOrderStatus.IN_PROGRESS if i <= 3 else WorkOrderStatus.PENDING,
-                due_date=date.today() + timedelta(days=i * 7),
-                priority=random.randint(1, 5),
-            )
-            for i in range(1, 8)
+        today = date.today()
+
+        # Work orders matching product/style codes for integrated experience
+        work_orders_data = [
+            # Active orders (IN_PROGRESS) - link to Capacity Orders
+            {"id": "WO-0001", "style": "TSHIRT-001", "qty": 500, "status": WorkOrderStatus.IN_PROGRESS, "days": 14, "priority": "HIGH"},
+            {"id": "WO-0002", "style": "POLO-001", "qty": 300, "status": WorkOrderStatus.IN_PROGRESS, "days": 21, "priority": "NORMAL"},
+            {"id": "WO-0003", "style": "JACKET-001", "qty": 150, "status": WorkOrderStatus.IN_PROGRESS, "days": 28, "priority": "HIGH"},
+            # Released orders (ready for production)
+            {"id": "WO-0004", "style": "TSHIRT-002", "qty": 750, "status": WorkOrderStatus.RELEASED, "days": 35, "priority": "NORMAL"},
+            {"id": "WO-0005", "style": "POLO-002", "qty": 400, "status": WorkOrderStatus.RELEASED, "days": 42, "priority": "LOW"},
+            # Received orders (awaiting release)
+            {"id": "WO-0006", "style": "TSHIRT-001", "qty": 1000, "status": WorkOrderStatus.RECEIVED, "days": 56, "priority": "NORMAL"},
+            {"id": "WO-0007", "style": "POLO-001", "qty": 600, "status": WorkOrderStatus.RECEIVED, "days": 63, "priority": "LOW"},
         ]
+
+        work_orders = []
+        for wo in work_orders_data:
+            work_order = WorkOrder(
+                work_order_id=wo["id"],
+                client_id="DEMO-001",
+                style_model=wo["style"],
+                planned_quantity=wo["qty"],
+                actual_quantity=random.randint(0, wo["qty"] // 3) if wo["status"] == WorkOrderStatus.IN_PROGRESS else 0,
+                status=wo["status"],
+                planned_ship_date=today + timedelta(days=wo["days"]),
+                required_date=today + timedelta(days=wo["days"]),
+                received_date=today - timedelta(days=random.randint(7, 14)),
+                priority=wo["priority"],
+            )
+            work_orders.append(work_order)
+
         self.session.add_all(work_orders)
         return len(work_orders)
 
     def _seed_jobs(self) -> int:
-        """Seed demo jobs."""
+        """Seed demo jobs.
+
+        Creates jobs (operations) for each work order.
+        Operations align with capacity planning departments:
+        - CUT: Cutting operation
+        - SEW: Sewing operation
+        - FIN: Finishing operation
+
+        These match the production standards in Capacity Planning.
+        """
         from backend.schemas.job import Job
+
+        # Operations match capacity planning departments
+        operations = [
+            {"num": 1, "code": "CUT", "name": "CUT - Cutting", "hours": 2.0},
+            {"num": 2, "code": "SEW", "name": "SEW - Sewing", "hours": 6.0},
+            {"num": 3, "code": "FIN", "name": "FIN - Finishing", "hours": 2.0},
+        ]
 
         jobs = []
         for wo_id in range(1, 8):
-            for job_num in range(1, 4):
+            for op in operations:
                 job = Job(
-                    job_id=f"JOB-{wo_id:04d}-{job_num:02d}",
+                    job_id=f"JOB-{wo_id:04d}-{op['num']:02d}",
                     work_order_id=f"WO-{wo_id:04d}",
-                    operation_name=f"Operation {job_num}",
-                    sequence_number=job_num,
-                    estimated_hours=random.uniform(2, 8),
                     client_id_fk="DEMO-001",
+                    operation_name=op["name"],
+                    operation_code=op["code"],
+                    sequence_number=op["num"],
+                    planned_hours=Decimal(str(round(op["hours"] * random.uniform(0.8, 1.2), 2))),
                 )
                 jobs.append(job)
 
@@ -315,53 +385,90 @@ class DemoDataSeeder:
         return len(jobs)
 
     def _seed_production_entries(self) -> int:
-        """Seed demo production entries."""
+        """Seed demo production entries.
+
+        Creates production records that link to:
+        - Work Orders (WO-0001, WO-0002, WO-0003)
+        - Products (via product_id matching)
+        - Shifts (by shift_id integer)
+
+        This data appears in KPI dashboards and feeds capacity analysis.
+        """
         from backend.schemas.production_entry import ProductionEntry
 
         entries = []
-        today = date.today()
+        today = datetime.now()
 
+        # Map work orders to product IDs (products are created first with auto-increment IDs)
+        # Product 1: TSHIRT-001, Product 2: POLO-001, Product 3: JACKET-001
+        wo_product_map = {
+            "WO-0001": 1,  # TSHIRT-001
+            "WO-0002": 2,  # POLO-001
+            "WO-0003": 3,  # JACKET-001
+        }
+
+        entry_num = 1
         for day_offset in range(7):
             entry_date = today - timedelta(days=day_offset)
             for shift_num in range(1, 4):
+                wo_idx = (day_offset % 3) + 1
+                wo_id = f"WO-000{wo_idx}"
+                product_id = wo_product_map.get(wo_id, 1)
+                units = random.randint(50, 200)
+                defects = random.randint(0, 10)
+                scrap = random.randint(0, 5)
+                run_hours = random.uniform(6, 8)
+
                 entry = ProductionEntry(
+                    production_entry_id=f"PE-{entry_date.strftime('%Y%m%d')}-{entry_num:03d}",
                     client_id="DEMO-001",
-                    shift_id=f"SHIFT-{shift_num}",
-                    work_order_id=f"WO-000{(day_offset % 3) + 1}",
-                    job_id=f"JOB-000{(day_offset % 3) + 1}-01",
-                    employee_id=f"EMP-{(shift_num % 5) + 1:03d}",
-                    product_id=f"PROD-{(day_offset % 5) + 1:03d}",
-                    quantity_produced=random.randint(50, 200),
-                    quantity_rejected=random.randint(0, 10),
+                    product_id=product_id,
+                    shift_id=shift_num,
+                    work_order_id=wo_id,
+                    job_id=f"JOB-000{wo_idx}-01",
                     production_date=entry_date,
-                    hours_worked=random.uniform(6, 8),
+                    shift_date=entry_date,
+                    units_produced=units,
+                    run_time_hours=Decimal(str(round(run_hours, 2))),
+                    employees_assigned=random.randint(3, 6),
+                    defect_count=defects,
+                    scrap_count=scrap,
+                    entered_by=1,  # Admin user
                 )
                 entries.append(entry)
+                entry_num += 1
 
         self.session.add_all(entries)
         return len(entries)
 
     def _seed_downtime_entries(self) -> int:
-        """Seed demo downtime entries."""
+        """Seed demo downtime entries.
+
+        Creates downtime records linked to Work Orders for Availability KPI.
+        """
         from backend.schemas.downtime_entry import DowntimeEntry
 
         entries = []
-        today = date.today()
+        today = datetime.now()
 
         for day_offset in range(5):
             entry_date = today - timedelta(days=day_offset)
+            wo_num = (day_offset % 3) + 1
+
             entry = DowntimeEntry(
+                downtime_entry_id=f"DT-{entry_date.strftime('%Y%m%d')}-{day_offset + 1:02d}",
                 client_id="DEMO-001",
-                shift_id="SHIFT-1",
-                entry_date=entry_date,
+                work_order_id=f"WO-000{wo_num}",
+                shift_date=entry_date,
                 downtime_reason=random.choice([
                     "Equipment Maintenance",
                     "Material Shortage",
                     "Changeover",
                     "Unplanned Breakdown",
                 ]),
-                downtime_minutes=random.randint(15, 120),
-                employee_id=f"EMP-{random.randint(1, 5):03d}",
+                downtime_duration_minutes=random.randint(15, 120),
+                machine_id=f"MACHINE-{random.randint(1, 5):02d}",
+                reported_by=1,  # Admin user
             )
             entries.append(entry)
 
@@ -369,47 +476,77 @@ class DemoDataSeeder:
         return len(entries)
 
     def _seed_attendance_entries(self) -> int:
-        """Seed demo attendance entries."""
+        """Seed demo attendance entries.
+
+        Creates attendance records for Absenteeism KPI calculation.
+        """
         from backend.schemas.attendance_entry import AttendanceEntry, AbsenceType
 
         entries = []
-        today = date.today()
+        today = datetime.now()
 
+        entry_num = 1
         for day_offset in range(7):
             entry_date = today - timedelta(days=day_offset)
             for emp_id in range(1, 6):
+                actual_hours = random.choice([8.0, 8.0, 8.0, 7.5, 0.0])
+                is_absent = 1 if actual_hours == 0 else 0
+                absence_type = AbsenceType.UNSCHEDULED_ABSENCE if is_absent else None
+
                 entry = AttendanceEntry(
+                    attendance_entry_id=f"ATT-{entry_date.strftime('%Y%m%d')}-{entry_num:03d}",
                     client_id="DEMO-001",
-                    employee_id=f"EMP-{emp_id:03d}",
-                    shift_id="SHIFT-1",
-                    attendance_date=entry_date,
-                    scheduled_hours=8.0,
-                    actual_hours=random.choice([8.0, 8.0, 8.0, 7.5, 0.0]),
-                    absence_type=AbsenceType.NONE if random.random() > 0.1 else AbsenceType.UNEXCUSED,
+                    employee_id=emp_id,  # Integer ID from auto-increment
+                    shift_id=1,  # Day Shift
+                    shift_date=entry_date,
+                    scheduled_hours=Decimal("8.0"),
+                    actual_hours=Decimal(str(actual_hours)),
+                    absence_hours=Decimal(str(8.0 - actual_hours)) if actual_hours < 8.0 else Decimal("0"),
+                    is_absent=is_absent,
+                    absence_type=absence_type,
+                    entered_by=1,  # Admin user
                 )
                 entries.append(entry)
+                entry_num += 1
 
         self.session.add_all(entries)
         return len(entries)
 
     def _seed_quality_entries(self) -> int:
-        """Seed demo quality entries."""
+        """Seed demo quality entries.
+
+        Creates quality inspection records linked to:
+        - Work Orders (WO-0001, WO-0002, WO-0003)
+
+        This data feeds quality KPIs (PPM, DPMO, FPY, RTY).
+        """
         from backend.schemas.quality_entry import QualityEntry
 
         entries = []
-        today = date.today()
+        today = datetime.now()
 
+        # Quality inspections for active work orders
         for day_offset in range(5):
             entry_date = today - timedelta(days=day_offset)
+            wo_num = (day_offset % 3) + 1
+            units_inspected = random.randint(50, 100)
+            units_defective = random.randint(0, 5)
+            units_passed = units_inspected - units_defective
+
             entry = QualityEntry(
+                quality_entry_id=f"QE-{entry_date.strftime('%Y%m%d')}-{day_offset + 1:02d}",
                 client_id="DEMO-001",
-                shift_id="SHIFT-1",
+                work_order_id=f"WO-000{wo_num}",
+                job_id=f"JOB-000{wo_num}-02",  # SEW operation
+                shift_date=entry_date,
                 inspection_date=entry_date,
-                inspector_id=f"EMP-{random.randint(1, 3):03d}",
-                work_order_id=f"WO-000{(day_offset % 3) + 1}",
-                quantity_inspected=random.randint(50, 100),
-                quantity_passed=random.randint(45, 100),
-                quantity_failed=random.randint(0, 5),
+                units_inspected=units_inspected,
+                units_passed=units_passed,
+                units_defective=units_defective,
+                total_defects_count=units_defective + random.randint(0, 3),  # May have multiple defects per unit
+                inspection_stage="In-Process",
+                is_first_pass=1,
+                inspector_id="1",  # Admin user as string
             )
             entries.append(entry)
 
@@ -417,68 +554,90 @@ class DemoDataSeeder:
         return len(entries)
 
     def _seed_hold_entries(self) -> int:
-        """Seed demo hold entries (WIP holds)."""
-        from backend.schemas.hold_entry import HoldEntry, HoldStatus
+        """Seed demo hold entries (WIP holds).
+
+        Creates hold records for WIP Aging KPI calculation.
+        """
+        from backend.schemas.hold_entry import HoldEntry, HoldStatus, HoldReason
+
+        today = datetime.now()
 
         entries = [
             HoldEntry(
+                hold_entry_id="HE-001",
                 client_id="DEMO-001",
                 work_order_id="WO-0001",
-                job_id="JOB-0001-01",
-                quantity_on_hold=random.randint(10, 50),
-                hold_reason="Quality Hold - Inspection Required",
-                status=HoldStatus.ACTIVE,
-                hold_date=date.today() - timedelta(days=2),
+                job_id="JOB-0001-02",
+                hold_status=HoldStatus.ON_HOLD,
+                hold_date=today - timedelta(days=2),
+                hold_reason=HoldReason.QUALITY_ISSUE,
+                hold_reason_description="Quality Hold - Inspection Required",
+                hold_initiated_by="1",  # Admin user
             ),
             HoldEntry(
+                hold_entry_id="HE-002",
                 client_id="DEMO-001",
                 work_order_id="WO-0002",
                 job_id="JOB-0002-01",
-                quantity_on_hold=random.randint(5, 25),
-                hold_reason="Material Verification",
-                status=HoldStatus.RELEASED,
-                hold_date=date.today() - timedelta(days=5),
-                release_date=date.today() - timedelta(days=1),
+                hold_status=HoldStatus.RESUMED,
+                hold_date=today - timedelta(days=5),
+                resume_date=today - timedelta(days=1),
+                total_hold_duration_hours=Decimal("96"),  # 4 days
+                hold_reason=HoldReason.MATERIAL_INSPECTION,
+                hold_reason_description="Material Verification",
+                hold_initiated_by="1",
+                resumed_by="1",
             ),
         ]
         self.session.add_all(entries)
         return len(entries)
 
     def _seed_defect_type_catalog(self) -> int:
-        """Seed demo defect type catalog."""
+        """Seed demo defect type catalog.
+
+        Creates client-specific defect types for quality tracking.
+        """
         from backend.schemas.defect_type_catalog import DefectTypeCatalog
 
         defect_types = [
             DefectTypeCatalog(
+                defect_type_id="DT-DEMO-001",
                 client_id="DEMO-001",
                 defect_code="DIM-001",
                 defect_name="Dimensional Out of Spec",
+                description="Part dimensions outside tolerance",
                 category="Dimensional",
-                severity="Major",
+                severity_default="MAJOR",
                 is_active=True,
             ),
             DefectTypeCatalog(
+                defect_type_id="DT-DEMO-002",
                 client_id="DEMO-001",
                 defect_code="SUR-001",
                 defect_name="Surface Scratch",
+                description="Visible scratch on product surface",
                 category="Surface",
-                severity="Minor",
+                severity_default="MINOR",
                 is_active=True,
             ),
             DefectTypeCatalog(
+                defect_type_id="DT-DEMO-003",
                 client_id="DEMO-001",
                 defect_code="SUR-002",
                 defect_name="Surface Contamination",
+                description="Contamination or foreign material on surface",
                 category="Surface",
-                severity="Major",
+                severity_default="MAJOR",
                 is_active=True,
             ),
             DefectTypeCatalog(
+                defect_type_id="DT-DEMO-004",
                 client_id="DEMO-001",
                 defect_code="ASM-001",
                 defect_name="Assembly Error",
+                description="Incorrect assembly or misaligned components",
                 category="Assembly",
-                severity="Critical",
+                severity_default="CRITICAL",
                 is_active=True,
             ),
         ]
@@ -809,15 +968,20 @@ class DemoDataSeeder:
     def _seed_capacity_planning(self) -> int:
         """Seed demo data for capacity planning module.
 
-        Phase C.2: Capacity Planning Demo Seeding
+        Phase C.2: Capacity Planning Demo Seeding (LINKED DATA)
 
-        Creates:
+        Creates INTEGRATED data that connects to existing KPI Operations entities:
         - Master calendar (next 12 weeks)
-        - 4 production lines
-        - 5 sample orders
-        - 10 production standards
-        - 3 BOMs with components
-        - Stock snapshots
+        - 4 production lines (matching job operations CUT/SEW/FIN)
+        - 8 sample capacity orders (3 linked to existing Work Orders)
+        - Production standards (for all 5 product styles)
+        - 5 BOMs with components (one per product)
+        - Stock snapshots for all BOM components
+
+        LINKAGE POINTS:
+        - style_code matches Product.product_code
+        - Capacity Orders for styles that have active Work Orders
+        - Production Standards match Job operations
         """
         from backend.schemas.capacity import (
             CapacityCalendar,
@@ -831,16 +995,25 @@ class DemoDataSeeder:
         from backend.schemas.capacity.orders import OrderStatus, OrderPriority
 
         client_id = "DEMO-001"
-        entries = []
         today = date.today()
 
-        logger.info(f"Seeding capacity planning demo data for client: {client_id}")
+        logger.info(f"Seeding capacity planning demo data (LINKED) for client: {client_id}")
 
         # 1. Master Calendar - next 12 weeks (84 days)
+        # Includes realistic holidays
+        holidays = {
+            # Add some sample holidays in the planning horizon
+            (today + timedelta(days=30)).isoformat()[:10]: "Company Holiday",
+            (today + timedelta(days=60)).isoformat()[:10]: "National Holiday",
+        }
+
         calendar_entries = []
         for i in range(84):
             cal_date = today + timedelta(days=i)
-            is_working = cal_date.weekday() < 5  # Mon-Fri
+            date_str = cal_date.isoformat()[:10]
+            is_weekend = cal_date.weekday() >= 5
+            holiday_name = holidays.get(date_str)
+            is_working = not is_weekend and not holiday_name
 
             entry = CapacityCalendar(
                 client_id=client_id,
@@ -850,12 +1023,12 @@ class DemoDataSeeder:
                 shift1_hours=8.0 if is_working else 0,
                 shift2_hours=8.0 if is_working else 0,
                 shift3_hours=0,
-                holiday_name=None if is_working else "Weekend"
+                holiday_name=holiday_name if holiday_name else ("Weekend" if is_weekend else None)
             )
             calendar_entries.append(entry)
         self.session.add_all(calendar_entries)
 
-        # 2. Production Lines
+        # 2. Production Lines - Match operations from Jobs (CUT/SEW/FIN)
         lines_data = [
             {"code": "CUTTING_01", "name": "Cutting Line 1", "dept": "CUTTING", "capacity": 500, "ops": 8},
             {"code": "SEWING_01", "name": "Sewing Line 1", "dept": "SEWING", "capacity": 120, "ops": 25},
@@ -878,13 +1051,45 @@ class DemoDataSeeder:
             line_entries.append(line_entry)
         self.session.add_all(line_entries)
 
-        # 3. Sample Orders
+        # 3. Sample Capacity Orders - LINKED to Work Orders
+        # First 3 orders match active Work Orders (WO-0001, WO-0002, WO-0003)
+        # This creates a direct link between operational execution and capacity planning
         orders_data = [
-            {"num": "ORD-2024-001", "cust": "ABC Corp", "style": "TSHIRT-001", "qty": 5000, "days": 21, "priority": OrderPriority.HIGH},
-            {"num": "ORD-2024-002", "cust": "XYZ Inc", "style": "POLO-001", "qty": 3000, "days": 28, "priority": OrderPriority.NORMAL},
-            {"num": "ORD-2024-003", "cust": "Fashion Co", "style": "TSHIRT-001", "qty": 2000, "days": 14, "priority": OrderPriority.URGENT},
-            {"num": "ORD-2024-004", "cust": "Style Ltd", "style": "JACKET-001", "qty": 1000, "days": 35, "priority": OrderPriority.NORMAL},
-            {"num": "ORD-2024-005", "cust": "Retail Plus", "style": "POLO-001", "qty": 4000, "days": 42, "priority": OrderPriority.LOW},
+            # LINKED to WO-0001 (TSHIRT-001, IN_PROGRESS)
+            {"num": "CPL-WO-0001", "cust": "Demo Manufacturing Co", "style": "TSHIRT-001",
+             "qty": 500, "days": 14, "priority": OrderPriority.HIGH, "status": OrderStatus.IN_PROGRESS,
+             "notes": "Linked to Work Order WO-0001"},
+
+            # LINKED to WO-0002 (POLO-001, IN_PROGRESS)
+            {"num": "CPL-WO-0002", "cust": "Demo Manufacturing Co", "style": "POLO-001",
+             "qty": 300, "days": 21, "priority": OrderPriority.NORMAL, "status": OrderStatus.IN_PROGRESS,
+             "notes": "Linked to Work Order WO-0002"},
+
+            # LINKED to WO-0003 (JACKET-001, IN_PROGRESS)
+            {"num": "CPL-WO-0003", "cust": "Demo Manufacturing Co", "style": "JACKET-001",
+             "qty": 150, "days": 28, "priority": OrderPriority.HIGH, "status": OrderStatus.IN_PROGRESS,
+             "notes": "Linked to Work Order WO-0003"},
+
+            # Additional capacity planning orders (future orders for planning)
+            {"num": "CPL-2024-001", "cust": "ABC Corp", "style": "TSHIRT-001",
+             "qty": 5000, "days": 35, "priority": OrderPriority.HIGH, "status": OrderStatus.CONFIRMED,
+             "notes": "Large batch for Q2"},
+
+            {"num": "CPL-2024-002", "cust": "XYZ Inc", "style": "POLO-001",
+             "qty": 3000, "days": 42, "priority": OrderPriority.NORMAL, "status": OrderStatus.CONFIRMED,
+             "notes": "Standard seasonal order"},
+
+            {"num": "CPL-2024-003", "cust": "Fashion Co", "style": "TSHIRT-002",
+             "qty": 2000, "days": 49, "priority": OrderPriority.NORMAL, "status": OrderStatus.CONFIRMED,
+             "notes": "Premium line expansion"},
+
+            {"num": "CPL-2024-004", "cust": "Style Ltd", "style": "JACKET-001",
+             "qty": 1000, "days": 56, "priority": OrderPriority.LOW, "status": OrderStatus.DRAFT,
+             "notes": "Winter collection - pending confirmation"},
+
+            {"num": "CPL-2024-005", "cust": "Retail Plus", "style": "POLO-002",
+             "qty": 4000, "days": 63, "priority": OrderPriority.LOW, "status": OrderStatus.DRAFT,
+             "notes": "Performance line - pending quote"},
         ]
         order_entries = []
         for order in orders_data:
@@ -893,25 +1098,43 @@ class DemoDataSeeder:
                 order_number=order["num"],
                 customer_name=order["cust"],
                 style_code=order["style"],
+                style_description=f"Standard {order['style']} product line",
                 order_quantity=order["qty"],
                 required_date=today + timedelta(days=order["days"]),
                 priority=order["priority"],
-                status=OrderStatus.CONFIRMED
+                status=order["status"],
+                notes=order.get("notes")
             )
             order_entries.append(order_entry)
         self.session.add_all(order_entries)
 
         # 4. Production Standards (SAM per operation per style)
+        # Covers ALL 5 products, matching Job operations (CUT/SEW/FIN)
         standards_data = [
-            {"style": "TSHIRT-001", "op": "CUT", "dept": "CUTTING", "sam": 0.5},
-            {"style": "TSHIRT-001", "op": "SEW", "dept": "SEWING", "sam": 8.0},
-            {"style": "TSHIRT-001", "op": "FINISH", "dept": "FINISHING", "sam": 2.0},
-            {"style": "POLO-001", "op": "CUT", "dept": "CUTTING", "sam": 0.6},
-            {"style": "POLO-001", "op": "SEW", "dept": "SEWING", "sam": 12.0},
-            {"style": "POLO-001", "op": "FINISH", "dept": "FINISHING", "sam": 3.0},
-            {"style": "JACKET-001", "op": "CUT", "dept": "CUTTING", "sam": 1.2},
-            {"style": "JACKET-001", "op": "SEW", "dept": "SEWING", "sam": 25.0},
-            {"style": "JACKET-001", "op": "FINISH", "dept": "FINISHING", "sam": 5.0},
+            # TSHIRT-001 (Basic T-Shirt) - matches Product & WO-0001
+            {"style": "TSHIRT-001", "op": "CUT", "dept": "CUTTING", "sam": 0.5, "name": "CUT - Cutting"},
+            {"style": "TSHIRT-001", "op": "SEW", "dept": "SEWING", "sam": 8.0, "name": "SEW - Sewing"},
+            {"style": "TSHIRT-001", "op": "FIN", "dept": "FINISHING", "sam": 2.0, "name": "FIN - Finishing"},
+
+            # POLO-001 (Classic Polo Shirt) - matches Product & WO-0002
+            {"style": "POLO-001", "op": "CUT", "dept": "CUTTING", "sam": 0.6, "name": "CUT - Cutting"},
+            {"style": "POLO-001", "op": "SEW", "dept": "SEWING", "sam": 12.0, "name": "SEW - Sewing"},
+            {"style": "POLO-001", "op": "FIN", "dept": "FINISHING", "sam": 3.0, "name": "FIN - Finishing"},
+
+            # JACKET-001 (Lightweight Jacket) - matches Product & WO-0003
+            {"style": "JACKET-001", "op": "CUT", "dept": "CUTTING", "sam": 1.2, "name": "CUT - Cutting"},
+            {"style": "JACKET-001", "op": "SEW", "dept": "SEWING", "sam": 25.0, "name": "SEW - Sewing"},
+            {"style": "JACKET-001", "op": "FIN", "dept": "FINISHING", "sam": 5.0, "name": "FIN - Finishing"},
+
+            # TSHIRT-002 (Premium T-Shirt) - matches Product & WO-0004
+            {"style": "TSHIRT-002", "op": "CUT", "dept": "CUTTING", "sam": 0.6, "name": "CUT - Cutting"},
+            {"style": "TSHIRT-002", "op": "SEW", "dept": "SEWING", "sam": 10.0, "name": "SEW - Sewing"},
+            {"style": "TSHIRT-002", "op": "FIN", "dept": "FINISHING", "sam": 2.5, "name": "FIN - Finishing"},
+
+            # POLO-002 (Performance Polo) - matches Product & WO-0005
+            {"style": "POLO-002", "op": "CUT", "dept": "CUTTING", "sam": 0.7, "name": "CUT - Cutting"},
+            {"style": "POLO-002", "op": "SEW", "dept": "SEWING", "sam": 14.0, "name": "SEW - Sewing"},
+            {"style": "POLO-002", "op": "FIN", "dept": "FINISHING", "sam": 3.5, "name": "FIN - Finishing"},
         ]
         standard_entries = []
         for std in standards_data:
@@ -919,7 +1142,7 @@ class DemoDataSeeder:
                 client_id=client_id,
                 style_code=std["style"],
                 operation_code=std["op"],
-                operation_name=f"{std['op']} Operation",
+                operation_name=std["name"],
                 department=std["dept"],
                 sam_minutes=std["sam"]
             )
@@ -927,7 +1150,8 @@ class DemoDataSeeder:
         self.session.add_all(standard_entries)
         self.session.flush()
 
-        # 5. BOMs with components
+        # 5. BOMs with components - ALL 5 PRODUCTS
+        # Components are shared across products to demonstrate MRP explosion
         boms_data = [
             {
                 "item": "TSHIRT-001",
@@ -936,21 +1160,24 @@ class DemoDataSeeder:
                     {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "qty": 0.5, "uom": "M", "waste": 5, "type": "FABRIC"},
                     {"code": "THREAD-WHT", "desc": "White Thread", "qty": 50, "uom": "M", "waste": 2, "type": "TRIM"},
                     {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
                 ]
             },
             {
                 "item": "POLO-001",
-                "desc": "Polo Shirt",
+                "desc": "Classic Polo Shirt",
                 "components": [
                     {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "qty": 0.6, "uom": "M", "waste": 5, "type": "FABRIC"},
                     {"code": "THREAD-WHT", "desc": "White Thread", "qty": 75, "uom": "M", "waste": 2, "type": "TRIM"},
                     {"code": "BUTTON-SM", "desc": "Small Button", "qty": 3, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
                     {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "COLLAR-RIB", "desc": "Ribbed Collar", "qty": 1, "uom": "EA", "waste": 2, "type": "TRIM"},
                 ]
             },
             {
                 "item": "JACKET-001",
-                "desc": "Basic Jacket",
+                "desc": "Lightweight Jacket",
                 "components": [
                     {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": 1.5, "uom": "M", "waste": 8, "type": "FABRIC"},
                     {"code": "FABRIC-LINING", "desc": "Lining Fabric", "qty": 1.2, "uom": "M", "waste": 5, "type": "FABRIC"},
@@ -958,6 +1185,31 @@ class DemoDataSeeder:
                     {"code": "ZIPPER-LG", "desc": "Large Zipper", "qty": 1, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
                     {"code": "BUTTON-LG", "desc": "Large Button", "qty": 6, "uom": "EA", "waste": 2, "type": "ACCESSORY"},
                     {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                ]
+            },
+            {
+                "item": "TSHIRT-002",
+                "desc": "Premium T-Shirt",
+                "components": [
+                    {"code": "FABRIC-PREMIUM", "desc": "Premium Cotton", "qty": 0.55, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {"code": "THREAD-WHT", "desc": "White Thread", "qty": 60, "uom": "M", "waste": 2, "type": "TRIM"},
+                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "LABEL-PREMIUM", "desc": "Premium Quality Tag", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                ]
+            },
+            {
+                "item": "POLO-002",
+                "desc": "Performance Polo",
+                "components": [
+                    {"code": "FABRIC-PERF", "desc": "Performance Fabric", "qty": 0.65, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {"code": "THREAD-WHT", "desc": "White Thread", "qty": 80, "uom": "M", "waste": 2, "type": "TRIM"},
+                    {"code": "BUTTON-SM", "desc": "Small Button", "qty": 3, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
+                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {"code": "COLLAR-TECH", "desc": "Tech Collar", "qty": 1, "uom": "EA", "waste": 2, "type": "TRIM"},
+                    {"code": "ZIPPER-SM", "desc": "Small Zipper", "qty": 1, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
                 ]
             },
         ]
@@ -989,18 +1241,37 @@ class DemoDataSeeder:
                 self.session.add(detail)
                 bom_count += 1
 
-        # 6. Stock Snapshots
+        # 6. Stock Snapshots - All components with realistic quantities
+        # Some items have LOW STOCK to demonstrate shortage detection in Component Check
         stock_items = [
+            # Fabrics
             {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "oh": 10000, "uom": "M"},
             {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "oh": 5000, "uom": "M"},
             {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "oh": 3000, "uom": "M"},
             {"code": "FABRIC-LINING", "desc": "Lining Fabric", "oh": 2500, "uom": "M"},
+            {"code": "FABRIC-PREMIUM", "desc": "Premium Cotton", "oh": 1500, "uom": "M"},  # LOW for shortage demo
+            {"code": "FABRIC-PERF", "desc": "Performance Fabric", "oh": 800, "uom": "M"},  # LOW for shortage demo
+
+            # Threads
             {"code": "THREAD-WHT", "desc": "White Thread", "oh": 500000, "uom": "M"},
             {"code": "THREAD-BLK", "desc": "Black Thread", "oh": 300000, "uom": "M"},
+
+            # Buttons
             {"code": "BUTTON-SM", "desc": "Small Button", "oh": 50000, "uom": "EA"},
             {"code": "BUTTON-LG", "desc": "Large Button", "oh": 20000, "uom": "EA"},
+
+            # Zippers
             {"code": "ZIPPER-LG", "desc": "Large Zipper", "oh": 5000, "uom": "EA"},
+            {"code": "ZIPPER-SM", "desc": "Small Zipper", "oh": 3000, "uom": "EA"},
+
+            # Labels
             {"code": "LABEL-CARE", "desc": "Care Label", "oh": 100000, "uom": "EA"},
+            {"code": "LABEL-BRAND", "desc": "Brand Label", "oh": 80000, "uom": "EA"},
+            {"code": "LABEL-PREMIUM", "desc": "Premium Quality Tag", "oh": 500, "uom": "EA"},  # LOW for shortage demo
+
+            # Collars
+            {"code": "COLLAR-RIB", "desc": "Ribbed Collar", "oh": 15000, "uom": "EA"},
+            {"code": "COLLAR-TECH", "desc": "Tech Collar", "oh": 2000, "uom": "EA"},  # LOW for shortage demo
         ]
 
         stock_entries = []
