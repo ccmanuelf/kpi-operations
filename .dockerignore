@@ -1,0 +1,106 @@
+# .dockerignore - Exclude files from Docker build context
+# This improves build speed and reduces image size
+
+# Dependencies (will be installed fresh in container)
+node_modules/
+frontend/node_modules/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+env/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Databases (will be created/mounted at runtime)
+*.db
+*.sqlite
+*.sqlite3
+database/*.db
+database/*.db.invalid
+database/*.backup.*
+
+# Environment files (use Docker env vars instead)
+.env
+.env.local
+.env.*.local
+
+# Test files and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.hypothesis/
+coverage.xml
+frontend/coverage/
+frontend/playwright-report/
+frontend/playwright-report-sqlite/
+frontend/test-results/
+frontend/e2e-results*.json
+
+# Build outputs (will be created in container)
+dist/
+build/
+*.egg-info/
+.cache/
+frontend/dist/
+frontend/.vite/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Secrets (never include in images)
+*.key
+*.pem
+*.crt
+config/secrets.json
+.mcp.json
+.env.mcp
+.claude-memory.json
+
+# Claude/AI tool data
+.hive-mind/
+.swarm/
+.claude-flow/
+.claude/
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Reference files not needed in container
+reference_not_to_sync/
+
+# Package lock files for backend (poetry.lock is used)
+package-lock.json

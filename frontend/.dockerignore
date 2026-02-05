@@ -1,0 +1,37 @@
+# Frontend .dockerignore - Exclude files from Docker build context
+
+# Dependencies (will be installed fresh in container)
+node_modules/
+
+# Build outputs (will be created in container)
+dist/
+.vite/
+
+# Test files and coverage
+coverage/
+playwright-report/
+playwright-report-sqlite/
+test-results/
+e2e-results*.json
+
+# IDE settings
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
