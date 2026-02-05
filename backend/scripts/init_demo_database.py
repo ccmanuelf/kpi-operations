@@ -58,7 +58,7 @@ def init_database():
     print("=" * 70)
 
     # Step 1: Create all tables
-    print("\n[1/7] Creating database schema...")
+    print("\n[1/8] Creating database schema...")
     Base.metadata.create_all(bind=engine)
     print("  ✓ All tables created")
 
@@ -68,7 +68,7 @@ def init_database():
         # ================================================================
         # Step 2: Create 5 Clients (Companies)
         # ================================================================
-        print("\n[2/7] Creating 5 clients (companies)...")
+        print("\n[2/8] Creating 5 clients (companies)...")
 
         clients_data = [
             ("ACME-MFG", "ACME Manufacturing Co.", ClientType.HOURLY_RATE),
@@ -115,7 +115,7 @@ def init_database():
         # ================================================================
         # Step 3: Create Users (matching documentation)
         # ================================================================
-        print("\n[3/7] Creating users with documented credentials...")
+        print("\n[3/8] Creating users with documented credentials...")
 
         # Import User schema and password hashing
         from backend.schemas.user import User
@@ -157,7 +157,7 @@ def init_database():
         # ================================================================
         # Step 4: Create Products and Shifts (Global)
         # ================================================================
-        print("\n[4/7] Creating products and shifts...")
+        print("\n[4/8] Creating products and shifts...")
 
         products_data = [
             ("PROD-SHIRT-001", "T-Shirt Assembly", Decimal("0.15")),
@@ -189,7 +189,7 @@ def init_database():
         # ================================================================
         # Step 5: Create Employees for each Client
         # ================================================================
-        print("\n[5/7] Creating employees for each client...")
+        print("\n[5/8] Creating employees for each client...")
 
         all_employees = {}
         for client_id in clients.keys():
@@ -211,7 +211,7 @@ def init_database():
         # ================================================================
         # Step 6: Create Work Orders, Jobs, and Related Data
         # ================================================================
-        print("\n[6/7] Creating work orders and comprehensive production data...")
+        print("\n[6/8] Creating work orders and comprehensive production data...")
 
         base_date = date.today() - timedelta(days=30)
         all_work_orders = {}
@@ -332,7 +332,7 @@ def init_database():
         # ================================================================
         # Step 7: Create Global Settings and Configurations
         # ================================================================
-        print("\n[7/7] Creating global settings and configurations...")
+        print("\n[7/8] Creating global settings and configurations...")
 
         # Dashboard Widget Defaults
         from backend.schemas.user_preferences import DashboardWidgetDefaults, UserPreferences
@@ -480,6 +480,200 @@ def init_database():
         db.commit()
 
         # ================================================================
+        # Step 8: Create Capacity Planning Demo Data
+        # ================================================================
+        print("\n[8/8] Creating Capacity Planning demo data...")
+
+        # Import capacity planning tables creator and seeder
+        from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+        from backend.schemas.capacity import (
+            CapacityCalendar,
+            CapacityProductionLine,
+            CapacityOrder,
+            CapacityProductionStandard,
+            CapacityBOMHeader,
+            CapacityBOMDetail,
+            CapacityStockSnapshot,
+        )
+        from backend.schemas.capacity.orders import OrderStatus, OrderPriority
+
+        # Create capacity planning tables if they don't exist
+        created_tables = create_capacity_tables()
+        if created_tables:
+            print(f"  ✓ Created {len(created_tables)} capacity planning tables")
+
+        # Seed capacity planning data for each client
+        capacity_counts = {}
+        for client_id in clients.keys():
+            today = date.today()
+
+            # 1. Master Calendar - next 12 weeks (84 days)
+            calendar_entries = []
+            for i in range(84):
+                cal_date = today + timedelta(days=i)
+                is_weekend = cal_date.weekday() >= 5
+                is_working = not is_weekend
+
+                entry = CapacityCalendar(
+                    client_id=client_id,
+                    calendar_date=cal_date,
+                    is_working_day=is_working,
+                    shifts_available=2 if is_working else 0,
+                    shift1_hours=8.0 if is_working else 0,
+                    shift2_hours=8.0 if is_working else 0,
+                    shift3_hours=0,
+                    holiday_name="Weekend" if is_weekend else None
+                )
+                calendar_entries.append(entry)
+            db.add_all(calendar_entries)
+
+            # 2. Production Lines
+            lines_data = [
+                {"code": f"{client_id[:4]}_CUT_01", "name": "Cutting Line 1", "dept": "CUTTING", "capacity": 500, "ops": 8},
+                {"code": f"{client_id[:4]}_SEW_01", "name": "Sewing Line 1", "dept": "SEWING", "capacity": 120, "ops": 25},
+                {"code": f"{client_id[:4]}_SEW_02", "name": "Sewing Line 2", "dept": "SEWING", "capacity": 100, "ops": 20},
+                {"code": f"{client_id[:4]}_FIN_01", "name": "Finishing Line 1", "dept": "FINISHING", "capacity": 200, "ops": 12},
+            ]
+            line_entries = []
+            for line in lines_data:
+                line_entry = CapacityProductionLine(
+                    client_id=client_id,
+                    line_code=line["code"],
+                    line_name=line["name"],
+                    department=line["dept"],
+                    standard_capacity_units_per_hour=line["capacity"],
+                    max_operators=line["ops"],
+                    efficiency_factor=0.85,
+                    absenteeism_factor=0.05,
+                    is_active=True
+                )
+                line_entries.append(line_entry)
+            db.add_all(line_entries)
+
+            # 3. Capacity Orders (linked to work orders)
+            orders_data = []
+            client_work_orders = all_work_orders.get(client_id, [])
+            for idx, wo in enumerate(client_work_orders):
+                orders_data.append({
+                    "num": f"CPL-{wo.work_order_id}",
+                    "cust": clients[client_id].client_name,
+                    "style": wo.style_model,
+                    "qty": wo.planned_quantity or 1000,
+                    "days": 21 + (idx * 7),
+                    "priority": OrderPriority.HIGH if idx == 0 else OrderPriority.NORMAL,
+                    "status": OrderStatus.IN_PROGRESS if wo.status == WorkOrderStatus.IN_PROGRESS else OrderStatus.CONFIRMED,
+                    "notes": f"Linked to Work Order {wo.work_order_id}"
+                })
+
+            order_entries = []
+            for order in orders_data:
+                order_entry = CapacityOrder(
+                    client_id=client_id,
+                    order_number=order["num"],
+                    customer_name=order["cust"],
+                    style_code=order["style"],
+                    style_description=f"Style {order['style']}",
+                    order_quantity=order["qty"],
+                    required_date=today + timedelta(days=order["days"]),
+                    priority=order["priority"],
+                    status=order["status"],
+                    notes=order.get("notes")
+                )
+                order_entries.append(order_entry)
+            db.add_all(order_entries)
+
+            # 4. Production Standards for client work order styles
+            standards_entries = []
+            processed_styles = set()
+            for wo in client_work_orders:
+                if wo.style_model not in processed_styles:
+                    processed_styles.add(wo.style_model)
+                    for op in [("CUT", "CUTTING", 0.6), ("SEW", "SEWING", 10.0), ("FIN", "FINISHING", 2.5)]:
+                        std_entry = CapacityProductionStandard(
+                            client_id=client_id,
+                            style_code=wo.style_model,
+                            operation_code=op[0],
+                            operation_name=f"{op[0]} - {op[1].title()} Operation",
+                            department=op[1],
+                            sam_minutes=op[2]
+                        )
+                        standards_entries.append(std_entry)
+            db.add_all(standards_entries)
+            db.flush()
+
+            # 5. BOMs for each style
+            for wo in client_work_orders:
+                style = wo.style_model
+                # Create BOM Header
+                header = CapacityBOMHeader(
+                    client_id=client_id,
+                    parent_item_code=style,
+                    parent_item_description=f"BOM for {style}",
+                    style_code=style,
+                    revision="1.0",
+                    is_active=True
+                )
+                db.add(header)
+                db.flush()
+
+                # Create BOM Details (components)
+                components = [
+                    {"code": "FABRIC-MAIN", "desc": "Main Fabric", "qty": Decimal("0.6"), "uom": "M", "waste": Decimal("5"), "type": "FABRIC"},
+                    {"code": "THREAD-001", "desc": "Thread", "qty": Decimal("75"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
+                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("0"), "type": "ACCESSORY"},
+                ]
+                for comp in components:
+                    detail = CapacityBOMDetail(
+                        header_id=header.id,
+                        client_id=client_id,
+                        component_item_code=comp["code"],
+                        component_description=comp["desc"],
+                        quantity_per=comp["qty"],
+                        unit_of_measure=comp["uom"],
+                        waste_percentage=comp["waste"],
+                        component_type=comp["type"]
+                    )
+                    db.add(detail)
+
+            # 6. Stock Snapshots
+            stock_items = [
+                {"code": "FABRIC-MAIN", "desc": "Main Fabric", "oh": Decimal("10000"), "uom": "M"},
+                {"code": "THREAD-001", "desc": "Thread", "oh": Decimal("500000"), "uom": "M"},
+                {"code": "LABEL-CARE", "desc": "Care Label", "oh": Decimal("100000"), "uom": "EA"},
+            ]
+            stock_entries = []
+            for item in stock_items:
+                stock_entry = CapacityStockSnapshot(
+                    client_id=client_id,
+                    snapshot_date=today,
+                    item_code=item["code"],
+                    item_description=item["desc"],
+                    on_hand_quantity=item["oh"],
+                    allocated_quantity=Decimal("0"),
+                    on_order_quantity=Decimal("0"),
+                    available_quantity=item["oh"],
+                    unit_of_measure=item["uom"]
+                )
+                stock_entries.append(stock_entry)
+            db.add_all(stock_entries)
+
+            capacity_counts[client_id] = {
+                "calendar": len(calendar_entries),
+                "lines": len(line_entries),
+                "orders": len(order_entries),
+                "standards": len(standards_entries),
+                "stock": len(stock_entries),
+            }
+
+        db.commit()
+
+        total_capacity_records = sum(
+            sum(counts.values()) for counts in capacity_counts.values()
+        )
+        print(f"  ✓ Created {total_capacity_records} capacity planning records across {len(clients)} clients")
+        print("    Each client has: Calendar (84 days), 4 Production Lines, Linked Orders, Standards, BOMs, Stock")
+
+        # ================================================================
         # Summary
         # ================================================================
         from backend.schemas.client import Client
@@ -509,6 +703,13 @@ def init_database():
             "Dashboard Widget Defaults": db.query(DashboardWidgetDefaults).count(),
             "Alert Configurations": db.query(AlertConfig).count(),
             "Active Alerts": db.query(Alert).count(),
+            # Capacity Planning counts
+            "Capacity Calendar Entries": db.query(CapacityCalendar).count(),
+            "Capacity Production Lines": db.query(CapacityProductionLine).count(),
+            "Capacity Orders": db.query(CapacityOrder).count(),
+            "Capacity Production Standards": db.query(CapacityProductionStandard).count(),
+            "Capacity BOM Headers": db.query(CapacityBOMHeader).count(),
+            "Capacity Stock Snapshots": db.query(CapacityStockSnapshot).count(),
         }
 
         print("\n" + "=" * 70)
