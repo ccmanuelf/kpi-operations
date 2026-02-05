@@ -8,6 +8,28 @@
             <v-icon start color="primary">mdi-factory</v-icon>
             Capacity Planning
             <v-spacer />
+            <!-- Client Selector -->
+            <v-select
+              v-model="selectedClient"
+              :items="clients"
+              item-title="client_name"
+              item-value="client_id"
+              label="Select Client"
+              density="compact"
+              variant="outlined"
+              hide-details
+              :loading="clientsLoading"
+              class="mr-4"
+              style="max-width: 250px;"
+            >
+              <template v-slot:item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <template v-slot:subtitle>
+                    ID: {{ item.raw.client_id }}
+                  </template>
+                </v-list-item>
+              </template>
+            </v-select>
             <v-chip color="info" variant="tonal" class="mr-2">
               13 Worksheets
             </v-chip>
@@ -56,8 +78,20 @@
       <div class="mt-4 text-h6">Loading workbook...</div>
     </v-overlay>
 
+    <!-- No Client Selected Warning -->
+    <v-row v-if="!selectedClient && !clientsLoading && !store.isLoading" class="mt-2">
+      <v-col cols="12">
+        <v-alert type="info" variant="tonal">
+          <div class="d-flex align-center">
+            <v-icon start>mdi-information</v-icon>
+            <span>Please select a client from the dropdown above to view capacity planning data.</span>
+          </div>
+        </v-alert>
+      </v-col>
+    </v-row>
+
     <!-- Summary Stats Bar -->
-    <v-row v-if="!store.isLoading" class="mt-2">
+    <v-row v-if="!store.isLoading && selectedClient" class="mt-2">
       <v-col cols="12">
         <v-card variant="tonal" color="primary">
           <v-card-text class="d-flex align-center justify-space-around py-2">
@@ -91,7 +125,7 @@
     </v-row>
 
     <!-- Tab Navigation -->
-    <v-row class="mt-3">
+    <v-row v-if="selectedClient" class="mt-3">
       <v-col cols="12">
         <v-tabs v-model="activeTab" color="primary" show-arrows>
           <v-tab value="orders">
@@ -434,9 +468,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import { useAuthStore } from '@/stores/authStore'
 import { useRoute } from 'vue-router'
+import api from '@/services/api/client'
 
 // Grid components
 import OrdersGrid from './components/grids/OrdersGrid.vue'
@@ -459,7 +495,13 @@ import ScenarioCompareDialog from './components/dialogs/ScenarioCompareDialog.vu
 import ScheduleCommitDialog from './components/dialogs/ScheduleCommitDialog.vue'
 
 const store = useCapacityPlanningStore()
+const authStore = useAuthStore()
 const route = useRoute()
+
+// Client selection
+const clients = ref([])
+const selectedClient = ref(null)
+const clientsLoading = ref(false)
 
 // Local state
 const activeTab = ref('orders')
@@ -497,15 +539,61 @@ const worksheetIsDirty = (key) => {
   return store.worksheets[key]?.dirty || false
 }
 
-// Lifecycle
-onMounted(async () => {
-  const clientId = route.query.client_id || localStorage.getItem('selectedClientId')
+// Load clients list
+const loadClients = async () => {
+  clientsLoading.value = true
+  try {
+    const response = await api.get('/clients')
+    clients.value = response.data || []
+  } catch (error) {
+    console.error('Failed to load clients:', error)
+  } finally {
+    clientsLoading.value = false
+  }
+}
+
+// Handle client selection change
+const onClientChange = async (clientId) => {
   if (clientId) {
+    localStorage.setItem('selectedClientId', clientId)
     try {
       await store.loadWorkbook(clientId)
     } catch (error) {
       console.error('Failed to load workbook:', error)
     }
+  }
+}
+
+// Watch for client selection changes
+watch(selectedClient, (newValue) => {
+  if (newValue) {
+    onClientChange(newValue)
+  }
+})
+
+// Lifecycle
+onMounted(async () => {
+  // Load available clients
+  await loadClients()
+
+  // Determine initial client selection
+  let clientId = route.query.client_id || localStorage.getItem('selectedClientId')
+
+  // If user has an assigned client, use that as default
+  const user = authStore.currentUser
+  if (!clientId && user?.client_id_assigned) {
+    clientId = user.client_id_assigned
+  }
+
+  // If admin with no assigned client, default to first client in list
+  if (!clientId && clients.value.length > 0) {
+    clientId = clients.value[0].client_id
+  }
+
+  // Set selected client and load workbook
+  if (clientId) {
+    selectedClient.value = clientId
+    // workbook will load via watch
   }
 
   // Set default dates for analysis and schedule
