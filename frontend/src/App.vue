@@ -33,7 +33,7 @@
       :rail="rail"
       permanent
       role="navigation"
-      :aria-label="$t('navigation.mainNav')"
+      aria-label="Main navigation"
     >
       <v-list-item
         prepend-icon="mdi-factory"

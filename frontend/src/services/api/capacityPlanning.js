@@ -815,6 +815,67 @@ export const getKPIVariance = async (clientId, scheduleId = null) => {
 }
 
 // ============================================
+// Scenario Run/Delete Operations
+// ============================================
+
+/**
+ * Run/evaluate a scenario (apply parameters and analyze impact)
+ * @param {number} clientId - The client ID
+ * @param {number} scenarioId - The scenario ID to run
+ * @param {string|null} periodStart - Optional analysis period start (YYYY-MM-DD)
+ * @param {string|null} periodEnd - Optional analysis period end (YYYY-MM-DD)
+ * @returns {Promise<Object>} Scenario results with original and modified metrics
+ */
+export const runScenario = async (clientId, scenarioId, periodStart = null, periodEnd = null) => {
+  const payload = {}
+  if (periodStart) payload.period_start = periodStart
+  if (periodEnd) payload.period_end = periodEnd
+
+  const response = await api.post(`/capacity/scenarios/${scenarioId}/run`, payload, {
+    params: { client_id: clientId }
+  })
+  return response.data
+}
+
+/**
+ * Delete a scenario
+ * @param {number} clientId - The client ID
+ * @param {number} scenarioId - The scenario ID to delete
+ * @returns {Promise<Object>} Delete confirmation
+ */
+export const deleteScenario = async (clientId, scenarioId) => {
+  const response = await api.delete(`/capacity/scenarios/${scenarioId}`, {
+    params: { client_id: clientId }
+  })
+  return response.data
+}
+
+// ============================================
+// Workbook Bulk Save
+// ============================================
+
+/**
+ * Save complete workbook (all worksheets)
+ * @param {number} clientId - The client ID
+ * @param {Object} workbookData - Object keyed by worksheet name with data arrays
+ * @returns {Promise<Object>} Save results
+ */
+export const saveWorkbook = async (clientId, workbookData) => {
+  const results = { success: [], failed: [] }
+
+  for (const [worksheetName, data] of Object.entries(workbookData)) {
+    try {
+      await saveWorksheet(worksheetName, clientId, data)
+      results.success.push(worksheetName)
+    } catch (error) {
+      results.failed.push({ worksheetName, error: error.message })
+    }
+  }
+
+  return results
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
@@ -908,6 +969,10 @@ export default {
   getScenario,
   createScenario,
   compareScenarios,
+  runScenario,
+  deleteScenario,
+  // Workbook Bulk
+  saveWorkbook,
   // KPI Integration
   getKPICommitments,
   getKPIActuals,

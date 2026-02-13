@@ -54,20 +54,19 @@ def resume_hold(
             detail=f"Cannot resume hold with status {db_hold.hold_status}. Only ON_HOLD status can be resumed."
         )
 
-    # Set resume timestamp
-    db_hold.resume_timestamp = datetime.now()
+    # Set resume date and status
+    resume_time = datetime.now()
+    db_hold.resume_date = resume_time
     db_hold.resumed_by = resumed_by
     db_hold.hold_status = HoldStatus.RESUMED
 
-    # AUTO-CALCULATE hold duration (P2-001)
-    if db_hold.hold_timestamp:
-        delta = db_hold.resume_timestamp - db_hold.hold_timestamp
-        db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
-    else:
-        # Fallback: Calculate from hold_date if no timestamp available
-        # Use midnight of hold_date as start
-        hold_start = datetime.combine(db_hold.hold_date, datetime.min.time())
-        delta = db_hold.resume_timestamp - hold_start
+    # AUTO-CALCULATE hold duration from hold_date (P2-001)
+    if db_hold.hold_date:
+        if isinstance(db_hold.hold_date, datetime):
+            hold_start = db_hold.hold_date
+        else:
+            hold_start = datetime.combine(db_hold.hold_date, datetime.min.time())
+        delta = resume_time - hold_start
         db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
 
     # Update notes if provided
@@ -118,13 +117,12 @@ def get_total_hold_duration(
         # Count active (ON_HOLD) holds
         if hold.hold_status == HoldStatus.ON_HOLD:
             active_holds += 1
-            # For active holds, calculate duration from hold_timestamp to now
-            if hold.hold_timestamp:
-                delta = datetime.now() - hold.hold_timestamp
-                total_duration += Decimal(str(delta.total_seconds() / 3600))
-            elif hold.hold_date:
-                # Fallback to hold_date
-                hold_start = datetime.combine(hold.hold_date, datetime.min.time())
+            # For active holds, calculate duration from hold_date to now
+            if hold.hold_date:
+                if isinstance(hold.hold_date, datetime):
+                    hold_start = hold.hold_date
+                else:
+                    hold_start = datetime.combine(hold.hold_date, datetime.min.time())
                 delta = datetime.now() - hold_start
                 total_duration += Decimal(str(delta.total_seconds() / 3600))
         else:
@@ -171,28 +169,19 @@ def release_hold(
     verify_client_access(current_user, db_hold.client_id)
 
     # Set release info
-    db_hold.resume_date = date.today()
+    now = datetime.now()
+    db_hold.resume_date = now
     db_hold.hold_status = HoldStatus.RESUMED
-    db_hold.actual_resolution_date = date.today()
-
-    if quantity_released is not None:
-        db_hold.quantity_released = quantity_released
-    if quantity_scrapped is not None:
-        db_hold.quantity_scrapped = quantity_scrapped
 
     # Calculate final duration if not already calculated
-    if db_hold.total_hold_duration_hours is None:
-        now = datetime.now()
-        if db_hold.hold_timestamp:
-            delta = now - db_hold.hold_timestamp
-            db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
-        elif db_hold.hold_date:
-            hold_start = datetime.combine(db_hold.hold_date, datetime.min.time())
+    if db_hold.total_hold_duration_hours is None or db_hold.total_hold_duration_hours == 0:
+        if db_hold.hold_date:
+            if isinstance(db_hold.hold_date, datetime):
+                hold_start = db_hold.hold_date
+            else:
+                hold_start = datetime.combine(db_hold.hold_date, datetime.min.time())
             delta = now - hold_start
             db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
-
-    # Update aging
-    db_hold.aging_days = (db_hold.resume_date - db_hold.hold_date).days
 
     if notes:
         existing_notes = db_hold.notes or ""

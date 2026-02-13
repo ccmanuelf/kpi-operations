@@ -44,7 +44,7 @@ async function login(page: Page, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     // Add delay between login attempts with exponential backoff
     if (attempt > 1) {
-      await page.waitForTimeout(5000 * attempt);
+      await page.waitForTimeout(3000 * attempt);
     }
 
     // Clear cookies/storage to start fresh

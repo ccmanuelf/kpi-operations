@@ -39,7 +39,7 @@
       width="280"
       class="mobile-drawer"
       role="navigation"
-      :aria-label="$t('navigation.mainNav')"
+      aria-label="Main navigation"
     >
       <!-- User Info Section -->
       <div class="mobile-user-section">

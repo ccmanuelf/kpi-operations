@@ -104,7 +104,9 @@ const getDefaultComponentCheckRow = () => ({
   required_quantity: 0,
   available_quantity: 0,
   shortage_quantity: 0,
+  total_component_demand: 0,
   status: 'AVAILABLE', // AVAILABLE, SHORTAGE, PARTIAL
+  planner_notes: null,
   notes: null
 })
 
@@ -134,7 +136,7 @@ const getDefaultScheduleRow = () => ({
 
 const getDefaultScenario = () => ({
   scenario_name: '',
-  scenario_type: 'capacity', // capacity, overtime, line_add, rush_order
+  scenario_type: 'OVERTIME', // OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT
   base_schedule_id: null,
   parameters: {},
   status: 'DRAFT',
@@ -1250,7 +1252,7 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', {
       if (!this.clientId) return null
 
       try {
-        const results = await capacityApi.runScenario(scenarioId)
+        const results = await capacityApi.runScenario(this.clientId, scenarioId)
 
         // Update scenario in list with results
         const idx = this.worksheets.whatIfScenarios.data.findIndex(s => s.id === scenarioId)
@@ -1289,7 +1291,7 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', {
      */
     async deleteScenario(scenarioId) {
       try {
-        await capacityApi.deleteScenario(scenarioId)
+        await capacityApi.deleteScenario(this.clientId, scenarioId)
 
         // Remove from local list
         const idx = this.worksheets.whatIfScenarios.data.findIndex(s => s.id === scenarioId)

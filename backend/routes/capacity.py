@@ -1623,6 +1623,103 @@ def get_scenario(
     return scenario
 
 
+class ScenarioRunRequest(BaseModel):
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+
+
+@router.post("/scenarios/{scenario_id}/run")
+def run_scenario(
+    scenario_id: int,
+    request: ScenarioRunRequest,
+    client_id: str = Query(..., description="Client ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Run/evaluate a scenario by applying its parameters and analyzing impact."""
+    verify_client_access(current_user, client_id, db)
+
+    from backend.schemas.capacity.scenario import CapacityScenario
+
+    scenario = db.query(CapacityScenario).filter(
+        CapacityScenario.client_id == client_id,
+        CapacityScenario.id == scenario_id
+    ).first()
+
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    try:
+        from backend.services.capacity.scenario_service import ScenarioService
+
+        service = ScenarioService(db)
+
+        # Use provided dates or derive from base schedule or default to 30-day window
+        period_start = request.period_start
+        period_end = request.period_end
+
+        if not period_start or not period_end:
+            if scenario.base_schedule_id:
+                from backend.schemas.capacity.schedule import CapacitySchedule
+                base_schedule = db.query(CapacitySchedule).filter(
+                    CapacitySchedule.id == scenario.base_schedule_id
+                ).first()
+                if base_schedule:
+                    period_start = period_start or base_schedule.period_start
+                    period_end = period_end or base_schedule.period_end
+
+            if not period_start:
+                from datetime import timedelta
+                period_start = date.today()
+            if not period_end:
+                from datetime import timedelta
+                period_end = period_start + timedelta(days=30)
+
+        result = service.apply_scenario_parameters(
+            client_id, scenario_id, period_start, period_end
+        )
+
+        return {
+            "scenario_id": result.scenario_id,
+            "scenario_name": result.scenario_name,
+            "original_metrics": result.original_metrics,
+            "modified_metrics": result.modified_metrics,
+            "impact_summary": result.impact_summary
+        }
+    except ImportError:
+        raise HTTPException(
+            status_code=501,
+            detail="Scenario service not yet implemented"
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/scenarios/{scenario_id}")
+def delete_scenario(
+    scenario_id: int,
+    client_id: str = Query(..., description="Client ID"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a scenario."""
+    verify_client_access(current_user, client_id, db)
+
+    from backend.schemas.capacity.scenario import CapacityScenario
+
+    scenario = db.query(CapacityScenario).filter(
+        CapacityScenario.client_id == client_id,
+        CapacityScenario.id == scenario_id
+    ).first()
+
+    if not scenario:
+        raise HTTPException(status_code=404, detail="Scenario not found")
+
+    db.delete(scenario)
+    db.commit()
+    return {"message": "Scenario deleted"}
+
+
 @router.post("/scenarios/compare")
 def compare_scenarios(
     request: ScenarioCompareRequest,

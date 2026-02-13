@@ -3,7 +3,7 @@ CRUD operations for Hold Aging calculations
 Batch aging updates and maintenance
 """
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import date, datetime
 
 from backend.schemas.hold_entry import HoldEntry as WIPHold
 from backend.middleware.client_auth import build_client_filter_clause
@@ -23,7 +23,12 @@ def bulk_update_aging(db: Session, current_user: User) -> int:
 
     count = 0
     for hold in holds:
-        hold.aging_days = (date.today() - hold.hold_date).days
+        if hold.hold_date:
+            # hold_date is a DateTime column — extract date for arithmetic
+            hold_date_val = hold.hold_date.date() if isinstance(hold.hold_date, datetime) else hold.hold_date
+            aging = (date.today() - hold_date_val).days
+            # Note: aging_days is not a persisted column; store on instance only
+            hold.aging_days = aging
         count += 1
 
     db.commit()

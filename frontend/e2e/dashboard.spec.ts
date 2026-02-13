@@ -22,7 +22,7 @@ async function waitForBackend(page: Page, timeout = 10000) {
 }
 
 // Helper function to login with retry logic
-async function login(page: Page, maxRetries = 5) {
+async function login(page: Page, maxRetries = 3) {
   await waitForBackend(page);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -64,8 +64,8 @@ async function login(page: Page, maxRetries = 5) {
       throw new Error(`Login failed after ${maxRetries} attempts`);
     }
 
-    // Use specific navigation selector to avoid matching pagination
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+    // Wait for navigation drawer to confirm successful login
+    await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 15000 });
     return;
   }
 }
@@ -81,8 +81,8 @@ test.describe('Dashboard', () => {
   });
 
   test('should display navigation menu', async ({ page }) => {
-    // Navigation should be visible - use specific selector
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
+    // Navigation should be visible - use CSS selector
+    await expect(page.locator('.v-navigation-drawer')).toBeVisible();
 
     // Should have navigation items
     const navItems = page.locator('.v-list-item');

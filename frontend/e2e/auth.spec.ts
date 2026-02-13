@@ -23,7 +23,7 @@ async function waitForBackend(page: Page, timeout = 10000) {
   return false;
 }
 
-async function loginWithRetry(page: Page, maxRetries = 5) {
+async function loginWithRetry(page: Page, maxRetries = 3) {
   await waitForBackend(page);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -65,7 +65,8 @@ async function loginWithRetry(page: Page, maxRetries = 5) {
       throw new Error(`Login failed after ${maxRetries} attempts`);
     }
 
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+    // Wait for navigation drawer to confirm successful login
+    await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 15000 });
     return;
   }
 }
@@ -126,22 +127,22 @@ test.describe('Authentication', () => {
     test('should login successfully with valid credentials', async ({ page }) => {
       await loginWithRetry(page);
 
-      // Should redirect to dashboard - wait for main navigation to appear
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+      // Should redirect to dashboard - wait for navigation drawer to appear
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
     });
 
     test('should persist session after page refresh', async ({ page }) => {
       // Login with retry logic
       await loginWithRetry(page);
 
-      // Wait for main navigation (specific to avoid matching pagination)
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+      // Wait for navigation drawer (specific to avoid matching pagination)
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
 
       // Refresh page
       await page.reload();
 
       // Should still be logged in
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 10000 });
     });
 
     test('should redirect to login when accessing protected route', async ({ page }) => {
@@ -490,7 +491,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
 
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
 
       // Find and click logout button
       const logoutButton = page.locator('[data-testid="logout-btn"]').or(
@@ -509,7 +510,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
 
       // Logout
       const logoutButton = page.locator('[data-testid="logout-btn"]').or(
@@ -532,7 +533,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
 
       // Click logout
       const logoutButton = page.locator('[data-testid="logout-btn"]').or(
@@ -558,7 +559,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
-      await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
 
       // Clear token to simulate timeout
       await page.evaluate(() => {
@@ -594,15 +595,15 @@ test.describe('Authentication', () => {
       await page.click('button:has-text("Sign In")');
 
       // Wait for login to complete - check for navigation or error
-      const loginSucceeded = await page.getByRole('navigation', { name: 'Main navigation' }).isVisible({ timeout: 15000 }).catch(() => false);
+      const loginSucceeded = await page.locator('.v-navigation-drawer').isVisible({ timeout: 15000 }).catch(() => false);
 
       if (loginSucceeded) {
         // Open new tab
         const newPage = await context.newPage();
         await newPage.goto('/');
 
-        // Should be logged in - check for main navigation or login page
-        const isLoggedInNewTab = await newPage.getByRole('navigation', { name: 'Main navigation' }).isVisible({ timeout: 10000 }).catch(() => false);
+        // Should be logged in - check for navigation drawer or login page
+        const isLoggedInNewTab = await newPage.locator('.v-navigation-drawer').isVisible({ timeout: 10000 }).catch(() => false);
         const isLoginPage = await newPage.locator('button:has-text("Sign In")').isVisible({ timeout: 3000 }).catch(() => false);
 
         // Either logged in (session shared) or on login page (session not shared) - both are valid behaviors

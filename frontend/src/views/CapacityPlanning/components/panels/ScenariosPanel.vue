@@ -159,48 +159,117 @@
           />
 
           <!-- Type-specific parameters -->
-          <div v-if="newScenario.type === 'overtime'">
+          <div v-if="newScenario.type === 'OVERTIME'">
             <v-text-field
-              v-model.number="newScenario.parameters.overtime_hours"
-              label="Additional Overtime Hours per Day"
+              v-model.number="newScenario.parameters.overtime_percent"
+              label="Overtime Increase (%)"
               type="number"
               variant="outlined"
+              hint="Default: 20%"
             />
           </div>
-          <div v-else-if="newScenario.type === 'line_add'">
+          <div v-else-if="newScenario.type === 'SETUP_REDUCTION'">
             <v-text-field
-              v-model.number="newScenario.parameters.additional_lines"
-              label="Number of Additional Lines"
+              v-model.number="newScenario.parameters.reduction_percent"
+              label="Setup Time Reduction (%)"
               type="number"
               variant="outlined"
-            />
-            <v-text-field
-              v-model.number="newScenario.parameters.capacity_per_line"
-              label="Capacity per Line (units/hour)"
-              type="number"
-              variant="outlined"
+              hint="Default: 30%"
             />
           </div>
-          <div v-else-if="newScenario.type === 'rush_order'">
+          <div v-else-if="newScenario.type === 'SUBCONTRACT'">
             <v-text-field
-              v-model="newScenario.parameters.order_number"
-              label="Rush Order Number"
-              variant="outlined"
-            />
-            <v-text-field
-              v-model.number="newScenario.parameters.priority_boost"
-              label="Priority Boost"
+              v-model.number="newScenario.parameters.subcontract_percent"
+              label="Subcontract Percentage (%)"
               type="number"
               variant="outlined"
+              hint="Default: 40%"
+            />
+            <v-text-field
+              v-model="newScenario.parameters.department"
+              label="Department to Subcontract"
+              variant="outlined"
+              hint="Default: CUTTING"
             />
           </div>
-          <div v-else-if="newScenario.type === 'capacity'">
+          <div v-else-if="newScenario.type === 'NEW_LINE'">
             <v-text-field
-              v-model.number="newScenario.parameters.efficiency_change"
-              label="Efficiency Change (%)"
+              v-model="newScenario.parameters.new_line_code"
+              label="New Line Code"
+              variant="outlined"
+              hint="Default: SEWING_NEW"
+            />
+            <v-text-field
+              v-model.number="newScenario.parameters.operators"
+              label="Number of Operators"
               type="number"
               variant="outlined"
-              hint="Positive to increase, negative to decrease"
+              hint="Default: 12"
+            />
+          </div>
+          <div v-else-if="newScenario.type === 'THREE_SHIFT'">
+            <v-text-field
+              v-model.number="newScenario.parameters.shift3_hours"
+              label="Third Shift Hours"
+              type="number"
+              variant="outlined"
+              hint="Default: 8.0"
+            />
+            <v-text-field
+              v-model.number="newScenario.parameters.shift3_efficiency"
+              label="Night Shift Efficiency (0-1)"
+              type="number"
+              step="0.05"
+              variant="outlined"
+              hint="Default: 0.80"
+            />
+          </div>
+          <div v-else-if="newScenario.type === 'LEAD_TIME_DELAY'">
+            <v-text-field
+              v-model.number="newScenario.parameters.delay_days"
+              label="Delay Duration (days)"
+              type="number"
+              variant="outlined"
+              hint="Default: 7"
+            />
+          </div>
+          <div v-else-if="newScenario.type === 'ABSENTEEISM_SPIKE'">
+            <v-text-field
+              v-model.number="newScenario.parameters.absenteeism_percent"
+              label="Absenteeism Rate (%)"
+              type="number"
+              variant="outlined"
+              hint="Default: 15%"
+            />
+            <v-text-field
+              v-model.number="newScenario.parameters.duration_days"
+              label="Duration (days)"
+              type="number"
+              variant="outlined"
+              hint="Default: 5"
+            />
+          </div>
+          <div v-else-if="newScenario.type === 'MULTI_CONSTRAINT'">
+            <v-text-field
+              v-model.number="newScenario.parameters.overtime_percent"
+              label="Overtime (%)"
+              type="number"
+              variant="outlined"
+              hint="Default: 10%"
+            />
+            <v-text-field
+              v-model.number="newScenario.parameters.setup_reduction_percent"
+              label="Setup Reduction (%)"
+              type="number"
+              variant="outlined"
+              hint="Default: 15%"
+            />
+            <v-text-field
+              v-model.number="newScenario.parameters.absenteeism_percent"
+              label="Absenteeism (%)"
+              type="number"
+              variant="outlined"
+              hint="Default: 8%"
             />
           </div>
         </v-card-text>
@@ -231,25 +300,33 @@ const selectedScenarios = ref([])
 
 const newScenario = reactive({
   name: '',
-  type: 'capacity',
+  type: 'OVERTIME',
   parameters: {}
 })
 
 const scenarioTypes = [
-  { text: 'Capacity Change', value: 'capacity' },
-  { text: 'Overtime', value: 'overtime' },
-  { text: 'Add Production Line', value: 'line_add' },
-  { text: 'Rush Order', value: 'rush_order' }
+  { text: 'Overtime +20%', value: 'OVERTIME' },
+  { text: 'Setup Time Reduction -30%', value: 'SETUP_REDUCTION' },
+  { text: 'Subcontract Cutting 40%', value: 'SUBCONTRACT' },
+  { text: 'New Sewing Line', value: 'NEW_LINE' },
+  { text: '3-Shift Operation', value: 'THREE_SHIFT' },
+  { text: 'Material Lead Time Delay', value: 'LEAD_TIME_DELAY' },
+  { text: 'Absenteeism Spike 15%', value: 'ABSENTEEISM_SPIKE' },
+  { text: 'Multi-Constraint Combined', value: 'MULTI_CONSTRAINT' }
 ]
 
 const scenarios = computed(() => store.worksheets.whatIfScenarios.data)
 
 const getTypeColor = (type) => {
   const colors = {
-    capacity: 'blue',
-    overtime: 'orange',
-    line_add: 'green',
-    rush_order: 'purple'
+    OVERTIME: 'orange',
+    SETUP_REDUCTION: 'teal',
+    SUBCONTRACT: 'indigo',
+    NEW_LINE: 'green',
+    THREE_SHIFT: 'deep-purple',
+    LEAD_TIME_DELAY: 'red',
+    ABSENTEEISM_SPIKE: 'amber',
+    MULTI_CONSTRAINT: 'blue'
   }
   return colors[type] || 'grey'
 }
@@ -287,7 +364,7 @@ const createScenario = async () => {
     )
     // Reset form
     newScenario.name = ''
-    newScenario.type = 'capacity'
+    newScenario.type = 'OVERTIME'
     newScenario.parameters = {}
   } catch (error) {
     console.error('Failed to create scenario:', error)

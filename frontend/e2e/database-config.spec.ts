@@ -23,7 +23,7 @@ async function waitForBackend(page: Page, timeout = 10000) {
 }
 
 // Helper function to login with retry logic
-async function loginAndNavigateToDatabaseConfig(page: Page, maxRetries = 5) {
+async function loginAndNavigateToDatabaseConfig(page: Page, maxRetries = 3) {
   await waitForBackend(page)
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

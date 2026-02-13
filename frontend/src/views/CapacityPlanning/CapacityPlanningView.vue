@@ -30,6 +30,28 @@
                 </v-list-item>
               </template>
             </v-select>
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              :disabled="!store.canUndo"
+              @click="store.undo()"
+              title="Undo (Ctrl+Z)"
+              class="mr-1"
+            >
+              <v-icon>mdi-undo</v-icon>
+            </v-btn>
+            <v-btn
+              icon
+              size="small"
+              variant="text"
+              :disabled="!store.canRedo"
+              @click="store.redo()"
+              title="Redo (Ctrl+Y)"
+              class="mr-2"
+            >
+              <v-icon>mdi-redo</v-icon>
+            </v-btn>
             <v-chip color="info" variant="tonal" class="mr-2">
               13 Worksheets
             </v-chip>
@@ -178,6 +200,14 @@
             <v-icon start>mdi-target</v-icon>
             KPI Tracking
           </v-tab>
+          <v-tab value="dashboardInputs">
+            <v-icon start>mdi-tune</v-icon>
+            Dashboard Inputs
+          </v-tab>
+          <v-tab value="instructions">
+            <v-icon start>mdi-book-open-variant</v-icon>
+            Instructions
+          </v-tab>
         </v-tabs>
 
         <v-tabs-window v-model="activeTab" class="mt-4">
@@ -234,6 +264,16 @@
           <!-- KPI Tracking Tab -->
           <v-tabs-window-item value="kpiTracking">
             <KPITrackingPanel />
+          </v-tabs-window-item>
+
+          <!-- Dashboard Inputs Tab -->
+          <v-tabs-window-item value="dashboardInputs">
+            <DashboardInputsPanel />
+          </v-tabs-window-item>
+
+          <!-- Instructions Tab -->
+          <v-tabs-window-item value="instructions">
+            <InstructionsPanel />
           </v-tabs-window-item>
         </v-tabs-window>
       </v-col>
@@ -488,6 +528,8 @@ import CapacityAnalysisPanel from './components/panels/CapacityAnalysisPanel.vue
 import SchedulePanel from './components/panels/SchedulePanel.vue'
 import ScenariosPanel from './components/panels/ScenariosPanel.vue'
 import KPITrackingPanel from './components/panels/KPITrackingPanel.vue'
+import DashboardInputsPanel from './components/panels/DashboardInputsPanel.vue'
+import InstructionsPanel from './components/panels/InstructionsPanel.vue'
 
 // Dialog components
 import MRPResultsDialog from './components/dialogs/MRPResultsDialog.vue'
@@ -608,13 +650,32 @@ onMounted(async () => {
 
   // Warn about unsaved changes before leaving
   window.addEventListener('beforeunload', handleBeforeUnload)
+
+  // Undo/Redo keyboard shortcuts
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('keydown', handleKeyDown)
 })
 
 // Methods
+const handleKeyDown = (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+    if (e.key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      store.undo()
+    } else if (e.key === 'z' && e.shiftKey) {
+      e.preventDefault()
+      store.redo()
+    } else if (e.key === 'y') {
+      e.preventDefault()
+      store.redo()
+    }
+  }
+}
+
 const handleBeforeUnload = (e) => {
   if (store.hasUnsavedChanges) {
     e.preventDefault()
@@ -671,16 +732,46 @@ const handleCommitSchedule = async (kpiCommitments) => {
   }
 }
 
+const arrayToCSV = (data) => {
+  if (!Array.isArray(data) || data.length === 0) return ''
+  const headers = Object.keys(data[0]).filter(k => !k.startsWith('_'))
+  const escapeField = (val) => {
+    const str = val == null ? '' : String(val)
+    return str.includes(',') || str.includes('"') || str.includes('\n')
+      ? `"${str.replace(/"/g, '""')}"`
+      : str
+  }
+  const rows = data.map(row => headers.map(h => escapeField(row[h])).join(','))
+  return [headers.join(','), ...rows].join('\n')
+}
+
 const exportWorkbook = () => {
   showExportDialog.value = false
-  const json = store.exportWorkbookJSON()
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `capacity-workbook-${new Date().toISOString().slice(0, 10)}.json`
-  link.click()
-  URL.revokeObjectURL(url)
+  const dateStr = new Date().toISOString().slice(0, 10)
+
+  if (exportFormat.value === 'CSV') {
+    // Export active worksheet as CSV
+    const wsKey = activeTab.value
+    const worksheet = store.worksheets[wsKey]
+    if (!worksheet || !Array.isArray(worksheet.data)) return
+    const csv = arrayToCSV(worksheet.data)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `capacity-${wsKey}-${dateStr}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  } else {
+    const json = store.exportWorkbookJSON()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `capacity-workbook-${dateStr}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
 }
 
 const importData = async () => {

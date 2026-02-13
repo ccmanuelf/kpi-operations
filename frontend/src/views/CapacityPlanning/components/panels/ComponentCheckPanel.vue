@@ -102,6 +102,17 @@
         <template v-slot:item.available_quantity="{ item }">
           {{ item.available_quantity?.toLocaleString() }}
         </template>
+
+        <template v-slot:item.planner_notes="{ item }">
+          <v-text-field
+            :model-value="item.planner_notes || ''"
+            variant="plain"
+            density="compact"
+            hide-details
+            placeholder="Add note..."
+            @update:modelValue="(val) => updatePlannerNote(item, val)"
+          />
+        </template>
       </v-data-table>
 
       <!-- Empty State -->
@@ -141,7 +152,8 @@ const headers = [
   { title: 'Required', key: 'required_quantity', width: '100px' },
   { title: 'Available', key: 'available_quantity', width: '100px' },
   { title: 'Shortage', key: 'shortage_quantity', width: '100px' },
-  { title: 'Status', key: 'status', width: '100px' }
+  { title: 'Status', key: 'status', width: '100px' },
+  { title: 'Planner Notes', key: 'planner_notes', width: '200px' }
 ]
 
 const components = computed(() => {
@@ -169,6 +181,13 @@ const getStatusColor = (status) => {
     SHORTAGE: 'error'
   }
   return colors[status] || 'grey'
+}
+
+const updatePlannerNote = (item, value) => {
+  const idx = store.worksheets.componentCheck.data.findIndex(c => c._id === item._id)
+  if (idx !== -1) {
+    store.updateCell('componentCheck', idx, 'planner_notes', value)
+  }
 }
 
 const runCheck = async () => {

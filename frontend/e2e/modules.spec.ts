@@ -21,7 +21,7 @@ async function waitForBackend(page: Page, timeout = 10000) {
   return false;
 }
 
-async function login(page: Page, maxRetries = 5) {
+async function login(page: Page, maxRetries = 3) {
   await waitForBackend(page);
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -63,8 +63,8 @@ async function login(page: Page, maxRetries = 5) {
       throw new Error(`Login failed after ${maxRetries} attempts`);
     }
 
-    // Use specific navigation selector to avoid matching pagination
-    await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible({ timeout: 15000 });
+    // Wait for navigation drawer to confirm successful login
+    await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 15000 });
     return;
   }
 }

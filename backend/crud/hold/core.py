@@ -2,13 +2,14 @@
 CRUD core operations for WIP hold tracking
 PHASE 2 - Enhanced with P2-001: Hold Duration Auto-Calculation
 """
+import uuid
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
+from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus, HoldReason
 from backend.models.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
@@ -33,32 +34,49 @@ def create_wip_hold(
     # Verify user has access to this client
     verify_client_access(current_user, hold.client_id)
 
-    # Calculate initial aging
-    aging_days = (date.today() - hold.hold_date).days
-
-    # P2-001: Set hold_timestamp to now if not provided
     hold_data = hold.model_dump()
-    if hold_data.get('hold_timestamp') is None:
-        hold_data['hold_timestamp'] = datetime.now()
+
+    # Generate hold_entry_id (String PK — no auto-increment)
+    hold_data['hold_entry_id'] = f"HOLD-{uuid.uuid4().hex[:8].upper()}"
+
+    # Convert hold_date from date to datetime for the DateTime column
+    if hold_data.get('hold_date') is not None:
+        hd = hold_data['hold_date']
+        if isinstance(hd, date) and not isinstance(hd, datetime):
+            hold_data['hold_date'] = datetime.combine(hd, datetime.min.time())
+    else:
+        hold_data['hold_date'] = datetime.now()
+
+    # Convert expected_resolution_date if present
+    if hold_data.get('expected_resolution_date') is not None:
+        erd = hold_data['expected_resolution_date']
+        if isinstance(erd, date) and not isinstance(erd, datetime):
+            hold_data['expected_resolution_date'] = datetime.combine(erd, datetime.min.time())
 
     # Phase 6.2: Determine initial status based on user role
     # Supervisors and admins can auto-approve holds
     is_supervisor_or_admin = current_user.role in ['admin', 'supervisor', 'leader', 'poweruser']
 
     if is_supervisor_or_admin:
-        initial_status = HoldStatus.ON_HOLD
-        hold_approved_by = current_user.user_id  # Auto-approved
+        hold_data['hold_status'] = HoldStatus.ON_HOLD
+        hold_data['hold_approved_by'] = current_user.user_id  # Auto-approved
     else:
-        initial_status = HoldStatus.PENDING_HOLD_APPROVAL
-        hold_approved_by = None  # Pending approval
+        hold_data['hold_status'] = HoldStatus.PENDING_HOLD_APPROVAL
+        hold_data['hold_approved_by'] = None  # Pending approval
 
-    db_hold = WIPHold(
-        **hold_data,
-        aging_days=aging_days,
-        entered_by=current_user.user_id,
-        status=initial_status,
-        hold_approved_by=hold_approved_by
-    )
+    # Convert Pydantic HoldReasonEnum to ORM HoldReason
+    if hold_data.get('hold_reason') is not None:
+        reason_val = hold_data['hold_reason']
+        if hasattr(reason_val, 'value'):
+            reason_val = reason_val.value
+        try:
+            hold_data['hold_reason'] = HoldReason(reason_val)
+        except (ValueError, KeyError):
+            hold_data['hold_reason'] = None
+
+    hold_data['hold_initiated_by'] = current_user.user_id
+
+    db_hold = WIPHold(**hold_data)
 
     db.add(db_hold)
     db.commit()

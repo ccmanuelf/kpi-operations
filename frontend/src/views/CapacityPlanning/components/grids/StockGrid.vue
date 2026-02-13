@@ -14,6 +14,19 @@
       </v-btn>
     </v-card-title>
     <v-card-text>
+      <!-- Staleness Warning -->
+      <v-alert
+        v-if="stalenessWarning"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mb-3"
+        closable
+      >
+        <v-icon start>mdi-clock-alert</v-icon>
+        {{ stalenessWarning }}
+      </v-alert>
+
       <!-- Summary Stats -->
       <v-row v-if="stock.length" class="mb-3">
         <v-col cols="3">
@@ -216,6 +229,23 @@ const headers = [
 const uomOptions = ['EA', 'M', 'YD', 'KG', 'LB', 'PC', 'SET']
 
 const stock = computed(() => store.worksheets.stockSnapshot.data)
+
+const stalenessWarning = computed(() => {
+  if (!stock.value.length) return null
+  const alertDays = store.worksheets.dashboardInputs.data.shortage_alert_days || 7
+  const now = new Date()
+  const dates = stock.value
+    .map(s => s.snapshot_date)
+    .filter(Boolean)
+    .map(d => new Date(d))
+  if (!dates.length) return null
+  const mostRecent = new Date(Math.max(...dates))
+  const daysSince = Math.floor((now - mostRecent) / (1000 * 60 * 60 * 24))
+  if (daysSince > alertDays) {
+    return `Stock snapshots are ${daysSince} days old (last: ${mostRecent.toISOString().slice(0, 10)}). Consider updating stock data before running MRP.`
+  }
+  return null
+})
 
 const totalOnHand = computed(() =>
   stock.value.reduce((sum, s) => sum + (parseInt(s.on_hand_quantity) || 0), 0)
