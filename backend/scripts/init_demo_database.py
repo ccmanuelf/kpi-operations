@@ -219,12 +219,25 @@ def init_database():
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
         users_data = [
+            # (username, password, role, client_id, full_name)
             ("admin", "admin123", "admin", None, "System Administrator"),
+            # ACME-MFG
             ("supervisor1", "password123", "supervisor", "ACME-MFG", "John Supervisor"),
-            ("supervisor2", "password123", "supervisor", "TEXTILE-PRO", "Jane Supervisor"),
             ("operator1", "password123", "operator", "ACME-MFG", "Mike Operator"),
             ("operator2", "password123", "operator", "ACME-MFG", "Sarah Operator"),
+            # TEXTILE-PRO
+            ("supervisor2", "password123", "supervisor", "TEXTILE-PRO", "Jane Supervisor"),
             ("operator3", "password123", "operator", "TEXTILE-PRO", "Tom Operator"),
+            # FASHION-WORKS
+            ("supervisor3", "password123", "supervisor", "FASHION-WORKS", "Ana Supervisor"),
+            ("operator4", "password123", "operator", "FASHION-WORKS", "Carlos Operator"),
+            # QUALITY-STITCH
+            ("supervisor4", "password123", "supervisor", "QUALITY-STITCH", "Maria Supervisor"),
+            ("operator5", "password123", "operator", "QUALITY-STITCH", "David Operator"),
+            # GLOBAL-APPAREL
+            ("supervisor5", "password123", "supervisor", "GLOBAL-APPAREL", "Elena Supervisor"),
+            ("operator6", "password123", "operator", "GLOBAL-APPAREL", "James Operator"),
+            # Multi-client / global roles
             ("leader1", "password123", "leader", "ACME-MFG,TEXTILE-PRO", "Lisa Leader"),
             ("poweruser", "password123", "poweruser", None, "Power User"),
         ]
@@ -1036,11 +1049,11 @@ def init_database():
         print("\n" + "-" * 70)
         print("Demo Login Credentials:")
         print("-" * 70)
-        print("  Admin:       admin / admin123 (Full access)")
-        print("  Supervisor:  supervisor1 / password123 (ACME-MFG)")
-        print("  Operator:    operator1 / password123 (ACME-MFG)")
-        print("  Leader:      leader1 / password123 (Multi-client)")
-        print("  Power User:  poweruser / password123 (Full access)")
+        print("  Admin:        admin / admin123 (Full access)")
+        print("  Supervisors:  supervisor1-5 / password123 (one per client)")
+        print("  Operators:    operator1-6 / password123 (one+ per client)")
+        print("  Leader:       leader1 / password123 (ACME-MFG, TEXTILE-PRO)")
+        print("  Power User:   poweruser / password123 (Full access)")
         print("-" * 70)
         print("\nClients Available:")
         for client_id, client in clients.items():
