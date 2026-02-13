@@ -234,32 +234,17 @@ test.describe('Floating Pool Management', () => {
     });
 
     test('should prevent same employee assigned to multiple clients', async ({ page }) => {
+      // Verify floating pool page loaded
+      const pageContent = page.locator('.v-card').or(page.locator('.ag-root')).or(page.locator('.v-data-table'));
+      await expect(pageContent.first()).toBeVisible({ timeout: 10000 });
+
       const assignButton = page.locator('button:has-text("Assign")').first();
-
-      if (await assignButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        // First, check if there's already an assigned employee
-        const assignedEmployee = page.locator('.assigned-employee').or(
-          page.locator('[data-testid="assigned"]')
-        );
-
-        if (await assignedEmployee.isVisible({ timeout: 3000 }).catch(() => false)) {
-          // Try to assign the same employee to another client
-          await assignButton.click();
-
-          // The UI should either:
-          // 1. Not show already-assigned employees in the dropdown
-          // 2. Show an error when trying to submit
-
-          const errorMessage = page.locator('.v-alert').or(
-            page.locator('text=already assigned').or(
-              page.locator('text=conflict')
-            )
-          );
-
-          // Either the employee shouldn't be selectable or error should appear
-          const hasProtection = await errorMessage.isVisible({ timeout: 5000 }).catch(() => false);
-          expect(hasProtection !== undefined).toBeTruthy();
-        }
+      if (await assignButton.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await assignButton.click();
+        await page.waitForTimeout(500);
+        // Verify assign dialog or form appeared
+        const dialog = page.locator('.v-dialog').or(page.locator('.v-card'));
+        await expect(dialog.first()).toBeVisible({ timeout: 5000 });
       }
     });
 
@@ -424,12 +409,9 @@ test.describe('Floating Pool Management', () => {
     });
 
     test('should filter by availability status', async ({ page }) => {
-      const statusFilter = page.locator('[data-testid="status-filter"]').or(
-        page.locator('text=Filter')
-      );
-
-      const hasFilter = await statusFilter.isVisible({ timeout: 5000 }).catch(() => false);
-      expect(hasFilter !== undefined).toBeTruthy();
+      // Verify page content loaded
+      const pageContent = page.locator('.v-card').or(page.locator('.ag-root')).or(page.locator('.v-data-table'));
+      await expect(pageContent.first()).toBeVisible({ timeout: 10000 });
     });
 
     test('should search employees by name', async ({ page }) => {

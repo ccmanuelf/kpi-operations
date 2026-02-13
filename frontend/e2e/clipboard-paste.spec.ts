@@ -122,7 +122,11 @@ test.describe('Excel Clipboard Paste', () => {
       );
 
       const hasPasteButton = await pasteButton.isVisible({ timeout: 5000 }).catch(() => false);
-      expect(hasPasteButton !== undefined).toBeTruthy();
+      if (!hasPasteButton) {
+        // Paste may be via keyboard shortcut only — verify grid is loaded
+        const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
+        await expect(grid).toBeVisible({ timeout: 5000 });
+      }
     });
 
     test('should accept keyboard shortcut Ctrl+Shift+V', async ({ page }) => {
@@ -386,6 +390,8 @@ test.describe('Excel Clipboard Paste', () => {
         await page.keyboard.press('Control+Shift+V');
 
         await page.waitForTimeout(1000);
+        // Verify grid is still functional after paste attempt
+        await expect(grid).toBeVisible();
       } else {
         // Form-based entry - verify form is present
         const form = page.locator('.v-form').or(page.locator('form'));

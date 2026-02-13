@@ -29,7 +29,8 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["100/minute"],
     storage_uri="memory://",
-    strategy="fixed-window"
+    strategy="fixed-window",
+    enabled=not RATE_LIMIT_DISABLED
 )
 
 

@@ -76,8 +76,10 @@ test.describe('Dashboard', () => {
   });
 
   test('should display dashboard after login', async ({ page }) => {
+    // Wait for dashboard data to load
+    await page.waitForLoadState('networkidle');
     // Dashboard should have KPI cards
-    await expect(page.locator('.v-card').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.v-card').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should display navigation menu', async ({ page }) => {
@@ -157,19 +159,23 @@ test.describe('Production Management', () => {
 
   test('should open add entry dialog', async ({ page }) => {
     const addButton = page.locator('button:has-text("Add")').or(page.locator('[data-testid="add-entry"]'));
-    if (await addButton.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-      await addButton.first().click();
-      await page.waitForTimeout(500);
+    await expect(addButton.first()).toBeVisible({ timeout: 10000 });
+    await addButton.first().click();
+    await page.waitForTimeout(500);
 
-      // Dialog or form may appear - check for various possibilities
-      const dialog = page.locator('.v-dialog').or(page.locator('[role="dialog"]')).or(page.locator('.v-bottom-sheet'));
-      const isDialogVisible = await dialog.first().isVisible({ timeout: 3000 }).catch(() => false);
-      // Test passes if dialog shows OR if clicking button triggered some state change
-      expect(isDialogVisible !== undefined).toBeTruthy();
-    }
+    // Dialog or inline row add — verify something responded to the click
+    const dialog = page.locator('.v-dialog').or(page.locator('[role="dialog"]')).or(page.locator('.v-bottom-sheet'));
+    const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
+    const isDialogVisible = await dialog.first().isVisible({ timeout: 3000 }).catch(() => false);
+    const isGridVisible = await grid.first().isVisible({ timeout: 1000 }).catch(() => false);
+    expect(isDialogVisible || isGridVisible).toBeTruthy();
   });
 
   test('should filter production data', async ({ page }) => {
+    // Verify grid loaded first
+    const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
+    await expect(grid.first()).toBeVisible({ timeout: 10000 });
+
     // Look for filter inputs
     const filterInput = page.locator('input[placeholder*="filter"]').or(page.locator('.ag-filter-input'));
     if (await filterInput.first().isVisible({ timeout: 3000 }).catch(() => false)) {

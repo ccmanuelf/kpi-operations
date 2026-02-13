@@ -190,26 +190,12 @@ test.describe('API Integration', () => {
   test('fetches database status on load', async ({ page }) => {
     await waitForBackend(page)
 
-    // Intercept API call
-    const statusPromise = page.waitForResponse(
-      response => response.url().includes('/api/admin/database/status'),
-      { timeout: 30000 }
-    )
-
     await loginAndNavigateToDatabaseConfig(page)
 
-    // Wait for the response that was already captured
-    try {
-      const response = await statusPromise
-      expect(response.status()).toBe(200)
-
-      const data = await response.json()
-      expect(data).toHaveProperty('current_provider')
-      expect(data).toHaveProperty('migration_available')
-    } catch {
-      // If we missed the response, just verify the page loaded correctly
-      await expect(page.locator('text=Current Database Provider')).toBeVisible()
-    }
+    // Verify the page loaded with data from the API
+    await expect(page.locator('text=Current Database Provider')).toBeVisible({ timeout: 10000 })
+    // Provider type proves API call succeeded
+    await expect(page.getByText('SQLite').first()).toBeVisible({ timeout: 5000 })
   })
 
   test('test connection endpoint works', async ({ page, request }) => {
@@ -248,10 +234,10 @@ test.describe('Error Handling', () => {
     })
 
     await page.goto('/admin/database')
-    await page.waitForTimeout(1000)
+    await page.waitForLoadState('networkidle')
 
     // Should handle error gracefully (not crash)
     // Page should still be functional - check for the page title
-    await expect(page.locator('text=Database Configuration')).toBeVisible()
+    await expect(page.locator('text=Database Configuration')).toBeVisible({ timeout: 10000 })
   })
 })

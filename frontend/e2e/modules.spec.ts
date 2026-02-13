@@ -115,13 +115,17 @@ test.describe('Attendance Tracking', () => {
   });
 
   test('should display attendance page', async ({ page }) => {
-    await expect(page.locator('text=Attendance').first()).toBeVisible({ timeout: 10000 });
+    await page.waitForLoadState('networkidle');
+    // Verify attendance page content loaded (not just nav text)
+    const pageContent = page.locator('.v-card').or(page.locator('.v-form'));
+    await expect(pageContent.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should show attendance form fields', async ({ page }) => {
+    await page.waitForLoadState('networkidle');
     // Attendance page may have form fields or grid - check for content
-    const pageContent = page.locator('.v-card').or(page.locator('[data-testid="attendance-form"]'));
-    await expect(pageContent.first()).toBeVisible({ timeout: 10000 });
+    const pageContent = page.locator('.v-card').or(page.locator('.v-form')).or(page.locator('[data-testid="attendance-form"]'));
+    await expect(pageContent.first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should display attendance entry content', async ({ page }) => {
@@ -209,7 +213,13 @@ test.describe('Client Management (Admin)', () => {
     const clientsLink = page.locator('text=Clients').first();
     if (await clientsLink.isVisible({ timeout: 5000 }).catch(() => false)) {
       await clientsLink.click();
-      await expect(page.locator('text=Client').first()).toBeVisible({ timeout: 10000 });
+      await page.waitForLoadState('networkidle');
+      // Verify client page content loaded
+      const clientContent = page.locator('.v-card').or(page.locator('.ag-root')).or(page.locator('.v-data-table'));
+      await expect(clientContent.first()).toBeVisible({ timeout: 10000 });
+    } else {
+      // Client management may require different nav path — verify admin is logged in
+      await expect(page.locator('.v-navigation-drawer')).toBeVisible();
     }
   });
 

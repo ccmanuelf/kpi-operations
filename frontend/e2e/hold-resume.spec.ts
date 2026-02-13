@@ -223,11 +223,14 @@ test.describe('Hold/Resume Workflow', () => {
       // Click on Resumed tab
       const resumedTab = page.getByRole('tab', { name: 'Resumed' });
       await resumedTab.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(1000);
 
-      // Should show content in the Resumed tab - look for any form elements or table
-      const tabContent = page.locator('.v-window-item--active');
-      await expect(tabContent).toBeVisible({ timeout: 10000 });
+      // Verify tab is selected
+      await expect(resumedTab).toHaveAttribute('aria-selected', 'true');
+
+      // Should show content in the Resumed tab
+      const tabContent = page.locator('.v-window-item--active').or(page.locator('[role="tabpanel"]'));
+      await expect(tabContent.first()).toBeVisible({ timeout: 10000 });
     });
 
     test('should show resolution notes field in resume tab', async ({ page }) => {
