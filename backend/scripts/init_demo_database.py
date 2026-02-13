@@ -80,7 +80,7 @@ MASTER_PRODUCTS = [
         "code": "TSHIRT-100",
         "name": "Basic T-Shirt Assembly",
         "cycle_h": Decimal("0.15"),
-        "sam": {"CUT": 0.6, "SEW": 7.5, "FIN": 0.9},
+        "sam": {"CUT": 0.6, "SEW": 7.5, "FIN": 0.9, "PRESS": 0.5, "QC": 0.5},
         "bom": [
             {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "qty": Decimal("0.5"), "uom": "M", "waste": Decimal("5"), "type": "FABRIC"},
             {"code": "THREAD-POLY", "desc": "Polyester Thread", "qty": Decimal("60"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
@@ -91,7 +91,7 @@ MASTER_PRODUCTS = [
         "code": "POLO-200",
         "name": "Polo Shirt Production",
         "cycle_h": Decimal("0.25"),
-        "sam": {"CUT": 0.8, "SEW": 12.5, "FIN": 1.7},
+        "sam": {"CUT": 0.8, "SEW": 12.5, "FIN": 1.7, "PRESS": 0.7, "QC": 0.8},
         "bom": [
             {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "qty": Decimal("0.7"), "uom": "M", "waste": Decimal("6"), "type": "FABRIC"},
             {"code": "THREAD-POLY", "desc": "Polyester Thread", "qty": Decimal("80"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
@@ -103,7 +103,7 @@ MASTER_PRODUCTS = [
         "code": "JACKET-300",
         "name": "Work Jacket Assembly",
         "cycle_h": Decimal("0.50"),
-        "sam": {"CUT": 1.5, "SEW": 25.0, "FIN": 3.5},
+        "sam": {"CUT": 1.5, "SEW": 25.0, "FIN": 3.5, "PRESS": 1.5, "QC": 1.0},
         "bom": [
             {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": Decimal("1.5"), "uom": "M", "waste": Decimal("8"), "type": "FABRIC"},
             {"code": "THREAD-HEAVY", "desc": "Heavy-Duty Thread", "qty": Decimal("120"), "uom": "M", "waste": Decimal("3"), "type": "TRIM"},
@@ -115,7 +115,7 @@ MASTER_PRODUCTS = [
         "code": "PANTS-400",
         "name": "Work Pants Assembly",
         "cycle_h": Decimal("0.35"),
-        "sam": {"CUT": 1.0, "SEW": 17.5, "FIN": 2.5},
+        "sam": {"CUT": 1.0, "SEW": 17.5, "FIN": 2.5, "PRESS": 1.0, "QC": 0.7},
         "bom": [
             {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": Decimal("1.2"), "uom": "M", "waste": Decimal("7"), "type": "FABRIC"},
             {"code": "THREAD-HEAVY", "desc": "Heavy-Duty Thread", "qty": Decimal("100"), "uom": "M", "waste": Decimal("3"), "type": "TRIM"},
@@ -128,7 +128,7 @@ MASTER_PRODUCTS = [
         "code": "DRESS-500",
         "name": "Dress Production",
         "cycle_h": Decimal("0.45"),
-        "sam": {"CUT": 1.2, "SEW": 22.0, "FIN": 3.8},
+        "sam": {"CUT": 1.2, "SEW": 22.0, "FIN": 3.8, "PRESS": 1.5, "QC": 1.0},
         "bom": [
             {"code": "FABRIC-CREPE", "desc": "Crepe Fabric", "qty": Decimal("1.8"), "uom": "M", "waste": Decimal("10"), "type": "FABRIC"},
             {"code": "THREAD-FINE", "desc": "Fine Thread", "qty": Decimal("110"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
@@ -340,12 +340,14 @@ def init_database():
                 calendar_entries.append(entry)
             db.add_all(calendar_entries)
 
-            # 4b. Production Lines (4 lines)
+            # 4b. Production Lines (6 lines - matching reference: Sewing x2, Cutting, Finishing, Pressing, QC)
             lines_data = [
-                {"code": f"{client_id[:4]}_CUT_01", "name": "Cutting Line 1", "dept": "CUTTING", "capacity": 500, "ops": 8},
-                {"code": f"{client_id[:4]}_SEW_01", "name": "Sewing Line 1", "dept": "SEWING", "capacity": 120, "ops": 25},
-                {"code": f"{client_id[:4]}_SEW_02", "name": "Sewing Line 2", "dept": "SEWING", "capacity": 100, "ops": 20},
-                {"code": f"{client_id[:4]}_FIN_01", "name": "Finishing Line 1", "dept": "FINISHING", "capacity": 200, "ops": 12},
+                {"code": f"{client_id[:4]}_CUT_01", "name": "Cutting Line 1", "dept": "CUTTING", "capacity": 120, "ops": 8, "eff": 0.90},
+                {"code": f"{client_id[:4]}_SEW_01", "name": "Sewing Line 1", "dept": "SEWING", "capacity": 45, "ops": 25, "eff": 0.85},
+                {"code": f"{client_id[:4]}_SEW_02", "name": "Sewing Line 2", "dept": "SEWING", "capacity": 42, "ops": 20, "eff": 0.82},
+                {"code": f"{client_id[:4]}_FIN_01", "name": "Finishing Line 1", "dept": "FINISHING", "capacity": 55, "ops": 12, "eff": 0.88},
+                {"code": f"{client_id[:4]}_PRESS_01", "name": "Pressing Line 1", "dept": "PRESSING", "capacity": 60, "ops": 8, "eff": 0.92},
+                {"code": f"{client_id[:4]}_QC_01", "name": "QC / Inspection Line", "dept": "QC", "capacity": 50, "ops": 10, "eff": 0.95},
             ]
             line_entries = []
             for ld in lines_data:
@@ -356,7 +358,7 @@ def init_database():
                     department=ld["dept"],
                     standard_capacity_units_per_hour=ld["capacity"],
                     max_operators=ld["ops"],
-                    efficiency_factor=0.85,
+                    efficiency_factor=ld.get("eff", 0.85),
                     absenteeism_factor=0.05,
                     is_active=True,
                 )
@@ -386,14 +388,16 @@ def init_database():
             db.flush()
             all_cap_orders[client_id] = order_entries
 
-            # 4d. Production Standards (3 ops per style, using MASTER_PRODUCTS SAM values)
+            # 4d. Production Standards (5 ops per style, using MASTER_PRODUCTS SAM values)
             standards_entries = []
             op_labels = {
                 "CUT": "Cutting Operation",
                 "SEW": "Sewing Operation",
                 "FIN": "Finishing Operation",
+                "PRESS": "Pressing Operation",
+                "QC": "Quality Control / Inspection",
             }
-            op_depts = {"CUT": "CUTTING", "SEW": "SEWING", "FIN": "FINISHING"}
+            op_depts = {"CUT": "CUTTING", "SEW": "SEWING", "FIN": "FINISHING", "PRESS": "PRESSING", "QC": "QC"}
             for mp in MASTER_PRODUCTS:
                 for op_code, sam_val in mp["sam"].items():
                     std_entry = CapacityProductionStandard(
@@ -483,7 +487,7 @@ def init_database():
 
         total_core = sum(sum(c.values()) for c in capacity_counts.values())
         print(f"  Created {total_core} capacity planning core records across {len(clients)} clients")
-        print("    Per client: Calendar (84d), 4 Lines, 5 Orders, 15 Standards, BOMs, Stock")
+        print("    Per client: Calendar (84d), 6 Lines, 5 Orders, 25 Standards, BOMs, Stock")
 
         # ==============================================================
         # Step 5: Capacity Planning - Computed Tables (6 previously empty)
@@ -521,54 +525,58 @@ def init_database():
                     db.add(cc)
                     computed_counts["component_check"] += 1
 
-            # 5b. Analysis - 12-step capacity calculation per line
-            # Count working days in next 4 weeks
-            working_days_4w = sum(
-                1 for i in range(28)
-                if (today + timedelta(days=i)).weekday() < 5
-            )
-            # Calculate total demand hours from orders (distribute across departments)
-            total_order_qty = sum(o.order_quantity for o in cap_orders)
-            # Demand by department from SAM values
-            dept_demand_minutes = {"CUTTING": 0, "SEWING": 0, "FINISHING": 0}
+            # 5b. Weekly Analysis - 12-step capacity per line per week (4 weeks × 6 lines)
+            # Calculate demand by department across all orders
+            dept_demand_minutes = {"CUTTING": 0, "SEWING": 0, "FINISHING": 0, "PRESSING": 0, "QC": 0}
             for order in cap_orders:
                 mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_code)
-                dept_demand_minutes["CUTTING"] += mp["sam"]["CUT"] * order.order_quantity
-                dept_demand_minutes["SEWING"] += mp["sam"]["SEW"] * order.order_quantity
-                dept_demand_minutes["FINISHING"] += mp["sam"]["FIN"] * order.order_quantity
+                for dept_key, sam_key in [("CUTTING", "CUT"), ("SEWING", "SEW"), ("FINISHING", "FIN"), ("PRESSING", "PRESS"), ("QC", "QC")]:
+                    dept_demand_minutes[dept_key] += mp["sam"][sam_key] * order.order_quantity
 
-            for line in cap_lines:
-                dept = line.department
-                # Split sewing demand across 2 lines (SEW_01 gets 55%, SEW_02 gets 45%)
-                if dept == "SEWING":
-                    sew_total = dept_demand_minutes["SEWING"] / 60  # convert to hours
-                    if "SEW_01" in line.line_code:
-                        demand_h = sew_total * 0.55
-                    else:
-                        demand_h = sew_total * 0.45
-                elif dept == "CUTTING":
-                    demand_h = dept_demand_minutes["CUTTING"] / 60
-                else:
-                    demand_h = dept_demand_minutes["FINISHING"] / 60
+            # Weekly demand distribution: W1=20%, W2=30%, W3=30%, W4=20% (ramp pattern)
+            weekly_demand_pct = [0.20, 0.30, 0.30, 0.20]
 
-                analysis = CapacityAnalysis(
-                    client_id=client_id,
-                    analysis_date=today,
-                    line_id=line.id,
-                    line_code=line.line_code,
-                    department=line.department,
-                    working_days=working_days_4w,
-                    shifts_per_day=2,
-                    hours_per_shift=Decimal("8.0"),
-                    operators_available=line.max_operators,
-                    efficiency_factor=line.efficiency_factor,
-                    absenteeism_factor=line.absenteeism_factor,
-                    demand_hours=Decimal(str(round(demand_h, 2))),
-                    demand_units=total_order_qty if dept != "SEWING" else int(total_order_qty * (0.55 if "SEW_01" in line.line_code else 0.45)),
+            for week_idx in range(4):
+                week_start = today + timedelta(days=week_idx * 7)
+                # Count working days in this specific week
+                week_working_days = sum(
+                    1 for d in range(7)
+                    if (week_start + timedelta(days=d)).weekday() < 5
                 )
-                analysis.calculate_metrics()
-                db.add(analysis)
-                computed_counts["analysis"] += 1
+                demand_fraction = weekly_demand_pct[week_idx]
+
+                for line in cap_lines:
+                    dept = line.department
+                    dept_total_minutes = dept_demand_minutes.get(dept, 0) * demand_fraction
+                    dept_total_hours = dept_total_minutes / 60
+
+                    # Split sewing demand across 2 lines
+                    if dept == "SEWING":
+                        if "SEW_01" in line.line_code:
+                            demand_h = dept_total_hours * 0.55
+                        else:
+                            demand_h = dept_total_hours * 0.45
+                    else:
+                        demand_h = dept_total_hours
+
+                    analysis = CapacityAnalysis(
+                        client_id=client_id,
+                        analysis_date=week_start,
+                        line_id=line.id,
+                        line_code=line.line_code,
+                        department=line.department,
+                        working_days=week_working_days,
+                        shifts_per_day=2,
+                        hours_per_shift=Decimal("8.0"),
+                        operators_available=line.max_operators,
+                        efficiency_factor=line.efficiency_factor,
+                        absenteeism_factor=line.absenteeism_factor,
+                        demand_hours=Decimal(str(round(demand_h, 2))),
+                        demand_units=int(sum(o.order_quantity for o in cap_orders) * demand_fraction),
+                    )
+                    analysis.calculate_metrics()
+                    db.add(analysis)
+                    computed_counts["analysis"] += 1
 
             # 5c. Schedule + Details
             period_start = today
@@ -585,50 +593,72 @@ def init_database():
             db.flush()
             computed_counts["schedule"] += 1
 
-            # Schedule details: distribute orders across lines and working days
-            work_day_offset = 0
+            # Schedule details: distribute orders across lines and weeks (matching reference pattern)
+            # Build a line lookup by department
+            dept_lines = {}
+            for line in cap_lines:
+                dept_lines.setdefault(line.department, []).append(line)
+
             seq = 1
-            for order in cap_orders:
-                mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_code)
-                # Assign to sewing line 1 (main line)
-                sew_line = cap_lines[1]  # SEW_01
-                # Spread over ~4 working days per order
-                daily_qty = order.order_quantity // 4
-                remainder = order.order_quantity % 4
-                for d in range(4):
-                    sched_date = today + timedelta(days=work_day_offset)
-                    # Skip weekends
-                    while sched_date.weekday() >= 5:
-                        work_day_offset += 1
-                        sched_date = today + timedelta(days=work_day_offset)
+            # Distribute orders across 4 weeks with priority-based scheduling
+            week_order_plan = [
+                # (week_idx, order_indices) - spread orders across weeks
+                (0, [0, 2]),    # W1: High priority orders first (TSHIRT, JACKET)
+                (1, [0, 2]),    # W2: Continue high priority
+                (2, [1, 4]),    # W3: Medium priority (POLO, DRESS)
+                (3, [1, 3]),    # W4: Remaining (POLO completion, PANTS)
+            ]
+            for week_idx, order_indices in week_order_plan:
+                week_start = today + timedelta(days=week_idx * 7)
+                for oi in order_indices:
+                    if oi >= len(cap_orders):
+                        continue
+                    order = cap_orders[oi]
+                    # Determine fraction of order in this week
+                    order_weeks = sum(1 for _, ois in week_order_plan if oi in ois)
+                    week_qty = order.order_quantity // order_weeks
 
-                    qty = daily_qty + (remainder if d == 3 else 0)
-                    detail = CapacityScheduleDetail(
-                        schedule_id=schedule.id,
-                        client_id=client_id,
-                        order_id=order.id,
-                        order_number=order.order_number,
-                        style_code=order.style_code,
-                        line_id=sew_line.id,
-                        line_code=sew_line.line_code,
-                        scheduled_date=sched_date,
-                        scheduled_quantity=qty,
-                        completed_quantity=0,
-                        sequence=seq,
-                    )
-                    db.add(detail)
-                    computed_counts["schedule_detail"] += 1
-                    seq += 1
-                    work_day_offset += 1
+                    # Schedule across sewing line (primary) with 5 working days
+                    sew_lines = dept_lines.get("SEWING", [cap_lines[1]])
+                    primary_line = sew_lines[0] if oi % 2 == 0 else (sew_lines[1] if len(sew_lines) > 1 else sew_lines[0])
 
-            # 5d. Scenarios (3 per client)
+                    daily_qty = week_qty // 5
+                    remainder = week_qty % 5
+                    for d in range(5):
+                        sched_date = week_start + timedelta(days=d)
+                        # Skip weekends
+                        while sched_date.weekday() >= 5:
+                            sched_date += timedelta(days=1)
+
+                        qty = daily_qty + (1 if d < remainder else 0)
+                        if qty <= 0:
+                            continue
+                        detail = CapacityScheduleDetail(
+                            schedule_id=schedule.id,
+                            client_id=client_id,
+                            order_id=order.id,
+                            order_number=order.order_number,
+                            style_code=order.style_code,
+                            line_id=primary_line.id,
+                            line_code=primary_line.line_code,
+                            scheduled_date=sched_date,
+                            scheduled_quantity=qty,
+                            completed_quantity=0,
+                            sequence=seq,
+                        )
+                        db.add(detail)
+                        computed_counts["schedule_detail"] += 1
+                        seq += 1
+
+            # 5d. Scenarios (8 per client, matching reference A-H)
+            sew_line_codes = [l.line_code for l in cap_lines if l.department == "SEWING"]
             scenarios_data = [
                 {
-                    "name": "Overtime on Sewing Lines",
+                    "name": "A - Overtime 20% on Sewing",
                     "type": "OVERTIME",
                     "params": {
                         "overtime_percent": 20,
-                        "affected_lines": [cap_lines[1].line_code, cap_lines[2].line_code],
+                        "affected_lines": sew_line_codes,
                         "days": ["MON", "TUE", "WED", "THU", "FRI"],
                     },
                     "results": {
@@ -638,37 +668,41 @@ def init_database():
                         "cost_impact": 12500,
                         "utilization_before": 96.5,
                         "utilization_after": 80.4,
-                        "bottlenecks_resolved": [cap_lines[1].line_code],
+                        "bottlenecks_resolved": [sew_line_codes[0]],
+                        "feasibility": "High",
+                        "action_required": "Approve OT budget, monitor fatigue",
                     },
                 },
                 {
-                    "name": "Add 3rd Sewing Line",
-                    "type": "NEW_LINE",
+                    "name": "B - Setup Reduction via SMED",
+                    "type": "SETUP_REDUCTION",
                     "params": {
-                        "new_line_code": f"{client_id[:4]}_SEW_03",
-                        "new_line_name": "Sewing Line 3",
-                        "department": "SEWING",
-                        "operators": 20,
-                        "capacity_units_per_hour": 100,
+                        "reduction_percent": 30,
+                        "affected_departments": ["CUTTING", "SEWING", "FINISHING"],
+                        "training_cost": 5000,
+                        "training_weeks": 2,
                     },
                     "results": {
                         "original_capacity_hours": 6400,
-                        "new_capacity_hours": 9600,
-                        "capacity_increase_percent": 50,
-                        "cost_impact": 45000,
+                        "new_capacity_hours": 7040,
+                        "capacity_increase_percent": 10,
+                        "cost_impact": 5000,
                         "utilization_before": 96.5,
-                        "utilization_after": 64.3,
-                        "bottlenecks_resolved": [cap_lines[1].line_code, cap_lines[2].line_code],
+                        "utilization_after": 87.7,
+                        "bottlenecks_resolved": [],
+                        "feasibility": "High",
+                        "action_required": "SMED training, job sequencing optimization",
                     },
                 },
                 {
-                    "name": "Subcontract 40% Cutting",
+                    "name": "C - Subcontract 40% Cutting",
                     "type": "SUBCONTRACT",
                     "params": {
                         "subcontract_percent": 40,
                         "affected_department": "CUTTING",
                         "cost_per_unit": 2.50,
-                        "lead_time_days": 5,
+                        "lead_time_days": 3,
+                        "logistics_cost_monthly": 2000,
                     },
                     "results": {
                         "original_capacity_hours": 1600,
@@ -678,6 +712,116 @@ def init_database():
                         "utilization_before": 72.0,
                         "utilization_after": 51.4,
                         "bottlenecks_resolved": [],
+                        "feasibility": "Medium",
+                        "action_required": "Vendor qualification, contracts",
+                    },
+                },
+                {
+                    "name": "D - Add 3rd Sewing Line",
+                    "type": "NEW_LINE",
+                    "params": {
+                        "new_line_code": f"{client_id[:4]}_SEW_03",
+                        "new_line_name": "Sewing Line 3",
+                        "department": "SEWING",
+                        "operators": 20,
+                        "capacity_units_per_hour": 42,
+                        "capex": 60000,
+                        "monthly_labor": 8000,
+                        "lead_time_weeks": 8,
+                    },
+                    "results": {
+                        "original_capacity_hours": 6400,
+                        "new_capacity_hours": 9600,
+                        "capacity_increase_percent": 50,
+                        "cost_impact": 60000,
+                        "utilization_before": 96.5,
+                        "utilization_after": 64.3,
+                        "bottlenecks_resolved": sew_line_codes,
+                        "feasibility": "High",
+                        "action_required": "Equipment order (8 wk lead), recruit 12 operators",
+                    },
+                },
+                {
+                    "name": "E - 3-Shift Operation",
+                    "type": "THREE_SHIFT",
+                    "params": {
+                        "night_shift_productivity_percent": 50,
+                        "shift_premium_percent": 35,
+                        "night_shift_workers_needed": 30,
+                        "affected_departments": ["CUTTING", "SEWING", "FINISHING", "PRESSING", "QC"],
+                    },
+                    "results": {
+                        "original_capacity_hours": 6400,
+                        "new_capacity_hours": 8960,
+                        "capacity_increase_percent": 40,
+                        "cost_impact": 18000,
+                        "utilization_before": 96.5,
+                        "utilization_after": 68.9,
+                        "bottlenecks_resolved": sew_line_codes,
+                        "feasibility": "Medium",
+                        "action_required": "Lighting, supervision, premium pay approval",
+                    },
+                },
+                {
+                    "name": "F - Fabric Lead Time Delay (+2 weeks)",
+                    "type": "LEAD_TIME_DELAY",
+                    "params": {
+                        "delay_weeks": 2,
+                        "affected_materials": ["FABRIC-JERSEY", "FABRIC-PIQUE", "FABRIC-TWILL"],
+                        "stock_impact_percent": -40,
+                        "airfreight_cost": 8000,
+                    },
+                    "results": {
+                        "original_capacity_hours": 6400,
+                        "new_capacity_hours": 3840,
+                        "capacity_increase_percent": -40,
+                        "cost_impact": 8000,
+                        "utilization_before": 96.5,
+                        "utilization_after": 0,
+                        "bottlenecks_resolved": [],
+                        "feasibility": "Low",
+                        "action_required": "Expedite shipping, notify customers, reschedule",
+                    },
+                },
+                {
+                    "name": "G - Absenteeism Spike (15% vs 5%)",
+                    "type": "ABSENTEEISM_SPIKE",
+                    "params": {
+                        "baseline_absenteeism_percent": 5,
+                        "spike_absenteeism_percent": 15,
+                        "duration_weeks": 4,
+                        "overtime_compensation_percent": 12,
+                    },
+                    "results": {
+                        "original_capacity_hours": 6400,
+                        "new_capacity_hours": 5760,
+                        "capacity_increase_percent": -10,
+                        "cost_impact": 4500,
+                        "utilization_before": 96.5,
+                        "utilization_after": 107.3,
+                        "bottlenecks_resolved": [],
+                        "feasibility": "Medium",
+                        "action_required": "Cross-training, activate float pool",
+                    },
+                },
+                {
+                    "name": "H - Multi-Constraint (Material + Labor)",
+                    "type": "MULTI_CONSTRAINT",
+                    "params": {
+                        "material_delay_weeks": 1,
+                        "labor_shortage_percent": 10,
+                        "combined_cost_increase_percent": 25,
+                    },
+                    "results": {
+                        "original_capacity_hours": 6400,
+                        "new_capacity_hours": 4800,
+                        "capacity_increase_percent": -25,
+                        "cost_impact": 15000,
+                        "utilization_before": 96.5,
+                        "utilization_after": 128.7,
+                        "bottlenecks_resolved": [],
+                        "feasibility": "Low",
+                        "action_required": "Prioritize high-margin orders only, notify customers",
                     },
                 },
             ]
@@ -695,14 +839,18 @@ def init_database():
                 db.add(scenario)
                 computed_counts["scenario"] += 1
 
-            # 5e. KPI Commitments (4 per client, linked to schedule)
+            # 5e. KPI Commitments (8 per client, matching reference KPI Tracking sheet)
             kpi_defs = [
-                ("efficiency", "Production Efficiency", Decimal("85.0")),
-                ("quality", "Quality Rate", Decimal("98.5")),
-                ("otd", "On-Time Delivery", Decimal("95.0")),
-                ("utilization", "Capacity Utilization", Decimal("88.0")),
+                ("otd", "On-Time Delivery %", Decimal("95.0"), Decimal("92.0")),
+                ("utilization", "Line Utilization %", Decimal("75.0"), Decimal("70.0")),
+                ("setup_time", "Setup Time % of Total", Decimal("5.0"), Decimal("6.0")),
+                ("scrap_rate", "Scrap Rate %", Decimal("2.0"), Decimal("3.0")),
+                ("efficiency", "Efficiency vs Standard %", Decimal("90.0"), Decimal("87.0")),
+                ("overtime_hours", "Overtime Hours/Month", Decimal("40.0"), Decimal("60.0")),
+                ("material_otd", "Material On-Time %", Decimal("95.0"), Decimal("88.0")),
+                ("cross_training", "Cross-Training Index", Decimal("50.0"), Decimal("40.0")),
             ]
-            for kpi_key, kpi_name, committed_val in kpi_defs:
+            for kpi_key, kpi_name, committed_val, actual_val in kpi_defs:
                 commitment = CapacityKPICommitment(
                     client_id=client_id,
                     schedule_id=schedule.id,
@@ -711,11 +859,10 @@ def init_database():
                     period_start=period_start,
                     period_end=period_end,
                     committed_value=committed_val,
-                    actual_value=None,
-                    variance=None,
-                    variance_percent=None,
-                    notes="Committed with draft schedule",
+                    actual_value=actual_val,
+                    notes="Committed with schedule, actuals updated weekly",
                 )
+                commitment.calculate_variance()
                 db.add(commitment)
                 computed_counts["kpi_commitment"] += 1
 

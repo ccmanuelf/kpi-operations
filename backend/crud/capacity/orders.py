@@ -85,7 +85,8 @@ def get_orders(
     db: Session,
     client_id: str,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
+    status_filter: Optional[str] = None
 ) -> List[CapacityOrder]:
     """
     Get all orders for a client.
@@ -95,14 +96,18 @@ def get_orders(
         client_id: Client identifier for multi-tenant isolation
         skip: Number of records to skip (pagination)
         limit: Maximum records to return
+        status_filter: Optional status to filter by
 
     Returns:
         List of CapacityOrder entries
     """
     ensure_client_id(client_id, "orders query")
-    return db.query(CapacityOrder).filter(
+    query = db.query(CapacityOrder).filter(
         CapacityOrder.client_id == client_id
-    ).order_by(CapacityOrder.required_date).offset(skip).limit(limit).all()
+    )
+    if status_filter:
+        query = query.filter(CapacityOrder.status == status_filter)
+    return query.order_by(CapacityOrder.required_date).offset(skip).limit(limit).all()
 
 
 def get_order(

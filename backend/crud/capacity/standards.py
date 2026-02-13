@@ -71,7 +71,8 @@ def get_standards(
     db: Session,
     client_id: str,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
+    department: Optional[str] = None
 ) -> List[CapacityProductionStandard]:
     """
     Get all production standards for a client.
@@ -81,14 +82,18 @@ def get_standards(
         client_id: Client identifier for multi-tenant isolation
         skip: Number of records to skip (pagination)
         limit: Maximum records to return
+        department: Optional department to filter by
 
     Returns:
         List of CapacityProductionStandard entries
     """
     ensure_client_id(client_id, "production standards query")
-    return db.query(CapacityProductionStandard).filter(
+    query = db.query(CapacityProductionStandard).filter(
         CapacityProductionStandard.client_id == client_id
-    ).order_by(
+    )
+    if department:
+        query = query.filter(CapacityProductionStandard.department == department)
+    return query.order_by(
         CapacityProductionStandard.style_code,
         CapacityProductionStandard.operation_code
     ).offset(skip).limit(limit).all()

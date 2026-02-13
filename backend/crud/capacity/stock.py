@@ -76,7 +76,8 @@ def get_stock_snapshots(
     db: Session,
     client_id: str,
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
+    snapshot_date: Optional[date] = None
 ) -> List[CapacityStockSnapshot]:
     """
     Get all stock snapshots for a client.
@@ -86,14 +87,18 @@ def get_stock_snapshots(
         client_id: Client identifier for multi-tenant isolation
         skip: Number of records to skip (pagination)
         limit: Maximum records to return
+        snapshot_date: Optional date to filter by
 
     Returns:
         List of CapacityStockSnapshot entries
     """
     ensure_client_id(client_id, "stock snapshots query")
-    return db.query(CapacityStockSnapshot).filter(
+    query = db.query(CapacityStockSnapshot).filter(
         CapacityStockSnapshot.client_id == client_id
-    ).order_by(
+    )
+    if snapshot_date:
+        query = query.filter(CapacityStockSnapshot.snapshot_date == snapshot_date)
+    return query.order_by(
         desc(CapacityStockSnapshot.snapshot_date),
         CapacityStockSnapshot.item_code
     ).offset(skip).limit(limit).all()
