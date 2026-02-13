@@ -17,6 +17,7 @@ import sys
 import os
 import uuid
 import json
+import random
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 import random
@@ -752,6 +753,21 @@ def init_database():
                     received_date=datetime.combine(base_date + timedelta(days=i * 5), datetime.min.time()),
                     planned_ship_date=datetime.combine(base_date + timedelta(days=30 + i * 5), datetime.min.time()),
                 )
+                # Set required_date and actual_delivery_date for OTD calculation
+                # Dates must fall within "Last 30 Days" dashboard filter
+                if i == 0:
+                    # On time: required Feb 7, delivered Feb 6
+                    wo.required_date = datetime.combine(base_date + timedelta(days=25), datetime.min.time())
+                    wo.actual_delivery_date = datetime.combine(base_date + timedelta(days=24), datetime.min.time())
+                    wo.actual_quantity = wo.planned_quantity
+                elif i == 1:
+                    # Late: required Feb 2, delivered Feb 10 (8 days late)
+                    wo.required_date = datetime.combine(base_date + timedelta(days=20), datetime.min.time())
+                    wo.actual_delivery_date = datetime.combine(base_date + timedelta(days=28), datetime.min.time())
+                    wo.actual_quantity = wo.planned_quantity
+                else:
+                    # Still in progress: due in 10 days, no delivery yet
+                    wo.required_date = datetime.combine(date.today() + timedelta(days=10), datetime.min.time())
                 client_work_orders.append(wo)
 
                 # 2 jobs per work order
@@ -793,17 +809,48 @@ def init_database():
             if not supervisor_user:
                 supervisor_user = users["admin"]
 
-            # Production entries (10 per client)
+            # Production entries (10 per client) with realistic KPI values
             wo_ids = [wo.work_order_id for wo in client_work_orders]
-            TestDataFactory.create_production_entries_batch(
-                db,
-                client_id=client_id,
-                product_id=products[0].product_id,
-                shift_id=shifts[0].shift_id,
-                entered_by=supervisor_user.user_id,
-                count=10,
-                work_order_ids=wo_ids,
-            )
+            random.seed(hash(client_id))  # Deterministic per client
+            base_date = date.today() - timedelta(days=10)
+            for i in range(10):
+                prod_idx = i % len(products)
+                product = products[prod_idx]
+                units = 1000 + (i * 50)
+                run_time = Decimal("8.0")
+                defects = max(1, int(units * random.uniform(0.003, 0.012)))
+                scrap = max(0, defects // 3)
+                rework = defects - scrap
+                efficiency = Decimal(str(round(random.uniform(78, 95), 2)))
+                performance = Decimal(str(round(random.uniform(82, 98), 2)))
+                quality = Decimal(str(round(100 - (defects + scrap) / units * 100, 2)))
+                ideal_ct = product.ideal_cycle_time or Decimal("0.15")
+                actual_ct = run_time / units
+
+                work_order_id = wo_ids[i % len(wo_ids)] if wo_ids else None
+                entry = ProductionEntry(
+                    production_entry_id=f"PE-{client_id[:4]}-{i+1:03d}",
+                    client_id=client_id,
+                    product_id=product.product_id,
+                    shift_id=shifts[0].shift_id,
+                    entered_by=supervisor_user.user_id,
+                    production_date=datetime.combine(base_date + timedelta(days=i), datetime.min.time()),
+                    shift_date=datetime.combine(base_date + timedelta(days=i), datetime.min.time()),
+                    units_produced=units,
+                    employees_assigned=5,
+                    employees_present=random.choice([4, 5, 5, 5]),
+                    run_time_hours=run_time,
+                    defect_count=defects,
+                    scrap_count=scrap,
+                    rework_count=rework,
+                    ideal_cycle_time=ideal_ct,
+                    actual_cycle_time=actual_ct,
+                    efficiency_percentage=efficiency,
+                    performance_percentage=performance,
+                    quality_rate=quality,
+                    work_order_id=work_order_id,
+                )
+                db.add(entry)
 
             # Quality entries
             if client_work_orders:
@@ -846,16 +893,21 @@ def init_database():
                         downtime_reason=reason,
                     )
 
-            # Hold entry
+            # Hold entries (varied ages for realistic WIP aging)
             if client_work_orders:
-                TestDataFactory.create_hold_entry(
-                    db,
-                    work_order_id=client_work_orders[0].work_order_id,
-                    client_id=client_id,
-                    created_by=supervisor_user.user_id,
-                    hold_reason="QUALITY_ISSUE",
-                    hold_status=HoldStatus.ON_HOLD,
-                )
+                hold_ages = [3, 8, 15]  # days ago: within target, borderline, overdue
+                hold_reasons = ["QUALITY_ISSUE", "MATERIAL_SHORTAGE", "CUSTOMER_REQUEST"]
+                for h_idx, (age, reason) in enumerate(zip(hold_ages, hold_reasons)):
+                    hold_wo = client_work_orders[h_idx % len(client_work_orders)]
+                    TestDataFactory.create_hold_entry(
+                        db,
+                        work_order_id=hold_wo.work_order_id,
+                        client_id=client_id,
+                        created_by=supervisor_user.user_id,
+                        hold_reason=reason,
+                        hold_status=HoldStatus.ON_HOLD,
+                        hold_date=datetime.now() - timedelta(days=age),
+                    )
 
         print(f"  Created execution data for {len(clients)} clients")
         db.commit()
