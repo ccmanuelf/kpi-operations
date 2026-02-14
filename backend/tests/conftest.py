@@ -2,6 +2,11 @@
 Pytest Configuration and Fixtures
 Shared test fixtures for all test modules
 """
+import warnings
+# python-multipart 0.0.22 warns about `import multipart` (used by starlette),
+# but starlette hasn't migrated yet. Suppress to avoid pytest -W error breakage.
+warnings.filterwarnings("ignore", message="Please use `import python_multipart`", category=PendingDeprecationWarning)
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
