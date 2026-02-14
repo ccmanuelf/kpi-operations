@@ -171,7 +171,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:blog.date-fns.org)",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(python:*)",
+      "Bash(npm install:*)"
     ],
     "deny": []
   }
