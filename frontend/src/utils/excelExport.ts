@@ -2,10 +2,10 @@
  * Excel Export Utility for Simulation Results
  *
  * Provides functionality to export simulation results to Excel format
- * using the SheetJS (xlsx) library.
+ * using the ExcelJS library.
  */
 
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import type {
   SimulationOutputBlocks,
   DailySummary,
@@ -263,90 +263,87 @@ function createAssumptionsData(log: AssumptionLog): (string | number)[][] {
 }
 
 /**
+ * Helper: add rows from array-of-arrays data to a worksheet
+ */
+function addSheetData(workbook: ExcelJS.Workbook, sheetName: string, data: (string | number | boolean)[][]): void {
+  const worksheet = workbook.addWorksheet(sheetName)
+  data.forEach(row => {
+    worksheet.addRow(row)
+  })
+}
+
+/**
+ * Helper: trigger browser download of workbook
+ */
+async function downloadWorkbook(workbook: ExcelJS.Workbook, filename: string): Promise<void> {
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+/**
  * Export simulation results to Excel file
  *
  * @param results - The simulation output blocks to export
  * @param options - Export options (filename, what to include)
  */
-export function exportSimulationToExcel(
+export async function exportSimulationToExcel(
   results: SimulationOutputBlocks,
   options: ExportOptions = {}
-): void {
+): Promise<void> {
   const {
     filename = `simulation_results_${formatDate(new Date())}.xlsx`,
     includeAssumptions = true
   } = options
 
-  // Create workbook
-  const workbook = XLSX.utils.book_new()
+  const workbook = new ExcelJS.Workbook()
 
-  // Add Daily Summary sheet
   if (results.daily_summary) {
-    const summaryData = createDailySummaryData(results.daily_summary)
-    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Daily Summary')
+    addSheetData(workbook, 'Daily Summary', createDailySummaryData(results.daily_summary))
   }
 
-  // Add Free Capacity sheet
   if (results.free_capacity) {
-    const capacityData = createFreeCapacityData(results.free_capacity)
-    const capacitySheet = XLSX.utils.aoa_to_sheet(capacityData)
-    XLSX.utils.book_append_sheet(workbook, capacitySheet, 'Free Capacity')
+    addSheetData(workbook, 'Free Capacity', createFreeCapacityData(results.free_capacity))
   }
 
-  // Add Station Performance sheet
   if (results.station_performance && results.station_performance.length > 0) {
-    const stationData = createStationPerformanceData(results.station_performance)
-    const stationSheet = XLSX.utils.aoa_to_sheet(stationData)
-    XLSX.utils.book_append_sheet(workbook, stationSheet, 'Station Performance')
+    addSheetData(workbook, 'Station Performance', createStationPerformanceData(results.station_performance))
   }
 
-  // Add Weekly Capacity sheet
   if (results.weekly_demand_capacity && results.weekly_demand_capacity.length > 0) {
-    const weeklyData = createWeeklyCapacityData(results.weekly_demand_capacity)
-    const weeklySheet = XLSX.utils.aoa_to_sheet(weeklyData)
-    XLSX.utils.book_append_sheet(workbook, weeklySheet, 'Weekly Capacity')
+    addSheetData(workbook, 'Weekly Capacity', createWeeklyCapacityData(results.weekly_demand_capacity))
   }
 
-  // Add Per Product sheet
   if (results.per_product_summary && results.per_product_summary.length > 0) {
-    const productData = createPerProductData(results.per_product_summary)
-    const productSheet = XLSX.utils.aoa_to_sheet(productData)
-    XLSX.utils.book_append_sheet(workbook, productSheet, 'Per Product')
+    addSheetData(workbook, 'Per Product', createPerProductData(results.per_product_summary))
   }
 
-  // Add Bundle Metrics sheet
   if (results.bundle_metrics && results.bundle_metrics.length > 0) {
-    const bundleData = createBundleMetricsData(results.bundle_metrics)
-    const bundleSheet = XLSX.utils.aoa_to_sheet(bundleData)
-    XLSX.utils.book_append_sheet(workbook, bundleSheet, 'Bundle Metrics')
+    addSheetData(workbook, 'Bundle Metrics', createBundleMetricsData(results.bundle_metrics))
   }
 
-  // Add Rebalancing Suggestions sheet
   if (results.rebalancing_suggestions) {
-    const rebalanceData = createRebalancingData(results.rebalancing_suggestions)
-    const rebalanceSheet = XLSX.utils.aoa_to_sheet(rebalanceData)
-    XLSX.utils.book_append_sheet(workbook, rebalanceSheet, 'Rebalancing')
+    addSheetData(workbook, 'Rebalancing', createRebalancingData(results.rebalancing_suggestions))
   }
 
-  // Add Assumptions sheet
   if (includeAssumptions && results.assumption_log) {
-    const assumptionsData = createAssumptionsData(results.assumption_log)
-    const assumptionsSheet = XLSX.utils.aoa_to_sheet(assumptionsData)
-    XLSX.utils.book_append_sheet(workbook, assumptionsSheet, 'Assumptions')
+    addSheetData(workbook, 'Assumptions', createAssumptionsData(results.assumption_log))
   }
 
-  // Write to file (triggers download in browser)
-  XLSX.writeFile(workbook, filename)
+  await downloadWorkbook(workbook, filename)
 }
 
 /**
  * Export operations configuration to Excel
- *
- * @param operations - Array of operation configurations
- * @param filename - Output filename
  */
-export function exportOperationsToExcel(
+export async function exportOperationsToExcel(
   operations: Array<{
     product: string
     step: number
@@ -362,7 +359,7 @@ export function exportOperationsToExcel(
     fpd_pct?: number
   }>,
   filename: string = `operations_${formatDate(new Date())}.xlsx`
-): void {
+): Promise<void> {
   const headers = [
     'Product', 'Step', 'Operation', 'Machine/Tool', 'SAM (min)',
     'Sequence', 'Grouping', 'Operators', 'Variability',
@@ -388,20 +385,15 @@ export function exportOperationsToExcel(
     ])
   })
 
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet(data)
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Operations')
-  XLSX.writeFile(workbook, filename)
+  const workbook = new ExcelJS.Workbook()
+  addSheetData(workbook, 'Operations', data)
+  await downloadWorkbook(workbook, filename)
 }
 
 /**
  * Export demand configuration to Excel
- *
- * @param demands - Array of demand configurations
- * @param mode - Demand mode ('demand-driven' or 'mix-driven')
- * @param filename - Output filename
  */
-export function exportDemandToExcel(
+export async function exportDemandToExcel(
   demands: Array<{
     product: string
     bundle_size: number
@@ -411,7 +403,7 @@ export function exportDemandToExcel(
   }>,
   mode: 'demand-driven' | 'mix-driven',
   filename: string = `demand_${formatDate(new Date())}.xlsx`
-): void {
+): Promise<void> {
   const headers = mode === 'demand-driven'
     ? ['Product', 'Bundle Size', 'Daily Demand', 'Weekly Demand']
     : ['Product', 'Bundle Size', 'Mix Share %']
@@ -435,10 +427,9 @@ export function exportDemandToExcel(
     }
   })
 
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet(data)
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Demand')
-  XLSX.writeFile(workbook, filename)
+  const workbook = new ExcelJS.Workbook()
+  addSheetData(workbook, 'Demand', data)
+  await downloadWorkbook(workbook, filename)
 }
 
 export default {

@@ -189,7 +189,7 @@ const exportData = async () => {
 
     if (exportFormat.value === 'excel') {
       // Use existing Excel export utility
-      exportSimulationToExcel(props.results, {
+      await exportSimulationToExcel(props.results, {
         filename,
         includeAssumptions: options.value.includeAssumptions
       })

@@ -443,9 +443,9 @@ const formatTimestamp = (ts) => {
   }
 }
 
-const exportToExcel = () => {
+const exportToExcel = async () => {
   if (props.results) {
-    exportSimulationToExcel(props.results, {
+    await exportSimulationToExcel(props.results, {
       includeAssumptions: true
     })
   }
