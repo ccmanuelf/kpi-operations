@@ -137,7 +137,7 @@
           <v-col cols="4">
             <div class="text-center pa-2 bg-error-lighten-4 rounded">
               <div class="text-h6 font-weight-bold text-error">{{ poorCount }}</div>
-              <div class="text-caption">Needs Work (<95%)</div>
+              <div class="text-caption">Needs Work (&lt;95%)</div>
             </div>
           </v-col>
         </v-row>
