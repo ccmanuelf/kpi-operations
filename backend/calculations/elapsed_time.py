@@ -10,6 +10,7 @@ Provides calculations for:
 - Closure time (shipped → closed)
 - Custom date range calculations
 """
+
 from typing import Optional, Dict, List, Tuple
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -20,10 +21,7 @@ from backend.schemas.work_order import WorkOrder
 from backend.schemas.workflow import WorkflowTransitionLog
 
 
-def calculate_elapsed_hours(
-    from_datetime: Optional[datetime],
-    to_datetime: Optional[datetime]
-) -> Optional[int]:
+def calculate_elapsed_hours(from_datetime: Optional[datetime], to_datetime: Optional[datetime]) -> Optional[int]:
     """
     Calculate elapsed hours between two datetimes.
 
@@ -44,10 +42,7 @@ def calculate_elapsed_hours(
     return int(delta.total_seconds() / 3600)
 
 
-def calculate_elapsed_days(
-    from_datetime: Optional[datetime],
-    to_datetime: Optional[datetime]
-) -> Optional[float]:
+def calculate_elapsed_days(from_datetime: Optional[datetime], to_datetime: Optional[datetime]) -> Optional[float]:
     """
     Calculate elapsed days between two datetimes.
 
@@ -72,7 +67,7 @@ def calculate_business_hours(
     from_datetime: Optional[datetime],
     to_datetime: Optional[datetime],
     hours_per_day: int = 8,
-    working_days: List[int] = None
+    working_days: List[int] = None,
 ) -> Optional[int]:
     """
     Calculate elapsed business hours between two datetimes.
@@ -154,10 +149,7 @@ class WorkOrderElapsedTime:
         Returns:
             Hours from received_date to dispatch_date
         """
-        return calculate_elapsed_hours(
-            self.work_order.received_date,
-            self.work_order.dispatch_date
-        )
+        return calculate_elapsed_hours(self.work_order.received_date, self.work_order.dispatch_date)
 
     @property
     def lead_time_days(self) -> Optional[float]:
@@ -167,10 +159,7 @@ class WorkOrderElapsedTime:
         Returns:
             Days from received_date to dispatch_date
         """
-        return calculate_elapsed_days(
-            self.work_order.received_date,
-            self.work_order.dispatch_date
-        )
+        return calculate_elapsed_days(self.work_order.received_date, self.work_order.dispatch_date)
 
     @property
     def processing_time_hours(self) -> Optional[int]:
@@ -181,10 +170,7 @@ class WorkOrderElapsedTime:
             Hours from dispatch_date to closure_date or completion
         """
         end_time = self.work_order.closure_date or self._now
-        return calculate_elapsed_hours(
-            self.work_order.dispatch_date,
-            end_time
-        )
+        return calculate_elapsed_hours(self.work_order.dispatch_date, end_time)
 
     @property
     def processing_time_days(self) -> Optional[float]:
@@ -195,10 +181,7 @@ class WorkOrderElapsedTime:
             Days from dispatch_date to closure_date or completion
         """
         end_time = self.work_order.closure_date or self._now
-        return calculate_elapsed_days(
-            self.work_order.dispatch_date,
-            end_time
-        )
+        return calculate_elapsed_days(self.work_order.dispatch_date, end_time)
 
     @property
     def shipping_time_hours(self) -> Optional[int]:
@@ -273,25 +256,25 @@ class WorkOrderElapsedTime:
                 "total_hours": self.total_lifecycle_hours,
                 "total_days": self.total_lifecycle_days,
                 "is_overdue": self.is_overdue,
-                "days_early_or_late": self.days_early_or_late
+                "days_early_or_late": self.days_early_or_late,
             },
             "stages": {
                 "lead_time_hours": self.lead_time_hours,
                 "lead_time_days": self.lead_time_days,
                 "processing_time_hours": self.processing_time_hours,
                 "processing_time_days": self.processing_time_days,
-                "shipping_time_hours": self.shipping_time_hours
+                "shipping_time_hours": self.shipping_time_hours,
             },
             "forecast": {
                 "time_to_expected_hours": self.time_to_expected,
-                "expected_date": self.work_order.expected_date.isoformat() if self.work_order.expected_date else None
+                "expected_date": self.work_order.expected_date.isoformat() if self.work_order.expected_date else None,
             },
             "dates": {
                 "received_date": self.work_order.received_date.isoformat() if self.work_order.received_date else None,
                 "dispatch_date": self.work_order.dispatch_date.isoformat() if self.work_order.dispatch_date else None,
                 "shipped_date": self.work_order.shipped_date.isoformat() if self.work_order.shipped_date else None,
-                "closure_date": self.work_order.closure_date.isoformat() if self.work_order.closure_date else None
-            }
+                "closure_date": self.work_order.closure_date.isoformat() if self.work_order.closure_date else None,
+            },
         }
 
 
@@ -314,7 +297,7 @@ def calculate_client_average_times(
     client_id: str,
     status: Optional[str] = None,
     start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None,
 ) -> Dict:
     """
     Calculate average elapsed times for a client's work orders.
@@ -329,9 +312,7 @@ def calculate_client_average_times(
     Returns:
         Dictionary with average time metrics
     """
-    query = db.query(WorkOrder).filter(
-        WorkOrder.client_id == client_id
-    )
+    query = db.query(WorkOrder).filter(WorkOrder.client_id == client_id)
 
     if status:
         query = query.filter(WorkOrder.status == status)
@@ -345,11 +326,7 @@ def calculate_client_average_times(
     work_orders = query.all()
 
     if not work_orders:
-        return {
-            "client_id": client_id,
-            "count": 0,
-            "averages": None
-        }
+        return {"client_id": client_id, "count": 0, "averages": None}
 
     # Calculate totals
     total_lifecycle = []
@@ -386,16 +363,12 @@ def calculate_client_average_times(
             "lead_time_hours": safe_avg(total_lead_time),
             "lead_time_days": round(safe_avg(total_lead_time) / 24, 2) if safe_avg(total_lead_time) else None,
             "processing_time_hours": safe_avg(total_processing),
-            "processing_time_days": round(safe_avg(total_processing) / 24, 2) if safe_avg(total_processing) else None
-        }
+            "processing_time_days": round(safe_avg(total_processing) / 24, 2) if safe_avg(total_processing) else None,
+        },
     }
 
 
-def get_transition_elapsed_times(
-    db: Session,
-    work_order_id: str,
-    client_id: str
-) -> List[Dict]:
+def get_transition_elapsed_times(db: Session, work_order_id: str, client_id: str) -> List[Dict]:
     """
     Get elapsed times between each transition for a work order.
 
@@ -407,12 +380,14 @@ def get_transition_elapsed_times(
     Returns:
         List of dictionaries with transition details and elapsed times
     """
-    transitions = db.query(WorkflowTransitionLog).filter(
-        and_(
-            WorkflowTransitionLog.work_order_id == work_order_id,
-            WorkflowTransitionLog.client_id == client_id
+    transitions = (
+        db.query(WorkflowTransitionLog)
+        .filter(
+            and_(WorkflowTransitionLog.work_order_id == work_order_id, WorkflowTransitionLog.client_id == client_id)
         )
-    ).order_by(WorkflowTransitionLog.transitioned_at.asc()).all()
+        .order_by(WorkflowTransitionLog.transitioned_at.asc())
+        .all()
+    )
 
     result = []
     prev_time = None
@@ -422,16 +397,18 @@ def get_transition_elapsed_times(
         if prev_time:
             elapsed_from_prev = calculate_elapsed_hours(prev_time, trans.transitioned_at)
 
-        result.append({
-            "transition_id": trans.transition_id,
-            "from_status": trans.from_status,
-            "to_status": trans.to_status,
-            "transitioned_at": trans.transitioned_at.isoformat() if trans.transitioned_at else None,
-            "elapsed_from_previous_hours": elapsed_from_prev,
-            "elapsed_from_received_hours": trans.elapsed_from_received_hours,
-            "trigger_source": trans.trigger_source,
-            "notes": trans.notes
-        })
+        result.append(
+            {
+                "transition_id": trans.transition_id,
+                "from_status": trans.from_status,
+                "to_status": trans.to_status,
+                "transitioned_at": trans.transitioned_at.isoformat() if trans.transitioned_at else None,
+                "elapsed_from_previous_hours": elapsed_from_prev,
+                "elapsed_from_received_hours": trans.elapsed_from_received_hours,
+                "trigger_source": trans.trigger_source,
+                "notes": trans.notes,
+            }
+        )
 
         prev_time = trans.transitioned_at
 
@@ -439,10 +416,7 @@ def get_transition_elapsed_times(
 
 
 def calculate_stage_duration_summary(
-    db: Session,
-    client_id: str,
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None
+    db: Session, client_id: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None
 ) -> Dict:
     """
     Calculate average duration for each workflow stage.
@@ -459,13 +433,12 @@ def calculate_stage_duration_summary(
     query = db.query(
         WorkflowTransitionLog.from_status,
         WorkflowTransitionLog.to_status,
-        func.avg(WorkflowTransitionLog.elapsed_from_previous_hours).label('avg_hours'),
-        func.min(WorkflowTransitionLog.elapsed_from_previous_hours).label('min_hours'),
-        func.max(WorkflowTransitionLog.elapsed_from_previous_hours).label('max_hours'),
-        func.count(WorkflowTransitionLog.transition_id).label('count')
+        func.avg(WorkflowTransitionLog.elapsed_from_previous_hours).label("avg_hours"),
+        func.min(WorkflowTransitionLog.elapsed_from_previous_hours).label("min_hours"),
+        func.max(WorkflowTransitionLog.elapsed_from_previous_hours).label("max_hours"),
+        func.count(WorkflowTransitionLog.transition_id).label("count"),
     ).filter(
-        WorkflowTransitionLog.client_id == client_id,
-        WorkflowTransitionLog.elapsed_from_previous_hours.isnot(None)
+        WorkflowTransitionLog.client_id == client_id, WorkflowTransitionLog.elapsed_from_previous_hours.isnot(None)
     )
 
     if start_date:
@@ -474,28 +447,27 @@ def calculate_stage_duration_summary(
     if end_date:
         query = query.filter(WorkflowTransitionLog.transitioned_at <= end_date)
 
-    results = query.group_by(
-        WorkflowTransitionLog.from_status,
-        WorkflowTransitionLog.to_status
-    ).all()
+    results = query.group_by(WorkflowTransitionLog.from_status, WorkflowTransitionLog.to_status).all()
 
     stages = []
     for r in results:
-        stages.append({
-            "from_status": r.from_status,
-            "to_status": r.to_status,
-            "avg_hours": round(r.avg_hours, 2) if r.avg_hours else None,
-            "avg_days": round(r.avg_hours / 24, 2) if r.avg_hours else None,
-            "min_hours": r.min_hours,
-            "max_hours": r.max_hours,
-            "transition_count": r.count
-        })
+        stages.append(
+            {
+                "from_status": r.from_status,
+                "to_status": r.to_status,
+                "avg_hours": round(r.avg_hours, 2) if r.avg_hours else None,
+                "avg_days": round(r.avg_hours / 24, 2) if r.avg_hours else None,
+                "min_hours": r.min_hours,
+                "max_hours": r.max_hours,
+                "transition_count": r.count,
+            }
+        )
 
     return {
         "client_id": client_id,
         "stage_durations": stages,
         "filter": {
             "start_date": start_date.isoformat() if start_date else None,
-            "end_date": end_date.isoformat() if end_date else None
-        }
+            "end_date": end_date.isoformat() if end_date else None,
+        },
     }

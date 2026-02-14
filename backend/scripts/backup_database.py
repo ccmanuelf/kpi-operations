@@ -50,10 +50,7 @@ def setup_logging(log_dir: Path) -> logging.Logger:
     log_file = log_dir / DEFAULT_LOG_FILE
 
     # Create formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
     # File handler
     file_handler = logging.FileHandler(log_file)
@@ -87,6 +84,7 @@ def get_database_path() -> Path:
     # Try to import from config
     try:
         from backend.config import settings
+
         db_url = settings.DATABASE_URL
     except ImportError:
         # Default fallback
@@ -132,11 +130,7 @@ def generate_backup_filename() -> str:
     return f"{BACKUP_PREFIX}_{timestamp}{BACKUP_EXTENSION}"
 
 
-def create_backup(
-    db_path: Path,
-    backup_path: Path,
-    logger: logging.Logger
-) -> Tuple[bool, Optional[str]]:
+def create_backup(db_path: Path, backup_path: Path, logger: logging.Logger) -> Tuple[bool, Optional[str]]:
     """
     Create compressed backup of SQLite database.
 
@@ -206,10 +200,7 @@ def create_backup(
         return False, error_msg
 
 
-def validate_backup(
-    backup_path: Path,
-    logger: logging.Logger
-) -> Tuple[bool, Optional[str]]:
+def validate_backup(backup_path: Path, logger: logging.Logger) -> Tuple[bool, Optional[str]]:
     """
     Validate backup integrity by checking gzip structure and SQLite header.
 
@@ -265,11 +256,7 @@ def get_existing_backups(backup_dir: Path) -> List[Path]:
     return backups
 
 
-def rotate_backups(
-    backup_dir: Path,
-    retention_count: int,
-    logger: logging.Logger
-) -> int:
+def rotate_backups(backup_dir: Path, retention_count: int, logger: logging.Logger) -> int:
     """
     Delete old backups, keeping only the most recent N backups.
 
@@ -317,12 +304,7 @@ def get_backup_summary(backup_dir: Path) -> dict:
     backups = get_existing_backups(backup_dir)
 
     if not backups:
-        return {
-            "count": 0,
-            "total_size_bytes": 0,
-            "oldest": None,
-            "newest": None
-        }
+        return {"count": 0, "total_size_bytes": 0, "oldest": None, "newest": None}
 
     total_size = sum(b.stat().st_size for b in backups)
     oldest = backups[0]
@@ -332,21 +314,12 @@ def get_backup_summary(backup_dir: Path) -> dict:
         "count": len(backups),
         "total_size_bytes": total_size,
         "total_size_mb": round(total_size / (1024 * 1024), 2),
-        "oldest": {
-            "name": oldest.name,
-            "date": datetime.fromtimestamp(oldest.stat().st_mtime).isoformat()
-        },
-        "newest": {
-            "name": newest.name,
-            "date": datetime.fromtimestamp(newest.stat().st_mtime).isoformat()
-        }
+        "oldest": {"name": oldest.name, "date": datetime.fromtimestamp(oldest.stat().st_mtime).isoformat()},
+        "newest": {"name": newest.name, "date": datetime.fromtimestamp(newest.stat().st_mtime).isoformat()},
     }
 
 
-def run_backup(
-    retention_days: int = DEFAULT_RETENTION_DAYS,
-    backup_dir: Optional[str] = None
-) -> Tuple[bool, dict]:
+def run_backup(retention_days: int = DEFAULT_RETENTION_DAYS, backup_dir: Optional[str] = None) -> Tuple[bool, dict]:
     """
     Run complete backup process: create, validate, rotate.
 
@@ -379,7 +352,7 @@ def run_backup(
         "success": False,
         "backup_file": None,
         "error": None,
-        "deleted_backups": 0
+        "deleted_backups": 0,
     }
 
     try:
@@ -435,9 +408,7 @@ def run_backup(
 
 
 def restore_backup(
-    backup_path: Path,
-    target_path: Optional[Path] = None,
-    logger: Optional[logging.Logger] = None
+    backup_path: Path, target_path: Optional[Path] = None, logger: Optional[logging.Logger] = None
 ) -> Tuple[bool, Optional[str]]:
     """
     Restore database from a backup file.
@@ -495,32 +466,18 @@ if __name__ == "__main__":
     """
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Automated SQLite Database Backup Script"
-    )
+    parser = argparse.ArgumentParser(description="Automated SQLite Database Backup Script")
     parser.add_argument(
         "--retention",
         type=int,
         default=DEFAULT_RETENTION_DAYS,
-        help=f"Number of backups to keep (default: {DEFAULT_RETENTION_DAYS})"
+        help=f"Number of backups to keep (default: {DEFAULT_RETENTION_DAYS})",
     )
     parser.add_argument(
-        "--backup-dir",
-        type=str,
-        default=None,
-        help=f"Backup directory (default: {DEFAULT_BACKUP_DIR})"
+        "--backup-dir", type=str, default=None, help=f"Backup directory (default: {DEFAULT_BACKUP_DIR})"
     )
-    parser.add_argument(
-        "--restore",
-        type=str,
-        default=None,
-        help="Path to backup file to restore"
-    )
-    parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List existing backups"
-    )
+    parser.add_argument("--restore", type=str, default=None, help="Path to backup file to restore")
+    parser.add_argument("--list", action="store_true", help="List existing backups")
 
     args = parser.parse_args()
 
@@ -568,10 +525,7 @@ if __name__ == "__main__":
             sys.exit(1)
 
     # Run backup
-    success, result = run_backup(
-        retention_days=args.retention,
-        backup_dir=args.backup_dir
-    )
+    success, result = run_backup(retention_days=args.retention, backup_dir=args.backup_dir)
 
     if success:
         print(f"\nBackup successful: {result['backup_file']}")

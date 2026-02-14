@@ -5,6 +5,7 @@ Phase B.2: Backend Services for Capacity Planning
 Provides BOM (Bill of Materials) explosion operations for capacity planning.
 Single-level explosion per specification (no subassemblies).
 """
+
 from decimal import Decimal
 from typing import List, Dict, Optional
 from dataclasses import dataclass
@@ -19,6 +20,7 @@ from backend.events.domain_events import BOMExploded
 @dataclass
 class BOMComponent:
     """Result of BOM explosion for a single component."""
+
     component_item_code: str
     component_description: Optional[str]
     gross_required: Decimal
@@ -31,6 +33,7 @@ class BOMComponent:
 @dataclass
 class BOMExplosionResult:
     """Complete BOM explosion result."""
+
     parent_item_code: str
     quantity_requested: Decimal
     components: List[BOMComponent]
@@ -56,11 +59,7 @@ class BOMService:
         self.db = db
 
     def explode_bom(
-        self,
-        client_id: str,
-        parent_item_code: str,
-        quantity: Decimal,
-        emit_event: bool = True
+        self, client_id: str, parent_item_code: str, quantity: Decimal, emit_event: bool = True
     ) -> BOMExplosionResult:
         """
         Explode a BOM to get required components.
@@ -81,28 +80,31 @@ class BOMService:
             BOMExplosionError: If BOM not found or explosion fails
         """
         # Get BOM header
-        header = self.db.query(CapacityBOMHeader).filter(
-            CapacityBOMHeader.client_id == client_id,
-            CapacityBOMHeader.parent_item_code == parent_item_code,
-            CapacityBOMHeader.is_active == True
-        ).first()
+        header = (
+            self.db.query(CapacityBOMHeader)
+            .filter(
+                CapacityBOMHeader.client_id == client_id,
+                CapacityBOMHeader.parent_item_code == parent_item_code,
+                CapacityBOMHeader.is_active == True,
+            )
+            .first()
+        )
 
         if not header:
             raise BOMExplosionError(
-                message=f"No active BOM found for item '{parent_item_code}'",
-                parent_item=parent_item_code
+                message=f"No active BOM found for item '{parent_item_code}'", parent_item=parent_item_code
             )
 
         # Get all components
-        details = self.db.query(CapacityBOMDetail).filter(
-            CapacityBOMDetail.header_id == header.id,
-            CapacityBOMDetail.client_id == client_id
-        ).all()
+        details = (
+            self.db.query(CapacityBOMDetail)
+            .filter(CapacityBOMDetail.header_id == header.id, CapacityBOMDetail.client_id == client_id)
+            .all()
+        )
 
         if not details:
             raise BOMExplosionError(
-                message=f"BOM for '{parent_item_code}' has no components",
-                parent_item=parent_item_code
+                message=f"BOM for '{parent_item_code}' has no components", parent_item=parent_item_code
             )
 
         # Calculate requirements for each component
@@ -112,22 +114,24 @@ class BOMService:
             waste_pct = Decimal(str(detail.waste_percentage or 0))
             net_required = gross_required * (1 + waste_pct / 100)
 
-            components.append(BOMComponent(
-                component_item_code=detail.component_item_code,
-                component_description=detail.component_description,
-                gross_required=gross_required,
-                net_required=net_required,
-                waste_percentage=waste_pct,
-                unit_of_measure=detail.unit_of_measure,
-                component_type=detail.component_type
-            ))
+            components.append(
+                BOMComponent(
+                    component_item_code=detail.component_item_code,
+                    component_description=detail.component_description,
+                    gross_required=gross_required,
+                    net_required=net_required,
+                    waste_percentage=waste_pct,
+                    unit_of_measure=detail.unit_of_measure,
+                    component_type=detail.component_type,
+                )
+            )
 
         result = BOMExplosionResult(
             parent_item_code=parent_item_code,
             quantity_requested=quantity,
             components=components,
             total_components=len(components),
-            explosion_depth=1
+            explosion_depth=1,
         )
 
         # Emit event
@@ -138,16 +142,14 @@ class BOMService:
                 parent_item_code=parent_item_code,
                 quantity_requested=quantity,
                 components_count=len(components),
-                explosion_depth=1
+                explosion_depth=1,
             )
             event_bus.collect(event)
 
         return result
 
     def explode_multiple_orders(
-        self,
-        client_id: str,
-        orders: List[Dict]  # [{"style_code": "X", "quantity": 100}, ...]
+        self, client_id: str, orders: List[Dict]  # [{"style_code": "X", "quantity": 100}, ...]
     ) -> Dict[str, BOMExplosionResult]:
         """
         Explode BOMs for multiple orders.
@@ -165,9 +167,7 @@ class BOMService:
             quantity = Decimal(str(order.get("quantity", 0)))
 
             try:
-                result = self.explode_bom(
-                    client_id, style_code, quantity, emit_event=False
-                )
+                result = self.explode_bom(client_id, style_code, quantity, emit_event=False)
                 results[style_code] = result
             except BOMExplosionError:
                 # Skip orders without BOMs
@@ -175,10 +175,7 @@ class BOMService:
 
         return results
 
-    def aggregate_component_requirements(
-        self,
-        explosion_results: List[BOMExplosionResult]
-    ) -> Dict[str, Decimal]:
+    def aggregate_component_requirements(self, explosion_results: List[BOMExplosionResult]) -> Dict[str, Decimal]:
         """
         Aggregate component requirements across multiple explosions.
 
@@ -198,11 +195,7 @@ class BOMService:
 
         return aggregated
 
-    def get_bom_structure(
-        self,
-        client_id: str,
-        parent_item_code: str
-    ) -> Optional[Dict]:
+    def get_bom_structure(self, client_id: str, parent_item_code: str) -> Optional[Dict]:
         """
         Get BOM structure without explosion.
 
@@ -213,19 +206,24 @@ class BOMService:
         Returns:
             Dict with BOM structure or None if not found
         """
-        header = self.db.query(CapacityBOMHeader).filter(
-            CapacityBOMHeader.client_id == client_id,
-            CapacityBOMHeader.parent_item_code == parent_item_code,
-            CapacityBOMHeader.is_active == True
-        ).first()
+        header = (
+            self.db.query(CapacityBOMHeader)
+            .filter(
+                CapacityBOMHeader.client_id == client_id,
+                CapacityBOMHeader.parent_item_code == parent_item_code,
+                CapacityBOMHeader.is_active == True,
+            )
+            .first()
+        )
 
         if not header:
             return None
 
-        details = self.db.query(CapacityBOMDetail).filter(
-            CapacityBOMDetail.header_id == header.id,
-            CapacityBOMDetail.client_id == client_id
-        ).all()
+        details = (
+            self.db.query(CapacityBOMDetail)
+            .filter(CapacityBOMDetail.header_id == header.id, CapacityBOMDetail.client_id == client_id)
+            .all()
+        )
 
         return {
             "id": header.id,
@@ -241,8 +239,8 @@ class BOMService:
                     "quantity_per": float(d.quantity_per),
                     "waste_percentage": float(d.waste_percentage or 0),
                     "unit_of_measure": d.unit_of_measure,
-                    "component_type": d.component_type
+                    "component_type": d.component_type,
                 }
                 for d in details
-            ]
+            ],
         }

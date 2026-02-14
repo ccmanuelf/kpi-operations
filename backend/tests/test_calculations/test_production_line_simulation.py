@@ -3,6 +3,7 @@ Tests for the Production Line Simulation using SimPy
 Tests cover: discrete-event simulation, bottleneck analysis, floating pool impact,
 scenario comparison, and work station modeling.
 """
+
 import pytest
 from datetime import datetime
 from decimal import Decimal
@@ -23,7 +24,7 @@ from backend.calculations.production_line_simulation import (
     run_production_simulation,
     compare_scenarios,
     analyze_bottlenecks,
-    simulate_floating_pool_impact
+    simulate_floating_pool_impact,
 )
 
 
@@ -61,7 +62,7 @@ class TestWorkStation:
             name="Assembly Station",
             station_type=WorkStationType.ASSEMBLY,
             cycle_time_minutes=15.0,
-            num_workers=2
+            num_workers=2,
         )
 
         assert station.station_id == 1
@@ -72,12 +73,7 @@ class TestWorkStation:
 
     def test_work_station_defaults(self):
         """Test work station default values"""
-        station = WorkStation(
-            station_id=1,
-            name="Test",
-            station_type=WorkStationType.TESTING,
-            cycle_time_minutes=10.0
-        )
+        station = WorkStation(station_id=1, name="Test", station_type=WorkStationType.TESTING, cycle_time_minutes=10.0)
 
         assert station.cycle_time_variability == 0.1
         assert station.num_workers == 1
@@ -92,19 +88,10 @@ class TestProductionLineConfig:
     def test_create_config(self):
         """Test creating production line configuration"""
         stations = [
-            WorkStation(
-                station_id=1,
-                name="Station 1",
-                station_type=WorkStationType.RECEIVING,
-                cycle_time_minutes=10.0
-            )
+            WorkStation(station_id=1, name="Station 1", station_type=WorkStationType.RECEIVING, cycle_time_minutes=10.0)
         ]
 
-        config = ProductionLineConfig(
-            line_id="LINE-001",
-            name="Test Line",
-            stations=stations
-        )
+        config = ProductionLineConfig(line_id="LINE-001", name="Test Line", stations=stations)
 
         assert config.line_id == "LINE-001"
         assert config.name == "Test Line"
@@ -113,11 +100,7 @@ class TestProductionLineConfig:
 
     def test_config_defaults(self):
         """Test configuration default values"""
-        config = ProductionLineConfig(
-            line_id="TEST",
-            name="Test",
-            stations=[]
-        )
+        config = ProductionLineConfig(line_id="TEST", name="Test", stations=[])
 
         assert config.shift_duration_hours == 8.0
         assert config.break_duration_minutes == 30
@@ -131,11 +114,7 @@ class TestCreateDefaultProductionLine:
 
     def test_create_default_line(self):
         """Test creating default production line"""
-        config = create_default_production_line(
-            line_id="TEST-001",
-            num_stations=4,
-            workers_per_station=2
-        )
+        config = create_default_production_line(line_id="TEST-001", num_stations=4, workers_per_station=2)
 
         assert config.line_id == "TEST-001"
         assert len(config.stations) == 4
@@ -175,7 +154,7 @@ class TestProductionLineSimulation:
                 cycle_time_minutes=5.0,
                 num_workers=2,
                 quality_rate=1.0,  # No defects for predictable testing
-                downtime_probability=0  # No downtime
+                downtime_probability=0,  # No downtime
             ),
             WorkStation(
                 station_id=2,
@@ -184,16 +163,11 @@ class TestProductionLineSimulation:
                 cycle_time_minutes=5.0,
                 num_workers=2,
                 quality_rate=1.0,
-                downtime_probability=0
-            )
+                downtime_probability=0,
+            ),
         ]
 
-        return ProductionLineConfig(
-            line_id="TEST",
-            name="Test Line",
-            stations=stations,
-            floating_pool_size=0
-        )
+        return ProductionLineConfig(line_id="TEST", name="Test Line", stations=stations, floating_pool_size=0)
 
     def test_simulation_initialization(self, simple_config):
         """Test simulation initializes correctly"""
@@ -258,12 +232,7 @@ class TestRunProductionSimulation:
     def test_basic_simulation_run(self):
         """Test running simulation through high-level function"""
         config = create_default_production_line(num_stations=2)
-        result = run_production_simulation(
-            config,
-            duration_hours=1.0,
-            max_units=20,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=1.0, max_units=20, random_seed=42)
 
         assert isinstance(result, SimulationResult)
         assert result.units_started > 0
@@ -271,11 +240,7 @@ class TestRunProductionSimulation:
     def test_simulation_throughput(self):
         """Test simulation calculates throughput"""
         config = create_default_production_line(num_stations=2, workers_per_station=4)
-        result = run_production_simulation(
-            config,
-            duration_hours=2.0,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=2.0, random_seed=42)
 
         # Throughput should be positive
         assert result.throughput_per_hour >= 0
@@ -283,11 +248,7 @@ class TestRunProductionSimulation:
     def test_simulation_quality_yield(self):
         """Test simulation calculates quality yield"""
         config = create_default_production_line(num_stations=3)
-        result = run_production_simulation(
-            config,
-            duration_hours=2.0,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=2.0, random_seed=42)
 
         # Quality yield should be between 0 and 100
         assert 0 <= result.quality_yield <= 100
@@ -301,34 +262,18 @@ class TestCompareScenarios:
         config = create_default_production_line(num_stations=2)
         scenarios = []
 
-        results = compare_scenarios(
-            config,
-            scenarios,
-            duration_hours=0.5,
-            random_seed=42
-        )
+        results = compare_scenarios(config, scenarios, duration_hours=0.5, random_seed=42)
 
         assert len(results) == 1
         assert results[0]["scenario"] == "baseline"
 
     def test_scenario_comparison(self):
         """Test comparing multiple scenarios"""
-        config = create_default_production_line(
-            num_stations=2,
-            workers_per_station=2
-        )
+        config = create_default_production_line(num_stations=2, workers_per_station=2)
 
-        scenarios = [
-            {"name": "More Workers", "workers_per_station": 4},
-            {"name": "With Pool", "floating_pool_size": 3}
-        ]
+        scenarios = [{"name": "More Workers", "workers_per_station": 4}, {"name": "With Pool", "floating_pool_size": 3}]
 
-        results = compare_scenarios(
-            config,
-            scenarios,
-            duration_hours=0.5,
-            random_seed=42
-        )
+        results = compare_scenarios(config, scenarios, duration_hours=0.5, random_seed=42)
 
         assert len(results) == 3  # baseline + 2 scenarios
         assert results[0]["scenario"] == "baseline"
@@ -339,16 +284,9 @@ class TestCompareScenarios:
         """Test that change from baseline is calculated"""
         config = create_default_production_line(num_stations=2)
 
-        scenarios = [
-            {"name": "Modified", "workers_per_station": 4}
-        ]
+        scenarios = [{"name": "Modified", "workers_per_station": 4}]
 
-        results = compare_scenarios(
-            config,
-            scenarios,
-            duration_hours=1.0,
-            random_seed=42
-        )
+        results = compare_scenarios(config, scenarios, duration_hours=1.0, random_seed=42)
 
         # Should have change_from_baseline for scenario
         assert "change_from_baseline" in results[1]
@@ -361,11 +299,7 @@ class TestAnalyzeBottlenecks:
     def test_basic_bottleneck_analysis(self):
         """Test basic bottleneck analysis"""
         config = create_default_production_line(num_stations=3)
-        analysis = analyze_bottlenecks(
-            config,
-            duration_hours=1.0,
-            random_seed=42
-        )
+        analysis = analyze_bottlenecks(config, duration_hours=1.0, random_seed=42)
 
         assert isinstance(analysis, BottleneckAnalysis)
         assert analysis.primary_bottleneck is not None
@@ -381,28 +315,20 @@ class TestAnalyzeBottlenecks:
                 name="Fast Station",
                 station_type=WorkStationType.ASSEMBLY,
                 cycle_time_minutes=5.0,
-                num_workers=2
+                num_workers=2,
             ),
             WorkStation(
                 station_id=2,
                 name="Slow Station",
                 station_type=WorkStationType.TESTING,
                 cycle_time_minutes=15.0,  # Much slower
-                num_workers=1
-            )
+                num_workers=1,
+            ),
         ]
 
-        config = ProductionLineConfig(
-            line_id="BOTTLENECK-TEST",
-            name="Bottleneck Test",
-            stations=stations
-        )
+        config = ProductionLineConfig(line_id="BOTTLENECK-TEST", name="Bottleneck Test", stations=stations)
 
-        analysis = analyze_bottlenecks(
-            config,
-            duration_hours=1.0,
-            random_seed=42
-        )
+        analysis = analyze_bottlenecks(config, duration_hours=1.0, random_seed=42)
 
         # Slow station should likely be the bottleneck
         assert analysis.bottleneck_utilization >= 0
@@ -410,11 +336,7 @@ class TestAnalyzeBottlenecks:
     def test_bottleneck_suggestions(self):
         """Test bottleneck analysis generates suggestions"""
         config = create_default_production_line(num_stations=3)
-        analysis = analyze_bottlenecks(
-            config,
-            duration_hours=2.0,
-            random_seed=42
-        )
+        analysis = analyze_bottlenecks(config, duration_hours=2.0, random_seed=42)
 
         # Should have suggestions list
         assert isinstance(analysis.suggestions, list)
@@ -428,12 +350,7 @@ class TestSimulateFloatingPoolImpact:
         config = create_default_production_line(num_stations=3)
         pool_sizes = [0, 2, 5]
 
-        results = simulate_floating_pool_impact(
-            config,
-            pool_sizes=pool_sizes,
-            duration_hours=1.0,
-            random_seed=42
-        )
+        results = simulate_floating_pool_impact(config, pool_sizes=pool_sizes, duration_hours=1.0, random_seed=42)
 
         assert len(results) == 3
         for result in results:
@@ -446,12 +363,7 @@ class TestSimulateFloatingPoolImpact:
         config = create_default_production_line(num_stations=2)
         pool_sizes = [0, 3, 6]
 
-        results = simulate_floating_pool_impact(
-            config,
-            pool_sizes=pool_sizes,
-            duration_hours=0.5,
-            random_seed=42
-        )
+        results = simulate_floating_pool_impact(config, pool_sizes=pool_sizes, duration_hours=0.5, random_seed=42)
 
         result_sizes = [r["floating_pool_size"] for r in results]
         assert result_sizes == [0, 3, 6]
@@ -469,43 +381,29 @@ class TestSimulationWithQualityDefects:
                 name="High Quality",
                 station_type=WorkStationType.ASSEMBLY,
                 cycle_time_minutes=5.0,
-                quality_rate=0.99  # 99% pass rate
+                quality_rate=0.99,  # 99% pass rate
             ),
             WorkStation(
                 station_id=2,
                 name="Low Quality",
                 station_type=WorkStationType.TESTING,
                 cycle_time_minutes=5.0,
-                quality_rate=0.80  # 80% pass rate - will cause rejects
-            )
+                quality_rate=0.80,  # 80% pass rate - will cause rejects
+            ),
         ]
 
-        return ProductionLineConfig(
-            line_id="QUALITY-TEST",
-            name="Quality Test",
-            stations=stations
-        )
+        return ProductionLineConfig(line_id="QUALITY-TEST", name="Quality Test", stations=stations)
 
     def test_quality_rejects_tracked(self, config_with_quality_issues):
         """Test that quality rejects are tracked"""
-        result = run_production_simulation(
-            config_with_quality_issues,
-            duration_hours=1.0,
-            max_units=50,
-            random_seed=42
-        )
+        result = run_production_simulation(config_with_quality_issues, duration_hours=1.0, max_units=50, random_seed=42)
 
         # With 80% quality on one station, should have rejects
         assert result.units_rejected > 0
 
     def test_quality_yield_calculated(self, config_with_quality_issues):
         """Test quality yield is properly calculated"""
-        result = run_production_simulation(
-            config_with_quality_issues,
-            duration_hours=1.0,
-            max_units=50,
-            random_seed=42
-        )
+        result = run_production_simulation(config_with_quality_issues, duration_hours=1.0, max_units=50, random_seed=42)
 
         # Quality yield = completed / (completed + rejected) * 100
         total = result.units_completed + result.units_rejected
@@ -520,11 +418,7 @@ class TestSimulationResult:
     def test_result_recommendations(self):
         """Test that simulation generates recommendations"""
         config = create_default_production_line(num_stations=3)
-        result = run_production_simulation(
-            config,
-            duration_hours=2.0,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=2.0, random_seed=42)
 
         # Should have recommendations list
         assert isinstance(result.recommendations, list)
@@ -532,11 +426,7 @@ class TestSimulationResult:
     def test_result_utilization_by_station(self):
         """Test utilization is calculated per station"""
         config = create_default_production_line(num_stations=3)
-        result = run_production_simulation(
-            config,
-            duration_hours=1.0,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=1.0, random_seed=42)
 
         # Should have utilization for each station
         assert len(result.utilization_by_station) == 3
@@ -553,9 +443,7 @@ class TestEdgeCases:
         """Test simulation with very short duration"""
         config = create_default_production_line(num_stations=2)
         result = run_production_simulation(
-            config,
-            duration_hours=0.01,  # Very short, not zero (SimPy doesn't allow 0)
-            random_seed=42
+            config, duration_hours=0.01, random_seed=42  # Very short, not zero (SimPy doesn't allow 0)
         )
 
         # Very short duration should produce few or no units
@@ -564,24 +452,12 @@ class TestEdgeCases:
     def test_single_station_line(self):
         """Test production line with single station"""
         station = WorkStation(
-            station_id=1,
-            name="Only Station",
-            station_type=WorkStationType.ASSEMBLY,
-            cycle_time_minutes=10.0
+            station_id=1, name="Only Station", station_type=WorkStationType.ASSEMBLY, cycle_time_minutes=10.0
         )
 
-        config = ProductionLineConfig(
-            line_id="SINGLE",
-            name="Single Station",
-            stations=[station]
-        )
+        config = ProductionLineConfig(line_id="SINGLE", name="Single Station", stations=[station])
 
-        result = run_production_simulation(
-            config,
-            duration_hours=0.5,
-            max_units=5,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=0.5, max_units=5, random_seed=42)
 
         assert result.units_started > 0
 
@@ -589,10 +465,7 @@ class TestEdgeCases:
         """Test simulation with high arrival rate"""
         config = create_default_production_line(num_stations=2)
         result = run_production_simulation(
-            config,
-            duration_hours=0.5,
-            arrival_rate_per_hour=100,  # High rate
-            random_seed=42
+            config, duration_hours=0.5, arrival_rate_per_hour=100, random_seed=42  # High rate
         )
 
         # Should handle high arrival rate without crashing
@@ -600,11 +473,7 @@ class TestEdgeCases:
 
     def test_empty_stations_list(self):
         """Test handling of empty stations list raises error due to no capacity"""
-        config = ProductionLineConfig(
-            line_id="EMPTY",
-            name="Empty Line",
-            stations=[]
-        )
+        config = ProductionLineConfig(line_id="EMPTY", name="Empty Line", stations=[])
 
         # Empty stations list causes division by zero when calculating arrival rate
         # This is expected behavior - you can't run a production line without stations
@@ -621,44 +490,21 @@ class TestIntegration:
         """Test complete simulation workflow"""
         # 1. Create configuration
         config = create_default_production_line(
-            line_id="INT-001",
-            num_stations=4,
-            workers_per_station=2,
-            floating_pool_size=2
+            line_id="INT-001", num_stations=4, workers_per_station=2, floating_pool_size=2
         )
 
         # 2. Run simulation
-        result = run_production_simulation(
-            config,
-            duration_hours=2.0,
-            random_seed=42
-        )
+        result = run_production_simulation(config, duration_hours=2.0, random_seed=42)
 
         # 3. Analyze bottlenecks
-        bottleneck_analysis = analyze_bottlenecks(
-            config,
-            duration_hours=2.0,
-            random_seed=42
-        )
+        bottleneck_analysis = analyze_bottlenecks(config, duration_hours=2.0, random_seed=42)
 
         # 4. Compare scenarios
-        scenarios = [
-            {"name": "More Workers", "workers_per_station": 4}
-        ]
-        comparison = compare_scenarios(
-            config,
-            scenarios,
-            duration_hours=1.0,
-            random_seed=42
-        )
+        scenarios = [{"name": "More Workers", "workers_per_station": 4}]
+        comparison = compare_scenarios(config, scenarios, duration_hours=1.0, random_seed=42)
 
         # 5. Analyze floating pool impact
-        pool_impact = simulate_floating_pool_impact(
-            config,
-            pool_sizes=[0, 2, 4],
-            duration_hours=1.0,
-            random_seed=42
-        )
+        pool_impact = simulate_floating_pool_impact(config, pool_sizes=[0, 2, 4], duration_hours=1.0, random_seed=42)
 
         # Verify all steps produced results
         assert result.units_completed > 0

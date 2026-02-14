@@ -2,6 +2,7 @@
 Comprehensive Tests for OTD (On-Time Delivery) Calculations
 Target: Increase otd.py coverage to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -24,10 +25,7 @@ class TestInferredDate:
         from backend.calculations.otd import InferredDate
 
         inferred = InferredDate(
-            date=datetime.now(),
-            is_inferred=False,
-            inference_source="planned_ship_date",
-            confidence_score=1.0
+            date=datetime.now(), is_inferred=False, inference_source="planned_ship_date", confidence_score=1.0
         )
 
         assert inferred.date is not None
@@ -43,7 +41,7 @@ class TestInferredDate:
             date=datetime.now() + timedelta(days=7),
             is_inferred=True,
             inference_source="calculated",
-            confidence_score=0.5
+            confidence_score=0.5,
         )
 
         assert inferred.is_inferred == True
@@ -164,11 +162,7 @@ class TestCalculateOTD:
         """Test OTD calculation with no entries"""
         from backend.calculations.otd import calculate_otd
 
-        result = calculate_otd(
-            db_session,
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_otd(db_session, date.today() - timedelta(days=30), date.today())
 
         assert result[0] == Decimal("0")
         assert result[1] == 0
@@ -178,12 +172,7 @@ class TestCalculateOTD:
         """Test OTD calculation with product filter"""
         from backend.calculations.otd import calculate_otd
 
-        result = calculate_otd(
-            db_session,
-            date.today() - timedelta(days=30),
-            date.today(),
-            product_id=1
-        )
+        result = calculate_otd(db_session, date.today() - timedelta(days=30), date.today(), product_id=1)
 
         assert isinstance(result, tuple)
         assert len(result) == 3
@@ -220,11 +209,7 @@ class TestCalculateDeliveryVariance:
         """Test delivery variance calculation"""
         from backend.calculations.otd import calculate_delivery_variance
 
-        result = calculate_delivery_variance(
-            db_session,
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_delivery_variance(db_session, date.today() - timedelta(days=30), date.today())
 
         assert "total_orders" in result
         assert "early_deliveries" in result
@@ -236,12 +221,7 @@ class TestCalculateDeliveryVariance:
         """Test delivery variance with product filter"""
         from backend.calculations.otd import calculate_delivery_variance
 
-        result = calculate_delivery_variance(
-            db_session,
-            date.today() - timedelta(days=30),
-            date.today(),
-            product_id=1
-        )
+        result = calculate_delivery_variance(db_session, date.today() - timedelta(days=30), date.today(), product_id=1)
 
         assert isinstance(result, dict)
 
@@ -273,12 +253,7 @@ class TestCalculateTrueOTD:
         """Test TRUE-OTD with no orders"""
         from backend.calculations.otd import calculate_true_otd
 
-        result = calculate_true_otd(
-            db_session,
-            "NONEXISTENT-CLIENT",
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_true_otd(db_session, "NONEXISTENT-CLIENT", date.today() - timedelta(days=30), date.today())
 
         assert "true_otd" in result
         assert "standard_otd" in result
@@ -307,11 +282,7 @@ class TestCalculateOTDTrend:
         from backend.calculations.otd import calculate_otd_trend
 
         result = calculate_otd_trend(
-            db_session,
-            "TEST-CLIENT",
-            date.today() - timedelta(days=7),
-            date.today(),
-            interval="daily"
+            db_session, "TEST-CLIENT", date.today() - timedelta(days=7), date.today(), interval="daily"
         )
 
         assert "trend" in result
@@ -323,11 +294,7 @@ class TestCalculateOTDTrend:
         from backend.calculations.otd import calculate_otd_trend
 
         result = calculate_otd_trend(
-            db_session,
-            "TEST-CLIENT",
-            date.today() - timedelta(days=30),
-            date.today(),
-            interval="weekly"
+            db_session, "TEST-CLIENT", date.today() - timedelta(days=30), date.today(), interval="weekly"
         )
 
         assert "trend" in result
@@ -338,11 +305,7 @@ class TestCalculateOTDTrend:
         from backend.calculations.otd import calculate_otd_trend
 
         result = calculate_otd_trend(
-            db_session,
-            "TEST-CLIENT",
-            date.today() - timedelta(days=90),
-            date.today(),
-            interval="monthly"
+            db_session, "TEST-CLIENT", date.today() - timedelta(days=90), date.today(), interval="monthly"
         )
 
         assert "trend" in result
@@ -357,10 +320,7 @@ class TestCalculateOTDByProduct:
         from backend.calculations.otd import calculate_otd_by_product
 
         result = calculate_otd_by_product(
-            db_session,
-            "NONEXISTENT-CLIENT",
-            date.today() - timedelta(days=30),
-            date.today()
+            db_session, "NONEXISTENT-CLIENT", date.today() - timedelta(days=30), date.today()
         )
 
         assert "by_product" in result
@@ -372,6 +332,7 @@ class TestCalculateOTDByProduct:
 # =============================================================================
 # Real Database Tests for Higher Coverage
 # =============================================================================
+
 
 @pytest.fixture(scope="function")
 def otd_real_db():
@@ -404,19 +365,12 @@ def otd_setup(otd_real_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="OTD-TEST-CLIENT",
-        client_name="OTD Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="OTD-TEST-CLIENT", client_name="OTD Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create user
     user = TestDataFactory.create_user(
-        db,
-        user_id="otd-user-001",
-        username="otd_user",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="otd-user-001", username="otd_user", role="supervisor", client_id=client.client_id
     )
 
     # Create product
@@ -425,16 +379,12 @@ def otd_setup(otd_real_db):
         client_id=client.client_id,
         product_code="OTD-PROD-001",
         product_name="OTD Test Product",
-        ideal_cycle_time=Decimal("0.10")
+        ideal_cycle_time=Decimal("0.10"),
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="OTD Test Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="OTD Test Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.commit()
@@ -475,7 +425,7 @@ class TestCalculateOTDWithData:
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
             entered_by="otd-user-001",
-            confirmed_by="otd-user-001"  # Confirmed = on time
+            confirmed_by="otd-user-001",  # Confirmed = on time
         )
         entry2 = ProductionEntry(
             production_entry_id="OTD-ENTRY-002",
@@ -488,7 +438,7 @@ class TestCalculateOTDWithData:
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
             entered_by="otd-user-001",
-            confirmed_by=None  # Not confirmed = late
+            confirmed_by=None,  # Not confirmed = late
         )
         entry3 = ProductionEntry(
             production_entry_id="OTD-ENTRY-003",
@@ -501,17 +451,13 @@ class TestCalculateOTDWithData:
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
             entered_by="otd-user-001",
-            confirmed_by="otd-user-001"  # Confirmed = on time
+            confirmed_by="otd-user-001",  # Confirmed = on time
         )
 
         db.add_all([entry1, entry2, entry3])
         db.commit()
 
-        otd_pct, on_time, total = calculate_otd(
-            db,
-            today - timedelta(days=10),
-            today
-        )
+        otd_pct, on_time, total = calculate_otd(db, today - timedelta(days=10), today)
 
         # 2 out of 3 confirmed
         assert total == 3
@@ -548,7 +494,7 @@ class TestCalculateLeadTimeWithData:
             units_produced=50,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="otd-user-001"
+            entered_by="otd-user-001",
         )
         entry2 = ProductionEntry(
             production_entry_id="LEAD-ENTRY-002",
@@ -561,7 +507,7 @@ class TestCalculateLeadTimeWithData:
             units_produced=50,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="otd-user-001"
+            entered_by="otd-user-001",
         )
 
         db.add_all([entry1, entry2])
@@ -596,7 +542,7 @@ class TestCalculateLeadTimeWithData:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="otd-user-001"
+            entered_by="otd-user-001",
         )
 
         db.add(entry)
@@ -636,7 +582,7 @@ class TestCalculateCycleTimeWithData:
             units_produced=50,
             run_time_hours=Decimal("7.5"),
             employees_assigned=5,
-            entered_by="otd-user-001"
+            entered_by="otd-user-001",
         )
         entry2 = ProductionEntry(
             production_entry_id="CYCLE-ENTRY-002",
@@ -649,7 +595,7 @@ class TestCalculateCycleTimeWithData:
             units_produced=50,
             run_time_hours=Decimal("8.5"),
             employees_assigned=5,
-            entered_by="otd-user-001"
+            entered_by="otd-user-001",
         )
 
         db.add_all([entry1, entry2])
@@ -689,7 +635,7 @@ class TestIdentifyLateOrdersWithData:
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
             entered_by="otd-user-001",
-            confirmed_by=None  # Not confirmed
+            confirmed_by=None,  # Not confirmed
         )
 
         db.add(entry)
@@ -831,12 +777,7 @@ class TestCalculateTrueOTDWithData:
         db.add_all([wo1, wo2])
         db.commit()
 
-        result = calculate_true_otd(
-            db,
-            client.client_id,
-            (today - timedelta(days=30)).date(),
-            today.date()
-        )
+        result = calculate_true_otd(db, client.client_id, (today - timedelta(days=30)).date(), today.date())
 
         assert "true_otd" in result
         assert "standard_otd" in result
@@ -889,12 +830,7 @@ class TestCalculateOTDByProductWithData:
         db.add_all([wo1, wo2, wo3])
         db.commit()
 
-        result = calculate_otd_by_product(
-            db,
-            client.client_id,
-            (today - timedelta(days=30)).date(),
-            today.date()
-        )
+        result = calculate_otd_by_product(db, client.client_id, (today - timedelta(days=30)).date(), today.date())
 
         assert "by_product" in result
         assert "total_products" in result
@@ -942,11 +878,6 @@ class TestCalculateTrueOTDEdgeCases:
         db.add_all([wo_inferred, wo_no_date])
         db.commit()
 
-        result = calculate_true_otd(
-            db,
-            client.client_id,
-            (today - timedelta(days=30)).date(),
-            today.date()
-        )
+        result = calculate_true_otd(db, client.client_id, (today - timedelta(days=30)).date(), today.date())
 
         assert result["inference"]["is_estimated"] is True or result["true_otd"]["total"] >= 0

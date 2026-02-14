@@ -6,6 +6,7 @@ Handles workflow-related events:
 - Audit logging for status changes
 - Auto-close detection
 """
+
 import logging
 from backend.events.base import DomainEvent, EventHandler
 from backend.events.domain_events import WorkOrderStatusChanged
@@ -59,9 +60,6 @@ class WorkOrderAutoCloseHandler(EventHandler):
         closure_statuses = ["COMPLETED", "SHIPPED", "DELIVERED"]
 
         if event.to_status in closure_statuses:
-            logger.debug(
-                f"Work order {event.aggregate_id} reached {event.to_status} - "
-                f"eligible for auto-close"
-            )
+            logger.debug(f"Work order {event.aggregate_id} reached {event.to_status} - " f"eligible for auto-close")
             # Actual auto-close logic would be triggered here
             # based on client configuration (workflow_closure_trigger)

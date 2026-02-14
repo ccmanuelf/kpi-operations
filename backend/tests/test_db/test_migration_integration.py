@@ -3,6 +3,7 @@ Integration Tests for Migration Infrastructure
 
 Tests for SchemaInitializer, DemoDataSeeder, and MigrationState.
 """
+
 import pytest
 from datetime import datetime, date
 from pathlib import Path
@@ -23,6 +24,7 @@ TestBase = declarative_base()
 
 class TestUser(TestBase):
     """Simple test model for schema testing."""
+
     __tablename__ = "test_users"
     id = Column(Integer, primary_key=True)
     name = Column(String(100))
@@ -166,21 +168,18 @@ class TestProviderStateManager:
     def test_update_migration_state(self, state_manager):
         """Test updating migration state."""
         state = MigrationState(
-            status='in_progress',
-            source_provider='sqlite',
-            target_provider='mariadb',
-            current_step='Creating tables...'
+            status="in_progress", source_provider="sqlite", target_provider="mariadb", current_step="Creating tables..."
         )
         state_manager.update_migration_state(state)
 
         retrieved = state_manager.get_migration_state()
-        assert retrieved.status == 'in_progress'
-        assert retrieved.source_provider == 'sqlite'
-        assert retrieved.target_provider == 'mariadb'
+        assert retrieved.status == "in_progress"
+        assert retrieved.source_provider == "sqlite"
+        assert retrieved.target_provider == "mariadb"
 
     def test_clear_migration_state(self, state_manager):
         """Test clearing migration state."""
-        state = MigrationState(status='completed')
+        state = MigrationState(status="completed")
         state_manager.update_migration_state(state)
         state_manager.clear_migration_state()
 
@@ -188,11 +187,7 @@ class TestProviderStateManager:
 
     def test_add_migration_history(self, state_manager):
         """Test adding to migration history."""
-        state_manager.add_migration_history(
-            source='sqlite',
-            target='mariadb',
-            success=True
-        )
+        state_manager.add_migration_history(source="sqlite", target="mariadb", success=True)
 
         status = state_manager.get_full_status()
         assert len(status["migration_history"]) == 1
@@ -201,19 +196,15 @@ class TestProviderStateManager:
     def test_migration_history_keeps_last_10(self, state_manager):
         """Test migration history is capped at 10."""
         for i in range(15):
-            state_manager.add_migration_history(
-                source='sqlite',
-                target='mariadb',
-                success=True
-            )
+            state_manager.add_migration_history(source="sqlite", target="mariadb", success=True)
 
         status = state_manager.get_full_status()
         assert len(status["migration_history"]) == 10
 
     def test_get_full_status(self, state_manager):
         """Test getting full status."""
-        state_manager.set_current_provider('mariadb')
-        state_manager.set_database_url('mysql://localhost/db')
+        state_manager.set_current_provider("mariadb")
+        state_manager.set_database_url("mysql://localhost/db")
 
         status = state_manager.get_full_status()
 
@@ -237,27 +228,24 @@ class TestMigrationState:
     def test_with_values(self):
         """Test with custom values."""
         state = MigrationState(
-            status='in_progress',
-            source_provider='sqlite',
-            target_provider='mariadb',
+            status="in_progress",
+            source_provider="sqlite",
+            target_provider="mariadb",
             tables_migrated=5,
             total_tables=10,
-            current_table='users'
+            current_table="users",
         )
 
-        assert state.status == 'in_progress'
+        assert state.status == "in_progress"
         assert state.tables_migrated == 5
         assert state.total_tables == 10
 
     def test_error_state(self):
         """Test error state."""
-        state = MigrationState(
-            status='failed',
-            error_message='Connection refused'
-        )
+        state = MigrationState(status="failed", error_message="Connection refused")
 
-        assert state.status == 'failed'
-        assert state.error_message == 'Connection refused'
+        assert state.status == "failed"
+        assert state.error_message == "Connection refused"
 
 
 class TestDemoDataSeeder:
@@ -267,6 +255,7 @@ class TestDemoDataSeeder:
     def session_and_engine(self, tmp_path):
         """Create session with Base tables."""
         from backend.database import Base
+
         db_path = tmp_path / "seed_test.db"
         engine = create_engine(f"sqlite:///{db_path}", poolclass=NullPool)
         Base.metadata.create_all(engine)

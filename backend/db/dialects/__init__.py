@@ -7,6 +7,7 @@ Provides dialect-specific SQL generation for differences between databases:
 - Boolean literals
 - Auto-increment definitions
 """
+
 from backend.db.dialects.base import DialectAdapter
 from backend.db.dialects.sqlite import SQLiteDialect
 from backend.db.dialects.mariadb import MariaDBDialect

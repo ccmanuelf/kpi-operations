@@ -30,39 +30,53 @@ class TestLargeOperationsConfiguration:
     """Test simulation with large number of operations."""
 
     @staticmethod
-    def create_large_operations(
-        num_products: int = 5,
-        steps_per_product: int = 10
-    ) -> List[OperationInput]:
+    def create_large_operations(num_products: int = 5, steps_per_product: int = 10) -> List[OperationInput]:
         """Create a large operations list."""
         operations = []
         operation_names = [
-            "Cut", "Prepare", "Mark", "First Stitch", "Second Stitch",
-            "Overlock", "Flatlock", "Bar-tack", "Button", "Final Stitch"
+            "Cut",
+            "Prepare",
+            "Mark",
+            "First Stitch",
+            "Second Stitch",
+            "Overlock",
+            "Flatlock",
+            "Bar-tack",
+            "Button",
+            "Final Stitch",
         ]
         machine_tools = [
-            "Cutting Table", "Marking Station", "Overlock 4-thread",
-            "Flatlock", "Single Needle", "Bar-tack Machine",
-            "Button Machine", "Inspection Station", "Pressing Station", "Packing Station"
+            "Cutting Table",
+            "Marking Station",
+            "Overlock 4-thread",
+            "Flatlock",
+            "Single Needle",
+            "Bar-tack Machine",
+            "Button Machine",
+            "Inspection Station",
+            "Pressing Station",
+            "Packing Station",
         ]
 
         for prod_idx in range(num_products):
             product = f"PRODUCT_{chr(65 + prod_idx)}"  # PRODUCT_A, PRODUCT_B, etc.
             for step in range(1, steps_per_product + 1):
-                operations.append(OperationInput(
-                    product=product,
-                    step=step,
-                    operation=f"{operation_names[(step - 1) % len(operation_names)]} {product}",
-                    machine_tool=machine_tools[(step - 1) % len(machine_tools)],
-                    sam_min=1.0 + (step * 0.3),  # Varying SAM
-                    sequence="Assembly",
-                    grouping=f"GRP_{step % 3}",
-                    operators=1 + (step % 3),
-                    variability=VariabilityType.TRIANGULAR,
-                    rework_pct=1.0 if step == 5 else 0.0,  # One rework station
-                    grade_pct=85.0,
-                    fpd_pct=15.0
-                ))
+                operations.append(
+                    OperationInput(
+                        product=product,
+                        step=step,
+                        operation=f"{operation_names[(step - 1) % len(operation_names)]} {product}",
+                        machine_tool=machine_tools[(step - 1) % len(machine_tools)],
+                        sam_min=1.0 + (step * 0.3),  # Varying SAM
+                        sequence="Assembly",
+                        grouping=f"GRP_{step % 3}",
+                        operators=1 + (step % 3),
+                        variability=VariabilityType.TRIANGULAR,
+                        rework_pct=1.0 if step == 5 else 0.0,  # One rework station
+                        grade_pct=85.0,
+                        fpd_pct=15.0,
+                    )
+                )
 
         return operations
 
@@ -70,11 +84,7 @@ class TestLargeOperationsConfiguration:
     def create_demand_for_products(num_products: int, daily_demand: int = 100) -> List[DemandInput]:
         """Create demand for multiple products."""
         return [
-            DemandInput(
-                product=f"PRODUCT_{chr(65 + i)}",
-                bundle_size=10,
-                daily_demand=daily_demand
-            )
+            DemandInput(product=f"PRODUCT_{chr(65 + i)}", bundle_size=10, daily_demand=daily_demand)
             for i in range(num_products)
         ]
 
@@ -86,20 +96,11 @@ class TestLargeOperationsConfiguration:
         assert len(operations) == 50
 
         schedule = ScheduleConfig(
-            shifts_enabled=1,
-            shift1_hours=8.0,
-            shift2_hours=0.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=1, shift1_hours=8.0, shift2_hours=0.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=1
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN, horizon_days=1
         )
 
         # Validate configuration
@@ -132,7 +133,7 @@ class TestLargeOperationsConfiguration:
             shift2_hours=8.0,
             shift3_hours=8.0,
             work_days=5,
-            ot_enabled=False
+            ot_enabled=False,
         )
 
         config = SimulationConfig(
@@ -140,7 +141,7 @@ class TestLargeOperationsConfiguration:
             schedule=schedule,
             demands=demands,
             mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=7  # Longer horizon for complex configs
+            horizon_days=7,  # Longer horizon for complex configs
         )
 
         report = validate_simulation_config(config)
@@ -172,49 +173,24 @@ class TestHighDemandConfiguration:
                 operation="Cut fabric",
                 machine_tool="Cutting Table",
                 sam_min=2.0,
-                operators=5
+                operators=5,
             ),
             OperationInput(
-                product="HIGH_DEMAND",
-                step=2,
-                operation="Sew seams",
-                machine_tool="Overlock",
-                sam_min=3.0,
-                operators=10
+                product="HIGH_DEMAND", step=2, operation="Sew seams", machine_tool="Overlock", sam_min=3.0, operators=10
             ),
             OperationInput(
-                product="HIGH_DEMAND",
-                step=3,
-                operation="Final QC",
-                machine_tool="Inspection",
-                sam_min=1.0,
-                operators=3
+                product="HIGH_DEMAND", step=3, operation="Final QC", machine_tool="Inspection", sam_min=1.0, operators=3
             ),
         ]
 
-        demands = [
-            DemandInput(
-                product="HIGH_DEMAND",
-                bundle_size=20,
-                daily_demand=1000
-            )
-        ]
+        demands = [DemandInput(product="HIGH_DEMAND", bundle_size=20, daily_demand=1000)]
 
         schedule = ScheduleConfig(
-            shifts_enabled=3,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=8.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=3, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=8.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=1
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN, horizon_days=1
         )
 
         report = validate_simulation_config(config)
@@ -240,34 +216,19 @@ class TestHighDemandConfiguration:
                 operation=f"Step {i}",
                 machine_tool=f"Machine_{i}",
                 sam_min=1.5,
-                operators=2
+                operators=2,
             )
             for i in range(1, 6)
         ]
 
-        demands = [
-            DemandInput(
-                product="WEEKLY_PROD",
-                bundle_size=10,
-                weekly_demand=500
-            )
-        ]
+        demands = [DemandInput(product="WEEKLY_PROD", bundle_size=10, weekly_demand=500)]
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=7
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN, horizon_days=7
         )
 
         report = validate_simulation_config(config)
@@ -293,34 +254,27 @@ class TestMixDrivenLargeConfiguration:
         for i in range(num_products):
             product = f"MIX_PROD_{i+1}"
             for step in range(1, 4):
-                operations.append(OperationInput(
-                    product=product,
-                    step=step,
-                    operation=f"Op_{step}_{product}",
-                    machine_tool=f"Shared_Machine_{step}",  # Shared resources
-                    sam_min=2.0 + (i * 0.1),  # Slight variation
-                    operators=2
-                ))
+                operations.append(
+                    OperationInput(
+                        product=product,
+                        step=step,
+                        operation=f"Op_{step}_{product}",
+                        machine_tool=f"Shared_Machine_{step}",  # Shared resources
+                        sam_min=2.0 + (i * 0.1),  # Slight variation
+                        operators=2,
+                    )
+                )
 
         # Create mix percentages that sum to 100
         mix_pcts = [100 / num_products] * num_products  # 10% each
 
         demands = [
-            DemandInput(
-                product=f"MIX_PROD_{i+1}",
-                bundle_size=10,
-                mix_share_pct=mix_pcts[i]
-            )
+            DemandInput(product=f"MIX_PROD_{i+1}", bundle_size=10, mix_share_pct=mix_pcts[i])
             for i in range(num_products)
         ]
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
@@ -329,7 +283,7 @@ class TestMixDrivenLargeConfiguration:
             demands=demands,
             mode=DemandMode.MIX_DRIVEN,
             total_demand=500,  # 500 pieces total
-            horizon_days=1
+            horizon_days=1,
         )
 
         report = validate_simulation_config(config)
@@ -356,39 +310,27 @@ class TestBreakdownsPerformance:
         num_machines = 10
 
         for i in range(num_machines):
-            operations.append(OperationInput(
-                product="BREAKDOWN_TEST",
-                step=i + 1,
-                operation=f"Operation_{i + 1}",
-                machine_tool=f"Machine_{i + 1}",
-                sam_min=2.0,
-                operators=2
-            ))
+            operations.append(
+                OperationInput(
+                    product="BREAKDOWN_TEST",
+                    step=i + 1,
+                    operation=f"Operation_{i + 1}",
+                    machine_tool=f"Machine_{i + 1}",
+                    sam_min=2.0,
+                    operators=2,
+                )
+            )
 
         # Breakdown rule for every machine
         breakdowns = [
-            BreakdownInput(
-                machine_tool=f"Machine_{i + 1}",
-                breakdown_pct=2.0  # 2% breakdown probability
-            )
+            BreakdownInput(machine_tool=f"Machine_{i + 1}", breakdown_pct=2.0)  # 2% breakdown probability
             for i in range(num_machines)
         ]
 
-        demands = [
-            DemandInput(
-                product="BREAKDOWN_TEST",
-                bundle_size=10,
-                daily_demand=200
-            )
-        ]
+        demands = [DemandInput(product="BREAKDOWN_TEST", bundle_size=10, daily_demand=200)]
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
@@ -397,7 +339,7 @@ class TestBreakdownsPerformance:
             demands=demands,
             breakdowns=breakdowns,
             mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=1
+            horizon_days=1,
         )
 
         report = validate_simulation_config(config)
@@ -438,27 +380,25 @@ class TestFullCalculationsPipeline:
 
         for product in products:
             for step, (op_name, machine, sam) in enumerate(sequence_ops, 1):
-                operations.append(OperationInput(
-                    product=product,
-                    step=step,
-                    operation=f"{op_name} - {product}",
-                    machine_tool=machine,
-                    sam_min=sam * (0.9 + 0.2 * (products.index(product) / len(products))),
-                    sequence="Assembly" if step > 2 else "Cutting",
-                    grouping=f"GRP_{step // 4}",
-                    operators=1 + (step % 2),
-                    variability=VariabilityType.TRIANGULAR,
-                    rework_pct=1.0 if step == 9 else 0.0,
-                    grade_pct=85.0,
-                    fpd_pct=15.0
-                ))
+                operations.append(
+                    OperationInput(
+                        product=product,
+                        step=step,
+                        operation=f"{op_name} - {product}",
+                        machine_tool=machine,
+                        sam_min=sam * (0.9 + 0.2 * (products.index(product) / len(products))),
+                        sequence="Assembly" if step > 2 else "Cutting",
+                        grouping=f"GRP_{step // 4}",
+                        operators=1 + (step % 2),
+                        variability=VariabilityType.TRIANGULAR,
+                        rework_pct=1.0 if step == 9 else 0.0,
+                        grade_pct=85.0,
+                        fpd_pct=15.0,
+                    )
+                )
 
         demands = [
-            DemandInput(
-                product=product,
-                bundle_size=10,
-                daily_demand=100 + (i * 20)  # Varying demand
-            )
+            DemandInput(product=product, bundle_size=10, daily_demand=100 + (i * 20))  # Varying demand
             for i, product in enumerate(products)
         ]
 
@@ -468,12 +408,7 @@ class TestFullCalculationsPipeline:
         ]
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
@@ -482,7 +417,7 @@ class TestFullCalculationsPipeline:
             demands=demands,
             breakdowns=breakdowns,
             mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=5
+            horizon_days=5,
         )
 
         # Validate
@@ -532,39 +467,25 @@ class TestValidationPerformance:
         for i in range(num_products):
             product = f"VALID_PROD_{i}"
             for step in range(1, steps_per_product + 1):
-                operations.append(OperationInput(
-                    product=product,
-                    step=step,
-                    operation=f"Op_{step}_{product}",
-                    machine_tool=f"Machine_{step % 5}",
-                    sam_min=2.0,
-                    operators=2
-                ))
+                operations.append(
+                    OperationInput(
+                        product=product,
+                        step=step,
+                        operation=f"Op_{step}_{product}",
+                        machine_tool=f"Machine_{step % 5}",
+                        sam_min=2.0,
+                        operators=2,
+                    )
+                )
 
-        demands = [
-            DemandInput(
-                product=f"VALID_PROD_{i}",
-                bundle_size=10,
-                daily_demand=50
-            )
-            for i in range(num_products)
-        ]
+        demands = [DemandInput(product=f"VALID_PROD_{i}", bundle_size=10, daily_demand=50) for i in range(num_products)]
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=1
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN, horizon_days=1
         )
 
         # Time validation
@@ -592,27 +513,16 @@ class TestMemoryEfficiency:
                 operation=f"Step_{i}",
                 machine_tool=f"Machine_{i}",
                 sam_min=0.5,  # Fast operations
-                operators=3
+                operators=3,
             )
             for i in range(1, 4)
         ]
 
         # High demand = many bundles
-        demands = [
-            DemandInput(
-                product="MEMORY_TEST",
-                bundle_size=5,  # Small bundles = more bundles
-                daily_demand=500
-            )
-        ]
+        demands = [DemandInput(product="MEMORY_TEST", bundle_size=5, daily_demand=500)]  # Small bundles = more bundles
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
@@ -620,7 +530,7 @@ class TestMemoryEfficiency:
             schedule=schedule,
             demands=demands,
             mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=3  # 3 days = more bundles
+            horizon_days=3,  # 3 days = more bundles
         )
 
         report = validate_simulation_config(config)
@@ -645,35 +555,25 @@ class TestBenchmarkSummary:
 
         for product in products:
             for step in range(1, 6):
-                operations.append(OperationInput(
-                    product=product,
-                    step=step,
-                    operation=f"Op_{step}_{product}",
-                    machine_tool=f"Machine_{step}",
-                    sam_min=2.0,
-                    operators=2
-                ))
+                operations.append(
+                    OperationInput(
+                        product=product,
+                        step=step,
+                        operation=f"Op_{step}_{product}",
+                        machine_tool=f"Machine_{step}",
+                        sam_min=2.0,
+                        operators=2,
+                    )
+                )
 
-        demands = [
-            DemandInput(product=p, bundle_size=10, daily_demand=100)
-            for p in products
-        ]
+        demands = [DemandInput(product=p, bundle_size=10, daily_demand=100) for p in products]
 
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            shift3_hours=0.0,
-            work_days=5,
-            ot_enabled=False
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
         )
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=1
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN, horizon_days=1
         )
 
         # Run benchmark

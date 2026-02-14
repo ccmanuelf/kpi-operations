@@ -6,6 +6,7 @@ planning and scheduling. Separate from operational work orders.
 
 Multi-tenant: All operations enforce client_id isolation.
 """
+
 from typing import List, Optional
 from datetime import date
 from decimal import Decimal
@@ -31,7 +32,7 @@ def create_order(
     priority: OrderPriority = OrderPriority.NORMAL,
     status: OrderStatus = OrderStatus.DRAFT,
     order_sam_minutes: Optional[float] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> CapacityOrder:
     """
     Create a new capacity planning order.
@@ -73,7 +74,7 @@ def create_order(
         priority=priority,
         status=status,
         order_sam_minutes=Decimal(str(order_sam_minutes)) if order_sam_minutes else None,
-        notes=notes
+        notes=notes,
     )
     db.add(order)
     db.commit()
@@ -82,11 +83,7 @@ def create_order(
 
 
 def get_orders(
-    db: Session,
-    client_id: str,
-    skip: int = 0,
-    limit: int = 100,
-    status_filter: Optional[str] = None
+    db: Session, client_id: str, skip: int = 0, limit: int = 100, status_filter: Optional[str] = None
 ) -> List[CapacityOrder]:
     """
     Get all orders for a client.
@@ -102,19 +99,13 @@ def get_orders(
         List of CapacityOrder entries
     """
     ensure_client_id(client_id, "orders query")
-    query = db.query(CapacityOrder).filter(
-        CapacityOrder.client_id == client_id
-    )
+    query = db.query(CapacityOrder).filter(CapacityOrder.client_id == client_id)
     if status_filter:
         query = query.filter(CapacityOrder.status == status_filter)
     return query.order_by(CapacityOrder.required_date).offset(skip).limit(limit).all()
 
 
-def get_order(
-    db: Session,
-    client_id: str,
-    order_id: int
-) -> Optional[CapacityOrder]:
+def get_order(db: Session, client_id: str, order_id: int) -> Optional[CapacityOrder]:
     """
     Get a specific order by ID.
 
@@ -127,19 +118,12 @@ def get_order(
         CapacityOrder or None if not found
     """
     ensure_client_id(client_id, "order query")
-    return db.query(CapacityOrder).filter(
-        and_(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.id == order_id
-        )
-    ).first()
+    return (
+        db.query(CapacityOrder).filter(and_(CapacityOrder.client_id == client_id, CapacityOrder.id == order_id)).first()
+    )
 
 
-def get_order_by_number(
-    db: Session,
-    client_id: str,
-    order_number: str
-) -> Optional[CapacityOrder]:
+def get_order_by_number(db: Session, client_id: str, order_number: str) -> Optional[CapacityOrder]:
     """
     Get a specific order by order number.
 
@@ -152,20 +136,14 @@ def get_order_by_number(
         CapacityOrder or None if not found
     """
     ensure_client_id(client_id, "order query")
-    return db.query(CapacityOrder).filter(
-        and_(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.order_number == order_number
-        )
-    ).first()
+    return (
+        db.query(CapacityOrder)
+        .filter(and_(CapacityOrder.client_id == client_id, CapacityOrder.order_number == order_number))
+        .first()
+    )
 
 
-def update_order(
-    db: Session,
-    client_id: str,
-    order_id: int,
-    **updates
-) -> Optional[CapacityOrder]:
+def update_order(db: Session, client_id: str, order_id: int, **updates) -> Optional[CapacityOrder]:
     """
     Update an order.
 
@@ -184,7 +162,7 @@ def update_order(
 
     for key, value in updates.items():
         if hasattr(order, key) and value is not None:
-            if key == 'order_sam_minutes' and value is not None:
+            if key == "order_sam_minutes" and value is not None:
                 value = Decimal(str(value))
             setattr(order, key, value)
 
@@ -193,11 +171,7 @@ def update_order(
     return order
 
 
-def delete_order(
-    db: Session,
-    client_id: str,
-    order_id: int
-) -> bool:
+def delete_order(db: Session, client_id: str, order_id: int) -> bool:
     """
     Delete an order.
 
@@ -219,10 +193,7 @@ def delete_order(
 
 
 def get_orders_for_scheduling(
-    db: Session,
-    client_id: str,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None
+    db: Session, client_id: str, start_date: Optional[date] = None, end_date: Optional[date] = None
 ) -> List[CapacityOrder]:
     """
     Get orders ready for scheduling.
@@ -243,7 +214,7 @@ def get_orders_for_scheduling(
 
     filters = [
         CapacityOrder.client_id == client_id,
-        CapacityOrder.status.in_([OrderStatus.CONFIRMED, OrderStatus.SCHEDULED])
+        CapacityOrder.status.in_([OrderStatus.CONFIRMED, OrderStatus.SCHEDULED]),
     ]
 
     if start_date:
@@ -251,19 +222,15 @@ def get_orders_for_scheduling(
     if end_date:
         filters.append(CapacityOrder.required_date <= end_date)
 
-    return db.query(CapacityOrder).filter(
-        and_(*filters)
-    ).order_by(
-        CapacityOrder.priority.desc(),
-        CapacityOrder.required_date
-    ).all()
+    return (
+        db.query(CapacityOrder)
+        .filter(and_(*filters))
+        .order_by(CapacityOrder.priority.desc(), CapacityOrder.required_date)
+        .all()
+    )
 
 
-def get_orders_by_status(
-    db: Session,
-    client_id: str,
-    status: OrderStatus
-) -> List[CapacityOrder]:
+def get_orders_by_status(db: Session, client_id: str, status: OrderStatus) -> List[CapacityOrder]:
     """
     Get orders by status.
 
@@ -276,19 +243,15 @@ def get_orders_by_status(
         List of CapacityOrder entries with the given status
     """
     ensure_client_id(client_id, "orders by status query")
-    return db.query(CapacityOrder).filter(
-        and_(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.status == status
-        )
-    ).order_by(CapacityOrder.required_date).all()
+    return (
+        db.query(CapacityOrder)
+        .filter(and_(CapacityOrder.client_id == client_id, CapacityOrder.status == status))
+        .order_by(CapacityOrder.required_date)
+        .all()
+    )
 
 
-def get_orders_by_style(
-    db: Session,
-    client_id: str,
-    style_code: str
-) -> List[CapacityOrder]:
+def get_orders_by_style(db: Session, client_id: str, style_code: str) -> List[CapacityOrder]:
     """
     Get orders by style code.
 
@@ -301,20 +264,15 @@ def get_orders_by_style(
         List of CapacityOrder entries for the style
     """
     ensure_client_id(client_id, "orders by style query")
-    return db.query(CapacityOrder).filter(
-        and_(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.style_code == style_code
-        )
-    ).order_by(CapacityOrder.required_date).all()
+    return (
+        db.query(CapacityOrder)
+        .filter(and_(CapacityOrder.client_id == client_id, CapacityOrder.style_code == style_code))
+        .order_by(CapacityOrder.required_date)
+        .all()
+    )
 
 
-def update_order_status(
-    db: Session,
-    client_id: str,
-    order_id: int,
-    new_status: OrderStatus
-) -> Optional[CapacityOrder]:
+def update_order_status(db: Session, client_id: str, order_id: int, new_status: OrderStatus) -> Optional[CapacityOrder]:
     """
     Update order status.
 
@@ -331,10 +289,7 @@ def update_order_status(
 
 
 def update_order_progress(
-    db: Session,
-    client_id: str,
-    order_id: int,
-    completed_quantity: int
+    db: Session, client_id: str, order_id: int, completed_quantity: int
 ) -> Optional[CapacityOrder]:
     """
     Update order production progress.
@@ -363,11 +318,7 @@ def update_order_progress(
     return order
 
 
-def get_overdue_orders(
-    db: Session,
-    client_id: str,
-    as_of_date: Optional[date] = None
-) -> List[CapacityOrder]:
+def get_overdue_orders(db: Session, client_id: str, as_of_date: Optional[date] = None) -> List[CapacityOrder]:
     """
     Get orders that are overdue.
 
@@ -383,19 +334,22 @@ def get_overdue_orders(
 
     check_date = as_of_date or date.today()
 
-    return db.query(CapacityOrder).filter(
-        and_(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.required_date < check_date,
-            CapacityOrder.status.notin_([OrderStatus.COMPLETED, OrderStatus.CANCELLED])
+    return (
+        db.query(CapacityOrder)
+        .filter(
+            and_(
+                CapacityOrder.client_id == client_id,
+                CapacityOrder.required_date < check_date,
+                CapacityOrder.status.notin_([OrderStatus.COMPLETED, OrderStatus.CANCELLED]),
+            )
         )
-    ).order_by(CapacityOrder.required_date).all()
+        .order_by(CapacityOrder.required_date)
+        .all()
+    )
 
 
 def get_priority_orders(
-    db: Session,
-    client_id: str,
-    min_priority: OrderPriority = OrderPriority.HIGH
+    db: Session, client_id: str, min_priority: OrderPriority = OrderPriority.HIGH
 ) -> List[CapacityOrder]:
     """
     Get high priority orders.
@@ -410,23 +364,20 @@ def get_priority_orders(
     """
     ensure_client_id(client_id, "priority orders query")
 
-    priority_values = {
-        OrderPriority.LOW: 1,
-        OrderPriority.NORMAL: 2,
-        OrderPriority.HIGH: 3,
-        OrderPriority.URGENT: 4
-    }
+    priority_values = {OrderPriority.LOW: 1, OrderPriority.NORMAL: 2, OrderPriority.HIGH: 3, OrderPriority.URGENT: 4}
 
     min_value = priority_values.get(min_priority, 3)
     high_priorities = [p for p, v in priority_values.items() if v >= min_value]
 
-    return db.query(CapacityOrder).filter(
-        and_(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.priority.in_(high_priorities),
-            CapacityOrder.status.notin_([OrderStatus.COMPLETED, OrderStatus.CANCELLED])
+    return (
+        db.query(CapacityOrder)
+        .filter(
+            and_(
+                CapacityOrder.client_id == client_id,
+                CapacityOrder.priority.in_(high_priorities),
+                CapacityOrder.status.notin_([OrderStatus.COMPLETED, OrderStatus.CANCELLED]),
+            )
         )
-    ).order_by(
-        CapacityOrder.priority.desc(),
-        CapacityOrder.required_date
-    ).all()
+        .order_by(CapacityOrder.priority.desc(), CapacityOrder.required_date)
+        .all()
+    )

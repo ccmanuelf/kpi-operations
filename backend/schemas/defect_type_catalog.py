@@ -2,6 +2,7 @@
 Client-specific Defect Type Catalog
 Allows each client to define their own defect types based on their industry
 """
+
 from sqlalchemy import Column, String, Text, Boolean, DateTime, ForeignKey, Integer
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -14,8 +15,9 @@ class DefectTypeCatalog(Base):
     Client-specific defect type definitions
     Each client can have their own set of defect types appropriate for their industry
     """
+
     __tablename__ = "DEFECT_TYPE_CATALOG"
-    __table_args__ = {'extend_existing': True}
+    __table_args__ = {"extend_existing": True}
 
     # Primary key
     defect_type_id = Column(String(50), primary_key=True)
@@ -33,7 +35,9 @@ class DefectTypeCatalog(Base):
     severity_default = Column(String(20), default="MAJOR")  # CRITICAL, MAJOR, MINOR
 
     # For reporting/analytics
-    industry_standard_code = Column(String(50))  # Optional: Maps to industry standards (e.g., IPC codes for electronics)
+    industry_standard_code = Column(
+        String(50)
+    )  # Optional: Maps to industry standards (e.g., IPC codes for electronics)
 
     # Status
     is_active = Column(Boolean, default=True, nullable=False)

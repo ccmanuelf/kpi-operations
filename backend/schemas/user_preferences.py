@@ -2,6 +2,7 @@
 User Preferences ORM schemas (SQLAlchemy)
 Dashboard customization and widget configuration storage
 """
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -17,6 +18,7 @@ class UserPreferences(Base):
     - theme: UI theme preferences
     - notifications: Notification settings
     """
+
     __tablename__ = "USER_PREFERENCES"
     __table_args__ = {"extend_existing": True}
 
@@ -27,9 +29,7 @@ class UserPreferences(Base):
     preference_value = Column(Text, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(
-        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class DashboardWidgetDefaults(Base):
@@ -40,6 +40,7 @@ class DashboardWidgetDefaults(Base):
     Role-based defaults provide sensible starting configurations
     for different user types (admin, supervisor, operator, etc.)
     """
+
     __tablename__ = "DASHBOARD_WIDGET_DEFAULTS"
     __table_args__ = {"extend_existing": True}
 
@@ -51,6 +52,4 @@ class DashboardWidgetDefaults(Base):
     is_visible = Column(Boolean, nullable=False, default=True)
     default_config = Column(Text, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(
-        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())

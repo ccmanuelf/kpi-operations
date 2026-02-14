@@ -2,6 +2,7 @@
 Email Service for KPI Platform
 Handles email delivery using SendGrid or SMTP
 """
+
 import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -14,6 +15,7 @@ from email.mime.application import MIMEApplication
 try:
     from sendgrid import SendGridAPIClient
     from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
+
     SENDGRID_AVAILABLE = True
 except ImportError:
     SENDGRID_AVAILABLE = False
@@ -25,14 +27,14 @@ class EmailService:
     """Service for sending emails with attachments"""
 
     def __init__(self):
-        self.use_sendgrid = SENDGRID_AVAILABLE and hasattr(settings, 'SENDGRID_API_KEY') and settings.SENDGRID_API_KEY
+        self.use_sendgrid = SENDGRID_AVAILABLE and hasattr(settings, "SENDGRID_API_KEY") and settings.SENDGRID_API_KEY
 
         if not self.use_sendgrid:
             # SMTP configuration
-            self.smtp_host = getattr(settings, 'SMTP_HOST', 'smtp.gmail.com')
-            self.smtp_port = getattr(settings, 'SMTP_PORT', 587)
-            self.smtp_user = getattr(settings, 'SMTP_USER', '')
-            self.smtp_password = getattr(settings, 'SMTP_PASSWORD', '')
+            self.smtp_host = getattr(settings, "SMTP_HOST", "smtp.gmail.com")
+            self.smtp_port = getattr(settings, "SMTP_PORT", 587)
+            self.smtp_user = getattr(settings, "SMTP_USER", "")
+            self.smtp_password = getattr(settings, "SMTP_PASSWORD", "")
 
     def send_kpi_report(
         self,
@@ -41,7 +43,7 @@ class EmailService:
         report_date: datetime,
         pdf_content: bytes,
         subject: Optional[str] = None,
-        additional_message: Optional[str] = None
+        additional_message: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Send KPI report email with PDF attachment
@@ -61,9 +63,7 @@ class EmailService:
             subject = f"Daily KPI Report - {client_name} - {report_date.strftime('%B %d, %Y')}"
 
         html_content = self._generate_email_template(
-            client_name=client_name,
-            report_date=report_date,
-            additional_message=additional_message
+            client_name=client_name, report_date=report_date, additional_message=additional_message
         )
 
         if self.use_sendgrid:
@@ -72,7 +72,7 @@ class EmailService:
                 subject=subject,
                 html_content=html_content,
                 pdf_content=pdf_content,
-                pdf_filename=f"KPI_Report_{client_name}_{report_date.strftime('%Y%m%d')}.pdf"
+                pdf_filename=f"KPI_Report_{client_name}_{report_date.strftime('%Y%m%d')}.pdf",
             )
         else:
             return self._send_via_smtp(
@@ -80,37 +80,25 @@ class EmailService:
                 subject=subject,
                 html_content=html_content,
                 pdf_content=pdf_content,
-                pdf_filename=f"KPI_Report_{client_name}_{report_date.strftime('%Y%m%d')}.pdf"
+                pdf_filename=f"KPI_Report_{client_name}_{report_date.strftime('%Y%m%d')}.pdf",
             )
 
     def _send_via_sendgrid(
-        self,
-        to_emails: List[str],
-        subject: str,
-        html_content: str,
-        pdf_content: bytes,
-        pdf_filename: str
+        self, to_emails: List[str], subject: str, html_content: str, pdf_content: bytes, pdf_filename: str
     ) -> Dict[str, Any]:
         """Send email via SendGrid API"""
         try:
-            from_email = getattr(settings, 'REPORT_FROM_EMAIL', 'reports@kpi-platform.com')
+            from_email = getattr(settings, "REPORT_FROM_EMAIL", "reports@kpi-platform.com")
 
-            message = Mail(
-                from_email=from_email,
-                to_emails=to_emails,
-                subject=subject,
-                html_content=html_content
-            )
+            message = Mail(from_email=from_email, to_emails=to_emails, subject=subject, html_content=html_content)
 
             # Attach PDF
             import base64
+
             encoded_pdf = base64.b64encode(pdf_content).decode()
 
             attachment = Attachment(
-                FileContent(encoded_pdf),
-                FileName(pdf_filename),
-                FileType('application/pdf'),
-                Disposition('attachment')
+                FileContent(encoded_pdf), FileName(pdf_filename), FileType("application/pdf"), Disposition("attachment")
             )
             message.attachment = attachment
 
@@ -119,43 +107,34 @@ class EmailService:
             response = sg.send(message)
 
             return {
-                'success': True,
-                'status_code': response.status_code,
-                'message': 'Email sent successfully via SendGrid'
+                "success": True,
+                "status_code": response.status_code,
+                "message": "Email sent successfully via SendGrid",
             }
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'message': f'Failed to send email via SendGrid: {str(e)}'
-            }
+            return {"success": False, "error": str(e), "message": f"Failed to send email via SendGrid: {str(e)}"}
 
     def _send_via_smtp(
-        self,
-        to_emails: List[str],
-        subject: str,
-        html_content: str,
-        pdf_content: bytes,
-        pdf_filename: str
+        self, to_emails: List[str], subject: str, html_content: str, pdf_content: bytes, pdf_filename: str
     ) -> Dict[str, Any]:
         """Send email via SMTP"""
         try:
-            from_email = getattr(settings, 'REPORT_FROM_EMAIL', self.smtp_user)
+            from_email = getattr(settings, "REPORT_FROM_EMAIL", self.smtp_user)
 
             # Create message
-            msg = MIMEMultipart('mixed')
-            msg['Subject'] = subject
-            msg['From'] = from_email
-            msg['To'] = ', '.join(to_emails)
+            msg = MIMEMultipart("mixed")
+            msg["Subject"] = subject
+            msg["From"] = from_email
+            msg["To"] = ", ".join(to_emails)
 
             # Attach HTML body
-            html_part = MIMEText(html_content, 'html')
+            html_part = MIMEText(html_content, "html")
             msg.attach(html_part)
 
             # Attach PDF
-            pdf_attachment = MIMEApplication(pdf_content, _subtype='pdf')
-            pdf_attachment.add_header('Content-Disposition', 'attachment', filename=pdf_filename)
+            pdf_attachment = MIMEApplication(pdf_content, _subtype="pdf")
+            pdf_attachment.add_header("Content-Disposition", "attachment", filename=pdf_filename)
             msg.attach(pdf_attachment)
 
             # Send email
@@ -165,23 +144,13 @@ class EmailService:
                     server.login(self.smtp_user, self.smtp_password)
                 server.send_message(msg)
 
-            return {
-                'success': True,
-                'message': 'Email sent successfully via SMTP'
-            }
+            return {"success": True, "message": "Email sent successfully via SMTP"}
 
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e),
-                'message': f'Failed to send email via SMTP: {str(e)}'
-            }
+            return {"success": False, "error": str(e), "message": f"Failed to send email via SMTP: {str(e)}"}
 
     def _generate_email_template(
-        self,
-        client_name: str,
-        report_date: datetime,
-        additional_message: Optional[str] = None
+        self, client_name: str, report_date: datetime, additional_message: Optional[str] = None
     ) -> str:
         """Generate HTML email template"""
 
@@ -300,32 +269,27 @@ class EmailService:
 
         if self.use_sendgrid:
             try:
-                from_email = getattr(settings, 'REPORT_FROM_EMAIL', 'reports@kpi-platform.com')
-                message = Mail(
-                    from_email=from_email,
-                    to_emails=[to_email],
-                    subject=subject,
-                    html_content=html_content
-                )
+                from_email = getattr(settings, "REPORT_FROM_EMAIL", "reports@kpi-platform.com")
+                message = Mail(from_email=from_email, to_emails=[to_email], subject=subject, html_content=html_content)
                 sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
                 response = sg.send(message)
-                return {'success': True, 'status_code': response.status_code}
+                return {"success": True, "status_code": response.status_code}
             except Exception as e:
-                return {'success': False, 'error': str(e)}
+                return {"success": False, "error": str(e)}
         else:
             try:
-                from_email = getattr(settings, 'REPORT_FROM_EMAIL', self.smtp_user)
+                from_email = getattr(settings, "REPORT_FROM_EMAIL", self.smtp_user)
                 msg = MIMEMultipart()
-                msg['Subject'] = subject
-                msg['From'] = from_email
-                msg['To'] = to_email
-                msg.attach(MIMEText(html_content, 'html'))
+                msg["Subject"] = subject
+                msg["From"] = from_email
+                msg["To"] = to_email
+                msg.attach(MIMEText(html_content, "html"))
 
                 with smtplib.SMTP(self.smtp_host, self.smtp_port) as server:
                     server.starttls()
                     if self.smtp_user and self.smtp_password:
                         server.login(self.smtp_user, self.smtp_password)
                     server.send_message(msg)
-                return {'success': True}
+                return {"success": True}
             except Exception as e:
-                return {'success': False, 'error': str(e)}
+                return {"success": False, "error": str(e)}

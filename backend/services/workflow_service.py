@@ -8,6 +8,7 @@ Provides:
 - Client-specific workflow configuration
 - Elapsed time calculations
 """
+
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -19,12 +20,7 @@ from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.client_config import ClientConfig
 from backend.schemas.workflow import WorkflowTransitionLog
 from backend.schemas.user import User
-from backend.models.workflow import (
-    WorkflowStatusEnum,
-    ClosureTriggerEnum,
-    TriggerSourceEnum,
-    WORKFLOW_TEMPLATES
-)
+from backend.models.workflow import WorkflowStatusEnum, ClosureTriggerEnum, TriggerSourceEnum, WORKFLOW_TEMPLATES
 
 
 # Default workflow transitions (used when no client config exists)
@@ -37,7 +33,7 @@ DEFAULT_WORKFLOW_TRANSITIONS: Dict[str, List[str]] = {
     "ON_HOLD": ["RECEIVED", "RELEASED", "IN_PROGRESS"],
     "DEMOTED": ["RELEASED"],
     "CANCELLED": ["RECEIVED", "RELEASED", "IN_PROGRESS", "ON_HOLD", "DEMOTED"],
-    "REJECTED": ["IN_PROGRESS", "COMPLETED"]
+    "REJECTED": ["IN_PROGRESS", "COMPLETED"],
 }
 
 # Statuses that can transition from any state (emergency transitions)
@@ -72,16 +68,14 @@ class WorkflowStateMachine:
 
     def _load_config(self) -> None:
         """Load workflow configuration from client config or use defaults."""
-        self._config = self.db.query(ClientConfig).filter(
-            ClientConfig.client_id == self.client_id
-        ).first()
+        self._config = self.db.query(ClientConfig).filter(ClientConfig.client_id == self.client_id).first()
 
         if self._config:
             # Parse JSON configuration
             try:
-                self._statuses = json.loads(self._config.workflow_statuses or '[]')
-                self._transitions = json.loads(self._config.workflow_transitions or '{}')
-                self._optional_statuses = json.loads(self._config.workflow_optional_statuses or '[]')
+                self._statuses = json.loads(self._config.workflow_statuses or "[]")
+                self._transitions = json.loads(self._config.workflow_transitions or "{}")
+                self._optional_statuses = json.loads(self._config.workflow_optional_statuses or "[]")
                 self._closure_trigger = self._config.workflow_closure_trigger or "at_shipment"
             except (json.JSONDecodeError, TypeError):
                 # Fall back to defaults if JSON parsing fails
@@ -119,11 +113,7 @@ class WorkflowStateMachine:
 
         return sorted(allowed)
 
-    def is_transition_valid(
-        self,
-        from_status: Optional[str],
-        to_status: str
-    ) -> Tuple[bool, Optional[str]]:
+    def is_transition_valid(self, from_status: Optional[str], to_status: str) -> Tuple[bool, Optional[str]]:
         """
         Validate if a transition is allowed.
 
@@ -164,13 +154,12 @@ class WorkflowStateMachine:
             # This should be handled by checking work_order.previous_status
             pass
 
-        return False, f"Transition from {from_status} to {to_status} is not allowed. Allowed targets: {self.get_allowed_transitions(from_status)}"
+        return (
+            False,
+            f"Transition from {from_status} to {to_status} is not allowed. Allowed targets: {self.get_allowed_transitions(from_status)}",
+        )
 
-    def validate_transition(
-        self,
-        work_order: WorkOrder,
-        to_status: str
-    ) -> Tuple[bool, Optional[str]]:
+    def validate_transition(self, work_order: WorkOrder, to_status: str) -> Tuple[bool, Optional[str]]:
         """
         Validate transition for a specific work order.
 
@@ -250,15 +239,11 @@ def get_workflow_config(db: Session, client_id: str) -> Dict:
         "workflow_transitions": sm._transitions,
         "workflow_optional_statuses": sm._optional_statuses,
         "workflow_closure_trigger": sm._closure_trigger,
-        "workflow_version": sm._config.workflow_version if sm._config else 1
+        "workflow_version": sm._config.workflow_version if sm._config else 1,
     }
 
 
-def validate_transition(
-    db: Session,
-    work_order: WorkOrder,
-    to_status: str
-) -> Tuple[bool, Optional[str], List[str]]:
+def validate_transition(db: Session, work_order: WorkOrder, to_status: str) -> Tuple[bool, Optional[str], List[str]]:
     """
     Validate a status transition for a work order.
 
@@ -277,11 +262,7 @@ def validate_transition(
     return is_valid, reason, allowed
 
 
-def get_allowed_transitions(
-    db: Session,
-    client_id: str,
-    current_status: str
-) -> List[str]:
+def get_allowed_transitions(db: Session, client_id: str, current_status: str) -> List[str]:
     """
     Get allowed transitions from a status.
 
@@ -297,10 +278,7 @@ def get_allowed_transitions(
     return sm.get_allowed_transitions(current_status)
 
 
-def calculate_elapsed_hours(
-    from_datetime: Optional[datetime],
-    to_datetime: Optional[datetime]
-) -> Optional[int]:
+def calculate_elapsed_hours(from_datetime: Optional[datetime], to_datetime: Optional[datetime]) -> Optional[int]:
     """
     Calculate elapsed hours between two datetimes.
 
@@ -324,7 +302,7 @@ def execute_transition(
     to_status: str,
     user_id: Optional[int] = None,
     notes: Optional[str] = None,
-    trigger_source: str = "manual"
+    trigger_source: str = "manual",
 ) -> Tuple[WorkOrder, WorkflowTransitionLog]:
     """
     Execute a validated status transition.
@@ -358,14 +336,15 @@ def execute_transition(
     elapsed_from_previous = None
 
     # Get last transition for elapsed_from_previous calculation
-    last_transition = db.query(WorkflowTransitionLog).filter(
-        WorkflowTransitionLog.work_order_id == work_order.work_order_id
-    ).order_by(WorkflowTransitionLog.transitioned_at.desc()).first()
+    last_transition = (
+        db.query(WorkflowTransitionLog)
+        .filter(WorkflowTransitionLog.work_order_id == work_order.work_order_id)
+        .order_by(WorkflowTransitionLog.transitioned_at.desc())
+        .first()
+    )
 
     if last_transition:
-        elapsed_from_previous = calculate_elapsed_hours(
-            last_transition.transitioned_at, now
-        )
+        elapsed_from_previous = calculate_elapsed_hours(last_transition.transitioned_at, now)
 
     # Handle ON_HOLD - save previous status
     if to_status == "ON_HOLD":
@@ -402,7 +381,7 @@ def execute_transition(
         notes=notes,
         trigger_source=trigger_source,
         elapsed_from_received_hours=elapsed_from_received,
-        elapsed_from_previous_hours=elapsed_from_previous
+        elapsed_from_previous_hours=elapsed_from_previous,
     )
 
     db.add(transition_log)
@@ -413,11 +392,7 @@ def execute_transition(
     return work_order, transition_log
 
 
-def get_transition_history(
-    db: Session,
-    work_order_id: str,
-    client_id: str
-) -> List[WorkflowTransitionLog]:
+def get_transition_history(db: Session, work_order_id: str, client_id: str) -> List[WorkflowTransitionLog]:
     """
     Get transition history for a work order.
 
@@ -429,12 +404,14 @@ def get_transition_history(
     Returns:
         List of transition log entries
     """
-    return db.query(WorkflowTransitionLog).filter(
-        and_(
-            WorkflowTransitionLog.work_order_id == work_order_id,
-            WorkflowTransitionLog.client_id == client_id
+    return (
+        db.query(WorkflowTransitionLog)
+        .filter(
+            and_(WorkflowTransitionLog.work_order_id == work_order_id, WorkflowTransitionLog.client_id == client_id)
         )
-    ).order_by(WorkflowTransitionLog.transitioned_at.asc()).all()
+        .order_by(WorkflowTransitionLog.transitioned_at.asc())
+        .all()
+    )
 
 
 def bulk_transition(
@@ -443,7 +420,7 @@ def bulk_transition(
     to_status: str,
     client_id: str,
     user_id: Optional[int] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> Dict:
     """
     Perform bulk status transition on multiple work orders.
@@ -459,66 +436,44 @@ def bulk_transition(
     Returns:
         Dictionary with results: {successful: [], failed: []}
     """
-    results = {
-        "total_requested": len(work_order_ids),
-        "successful": 0,
-        "failed": 0,
-        "results": []
-    }
+    results = {"total_requested": len(work_order_ids), "successful": 0, "failed": 0, "results": []}
 
     for wo_id in work_order_ids:
         try:
-            work_order = db.query(WorkOrder).filter(
-                and_(
-                    WorkOrder.work_order_id == wo_id,
-                    WorkOrder.client_id == client_id
-                )
-            ).first()
+            work_order = (
+                db.query(WorkOrder)
+                .filter(and_(WorkOrder.work_order_id == wo_id, WorkOrder.client_id == client_id))
+                .first()
+            )
 
             if not work_order:
-                results["results"].append({
-                    "work_order_id": wo_id,
-                    "success": False,
-                    "error": "Work order not found"
-                })
+                results["results"].append({"work_order_id": wo_id, "success": False, "error": "Work order not found"})
                 results["failed"] += 1
                 continue
 
-            work_order, _ = execute_transition(
-                db, work_order, to_status, user_id, notes, "bulk"
-            )
+            work_order, _ = execute_transition(db, work_order, to_status, user_id, notes, "bulk")
 
-            results["results"].append({
-                "work_order_id": wo_id,
-                "success": True,
-                "from_status": work_order.previous_status or work_order.status,
-                "to_status": to_status
-            })
+            results["results"].append(
+                {
+                    "work_order_id": wo_id,
+                    "success": True,
+                    "from_status": work_order.previous_status or work_order.status,
+                    "to_status": to_status,
+                }
+            )
             results["successful"] += 1
 
         except HTTPException as e:
-            results["results"].append({
-                "work_order_id": wo_id,
-                "success": False,
-                "error": e.detail
-            })
+            results["results"].append({"work_order_id": wo_id, "success": False, "error": e.detail})
             results["failed"] += 1
         except Exception as e:
-            results["results"].append({
-                "work_order_id": wo_id,
-                "success": False,
-                "error": str(e)
-            })
+            results["results"].append({"work_order_id": wo_id, "success": False, "error": str(e)})
             results["failed"] += 1
 
     return results
 
 
-def apply_workflow_template(
-    db: Session,
-    client_id: str,
-    template_id: str
-) -> Dict:
+def apply_workflow_template(db: Session, client_id: str, template_id: str) -> Dict:
     """
     Apply a workflow template to a client's configuration.
 
@@ -536,15 +491,13 @@ def apply_workflow_template(
     if template_id not in WORKFLOW_TEMPLATES:
         raise HTTPException(
             status_code=404,
-            detail=f"Workflow template '{template_id}' not found. Available: {list(WORKFLOW_TEMPLATES.keys())}"
+            detail=f"Workflow template '{template_id}' not found. Available: {list(WORKFLOW_TEMPLATES.keys())}",
         )
 
     template = WORKFLOW_TEMPLATES[template_id]
 
     # Get or create client config
-    config = db.query(ClientConfig).filter(
-        ClientConfig.client_id == client_id
-    ).first()
+    config = db.query(ClientConfig).filter(ClientConfig.client_id == client_id).first()
 
     if not config:
         config = ClientConfig(client_id=client_id)

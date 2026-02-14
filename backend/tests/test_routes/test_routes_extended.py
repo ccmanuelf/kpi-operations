@@ -2,6 +2,7 @@
 Extended Route Tests for Low Coverage Areas
 Target: Increase routes coverage to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 
@@ -31,18 +32,12 @@ class TestQRRoutes:
     def test_qr_decode_valid(self, authenticated_client):
         """Test QR code decode with valid JSON"""
         qr_data = '{"type": "work_order", "id": "WO-001", "version": "1.0"}'
-        response = authenticated_client.post(
-            "/api/qr/decode",
-            json={"qr_data": qr_data}
-        )
+        response = authenticated_client.post("/api/qr/decode", json={"qr_data": qr_data})
         assert response.status_code in [200, 400, 404, 422]
 
     def test_qr_decode_invalid(self, authenticated_client):
         """Test QR code decode with invalid data"""
-        response = authenticated_client.post(
-            "/api/qr/decode",
-            json={"qr_data": "not valid json"}
-        )
+        response = authenticated_client.post("/api/qr/decode", json={"qr_data": "not valid json"})
         assert response.status_code in [400, 404, 422]
 
 
@@ -69,10 +64,7 @@ class TestUserRoutes:
 
     def admin_user_update(self, authenticated_client):
         """Test user update endpoint"""
-        response = authenticated_client.put(
-            "/api/users/test-user",
-            json={"full_name": "Test User Updated"}
-        )
+        response = authenticated_client.put("/api/users/test-user", json={"full_name": "Test User Updated"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def admin_user_delete(self, authenticated_client):
@@ -116,17 +108,14 @@ class TestDefectTypeCatalogRoutes:
                 "name": "Test Defect Type",
                 "category": "visual",
                 "severity": "minor",
-                "client_id": "TEST-CLIENT"
-            }
+                "client_id": "TEST-CLIENT",
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_defect_type_update(self, authenticated_client):
         """Test defect type update"""
-        response = authenticated_client.put(
-            "/api/defect-types/1",
-            json={"name": "Updated Defect Type"}
-        )
+        response = authenticated_client.put("/api/defect-types/1", json={"name": "Updated Defect Type"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_defect_type_delete(self, authenticated_client):
@@ -148,10 +137,7 @@ class TestHoldsRoutes:
 
     def test_holds_list_with_filters(self, authenticated_client):
         """Test holds list with filters"""
-        response = authenticated_client.get(
-            "/api/holds/",
-            params={"status": "active", "limit": 10}
-        )
+        response = authenticated_client.get("/api/holds/", params={"status": "active", "limit": 10})
         assert response.status_code in [200, 403, 404]
 
     def test_hold_by_id(self, authenticated_client):
@@ -162,12 +148,7 @@ class TestHoldsRoutes:
     def test_hold_create(self, authenticated_client):
         """Test hold creation"""
         response = authenticated_client.post(
-            "/api/holds/",
-            json={
-                "work_order_id": "WO-001",
-                "reason": "Quality Issue",
-                "hold_quantity": 100
-            }
+            "/api/holds/", json={"work_order_id": "WO-001", "reason": "Quality Issue", "hold_quantity": 100}
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -185,8 +166,7 @@ class TestHoldsRoutes:
         """Test WIP aging with date filters"""
         today = date.today()
         response = authenticated_client.get(
-            "/api/kpi/wip-aging",
-            params={"start_date": today.isoformat(), "end_date": today.isoformat()}
+            "/api/kpi/wip-aging", params={"start_date": today.isoformat(), "end_date": today.isoformat()}
         )
         assert response.status_code in [200, 403, 404]
 
@@ -205,22 +185,14 @@ class TestCoverageRoutes:
     def test_coverage_create(self, authenticated_client):
         """Test coverage entry creation"""
         response = authenticated_client.post(
-            "/api/coverage/",
-            json={
-                "employee_id": 1,
-                "shift_id": 1,
-                "shift_date": date.today().isoformat()
-            }
+            "/api/coverage/", json={"employee_id": 1, "shift_id": 1, "shift_date": date.today().isoformat()}
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_coverage_by_date(self, authenticated_client):
         """Test coverage by date"""
         today = date.today().isoformat()
-        response = authenticated_client.get(
-            "/api/coverage/",
-            params={"shift_date": today}
-        )
+        response = authenticated_client.get("/api/coverage/", params={"shift_date": today})
         assert response.status_code in [200, 403, 404]
 
 
@@ -243,21 +215,13 @@ class TestJobsRoutes:
     def test_job_create(self, authenticated_client):
         """Test job creation"""
         response = authenticated_client.post(
-            "/api/jobs/",
-            json={
-                "work_order_id": "WO-001",
-                "operation_name": "Assembly",
-                "sequence_number": 1
-            }
+            "/api/jobs/", json={"work_order_id": "WO-001", "operation_name": "Assembly", "sequence_number": 1}
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_jobs_by_work_order(self, authenticated_client):
         """Test jobs by work order"""
-        response = authenticated_client.get(
-            "/api/jobs/",
-            params={"work_order_id": "WO-001"}
-        )
+        response = authenticated_client.get("/api/jobs/", params={"work_order_id": "WO-001"})
         assert response.status_code in [200, 403, 404]
 
 
@@ -280,12 +244,7 @@ class TestDefectRoutes:
     def test_defect_create(self, authenticated_client):
         """Test defect creation"""
         response = authenticated_client.post(
-            "/api/defects/",
-            json={
-                "quality_entry_id": 1,
-                "defect_type_id": 1,
-                "quantity": 5
-            }
+            "/api/defects/", json={"quality_entry_id": 1, "defect_type_id": 1, "quantity": 5}
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -309,11 +268,7 @@ class TestPartOpportunitiesRoutes:
     def test_part_opportunity_create(self, authenticated_client):
         """Test part opportunity creation"""
         response = authenticated_client.post(
-            "/api/part-opportunities/",
-            json={
-                "part_number": "PART-001",
-                "opportunities_count": 10
-            }
+            "/api/part-opportunities/", json={"part_number": "PART-001", "opportunities_count": 10}
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -338,11 +293,7 @@ class TestFloatingPoolRoutes:
         """Test floating pool assignment"""
         response = authenticated_client.post(
             "/api/floating-pool/assign",
-            json={
-                "employee_id": 1,
-                "target_client_id": "CLIENT-001",
-                "shift_date": date.today().isoformat()
-            }
+            json={"employee_id": 1, "target_client_id": "CLIENT-001", "shift_date": date.today().isoformat()},
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -367,20 +318,13 @@ class TestEmployeesRoutesExtended:
         """Test employee creation"""
         response = authenticated_client.post(
             "/api/employees/",
-            json={
-                "employee_code": "EMP-TEST",
-                "employee_name": "Test Employee",
-                "department": "Production"
-            }
+            json={"employee_code": "EMP-TEST", "employee_name": "Test Employee", "department": "Production"},
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_employees_by_department(self, authenticated_client):
         """Test employees by department"""
-        response = authenticated_client.get(
-            "/api/employees/",
-            params={"department": "Production"}
-        )
+        response = authenticated_client.get("/api/employees/", params={"department": "Production"})
         assert response.status_code in [200, 403, 404]
 
     def test_employee_attendance_summary(self, authenticated_client):
@@ -407,21 +351,12 @@ class TestClientsRoutesExtended:
 
     def test_client_create(self, authenticated_client):
         """Test client creation"""
-        response = authenticated_client.post(
-            "/api/clients/",
-            json={
-                "client_id": "TEST-CLIENT",
-                "name": "Test Client"
-            }
-        )
+        response = authenticated_client.post("/api/clients/", json={"client_id": "TEST-CLIENT", "name": "Test Client"})
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_client_update(self, authenticated_client):
         """Test client update"""
-        response = authenticated_client.put(
-            "/api/clients/BOOT-LINE-A",
-            json={"name": "Updated Client Name"}
-        )
+        response = authenticated_client.put("/api/clients/BOOT-LINE-A", json={"name": "Updated Client Name"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_client_statistics(self, authenticated_client):
@@ -454,8 +389,8 @@ class TestDowntimeRoutesExtended:
                 "production_entry_id": 1,
                 "downtime_minutes": 30,
                 "reason": "Equipment maintenance",
-                "category": "planned"
-            }
+                "category": "planned",
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -463,10 +398,7 @@ class TestDowntimeRoutesExtended:
         """Test downtime summary"""
         response = authenticated_client.get(
             "/api/downtime/summary",
-            params={
-                "start_date": (date.today() - timedelta(days=7)).isoformat(),
-                "end_date": date.today().isoformat()
-            }
+            params={"start_date": (date.today() - timedelta(days=7)).isoformat(), "end_date": date.today().isoformat()},
         )
         assert response.status_code in [200, 403, 404]
 
@@ -484,24 +416,12 @@ class TestAuthRoutesExtended:
 
     def test_login_invalid_credentials(self, test_client):
         """Test login with invalid credentials"""
-        response = test_client.post(
-            "/api/auth/login",
-            json={
-                "username": "invalid_user",
-                "password": "wrong_password"
-            }
-        )
+        response = test_client.post("/api/auth/login", json={"username": "invalid_user", "password": "wrong_password"})
         assert response.status_code in [401, 422, 429]
 
     def test_login_valid_format(self, test_client):
         """Test login endpoint accepts proper format"""
-        response = test_client.post(
-            "/api/auth/login",
-            json={
-                "username": "testuser",
-                "password": "testpass123"
-            }
-        )
+        response = test_client.post("/api/auth/login", json={"username": "testuser", "password": "testpass123"})
         # Either succeeds or fails with auth error, not format error
         assert response.status_code in [200, 401, 403, 422, 429]
 
@@ -562,23 +482,17 @@ class TestWorkOrderRoutesExtended:
                 "work_order_id": "WO-TEST",
                 "client_id": "BOOT-LINE-A",
                 "planned_quantity": 1000,
-                "status": "pending"
-            }
+                "status": "pending",
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_work_order_update_status(self, authenticated_client):
         """Test work order status update"""
-        response = authenticated_client.patch(
-            "/api/work-orders/WO-001/status",
-            json={"status": "in_progress"}
-        )
+        response = authenticated_client.patch("/api/work-orders/WO-001/status", json={"status": "in_progress"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_work_orders_by_status(self, authenticated_client):
         """Test work orders filtered by status"""
-        response = authenticated_client.get(
-            "/api/work-orders/",
-            params={"status": "in_progress"}
-        )
+        response = authenticated_client.get("/api/work-orders/", params={"status": "in_progress"})
         assert response.status_code in [200, 403, 404]

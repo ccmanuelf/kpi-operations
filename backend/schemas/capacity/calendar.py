@@ -3,6 +3,7 @@ Capacity Calendar - Working days, shifts, holidays
 Stores calendar configuration for capacity planning calculations.
 Used to determine available production hours per day.
 """
+
 from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Numeric, Text, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -20,17 +21,18 @@ class CapacityCalendar(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_calendar"
     __table_args__ = (
-        UniqueConstraint('client_id', 'calendar_date', name='uix_capacity_calendar_client_date'),
-        {"extend_existing": True}
+        UniqueConstraint("client_id", "calendar_date", name="uix_capacity_calendar_client_date"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Calendar date
     calendar_date = Column(Date, nullable=False, index=True)
@@ -61,4 +63,6 @@ class CapacityCalendar(Base):
         return float(self.shift1_hours or 0) + float(self.shift2_hours or 0) + float(self.shift3_hours or 0)
 
     def __repr__(self):
-        return f"<CapacityCalendar(client_id={self.client_id}, date={self.calendar_date}, working={self.is_working_day})>"
+        return (
+            f"<CapacityCalendar(client_id={self.client_id}, date={self.calendar_date}, working={self.is_working_day})>"
+        )

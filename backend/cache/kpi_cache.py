@@ -6,6 +6,7 @@ Phase 1.4: Add Caching Layer
 Simple dict-based cache with TTL (no Redis for now).
 Used for caching dashboard summaries, trend calculations, and client config lookups.
 """
+
 from typing import Optional, Any, Dict, Callable
 from datetime import datetime, timedelta
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ import json
 @dataclass
 class CacheEntry:
     """A single cache entry with value and expiry time."""
+
     value: Any
     expiry: datetime
     created_at: datetime
@@ -50,12 +52,7 @@ class KPICache:
         self._ttl = timedelta(seconds=ttl_seconds)
         self._max_entries = max_entries
         self._lock = threading.RLock()
-        self._stats = {
-            "hits": 0,
-            "misses": 0,
-            "sets": 0,
-            "evictions": 0
-        }
+        self._stats = {"hits": 0, "misses": 0, "sets": 0, "evictions": 0}
 
     def get(self, key: str) -> Optional[Any]:
         """
@@ -81,12 +78,7 @@ class KPICache:
             self._stats["misses"] += 1
             return None
 
-    def set(
-        self,
-        key: str,
-        value: Any,
-        ttl_seconds: Optional[int] = None
-    ) -> None:
+    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
         """
         Set a value in the cache.
 
@@ -103,11 +95,7 @@ class KPICache:
             ttl = timedelta(seconds=ttl_seconds) if ttl_seconds else self._ttl
             now = datetime.now()
 
-            self._cache[key] = CacheEntry(
-                value=value,
-                expiry=now + ttl,
-                created_at=now
-            )
+            self._cache[key] = CacheEntry(value=value, expiry=now + ttl, created_at=now)
             self._stats["sets"] += 1
 
     def delete(self, key: str) -> bool:
@@ -137,21 +125,13 @@ class KPICache:
             Number of keys invalidated
         """
         with self._lock:
-            keys_to_delete = [
-                key for key in self._cache.keys()
-                if key.startswith(pattern)
-            ]
+            keys_to_delete = [key for key in self._cache.keys() if key.startswith(pattern)]
             for key in keys_to_delete:
                 del self._cache[key]
                 self._stats["evictions"] += 1
             return len(keys_to_delete)
 
-    def get_or_set(
-        self,
-        key: str,
-        factory: Callable[[], Any],
-        ttl_seconds: Optional[int] = None
-    ) -> Any:
+    def get_or_set(self, key: str, factory: Callable[[], Any], ttl_seconds: Optional[int] = None) -> Any:
         """
         Get a value from cache, or compute and cache it if not found.
 
@@ -214,7 +194,7 @@ class KPICache:
                 "misses": self._stats["misses"],
                 "hit_rate": round(hit_rate, 2),
                 "sets": self._stats["sets"],
-                "evictions": self._stats["evictions"]
+                "evictions": self._stats["evictions"],
             }
 
     def _cleanup_expired(self) -> int:
@@ -225,10 +205,7 @@ class KPICache:
             Number of entries removed
         """
         now = datetime.now()
-        expired_keys = [
-            key for key, entry in self._cache.items()
-            if now >= entry.expiry
-        ]
+        expired_keys = [key for key, entry in self._cache.items() if now >= entry.expiry]
 
         for key in expired_keys:
             del self._cache[key]
@@ -240,6 +217,7 @@ class KPICache:
 # =============================================================================
 # Cache Key Builders
 # =============================================================================
+
 
 def build_cache_key(*parts: Any) -> str:
     """
@@ -336,11 +314,8 @@ def reset_cache() -> None:
 # Cache Decorators
 # =============================================================================
 
-def cached(
-    key_prefix: str,
-    ttl_seconds: int = 300,
-    key_builder: Optional[Callable[..., str]] = None
-):
+
+def cached(key_prefix: str, ttl_seconds: int = 300, key_builder: Optional[Callable[..., str]] = None):
     """
     Decorator to cache function results.
 
@@ -357,6 +332,7 @@ def cached(
 
         # Cache key will be: "dashboard_summary:client123:2024-01-15"
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             cache = get_cache()
@@ -374,4 +350,5 @@ def cached(
             return cache.get_or_set(cache_key, lambda: func(*args, **kwargs), ttl_seconds)
 
         return wrapper
+
     return decorator

@@ -2,6 +2,7 @@
 Attendance tracking models (Pydantic)
 PHASE 3: Employee attendance and absenteeism
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
@@ -11,14 +12,16 @@ from enum import Enum
 
 class AbsenceTypeEnum(str, Enum):
     """Absence classification for absenteeism tracking - matches DB enum"""
+
     UNSCHEDULED_ABSENCE = "UNSCHEDULED_ABSENCE"  # Counts toward absenteeism
-    VACATION = "VACATION"                        # Scheduled, doesn't count
-    MEDICAL_LEAVE = "MEDICAL_LEAVE"              # Counts toward absenteeism
-    PERSONAL_LEAVE = "PERSONAL_LEAVE"            # Counts toward absenteeism
+    VACATION = "VACATION"  # Scheduled, doesn't count
+    MEDICAL_LEAVE = "MEDICAL_LEAVE"  # Counts toward absenteeism
+    PERSONAL_LEAVE = "PERSONAL_LEAVE"  # Counts toward absenteeism
 
 
 class AttendanceRecordCreate(BaseModel):
     """Create attendance record - aligned with ATTENDANCE_ENTRY schema"""
+
     # Multi-tenant isolation - REQUIRED
     client_id: str = Field(..., min_length=1, max_length=50)
 
@@ -31,8 +34,8 @@ class AttendanceRecordCreate(BaseModel):
 
     # Hours tracking - REQUIRED for Absenteeism calculation
     scheduled_hours: Decimal = Field(..., gt=0, le=24)
-    actual_hours: Decimal = Field(default=Decimal('0'), ge=0, le=24)
-    absence_hours: Decimal = Field(default=Decimal('0'), ge=0, le=24, description="scheduled - actual")
+    actual_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24)
+    absence_hours: Decimal = Field(default=Decimal("0"), ge=0, le=24, description="scheduled - actual")
 
     # Absence tracking
     is_absent: int = Field(default=0, ge=0, le=1, description="Boolean: 0=present, 1=absent")
@@ -56,49 +59,50 @@ class AttendanceRecordCreate(BaseModel):
     def from_legacy_csv(cls, data: dict) -> "AttendanceRecordCreate":
         """Create from legacy CSV format with field mapping"""
         # Map legacy status to is_absent + absence_type
-        status = (data.get('status') or 'Present').upper()
+        status = (data.get("status") or "Present").upper()
         is_absent = 0
         absence_type = None
 
-        if status == 'ABSENT':
+        if status == "ABSENT":
             is_absent = 1
             absence_type = AbsenceTypeEnum.UNSCHEDULED_ABSENCE
-        elif status == 'LATE':
+        elif status == "LATE":
             is_absent = 0  # Present but late
-        elif status == 'LEAVE':
+        elif status == "LEAVE":
             is_absent = 1
             absence_type = AbsenceTypeEnum.PERSONAL_LEAVE
-        elif status == 'VACATION':
+        elif status == "VACATION":
             is_absent = 1
             absence_type = AbsenceTypeEnum.VACATION
-        elif status == 'MEDICAL':
+        elif status == "MEDICAL":
             is_absent = 1
             absence_type = AbsenceTypeEnum.MEDICAL_LEAVE
 
-        scheduled = Decimal(str(data.get('scheduled_hours', 8)))
-        actual = Decimal(str(data.get('actual_hours_worked') or data.get('actual_hours', 0)))
-        absence = scheduled - actual if is_absent else Decimal('0')
+        scheduled = Decimal(str(data.get("scheduled_hours", 8)))
+        actual = Decimal(str(data.get("actual_hours_worked") or data.get("actual_hours", 0)))
+        absence = scheduled - actual if is_absent else Decimal("0")
 
         return cls(
-            client_id=data.get('client_id', ''),
-            employee_id=int(data.get('employee_id', 0)),
-            shift_date=data.get('shift_date') or data.get('attendance_date'),
-            shift_id=int(data['shift_id']) if data.get('shift_id') else None,
+            client_id=data.get("client_id", ""),
+            employee_id=int(data.get("employee_id", 0)),
+            shift_date=data.get("shift_date") or data.get("attendance_date"),
+            shift_id=int(data["shift_id"]) if data.get("shift_id") else None,
             scheduled_hours=scheduled,
             actual_hours=actual,
             absence_hours=absence,
             is_absent=is_absent,
             absence_type=absence_type,
-            covered_by_employee_id=int(data['covered_by_employee_id']) if data.get('covered_by_employee_id') else None,
-            coverage_confirmed=int(data.get('coverage_confirmed', 0)),
-            is_late=1 if status == 'LATE' else 0,
-            absence_reason=data.get('absence_reason'),
-            notes=data.get('notes')
+            covered_by_employee_id=int(data["covered_by_employee_id"]) if data.get("covered_by_employee_id") else None,
+            coverage_confirmed=int(data.get("coverage_confirmed", 0)),
+            is_late=1 if status == "LATE" else 0,
+            absence_reason=data.get("absence_reason"),
+            notes=data.get("notes"),
         )
 
 
 class AttendanceRecordUpdate(BaseModel):
     """Update attendance record"""
+
     status: Optional[str] = Field(None, max_length=20)
     actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24)
     absence_reason: Optional[str] = Field(None, max_length=100)
@@ -109,6 +113,7 @@ class AttendanceRecordUpdate(BaseModel):
 
 class AttendanceRecordResponse(BaseModel):
     """Attendance record response - matches ATTENDANCE_ENTRY schema"""
+
     attendance_entry_id: str
     client_id: str
     employee_id: int
@@ -136,14 +141,23 @@ class AttendanceRecordResponse(BaseModel):
 
 class InferenceMetadata(BaseModel):
     """Inference metadata for KPI calculations - exposes ESTIMATED flag per audit requirement"""
-    is_estimated: bool = Field(default=False, description="True if any values were inferred rather than from explicit standards")
-    confidence_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Confidence score (0.0-1.0) for inferred values")
-    inference_source: Optional[str] = Field(default=None, description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback")
+
+    is_estimated: bool = Field(
+        default=False, description="True if any values were inferred rather than from explicit standards"
+    )
+    confidence_score: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0, description="Confidence score (0.0-1.0) for inferred values"
+    )
+    inference_source: Optional[str] = Field(
+        default=None,
+        description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback",
+    )
     inference_warning: Optional[str] = Field(default=None, description="Warning message for low confidence estimates")
 
 
 class AbsenteeismCalculationResponse(BaseModel):
     """Absenteeism KPI calculation"""
+
     shift_id: int
     start_date: date
     end_date: date

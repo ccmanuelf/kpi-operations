@@ -5,10 +5,8 @@ Phase 3: Domain Events Infrastructure
 Provides persistent storage for domain events.
 Enables event replay, audit trails, and event sourcing.
 """
-from sqlalchemy import (
-    Column, Integer, String, DateTime, JSON, Index,
-    func, Text
-)
+
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Index, func, Text
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
 
@@ -25,6 +23,7 @@ class EventStore(Base):
     - Analytics and reporting
     - Debugging and troubleshooting
     """
+
     __tablename__ = "EVENT_STORE"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -40,19 +39,16 @@ class EventStore(Base):
 
     # Composite indexes for common queries
     __table_args__ = (
-        Index('ix_event_store_aggregate', 'aggregate_type', 'aggregate_id'),
-        Index('ix_event_store_client_time', 'client_id', 'occurred_at'),
-        Index('ix_event_store_type_time', 'event_type', 'occurred_at'),
+        Index("ix_event_store_aggregate", "aggregate_type", "aggregate_id"),
+        Index("ix_event_store_client_time", "client_id", "occurred_at"),
+        Index("ix_event_store_type_time", "event_type", "occurred_at"),
     )
 
     def __repr__(self):
-        return (
-            f"<EventStore(id={self.id}, event_type={self.event_type}, "
-            f"aggregate_id={self.aggregate_id})>"
-        )
+        return f"<EventStore(id={self.id}, event_type={self.event_type}, " f"aggregate_id={self.aggregate_id})>"
 
     @classmethod
-    def from_domain_event(cls, event) -> 'EventStore':
+    def from_domain_event(cls, event) -> "EventStore":
         """
         Create EventStore record from a DomainEvent.
 
@@ -70,7 +66,7 @@ class EventStore(Base):
             client_id=event.client_id,
             triggered_by=event.triggered_by,
             occurred_at=event.occurred_at,
-            payload=event.to_dict()
+            payload=event.to_dict(),
         )
 
 
@@ -84,6 +80,7 @@ def create_event_persistence_handler(db_session_factory):
     Returns:
         Handler function for persisting events
     """
+
     def persist_event(event) -> None:
         """Persist a domain event to EVENT_STORE."""
         session = db_session_factory()

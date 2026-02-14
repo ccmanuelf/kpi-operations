@@ -1,6 +1,7 @@
 """
 Comprehensive tests for Downtime CRUD operations
 """
+
 import pytest
 from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock
@@ -86,7 +87,7 @@ class TestDowntimeCRUD:
         assert mttr == 60
 
     def test_downtime_summary(self, mock_db):
-        mock_summary = {'total_downtime': 300, 'planned': 60, 'unplanned': 240}
+        mock_summary = {"total_downtime": 300, "planned": 60, "unplanned": 240}
         mock_db.query.return_value.first.return_value = MagicMock(**mock_summary)
         result = mock_db.query().first()
         assert result.total_downtime == 300
@@ -115,13 +116,13 @@ class TestDowntimeEdgeCases:
         assert planned_ratio == 25
 
     def test_downtime_categories(self):
-        categories = ['mechanical', 'electrical', 'operator', 'material', 'planned']
+        categories = ["mechanical", "electrical", "operator", "material", "planned"]
         assert len(categories) == 5
 
     def test_consecutive_downtime_merge(self):
         entries = [
-            {'end_time': datetime.now() - timedelta(minutes=5)},
-            {'start_time': datetime.now() - timedelta(minutes=5)}
+            {"end_time": datetime.now() - timedelta(minutes=5)},
+            {"start_time": datetime.now() - timedelta(minutes=5)},
         ]
         gap = 5
         should_merge = gap <= 5
@@ -152,28 +153,28 @@ class TestHoldCRUD:
         mock_db.add.assert_called()
 
     def test_get_active_holds(self, mock_db):
-        mock_entries = [MagicMock(status='active') for _ in range(3)]
+        mock_entries = [MagicMock(status="active") for _ in range(3)]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_entries
         result = mock_db.query().filter().all()
         assert len(result) == 3
 
     def test_release_hold(self, mock_db):
-        mock_entry = MagicMock(status='active')
+        mock_entry = MagicMock(status="active")
         mock_db.query.return_value.filter.return_value.first.return_value = mock_entry
         entry = mock_db.query().filter().first()
-        entry.status = 'released'
+        entry.status = "released"
         entry.release_date = datetime.now()
         mock_db.commit()
-        assert entry.status == 'released'
+        assert entry.status == "released"
 
     def test_scrap_hold(self, mock_db):
-        mock_entry = MagicMock(status='active', quantity_held=50)
+        mock_entry = MagicMock(status="active", quantity_held=50)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_entry
         entry = mock_db.query().filter().first()
-        entry.status = 'scrapped'
+        entry.status = "scrapped"
         entry.quantity_scrapped = 50
         mock_db.commit()
-        assert entry.status == 'scrapped'
+        assert entry.status == "scrapped"
 
     def test_hold_aging_calculation(self):
         hold_date = datetime.now() - timedelta(days=5)
@@ -181,7 +182,7 @@ class TestHoldCRUD:
         assert aging_days == 5
 
     def test_hold_summary(self, mock_db):
-        mock_summary = {'total_held': 500, 'active': 200, 'released': 250, 'scrapped': 50}
+        mock_summary = {"total_held": 500, "active": 200, "released": 250, "scrapped": 50}
         mock_db.query.return_value.first.return_value = MagicMock(**mock_summary)
         result = mock_db.query().first()
         assert result.total_held == 500
@@ -195,30 +196,30 @@ class TestEmployeeCRUD:
         return MagicMock(spec=Session)
 
     def test_create_employee(self, mock_db):
-        mock_emp = MagicMock(id=1, name='John Doe', employee_id='EMP001')
+        mock_emp = MagicMock(id=1, name="John Doe", employee_id="EMP001")
         mock_db.add(mock_emp)
         mock_db.commit()
         mock_db.add.assert_called()
 
     def test_get_employee_by_id(self, mock_db):
-        mock_emp = MagicMock(employee_id='EMP001')
+        mock_emp = MagicMock(employee_id="EMP001")
         mock_db.query.return_value.filter.return_value.first.return_value = mock_emp
         result = mock_db.query().filter().first()
-        assert result.employee_id == 'EMP001'
+        assert result.employee_id == "EMP001"
 
     def test_get_employees_by_department(self, mock_db):
-        mock_emps = [MagicMock(department='Production') for _ in range(20)]
+        mock_emps = [MagicMock(department="Production") for _ in range(20)]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_emps
         result = mock_db.query().filter().all()
         assert len(result) == 20
 
     def test_update_employee(self, mock_db):
-        mock_emp = MagicMock(department='Production')
+        mock_emp = MagicMock(department="Production")
         mock_db.query.return_value.filter.return_value.first.return_value = mock_emp
         emp = mock_db.query().filter().first()
-        emp.department = 'Quality'
+        emp.department = "Quality"
         mock_db.commit()
-        assert emp.department == 'Quality'
+        assert emp.department == "Quality"
 
     def test_deactivate_employee(self, mock_db):
         mock_emp = MagicMock(is_active=True)
@@ -235,7 +236,7 @@ class TestEmployeeCRUD:
         assert mock_emp.shift_id == 2
 
     def test_employee_skills(self):
-        skills = ['welding', 'assembly', 'quality_inspection']
+        skills = ["welding", "assembly", "quality_inspection"]
         assert len(skills) == 3
 
     def test_employee_headcount(self, mock_db):

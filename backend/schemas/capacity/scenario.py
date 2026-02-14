@@ -2,6 +2,7 @@
 Capacity Scenario - What-if scenario configurations
 Stores scenario parameters and results for capacity planning simulations.
 """
+
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, JSON, Index
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -27,18 +28,19 @@ class CapacityScenario(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_scenario"
     __table_args__ = (
-        Index('ix_capacity_scenario_base', 'client_id', 'base_schedule_id'),
-        Index('ix_capacity_scenario_type', 'client_id', 'scenario_type'),
-        {"extend_existing": True}
+        Index("ix_capacity_scenario_base", "client_id", "base_schedule_id"),
+        Index("ix_capacity_scenario_type", "client_id", "scenario_type"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Scenario identification (scenario_type indexed via composite index in __table_args__)
     scenario_name = Column(String(100), nullable=False)

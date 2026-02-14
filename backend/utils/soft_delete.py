@@ -29,11 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def soft_delete(
-    db: Session,
-    entity: Any,
-    commit: bool = True,
-    is_active_field: str = "is_active",
-    inactive_value: Any = False
+    db: Session, entity: Any, commit: bool = True, is_active_field: str = "is_active", inactive_value: Any = False
 ) -> bool:
     """
     Perform soft delete on an entity by setting is_active = False.
@@ -78,8 +74,7 @@ def soft_delete(
             db.commit()
 
         logger.debug(
-            f"Soft deleted {type(entity).__name__} "
-            f"(set {is_active_field} = {getattr(entity, is_active_field)})"
+            f"Soft deleted {type(entity).__name__} " f"(set {is_active_field} = {getattr(entity, is_active_field)})"
         )
 
         return True
@@ -98,7 +93,7 @@ def soft_delete_with_timestamp(
     is_active_field: str = "is_active",
     deleted_at_field: str = "deleted_at",
     deleted_by_field: Optional[str] = "deleted_by",
-    deleted_by_value: Optional[int] = None
+    deleted_by_value: Optional[int] = None,
 ) -> bool:
     """
     Perform soft delete with timestamp tracking.
@@ -143,11 +138,7 @@ def soft_delete_with_timestamp(
 
 
 def restore_soft_deleted(
-    db: Session,
-    entity: Any,
-    commit: bool = True,
-    is_active_field: str = "is_active",
-    active_value: Any = True
+    db: Session, entity: Any, commit: bool = True, is_active_field: str = "is_active", active_value: Any = True
 ) -> bool:
     """
     Restore a soft-deleted entity by setting is_active = True.
@@ -164,9 +155,7 @@ def restore_soft_deleted(
     """
     try:
         if not hasattr(entity, is_active_field):
-            logger.warning(
-                f"Entity {type(entity).__name__} does not have '{is_active_field}' field."
-            )
+            logger.warning(f"Entity {type(entity).__name__} does not have '{is_active_field}' field.")
             return False
 
         # Detect field type and set appropriate value
@@ -199,11 +188,7 @@ def restore_soft_deleted(
         return False
 
 
-def get_active_query(
-    db: Session,
-    model: Type[T],
-    is_active_field: str = "is_active"
-) -> Query:
+def get_active_query(db: Session, model: Type[T], is_active_field: str = "is_active") -> Query:
     """
     Get a query filtered to only active (non-deleted) records.
 
@@ -235,10 +220,7 @@ def get_active_query(
     return query
 
 
-def get_all_including_deleted(
-    db: Session,
-    model: Type[T]
-) -> Query:
+def get_all_including_deleted(db: Session, model: Type[T]) -> Query:
     """
     Get a query including all records (active and soft-deleted).
 
@@ -254,11 +236,7 @@ def get_all_including_deleted(
     return db.query(model)
 
 
-def filter_active(
-    query: Query,
-    model: Type[T],
-    is_active_field: str = "is_active"
-) -> Query:
+def filter_active(query: Query, model: Type[T], is_active_field: str = "is_active") -> Query:
     """
     Add active filter to an existing query.
 
@@ -300,16 +278,14 @@ class SoftDeleteMixin:
     Note: This is provided for reference. Existing models already have
     is_active fields, so this mixin is mainly useful for new models.
     """
+
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     deleted_at = Column(DateTime, nullable=True)
     deleted_by = Column(Integer, nullable=True)
 
     def soft_delete(self, db: Session, deleted_by_user: Optional[int] = None) -> bool:
         """Instance method for soft delete."""
-        return soft_delete_with_timestamp(
-            db, self,
-            deleted_by_value=deleted_by_user
-        )
+        return soft_delete_with_timestamp(db, self, deleted_by_value=deleted_by_user)
 
     def restore(self, db: Session) -> bool:
         """Instance method to restore soft-deleted record."""
@@ -325,10 +301,7 @@ class SoftDeleteMixin:
 
 
 def create_soft_delete_function(
-    model: Type[T],
-    id_field: str,
-    is_active_field: str = "is_active",
-    permission_check: Optional[Callable] = None
+    model: Type[T], id_field: str, is_active_field: str = "is_active", permission_check: Optional[Callable] = None
 ) -> Callable:
     """
     Factory function to create standardized soft delete functions for CRUD modules.
@@ -351,6 +324,7 @@ def create_soft_delete_function(
             permission_check=lambda user: user.role == "admin"
         )
     """
+
     def delete_fn(db: Session, entity_id: Any, current_user: Any = None) -> bool:
         # Permission check if provided
         if permission_check and current_user:
@@ -358,9 +332,7 @@ def create_soft_delete_function(
                 return False
 
         # Get entity
-        entity = db.query(model).filter(
-            getattr(model, id_field) == entity_id
-        ).first()
+        entity = db.query(model).filter(getattr(model, id_field) == entity_id).first()
 
         if not entity:
             return False

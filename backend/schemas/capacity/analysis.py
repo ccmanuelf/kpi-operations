@@ -2,6 +2,7 @@
 Capacity Analysis - Utilization calculations per line/week
 Stores capacity analysis results following the 12-step calculation method.
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, Date, Boolean, ForeignKey, Text, Index
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -33,19 +34,20 @@ class CapacityAnalysis(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_analysis"
     __table_args__ = (
-        Index('ix_capacity_analysis_line_date', 'client_id', 'line_id', 'analysis_date'),
-        Index('ix_capacity_analysis_date', 'client_id', 'analysis_date'),
-        Index('ix_capacity_analysis_bottleneck', 'client_id', 'is_bottleneck'),
-        {"extend_existing": True}
+        Index("ix_capacity_analysis_line_date", "client_id", "line_id", "analysis_date"),
+        Index("ix_capacity_analysis_date", "client_id", "analysis_date"),
+        Index("ix_capacity_analysis_bottleneck", "client_id", "is_bottleneck"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Analysis period/date (indexed via composite indexes in __table_args__)
     analysis_date = Column(Date, nullable=False)

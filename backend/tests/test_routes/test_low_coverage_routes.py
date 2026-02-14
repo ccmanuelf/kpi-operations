@@ -2,6 +2,7 @@
 Tests for Low Coverage Route Modules
 Target: Increase route coverage from 80% to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -23,10 +24,7 @@ class TestKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/efficiency",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -115,27 +113,20 @@ class TestQRRoutesExtended:
     def test_qr_decode_work_order(self, authenticated_client):
         """Test QR decode for work order type"""
         qr_data = '{"type": "work_order", "id": "WO-001", "version": "1.0"}'
-        response = authenticated_client.post(
-            "/api/qr/decode",
-            json={"qr_string": qr_data}
-        )
+        response = authenticated_client.post("/api/qr/decode", json={"qr_string": qr_data})
         assert response.status_code in [200, 400, 404, 422]
 
     def test_qr_decode_production(self, authenticated_client):
         """Test QR decode for production type"""
         qr_data = '{"type": "production", "id": 1, "version": "1.0"}'
-        response = authenticated_client.post(
-            "/api/qr/decode",
-            json={"qr_string": qr_data}
-        )
+        response = authenticated_client.post("/api/qr/decode", json={"qr_string": qr_data})
         assert response.status_code in [200, 400, 404, 422]
 
     def test_qr_auto_fill(self, authenticated_client):
         """Test QR auto-fill endpoint"""
         qr_data = '{"type": "work_order", "id": "WO-001"}'
         response = authenticated_client.post(
-            "/api/qr/auto-fill",
-            json={"qr_string": qr_data, "form_type": "production"}
+            "/api/qr/auto-fill", json={"qr_string": qr_data, "form_type": "production"}
         )
         assert response.status_code in [200, 400, 404, 422]
 
@@ -156,10 +147,7 @@ class TestAttendanceRoutesExtended:
         today = date.today()
         response = authenticated_client.get(
             "/api/attendance/",
-            params={
-                "start_date": (today - timedelta(days=7)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=7)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -177,17 +165,14 @@ class TestAttendanceRoutesExtended:
                 "attendance_date": date.today().isoformat(),
                 "shift_id": "SHIFT-A",
                 "status": "present",
-                "hours_worked": 8.0
-            }
+                "hours_worked": 8.0,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_attendance_update(self, authenticated_client):
         """Test attendance update"""
-        response = authenticated_client.put(
-            "/api/attendance/1",
-            json={"hours_worked": 7.5}
-        )
+        response = authenticated_client.put("/api/attendance/1", json={"hours_worked": 7.5})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_attendance_delete(self, authenticated_client):
@@ -207,10 +192,7 @@ class TestAttendanceRoutesExtended:
 
     def test_attendance_list_by_employee(self, authenticated_client):
         """Test attendance list filtered by employee"""
-        response = authenticated_client.get(
-            "/api/attendance/",
-            params={"employee_id": 1}
-        )
+        response = authenticated_client.get("/api/attendance/", params={"employee_id": 1})
         assert response.status_code in [200, 403, 404, 422]
 
 
@@ -227,28 +209,18 @@ class TestPreferencesRoutes:
 
     def test_preferences_update(self, authenticated_client):
         """Test update user preferences"""
-        response = authenticated_client.put(
-            "/api/preferences/",
-            json={
-                "theme": "dark",
-                "language": "en"
-            }
-        )
+        response = authenticated_client.put("/api/preferences/", json={"theme": "dark", "language": "en"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_preferences_dashboard_layout(self, authenticated_client):
         """Test update dashboard layout preference"""
-        response = authenticated_client.put(
-            "/api/preferences/dashboard",
-            json={"layout": "compact"}
-        )
+        response = authenticated_client.put("/api/preferences/dashboard", json={"layout": "compact"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_preferences_notification_settings(self, authenticated_client):
         """Test notification preferences"""
         response = authenticated_client.put(
-            "/api/preferences/notifications",
-            json={"email_alerts": True, "push_notifications": False}
+            "/api/preferences/notifications", json={"email_alerts": True, "push_notifications": False}
         )
         assert response.status_code in [200, 400, 403, 404, 422]
 
@@ -272,8 +244,7 @@ class TestPredictionsRoutesExtended:
     def test_predictions_efficiency_with_horizon(self, authenticated_client):
         """Test efficiency predictions with forecast horizon"""
         response = authenticated_client.get(
-            "/api/predictions/efficiency",
-            params={"horizon": 7, "confidence_level": 0.95}
+            "/api/predictions/efficiency", params={"horizon": 7, "confidence_level": 0.95}
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -311,10 +282,7 @@ class TestQualityRoutesExtended:
 
     def test_quality_list_with_filters(self, authenticated_client):
         """Test quality list with filters"""
-        response = authenticated_client.get(
-            "/api/quality/",
-            params={"limit": 10, "skip": 0}
-        )
+        response = authenticated_client.get("/api/quality/", params={"limit": 10, "skip": 0})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_quality_by_id(self, authenticated_client):
@@ -331,17 +299,14 @@ class TestQualityRoutesExtended:
                 "inspection_date": date.today().isoformat(),
                 "units_inspected": 100,
                 "units_passed": 98,
-                "defects_found": 2
-            }
+                "defects_found": 2,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_quality_update(self, authenticated_client):
         """Test quality entry update"""
-        response = authenticated_client.put(
-            "/api/quality/1",
-            json={"units_passed": 99}
-        )
+        response = authenticated_client.put("/api/quality/1", json={"units_passed": 99})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_quality_delete(self, authenticated_client):
@@ -381,10 +346,7 @@ class TestProductionRoutesExtended:
         today = date.today()
         response = authenticated_client.get(
             "/api/production/",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -402,17 +364,14 @@ class TestProductionRoutesExtended:
                 "production_date": date.today().isoformat(),
                 "shift_id": "SHIFT-A",
                 "units_produced": 500,
-                "units_scrapped": 5
-            }
+                "units_scrapped": 5,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_production_update(self, authenticated_client):
         """Test production entry update"""
-        response = authenticated_client.put(
-            "/api/production/1",
-            json={"units_produced": 550}
-        )
+        response = authenticated_client.put("/api/production/1", json={"units_produced": 550})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def test_production_delete(self, authenticated_client):
@@ -432,10 +391,7 @@ class TestProductionRoutesExtended:
 
     def test_production_list_by_shift(self, authenticated_client):
         """Test production list filtered by shift"""
-        response = authenticated_client.get(
-            "/api/production/",
-            params={"shift_id": "SHIFT-A"}
-        )
+        response = authenticated_client.get("/api/production/", params={"shift_id": "SHIFT-A"})
         assert response.status_code in [200, 403, 404, 422]
 
 
@@ -452,10 +408,7 @@ class TestUsersRoutesExtended:
 
     def admin_users_list_with_role_filter(self, authenticated_client):
         """Test users list with role filter"""
-        response = authenticated_client.get(
-            "/api/users/",
-            params={"role": "operator"}
-        )
+        response = authenticated_client.get("/api/users/", params={"role": "operator"})
         assert response.status_code in [200, 403, 404, 422]
 
     def admin_user_by_id(self, authenticated_client):
@@ -471,6 +424,7 @@ class TestUsersRoutesExtended:
     def admin_user_create(self, authenticated_client):
         """Test user creation"""
         import uuid
+
         unique_id = str(uuid.uuid4())[:8]
         response = authenticated_client.post(
             "/api/users/",
@@ -478,17 +432,14 @@ class TestUsersRoutesExtended:
                 "username": f"newuser_{unique_id}",
                 "email": f"newuser_{unique_id}@test.com",
                 "password": "TestPass123!",
-                "role": "operator"
-            }
+                "role": "operator",
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def admin_user_update(self, authenticated_client):
         """Test user update"""
-        response = authenticated_client.put(
-            "/api/users/1",
-            json={"full_name": "Updated Name"}
-        )
+        response = authenticated_client.put("/api/users/1", json={"full_name": "Updated Name"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     def admin_user_deactivate(self, authenticated_client):
@@ -570,10 +521,7 @@ class TestReportsRoutesExtended:
         today = date.today()
         response = authenticated_client.get(
             "/api/reports/custom",
-            params={
-                "start_date": (today - timedelta(days=14)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=14)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 

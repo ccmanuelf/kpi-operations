@@ -5,6 +5,7 @@ Tests full API workflows for all endpoints
 Note: These tests verify endpoint existence and require authentication.
 For comprehensive API testing with authentication, see test_reports.py pattern.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
@@ -48,7 +49,7 @@ class TestProductionAPI:
             "production_date": "2024-01-15",
             "units_produced": 1000,
             "employees_assigned": 5,
-            "run_time_hours": 8.0
+            "run_time_hours": 8.0,
         }
         # Without authentication, should return 401
         response = client.post("/api/production", json=data)
@@ -105,7 +106,7 @@ class TestDowntimeAPI:
             "shift_id": 1,
             "downtime_category": "maintenance",
             "downtime_minutes": 30,
-            "downtime_date": "2024-01-15"
+            "downtime_date": "2024-01-15",
         }
         response = client.post("/api/downtime", json=data)
         assert response.status_code == 401
@@ -121,11 +122,7 @@ class TestHoldsAPI:
 
     def test_holds_create_requires_auth(self):
         """Test creating WIP hold requires authentication"""
-        data = {
-            "product_id": 101,
-            "quantity": 50,
-            "hold_reason": "Quality inspection"
-        }
+        data = {"product_id": 101, "quantity": 50, "hold_reason": "Quality inspection"}
         response = client.post("/api/holds", json=data)
         assert response.status_code == 401
 

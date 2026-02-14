@@ -7,6 +7,7 @@ Tests all CRUD operations for tenant isolation.
 
 CRITICAL: These tests ensure data security in the multi-tenant system.
 """
+
 import pytest
 from fastapi import HTTPException
 
@@ -60,7 +61,7 @@ class TestClientFilterGeneration:
             email="no_client@test.com",
             role=UserRole.OPERATOR,
             client_id_assigned=None,  # No assignment
-            is_active=True
+            is_active=True,
         )
 
         # When/Then: Should raise ClientAccessError
@@ -80,7 +81,7 @@ class TestClientFilterGeneration:
             email="empty@test.com",
             role=UserRole.OPERATOR,
             client_id_assigned="",  # Empty string
-            is_active=True
+            is_active=True,
         )
 
         # When/Then: Should raise ClientAccessError
@@ -354,7 +355,7 @@ class TestRealWorldIsolationScenarios:
             email="operator_a@test.com",
             role=UserRole.OPERATOR,
             client_id_assigned="CLIENT-A",
-            is_active=True
+            is_active=True,
         )
 
         from backend.schemas.production_entry import ProductionEntry
@@ -386,7 +387,7 @@ class TestRealWorldIsolationScenarios:
             email="operator_a@test.com",
             role=UserRole.OPERATOR,
             client_id_assigned="CLIENT-A",
-            is_active=True
+            is_active=True,
         )
 
         from backend.schemas.quality_entry import QualityEntry
@@ -426,7 +427,7 @@ class TestRealWorldIsolationScenarios:
             email="leader@test.com",
             role=UserRole.LEADER,
             client_id_assigned="CLIENT-A,CLIENT-B",
-            is_active=True
+            is_active=True,
         )
 
         from backend.schemas.production_entry import ProductionEntry

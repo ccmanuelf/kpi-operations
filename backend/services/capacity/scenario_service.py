@@ -12,6 +12,7 @@ Provides what-if scenario analysis capabilities with 8 pre-configured scenarios:
 7. Absenteeism Spike 15%
 8. Multi-Constraint Combined
 """
+
 from decimal import Decimal
 from typing import List, Dict, Optional, Any, Union
 from dataclasses import dataclass, field
@@ -24,9 +25,7 @@ from backend.schemas.capacity.scenario import CapacityScenario
 from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
 from backend.schemas.capacity.production_lines import CapacityProductionLine
 from backend.schemas.capacity.analysis import CapacityAnalysis
-from backend.services.capacity.analysis_service import (
-    CapacityAnalysisService, CapacityAnalysisResult
-)
+from backend.services.capacity.analysis_service import CapacityAnalysisService, CapacityAnalysisResult
 from backend.events.bus import event_bus
 from backend.events.domain_events import CapacityScenarioCreated, CapacityScenarioCompared
 
@@ -35,8 +34,10 @@ from backend.events.domain_events import CapacityScenarioCreated, CapacityScenar
 # Scenario Type Enumeration
 # =============================================================================
 
+
 class ScenarioType(str, Enum):
     """Enumeration of pre-configured scenario types."""
+
     OVERTIME = "OVERTIME"
     SETUP_REDUCTION = "SETUP_REDUCTION"
     SUBCONTRACT = "SUBCONTRACT"
@@ -62,14 +63,14 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
         "affected_lines": [],  # Empty means all lines
         "overtime_days": ["MON", "TUE", "WED", "THU", "FRI"],
         "cost_per_hour": Decimal("15.00"),
-        "description": "Add 20% overtime to increase capacity"
+        "description": "Add 20% overtime to increase capacity",
     },
     ScenarioType.SETUP_REDUCTION: {
         "reduction_percent": 30,
         "affected_operations": ["all"],
         "setup_time_portion": Decimal("0.10"),  # Assume 10% of time is setup
         "investment_required": Decimal("5000.00"),
-        "description": "Reduce setup times by 30% through process improvement"
+        "description": "Reduce setup times by 30% through process improvement",
     },
     ScenarioType.SUBCONTRACT: {
         "subcontract_percent": 40,
@@ -77,7 +78,7 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
         "cost_per_unit": Decimal("2.50"),
         "lead_time_days": 5,
         "quality_factor": Decimal("0.95"),
-        "description": "Subcontract 40% of cutting operations"
+        "description": "Subcontract 40% of cutting operations",
     },
     ScenarioType.NEW_LINE: {
         "new_line_code": "SEWING_NEW",
@@ -89,7 +90,7 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
         "efficiency": Decimal("0.75"),
         "ramp_up_weeks": 4,
         "investment_cost": Decimal("50000.00"),
-        "description": "Add new sewing line with 12 operators"
+        "description": "Add new sewing line with 12 operators",
     },
     ScenarioType.THREE_SHIFT: {
         "shifts_enabled": 3,
@@ -99,14 +100,14 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
         "shift3_efficiency": Decimal("0.80"),  # Night shift typically less efficient
         "affected_lines": ["all"],
         "additional_supervision_cost": Decimal("2000.00"),
-        "description": "Enable 3-shift operation across all lines"
+        "description": "Enable 3-shift operation across all lines",
     },
     ScenarioType.LEAD_TIME_DELAY: {
         "delay_days": 7,
         "affected_components": ["FABRIC"],
         "demand_pile_factor": Decimal("1.15"),  # Demand piles up during delay
         "expedite_cost_per_day": Decimal("500.00"),
-        "description": "Simulate 7-day material lead time delay"
+        "description": "Simulate 7-day material lead time delay",
     },
     ScenarioType.ABSENTEEISM_SPIKE: {
         "absenteeism_percent": 15,
@@ -114,7 +115,7 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
         "affected_departments": ["all"],
         "overtime_to_compensate": True,
         "temp_labor_cost_per_day": Decimal("800.00"),
-        "description": "Simulate 15% absenteeism spike for 5 days"
+        "description": "Simulate 15% absenteeism spike for 5 days",
     },
     ScenarioType.MULTI_CONSTRAINT: {
         "overtime_percent": 10,
@@ -122,24 +123,20 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
         "absenteeism_percent": 8,
         "new_operators": 5,
         "efficiency_improvement_percent": 5,
-        "description": "Combined scenario with multiple factors"
+        "description": "Combined scenario with multiple factors",
     },
     # Legacy types
-    ScenarioType.SHIFT_ADD: {
-        "hours": 8,
-        "affected_lines": [],
-        "description": "Add additional shift hours"
-    },
+    ScenarioType.SHIFT_ADD: {"hours": 8, "affected_lines": [], "description": "Add additional shift hours"},
     ScenarioType.EFFICIENCY_IMPROVEMENT: {
         "target_efficiency": 90,
         "current_efficiency": 85,
-        "description": "Improve efficiency factor"
+        "description": "Improve efficiency factor",
     },
     ScenarioType.LABOR_ADD: {
         "operators": 5,
         "affected_lines": [],
         "cost_per_operator": 150,
-        "description": "Add additional operators"
+        "description": "Add additional operators",
     },
 }
 
@@ -148,9 +145,11 @@ SCENARIO_DEFAULTS: Dict[ScenarioType, Dict[str, Any]] = {
 # Data Classes for Results
 # =============================================================================
 
+
 @dataclass
 class ScenarioComparison:
     """Comparison result between scenarios."""
+
     scenario_id: int
     scenario_name: str
     scenario_type: Optional[str]
@@ -167,6 +166,7 @@ class ScenarioComparison:
 @dataclass
 class ScenarioResult:
     """Result of scenario analysis."""
+
     scenario_id: int
     scenario_name: str
     original_metrics: Dict[str, Any]
@@ -177,6 +177,7 @@ class ScenarioResult:
 @dataclass
 class DetailedScenarioResult:
     """Detailed result of scenario analysis with full breakdown."""
+
     scenario_id: int
     scenario_name: str
     scenario_type: str
@@ -253,18 +254,17 @@ class ScenarioService:
             defaults = SCENARIO_DEFAULTS.get(scenario_type, {})
             # Convert Decimals to floats for JSON serialization
             serializable_defaults = self._serialize_params(defaults)
-            result.append({
-                "type": scenario_type.value,
-                "name": scenario_type.name.replace("_", " ").title(),
-                "description": defaults.get("description", ""),
-                "default_parameters": serializable_defaults
-            })
+            result.append(
+                {
+                    "type": scenario_type.value,
+                    "name": scenario_type.name.replace("_", " ").title(),
+                    "description": defaults.get("description", ""),
+                    "default_parameters": serializable_defaults,
+                }
+            )
         return result
 
-    def get_scenario_type_defaults(
-        self,
-        scenario_type: Union[ScenarioType, str]
-    ) -> Dict[str, Any]:
+    def get_scenario_type_defaults(self, scenario_type: Union[ScenarioType, str]) -> Dict[str, Any]:
         """
         Get default parameters for a scenario type.
 
@@ -292,7 +292,7 @@ class ScenarioService:
         scenario_type: Union[ScenarioType, str],
         base_schedule_id: Optional[int] = None,
         parameters: Optional[Dict] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> CapacityScenario:
         """
         Create a new what-if scenario.
@@ -331,7 +331,7 @@ class ScenarioService:
             base_schedule_id=base_schedule_id,
             parameters_json=serializable_params,
             notes=notes,
-            is_active=True
+            is_active=True,
         )
         self.db.add(scenario)
         self.db.flush()
@@ -343,7 +343,7 @@ class ScenarioService:
             scenario_id=scenario.id,
             scenario_name=scenario_name,
             base_schedule_id=base_schedule_id,
-            scenario_type=type_str
+            scenario_type=type_str,
         )
         event_bus.collect(event)
 
@@ -356,7 +356,7 @@ class ScenarioService:
         scenario_type: ScenarioType,
         custom_name: Optional[str] = None,
         parameter_overrides: Optional[Dict] = None,
-        base_schedule_id: Optional[int] = None
+        base_schedule_id: Optional[int] = None,
     ) -> CapacityScenario:
         """
         Create a scenario from a pre-configured type with optional overrides.
@@ -379,15 +379,11 @@ class ScenarioService:
             scenario_name=name,
             scenario_type=scenario_type,
             base_schedule_id=base_schedule_id,
-            parameters=parameter_overrides
+            parameters=parameter_overrides,
         )
 
     def apply_scenario_parameters(
-        self,
-        client_id: str,
-        scenario_id: int,
-        period_start: date,
-        period_end: date
+        self, client_id: str, scenario_id: int, period_start: date, period_end: date
     ) -> ScenarioResult:
         """
         Apply scenario parameters and analyze impact.
@@ -401,20 +397,18 @@ class ScenarioService:
         Returns:
             ScenarioResult with original and modified metrics
         """
-        scenario = self.db.query(CapacityScenario).filter(
-            CapacityScenario.client_id == client_id,
-            CapacityScenario.id == scenario_id
-        ).first()
+        scenario = (
+            self.db.query(CapacityScenario)
+            .filter(CapacityScenario.client_id == client_id, CapacityScenario.id == scenario_id)
+            .first()
+        )
 
         if not scenario:
             raise ValueError(f"Scenario {scenario_id} not found")
 
         # Get original capacity analysis
         original_analysis = self.analysis_service.analyze_capacity(
-            client_id=client_id,
-            period_start=period_start,
-            period_end=period_end,
-            schedule_id=scenario.base_schedule_id
+            client_id=client_id, period_start=period_start, period_end=period_end, schedule_id=scenario.base_schedule_id
         )
 
         original_metrics = {
@@ -430,18 +424,15 @@ class ScenarioService:
                     "capacity_hours": float(l.capacity_hours),
                     "demand_hours": float(l.demand_hours),
                     "utilization_percent": float(l.utilization_percent),
-                    "is_bottleneck": l.is_bottleneck
+                    "is_bottleneck": l.is_bottleneck,
                 }
                 for l in original_analysis.lines
-            ]
+            ],
         }
 
         # Apply scenario modifications using the enhanced handler
         modified_metrics = self._apply_scenario_type(
-            scenario=scenario,
-            original_metrics=original_metrics,
-            period_start=period_start,
-            period_end=period_end
+            scenario=scenario, original_metrics=original_metrics, period_start=period_start, period_end=period_end
         )
 
         # Calculate impact
@@ -457,7 +448,7 @@ class ScenarioService:
             "utilization_after": modified_metrics["overall_utilization"],
             "bottlenecks_resolved": impact_summary["bottlenecks_resolved"],
             "affected_lines": modified_metrics.get("affected_lines", []),
-            "warnings": modified_metrics.get("warnings", [])
+            "warnings": modified_metrics.get("warnings", []),
         }
         self.db.commit()
 
@@ -466,15 +457,11 @@ class ScenarioService:
             scenario_name=scenario.scenario_name,
             original_metrics=original_metrics,
             modified_metrics=modified_metrics,
-            impact_summary=impact_summary
+            impact_summary=impact_summary,
         )
 
     def apply_scenario_detailed(
-        self,
-        client_id: str,
-        scenario_id: int,
-        period_start: date,
-        period_end: date
+        self, client_id: str, scenario_id: int, period_start: date, period_end: date
     ) -> DetailedScenarioResult:
         """
         Apply scenario and return detailed results.
@@ -488,22 +475,16 @@ class ScenarioService:
         Returns:
             DetailedScenarioResult with full breakdown
         """
-        result = self.apply_scenario_parameters(
-            client_id, scenario_id, period_start, period_end
-        )
+        result = self.apply_scenario_parameters(client_id, scenario_id, period_start, period_end)
 
-        scenario = self.db.query(CapacityScenario).filter(
-            CapacityScenario.id == scenario_id
-        ).first()
+        scenario = self.db.query(CapacityScenario).filter(CapacityScenario.id == scenario_id).first()
 
         # Extract bottleneck line codes
         original_bottlenecks = [
-            l["line_code"] for l in result.original_metrics.get("lines", [])
-            if l.get("is_bottleneck")
+            l["line_code"] for l in result.original_metrics.get("lines", []) if l.get("is_bottleneck")
         ]
         adjusted_bottlenecks = [
-            l["line_code"] for l in result.modified_metrics.get("lines", [])
-            if l.get("is_bottleneck")
+            l["line_code"] for l in result.modified_metrics.get("lines", []) if l.get("is_bottleneck")
         ]
 
         # Calculate ROI if cost impact is available
@@ -530,15 +511,11 @@ class ScenarioService:
             roi_estimate=roi,
             parameters_applied=scenario.parameters_json or {},
             affected_lines=result.modified_metrics.get("affected_lines", []),
-            warnings=result.modified_metrics.get("warnings", [])
+            warnings=result.modified_metrics.get("warnings", []),
         )
 
     def compare_scenarios(
-        self,
-        client_id: str,
-        scenario_ids: List[int],
-        period_start: date,
-        period_end: date
+        self, client_id: str, scenario_ids: List[int], period_start: date, period_end: date
     ) -> List[ScenarioComparison]:
         """
         Compare multiple scenarios.
@@ -556,36 +533,31 @@ class ScenarioService:
 
         # Get baseline analysis (no scenario)
         baseline = self.analysis_service.analyze_capacity(
-            client_id=client_id,
-            period_start=period_start,
-            period_end=period_end
+            client_id=client_id, period_start=period_start, period_end=period_end
         )
 
         for scenario_id in scenario_ids:
             result = self.apply_scenario_parameters(
-                client_id=client_id,
-                scenario_id=scenario_id,
-                period_start=period_start,
-                period_end=period_end
+                client_id=client_id, scenario_id=scenario_id, period_start=period_start, period_end=period_end
             )
 
-            scenario = self.db.query(CapacityScenario).filter(
-                CapacityScenario.id == scenario_id
-            ).first()
+            scenario = self.db.query(CapacityScenario).filter(CapacityScenario.id == scenario_id).first()
 
-            comparisons.append(ScenarioComparison(
-                scenario_id=scenario_id,
-                scenario_name=scenario.scenario_name,
-                scenario_type=scenario.scenario_type,
-                original_capacity_hours=Decimal(str(result.original_metrics["total_capacity_hours"])),
-                modified_capacity_hours=Decimal(str(result.modified_metrics["total_capacity_hours"])),
-                capacity_increase_percent=Decimal(str(result.impact_summary["capacity_increase_percent"])),
-                original_utilization=Decimal(str(result.original_metrics["overall_utilization"])),
-                modified_utilization=Decimal(str(result.modified_metrics["overall_utilization"])),
-                bottlenecks_resolved=result.impact_summary["bottlenecks_resolved"],
-                cost_impact=Decimal(str(result.impact_summary.get("cost_impact", 0))),
-                notes=scenario.notes
-            ))
+            comparisons.append(
+                ScenarioComparison(
+                    scenario_id=scenario_id,
+                    scenario_name=scenario.scenario_name,
+                    scenario_type=scenario.scenario_type,
+                    original_capacity_hours=Decimal(str(result.original_metrics["total_capacity_hours"])),
+                    modified_capacity_hours=Decimal(str(result.modified_metrics["total_capacity_hours"])),
+                    capacity_increase_percent=Decimal(str(result.impact_summary["capacity_increase_percent"])),
+                    original_utilization=Decimal(str(result.original_metrics["overall_utilization"])),
+                    modified_utilization=Decimal(str(result.modified_metrics["overall_utilization"])),
+                    bottlenecks_resolved=result.impact_summary["bottlenecks_resolved"],
+                    cost_impact=Decimal(str(result.impact_summary.get("cost_impact", 0))),
+                    notes=scenario.notes,
+                )
+            )
 
         # Emit comparison event
         event = CapacityScenarioCompared(
@@ -596,20 +568,16 @@ class ScenarioService:
                 "period_start": period_start.isoformat(),
                 "period_end": period_end.isoformat(),
                 "scenarios_compared": len(scenario_ids),
-                "best_capacity_increase": max(
-                    float(c.capacity_increase_percent) for c in comparisons
-                ) if comparisons else 0
-            }
+                "best_capacity_increase": (
+                    max(float(c.capacity_increase_percent) for c in comparisons) if comparisons else 0
+                ),
+            },
         )
         event_bus.collect(event)
 
         return comparisons
 
-    def get_scenario_results(
-        self,
-        client_id: str,
-        scenario_id: int
-    ) -> Optional[Dict]:
+    def get_scenario_results(self, client_id: str, scenario_id: int) -> Optional[Dict]:
         """
         Get analysis results for a scenario.
 
@@ -620,10 +588,11 @@ class ScenarioService:
         Returns:
             Results dict or None if not found/not analyzed
         """
-        scenario = self.db.query(CapacityScenario).filter(
-            CapacityScenario.client_id == client_id,
-            CapacityScenario.id == scenario_id
-        ).first()
+        scenario = (
+            self.db.query(CapacityScenario)
+            .filter(CapacityScenario.client_id == client_id, CapacityScenario.id == scenario_id)
+            .first()
+        )
 
         if not scenario:
             return None
@@ -635,7 +604,7 @@ class ScenarioService:
         client_id: str,
         scenario_type: Optional[str] = None,
         base_schedule_id: Optional[int] = None,
-        active_only: bool = True
+        active_only: bool = True,
     ) -> List[CapacityScenario]:
         """
         List scenarios with optional filters.
@@ -649,9 +618,7 @@ class ScenarioService:
         Returns:
             List of CapacityScenario
         """
-        query = self.db.query(CapacityScenario).filter(
-            CapacityScenario.client_id == client_id
-        )
+        query = self.db.query(CapacityScenario).filter(CapacityScenario.client_id == client_id)
 
         if scenario_type:
             query = query.filter(CapacityScenario.scenario_type == scenario_type)
@@ -663,11 +630,7 @@ class ScenarioService:
         return query.order_by(CapacityScenario.created_at.desc()).all()
 
     def _apply_scenario_type(
-        self,
-        scenario: CapacityScenario,
-        original_metrics: Dict,
-        period_start: date,
-        period_end: date
+        self, scenario: CapacityScenario, original_metrics: Dict, period_start: date, period_end: date
     ) -> Dict:
         """
         Apply scenario type modifications to metrics.
@@ -707,15 +670,13 @@ class ScenarioService:
 
                 if dept_match or line_match:
                     original_capacity = line["capacity_hours"]
-                    line["capacity_hours"] = float(
-                        Decimal(str(original_capacity)) * (1 + overtime_percent / 100)
-                    )
+                    line["capacity_hours"] = float(Decimal(str(original_capacity)) * (1 + overtime_percent / 100))
                     affected_lines_list.append(line["line_code"])
 
             modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
             modified["cost_estimate"] = float(
-                Decimal(str(modified["total_capacity_hours"] - original_metrics["total_capacity_hours"])) *
-                Decimal(str(params.get("cost_per_hour", 15)))
+                Decimal(str(modified["total_capacity_hours"] - original_metrics["total_capacity_hours"]))
+                * Decimal(str(params.get("cost_per_hour", 15)))
             )
 
         # =====================================================================
@@ -730,9 +691,7 @@ class ScenarioService:
             capacity_gain_factor = setup_portion * reduction_percent
 
             for line in modified_lines:
-                capacity_gain = float(
-                    Decimal(str(line["capacity_hours"])) * capacity_gain_factor
-                )
+                capacity_gain = float(Decimal(str(line["capacity_hours"])) * capacity_gain_factor)
                 line["capacity_hours"] += capacity_gain
                 affected_lines_list.append(line["line_code"])
 
@@ -762,9 +721,7 @@ class ScenarioService:
             # Update line-level demand for the affected department
             for line in modified_lines:
                 if line.get("department") == target_department:
-                    line["demand_hours"] = float(
-                        Decimal(str(line.get("demand_hours", 0))) * (1 - subcontract_percent)
-                    )
+                    line["demand_hours"] = float(Decimal(str(line.get("demand_hours", 0))) * (1 - subcontract_percent))
                     affected_lines_list.append(line["line_code"])
 
             # Calculate subcontracting cost
@@ -798,7 +755,7 @@ class ScenarioService:
                 "capacity_hours": additional_hours,
                 "demand_hours": 0,
                 "utilization_percent": 0,
-                "is_bottleneck": False
+                "is_bottleneck": False,
             }
             modified_lines.append(new_line)
             affected_lines_list.append(new_line_code)
@@ -826,9 +783,7 @@ class ScenarioService:
 
             for line in modified_lines:
                 if affected_lines_param == ["all"] or line["line_code"] in affected_lines_param:
-                    additional_capacity = float(
-                        Decimal(str(line["capacity_hours"])) * capacity_increase_factor
-                    )
+                    additional_capacity = float(Decimal(str(line["capacity_hours"])) * capacity_increase_factor)
                     line["capacity_hours"] += additional_capacity
                     affected_lines_list.append(line["line_code"])
 
@@ -848,9 +803,7 @@ class ScenarioService:
             # Material delay causes demand to pile up, increasing utilization
             # This is a negative scenario - utilization increases
             for line in modified_lines:
-                line["demand_hours"] = float(
-                    Decimal(str(line.get("demand_hours", 0))) * demand_pile_factor
-                )
+                line["demand_hours"] = float(Decimal(str(line.get("demand_hours", 0))) * demand_pile_factor)
                 affected_lines_list.append(line["line_code"])
 
             modified["total_demand_hours"] = sum(l.get("demand_hours", 0) for l in modified_lines)
@@ -878,9 +831,7 @@ class ScenarioService:
                     # Apply reduction proportionally to duration
                     period_impact = Decimal(str(duration_days)) / Decimal(str(days_in_period))
                     reduction_factor = 1 - (absenteeism_percent * period_impact)
-                    line["capacity_hours"] = float(
-                        Decimal(str(line["capacity_hours"])) * reduction_factor
-                    )
+                    line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * reduction_factor)
                     affected_lines_list.append(line["line_code"])
 
             modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
@@ -917,9 +868,7 @@ class ScenarioService:
             net_factor = overtime_factor * setup_factor * efficiency_factor * absenteeism_factor
 
             for line in modified_lines:
-                line["capacity_hours"] = float(
-                    Decimal(str(line["capacity_hours"])) * net_factor
-                )
+                line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * net_factor)
                 affected_lines_list.append(line["line_code"])
 
             modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
@@ -949,9 +898,7 @@ class ScenarioService:
             efficiency_multiplier = target_efficiency / current_efficiency
 
             for line in modified_lines:
-                line["capacity_hours"] = float(
-                    Decimal(str(line["capacity_hours"])) * efficiency_multiplier
-                )
+                line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * efficiency_multiplier)
                 affected_lines_list.append(line["line_code"])
 
             modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
@@ -964,9 +911,7 @@ class ScenarioService:
                 if not affected_lines_param or line["line_code"] in affected_lines_param:
                     # Assume ~10% capacity increase per additional operator (simplified)
                     increase_factor = 1 + (additional_operators * 0.02)
-                    line["capacity_hours"] = float(
-                        Decimal(str(line["capacity_hours"])) * Decimal(str(increase_factor))
-                    )
+                    line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * Decimal(str(increase_factor)))
                     affected_lines_list.append(line["line_code"])
 
             modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
@@ -1001,12 +946,7 @@ class ScenarioService:
 
         return modified
 
-    def _calculate_impact(
-        self,
-        original: Dict,
-        modified: Dict,
-        scenario: Optional[CapacityScenario] = None
-    ) -> Dict:
+    def _calculate_impact(self, original: Dict, modified: Dict, scenario: Optional[CapacityScenario] = None) -> Dict:
         """
         Calculate impact between original and modified metrics.
 
@@ -1049,8 +989,7 @@ class ScenarioService:
         efficiency_gain = 0
         if original["overall_utilization"] > 0:
             efficiency_gain = (
-                (original["overall_utilization"] - modified["overall_utilization"]) /
-                original["overall_utilization"]
+                (original["overall_utilization"] - modified["overall_utilization"]) / original["overall_utilization"]
             ) * 100
 
         return {
@@ -1063,7 +1002,7 @@ class ScenarioService:
             "efficiency_gain_percent": efficiency_gain,
             "cost_impact": cost_impact,
             "affected_lines_count": len(modified.get("affected_lines", [])),
-            "warnings_count": len(modified.get("warnings", []))
+            "warnings_count": len(modified.get("warnings", [])),
         }
 
     # =========================================================================
@@ -1081,10 +1020,7 @@ class ScenarioService:
             if isinstance(value, Decimal):
                 result[key] = float(value)
             elif isinstance(value, list):
-                result[key] = [
-                    float(v) if isinstance(v, Decimal) else v
-                    for v in value
-                ]
+                result[key] = [float(v) if isinstance(v, Decimal) else v for v in value]
             elif isinstance(value, dict):
                 result[key] = self._serialize_params(value)
             else:
@@ -1102,17 +1038,15 @@ class ScenarioService:
             Summary with capacity, demand, utilization, and bottlenecks
         """
         # Get latest analysis results
-        analyses = self.db.query(CapacityAnalysis).filter(
-            CapacityAnalysis.client_id == client_id
-        ).all()
+        analyses = self.db.query(CapacityAnalysis).filter(CapacityAnalysis.client_id == client_id).all()
 
         if not analyses:
             # Return defaults if no analysis exists
             return {
-                'total_capacity_hours': Decimal('1000'),
-                'total_demand_hours': Decimal('800'),
-                'avg_utilization': Decimal('80'),
-                'bottleneck_lines': []
+                "total_capacity_hours": Decimal("1000"),
+                "total_demand_hours": Decimal("800"),
+                "avg_utilization": Decimal("80"),
+                "bottleneck_lines": [],
             }
 
         total_capacity = sum(Decimal(str(a.capacity_hours or 0)) for a in analyses)
@@ -1121,14 +1055,14 @@ class ScenarioService:
         bottlenecks = [a.line_code for a in analyses if a.is_bottleneck]
 
         return {
-            'total_capacity_hours': total_capacity,
-            'total_demand_hours': total_demand,
-            'avg_utilization': avg_util,
-            'bottleneck_lines': bottlenecks
+            "total_capacity_hours": total_capacity,
+            "total_demand_hours": total_demand,
+            "avg_utilization": avg_util,
+            "bottleneck_lines": bottlenecks,
         }
 
     def _calc_change_percent(self, original: Decimal, adjusted: Decimal) -> Decimal:
         """Calculate percentage change between two values."""
         if original == 0:
-            return Decimal('0')
+            return Decimal("0")
         return ((adjusted - original) / original) * 100

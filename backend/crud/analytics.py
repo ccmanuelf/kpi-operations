@@ -2,6 +2,7 @@
 Analytics CRUD operations
 Database queries for retrieving analytics data with multi-tenant filtering
 """
+
 from typing import List, Optional, Dict, Tuple
 from decimal import Decimal
 from datetime import date, timedelta
@@ -12,12 +13,7 @@ from backend.schemas.user import User
 
 
 def get_kpi_time_series_data(
-    db: Session,
-    client_id: str,
-    kpi_type: str,
-    start_date: date,
-    end_date: date,
-    current_user: User
+    db: Session, client_id: str, kpi_type: str, start_date: date, end_date: date, current_user: User
 ) -> List[Tuple[date, Decimal]]:
     """
     Retrieve time series KPI data for trend analysis
@@ -45,11 +41,12 @@ def get_kpi_time_series_data(
 
     # Map KPI type to column
     kpi_column_map = {
-        'efficiency': ProductionEntry.efficiency_percentage,
-        'performance': ProductionEntry.performance_percentage,
+        "efficiency": ProductionEntry.efficiency_percentage,
+        "performance": ProductionEntry.performance_percentage,
         # Quality rate = (units_produced - defect_count) / units_produced
-        'quality': ((ProductionEntry.units_produced - ProductionEntry.defect_count) /
-                    ProductionEntry.units_produced * 100),
+        "quality": (
+            (ProductionEntry.units_produced - ProductionEntry.defect_count) / ProductionEntry.units_produced * 100
+        ),
     }
 
     if kpi_type not in kpi_column_map:
@@ -58,22 +55,19 @@ def get_kpi_time_series_data(
     kpi_column = kpi_column_map[kpi_type]
 
     # Query with client filtering via work order
-    query = select(
-        ProductionEntry.production_date,
-        func.avg(kpi_column).label('avg_value')
-    ).join(
-        WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id
-    ).where(
-        and_(
-            WorkOrder.client_id == client_id,
-            ProductionEntry.production_date >= start_date,
-            ProductionEntry.production_date <= end_date,
-            kpi_column.isnot(None)
+    query = (
+        select(ProductionEntry.production_date, func.avg(kpi_column).label("avg_value"))
+        .join(WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id)
+        .where(
+            and_(
+                WorkOrder.client_id == client_id,
+                ProductionEntry.production_date >= start_date,
+                ProductionEntry.production_date <= end_date,
+                kpi_column.isnot(None),
+            )
         )
-    ).group_by(
-        ProductionEntry.production_date
-    ).order_by(
-        ProductionEntry.production_date
+        .group_by(ProductionEntry.production_date)
+        .order_by(ProductionEntry.production_date)
     )
 
     results = db.execute(query).all()
@@ -82,12 +76,7 @@ def get_kpi_time_series_data(
 
 
 def get_shift_heatmap_data(
-    db: Session,
-    client_id: str,
-    kpi_type: str,
-    start_date: date,
-    end_date: date,
-    current_user: User
+    db: Session, client_id: str, kpi_type: str, start_date: date, end_date: date, current_user: User
 ) -> List[Tuple[date, str, str, Optional[Decimal]]]:
     """
     Retrieve KPI data grouped by date and shift for heatmap visualization
@@ -111,10 +100,11 @@ def get_shift_heatmap_data(
     verify_client_access(current_user, client_id)
 
     kpi_column_map = {
-        'efficiency': ProductionEntry.efficiency_percentage,
-        'performance': ProductionEntry.performance_percentage,
-        'quality': ((ProductionEntry.units_produced - ProductionEntry.defect_count) /
-                    ProductionEntry.units_produced * 100),
+        "efficiency": ProductionEntry.efficiency_percentage,
+        "performance": ProductionEntry.performance_percentage,
+        "quality": (
+            (ProductionEntry.units_produced - ProductionEntry.defect_count) / ProductionEntry.units_produced * 100
+        ),
     }
 
     if kpi_type not in kpi_column_map:
@@ -122,49 +112,33 @@ def get_shift_heatmap_data(
 
     kpi_column = kpi_column_map[kpi_type]
 
-    query = select(
-        ProductionEntry.production_date,
-        Shift.shift_id,
-        Shift.shift_name,
-        func.avg(kpi_column).label('avg_value')
-    ).join(
-        WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id
-    ).join(
-        Shift, ProductionEntry.shift_id == Shift.shift_id
-    ).where(
-        and_(
-            WorkOrder.client_id == client_id,
-            ProductionEntry.production_date >= start_date,
-            ProductionEntry.production_date <= end_date
+    query = (
+        select(
+            ProductionEntry.production_date, Shift.shift_id, Shift.shift_name, func.avg(kpi_column).label("avg_value")
         )
-    ).group_by(
-        ProductionEntry.production_date,
-        Shift.shift_id,
-        Shift.shift_name
-    ).order_by(
-        ProductionEntry.production_date,
-        Shift.shift_id
+        .join(WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id)
+        .join(Shift, ProductionEntry.shift_id == Shift.shift_id)
+        .where(
+            and_(
+                WorkOrder.client_id == client_id,
+                ProductionEntry.production_date >= start_date,
+                ProductionEntry.production_date <= end_date,
+            )
+        )
+        .group_by(ProductionEntry.production_date, Shift.shift_id, Shift.shift_name)
+        .order_by(ProductionEntry.production_date, Shift.shift_id)
     )
 
     results = db.execute(query).all()
 
     return [
-        (
-            row.production_date,
-            str(row.shift_id),
-            row.shift_name,
-            Decimal(str(row.avg_value)) if row.avg_value else None
-        )
+        (row.production_date, str(row.shift_id), row.shift_name, Decimal(str(row.avg_value)) if row.avg_value else None)
         for row in results
     ]
 
 
 def get_client_comparison_data(
-    db: Session,
-    kpi_type: str,
-    start_date: date,
-    end_date: date,
-    current_user: User
+    db: Session, kpi_type: str, start_date: date, end_date: date, current_user: User
 ) -> List[Tuple[str, str, Decimal, int]]:
     """
     Retrieve KPI comparison data across all accessible clients
@@ -187,10 +161,11 @@ def get_client_comparison_data(
     user_clients = get_user_client_filter(current_user)
 
     kpi_column_map = {
-        'efficiency': ProductionEntry.efficiency_percentage,
-        'performance': ProductionEntry.performance_percentage,
-        'quality': ((ProductionEntry.units_produced - ProductionEntry.defect_count) /
-                    ProductionEntry.units_produced * 100),
+        "efficiency": ProductionEntry.efficiency_percentage,
+        "performance": ProductionEntry.performance_percentage,
+        "quality": (
+            (ProductionEntry.units_produced - ProductionEntry.defect_count) / ProductionEntry.units_produced * 100
+        ),
     }
 
     if kpi_type not in kpi_column_map:
@@ -199,20 +174,21 @@ def get_client_comparison_data(
     kpi_column = kpi_column_map[kpi_type]
 
     # Build query
-    query = select(
-        Client.client_id,
-        Client.client_name,
-        func.avg(kpi_column).label('avg_value'),
-        func.count(ProductionEntry.production_entry_id).label('data_points')
-    ).join(
-        WorkOrder, Client.client_id == WorkOrder.client_id
-    ).join(
-        ProductionEntry, WorkOrder.work_order_id == ProductionEntry.work_order_id
-    ).where(
-        and_(
-            ProductionEntry.production_date >= start_date,
-            ProductionEntry.production_date <= end_date,
-            kpi_column.isnot(None)
+    query = (
+        select(
+            Client.client_id,
+            Client.client_name,
+            func.avg(kpi_column).label("avg_value"),
+            func.count(ProductionEntry.production_entry_id).label("data_points"),
+        )
+        .join(WorkOrder, Client.client_id == WorkOrder.client_id)
+        .join(ProductionEntry, WorkOrder.work_order_id == ProductionEntry.work_order_id)
+        .where(
+            and_(
+                ProductionEntry.production_date >= start_date,
+                ProductionEntry.production_date <= end_date,
+                kpi_column.isnot(None),
+            )
         )
     )
 
@@ -220,27 +196,15 @@ def get_client_comparison_data(
     if user_clients is not None:
         query = query.where(Client.client_id.in_(user_clients))
 
-    query = query.group_by(
-        Client.client_id,
-        Client.client_name
-    ).order_by(
-        func.avg(kpi_column).desc()
-    )
+    query = query.group_by(Client.client_id, Client.client_name).order_by(func.avg(kpi_column).desc())
 
     results = db.execute(query).all()
 
-    return [
-        (row.client_id, row.client_name, Decimal(str(row.avg_value)), row.data_points)
-        for row in results
-    ]
+    return [(row.client_id, row.client_name, Decimal(str(row.avg_value)), row.data_points) for row in results]
 
 
 def get_defect_pareto_data(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date,
-    current_user: User
+    db: Session, client_id: str, start_date: date, end_date: date, current_user: User
 ) -> List[Tuple[str, int]]:
     """
     Retrieve defect data grouped by type for Pareto analysis
@@ -261,21 +225,18 @@ def get_defect_pareto_data(
 
     verify_client_access(current_user, client_id)
 
-    query = select(
-        DefectDetail.defect_type,
-        func.sum(DefectDetail.defect_count).label('total_count')
-    ).join(
-        QualityEntry, DefectDetail.quality_entry_id == QualityEntry.quality_entry_id
-    ).where(
-        and_(
-            DefectDetail.client_id_fk == client_id,
-            QualityEntry.inspection_date >= start_date,
-            QualityEntry.inspection_date <= end_date
+    query = (
+        select(DefectDetail.defect_type, func.sum(DefectDetail.defect_count).label("total_count"))
+        .join(QualityEntry, DefectDetail.quality_entry_id == QualityEntry.quality_entry_id)
+        .where(
+            and_(
+                DefectDetail.client_id_fk == client_id,
+                QualityEntry.inspection_date >= start_date,
+                QualityEntry.inspection_date <= end_date,
+            )
         )
-    ).group_by(
-        DefectDetail.defect_type
-    ).order_by(
-        func.sum(DefectDetail.defect_count).desc()
+        .group_by(DefectDetail.defect_type)
+        .order_by(func.sum(DefectDetail.defect_count).desc())
     )
 
     results = db.execute(query).all()
@@ -292,10 +253,7 @@ def get_all_shifts(db: Session) -> List[Tuple[str, str]]:
     """
     from backend.models.job import Shift
 
-    query = select(
-        Shift.shift_id,
-        Shift.shift_name
-    ).order_by(Shift.shift_id)
+    query = select(Shift.shift_id, Shift.shift_name).order_by(Shift.shift_id)
 
     results = db.execute(query).all()
 
@@ -315,10 +273,7 @@ def get_client_info(db: Session, client_id: str) -> Optional[Tuple[str, str]]:
     """
     from backend.models.client import Client
 
-    query = select(
-        Client.client_id,
-        Client.client_name
-    ).where(Client.client_id == client_id)
+    query = select(Client.client_id, Client.client_name).where(Client.client_id == client_id)
 
     result = db.execute(query).first()
 
@@ -326,9 +281,7 @@ def get_client_info(db: Session, client_id: str) -> Optional[Tuple[str, str]]:
 
 
 def get_date_range_data_availability(
-    db: Session,
-    client_id: str,
-    current_user: User
+    db: Session, client_id: str, current_user: User
 ) -> Tuple[Optional[date], Optional[date], int]:
     """
     Get available date range and total records for a client
@@ -347,14 +300,14 @@ def get_date_range_data_availability(
 
     verify_client_access(current_user, client_id)
 
-    query = select(
-        func.min(ProductionEntry.production_date).label('min_date'),
-        func.max(ProductionEntry.production_date).label('max_date'),
-        func.count(ProductionEntry.production_entry_id).label('total_records')
-    ).join(
-        WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id
-    ).where(
-        WorkOrder.client_id == client_id
+    query = (
+        select(
+            func.min(ProductionEntry.production_date).label("min_date"),
+            func.max(ProductionEntry.production_date).label("max_date"),
+            func.count(ProductionEntry.production_entry_id).label("total_records"),
+        )
+        .join(WorkOrder, ProductionEntry.work_order_id == WorkOrder.work_order_id)
+        .where(WorkOrder.client_id == client_id)
     )
 
     result = db.execute(query).first()

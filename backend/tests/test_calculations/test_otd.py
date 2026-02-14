@@ -13,6 +13,7 @@ Covers:
 - Delivery variance analysis
 - Edge cases and business scenarios
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date, timedelta
@@ -20,10 +21,8 @@ from datetime import date, timedelta
 
 # ===== Helper Functions for Standalone Calculations =====
 
-def calculate_otd(
-    on_time_count: int,
-    total_count: int
-) -> float | None:
+
+def calculate_otd(on_time_count: int, total_count: int) -> float | None:
     """
     Calculate On-Time Delivery percentage.
 
@@ -47,10 +46,7 @@ def calculate_otd(
     return round(otd, 4)
 
 
-def calculate_lead_time(
-    start_date: date,
-    end_date: date
-) -> int | None:
+def calculate_lead_time(start_date: date, end_date: date) -> int | None:
     """
     Calculate lead time in days.
 
@@ -72,10 +68,7 @@ def calculate_lead_time(
     return lead_time
 
 
-def calculate_delivery_variance(
-    planned_date: date,
-    actual_date: date
-) -> int:
+def calculate_delivery_variance(planned_date: date, actual_date: date) -> int:
     """
     Calculate delivery variance in days.
 
@@ -92,11 +85,7 @@ def calculate_delivery_variance(
     return variance
 
 
-def is_on_time(
-    planned_date: date,
-    actual_date: date,
-    tolerance_days: int = 0
-) -> bool:
+def is_on_time(planned_date: date, actual_date: date, tolerance_days: int = 0) -> bool:
     """
     Check if delivery was on time (within tolerance).
 
@@ -112,9 +101,7 @@ def is_on_time(
     return variance <= tolerance_days
 
 
-def calculate_cycle_time_hours(
-    production_entries: list[dict]
-) -> float:
+def calculate_cycle_time_hours(production_entries: list[dict]) -> float:
     """
     Calculate total cycle time from production entries.
 
@@ -127,16 +114,11 @@ def calculate_cycle_time_hours(
     if not production_entries:
         return 0.0
 
-    total_hours = sum(
-        entry.get("run_time_hours", 0)
-        for entry in production_entries
-    )
+    total_hours = sum(entry.get("run_time_hours", 0) for entry in production_entries)
     return round(total_hours, 2)
 
 
-def categorize_delivery_status(
-    variance: int
-) -> str:
+def categorize_delivery_status(variance: int) -> str:
     """
     Categorize delivery based on variance.
 
@@ -160,9 +142,7 @@ def categorize_delivery_status(
         return "Very Late"
 
 
-def calculate_otd_by_category(
-    orders: list[dict]
-) -> dict:
+def calculate_otd_by_category(orders: list[dict]) -> dict:
     """
     Calculate OTD statistics by category.
 
@@ -173,23 +153,14 @@ def calculate_otd_by_category(
         Dictionary with OTD breakdown
     """
     if not orders:
-        return {
-            "total": 0,
-            "on_time": 0,
-            "early": 0,
-            "late": 0,
-            "otd_percentage": 0.0
-        }
+        return {"total": 0, "on_time": 0, "early": 0, "late": 0, "otd_percentage": 0.0}
 
     on_time = 0
     early = 0
     late = 0
 
     for order in orders:
-        variance = calculate_delivery_variance(
-            order["planned_date"],
-            order["actual_date"]
-        )
+        variance = calculate_delivery_variance(order["planned_date"], order["actual_date"])
         if variance < 0:
             early += 1
         elif variance == 0:
@@ -201,16 +172,11 @@ def calculate_otd_by_category(
     otd_count = on_time + early  # Early counts as on-time
     otd_pct = (otd_count / total) * 100 if total > 0 else 0.0
 
-    return {
-        "total": total,
-        "on_time": on_time,
-        "early": early,
-        "late": late,
-        "otd_percentage": round(otd_pct, 2)
-    }
+    return {"total": total, "on_time": on_time, "early": early, "late": late, "otd_percentage": round(otd_pct, 2)}
 
 
 # ===== Test Classes =====
+
 
 @pytest.mark.unit
 class TestOTDBasicCalculation:
@@ -220,10 +186,7 @@ class TestOTDBasicCalculation:
     def test_perfect_otd(self):
         """Test 100% OTD (all orders on time)"""
         # Given: All orders delivered on time
-        result = calculate_otd(
-            on_time_count=100,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=100, total_count=100)
 
         # Then: Should be 100%
         assert result == 100.0
@@ -232,10 +195,7 @@ class TestOTDBasicCalculation:
     def test_basic_otd_calculation(self):
         """Test basic OTD with some late orders"""
         # Given: 95 on-time out of 100 total
-        result = calculate_otd(
-            on_time_count=95,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=95, total_count=100)
 
         # Then: Should be 95%
         assert result == 95.0
@@ -244,10 +204,7 @@ class TestOTDBasicCalculation:
     def test_50_percent_otd(self):
         """Test 50% OTD"""
         # Given: Half orders late
-        result = calculate_otd(
-            on_time_count=50,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=50, total_count=100)
 
         # Then: Should be 50%
         assert result == 50.0
@@ -256,10 +213,7 @@ class TestOTDBasicCalculation:
     def test_zero_otd(self):
         """Test 0% OTD (all orders late)"""
         # Given: All orders late
-        result = calculate_otd(
-            on_time_count=0,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=0, total_count=100)
 
         # Then: Should be 0%
         assert result == 0.0
@@ -268,10 +222,7 @@ class TestOTDBasicCalculation:
     def test_single_order_on_time(self):
         """Test single order delivered on time"""
         # Given: One order, on time
-        result = calculate_otd(
-            on_time_count=1,
-            total_count=1
-        )
+        result = calculate_otd(on_time_count=1, total_count=1)
 
         # Then: Should be 100%
         assert result == 100.0
@@ -280,10 +231,7 @@ class TestOTDBasicCalculation:
     def test_single_order_late(self):
         """Test single order delivered late"""
         # Given: One order, late
-        result = calculate_otd(
-            on_time_count=0,
-            total_count=1
-        )
+        result = calculate_otd(on_time_count=0, total_count=1)
 
         # Then: Should be 0%
         assert result == 0.0
@@ -292,19 +240,13 @@ class TestOTDBasicCalculation:
     def test_precision_otd(self):
         """Test OTD with decimal precision"""
         # Given: 33 on-time out of 100
-        result = calculate_otd(
-            on_time_count=33,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=33, total_count=100)
 
         # Then: Should be 33%
         assert result == 33.0
 
         # Test with repeating decimal
-        result2 = calculate_otd(
-            on_time_count=1,
-            total_count=3
-        )
+        result2 = calculate_otd(on_time_count=1, total_count=3)
         # 1/3 * 100 = 33.3333%
         assert result2 == 33.3333
 
@@ -317,10 +259,7 @@ class TestOTDEdgeCases:
     def test_zero_total_orders(self):
         """Test OTD with no orders"""
         # Given: No orders
-        result = calculate_otd(
-            on_time_count=0,
-            total_count=0
-        )
+        result = calculate_otd(on_time_count=0, total_count=0)
 
         # Then: Should return None
         assert result is None
@@ -329,10 +268,7 @@ class TestOTDEdgeCases:
     def test_negative_total_orders(self):
         """Test OTD with negative total"""
         # Given: Invalid negative total
-        result = calculate_otd(
-            on_time_count=0,
-            total_count=-10
-        )
+        result = calculate_otd(on_time_count=0, total_count=-10)
 
         # Then: Should return None
         assert result is None
@@ -341,10 +277,7 @@ class TestOTDEdgeCases:
     def test_negative_on_time_count(self):
         """Test OTD with negative on-time count"""
         # Given: Invalid negative on-time
-        result = calculate_otd(
-            on_time_count=-5,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=-5, total_count=100)
 
         # Then: Should return None
         assert result is None
@@ -353,10 +286,7 @@ class TestOTDEdgeCases:
     def test_on_time_exceeds_total(self):
         """Test when on-time exceeds total (data error)"""
         # Given: More on-time than total
-        result = calculate_otd(
-            on_time_count=120,
-            total_count=100
-        )
+        result = calculate_otd(on_time_count=120, total_count=100)
 
         # Then: Should cap at 100%
         assert result == 100.0
@@ -370,10 +300,7 @@ class TestLeadTimeCalculation:
     def test_same_day_lead_time(self):
         """Test lead time when completed same day"""
         # Given: Start and end same day
-        result = calculate_lead_time(
-            start_date=date(2024, 1, 15),
-            end_date=date(2024, 1, 15)
-        )
+        result = calculate_lead_time(start_date=date(2024, 1, 15), end_date=date(2024, 1, 15))
 
         # Then: Should be 1 day (inclusive)
         assert result == 1
@@ -382,10 +309,7 @@ class TestLeadTimeCalculation:
     def test_one_week_lead_time(self):
         """Test one-week lead time"""
         # Given: Monday to Friday
-        result = calculate_lead_time(
-            start_date=date(2024, 1, 15),  # Monday
-            end_date=date(2024, 1, 19)     # Friday
-        )
+        result = calculate_lead_time(start_date=date(2024, 1, 15), end_date=date(2024, 1, 19))  # Monday  # Friday
 
         # Then: Should be 5 days
         assert result == 5
@@ -394,10 +318,7 @@ class TestLeadTimeCalculation:
     def test_one_month_lead_time(self):
         """Test one-month lead time"""
         # Given: Month start to end
-        result = calculate_lead_time(
-            start_date=date(2024, 1, 1),
-            end_date=date(2024, 1, 31)
-        )
+        result = calculate_lead_time(start_date=date(2024, 1, 1), end_date=date(2024, 1, 31))
 
         # Then: Should be 31 days
         assert result == 31
@@ -406,10 +327,7 @@ class TestLeadTimeCalculation:
     def test_invalid_lead_time_end_before_start(self):
         """Test invalid lead time (end before start)"""
         # Given: End date before start
-        result = calculate_lead_time(
-            start_date=date(2024, 1, 20),
-            end_date=date(2024, 1, 15)
-        )
+        result = calculate_lead_time(start_date=date(2024, 1, 20), end_date=date(2024, 1, 15))
 
         # Then: Should return None
         assert result is None
@@ -418,10 +336,7 @@ class TestLeadTimeCalculation:
     def test_lead_time_with_none_dates(self):
         """Test lead time with None dates"""
         # Given: None dates
-        result = calculate_lead_time(
-            start_date=None,
-            end_date=date(2024, 1, 15)
-        )
+        result = calculate_lead_time(start_date=None, end_date=date(2024, 1, 15))
 
         # Then: Should return None
         assert result is None
@@ -435,10 +350,7 @@ class TestDeliveryVariance:
     def test_on_time_delivery(self):
         """Test exactly on-time delivery"""
         # Given: Delivered exactly on planned date
-        result = calculate_delivery_variance(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 15)
-        )
+        result = calculate_delivery_variance(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 15))
 
         # Then: Variance should be 0
         assert result == 0
@@ -447,10 +359,7 @@ class TestDeliveryVariance:
     def test_early_delivery(self):
         """Test early delivery (negative variance)"""
         # Given: Delivered 2 days early
-        result = calculate_delivery_variance(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 13)
-        )
+        result = calculate_delivery_variance(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 13))
 
         # Then: Variance should be -2
         assert result == -2
@@ -459,10 +368,7 @@ class TestDeliveryVariance:
     def test_late_delivery(self):
         """Test late delivery (positive variance)"""
         # Given: Delivered 3 days late
-        result = calculate_delivery_variance(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 18)
-        )
+        result = calculate_delivery_variance(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 18))
 
         # Then: Variance should be +3
         assert result == 3
@@ -471,10 +377,7 @@ class TestDeliveryVariance:
     def test_very_late_delivery(self):
         """Test very late delivery"""
         # Given: Delivered 2 weeks late
-        result = calculate_delivery_variance(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 29)
-        )
+        result = calculate_delivery_variance(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 29))
 
         # Then: Variance should be +14
         assert result == 14
@@ -488,10 +391,7 @@ class TestOnTimeCheck:
     def test_exact_on_time(self):
         """Test delivery exactly on planned date"""
         # Given: Exact on-time delivery
-        result = is_on_time(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 15)
-        )
+        result = is_on_time(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 15))
 
         # Then: Should be True
         assert result is True
@@ -500,10 +400,7 @@ class TestOnTimeCheck:
     def test_early_is_on_time(self):
         """Test early delivery counts as on-time"""
         # Given: Delivered early
-        result = is_on_time(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 13)
-        )
+        result = is_on_time(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 13))
 
         # Then: Should be True
         assert result is True
@@ -512,10 +409,7 @@ class TestOnTimeCheck:
     def test_late_is_not_on_time(self):
         """Test late delivery is not on-time"""
         # Given: Delivered 1 day late
-        result = is_on_time(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 16)
-        )
+        result = is_on_time(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 16))
 
         # Then: Should be False
         assert result is False
@@ -524,11 +418,7 @@ class TestOnTimeCheck:
     def test_within_tolerance(self):
         """Test delivery within tolerance window"""
         # Given: 1 day late but 2-day tolerance
-        result = is_on_time(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 16),
-            tolerance_days=2
-        )
+        result = is_on_time(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 16), tolerance_days=2)
 
         # Then: Should be True (within tolerance)
         assert result is True
@@ -537,11 +427,7 @@ class TestOnTimeCheck:
     def test_outside_tolerance(self):
         """Test delivery outside tolerance window"""
         # Given: 3 days late with 2-day tolerance
-        result = is_on_time(
-            planned_date=date(2024, 1, 15),
-            actual_date=date(2024, 1, 18),
-            tolerance_days=2
-        )
+        result = is_on_time(planned_date=date(2024, 1, 15), actual_date=date(2024, 1, 18), tolerance_days=2)
 
         # Then: Should be False (outside tolerance)
         assert result is False
@@ -713,9 +599,11 @@ class TestOTDBusinessScenarios:
         """Test monthly OTD report calculation"""
         # Given: Monthly order data
         orders = [
-            {"planned_date": date(2024, 1, i), "actual_date": date(2024, 1, i)}
-            if i <= 28  # 28 on-time
-            else {"planned_date": date(2024, 1, i), "actual_date": date(2024, 2, 1)}  # Late delivery into Feb
+            (
+                {"planned_date": date(2024, 1, i), "actual_date": date(2024, 1, i)}
+                if i <= 28  # 28 on-time
+                else {"planned_date": date(2024, 1, i), "actual_date": date(2024, 2, 1)}
+            )  # Late delivery into Feb
             for i in range(1, 31)  # 30 orders total
         ]
 
@@ -780,8 +668,8 @@ class TestOTDBusinessScenarios:
             {"planned_date": date(2024, 1, 11), "actual_date": date(2024, 1, 11)},  # On time
         ]
         long_lead_orders = [
-            {"planned_date": date(2024, 1, 30), "actual_date": date(2024, 2, 2)},   # Late
-            {"planned_date": date(2024, 1, 31), "actual_date": date(2024, 2, 3)},   # Late
+            {"planned_date": date(2024, 1, 30), "actual_date": date(2024, 2, 2)},  # Late
+            {"planned_date": date(2024, 1, 31), "actual_date": date(2024, 2, 3)},  # Late
         ]
 
         short_otd = calculate_otd_by_category(short_lead_orders)
@@ -822,10 +710,7 @@ class TestOTDBusinessScenarios:
 
         # When: Categorize each
         categories = [
-            categorize_delivery_status(
-                calculate_delivery_variance(o["planned_date"], o["actual_date"])
-            )
-            for o in orders
+            categorize_delivery_status(calculate_delivery_variance(o["planned_date"], o["actual_date"])) for o in orders
         ]
 
         # Then: Verify distribution

@@ -4,6 +4,7 @@ SQLite Database Provider
 Provides SQLite-specific engine configuration with NullPool
 (no connection pooling) due to SQLite's threading limitations.
 """
+
 from typing import Dict, Any, List
 
 from sqlalchemy import create_engine, Engine, event, text
@@ -52,15 +53,9 @@ class SQLiteProvider(DatabaseProvider):
             Engine: Configured SQLAlchemy engine.
         """
         # Extract echo setting
-        echo = kwargs.pop('echo', False)
+        echo = kwargs.pop("echo", False)
 
-        engine = create_engine(
-            url,
-            echo=echo,
-            poolclass=NullPool,
-            connect_args={"check_same_thread": False},
-            **kwargs
-        )
+        engine = create_engine(url, echo=echo, poolclass=NullPool, connect_args={"check_same_thread": False}, **kwargs)
 
         # Enable foreign keys on connect
         @event.listens_for(engine, "connect")

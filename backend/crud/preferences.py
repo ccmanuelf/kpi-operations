@@ -2,6 +2,7 @@
 CRUD operations for User Preferences
 Dashboard customization and widget configuration management
 """
+
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -15,7 +16,7 @@ from backend.models.preferences import (
     DashboardPreferences,
     DashboardWidgetConfig,
     DashboardPreferencesUpdate,
-    WidgetDefaultResponse
+    WidgetDefaultResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,36 +28,33 @@ FALLBACK_DEFAULT_WIDGETS = [
         widget_name="Production Summary",
         widget_order=0,
         is_visible=True,
-        custom_config={"chart_type": "bar", "time_range": "7d"}
+        custom_config={"chart_type": "bar", "time_range": "7d"},
     ),
     DashboardWidgetConfig(
         widget_key="quality_metrics",
         widget_name="Quality Metrics",
         widget_order=1,
         is_visible=True,
-        custom_config={"show_trend": True}
+        custom_config={"show_trend": True},
     ),
     DashboardWidgetConfig(
         widget_key="attendance_overview",
         widget_name="Attendance Overview",
         widget_order=2,
         is_visible=True,
-        custom_config=None
+        custom_config=None,
     ),
     DashboardWidgetConfig(
         widget_key="downtime_analysis",
         widget_name="Downtime Analysis",
         widget_order=3,
         is_visible=True,
-        custom_config={"chart_type": "pie"}
-    )
+        custom_config={"chart_type": "pie"},
+    ),
 ]
 
 
-def get_user_dashboard_preferences(
-    db: Session,
-    user_id: str
-) -> tuple[Optional[int], DashboardPreferences]:
+def get_user_dashboard_preferences(db: Session, user_id: str) -> tuple[Optional[int], DashboardPreferences]:
     """
     Get dashboard preferences for a user
     Returns existing preferences or creates default based on fallback
@@ -69,14 +67,18 @@ def get_user_dashboard_preferences(
         Tuple of (preference_id or None, DashboardPreferences)
     """
     # Query existing preferences
-    preference = db.query(UserPreferences).filter(
-        and_(
-            UserPreferences.user_id == user_id,
-            UserPreferences.preference_type == "dashboard",
-            UserPreferences.preference_key == "main",
-            UserPreferences.is_active == True
+    preference = (
+        db.query(UserPreferences)
+        .filter(
+            and_(
+                UserPreferences.user_id == user_id,
+                UserPreferences.preference_type == "dashboard",
+                UserPreferences.preference_key == "main",
+                UserPreferences.is_active == True,
+            )
         )
-    ).first()
+        .first()
+    )
 
     if preference and preference.preference_value:
         try:
@@ -88,19 +90,14 @@ def get_user_dashboard_preferences(
 
     # Return default preferences if none exist
     default_prefs = DashboardPreferences(
-        layout="grid",
-        widgets=FALLBACK_DEFAULT_WIDGETS,
-        theme="light",
-        auto_refresh=0,
-        default_time_range="7d"
+        layout="grid", widgets=FALLBACK_DEFAULT_WIDGETS, theme="light", auto_refresh=0, default_time_range="7d"
     )
 
     return None, default_prefs
 
 
 def get_user_dashboard_preferences_full(
-    db: Session,
-    user_id: str
+    db: Session, user_id: str
 ) -> tuple[Optional[UserPreferences], DashboardPreferences]:
     """
     Get full preference record with dashboard preferences
@@ -112,14 +109,18 @@ def get_user_dashboard_preferences_full(
     Returns:
         Tuple of (UserPreferences record or None, DashboardPreferences)
     """
-    preference = db.query(UserPreferences).filter(
-        and_(
-            UserPreferences.user_id == user_id,
-            UserPreferences.preference_type == "dashboard",
-            UserPreferences.preference_key == "main",
-            UserPreferences.is_active == True
+    preference = (
+        db.query(UserPreferences)
+        .filter(
+            and_(
+                UserPreferences.user_id == user_id,
+                UserPreferences.preference_type == "dashboard",
+                UserPreferences.preference_key == "main",
+                UserPreferences.is_active == True,
+            )
         )
-    ).first()
+        .first()
+    )
 
     if preference and preference.preference_value:
         try:
@@ -130,21 +131,13 @@ def get_user_dashboard_preferences_full(
 
     # Return default preferences
     default_prefs = DashboardPreferences(
-        layout="grid",
-        widgets=FALLBACK_DEFAULT_WIDGETS,
-        theme="light",
-        auto_refresh=0,
-        default_time_range="7d"
+        layout="grid", widgets=FALLBACK_DEFAULT_WIDGETS, theme="light", auto_refresh=0, default_time_range="7d"
     )
 
     return preference, default_prefs
 
 
-def save_user_dashboard_preferences(
-    db: Session,
-    user_id: str,
-    preferences: DashboardPreferences
-) -> UserPreferences:
+def save_user_dashboard_preferences(db: Session, user_id: str, preferences: DashboardPreferences) -> UserPreferences:
     """
     Save or update dashboard preferences for a user
 
@@ -160,13 +153,17 @@ def save_user_dashboard_preferences(
     pref_json = preferences.model_dump_json()
 
     # Check for existing preference
-    existing = db.query(UserPreferences).filter(
-        and_(
-            UserPreferences.user_id == user_id,
-            UserPreferences.preference_type == "dashboard",
-            UserPreferences.preference_key == "main"
+    existing = (
+        db.query(UserPreferences)
+        .filter(
+            and_(
+                UserPreferences.user_id == user_id,
+                UserPreferences.preference_type == "dashboard",
+                UserPreferences.preference_key == "main",
+            )
         )
-    ).first()
+        .first()
+    )
 
     if existing:
         # Update existing preference
@@ -180,11 +177,7 @@ def save_user_dashboard_preferences(
 
     # Create new preference
     new_preference = UserPreferences(
-        user_id=user_id,
-        preference_type="dashboard",
-        preference_key="main",
-        preference_value=pref_json,
-        is_active=True
+        user_id=user_id, preference_type="dashboard", preference_key="main", preference_value=pref_json, is_active=True
     )
 
     db.add(new_preference)
@@ -196,9 +189,7 @@ def save_user_dashboard_preferences(
 
 
 def update_user_dashboard_preferences(
-    db: Session,
-    user_id: str,
-    updates: DashboardPreferencesUpdate
+    db: Session, user_id: str, updates: DashboardPreferencesUpdate
 ) -> UserPreferences:
     """
     Partially update dashboard preferences (PATCH semantics)
@@ -217,25 +208,22 @@ def update_user_dashboard_preferences(
     # Apply updates only for provided fields
     update_data = updates.model_dump(exclude_unset=True, exclude_none=True)
 
-    if 'layout' in update_data:
-        current_prefs.layout = update_data['layout']
-    if 'widgets' in update_data:
-        current_prefs.widgets = update_data['widgets']
-    if 'theme' in update_data:
-        current_prefs.theme = update_data['theme']
-    if 'auto_refresh' in update_data:
-        current_prefs.auto_refresh = update_data['auto_refresh']
-    if 'default_time_range' in update_data:
-        current_prefs.default_time_range = update_data['default_time_range']
+    if "layout" in update_data:
+        current_prefs.layout = update_data["layout"]
+    if "widgets" in update_data:
+        current_prefs.widgets = update_data["widgets"]
+    if "theme" in update_data:
+        current_prefs.theme = update_data["theme"]
+    if "auto_refresh" in update_data:
+        current_prefs.auto_refresh = update_data["auto_refresh"]
+    if "default_time_range" in update_data:
+        current_prefs.default_time_range = update_data["default_time_range"]
 
     # Save updated preferences
     return save_user_dashboard_preferences(db, user_id, current_prefs)
 
 
-def get_role_default_widgets(
-    db: Session,
-    role: str
-) -> List[WidgetDefaultResponse]:
+def get_role_default_widgets(db: Session, role: str) -> List[WidgetDefaultResponse]:
     """
     Get default widget configurations for a specific role
 
@@ -246,11 +234,12 @@ def get_role_default_widgets(
     Returns:
         List of WidgetDefaultResponse for the role
     """
-    defaults = db.query(DashboardWidgetDefaults).filter(
-        DashboardWidgetDefaults.role == role.lower()
-    ).order_by(
-        DashboardWidgetDefaults.widget_order
-    ).all()
+    defaults = (
+        db.query(DashboardWidgetDefaults)
+        .filter(DashboardWidgetDefaults.role == role.lower())
+        .order_by(DashboardWidgetDefaults.widget_order)
+        .all()
+    )
 
     result = []
     for default in defaults:
@@ -262,24 +251,22 @@ def get_role_default_widgets(
             except json.JSONDecodeError:
                 config_dict = None
 
-        result.append(WidgetDefaultResponse(
-            config_id=default.config_id,
-            role=default.role,
-            widget_key=default.widget_key,
-            widget_name=default.widget_name,
-            widget_order=default.widget_order,
-            is_visible=default.is_visible,
-            default_config=config_dict
-        ))
+        result.append(
+            WidgetDefaultResponse(
+                config_id=default.config_id,
+                role=default.role,
+                widget_key=default.widget_key,
+                widget_name=default.widget_name,
+                widget_order=default.widget_order,
+                is_visible=default.is_visible,
+                default_config=config_dict,
+            )
+        )
 
     return result
 
 
-def reset_to_role_defaults(
-    db: Session,
-    user_id: str,
-    role: str
-) -> tuple[DashboardPreferences, int]:
+def reset_to_role_defaults(db: Session, user_id: str, role: str) -> tuple[DashboardPreferences, int]:
     """
     Reset user dashboard preferences to role defaults
 
@@ -302,7 +289,7 @@ def reset_to_role_defaults(
                 widget_name=d.widget_name,
                 widget_order=d.widget_order,
                 is_visible=d.is_visible,
-                custom_config=d.default_config
+                custom_config=d.default_config,
             )
             for d in role_defaults
         ]
@@ -313,11 +300,7 @@ def reset_to_role_defaults(
 
     # Create new preferences with defaults
     new_preferences = DashboardPreferences(
-        layout="grid",
-        widgets=widgets,
-        theme="light",
-        auto_refresh=0,
-        default_time_range="7d"
+        layout="grid", widgets=widgets, theme="light", auto_refresh=0, default_time_range="7d"
     )
 
     # Save the reset preferences
@@ -326,11 +309,7 @@ def reset_to_role_defaults(
     return new_preferences, len(widgets)
 
 
-def delete_user_preferences(
-    db: Session,
-    user_id: str,
-    preference_type: Optional[str] = None
-) -> int:
+def delete_user_preferences(db: Session, user_id: str, preference_type: Optional[str] = None) -> int:
     """
     Soft delete user preferences (sets is_active = False)
 
@@ -343,10 +322,7 @@ def delete_user_preferences(
         Number of preferences deactivated
     """
     query = db.query(UserPreferences).filter(
-        and_(
-            UserPreferences.user_id == user_id,
-            UserPreferences.is_active == True
-        )
+        and_(UserPreferences.user_id == user_id, UserPreferences.is_active == True)
     )
 
     if preference_type:
@@ -376,10 +352,11 @@ def get_all_role_defaults(db: Session) -> dict:
     Returns:
         Dictionary mapping role names to their widget defaults
     """
-    all_defaults = db.query(DashboardWidgetDefaults).order_by(
-        DashboardWidgetDefaults.role,
-        DashboardWidgetDefaults.widget_order
-    ).all()
+    all_defaults = (
+        db.query(DashboardWidgetDefaults)
+        .order_by(DashboardWidgetDefaults.role, DashboardWidgetDefaults.widget_order)
+        .all()
+    )
 
     result = {}
     for default in all_defaults:
@@ -394,14 +371,16 @@ def get_all_role_defaults(db: Session) -> dict:
             except json.JSONDecodeError:
                 config_dict = None
 
-        result[role].append(WidgetDefaultResponse(
-            config_id=default.config_id,
-            role=default.role,
-            widget_key=default.widget_key,
-            widget_name=default.widget_name,
-            widget_order=default.widget_order,
-            is_visible=default.is_visible,
-            default_config=config_dict
-        ))
+        result[role].append(
+            WidgetDefaultResponse(
+                config_id=default.config_id,
+                role=default.role,
+                widget_key=default.widget_key,
+                widget_name=default.widget_name,
+                widget_order=default.widget_order,
+                is_visible=default.is_visible,
+                default_config=config_dict,
+            )
+        )
 
     return result

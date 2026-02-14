@@ -6,6 +6,7 @@ PPM = (Total Defects / Total Units Inspected) * 1,000,000
 
 Phase 1.2: Added pure calculation functions for service layer separation
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, cast, Date
 from datetime import date
@@ -20,10 +21,8 @@ from backend.schemas.quality_entry import QualityEntry
 # Phase 1.2: These functions can be unit tested without database
 # =============================================================================
 
-def calculate_ppm_pure(
-    total_inspected: int,
-    total_defects: int
-) -> Decimal:
+
+def calculate_ppm_pure(total_inspected: int, total_defects: int) -> Decimal:
     """
     Pure PPM calculation - no database access.
 
@@ -47,10 +46,7 @@ def calculate_ppm_pure(
     return ppm.quantize(Decimal("0.01"))
 
 
-def calculate_category_ppm_pure(
-    category_defects: int,
-    total_inspected: int
-) -> Decimal:
+def calculate_category_ppm_pure(category_defects: int, total_inspected: int) -> Decimal:
     """
     Pure PPM calculation for a specific category - no database access.
 
@@ -68,10 +64,7 @@ def calculate_category_ppm_pure(
     return ppm.quantize(Decimal("0.01"))
 
 
-def calculate_defect_percentage_pure(
-    defect_count: int,
-    total_defects: int
-) -> Decimal:
+def calculate_defect_percentage_pure(defect_count: int, total_defects: int) -> Decimal:
     """
     Pure defect percentage calculation for Pareto analysis.
 
@@ -90,11 +83,7 @@ def calculate_defect_percentage_pure(
 
 
 def calculate_ppm(
-    db: Session,
-    work_order_id: str,
-    start_date: date,
-    end_date: date,
-    client_id: Optional[str] = None
+    db: Session, work_order_id: str, start_date: date, end_date: date, client_id: Optional[str] = None
 ) -> tuple[Decimal, int, int]:
     """
     Calculate PPM (Parts Per Million) defect rate
@@ -111,13 +100,13 @@ def calculate_ppm(
 
     # Build query for quality entries
     query = db.query(
-        func.sum(QualityEntry.units_inspected).label('total_inspected'),
-        func.sum(QualityEntry.units_defective).label('total_defects')
+        func.sum(QualityEntry.units_inspected).label("total_inspected"),
+        func.sum(QualityEntry.units_defective).label("total_defects"),
     ).filter(
         and_(
             QualityEntry.work_order_id == work_order_id,
             cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date
+            cast(QualityEntry.shift_date, Date) <= end_date,
         )
     )
 
@@ -138,11 +127,7 @@ def calculate_ppm(
 
 
 def calculate_ppm_by_category(
-    db: Session,
-    work_order_id: str,
-    start_date: date,
-    end_date: date,
-    client_id: Optional[str] = None
+    db: Session, work_order_id: str, start_date: date, end_date: date, client_id: Optional[str] = None
 ) -> dict:
     """
     Calculate PPM broken down by inspection stage (replaces defect_category)
@@ -153,7 +138,7 @@ def calculate_ppm_by_category(
             QualityEntry.work_order_id == work_order_id,
             cast(QualityEntry.shift_date, Date) >= start_date,
             cast(QualityEntry.shift_date, Date) <= end_date,
-            QualityEntry.inspection_stage.isnot(None)
+            QualityEntry.inspection_stage.isnot(None),
         )
     )
 
@@ -180,10 +165,7 @@ def calculate_ppm_by_category(
             defects = categories[cat]["defects"]
             categories[cat]["ppm"] = (Decimal(str(defects)) / Decimal(str(total_inspected))) * Decimal("1000000")
 
-    return {
-        "total_inspected": total_inspected,
-        "categories": categories
-    }
+    return {"total_inspected": total_inspected, "categories": categories}
 
 
 def identify_top_defects(
@@ -192,16 +174,14 @@ def identify_top_defects(
     start_date: date = None,
     end_date: date = None,
     client_id: Optional[str] = None,
-    limit: int = 10
+    limit: int = 10,
 ) -> list[dict]:
     """
     Identify top defect types by process step (Pareto analysis)
     Note: QualityEntry uses process_step instead of defect_type
     """
 
-    query = db.query(QualityEntry).filter(
-        QualityEntry.process_step.isnot(None)
-    )
+    query = db.query(QualityEntry).filter(QualityEntry.process_step.isnot(None))
 
     if work_order_id:
         query = query.filter(QualityEntry.work_order_id == work_order_id)
@@ -211,10 +191,7 @@ def identify_top_defects(
 
     if start_date and end_date:
         query = query.filter(
-            and_(
-                cast(QualityEntry.shift_date, Date) >= start_date,
-                cast(QualityEntry.shift_date, Date) <= end_date
-            )
+            and_(cast(QualityEntry.shift_date, Date) >= start_date, cast(QualityEntry.shift_date, Date) <= end_date)
         )
 
     inspections = query.all()
@@ -226,11 +203,7 @@ def identify_top_defects(
     for insp in inspections:
         process_step = insp.process_step or "Unknown"
         if process_step not in defect_types:
-            defect_types[process_step] = {
-                "defect_type": process_step,
-                "count": 0,
-                "category": insp.inspection_stage
-            }
+            defect_types[process_step] = {"defect_type": process_step, "count": 0, "category": insp.inspection_stage}
 
         defect_types[process_step]["count"] += insp.units_defective
         total_defects += insp.units_defective
@@ -261,7 +234,7 @@ def calculate_cost_of_quality(
     end_date: date,
     client_id: Optional[str] = None,
     scrap_cost_per_unit: Optional[Decimal] = None,
-    rework_cost_per_unit: Optional[Decimal] = None
+    rework_cost_per_unit: Optional[Decimal] = None,
 ) -> dict:
     """
     Calculate Cost of Quality (COQ)
@@ -273,7 +246,7 @@ def calculate_cost_of_quality(
         and_(
             QualityEntry.work_order_id == work_order_id,
             cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date
+            cast(QualityEntry.shift_date, Date) <= end_date,
         )
     )
 
@@ -306,5 +279,5 @@ def calculate_cost_of_quality(
         "scrap_cost": scrap_cost,
         "rework_cost": rework_cost,
         "inspection_cost": inspection_cost,
-        "total_cost_of_quality": total_coq
+        "total_cost_of_quality": total_coq,
     }

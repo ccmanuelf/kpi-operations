@@ -10,6 +10,7 @@ Coverage targets:
 - Edge cases and boundary conditions
 - Helper function unit tests
 """
+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
@@ -18,11 +19,7 @@ from fastapi.testclient import TestClient
 from fastapi import HTTPException
 
 # Import helper functions for direct testing
-from backend.routes.analytics import (
-    parse_time_range,
-    get_performance_rating,
-    get_heatmap_color_code
-)
+from backend.routes.analytics import parse_time_range, get_performance_rating, get_heatmap_color_code
 from backend.schemas.user import User, UserRole
 from backend.middleware.client_auth import ClientAccessError
 
@@ -30,6 +27,7 @@ from backend.middleware.client_auth import ClientAccessError
 # =============================================================================
 # HELPER FUNCTION UNIT TESTS
 # =============================================================================
+
 
 class TestParseTimeRange:
     """Unit tests for parse_time_range helper function"""
@@ -154,15 +152,9 @@ class TestGetPerformanceRating:
 
     def test_high_precision_decimal_values(self):
         """Test with high precision decimal values"""
-        assert get_performance_rating(
-            Decimal("109.9999999"),
-            Decimal("100")
-        ) == "Good"
+        assert get_performance_rating(Decimal("109.9999999"), Decimal("100")) == "Good"
 
-        assert get_performance_rating(
-            Decimal("110.0000001"),
-            Decimal("100")
-        ) == "Excellent"
+        assert get_performance_rating(Decimal("110.0000001"), Decimal("100")) == "Excellent"
 
     def test_negative_value_returns_poor(self):
         """Test that negative values return Poor"""
@@ -272,18 +264,14 @@ class TestGetHeatmapColorCode:
 # TRENDS ENDPOINT TESTS (/api/analytics/trends)
 # =============================================================================
 
+
 class TestTrendsEndpointAuthentication:
     """Authentication tests for trends endpoint"""
 
     def test_trends_requires_authentication(self, test_client):
         """Test that trends endpoint requires authentication token"""
         response = test_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
         assert response.status_code == 401
 
@@ -291,12 +279,8 @@ class TestTrendsEndpointAuthentication:
         """Test that trends endpoint rejects invalid auth tokens"""
         response = test_client.get(
             "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            },
-            headers={"Authorization": "Bearer invalid_token"}
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"},
+            headers={"Authorization": "Bearer invalid_token"},
         )
         assert response.status_code == 401
 
@@ -306,11 +290,8 @@ class TestTrendsEndpointAuthentication:
         expired_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MDAwMDAwMDB9.signature"
         response = test_client.get(
             "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency"
-            },
-            headers={"Authorization": f"Bearer {expired_token}"}
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency"},
+            headers={"Authorization": f"Bearer {expired_token}"},
         )
         assert response.status_code == 401
 
@@ -321,11 +302,7 @@ class TestTrendsEndpointValidation:
     def test_trends_missing_client_id_returns_422(self, authenticated_client):
         """Test that missing client_id returns 422 validation error"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"kpi_type": "efficiency", "time_range": "30d"}
         )
         assert response.status_code == 422
         assert "client_id" in response.text.lower() or "field required" in response.text.lower()
@@ -333,23 +310,14 @@ class TestTrendsEndpointValidation:
     def test_trends_missing_kpi_type_returns_422(self, authenticated_client):
         """Test that missing kpi_type returns 422 validation error"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
         assert response.status_code == 422
 
     def test_trends_invalid_kpi_type_returns_422(self, authenticated_client):
         """Test that invalid kpi_type returns 422 validation error"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "invalid_kpi",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "invalid_kpi", "time_range": "30d"}
         )
         assert response.status_code == 422
 
@@ -357,11 +325,7 @@ class TestTrendsEndpointValidation:
         """Test that invalid time_range returns 422 validation error"""
         response = authenticated_client.get(
             "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "invalid"
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "invalid"},
         )
         assert response.status_code == 422
 
@@ -371,11 +335,7 @@ class TestTrendsEndpointValidation:
         for time_range in unsupported:
             response = authenticated_client.get(
                 "/api/analytics/trends",
-                params={
-                    "client_id": "TEST-CLIENT",
-                    "kpi_type": "efficiency",
-                    "time_range": time_range
-                }
+                params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": time_range},
             )
             assert response.status_code == 422
 
@@ -386,12 +346,7 @@ class TestTrendsEndpointTimeRanges:
     def test_trends_7d_time_range(self, authenticated_client):
         """Test trends with 7-day time range"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "7d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
         # Accept 200 (success), 403 (access denied), or 404 (no data)
         assert response.status_code in [200, 403, 404]
@@ -399,24 +354,14 @@ class TestTrendsEndpointTimeRanges:
     def test_trends_30d_time_range(self, authenticated_client):
         """Test trends with 30-day time range"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
         assert response.status_code in [200, 403, 404]
 
     def test_trends_90d_time_range(self, authenticated_client):
         """Test trends with 90-day time range"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "90d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "90d"}
         )
         assert response.status_code in [200, 403, 404]
 
@@ -431,8 +376,8 @@ class TestTrendsEndpointTimeRanges:
                 "client_id": "TEST-CLIENT",
                 "kpi_type": "efficiency",
                 "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
+                "end_date": end_date.isoformat(),
+            },
         )
         assert response.status_code in [200, 403, 404]
 
@@ -448,8 +393,8 @@ class TestTrendsEndpointTimeRanges:
                 "kpi_type": "efficiency",
                 "time_range": "90d",  # Should be ignored
                 "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
+                "end_date": end_date.isoformat(),
+            },
         )
         assert response.status_code in [200, 403, 404]
 
@@ -457,20 +402,28 @@ class TestTrendsEndpointTimeRanges:
 class TestTrendsEndpointKPITypes:
     """KPI type functionality tests for trends endpoint"""
 
-    @pytest.mark.parametrize("kpi_type", [
-        "efficiency", "performance", "availability", "oee",
-        "ppm", "dpmo", "fpy", "rty", "quality", "defect_rate",
-        "absenteeism", "otd", "attendance"
-    ])
+    @pytest.mark.parametrize(
+        "kpi_type",
+        [
+            "efficiency",
+            "performance",
+            "availability",
+            "oee",
+            "ppm",
+            "dpmo",
+            "fpy",
+            "rty",
+            "quality",
+            "defect_rate",
+            "absenteeism",
+            "otd",
+            "attendance",
+        ],
+    )
     def test_trends_all_valid_kpi_types(self, authenticated_client, kpi_type):
         """Test trends endpoint accepts all valid KPI types"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": kpi_type,
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "time_range": "30d"}
         )
         # 422 is acceptable for KPI types not yet implemented in CRUD
         assert response.status_code in [200, 403, 404, 422, 500]
@@ -483,11 +436,7 @@ class TestTrendsEndpointAccessControl:
         """Test that users cannot access unauthorized client data"""
         response = authenticated_client.get(
             "/api/analytics/trends",
-            params={
-                "client_id": "UNAUTHORIZED-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            params={"client_id": "UNAUTHORIZED-CLIENT", "kpi_type": "efficiency", "time_range": "30d"},
         )
         # Should return 403 (forbidden) or 404 (not found if client doesn't exist)
         assert response.status_code in [403, 404]
@@ -497,17 +446,14 @@ class TestTrendsEndpointAccessControl:
 # PREDICTIONS ENDPOINT TESTS (/api/analytics/predictions)
 # =============================================================================
 
+
 class TestPredictionsEndpointAuthentication:
     """Authentication tests for predictions endpoint"""
 
     def test_predictions_requires_authentication(self, test_client):
         """Test that predictions endpoint requires authentication"""
         response = test_client.get(
-            "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency"
-            }
+            "/api/analytics/predictions", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency"}
         )
         assert response.status_code == 401
 
@@ -517,32 +463,18 @@ class TestPredictionsEndpointValidation:
 
     def test_predictions_missing_client_id_returns_422(self, authenticated_client):
         """Test that missing client_id returns 422"""
-        response = authenticated_client.get(
-            "/api/analytics/predictions",
-            params={
-                "kpi_type": "efficiency"
-            }
-        )
+        response = authenticated_client.get("/api/analytics/predictions", params={"kpi_type": "efficiency"})
         assert response.status_code == 422
 
     def test_predictions_missing_kpi_type_returns_422(self, authenticated_client):
         """Test that missing kpi_type returns 422"""
-        response = authenticated_client.get(
-            "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT"
-            }
-        )
+        response = authenticated_client.get("/api/analytics/predictions", params={"client_id": "TEST-CLIENT"})
         assert response.status_code == 422
 
     def test_predictions_invalid_kpi_type_returns_422(self, authenticated_client):
         """Test that invalid kpi_type returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "invalid_type"
-            }
+            "/api/analytics/predictions", params={"client_id": "TEST-CLIENT", "kpi_type": "invalid_type"}
         )
         assert response.status_code == 422
 
@@ -550,11 +482,7 @@ class TestPredictionsEndpointValidation:
         """Test that historical_days < 7 returns 422"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "historical_days": 5
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "historical_days": 5},
         )
         assert response.status_code == 422
 
@@ -562,11 +490,7 @@ class TestPredictionsEndpointValidation:
         """Test that historical_days > 90 returns 422"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "historical_days": 100
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "historical_days": 100},
         )
         assert response.status_code == 422
 
@@ -574,11 +498,7 @@ class TestPredictionsEndpointValidation:
         """Test that forecast_days < 1 returns 422"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "forecast_days": 0
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "forecast_days": 0},
         )
         assert response.status_code == 422
 
@@ -586,11 +506,7 @@ class TestPredictionsEndpointValidation:
         """Test that forecast_days > 30 returns 422"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "forecast_days": 50
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "forecast_days": 50},
         )
         assert response.status_code == 422
 
@@ -598,11 +514,7 @@ class TestPredictionsEndpointValidation:
         """Test that invalid prediction method returns 422"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "method": "invalid_method"
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "method": "invalid_method"},
         )
         assert response.status_code == 422
 
@@ -615,11 +527,7 @@ class TestPredictionsEndpointMethods:
         """Test predictions endpoint accepts all valid methods"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "method": method
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "method": method},
         )
         # 400 is acceptable when there's insufficient data
         assert response.status_code in [200, 400, 403, 404]
@@ -627,11 +535,7 @@ class TestPredictionsEndpointMethods:
     def test_predictions_default_method_is_auto(self, authenticated_client):
         """Test that default prediction method is auto"""
         response = authenticated_client.get(
-            "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency"
-            }
+            "/api/analytics/predictions", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency"}
         )
         assert response.status_code in [200, 400, 403, 404]
 
@@ -644,11 +548,7 @@ class TestPredictionsEndpointForecastPeriods:
         """Test predictions with various valid forecast_days"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "forecast_days": forecast_days
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "forecast_days": forecast_days},
         )
         assert response.status_code in [200, 400, 403, 404]
 
@@ -657,11 +557,7 @@ class TestPredictionsEndpointForecastPeriods:
         """Test predictions with various valid historical_days"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "historical_days": historical_days
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "historical_days": historical_days},
         )
         assert response.status_code in [200, 400, 403, 404]
 
@@ -673,11 +569,7 @@ class TestPredictionsEndpointInsufficientData:
         """Test that insufficient historical data returns 400"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "EMPTY-CLIENT",
-                "kpi_type": "efficiency",
-                "historical_days": 7
-            }
+            params={"client_id": "EMPTY-CLIENT", "kpi_type": "efficiency", "historical_days": 7},
         )
         # 400 for insufficient data, 403 for access denied, 404 for not found
         assert response.status_code in [400, 403, 404]
@@ -687,18 +579,13 @@ class TestPredictionsEndpointInsufficientData:
 # COMPARISONS ENDPOINT TESTS (/api/analytics/comparisons)
 # =============================================================================
 
+
 class TestComparisonsEndpointAuthentication:
     """Authentication tests for comparisons endpoint"""
 
     def test_comparisons_requires_authentication(self, test_client):
         """Test that comparisons endpoint requires authentication"""
-        response = test_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
-        )
+        response = test_client.get("/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": "30d"})
         assert response.status_code == 401
 
 
@@ -707,33 +594,20 @@ class TestComparisonsEndpointValidation:
 
     def test_comparisons_missing_kpi_type_returns_422(self, authenticated_client):
         """Test that missing kpi_type returns 422"""
-        response = authenticated_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "time_range": "30d"
-            }
-        )
+        response = authenticated_client.get("/api/analytics/comparisons", params={"time_range": "30d"})
         assert response.status_code == 422
 
     def test_comparisons_invalid_kpi_type_returns_422(self, authenticated_client):
         """Test that invalid kpi_type returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "kpi_type": "invalid_type",
-                "time_range": "30d"
-            }
+            "/api/analytics/comparisons", params={"kpi_type": "invalid_type", "time_range": "30d"}
         )
         assert response.status_code == 422
 
     def test_comparisons_invalid_time_range_returns_422(self, authenticated_client):
         """Test that invalid time_range returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": "invalid"
-            }
+            "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": "invalid"}
         )
         assert response.status_code == 422
 
@@ -745,11 +619,7 @@ class TestComparisonsEndpointTimeRanges:
     def test_comparisons_valid_time_ranges(self, authenticated_client, time_range):
         """Test comparisons with all valid time ranges"""
         response = authenticated_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": time_range
-            }
+            "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": time_range}
         )
         assert response.status_code in [200, 403, 404]
 
@@ -760,11 +630,7 @@ class TestComparisonsEndpointTimeRanges:
 
         response = authenticated_client.get(
             "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
+            params={"kpi_type": "efficiency", "start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         )
         assert response.status_code in [200, 403, 404]
 
@@ -772,17 +638,11 @@ class TestComparisonsEndpointTimeRanges:
 class TestComparisonsEndpointKPITypes:
     """KPI type tests for comparisons endpoint"""
 
-    @pytest.mark.parametrize("kpi_type", [
-        "efficiency", "performance", "availability", "quality"
-    ])
+    @pytest.mark.parametrize("kpi_type", ["efficiency", "performance", "availability", "quality"])
     def test_comparisons_common_kpi_types(self, authenticated_client, kpi_type):
         """Test comparisons with common KPI types"""
         response = authenticated_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "kpi_type": kpi_type,
-                "time_range": "30d"
-            }
+            "/api/analytics/comparisons", params={"kpi_type": kpi_type, "time_range": "30d"}
         )
         assert response.status_code in [200, 403, 404, 422, 500]
 
@@ -794,12 +654,7 @@ class TestComparisonsEndpointNoData:
         """Test that no accessible data returns 404"""
         response = authenticated_client.get(
             "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": "7d",
-                "start_date": "1990-01-01",
-                "end_date": "1990-01-07"
-            }
+            params={"kpi_type": "efficiency", "time_range": "7d", "start_date": "1990-01-01", "end_date": "1990-01-07"},
         )
         assert response.status_code in [404, 403, 422]
 
@@ -808,18 +663,14 @@ class TestComparisonsEndpointNoData:
 # HEATMAP ENDPOINT TESTS (/api/analytics/heatmap)
 # =============================================================================
 
+
 class TestHeatmapEndpointAuthentication:
     """Authentication tests for heatmap endpoint"""
 
     def test_heatmap_requires_authentication(self, test_client):
         """Test that heatmap endpoint requires authentication"""
         response = test_client.get(
-            "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "7d"
-            }
+            "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
         assert response.status_code == 401
 
@@ -830,22 +681,14 @@ class TestHeatmapEndpointValidation:
     def test_heatmap_missing_client_id_returns_422(self, authenticated_client):
         """Test that missing client_id returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/heatmap",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": "7d"
-            }
+            "/api/analytics/heatmap", params={"kpi_type": "efficiency", "time_range": "7d"}
         )
         assert response.status_code == 422
 
     def test_heatmap_missing_kpi_type_returns_422(self, authenticated_client):
         """Test that missing kpi_type returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "7d"
-            }
+            "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "time_range": "7d"}
         )
         assert response.status_code == 422
 
@@ -853,11 +696,7 @@ class TestHeatmapEndpointValidation:
         """Test that invalid kpi_type returns 422"""
         response = authenticated_client.get(
             "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "invalid_type",
-                "time_range": "7d"
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "invalid_type", "time_range": "7d"},
         )
         assert response.status_code == 422
 
@@ -865,11 +704,7 @@ class TestHeatmapEndpointValidation:
         """Test that invalid time_range returns 422"""
         response = authenticated_client.get(
             "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "invalid"
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "invalid"},
         )
         assert response.status_code == 422
 
@@ -882,11 +717,7 @@ class TestHeatmapEndpointTimeRanges:
         """Test heatmap with all valid time ranges"""
         response = authenticated_client.get(
             "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": time_range
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": time_range},
         )
         assert response.status_code in [200, 403, 404]
 
@@ -901,8 +732,8 @@ class TestHeatmapEndpointTimeRanges:
                 "client_id": "TEST-CLIENT",
                 "kpi_type": "efficiency",
                 "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
+                "end_date": end_date.isoformat(),
+            },
         )
         assert response.status_code in [200, 403, 404]
 
@@ -914,12 +745,7 @@ class TestHeatmapEndpointKPITypes:
     def test_heatmap_common_kpi_types(self, authenticated_client, kpi_type):
         """Test heatmap with common KPI types"""
         response = authenticated_client.get(
-            "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": kpi_type,
-                "time_range": "7d"
-            }
+            "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "time_range": "7d"}
         )
         assert response.status_code in [200, 403, 404, 422, 500]
 
@@ -931,11 +757,7 @@ class TestHeatmapEndpointAccessControl:
         """Test that users cannot access unauthorized client data"""
         response = authenticated_client.get(
             "/api/analytics/heatmap",
-            params={
-                "client_id": "UNAUTHORIZED-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "7d"
-            }
+            params={"client_id": "UNAUTHORIZED-CLIENT", "kpi_type": "efficiency", "time_range": "7d"},
         )
         assert response.status_code in [403, 404]
 
@@ -944,18 +766,13 @@ class TestHeatmapEndpointAccessControl:
 # PARETO ENDPOINT TESTS (/api/analytics/pareto)
 # =============================================================================
 
+
 class TestParetoEndpointAuthentication:
     """Authentication tests for pareto endpoint"""
 
     def test_pareto_requires_authentication(self, test_client):
         """Test that pareto endpoint requires authentication"""
-        response = test_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d"
-            }
-        )
+        response = test_client.get("/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"})
         assert response.status_code == 401
 
 
@@ -964,46 +781,27 @@ class TestParetoEndpointValidation:
 
     def test_pareto_missing_client_id_returns_422(self, authenticated_client):
         """Test that missing client_id returns 422"""
-        response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "time_range": "30d"
-            }
-        )
+        response = authenticated_client.get("/api/analytics/pareto", params={"time_range": "30d"})
         assert response.status_code == 422
 
     def test_pareto_invalid_time_range_returns_422(self, authenticated_client):
         """Test that invalid time_range returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "invalid"
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "invalid"}
         )
         assert response.status_code == 422
 
     def test_pareto_threshold_below_minimum(self, authenticated_client):
         """Test that pareto_threshold < 50 returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d",
-                "pareto_threshold": 40
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d", "pareto_threshold": 40}
         )
         assert response.status_code == 422
 
     def test_pareto_threshold_above_maximum(self, authenticated_client):
         """Test that pareto_threshold > 95 returns 422"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d",
-                "pareto_threshold": 99
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d", "pareto_threshold": 99}
         )
         assert response.status_code == 422
 
@@ -1015,11 +813,7 @@ class TestParetoEndpointTimeRanges:
     def test_pareto_valid_time_ranges(self, authenticated_client, time_range):
         """Test pareto with all valid time ranges"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": time_range
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": time_range}
         )
         assert response.status_code in [200, 403, 404]
 
@@ -1030,11 +824,7 @@ class TestParetoEndpointTimeRanges:
 
         response = authenticated_client.get(
             "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
+            params={"client_id": "TEST-CLIENT", "start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         )
         assert response.status_code in [200, 403, 404]
 
@@ -1047,22 +837,14 @@ class TestParetoEndpointThreshold:
         """Test pareto with various valid threshold values"""
         response = authenticated_client.get(
             "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d",
-                "pareto_threshold": threshold
-            }
+            params={"client_id": "TEST-CLIENT", "time_range": "30d", "pareto_threshold": threshold},
         )
         assert response.status_code in [200, 403, 404]
 
     def test_pareto_default_threshold_is_80(self, authenticated_client):
         """Test that default pareto threshold is 80"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d"
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
         assert response.status_code in [200, 403, 404]
 
@@ -1073,11 +855,7 @@ class TestParetoEndpointAccessControl:
     def test_pareto_access_denied_for_unauthorized_client(self, authenticated_client):
         """Test that users cannot access unauthorized client data"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "UNAUTHORIZED-CLIENT",
-                "time_range": "30d"
-            }
+            "/api/analytics/pareto", params={"client_id": "UNAUTHORIZED-CLIENT", "time_range": "30d"}
         )
         assert response.status_code in [403, 404]
 
@@ -1088,11 +866,7 @@ class TestParetoEndpointNoData:
     def test_pareto_no_defect_data_returns_404(self, authenticated_client):
         """Test that no defect data returns 404"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "CLIENT-NO-DEFECTS",
-                "time_range": "7d"
-            }
+            "/api/analytics/pareto", params={"client_id": "CLIENT-NO-DEFECTS", "time_range": "7d"}
         )
         assert response.status_code in [404, 403]
 
@@ -1101,18 +875,14 @@ class TestParetoEndpointNoData:
 # EDGE CASE TESTS
 # =============================================================================
 
+
 class TestAnalyticsEdgeCases:
     """Edge case tests for analytics endpoints"""
 
     def test_trends_empty_client_id(self, authenticated_client):
         """Test trends with empty client_id"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "", "kpi_type": "efficiency", "time_range": "30d"}
         )
         # Empty string should be accepted by validation but fail access check
         assert response.status_code in [403, 404, 422]
@@ -1121,11 +891,7 @@ class TestAnalyticsEdgeCases:
         """Test predictions with zero forecast_days"""
         response = authenticated_client.get(
             "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "forecast_days": 0
-            }
+            params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "forecast_days": 0},
         )
         assert response.status_code == 422
 
@@ -1140,8 +906,8 @@ class TestAnalyticsEdgeCases:
                 "client_id": "TEST-CLIENT",
                 "kpi_type": "efficiency",
                 "start_date": future_start.isoformat(),
-                "end_date": future_end.isoformat()
-            }
+                "end_date": future_end.isoformat(),
+            },
         )
         # Should either return empty data or 404
         assert response.status_code in [200, 403, 404]
@@ -1150,11 +916,7 @@ class TestAnalyticsEdgeCases:
         """Test pareto with very old date range"""
         response = authenticated_client.get(
             "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "start_date": "2000-01-01",
-                "end_date": "2000-12-31"
-            }
+            params={"client_id": "TEST-CLIENT", "start_date": "2000-01-01", "end_date": "2000-12-31"},
         )
         assert response.status_code in [403, 404]
 
@@ -1162,11 +924,7 @@ class TestAnalyticsEdgeCases:
         """Test comparisons where start_date > end_date"""
         response = authenticated_client.get(
             "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "start_date": "2024-12-31",
-                "end_date": "2024-01-01"
-            }
+            params={"kpi_type": "efficiency", "start_date": "2024-12-31", "end_date": "2024-01-01"},
         )
         # Should handle gracefully - either swap dates or return error
         assert response.status_code in [200, 400, 403, 404, 422]
@@ -1174,12 +932,7 @@ class TestAnalyticsEdgeCases:
     def test_trends_special_characters_in_client_id(self, authenticated_client):
         """Test trends with special characters in client_id"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST<>CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST<>CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
         assert response.status_code in [403, 404, 422]
 
@@ -1193,8 +946,8 @@ class TestAnalyticsEdgeCases:
                 "client_id": "TEST-CLIENT",
                 "kpi_type": "efficiency",
                 "start_date": today.isoformat(),
-                "end_date": today.isoformat()
-            }
+                "end_date": today.isoformat(),
+            },
         )
         assert response.status_code in [200, 403, 404]
 
@@ -1203,18 +956,14 @@ class TestAnalyticsEdgeCases:
 # RESPONSE STRUCTURE VALIDATION TESTS
 # =============================================================================
 
+
 class TestAnalyticsResponseStructure:
     """Response structure validation tests"""
 
     def test_trends_response_structure(self, authenticated_client):
         """Test that trends response has expected structure when successful"""
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
 
         if response.status_code == 200:
@@ -1238,11 +987,7 @@ class TestAnalyticsResponseStructure:
     def test_predictions_response_structure(self, authenticated_client):
         """Test that predictions response has expected structure when successful"""
         response = authenticated_client.get(
-            "/api/analytics/predictions",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency"
-            }
+            "/api/analytics/predictions", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency"}
         )
 
         if response.status_code == 200:
@@ -1264,11 +1009,7 @@ class TestAnalyticsResponseStructure:
     def test_comparisons_response_structure(self, authenticated_client):
         """Test that comparisons response has expected structure when successful"""
         response = authenticated_client.get(
-            "/api/analytics/comparisons",
-            params={
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": "30d"}
         )
 
         if response.status_code == 200:
@@ -1288,12 +1029,7 @@ class TestAnalyticsResponseStructure:
     def test_heatmap_response_structure(self, authenticated_client):
         """Test that heatmap response has expected structure when successful"""
         response = authenticated_client.get(
-            "/api/analytics/heatmap",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "7d"
-            }
+            "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
 
         if response.status_code == 200:
@@ -1312,11 +1048,7 @@ class TestAnalyticsResponseStructure:
     def test_pareto_response_structure(self, authenticated_client):
         """Test that pareto response has expected structure when successful"""
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d"
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
 
         if response.status_code == 200:
@@ -1337,49 +1069,33 @@ class TestAnalyticsResponseStructure:
 # INTEGRATION TESTS WITH MOCKED DATA
 # =============================================================================
 
+
 class TestAnalyticsWithMockedCRUD:
     """Integration tests with mocked CRUD operations"""
 
-    @patch('backend.routes.analytics.get_kpi_time_series_data')
+    @patch("backend.routes.analytics.get_kpi_time_series_data")
     def test_trends_with_mock_data(self, mock_get_data, authenticated_client):
         """Test trends endpoint with mocked data"""
         # Setup mock return value
-        mock_data = [
-            (date(2024, 1, i), Decimal(str(80 + i))) for i in range(1, 31)
-        ]
+        mock_data = [(date(2024, 1, i), Decimal(str(80 + i))) for i in range(1, 31)]
         mock_get_data.return_value = mock_data
 
         response = authenticated_client.get(
-            "/api/analytics/trends",
-            params={
-                "client_id": "TEST-CLIENT",
-                "kpi_type": "efficiency",
-                "time_range": "30d"
-            }
+            "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
 
         # Response depends on whether mock is properly applied
         assert response.status_code in [200, 403, 404]
 
-    @patch('backend.routes.analytics.get_defect_pareto_data')
+    @patch("backend.routes.analytics.get_defect_pareto_data")
     def test_pareto_with_mock_data(self, mock_get_data, authenticated_client):
         """Test pareto endpoint with mocked defect data"""
         # Setup mock return value - typical Pareto distribution
-        mock_data = [
-            ("Stitching", 150),
-            ("Material", 100),
-            ("Assembly", 50),
-            ("Finish", 30),
-            ("Other", 20)
-        ]
+        mock_data = [("Stitching", 150), ("Material", 100), ("Assembly", 50), ("Finish", 30), ("Other", 20)]
         mock_get_data.return_value = mock_data
 
         response = authenticated_client.get(
-            "/api/analytics/pareto",
-            params={
-                "client_id": "TEST-CLIENT",
-                "time_range": "30d"
-            }
+            "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
 
         assert response.status_code in [200, 403, 404]
@@ -1388,6 +1104,7 @@ class TestAnalyticsWithMockedCRUD:
 # =============================================================================
 # CONCURRENT REQUEST TESTS
 # =============================================================================
+
 
 class TestAnalyticsConcurrency:
     """Concurrency tests for analytics endpoints"""
@@ -1399,11 +1116,7 @@ class TestAnalyticsConcurrency:
         def make_request():
             return authenticated_client.get(
                 "/api/analytics/trends",
-                params={
-                    "client_id": "TEST-CLIENT",
-                    "kpi_type": "efficiency",
-                    "time_range": "30d"
-                }
+                params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"},
             )
 
         try:
@@ -1424,6 +1137,7 @@ class TestAnalyticsConcurrency:
 # =============================================================================
 # HELPER FUNCTION EDGE CASES
 # =============================================================================
+
 
 class TestHelperFunctionEdgeCases:
     """Edge case tests for helper functions"""

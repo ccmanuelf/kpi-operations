@@ -14,6 +14,7 @@ Tests cover:
 - _format_uptime helper function
 - Error scenarios and edge cases
 """
+
 import pytest
 from datetime import datetime
 from unittest.mock import patch, MagicMock, PropertyMock
@@ -24,7 +25,7 @@ from sqlalchemy.pool import StaticPool
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 
 class TestBasicHealthEndpoint:
@@ -98,7 +99,7 @@ class TestDatabaseHealthEndpoint:
 
     def test_database_health_connection_failure(self, test_client):
         """Test database health returns 503 on connection failure"""
-        with patch('backend.routes.health.get_db') as mock_get_db:
+        with patch("backend.routes.health.get_db") as mock_get_db:
             mock_session = MagicMock()
             mock_session.execute.side_effect = Exception("Connection refused")
             mock_get_db.return_value = iter([mock_session])
@@ -249,10 +250,13 @@ class TestDetailedHealthWithMockedPsutil:
     def test_high_memory_warning(self, test_client):
         """Test detailed health shows warning on high memory usage"""
         import psutil
-        with patch.object(psutil, 'virtual_memory') as mock_vm, \
-             patch.object(psutil, 'disk_usage') as mock_disk, \
-             patch.object(psutil, 'cpu_percent', return_value=30.0), \
-             patch.object(psutil, 'cpu_count', return_value=8):
+
+        with (
+            patch.object(psutil, "virtual_memory") as mock_vm,
+            patch.object(psutil, "disk_usage") as mock_disk,
+            patch.object(psutil, "cpu_percent", return_value=30.0),
+            patch.object(psutil, "cpu_count", return_value=8),
+        ):
             mock_memory = MagicMock()
             mock_memory.percent = 92.0
             mock_memory.available = 1024 * 1024 * 500  # 500MB
@@ -272,10 +276,13 @@ class TestDetailedHealthWithMockedPsutil:
     def test_critical_memory_unhealthy(self, test_client):
         """Test detailed health shows unhealthy on critical memory"""
         import psutil
-        with patch.object(psutil, 'virtual_memory') as mock_vm, \
-             patch.object(psutil, 'disk_usage') as mock_disk, \
-             patch.object(psutil, 'cpu_percent', return_value=30.0), \
-             patch.object(psutil, 'cpu_count', return_value=8):
+
+        with (
+            patch.object(psutil, "virtual_memory") as mock_vm,
+            patch.object(psutil, "disk_usage") as mock_disk,
+            patch.object(psutil, "cpu_percent", return_value=30.0),
+            patch.object(psutil, "cpu_count", return_value=8),
+        ):
             mock_memory = MagicMock()
             mock_memory.percent = 96.0  # Critical
             mock_memory.available = 1024 * 1024 * 200
@@ -294,10 +301,13 @@ class TestDetailedHealthWithMockedPsutil:
     def test_high_disk_warning(self, test_client):
         """Test detailed health shows warning on high disk usage"""
         import psutil
-        with patch.object(psutil, 'virtual_memory') as mock_vm, \
-             patch.object(psutil, 'disk_usage') as mock_disk, \
-             patch.object(psutil, 'cpu_percent', return_value=30.0), \
-             patch.object(psutil, 'cpu_count', return_value=8):
+
+        with (
+            patch.object(psutil, "virtual_memory") as mock_vm,
+            patch.object(psutil, "disk_usage") as mock_disk,
+            patch.object(psutil, "cpu_percent", return_value=30.0),
+            patch.object(psutil, "cpu_count", return_value=8),
+        ):
             mock_memory = MagicMock()
             mock_memory.percent = 50.0
             mock_memory.available = 1024 * 1024 * 4000
@@ -316,10 +326,13 @@ class TestDetailedHealthWithMockedPsutil:
     def test_critical_disk_unhealthy(self, test_client):
         """Test detailed health shows unhealthy on critical disk"""
         import psutil
-        with patch.object(psutil, 'virtual_memory') as mock_vm, \
-             patch.object(psutil, 'disk_usage') as mock_disk, \
-             patch.object(psutil, 'cpu_percent', return_value=30.0), \
-             patch.object(psutil, 'cpu_count', return_value=8):
+
+        with (
+            patch.object(psutil, "virtual_memory") as mock_vm,
+            patch.object(psutil, "disk_usage") as mock_disk,
+            patch.object(psutil, "cpu_percent", return_value=30.0),
+            patch.object(psutil, "cpu_count", return_value=8),
+        ):
             mock_memory = MagicMock()
             mock_memory.percent = 50.0
             mock_memory.available = 1024 * 1024 * 4000
@@ -338,10 +351,13 @@ class TestDetailedHealthWithMockedPsutil:
     def test_high_cpu_warning(self, test_client):
         """Test detailed health handles high CPU usage"""
         import psutil
-        with patch.object(psutil, 'virtual_memory') as mock_vm, \
-             patch.object(psutil, 'disk_usage') as mock_disk, \
-             patch.object(psutil, 'cpu_percent', return_value=85.0), \
-             patch.object(psutil, 'cpu_count', return_value=8):
+
+        with (
+            patch.object(psutil, "virtual_memory") as mock_vm,
+            patch.object(psutil, "disk_usage") as mock_disk,
+            patch.object(psutil, "cpu_percent", return_value=85.0),
+            patch.object(psutil, "cpu_count", return_value=8),
+        ):
             mock_memory = MagicMock()
             mock_memory.percent = 50.0
             mock_memory.available = 1024 * 1024 * 4000
@@ -360,10 +376,13 @@ class TestDetailedHealthWithMockedPsutil:
     def test_critical_cpu_degraded(self, test_client):
         """Test detailed health shows degraded on critical CPU"""
         import psutil
-        with patch.object(psutil, 'virtual_memory') as mock_vm, \
-             patch.object(psutil, 'disk_usage') as mock_disk, \
-             patch.object(psutil, 'cpu_percent', return_value=98.0), \
-             patch.object(psutil, 'cpu_count', return_value=8):
+
+        with (
+            patch.object(psutil, "virtual_memory") as mock_vm,
+            patch.object(psutil, "disk_usage") as mock_disk,
+            patch.object(psutil, "cpu_percent", return_value=98.0),
+            patch.object(psutil, "cpu_count", return_value=8),
+        ):
             mock_memory = MagicMock()
             mock_memory.percent = 50.0
             mock_memory.available = 1024 * 1024 * 4000
@@ -625,8 +644,14 @@ class TestHealthResponseConsistency:
 
     def test_all_endpoints_json(self, test_client):
         """Test all health endpoints return JSON"""
-        endpoints = ["/health/", "/health/database", "/health/pool",
-                    "/health/detailed", "/health/ready", "/health/live"]
+        endpoints = [
+            "/health/",
+            "/health/database",
+            "/health/pool",
+            "/health/detailed",
+            "/health/ready",
+            "/health/live",
+        ]
 
         for endpoint in endpoints:
             response = test_client.get(endpoint)
@@ -634,8 +659,14 @@ class TestHealthResponseConsistency:
 
     def test_all_endpoints_have_status(self, test_client):
         """Test all health endpoints include status field"""
-        endpoints = ["/health/", "/health/database", "/health/pool",
-                    "/health/detailed", "/health/ready", "/health/live"]
+        endpoints = [
+            "/health/",
+            "/health/database",
+            "/health/pool",
+            "/health/detailed",
+            "/health/ready",
+            "/health/live",
+        ]
 
         for endpoint in endpoints:
             response = test_client.get(endpoint)
@@ -644,8 +675,14 @@ class TestHealthResponseConsistency:
 
     def test_all_endpoints_have_timestamp(self, test_client):
         """Test all health endpoints include timestamp"""
-        endpoints = ["/health/", "/health/database", "/health/pool",
-                    "/health/detailed", "/health/ready", "/health/live"]
+        endpoints = [
+            "/health/",
+            "/health/database",
+            "/health/pool",
+            "/health/detailed",
+            "/health/ready",
+            "/health/live",
+        ]
 
         for endpoint in endpoints:
             response = test_client.get(endpoint)

@@ -2,6 +2,7 @@
 KPI Routes Tests with Real Database Integration
 Target: Increase routes/kpi.py coverage to 75%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -61,27 +62,14 @@ def kpi_setup(kpi_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="KPI-TEST-CLIENT",
-        client_name="KPI Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="KPI-TEST-CLIENT", client_name="KPI Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users
-    admin = TestDataFactory.create_user(
-        db,
-        user_id="kpi-admin-001",
-        username="kpi_admin",
-        role="admin",
-        client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="kpi-admin-001", username="kpi_admin", role="admin", client_id=None)
 
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="kpi-super-001",
-        username="kpi_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="kpi-super-001", username="kpi_supervisor", role="supervisor", client_id=client.client_id
     )
 
     # Create product
@@ -90,22 +78,19 @@ def kpi_setup(kpi_db):
         client_id=client.client_id,
         product_code="KPI-PROD-001",
         product_name="KPI Test Product",
-        ideal_cycle_time=Decimal("0.10")
+        ideal_cycle_time=Decimal("0.10"),
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="KPI Test Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="KPI Test Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.flush()
 
     # Create production entries for trend data
     from backend.schemas.production_entry import ProductionEntry
+
     for i in range(10):
         entry_date = datetime.combine(date.today() - timedelta(days=i), datetime.min.time())
         entry = ProductionEntry(
@@ -138,7 +123,7 @@ def kpi_setup(kpi_db):
         status=WorkOrderStatus.COMPLETED,
         required_date=datetime.now() + timedelta(days=5),
         actual_delivery_date=datetime.now() - timedelta(days=1),
-        planned_quantity=100
+        planned_quantity=100,
     )
     db.add(on_time_wo)
 
@@ -150,7 +135,7 @@ def kpi_setup(kpi_db):
         status=WorkOrderStatus.COMPLETED,
         required_date=datetime.now() - timedelta(days=5),
         actual_delivery_date=datetime.now() - timedelta(days=2),
-        planned_quantity=100
+        planned_quantity=100,
     )
     db.add(late_wo)
 
@@ -162,7 +147,7 @@ def kpi_setup(kpi_db):
         status=WorkOrderStatus.IN_PROGRESS,
         required_date=datetime.now() + timedelta(days=10),
         actual_delivery_date=None,
-        planned_quantity=100
+        planned_quantity=100,
     )
     db.add(pending_wo)
 
@@ -186,6 +171,7 @@ def admin_client(kpi_setup):
     app = create_test_app(db)
 
     from backend.auth.jwt import get_current_user
+
     app.dependency_overrides[get_current_user] = lambda: user
 
     return TestClient(app), kpi_setup
@@ -199,6 +185,7 @@ def supervisor_client(kpi_setup):
     app = create_test_app(db)
 
     from backend.auth.jwt import get_current_user
+
     app.dependency_overrides[get_current_user] = lambda: user
 
     return TestClient(app), kpi_setup
@@ -240,13 +227,9 @@ class TestKPIThresholds:
             json={
                 "client_id": client_id,
                 "thresholds": {
-                    "efficiency": {
-                        "target_value": 90.0,
-                        "warning_threshold": 80.0,
-                        "critical_threshold": 70.0
-                    }
-                }
-            }
+                    "efficiency": {"target_value": 90.0, "warning_threshold": 80.0, "critical_threshold": 70.0}
+                },
+            },
         )
 
         assert response.status_code == 200
@@ -260,13 +243,7 @@ class TestKPIThresholds:
         client, setup = supervisor_client
 
         response = client.put(
-            "/api/kpi-thresholds",
-            json={
-                "client_id": None,
-                "thresholds": {
-                    "efficiency": {"target_value": 99.0}
-                }
-            }
+            "/api/kpi-thresholds", json={"client_id": None, "thresholds": {"efficiency": {"target_value": 99.0}}}
         )
 
         assert response.status_code == 403
@@ -290,9 +267,7 @@ class TestKPIDashboard:
         start = date.today() - timedelta(days=30)
         end = date.today()
 
-        response = client.get(
-            f"/api/kpi/dashboard?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/kpi/dashboard?start_date={start}&end_date={end}")
 
         assert response.status_code in [200, 403, 404]
 
@@ -329,9 +304,7 @@ class TestEfficiencyRoutes:
         start = date.today() - timedelta(days=30)
         end = date.today()
 
-        response = client.get(
-            f"/api/kpi/efficiency/by-shift?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/kpi/efficiency/by-shift?start_date={start}&end_date={end}")
 
         assert response.status_code == 200
 
@@ -419,9 +392,7 @@ class TestOTDRoutes:
         start = date.today() - timedelta(days=30)
         end = date.today() + timedelta(days=30)  # Include future dates for pending orders
 
-        response = client.get(
-            f"/api/kpi/otd?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/kpi/otd?start_date={start}&end_date={end}")
 
         assert response.status_code == 200
         data = response.json()
@@ -436,9 +407,7 @@ class TestOTDRoutes:
         start = date.today() - timedelta(days=30)
         end = date.today() + timedelta(days=30)
 
-        response = client.get(
-            f"/api/kpi/otd?start_date={start}&end_date={end}&client_id={client_id}"
-        )
+        response = client.get(f"/api/kpi/otd?start_date={start}&end_date={end}&client_id={client_id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -489,6 +458,7 @@ class TestKPICalculation:
 
         # Get entry ID from database
         from backend.schemas.production_entry import ProductionEntry
+
         entry = db.query(ProductionEntry).first()
 
         if entry:
@@ -576,9 +546,7 @@ class TestOEETrend:
         start = date.today() - timedelta(days=14)
         end = date.today()
 
-        response = client.get(
-            f"/api/kpi/oee/trend?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/kpi/oee/trend?start_date={start}&end_date={end}")
 
         assert response.status_code == 200
 
@@ -628,9 +596,7 @@ class TestAggregatedDashboard:
         start = date.today() - timedelta(days=7)
         end = date.today()
 
-        response = client.get(
-            f"/api/kpi/dashboard/aggregated?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/kpi/dashboard/aggregated?start_date={start}&end_date={end}")
 
         assert response.status_code in [200, 500]
 
@@ -645,13 +611,7 @@ class TestThresholdsDelete:
 
         # First create a threshold
         client.put(
-            "/api/kpi-thresholds",
-            json={
-                "client_id": client_id,
-                "thresholds": {
-                    "efficiency": {"target_value": 90.0}
-                }
-            }
+            "/api/kpi-thresholds", json={"client_id": client_id, "thresholds": {"efficiency": {"target_value": 90.0}}}
         )
 
         # Now delete it

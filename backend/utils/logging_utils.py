@@ -9,6 +9,7 @@ Usage:
     logger = get_module_logger(__name__)
     log_operation(logger, "CREATE", "attendance", user_id="admin", client_id="CLT001")
 """
+
 import logging
 import functools
 from typing import Optional, Any, Dict, Callable
@@ -31,8 +32,7 @@ def get_module_logger(name: str) -> logging.Logger:
     if not logger.handlers and not logging.root.handlers:
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
@@ -49,7 +49,7 @@ def log_operation(
     user_id: Optional[str] = None,
     client_id: Optional[str] = None,
     details: Optional[Dict[str, Any]] = None,
-    level: str = "INFO"
+    level: str = "INFO",
 ) -> None:
     """
     Log a data operation with structured format.
@@ -89,7 +89,7 @@ def log_error(
     error: Exception,
     resource_id: Optional[str] = None,
     user_id: Optional[str] = None,
-    client_id: Optional[str] = None
+    client_id: Optional[str] = None,
 ) -> None:
     """
     Log an error during an operation.
@@ -124,7 +124,7 @@ def log_security_event(
     user_id: Optional[str] = None,
     client_id: Optional[str] = None,
     ip_address: Optional[str] = None,
-    details: Optional[str] = None
+    details: Optional[str] = None,
 ) -> None:
     """
     Log a security-related event.
@@ -157,7 +157,7 @@ def log_performance(
     operation: str,
     duration_ms: float,
     resource: Optional[str] = None,
-    record_count: Optional[int] = None
+    record_count: Optional[int] = None,
 ) -> None:
     """
     Log performance metrics for an operation.
@@ -188,11 +188,7 @@ def log_performance(
         logger.debug(message)
 
 
-def with_logging(
-    operation: str,
-    resource: str,
-    id_param: Optional[str] = None
-) -> Callable:
+def with_logging(operation: str, resource: str, id_param: Optional[str] = None) -> Callable:
     """
     Decorator to add logging to route handlers.
 
@@ -206,6 +202,7 @@ def with_logging(
         def create_attendance(...):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -216,10 +213,10 @@ def with_logging(
             client_id = None
             resource_id = None
 
-            current_user = kwargs.get('current_user')
-            if current_user and hasattr(current_user, 'user_id'):
+            current_user = kwargs.get("current_user")
+            if current_user and hasattr(current_user, "user_id"):
                 user_id = current_user.user_id
-            if current_user and hasattr(current_user, 'client_id'):
+            if current_user and hasattr(current_user, "client_id"):
                 client_id = current_user.client_id
 
             if id_param and id_param in kwargs:
@@ -232,23 +229,21 @@ def with_logging(
 
                 duration_ms = (datetime.now() - start_time).total_seconds() * 1000
                 log_operation(
-                    logger, operation, resource,
+                    logger,
+                    operation,
+                    resource,
                     resource_id=resource_id,
                     user_id=user_id,
                     client_id=client_id,
-                    details={"duration_ms": f"{duration_ms:.2f}"}
+                    details={"duration_ms": f"{duration_ms:.2f}"},
                 )
 
                 return result
 
             except Exception as e:
-                log_error(
-                    logger, operation, resource, e,
-                    resource_id=resource_id,
-                    user_id=user_id,
-                    client_id=client_id
-                )
+                log_error(logger, operation, resource, e, resource_id=resource_id, user_id=user_id, client_id=client_id)
                 raise
 
         return wrapper
+
     return decorator

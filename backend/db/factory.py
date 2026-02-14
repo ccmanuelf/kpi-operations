@@ -4,6 +4,7 @@ Database Provider Factory
 Singleton factory for creating database providers based on connection URL.
 Handles provider detection and engine lifecycle management.
 """
+
 from typing import Optional, Dict, Type, Any
 import logging
 import re
@@ -246,8 +247,7 @@ class DatabaseProviderFactory:
                 providers[provider.provider_name] = {
                     "name": provider.provider_name,
                     "supports_migrations_from": provider.supports_migrations_from,
-                    "drivers": [k for k, v in self._providers.items()
-                               if v == provider_class],
+                    "drivers": [k for k, v in self._providers.items() if v == provider_class],
                 }
 
         return providers

@@ -3,6 +3,7 @@ Database Provider Configuration
 
 Centralized configuration for database providers with environment-aware defaults.
 """
+
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 import os
@@ -11,6 +12,7 @@ import os
 @dataclass
 class PoolConfig:
     """Connection pool configuration."""
+
     pool_size: int = 20
     max_overflow: int = 10
     pool_timeout: int = 30
@@ -25,6 +27,7 @@ class DatabaseConfig:
     This class holds all configuration needed for database connection
     and pool management.
     """
+
     # Connection settings
     url: str = ""
     provider_type: str = "sqlite"

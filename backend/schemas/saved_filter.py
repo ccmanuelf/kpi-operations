@@ -2,6 +2,7 @@
 Saved Filter ORM schemas (SQLAlchemy)
 User-specific filter configurations for KPI dashboards
 """
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -19,6 +20,7 @@ class SavedFilter(Base):
 
     SECURITY: Filters are user-specific and not shared between users
     """
+
     __tablename__ = "SAVED_FILTER"
     __table_args__ = {"extend_existing": True}
 
@@ -26,7 +28,7 @@ class SavedFilter(Base):
     filter_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
 
     # User ownership - CRITICAL for isolation
-    user_id = Column(String(50), ForeignKey('USER.user_id'), nullable=False, index=True)
+    user_id = Column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
 
     # Filter identification
     filter_name = Column(String(100), nullable=False)
@@ -57,6 +59,7 @@ class FilterHistory(Base):
 
     SECURITY: History is user-specific
     """
+
     __tablename__ = "FILTER_HISTORY"
     __table_args__ = {"extend_existing": True}
 
@@ -64,7 +67,7 @@ class FilterHistory(Base):
     history_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
 
     # User ownership
-    user_id = Column(String(50), ForeignKey('USER.user_id'), nullable=False, index=True)
+    user_id = Column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
 
     # Filter configuration (JSON string)
     filter_config = Column(Text, nullable=False)

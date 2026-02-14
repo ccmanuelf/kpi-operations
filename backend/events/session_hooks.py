@@ -5,6 +5,7 @@ Phase 3: Domain Events Infrastructure
 Provides automatic event flushing after successful commits
 and event discarding on rollbacks.
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import event
 import logging

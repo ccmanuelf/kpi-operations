@@ -2,6 +2,7 @@
 Reference Data API Routes
 Products, shifts, and inference engine endpoints
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -16,17 +17,11 @@ from backend.schemas.shift import Shift
 from backend.middleware.client_auth import build_client_filter_clause
 
 
-router = APIRouter(
-    prefix="/api",
-    tags=["Reference Data"]
-)
+router = APIRouter(prefix="/api", tags=["Reference Data"])
 
 
 @router.get("/products", response_model=List[dict])
-def list_products(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def list_products(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """List active products filtered by client access"""
     query = db.query(Product).filter(Product.is_active == True)
     client_filter = build_client_filter_clause(current_user, Product.client_id)
@@ -38,17 +33,14 @@ def list_products(
             "product_id": p.product_id,
             "product_code": p.product_code,
             "product_name": p.product_name,
-            "ideal_cycle_time": float(p.ideal_cycle_time) if p.ideal_cycle_time else None
+            "ideal_cycle_time": float(p.ideal_cycle_time) if p.ideal_cycle_time else None,
         }
         for p in products
     ]
 
 
 @router.get("/shifts", response_model=List[dict])
-def list_shifts(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def list_shifts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """List active shifts filtered by client access"""
     query = db.query(Shift).filter(Shift.is_active == True)
     client_filter = build_client_filter_clause(current_user, Shift.client_id)
@@ -60,17 +52,14 @@ def list_shifts(
             "shift_id": s.shift_id,
             "shift_name": s.shift_name,
             "start_time": s.start_time.strftime("%H:%M"),
-            "end_time": s.end_time.strftime("%H:%M")
+            "end_time": s.end_time.strftime("%H:%M"),
         }
         for s in shifts
     ]
 
 
 @router.get("/shifts/active", response_model=Optional[dict])
-def get_active_shift(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get the currently active shift based on current time, filtered by client access"""
     now = datetime.now().time()
     query = db.query(Shift).filter(Shift.is_active == True)
@@ -92,7 +81,7 @@ def get_active_shift(
                     "shift_name": s.shift_name,
                     "start_time": s.start_time.strftime("%H:%M"),
                     "end_time": s.end_time.strftime("%H:%M"),
-                    "is_active": True
+                    "is_active": True,
                 }
         else:
             # Normal shift within same day
@@ -102,7 +91,7 @@ def get_active_shift(
                     "shift_name": s.shift_name,
                     "start_time": s.start_time.strftime("%H:%M"),
                     "end_time": s.end_time.strftime("%H:%M"),
-                    "is_active": True
+                    "is_active": True,
                 }
 
     # No active shift found
@@ -110,10 +99,7 @@ def get_active_shift(
 
 
 @router.get("/downtime-reasons", response_model=List[dict])
-def list_downtime_reasons(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def list_downtime_reasons(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """List all downtime reason categories"""
     # Standard downtime reason categories (can be extended from DB if needed)
     reasons = [
@@ -125,7 +111,7 @@ def list_downtime_reasons(
         {"id": "maintenance", "name": "Scheduled Maintenance", "category": "Planned"},
         {"id": "operator", "name": "Operator Unavailable", "category": "Labor"},
         {"id": "break", "name": "Scheduled Break", "category": "Planned"},
-        {"id": "other", "name": "Other", "category": "Other"}
+        {"id": "other", "name": "Other", "category": "Other"},
     ]
     return reasons
 
@@ -135,12 +121,10 @@ def infer_cycle_time(
     product_id: int,
     shift_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Infer ideal cycle time using 5-level fallback"""
-    value, confidence, source, is_estimated = InferenceEngine.infer_ideal_cycle_time(
-        db, product_id, shift_id
-    )
+    value, confidence, source, is_estimated = InferenceEngine.infer_ideal_cycle_time(db, product_id, shift_id)
 
     confidence_flag = InferenceEngine.flag_low_confidence(confidence)
 
@@ -151,5 +135,5 @@ def infer_cycle_time(
         "confidence_score": confidence,
         "source_level": source,
         "is_estimated": is_estimated,
-        **confidence_flag
+        **confidence_flag,
     }

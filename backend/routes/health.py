@@ -7,6 +7,7 @@ Enhanced with:
 - DEP-002: Configuration validation status
 - Latency measurements for database queries
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -20,6 +21,7 @@ import sys
 # System metrics - psutil is optional for lightweight deployments
 try:
     import psutil
+
     PSUTIL_AVAILABLE = True
 except ImportError:
     PSUTIL_AVAILABLE = False
@@ -44,7 +46,7 @@ async def health_check():
         "status": "healthy",
         "service": "KPI Operations API",
         "timestamp": datetime.utcnow().isoformat(),
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
 
@@ -59,16 +61,11 @@ async def database_health(db: Session = Depends(get_db)):
         result = db.execute(text("SELECT 1"))
         result.fetchone()
 
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        return {"status": "healthy", "database": "connected", "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Database connection failed: {str(e)}"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Database connection failed: {str(e)}"
         )
 
 
@@ -88,16 +85,11 @@ async def connection_pool_status():
     try:
         pool_stats = get_pool_status()
 
-        return {
-            "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
-            "pool": pool_stats
-        }
+        return {"status": "healthy", "timestamp": datetime.utcnow().isoformat(), "pool": pool_stats}
     except Exception as e:
         logger.error(f"Pool status check failed: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve pool status: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve pool status: {str(e)}"
         )
 
 
@@ -131,11 +123,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
         db.execute(text("SELECT 1"))
         db_latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
-        checks["database"] = {
-            "status": "healthy",
-            "latency_ms": db_latency_ms,
-            "pool": get_pool_status()
-        }
+        checks["database"] = {"status": "healthy", "latency_ms": db_latency_ms, "pool": get_pool_status()}
 
         # Warn if latency is high
         if db_latency_ms > 100:
@@ -146,10 +134,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
 
     except Exception as e:
         logger.error(f"Database health check failed: {str(e)}")
-        checks["database"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        checks["database"] = {"status": "unhealthy", "error": str(e)}
         overall_status = "unhealthy"
 
     # Memory usage check (DEP-001)
@@ -170,7 +155,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
                 "status": memory_status,
                 "used_percent": round(memory.percent, 1),
                 "available_mb": round(memory.available / (1024 * 1024), 0),
-                "total_mb": round(memory.total / (1024 * 1024), 0)
+                "total_mb": round(memory.total / (1024 * 1024), 0),
             }
         except Exception as e:
             logger.warning(f"Memory check failed: {str(e)}")
@@ -181,7 +166,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
     # Disk usage check (DEP-001)
     if PSUTIL_AVAILABLE:
         try:
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
             disk_status = "healthy"
 
             if disk.percent >= 95:
@@ -196,7 +181,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
                 "status": disk_status,
                 "used_percent": round(disk.percent, 1),
                 "free_gb": round(disk.free / (1024 * 1024 * 1024), 2),
-                "total_gb": round(disk.total / (1024 * 1024 * 1024), 2)
+                "total_gb": round(disk.total / (1024 * 1024 * 1024), 2),
             }
         except Exception as e:
             logger.warning(f"Disk check failed: {str(e)}")
@@ -217,11 +202,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
             elif cpu_percent >= 80:
                 cpu_status = "warning"
 
-            checks["cpu"] = {
-                "status": cpu_status,
-                "used_percent": round(cpu_percent, 1),
-                "cores": psutil.cpu_count()
-            }
+            checks["cpu"] = {"status": cpu_status, "used_percent": round(cpu_percent, 1), "cores": psutil.cpu_count()}
         except Exception as e:
             logger.warning(f"CPU check failed: {str(e)}")
             checks["cpu"] = {"status": "unknown", "error": str(e)}
@@ -245,7 +226,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
             "status": config_status,
             "environment": config_result.environment,
             "warnings": config_result.warnings if config_result.warnings else None,
-            "errors": config_result.errors if config_result.errors else None
+            "errors": config_result.errors if config_result.errors else None,
         }
     except Exception as e:
         logger.warning(f"Configuration check failed: {str(e)}")
@@ -259,9 +240,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
             "version": "1.0.0",
             "uptime": uptime_formatted,
             "uptime_seconds": int(uptime_seconds),
-            "started_at": APP_START_TIME.isoformat()
+            "started_at": APP_START_TIME.isoformat(),
         },
-        "checks": checks
+        "checks": checks,
     }
 
 
@@ -277,16 +258,10 @@ async def readiness_check(db: Session = Depends(get_db)):
         # Test database connection
         db.execute(text("SELECT 1"))
 
-        return {
-            "status": "ready",
-            "timestamp": datetime.utcnow().isoformat()
-        }
+        return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Service not ready"
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready")
 
 
 @router.get("/live", response_model=Dict[str, Any])
@@ -300,7 +275,7 @@ async def liveness_check():
     return {
         "status": "alive",
         "timestamp": datetime.utcnow().isoformat(),
-        "uptime_seconds": int((datetime.utcnow() - APP_START_TIME).total_seconds())
+        "uptime_seconds": int((datetime.utcnow() - APP_START_TIME).total_seconds()),
     }
 
 

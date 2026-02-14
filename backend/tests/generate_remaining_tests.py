@@ -128,7 +128,6 @@ class TestAllKPIFormulas:
         # Then: Should be 5%
         assert float(absenteeism) == 5.0
 ''',
-
     "test_api_integration.py": '''"""
 API Integration Tests
 Tests full API workflows for all endpoints
@@ -210,7 +209,6 @@ class TestKPIAPI:
         response = client.get("/api/v1/kpi/ppm?product_id=101")
         assert response.status_code in [200, 404]
 ''',
-
     "test_fixtures.py": '''"""
 Additional Test Fixtures
 Shared fixtures for all test modules
@@ -254,7 +252,7 @@ def generate_test_files():
     # Generate files
     for filename, content in TEST_TEMPLATES.items():
         filepath = calc_dir / filename
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             f.write(content)
         print(f"✓ Created {filepath}")
 

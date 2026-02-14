@@ -1,4 +1,5 @@
 """Capacity Planning Services"""
+
 from backend.services.capacity.capacity_service import CapacityPlanningService
 from backend.services.capacity.bom_service import BOMService
 from backend.services.capacity.mrp_service import MRPService

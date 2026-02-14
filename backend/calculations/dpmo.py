@@ -9,6 +9,7 @@ Phase 6.7 Enhancement: Uses PART_OPPORTUNITIES table for part-specific opportuni
 Phase 7.2 Enhancement: Uses client config for default opportunities per unit
 Phase 1.2: Added pure calculation functions for service layer separation
 """
+
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -40,11 +41,8 @@ DEFAULT_OPPORTUNITIES_PER_UNIT = 10
 # Phase 1.2: These functions can be unit tested without database
 # =============================================================================
 
-def calculate_dpmo_pure(
-    total_defects: int,
-    total_units: int,
-    opportunities_per_unit: int
-) -> Tuple[Decimal, int]:
+
+def calculate_dpmo_pure(total_defects: int, total_units: int, opportunities_per_unit: int) -> Tuple[Decimal, int]:
     """
     Pure DPMO calculation - no database access.
 
@@ -126,11 +124,7 @@ def get_client_opportunities_default(db: Session, client_id: Optional[str] = Non
         return DEFAULT_OPPORTUNITIES_PER_UNIT
 
 
-def get_opportunities_for_part(
-    db: Session,
-    part_number: str,
-    client_id: Optional[str] = None
-) -> int:
+def get_opportunities_for_part(db: Session, part_number: str, client_id: Optional[str] = None) -> int:
     """
     Look up opportunities per unit from PART_OPPORTUNITIES table.
 
@@ -151,9 +145,7 @@ def get_opportunities_for_part(
     if not part_number:
         return client_default
 
-    query = db.query(PartOpportunities).filter(
-        PartOpportunities.part_number == part_number
-    )
+    query = db.query(PartOpportunities).filter(PartOpportunities.part_number == part_number)
 
     if client_id:
         query = query.filter(PartOpportunities.client_id_fk == client_id)
@@ -166,11 +158,7 @@ def get_opportunities_for_part(
     return client_default
 
 
-def get_opportunities_for_parts(
-    db: Session,
-    part_numbers: list,
-    client_id: Optional[str] = None
-) -> dict:
+def get_opportunities_for_parts(db: Session, part_numbers: list, client_id: Optional[str] = None) -> dict:
     """
     Batch lookup of opportunities per unit for multiple parts.
 
@@ -191,9 +179,7 @@ def get_opportunities_for_parts(
     # Get client-specific default (or global default)
     client_default = get_client_opportunities_default(db, client_id)
 
-    query = db.query(PartOpportunities).filter(
-        PartOpportunities.part_number.in_(part_numbers)
-    )
+    query = db.query(PartOpportunities).filter(PartOpportunities.part_number.in_(part_numbers))
 
     if client_id:
         query = query.filter(PartOpportunities.client_id_fk == client_id)
@@ -201,11 +187,7 @@ def get_opportunities_for_parts(
     results = query.all()
 
     # Build lookup dictionary
-    opportunities_map = {
-        po.part_number: po.opportunities_per_unit
-        for po in results
-        if po.opportunities_per_unit
-    }
+    opportunities_map = {po.part_number: po.opportunities_per_unit for po in results if po.opportunities_per_unit}
 
     # Fill in client defaults for parts not found
     for part in part_numbers:
@@ -222,7 +204,7 @@ def calculate_dpmo(
     end_date: date,
     opportunities_per_unit: int = None,
     part_number: Optional[str] = None,
-    client_id: Optional[str] = None
+    client_id: Optional[str] = None,
 ) -> tuple[Decimal, Decimal, int, int]:
     """
     Calculate DPMO and Sigma Level
@@ -262,7 +244,7 @@ def calculate_dpmo(
         and_(
             QualityEntry.work_order_id == work_order_id,
             cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date
+            cast(QualityEntry.shift_date, Date) <= end_date,
         )
     )
 
@@ -294,10 +276,7 @@ def calculate_dpmo(
 
 
 def calculate_dpmo_with_part_lookup(
-    db: Session,
-    start_date: date,
-    end_date: date,
-    client_id: Optional[str] = None
+    db: Session, start_date: date, end_date: date, client_id: Optional[str] = None
 ) -> dict:
     """
     Calculate DPMO using part-specific opportunities from PART_OPPORTUNITIES table.
@@ -325,10 +304,7 @@ def calculate_dpmo_with_part_lookup(
 
     # Get quality entries with job/part info
     query = db.query(QualityEntry).filter(
-        and_(
-            QualityEntry.shift_date >= start_datetime,
-            QualityEntry.shift_date <= end_datetime
-        )
+        and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime)
     )
 
     if client_id:
@@ -344,7 +320,7 @@ def calculate_dpmo_with_part_lookup(
             "total_defects": 0,
             "total_opportunities": 0,
             "by_part": [],
-            "using_part_specific_opportunities": False
+            "using_part_specific_opportunities": False,
         }
 
     # Collect unique job_ids to get part numbers
@@ -378,7 +354,7 @@ def calculate_dpmo_with_part_lookup(
                 "part_number": key,
                 "opportunities_per_unit": opportunities,
                 "units_inspected": 0,
-                "defects_found": 0
+                "defects_found": 0,
             }
 
         part_metrics[key]["units_inspected"] += qe.units_inspected or 0
@@ -405,15 +381,17 @@ def calculate_dpmo_with_part_lookup(
         else:
             part_dpmo = Decimal("0")
 
-        by_part.append({
-            "part_number": key,
-            "units_inspected": units,
-            "defects_found": defects,
-            "opportunities_per_unit": opps,
-            "total_opportunities": part_opportunities,
-            "dpmo": float(part_dpmo),
-            "sigma_level": float(calculate_sigma_level(part_dpmo))
-        })
+        by_part.append(
+            {
+                "part_number": key,
+                "units_inspected": units,
+                "defects_found": defects,
+                "opportunities_per_unit": opps,
+                "total_opportunities": part_opportunities,
+                "dpmo": float(part_dpmo),
+                "sigma_level": float(calculate_sigma_level(part_dpmo)),
+            }
+        )
 
     # Overall DPMO
     if total_opportunities > 0:
@@ -430,7 +408,7 @@ def calculate_dpmo_with_part_lookup(
         "total_defects": total_defects,
         "total_opportunities": total_opportunities,
         "by_part": by_part,
-        "using_part_specific_opportunities": len(part_numbers) > 0
+        "using_part_specific_opportunities": len(part_numbers) > 0,
     }
 
 
@@ -458,7 +436,7 @@ def calculate_process_capability(
     upper_spec_limit: Decimal,
     lower_spec_limit: Decimal,
     target_value: Decimal,
-    client_id: Optional[str] = None
+    client_id: Optional[str] = None,
 ) -> dict:
     """
     Calculate Process Capability Indices (Cp, Cpk)
@@ -475,7 +453,7 @@ def calculate_process_capability(
         and_(
             QualityEntry.work_order_id == work_order_id,
             cast(QualityEntry.shift_date, Date) >= start_date,
-            cast(QualityEntry.shift_date, Date) <= end_date
+            cast(QualityEntry.shift_date, Date) <= end_date,
         )
     )
 
@@ -485,11 +463,7 @@ def calculate_process_capability(
     inspections = query.all()
 
     if not inspections:
-        return {
-            "cp": Decimal("0"),
-            "cpk": Decimal("0"),
-            "interpretation": "Insufficient data"
-        }
+        return {"cp": Decimal("0"), "cpk": Decimal("0"), "interpretation": "Insufficient data"}
 
     # Calculate defect rate as proxy for variation
     total_inspected = sum(i.units_inspected for i in inspections)
@@ -533,15 +507,12 @@ def calculate_process_capability(
         "cpk": cpk,
         "interpretation": interpretation,
         "total_inspected": total_inspected,
-        "total_defects": total_defects
+        "total_defects": total_defects,
     }
 
 
 def identify_quality_trends(
-    db: Session,
-    work_order_id: str,
-    lookback_days: int = 30,
-    client_id: Optional[str] = None
+    db: Session, work_order_id: str, lookback_days: int = 30, client_id: Optional[str] = None
 ) -> dict:
     """
     Analyze quality trends over time
@@ -586,5 +557,5 @@ def identify_quality_trends(
         "dpmo_second_half": dpmo_second,
         "sigma_first_half": sigma_first,
         "sigma_second_half": sigma_second,
-        "recommendation": recommendation
+        "recommendation": recommendation,
     }

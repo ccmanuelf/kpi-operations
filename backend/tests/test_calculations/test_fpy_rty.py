@@ -11,6 +11,7 @@ Covers:
 - Quality score calculation
 - Defect escape rate analysis
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date
@@ -18,11 +19,8 @@ from datetime import date
 
 # ===== Helper Functions for Standalone Calculations =====
 
-def calculate_fpy(
-    units_inspected: int,
-    defects: int,
-    rework: int = 0
-) -> float | None:
+
+def calculate_fpy(units_inspected: int, defects: int, rework: int = 0) -> float | None:
     """
     Calculate First Pass Yield percentage.
 
@@ -69,16 +67,12 @@ def calculate_rty(fpy_values: list[float]) -> float | None:
     for fpy in fpy_values:
         if fpy is None or fpy < 0:
             return None
-        rty *= (fpy / 100)
+        rty *= fpy / 100
 
     return round(rty * 100, 4)
 
 
-def calculate_process_yield(
-    total_produced: int,
-    total_scrap: int,
-    total_defects: int
-) -> float | None:
+def calculate_process_yield(total_produced: int, total_scrap: int, total_defects: int) -> float | None:
     """
     Calculate overall process yield.
 
@@ -103,10 +97,7 @@ def calculate_process_yield(
     return round(yield_pct, 4)
 
 
-def calculate_scrap_rate(
-    total_scrap: int,
-    total_produced: int
-) -> float | None:
+def calculate_scrap_rate(total_scrap: int, total_produced: int) -> float | None:
     """
     Calculate scrap rate percentage.
 
@@ -128,10 +119,7 @@ def calculate_scrap_rate(
     return round(rate, 4)
 
 
-def calculate_defect_escape_rate(
-    final_inspection_defects: int,
-    total_defects: int
-) -> float | None:
+def calculate_defect_escape_rate(final_inspection_defects: int, total_defects: int) -> float | None:
     """
     Calculate defect escape rate.
 
@@ -154,12 +142,7 @@ def calculate_defect_escape_rate(
     return round(rate, 4)
 
 
-def calculate_quality_score(
-    fpy: float,
-    rty: float,
-    scrap_rate: float,
-    escape_rate: float
-) -> tuple[float, str]:
+def calculate_quality_score(fpy: float, rty: float, scrap_rate: float, escape_rate: float) -> tuple[float, str]:
     """
     Calculate weighted quality score (0-100).
 
@@ -183,12 +166,7 @@ def calculate_quality_score(
     escape_score = max(0, 100 - escape_rate)
 
     # Weighted calculation
-    quality_score = (
-        fpy * 0.40 +
-        rty * 0.30 +
-        scrap_score * 0.20 +
-        escape_score * 0.10
-    )
+    quality_score = fpy * 0.40 + rty * 0.30 + scrap_score * 0.20 + escape_score * 0.10
 
     # Determine grade
     if quality_score >= 95:
@@ -211,6 +189,7 @@ def calculate_quality_score(
 
 # ===== Test Classes =====
 
+
 @pytest.mark.unit
 class TestFPYCalculation:
     """Test First Pass Yield calculation"""
@@ -219,11 +198,7 @@ class TestFPYCalculation:
     def test_perfect_fpy(self):
         """Test 100% FPY (no defects)"""
         # Given: 1000 units, no defects, no rework
-        result = calculate_fpy(
-            units_inspected=1000,
-            defects=0,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=1000, defects=0, rework=0)
 
         # Then: Should be 100%
         assert result == 100.0
@@ -232,11 +207,7 @@ class TestFPYCalculation:
     def test_basic_fpy_calculation(self):
         """Test basic FPY with defects"""
         # Given: 1000 units, 50 defects
-        result = calculate_fpy(
-            units_inspected=1000,
-            defects=50,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=1000, defects=50, rework=0)
 
         # Then: (1000 - 50) / 1000 * 100 = 95%
         assert result == 95.0
@@ -245,11 +216,7 @@ class TestFPYCalculation:
     def test_fpy_with_rework(self):
         """Test FPY with both defects and rework"""
         # Given: 1000 units, 30 defects, 20 rework
-        result = calculate_fpy(
-            units_inspected=1000,
-            defects=30,
-            rework=20
-        )
+        result = calculate_fpy(units_inspected=1000, defects=30, rework=20)
 
         # Then: (1000 - 30 - 20) / 1000 * 100 = 95%
         assert result == 95.0
@@ -258,11 +225,7 @@ class TestFPYCalculation:
     def test_fpy_only_rework(self):
         """Test FPY with only rework (no defects)"""
         # Given: 100 units, 0 defects, 5 rework
-        result = calculate_fpy(
-            units_inspected=100,
-            defects=0,
-            rework=5
-        )
+        result = calculate_fpy(units_inspected=100, defects=0, rework=5)
 
         # Then: (100 - 5) / 100 * 100 = 95%
         assert result == 95.0
@@ -271,11 +234,7 @@ class TestFPYCalculation:
     def test_low_fpy(self):
         """Test low FPY scenario"""
         # Given: Poor quality batch
-        result = calculate_fpy(
-            units_inspected=100,
-            defects=25,
-            rework=10
-        )
+        result = calculate_fpy(units_inspected=100, defects=25, rework=10)
 
         # Then: (100 - 25 - 10) / 100 * 100 = 65%
         assert result == 65.0
@@ -284,11 +243,7 @@ class TestFPYCalculation:
     def test_fpy_small_batch(self):
         """Test FPY with small inspection batch"""
         # Given: Small batch
-        result = calculate_fpy(
-            units_inspected=10,
-            defects=1,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=10, defects=1, rework=0)
 
         # Then: (10 - 1) / 10 * 100 = 90%
         assert result == 90.0
@@ -302,11 +257,7 @@ class TestFPYEdgeCases:
     def test_zero_units_inspected(self):
         """Test FPY with zero units"""
         # Given: No units inspected
-        result = calculate_fpy(
-            units_inspected=0,
-            defects=0,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=0, defects=0, rework=0)
 
         # Then: Should return None
         assert result is None
@@ -315,11 +266,7 @@ class TestFPYEdgeCases:
     def test_negative_units(self):
         """Test FPY with negative units"""
         # Given: Invalid negative units
-        result = calculate_fpy(
-            units_inspected=-100,
-            defects=5,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=-100, defects=5, rework=0)
 
         # Then: Should return None
         assert result is None
@@ -328,11 +275,7 @@ class TestFPYEdgeCases:
     def test_negative_defects(self):
         """Test FPY with negative defects"""
         # Given: Invalid negative defects
-        result = calculate_fpy(
-            units_inspected=100,
-            defects=-5,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=100, defects=-5, rework=0)
 
         # Then: Should return None
         assert result is None
@@ -341,11 +284,7 @@ class TestFPYEdgeCases:
     def test_defects_exceed_units(self):
         """Test when defects + rework exceed units"""
         # Given: Data error scenario
-        result = calculate_fpy(
-            units_inspected=100,
-            defects=60,
-            rework=50
-        )
+        result = calculate_fpy(units_inspected=100, defects=60, rework=50)
 
         # Then: Should return 0% (capped, not negative)
         assert result == 0.0
@@ -354,11 +293,7 @@ class TestFPYEdgeCases:
     def test_all_units_defective(self):
         """Test all units defective"""
         # Given: 100% defective
-        result = calculate_fpy(
-            units_inspected=100,
-            defects=100,
-            rework=0
-        )
+        result = calculate_fpy(units_inspected=100, defects=100, rework=0)
 
         # Then: Should be 0%
         assert result == 0.0
@@ -482,11 +417,7 @@ class TestProcessYield:
     def test_perfect_process_yield(self):
         """Test 100% process yield"""
         # Given: No scrap or defects
-        result = calculate_process_yield(
-            total_produced=1000,
-            total_scrap=0,
-            total_defects=0
-        )
+        result = calculate_process_yield(total_produced=1000, total_scrap=0, total_defects=0)
 
         # Then: Should be 100%
         assert result == 100.0
@@ -495,11 +426,7 @@ class TestProcessYield:
     def test_basic_process_yield(self):
         """Test basic process yield"""
         # Given: Some scrap and defects
-        result = calculate_process_yield(
-            total_produced=1000,
-            total_scrap=20,
-            total_defects=30
-        )
+        result = calculate_process_yield(total_produced=1000, total_scrap=20, total_defects=30)
 
         # Then: (1000 - 20 - 30) / 1000 * 100 = 95%
         assert result == 95.0
@@ -508,11 +435,7 @@ class TestProcessYield:
     def test_high_scrap_yield(self):
         """Test process yield with high scrap"""
         # Given: High scrap rate
-        result = calculate_process_yield(
-            total_produced=100,
-            total_scrap=15,
-            total_defects=5
-        )
+        result = calculate_process_yield(total_produced=100, total_scrap=15, total_defects=5)
 
         # Then: (100 - 15 - 5) / 100 * 100 = 80%
         assert result == 80.0
@@ -521,11 +444,7 @@ class TestProcessYield:
     def test_zero_production(self):
         """Test process yield with no production"""
         # Given: No production
-        result = calculate_process_yield(
-            total_produced=0,
-            total_scrap=0,
-            total_defects=0
-        )
+        result = calculate_process_yield(total_produced=0, total_scrap=0, total_defects=0)
 
         # Then: Should return None
         assert result is None
@@ -539,10 +458,7 @@ class TestScrapRate:
     def test_zero_scrap_rate(self):
         """Test zero scrap rate"""
         # Given: No scrap
-        result = calculate_scrap_rate(
-            total_scrap=0,
-            total_produced=1000
-        )
+        result = calculate_scrap_rate(total_scrap=0, total_produced=1000)
 
         # Then: Should be 0%
         assert result == 0.0
@@ -551,10 +467,7 @@ class TestScrapRate:
     def test_basic_scrap_rate(self):
         """Test basic scrap rate"""
         # Given: 50 scrapped out of 1000
-        result = calculate_scrap_rate(
-            total_scrap=50,
-            total_produced=1000
-        )
+        result = calculate_scrap_rate(total_scrap=50, total_produced=1000)
 
         # Then: 5% scrap rate
         assert result == 5.0
@@ -563,10 +476,7 @@ class TestScrapRate:
     def test_high_scrap_rate(self):
         """Test high scrap rate (quality issue)"""
         # Given: 20% scrap
-        result = calculate_scrap_rate(
-            total_scrap=200,
-            total_produced=1000
-        )
+        result = calculate_scrap_rate(total_scrap=200, total_produced=1000)
 
         # Then: 20% scrap rate
         assert result == 20.0
@@ -580,10 +490,7 @@ class TestDefectEscapeRate:
     def test_no_escapes(self):
         """Test when no defects escape to final"""
         # Given: All defects caught early
-        result = calculate_defect_escape_rate(
-            final_inspection_defects=0,
-            total_defects=100
-        )
+        result = calculate_defect_escape_rate(final_inspection_defects=0, total_defects=100)
 
         # Then: 0% escape rate
         assert result == 0.0
@@ -592,10 +499,7 @@ class TestDefectEscapeRate:
     def test_all_escapes(self):
         """Test when all defects found at final"""
         # Given: All defects at final (poor early inspection)
-        result = calculate_defect_escape_rate(
-            final_inspection_defects=50,
-            total_defects=50
-        )
+        result = calculate_defect_escape_rate(final_inspection_defects=50, total_defects=50)
 
         # Then: 100% escape rate
         assert result == 100.0
@@ -604,10 +508,7 @@ class TestDefectEscapeRate:
     def test_partial_escape_rate(self):
         """Test partial escape rate"""
         # Given: Some defects escape to final
-        result = calculate_defect_escape_rate(
-            final_inspection_defects=20,
-            total_defects=100
-        )
+        result = calculate_defect_escape_rate(final_inspection_defects=20, total_defects=100)
 
         # Then: 20% escape rate
         assert result == 20.0
@@ -616,10 +517,7 @@ class TestDefectEscapeRate:
     def test_no_defects_escape_rate(self):
         """Test escape rate with no defects"""
         # Given: Perfect quality (no defects anywhere)
-        result = calculate_defect_escape_rate(
-            final_inspection_defects=0,
-            total_defects=0
-        )
+        result = calculate_defect_escape_rate(final_inspection_defects=0, total_defects=0)
 
         # Then: 0% escape rate (no defects to escape)
         assert result == 0.0
@@ -633,12 +531,7 @@ class TestQualityScore:
     def test_perfect_quality_score(self):
         """Test perfect quality score"""
         # Given: Perfect metrics
-        score, grade = calculate_quality_score(
-            fpy=100.0,
-            rty=100.0,
-            scrap_rate=0.0,
-            escape_rate=0.0
-        )
+        score, grade = calculate_quality_score(fpy=100.0, rty=100.0, scrap_rate=0.0, escape_rate=0.0)
 
         # Then: Should be 100% with A+ grade
         assert score == 100.0
@@ -648,12 +541,7 @@ class TestQualityScore:
     def test_excellent_quality_score(self):
         """Test excellent quality score (A grade)"""
         # Given: Very good metrics
-        score, grade = calculate_quality_score(
-            fpy=95.0,
-            rty=93.0,
-            scrap_rate=2.0,
-            escape_rate=5.0
-        )
+        score, grade = calculate_quality_score(fpy=95.0, rty=93.0, scrap_rate=2.0, escape_rate=5.0)
 
         # Then: Should be A grade
         # (95*0.4) + (93*0.3) + (98*0.2) + (95*0.1)
@@ -665,12 +553,7 @@ class TestQualityScore:
     def test_good_quality_score(self):
         """Test good quality score (B grade)"""
         # Given: Good metrics
-        score, grade = calculate_quality_score(
-            fpy=90.0,
-            rty=85.0,
-            scrap_rate=5.0,
-            escape_rate=10.0
-        )
+        score, grade = calculate_quality_score(fpy=90.0, rty=85.0, scrap_rate=5.0, escape_rate=10.0)
 
         # Then: Should be B grade
         # (90*0.4) + (85*0.3) + (95*0.2) + (90*0.1)
@@ -682,12 +565,7 @@ class TestQualityScore:
     def test_poor_quality_score(self):
         """Test poor quality score (D grade)"""
         # Given: Poor metrics
-        score, grade = calculate_quality_score(
-            fpy=60.0,
-            rty=50.0,
-            scrap_rate=20.0,
-            escape_rate=40.0
-        )
+        score, grade = calculate_quality_score(fpy=60.0, rty=50.0, scrap_rate=20.0, escape_rate=40.0)
 
         # Then: Should be D grade
         # (60*0.4) + (50*0.3) + (80*0.2) + (60*0.1)
@@ -704,9 +582,9 @@ class TestQualityBusinessScenarios:
     def test_apparel_three_stage_inspection(self):
         """Test typical apparel 3-stage inspection"""
         # Given: Incoming, In-Process, Final stages
-        fpy_incoming = calculate_fpy(1000, 30, 0)    # 97%
-        fpy_inprocess = calculate_fpy(970, 25, 10)   # 96.4%
-        fpy_final = calculate_fpy(935, 10, 5)        # 98.4%
+        fpy_incoming = calculate_fpy(1000, 30, 0)  # 97%
+        fpy_inprocess = calculate_fpy(970, 25, 10)  # 96.4%
+        fpy_final = calculate_fpy(935, 10, 5)  # 98.4%
 
         # When: Calculate RTY
         rty = calculate_rty([fpy_incoming, fpy_inprocess, fpy_final])
@@ -722,9 +600,9 @@ class TestQualityBusinessScenarios:
         """Test quality improvement over months"""
         # Given: Monthly FPY values showing improvement
         month1_fpy = calculate_fpy(1000, 100, 50)  # 85%
-        month2_fpy = calculate_fpy(1000, 70, 30)   # 90%
-        month3_fpy = calculate_fpy(1000, 40, 20)   # 94%
-        month4_fpy = calculate_fpy(1000, 20, 10)   # 97%
+        month2_fpy = calculate_fpy(1000, 70, 30)  # 90%
+        month3_fpy = calculate_fpy(1000, 40, 20)  # 94%
+        month4_fpy = calculate_fpy(1000, 20, 10)  # 97%
 
         # Then: Should show progressive improvement
         assert month1_fpy < month2_fpy < month3_fpy < month4_fpy
@@ -734,7 +612,7 @@ class TestQualityBusinessScenarios:
     def test_hidden_factory_scenario(self):
         """Test 'hidden factory' identification (high rework)"""
         # Given: Low defects but high rework
-        fpy_low_defect = calculate_fpy(1000, 10, 0)    # 99% - looks great
+        fpy_low_defect = calculate_fpy(1000, 10, 0)  # 99% - looks great
         fpy_high_rework = calculate_fpy(1000, 10, 150)  # 84% - hidden factory
 
         # Then: Same defect count, very different FPY
@@ -750,11 +628,11 @@ class TestQualityBusinessScenarios:
         """Test identifying quality bottleneck stage"""
         # Given: Multiple inspection stages
         stages = {
-            "Incoming": calculate_fpy(1000, 20, 0),    # 98%
-            "Cutting": calculate_fpy(980, 15, 5),      # 97.96%
-            "Sewing": calculate_fpy(960, 80, 40),      # 87.5% - bottleneck
-            "Finishing": calculate_fpy(840, 10, 5),    # 98.21%
-            "Final": calculate_fpy(825, 5, 3),         # 99.03%
+            "Incoming": calculate_fpy(1000, 20, 0),  # 98%
+            "Cutting": calculate_fpy(980, 15, 5),  # 97.96%
+            "Sewing": calculate_fpy(960, 80, 40),  # 87.5% - bottleneck
+            "Finishing": calculate_fpy(840, 10, 5),  # 98.21%
+            "Final": calculate_fpy(825, 5, 3),  # 99.03%
         }
 
         # Then: Sewing is clearly the bottleneck
@@ -794,11 +672,7 @@ class TestQualityBusinessScenarios:
         target_fpy = 99.99966
 
         # Actual high-quality scenario
-        actual_fpy = calculate_fpy(
-            units_inspected=1000000,
-            defects=4,  # 4 PPM
-            rework=0
-        )
+        actual_fpy = calculate_fpy(units_inspected=1000000, defects=4, rework=0)  # 4 PPM
 
         # Then: Should be very close to target
         assert actual_fpy == pytest.approx(target_fpy, rel=0.0001)
@@ -811,7 +685,7 @@ class TestQualityBusinessScenarios:
         # - Scrap Rate: <1%
         # - Escape Rate: <5%
 
-        fpy = calculate_fpy(1000, 15, 5)        # 98%
+        fpy = calculate_fpy(1000, 15, 5)  # 98%
         scrap_rate = calculate_scrap_rate(8, 1000)  # 0.8%
         escape_rate = calculate_defect_escape_rate(3, 75)  # 4%
 

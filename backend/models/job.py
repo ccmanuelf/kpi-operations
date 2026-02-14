@@ -1,6 +1,7 @@
 """
 Pydantic models for JOB (Work Order Line Items) API requests/responses
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
@@ -9,6 +10,7 @@ from decimal import Decimal
 
 class JobBase(BaseModel):
     """Base job fields"""
+
     work_order_id: str = Field(..., description="Parent work order ID")
     client_id_fk: str = Field(..., description="Client ID for multi-tenant isolation")
     operation_name: str = Field(..., description="Operation name")
@@ -30,11 +32,13 @@ class JobBase(BaseModel):
 
 class JobCreate(JobBase):
     """Create new job"""
+
     job_id: str = Field(..., description="Unique job identifier")
 
 
 class JobUpdate(BaseModel):
     """Update existing job (all fields optional)"""
+
     operation_name: Optional[str] = None
     operation_code: Optional[str] = None
     sequence_number: Optional[int] = None
@@ -54,12 +58,14 @@ class JobUpdate(BaseModel):
 
 class JobComplete(BaseModel):
     """Complete a job with actual quantities and hours"""
+
     completed_quantity: int = Field(..., description="Actual quantity completed")
     actual_hours: Decimal = Field(..., description="Actual hours spent")
 
 
 class JobResponse(JobBase):
     """Job response with all fields"""
+
     job_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None

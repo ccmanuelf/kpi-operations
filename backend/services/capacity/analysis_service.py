@@ -16,6 +16,7 @@ Implements the 12-step capacity calculation methodology:
 11. Identify bottlenecks
 12. Store results
 """
+
 from decimal import Decimal
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
@@ -36,6 +37,7 @@ from backend.events.domain_events import CapacityOverloadDetected
 @dataclass
 class LineCapacityResult:
     """Capacity analysis result for a single production line."""
+
     line_id: int
     line_code: str
     line_name: str
@@ -62,6 +64,7 @@ class LineCapacityResult:
 @dataclass
 class CapacityAnalysisResult:
     """Complete capacity analysis result for a period."""
+
     analysis_date: date
     period_start: date
     period_end: date
@@ -99,7 +102,7 @@ class CapacityAnalysisService:
         period_start: date,
         period_end: date,
         line_ids: Optional[List[int]] = None,
-        schedule_id: Optional[int] = None
+        schedule_id: Optional[int] = None,
     ) -> CapacityAnalysisResult:
         """
         Run capacity analysis for specified period.
@@ -143,16 +146,14 @@ class CapacityAnalysisService:
                 total_demand_hours=Decimal("0"),
                 overall_utilization=Decimal("0"),
                 bottleneck_count=0,
-                lines=[]
+                lines=[],
             )
 
         # Get calendar data for period
         calendar_data = self._get_calendar_data(client_id, period_start, period_end)
 
         # Get demand by line (from schedule or orders)
-        demand_by_line = self._get_demand_by_line(
-            client_id, period_start, period_end, schedule_id
-        )
+        demand_by_line = self._get_demand_by_line(client_id, period_start, period_end, schedule_id)
 
         # Analyze each line
         line_results: List[LineCapacityResult] = []
@@ -167,7 +168,7 @@ class CapacityAnalysisService:
                 calendar_data=calendar_data,
                 demand_hours=demand_by_line.get(line.id, {}).get("hours", Decimal("0")),
                 demand_units=demand_by_line.get(line.id, {}).get("units", 0),
-                analysis_date=analysis_date
+                analysis_date=analysis_date,
             )
 
             line_results.append(result)
@@ -185,7 +186,7 @@ class CapacityAnalysisService:
                     analysis_date=analysis_date,
                     utilization_percent=result.utilization_percent,
                     available_hours=result.capacity_hours,
-                    required_hours=result.demand_hours
+                    required_hours=result.demand_hours,
                 )
                 event_bus.collect(event)
 
@@ -206,15 +207,11 @@ class CapacityAnalysisService:
             total_demand_hours=total_demand,
             overall_utilization=overall_utilization,
             bottleneck_count=bottleneck_count,
-            lines=line_results
+            lines=line_results,
         )
 
     def get_line_capacity(
-        self,
-        client_id: str,
-        line_id: int,
-        period_start: date,
-        period_end: date
+        self, client_id: str, line_id: int, period_start: date, period_end: date
     ) -> Optional[LineCapacityResult]:
         """
         Get capacity for a single line.
@@ -228,19 +225,21 @@ class CapacityAnalysisService:
         Returns:
             LineCapacityResult or None if line not found
         """
-        line = self.db.query(CapacityProductionLine).filter(
-            CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.id == line_id,
-            CapacityProductionLine.is_active == True
-        ).first()
+        line = (
+            self.db.query(CapacityProductionLine)
+            .filter(
+                CapacityProductionLine.client_id == client_id,
+                CapacityProductionLine.id == line_id,
+                CapacityProductionLine.is_active == True,
+            )
+            .first()
+        )
 
         if not line:
             return None
 
         calendar_data = self._get_calendar_data(client_id, period_start, period_end)
-        demand_by_line = self._get_demand_by_line(
-            client_id, period_start, period_end, None
-        )
+        demand_by_line = self._get_demand_by_line(client_id, period_start, period_end, None)
 
         return self._analyze_line(
             client_id=client_id,
@@ -248,7 +247,7 @@ class CapacityAnalysisService:
             calendar_data=calendar_data,
             demand_hours=demand_by_line.get(line.id, {}).get("hours", Decimal("0")),
             demand_units=demand_by_line.get(line.id, {}).get("units", 0),
-            analysis_date=date.today()
+            analysis_date=date.today(),
         )
 
     def get_historical_analysis(
@@ -256,7 +255,7 @@ class CapacityAnalysisService:
         client_id: str,
         line_id: Optional[int] = None,
         start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        end_date: Optional[date] = None,
     ) -> List[CapacityAnalysis]:
         """
         Get historical capacity analysis records.
@@ -270,9 +269,7 @@ class CapacityAnalysisService:
         Returns:
             List of CapacityAnalysis records
         """
-        query = self.db.query(CapacityAnalysis).filter(
-            CapacityAnalysis.client_id == client_id
-        )
+        query = self.db.query(CapacityAnalysis).filter(CapacityAnalysis.client_id == client_id)
 
         if line_id:
             query = query.filter(CapacityAnalysis.line_id == line_id)
@@ -284,11 +281,7 @@ class CapacityAnalysisService:
         return query.order_by(CapacityAnalysis.analysis_date.desc()).all()
 
     def identify_bottlenecks(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date,
-        threshold: Optional[Decimal] = None
+        self, client_id: str, period_start: date, period_end: date, threshold: Optional[Decimal] = None
     ) -> List[LineCapacityResult]:
         """
         Identify bottleneck lines for a period.
@@ -309,14 +302,11 @@ class CapacityAnalysisService:
         return [line for line in result.lines if line.is_bottleneck]
 
     def _get_production_lines(
-        self,
-        client_id: str,
-        line_ids: Optional[List[int]] = None
+        self, client_id: str, line_ids: Optional[List[int]] = None
     ) -> List[CapacityProductionLine]:
         """Get production lines for analysis."""
         query = self.db.query(CapacityProductionLine).filter(
-            CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.is_active == True
+            CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True
         )
 
         if line_ids:
@@ -324,34 +314,29 @@ class CapacityAnalysisService:
 
         return query.all()
 
-    def _get_calendar_data(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date
-    ) -> Dict:
+    def _get_calendar_data(self, client_id: str, period_start: date, period_end: date) -> Dict:
         """
         Get calendar data for the period.
 
         Returns:
             Dict with working_days, total_shifts, total_hours
         """
-        calendars = self.db.query(CapacityCalendar).filter(
-            CapacityCalendar.client_id == client_id,
-            CapacityCalendar.calendar_date >= period_start,
-            CapacityCalendar.calendar_date <= period_end,
-            CapacityCalendar.is_working_day == True
-        ).all()
+        calendars = (
+            self.db.query(CapacityCalendar)
+            .filter(
+                CapacityCalendar.client_id == client_id,
+                CapacityCalendar.calendar_date >= period_start,
+                CapacityCalendar.calendar_date <= period_end,
+                CapacityCalendar.is_working_day == True,
+            )
+            .all()
+        )
 
         if not calendars:
             # Default: calculate from date range assuming 5 day week
             total_days = (period_end - period_start).days + 1
             working_days = int(total_days * 5 / 7)
-            return {
-                "working_days": working_days,
-                "shifts_per_day": 1,
-                "hours_per_shift": Decimal("8.0")
-            }
+            return {"working_days": working_days, "shifts_per_day": 1, "hours_per_shift": Decimal("8.0")}
 
         working_days = len(calendars)
         total_shifts = sum(c.shifts_available for c in calendars)
@@ -363,15 +348,11 @@ class CapacityAnalysisService:
         return {
             "working_days": working_days,
             "shifts_per_day": int(round(avg_shifts)),
-            "hours_per_shift": avg_hours / avg_shifts if avg_shifts > 0 else Decimal("8.0")
+            "hours_per_shift": avg_hours / avg_shifts if avg_shifts > 0 else Decimal("8.0"),
         }
 
     def _get_demand_by_line(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date,
-        schedule_id: Optional[int]
+        self, client_id: str, period_start: date, period_end: date, schedule_id: Optional[int]
     ) -> Dict[int, Dict]:
         """
         Get demand by line from schedule or orders.
@@ -383,32 +364,44 @@ class CapacityAnalysisService:
 
         if schedule_id:
             # Get demand from specific schedule
-            details = self.db.query(CapacityScheduleDetail).filter(
-                CapacityScheduleDetail.client_id == client_id,
-                CapacityScheduleDetail.schedule_id == schedule_id,
-                CapacityScheduleDetail.scheduled_date >= period_start,
-                CapacityScheduleDetail.scheduled_date <= period_end
-            ).all()
+            details = (
+                self.db.query(CapacityScheduleDetail)
+                .filter(
+                    CapacityScheduleDetail.client_id == client_id,
+                    CapacityScheduleDetail.schedule_id == schedule_id,
+                    CapacityScheduleDetail.scheduled_date >= period_start,
+                    CapacityScheduleDetail.scheduled_date <= period_end,
+                )
+                .all()
+            )
         else:
             # Get demand from committed schedules
-            schedule_ids = self.db.query(CapacitySchedule.id).filter(
-                CapacitySchedule.client_id == client_id,
-                CapacitySchedule.status.in_([ScheduleStatus.COMMITTED, ScheduleStatus.ACTIVE]),
-                CapacitySchedule.period_start <= period_end,
-                CapacitySchedule.period_end >= period_start
-            ).all()
+            schedule_ids = (
+                self.db.query(CapacitySchedule.id)
+                .filter(
+                    CapacitySchedule.client_id == client_id,
+                    CapacitySchedule.status.in_([ScheduleStatus.COMMITTED, ScheduleStatus.ACTIVE]),
+                    CapacitySchedule.period_start <= period_end,
+                    CapacitySchedule.period_end >= period_start,
+                )
+                .all()
+            )
 
             schedule_ids = [s[0] for s in schedule_ids]
 
             if not schedule_ids:
                 return demand_by_line
 
-            details = self.db.query(CapacityScheduleDetail).filter(
-                CapacityScheduleDetail.client_id == client_id,
-                CapacityScheduleDetail.schedule_id.in_(schedule_ids),
-                CapacityScheduleDetail.scheduled_date >= period_start,
-                CapacityScheduleDetail.scheduled_date <= period_end
-            ).all()
+            details = (
+                self.db.query(CapacityScheduleDetail)
+                .filter(
+                    CapacityScheduleDetail.client_id == client_id,
+                    CapacityScheduleDetail.schedule_id.in_(schedule_ids),
+                    CapacityScheduleDetail.scheduled_date >= period_start,
+                    CapacityScheduleDetail.scheduled_date <= period_end,
+                )
+                .all()
+            )
 
         # Get SAM data for style codes
         style_codes = list(set(d.style_code for d in details if d.style_code))
@@ -431,23 +424,24 @@ class CapacityAnalysisService:
 
         return demand_by_line
 
-    def _get_sam_by_style(
-        self,
-        client_id: str,
-        style_codes: List[str]
-    ) -> Dict[str, Decimal]:
+    def _get_sam_by_style(self, client_id: str, style_codes: List[str]) -> Dict[str, Decimal]:
         """Get total SAM by style code."""
         if not style_codes:
             return {}
 
         # Aggregate SAM per style (sum of all operations)
-        results = self.db.query(
-            CapacityProductionStandard.style_code,
-            func.sum(CapacityProductionStandard.sam_minutes).label('total_sam')
-        ).filter(
-            CapacityProductionStandard.client_id == client_id,
-            CapacityProductionStandard.style_code.in_(style_codes)
-        ).group_by(CapacityProductionStandard.style_code).all()
+        results = (
+            self.db.query(
+                CapacityProductionStandard.style_code,
+                func.sum(CapacityProductionStandard.sam_minutes).label("total_sam"),
+            )
+            .filter(
+                CapacityProductionStandard.client_id == client_id,
+                CapacityProductionStandard.style_code.in_(style_codes),
+            )
+            .group_by(CapacityProductionStandard.style_code)
+            .all()
+        )
 
         return {r.style_code: Decimal(str(r.total_sam or 0)) for r in results}
 
@@ -458,7 +452,7 @@ class CapacityAnalysisService:
         calendar_data: Dict,
         demand_hours: Decimal,
         demand_units: int,
-        analysis_date: date
+        analysis_date: date,
     ) -> LineCapacityResult:
         """
         Analyze capacity for a single line using 12-step calculation.
@@ -519,15 +513,11 @@ class CapacityAnalysisService:
             demand_units=demand_units,
             utilization_percent=utilization_percent,
             is_bottleneck=is_bottleneck,
-            available_capacity_hours=available_capacity
+            available_capacity_hours=available_capacity,
         )
 
     def _store_analysis_result(
-        self,
-        client_id: str,
-        analysis_date: date,
-        line: CapacityProductionLine,
-        result: LineCapacityResult
+        self, client_id: str, analysis_date: date, line: CapacityProductionLine, result: LineCapacityResult
     ) -> None:
         """Store analysis result in database."""
         analysis = CapacityAnalysis(
@@ -548,7 +538,7 @@ class CapacityAnalysisService:
             demand_hours=result.demand_hours,
             demand_units=result.demand_units,
             utilization_percent=result.utilization_percent,
-            is_bottleneck=result.is_bottleneck
+            is_bottleneck=result.is_bottleneck,
         )
         self.db.add(analysis)
         self.db.commit()

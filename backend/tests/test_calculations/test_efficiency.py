@@ -11,6 +11,7 @@ Covers:
 - Database integration
 - Shift hour calculations
 """
+
 import pytest
 from decimal import Decimal
 from datetime import time
@@ -27,12 +28,13 @@ from backend.calculations.efficiency import (
 
 # ===== Helper Functions for Standalone Calculations =====
 
+
 def simple_efficiency_calc(
     units_produced: int,
     ideal_cycle_time: float,
     employees_assigned: int,
     shift_hours: float,
-    as_percentage: bool = True
+    as_percentage: bool = True,
 ) -> float | None:
     """
     Simple standalone efficiency calculation without DB dependency.
@@ -63,6 +65,7 @@ def simple_efficiency_calc(
 
 # ===== Test Classes =====
 
+
 @pytest.mark.unit
 class TestEfficiencyCalculation:
     """Test efficiency calculation with known inputs/outputs"""
@@ -72,10 +75,7 @@ class TestEfficiencyCalculation:
         """Test basic efficiency with standard values"""
         # Given: 1000 units, 0.01 hr cycle time, 5 employees, 8 hour shift
         result = simple_efficiency_calc(
-            units_produced=1000,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=8.0
+            units_produced=1000, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=8.0
         )
 
         # Then: Should calculate 25% efficiency
@@ -87,10 +87,7 @@ class TestEfficiencyCalculation:
         """Test scenario with >100% efficiency (overproduction)"""
         # Given: High production with same resources
         result = simple_efficiency_calc(
-            units_produced=5000,  # 5x more units
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=8.0
+            units_produced=5000, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=8.0  # 5x more units
         )
 
         # Then: Efficiency should be 125%
@@ -101,10 +98,7 @@ class TestEfficiencyCalculation:
         """Test scenario with low efficiency"""
         # Given: Low production
         result = simple_efficiency_calc(
-            units_produced=400,  # Less units
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=8.0
+            units_produced=400, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=8.0  # Less units
         )
 
         # Then: Efficiency should be 10%
@@ -115,11 +109,7 @@ class TestEfficiencyCalculation:
         """Test efficiency returned as ratio instead of percentage"""
         # Given: Same scenario, but ratio format
         result = simple_efficiency_calc(
-            units_produced=1000,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=8.0,
-            as_percentage=False
+            units_produced=1000, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=8.0, as_percentage=False
         )
 
         # Then: Should return 0.25 (25% as ratio)
@@ -129,12 +119,7 @@ class TestEfficiencyCalculation:
     def test_zero_production(self):
         """Test efficiency with zero units produced"""
         # Given: No production
-        result = simple_efficiency_calc(
-            units_produced=0,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=8.0
-        )
+        result = simple_efficiency_calc(units_produced=0, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=8.0)
 
         # Then: Efficiency should be 0%
         assert result == 0.0
@@ -144,10 +129,7 @@ class TestEfficiencyCalculation:
         """Test that zero employees returns None"""
         # Given: Invalid zero employees
         result = simple_efficiency_calc(
-            units_produced=1000,
-            ideal_cycle_time=0.01,
-            employees_assigned=0,
-            shift_hours=8.0
+            units_produced=1000, ideal_cycle_time=0.01, employees_assigned=0, shift_hours=8.0
         )
 
         # Then: Should return None (invalid)
@@ -157,12 +139,7 @@ class TestEfficiencyCalculation:
     def test_invalid_zero_shift_hours(self):
         """Test that zero shift hours returns None"""
         # Given: Invalid zero shift hours
-        result = simple_efficiency_calc(
-            units_produced=1000,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=0
-        )
+        result = simple_efficiency_calc(units_produced=1000, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=0)
 
         # Then: Should return None (invalid)
         assert result is None
@@ -172,10 +149,7 @@ class TestEfficiencyCalculation:
         """Test that negative units returns None"""
         # Given: Invalid negative units
         result = simple_efficiency_calc(
-            units_produced=-100,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=8.0
+            units_produced=-100, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=8.0
         )
 
         # Then: Should return None (invalid)
@@ -186,10 +160,7 @@ class TestEfficiencyCalculation:
         """Test efficiency with very fast cycle time (seconds)"""
         # Given: 10 second cycle time = 0.00278 hours
         result = simple_efficiency_calc(
-            units_produced=10000,
-            ideal_cycle_time=0.00278,
-            employees_assigned=5,
-            shift_hours=8.0
+            units_produced=10000, ideal_cycle_time=0.00278, employees_assigned=5, shift_hours=8.0
         )
 
         # Then: Calculate expected efficiency
@@ -201,10 +172,7 @@ class TestEfficiencyCalculation:
         """Test efficiency with single employee"""
         # Given: One employee producing 80 units
         result = simple_efficiency_calc(
-            units_produced=80,
-            ideal_cycle_time=0.1,  # 6 minutes per unit
-            employees_assigned=1,
-            shift_hours=8.0
+            units_produced=80, ideal_cycle_time=0.1, employees_assigned=1, shift_hours=8.0  # 6 minutes per unit
         )
 
         # Then: (80 x 0.1) / (1 x 8) x 100 = 8 / 8 x 100 = 100%
@@ -215,10 +183,7 @@ class TestEfficiencyCalculation:
         """Test that efficiency is calculated with proper precision"""
         # Given: Values that result in repeating decimal
         result = simple_efficiency_calc(
-            units_produced=1000,
-            ideal_cycle_time=0.01,
-            employees_assigned=3,
-            shift_hours=8.0
+            units_produced=1000, ideal_cycle_time=0.01, employees_assigned=3, shift_hours=8.0
         )
 
         # Then: Should round to 4 decimal places
@@ -287,10 +252,7 @@ class TestEfficiencyEdgeCases:
         # 8 employees x 8 hours = 64 available hours
         # 6400 units x 0.01 hrs = 64 production hours
         result = simple_efficiency_calc(
-            units_produced=6400,
-            ideal_cycle_time=0.01,
-            employees_assigned=8,
-            shift_hours=8.0
+            units_produced=6400, ideal_cycle_time=0.01, employees_assigned=8, shift_hours=8.0
         )
 
         # Then: Should achieve 100% efficiency
@@ -304,7 +266,7 @@ class TestEfficiencyEdgeCases:
             units_produced=8000,  # Would need 80 hours
             ideal_cycle_time=0.01,
             employees_assigned=8,
-            shift_hours=8.0  # Only 64 hours available
+            shift_hours=8.0,  # Only 64 hours available
         )
 
         # Then: Efficiency > 100% indicates overtime or faster-than-standard work
@@ -315,10 +277,7 @@ class TestEfficiencyEdgeCases:
         """Test with very large production numbers"""
         # Given: Large batch production
         result = simple_efficiency_calc(
-            units_produced=1000000,
-            ideal_cycle_time=0.001,
-            employees_assigned=50,
-            shift_hours=8.0
+            units_produced=1000000, ideal_cycle_time=0.001, employees_assigned=50, shift_hours=8.0
         )
 
         # Then: (1000000 x 0.001) / (50 x 8) x 100 = 1000 / 400 x 100 = 250%
@@ -328,10 +287,7 @@ class TestEfficiencyEdgeCases:
     def test_rounding_consistency(self):
         """Test that rounding is consistent"""
         # Given: Same calculation multiple times
-        results = [
-            simple_efficiency_calc(1000, 0.01, 5, 8.0)
-            for _ in range(10)
-        ]
+        results = [simple_efficiency_calc(1000, 0.01, 5, 8.0) for _ in range(10)]
 
         # Then: All results should be identical
         assert len(set(results)) == 1
@@ -370,10 +326,7 @@ class TestEfficiencyBusinessScenarios:
         """Test efficiency in shortened shift with high output"""
         # Given: 6-hour shift with normal daily production
         result = simple_efficiency_calc(
-            units_produced=1000,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=6.0  # Shortened shift
+            units_produced=1000, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=6.0  # Shortened shift
         )
 
         # Then: (1000 x 0.01) / (5 x 6) x 100 = 10 / 30 x 100 = 33.33%
@@ -384,10 +337,7 @@ class TestEfficiencyBusinessScenarios:
         """Test efficiency across double shift"""
         # Given: 16-hour shift (2 shifts)
         result = simple_efficiency_calc(
-            units_produced=2000,
-            ideal_cycle_time=0.01,
-            employees_assigned=5,
-            shift_hours=16.0
+            units_produced=2000, ideal_cycle_time=0.01, employees_assigned=5, shift_hours=16.0
         )
 
         # Then: (2000 x 0.01) / (5 x 16) x 100 = 20 / 80 x 100 = 25%
@@ -423,7 +373,7 @@ class TestEfficiencyDatabaseIntegration:
             shift_name="Day Shift",
             start_time=time(7, 0),
             end_time=time(15, 0),
-            is_active=True
+            is_active=True,
         )
         db_session.add(shift)
 
@@ -434,7 +384,7 @@ class TestEfficiencyDatabaseIntegration:
             product_code="TEST-001",
             product_name="Test Product",
             ideal_cycle_time=Decimal("0.01"),
-            is_active=True
+            is_active=True,
         )
         db_session.add(product)
         db_session.commit()
@@ -449,9 +399,7 @@ class TestEfficiencyDatabaseIntegration:
         mock_entry.run_time_hours = Decimal("8.0")
 
         # Calculate efficiency
-        efficiency, cycle_time, was_inferred = calculate_efficiency(
-            db_session, mock_entry, product
-        )
+        efficiency, cycle_time, was_inferred = calculate_efficiency(db_session, mock_entry, product)
 
         # Verify result
         assert efficiency == Decimal("25.00")

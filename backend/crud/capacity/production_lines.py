@@ -6,6 +6,7 @@ including operators, efficiency factors, and department assignments.
 
 Multi-tenant: All operations enforce client_id isolation.
 """
+
 from typing import List, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -26,7 +27,7 @@ def create_production_line(
     efficiency_factor: float = 0.85,
     absenteeism_factor: float = 0.05,
     is_active: bool = True,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> CapacityProductionLine:
     """
     Create a new production line.
@@ -59,7 +60,7 @@ def create_production_line(
         efficiency_factor=Decimal(str(efficiency_factor)),
         absenteeism_factor=Decimal(str(absenteeism_factor)),
         is_active=is_active,
-        notes=notes
+        notes=notes,
     )
     db.add(line)
     db.commit()
@@ -68,11 +69,7 @@ def create_production_line(
 
 
 def get_production_lines(
-    db: Session,
-    client_id: str,
-    skip: int = 0,
-    limit: int = 100,
-    include_inactive: bool = False
+    db: Session, client_id: str, skip: int = 0, limit: int = 100, include_inactive: bool = False
 ) -> List[CapacityProductionLine]:
     """
     Get all production lines for a client.
@@ -89,9 +86,7 @@ def get_production_lines(
     """
     ensure_client_id(client_id, "production lines query")
 
-    query = db.query(CapacityProductionLine).filter(
-        CapacityProductionLine.client_id == client_id
-    )
+    query = db.query(CapacityProductionLine).filter(CapacityProductionLine.client_id == client_id)
 
     if not include_inactive:
         query = query.filter(CapacityProductionLine.is_active == True)
@@ -99,11 +94,7 @@ def get_production_lines(
     return query.order_by(CapacityProductionLine.line_code).offset(skip).limit(limit).all()
 
 
-def get_production_line(
-    db: Session,
-    client_id: str,
-    line_id: int
-) -> Optional[CapacityProductionLine]:
+def get_production_line(db: Session, client_id: str, line_id: int) -> Optional[CapacityProductionLine]:
     """
     Get a specific production line by ID.
 
@@ -116,19 +107,14 @@ def get_production_line(
         CapacityProductionLine or None if not found
     """
     ensure_client_id(client_id, "production line query")
-    return db.query(CapacityProductionLine).filter(
-        and_(
-            CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.id == line_id
-        )
-    ).first()
+    return (
+        db.query(CapacityProductionLine)
+        .filter(and_(CapacityProductionLine.client_id == client_id, CapacityProductionLine.id == line_id))
+        .first()
+    )
 
 
-def get_production_line_by_code(
-    db: Session,
-    client_id: str,
-    line_code: str
-) -> Optional[CapacityProductionLine]:
+def get_production_line_by_code(db: Session, client_id: str, line_code: str) -> Optional[CapacityProductionLine]:
     """
     Get a specific production line by code.
 
@@ -141,20 +127,14 @@ def get_production_line_by_code(
         CapacityProductionLine or None if not found
     """
     ensure_client_id(client_id, "production line query")
-    return db.query(CapacityProductionLine).filter(
-        and_(
-            CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.line_code == line_code
-        )
-    ).first()
+    return (
+        db.query(CapacityProductionLine)
+        .filter(and_(CapacityProductionLine.client_id == client_id, CapacityProductionLine.line_code == line_code))
+        .first()
+    )
 
 
-def update_production_line(
-    db: Session,
-    client_id: str,
-    line_id: int,
-    **updates
-) -> Optional[CapacityProductionLine]:
+def update_production_line(db: Session, client_id: str, line_id: int, **updates) -> Optional[CapacityProductionLine]:
     """
     Update a production line.
 
@@ -172,7 +152,7 @@ def update_production_line(
         return None
 
     # Convert float fields to Decimal
-    decimal_fields = ['standard_capacity_units_per_hour', 'efficiency_factor', 'absenteeism_factor']
+    decimal_fields = ["standard_capacity_units_per_hour", "efficiency_factor", "absenteeism_factor"]
     for key, value in updates.items():
         if hasattr(line, key) and value is not None:
             if key in decimal_fields:
@@ -184,12 +164,7 @@ def update_production_line(
     return line
 
 
-def delete_production_line(
-    db: Session,
-    client_id: str,
-    line_id: int,
-    soft_delete: bool = True
-) -> bool:
+def delete_production_line(db: Session, client_id: str, line_id: int, soft_delete: bool = True) -> bool:
     """
     Delete a production line.
 
@@ -216,10 +191,7 @@ def delete_production_line(
     return True
 
 
-def get_active_lines(
-    db: Session,
-    client_id: str
-) -> List[CapacityProductionLine]:
+def get_active_lines(db: Session, client_id: str) -> List[CapacityProductionLine]:
     """
     Get all active production lines for a client.
 
@@ -231,19 +203,16 @@ def get_active_lines(
         List of active CapacityProductionLine entries
     """
     ensure_client_id(client_id, "active lines query")
-    return db.query(CapacityProductionLine).filter(
-        and_(
-            CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.is_active == True
-        )
-    ).order_by(CapacityProductionLine.line_code).all()
+    return (
+        db.query(CapacityProductionLine)
+        .filter(and_(CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True))
+        .order_by(CapacityProductionLine.line_code)
+        .all()
+    )
 
 
 def get_lines_by_department(
-    db: Session,
-    client_id: str,
-    department: str,
-    active_only: bool = True
+    db: Session, client_id: str, department: str, active_only: bool = True
 ) -> List[CapacityProductionLine]:
     """
     Get production lines by department.
@@ -259,24 +228,15 @@ def get_lines_by_department(
     """
     ensure_client_id(client_id, "lines by department query")
 
-    filters = [
-        CapacityProductionLine.client_id == client_id,
-        CapacityProductionLine.department == department
-    ]
+    filters = [CapacityProductionLine.client_id == client_id, CapacityProductionLine.department == department]
 
     if active_only:
         filters.append(CapacityProductionLine.is_active == True)
 
-    return db.query(CapacityProductionLine).filter(
-        and_(*filters)
-    ).order_by(CapacityProductionLine.line_code).all()
+    return db.query(CapacityProductionLine).filter(and_(*filters)).order_by(CapacityProductionLine.line_code).all()
 
 
-def get_total_capacity_per_hour(
-    db: Session,
-    client_id: str,
-    department: Optional[str] = None
-) -> float:
+def get_total_capacity_per_hour(db: Session, client_id: str, department: Optional[str] = None) -> float:
     """
     Calculate total effective capacity per hour.
 
@@ -297,10 +257,7 @@ def get_total_capacity_per_hour(
 
 
 def bulk_update_efficiency_factors(
-    db: Session,
-    client_id: str,
-    efficiency_factor: float,
-    department: Optional[str] = None
+    db: Session, client_id: str, efficiency_factor: float, department: Optional[str] = None
 ) -> int:
     """
     Bulk update efficiency factors for lines.
@@ -316,19 +273,17 @@ def bulk_update_efficiency_factors(
     """
     ensure_client_id(client_id, "bulk efficiency update")
 
-    filters = [
-        CapacityProductionLine.client_id == client_id,
-        CapacityProductionLine.is_active == True
-    ]
+    filters = [CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True]
 
     if department:
         filters.append(CapacityProductionLine.department == department)
 
-    result = db.query(CapacityProductionLine).filter(
-        and_(*filters)
-    ).update(
-        {CapacityProductionLine.efficiency_factor: Decimal(str(efficiency_factor))},
-        synchronize_session='fetch'
+    result = (
+        db.query(CapacityProductionLine)
+        .filter(and_(*filters))
+        .update(
+            {CapacityProductionLine.efficiency_factor: Decimal(str(efficiency_factor))}, synchronize_session="fetch"
+        )
     )
 
     db.commit()

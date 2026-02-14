@@ -10,6 +10,7 @@ Tests cover:
 - bulk_transition function
 - apply_workflow_template function
 """
+
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, MagicMock, patch
@@ -28,26 +29,23 @@ class TestWorkflowStateMachine:
         mock_query.first.return_value = client_config
         return mock_db
 
-    def _create_mock_client_config(
-        self,
-        statuses=None,
-        transitions=None,
-        optional=None,
-        closure_trigger="at_shipment"
-    ):
+    def _create_mock_client_config(self, statuses=None, transitions=None, optional=None, closure_trigger="at_shipment"):
         """Create mock client configuration"""
         config = Mock()
         config.client_id = "CLIENT-001"
-        config.workflow_statuses = json.dumps(statuses or [
-            "RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"
-        ])
-        config.workflow_transitions = json.dumps(transitions or {
-            "RELEASED": ["RECEIVED"],
-            "IN_PROGRESS": ["RELEASED"],
-            "COMPLETED": ["IN_PROGRESS"],
-            "SHIPPED": ["COMPLETED"],
-            "CLOSED": ["SHIPPED", "COMPLETED"]
-        })
+        config.workflow_statuses = json.dumps(
+            statuses or ["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"]
+        )
+        config.workflow_transitions = json.dumps(
+            transitions
+            or {
+                "RELEASED": ["RECEIVED"],
+                "IN_PROGRESS": ["RELEASED"],
+                "COMPLETED": ["IN_PROGRESS"],
+                "SHIPPED": ["COMPLETED"],
+                "CLOSED": ["SHIPPED", "COMPLETED"],
+            }
+        )
         config.workflow_optional_statuses = json.dumps(optional or ["SHIPPED"])
         config.workflow_closure_trigger = closure_trigger
         config.workflow_version = 1
@@ -207,13 +205,7 @@ class TestWorkflowStateMachine:
 class TestValidateTransitionWorkOrder:
     """Test validate_transition for work orders"""
 
-    def _create_mock_work_order(
-        self,
-        status="RECEIVED",
-        actual_quantity=100,
-        qc_approved=True,
-        previous_status=None
-    ):
+    def _create_mock_work_order(self, status="RECEIVED", actual_quantity=100, qc_approved=True, previous_status=None):
         """Create mock work order"""
         wo = Mock()
         wo.work_order_id = "WO-001"
@@ -228,16 +220,16 @@ class TestValidateTransitionWorkOrder:
     def _create_mock_db_with_config(self):
         """Create mock db with client config"""
         config = Mock()
-        config.workflow_statuses = json.dumps([
-            "RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"
-        ])
-        config.workflow_transitions = json.dumps({
-            "RELEASED": ["RECEIVED"],
-            "IN_PROGRESS": ["RELEASED"],
-            "COMPLETED": ["IN_PROGRESS"],
-            "SHIPPED": ["COMPLETED"],
-            "CLOSED": ["SHIPPED", "COMPLETED"]
-        })
+        config.workflow_statuses = json.dumps(["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED", "SHIPPED", "CLOSED"])
+        config.workflow_transitions = json.dumps(
+            {
+                "RELEASED": ["RECEIVED"],
+                "IN_PROGRESS": ["RELEASED"],
+                "COMPLETED": ["IN_PROGRESS"],
+                "SHIPPED": ["COMPLETED"],
+                "CLOSED": ["SHIPPED", "COMPLETED"],
+            }
+        )
         config.workflow_optional_statuses = json.dumps([])
         config.workflow_closure_trigger = "at_shipment"
         config.workflow_version = 1
@@ -255,10 +247,7 @@ class TestValidateTransitionWorkOrder:
         from backend.services.workflow_service import WorkflowStateMachine
 
         mock_db = self._create_mock_db_with_config()
-        wo = self._create_mock_work_order(
-            status="IN_PROGRESS",
-            actual_quantity=0  # No quantity
-        )
+        wo = self._create_mock_work_order(status="IN_PROGRESS", actual_quantity=0)  # No quantity
 
         sm = WorkflowStateMachine(mock_db, "CLIENT-001")
         is_valid, reason = sm.validate_transition(wo, "COMPLETED")
@@ -271,10 +260,7 @@ class TestValidateTransitionWorkOrder:
         from backend.services.workflow_service import WorkflowStateMachine
 
         mock_db = self._create_mock_db_with_config()
-        wo = self._create_mock_work_order(
-            status="COMPLETED",
-            qc_approved=False  # Not approved
-        )
+        wo = self._create_mock_work_order(status="COMPLETED", qc_approved=False)  # Not approved
 
         sm = WorkflowStateMachine(mock_db, "CLIENT-001")
         is_valid, reason = sm.validate_transition(wo, "SHIPPED")
@@ -287,10 +273,7 @@ class TestValidateTransitionWorkOrder:
         from backend.services.workflow_service import WorkflowStateMachine
 
         mock_db = self._create_mock_db_with_config()
-        wo = self._create_mock_work_order(
-            status="ON_HOLD",
-            previous_status="IN_PROGRESS"
-        )
+        wo = self._create_mock_work_order(status="ON_HOLD", previous_status="IN_PROGRESS")
 
         sm = WorkflowStateMachine(mock_db, "CLIENT-001")
 
@@ -303,10 +286,7 @@ class TestValidateTransitionWorkOrder:
         from backend.services.workflow_service import WorkflowStateMachine
 
         mock_db = self._create_mock_db_with_config()
-        wo = self._create_mock_work_order(
-            status="ON_HOLD",
-            previous_status="IN_PROGRESS"
-        )
+        wo = self._create_mock_work_order(status="ON_HOLD", previous_status="IN_PROGRESS")
 
         sm = WorkflowStateMachine(mock_db, "CLIENT-001")
 
@@ -321,10 +301,7 @@ class TestValidateTransitionWorkOrder:
         from backend.services.workflow_service import WorkflowStateMachine
 
         mock_db = self._create_mock_db_with_config()
-        wo = self._create_mock_work_order(
-            status="ON_HOLD",
-            previous_status="IN_PROGRESS"
-        )
+        wo = self._create_mock_work_order(status="ON_HOLD", previous_status="IN_PROGRESS")
 
         sm = WorkflowStateMachine(mock_db, "CLIENT-001")
 
@@ -473,10 +450,7 @@ class TestGetAllowedTransitions:
 
         config = Mock()
         config.workflow_statuses = json.dumps(["RECEIVED", "RELEASED", "COMPLETED"])
-        config.workflow_transitions = json.dumps({
-            "RELEASED": ["RECEIVED"],
-            "COMPLETED": ["RELEASED"]
-        })
+        config.workflow_transitions = json.dumps({"RELEASED": ["RECEIVED"], "COMPLETED": ["RELEASED"]})
         config.workflow_optional_statuses = json.dumps([])
         config.workflow_closure_trigger = "at_shipment"
         config.workflow_version = 1
@@ -590,10 +564,7 @@ class TestDefaultTransitions:
 
     def test_universal_statuses_exist(self):
         """Test universal statuses are defined"""
-        from backend.services.workflow_service import (
-            UNIVERSAL_FROM_STATUSES,
-            UNIVERSAL_TO_STATUSES
-        )
+        from backend.services.workflow_service import UNIVERSAL_FROM_STATUSES, UNIVERSAL_TO_STATUSES
 
         assert "CANCELLED" in UNIVERSAL_FROM_STATUSES
         assert "ON_HOLD" in UNIVERSAL_TO_STATUSES

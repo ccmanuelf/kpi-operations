@@ -1,6 +1,7 @@
 """
 Backend middleware for multi-tenant authorization, client isolation, and rate limiting
 """
+
 from .client_auth import verify_client_access, get_user_client_filter, ClientAccessError
 from .rate_limit import (
     limiter,
@@ -10,7 +11,7 @@ from .rate_limit import (
     general_rate_limit,
     sensitive_rate_limit,
     upload_rate_limit,
-    report_rate_limit
+    report_rate_limit,
 )
 
 __all__ = [
@@ -26,5 +27,5 @@ __all__ = [
     "general_rate_limit",
     "sensitive_rate_limit",
     "upload_rate_limit",
-    "report_rate_limit"
+    "report_rate_limit",
 ]

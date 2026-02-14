@@ -5,20 +5,17 @@ Defensive checks for multi-tenant data isolation.
 CRITICAL: These utilities provide the last line of defense for tenant isolation.
 Always use these checks when accessing resources that may belong to different tenants.
 """
+
 from typing import Optional, Any, TypeVar
 from fastapi import HTTPException
 
 from backend.exceptions.domain_exceptions import MultiTenantViolationError
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
-def verify_tenant_access(
-    current_client_id: str,
-    resource_client_id: str,
-    resource_type: str = "resource"
-) -> None:
+def verify_tenant_access(current_client_id: str, resource_client_id: str, resource_type: str = "resource") -> None:
     """
     Verify that the current user has access to a resource's tenant.
 
@@ -44,8 +41,8 @@ def verify_tenant_access(
             details={
                 "requested_tenant": resource_client_id,
                 "current_tenant": current_client_id,
-                "resource_type": resource_type
-            }
+                "resource_type": resource_type,
+            },
         )
 
 
@@ -69,14 +66,12 @@ def build_client_filter_clause(model: Any, client_id: str) -> Any:
         ... )
     """
     # Check for different possible client_id column names
-    if hasattr(model, 'client_id'):
+    if hasattr(model, "client_id"):
         return model.client_id == client_id
-    elif hasattr(model, 'client_id_fk'):
+    elif hasattr(model, "client_id_fk"):
         return model.client_id_fk == client_id
     else:
-        raise AttributeError(
-            f"Model {model.__name__} does not have client_id or client_id_fk column"
-        )
+        raise AttributeError(f"Model {model.__name__} does not have client_id or client_id_fk column")
 
 
 def ensure_client_id(client_id: Optional[str], context: str = "request") -> str:
@@ -103,10 +98,7 @@ def ensure_client_id(client_id: Optional[str], context: str = "request") -> str:
         HTTPException(status_code=400, detail="client_id is required...")
     """
     if not client_id:
-        raise HTTPException(
-            status_code=400,
-            detail=f"client_id is required for {context}"
-        )
+        raise HTTPException(status_code=400, detail=f"client_id is required for {context}")
     return client_id
 
 
@@ -134,32 +126,28 @@ def get_client_id_from_user(user: Any, allow_admin_override: bool = False) -> Op
     if user is None:
         return None
 
-    user_role = getattr(user, 'role', None)
+    user_role = getattr(user, "role", None)
 
     # ADMIN/POWERUSER users may have all-tenant access
-    if allow_admin_override and user_role in ('ADMIN', 'admin', 'POWERUSER', 'poweruser'):
+    if allow_admin_override and user_role in ("ADMIN", "admin", "POWERUSER", "poweruser"):
         return None  # No filter = all tenants
 
     # Regular users are restricted to their tenant
     # Check multiple possible attribute names for flexibility
     client_id = (
-        getattr(user, 'client_id_assigned', None) or
-        getattr(user, 'client_id_fk', None) or
-        getattr(user, 'client_id', None)
+        getattr(user, "client_id_assigned", None)
+        or getattr(user, "client_id_fk", None)
+        or getattr(user, "client_id", None)
     )
 
     # client_id_assigned may contain comma-separated values, take first
-    if client_id and ',' in str(client_id):
-        client_id = str(client_id).split(',')[0].strip()
+    if client_id and "," in str(client_id):
+        client_id = str(client_id).split(",")[0].strip()
 
     return client_id
 
 
-def validate_resource_ownership(
-    resource: T,
-    current_client_id: str,
-    resource_type: str = "resource"
-) -> T:
+def validate_resource_ownership(resource: T, current_client_id: str, resource_type: str = "resource") -> T:
     """
     Validate that a resource belongs to the current tenant and return it.
 
@@ -187,10 +175,7 @@ def validate_resource_ownership(
         return None
 
     # Check for different possible client_id attribute names
-    resource_client_id = (
-        getattr(resource, 'client_id', None) or
-        getattr(resource, 'client_id_fk', None)
-    )
+    resource_client_id = getattr(resource, "client_id", None) or getattr(resource, "client_id_fk", None)
 
     if resource_client_id and resource_client_id != current_client_id:
         raise MultiTenantViolationError(
@@ -198,17 +183,14 @@ def validate_resource_ownership(
             details={
                 "resource_tenant": resource_client_id,
                 "current_tenant": current_client_id,
-                "resource_type": resource_type
-            }
+                "resource_type": resource_type,
+            },
         )
 
     return resource
 
 
-def filter_resources_by_tenant(
-    resources: list,
-    client_id: str
-) -> list:
+def filter_resources_by_tenant(resources: list, client_id: str) -> list:
     """
     Filter a list of resources to only include those belonging to a tenant.
 
@@ -231,10 +213,7 @@ def filter_resources_by_tenant(
 
     filtered = []
     for resource in resources:
-        resource_client_id = (
-            getattr(resource, 'client_id', None) or
-            getattr(resource, 'client_id_fk', None)
-        )
+        resource_client_id = getattr(resource, "client_id", None) or getattr(resource, "client_id_fk", None)
         if resource_client_id == client_id:
             filtered.append(resource)
 

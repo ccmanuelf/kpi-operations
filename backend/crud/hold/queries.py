@@ -2,6 +2,7 @@
 CRUD query operations for WIP hold tracking
 List, filter, and lookup operations
 """
+
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
@@ -22,7 +23,7 @@ def get_wip_holds(
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
     released: Optional[bool] = None,
-    hold_reason_category: Optional[str] = None
+    hold_reason_category: Optional[str] = None,
 ) -> List[WIPHold]:
     """Get WIP holds with filters - uses HOLD_ENTRY schema"""
     query = db.query(WIPHold)
@@ -54,16 +55,10 @@ def get_wip_holds(
     if hold_reason_category:
         query = query.filter(WIPHold.hold_reason_category == hold_reason_category)
 
-    return query.order_by(
-        WIPHold.hold_date.desc()
-    ).offset(skip).limit(limit).all()
+    return query.order_by(WIPHold.hold_date.desc()).offset(skip).limit(limit).all()
 
 
-def get_holds_by_work_order(
-    db: Session,
-    work_order_number: str,
-    current_user: User
-) -> List[WIPHoldResponse]:
+def get_holds_by_work_order(db: Session, work_order_number: str, current_user: User) -> List[WIPHoldResponse]:
     """
     Get all holds for a specific work order
     P2-001: Helper function for WIP aging
@@ -76,9 +71,7 @@ def get_holds_by_work_order(
     Returns:
         List of WIPHoldResponse for the work order
     """
-    query = db.query(WIPHold).filter(
-        WIPHold.work_order_id == work_order_number
-    )
+    query = db.query(WIPHold).filter(WIPHold.work_order_id == work_order_number)
 
     # Apply client filtering
     client_filter = build_client_filter_clause(current_user, WIPHold.client_id)

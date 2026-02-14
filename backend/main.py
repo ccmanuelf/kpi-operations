@@ -2,6 +2,7 @@
 Manufacturing KPI Platform - FastAPI Backend
 Main application with modular routes
 """
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -17,6 +18,7 @@ from backend.database import get_db, engine, Base
 # =============================================================================
 # V1 Simulation API Deprecation Middleware
 # =============================================================================
+
 
 class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
     """
@@ -39,8 +41,7 @@ class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
             response.headers["Deprecation"] = "true"
             response.headers["Sunset"] = self.V1_SUNSET_DATE
             response.headers["Link"] = (
-                f'<{self.V2_API_URL}>; rel="successor-version", '
-                f'</api/docs#/simulation-v2>; rel="deprecation"'
+                f'<{self.V2_API_URL}>; rel="successor-version", ' f'</api/docs#/simulation-v2>; rel="deprecation"'
             )
             response.headers["X-API-Deprecation-Info"] = (
                 "This API version is deprecated. Please migrate to /api/v2/simulation "
@@ -49,14 +50,11 @@ class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
 
         return response
 
+
 # Domain Events Infrastructure (Phase 3)
 from backend.events import register_all_handlers, get_event_bus
 from backend.schemas.event_store import create_event_persistence_handler
-from backend.middleware.rate_limit import (
-    limiter,
-    configure_rate_limiting,
-    RateLimitConfig
-)
+from backend.middleware.rate_limit import limiter, configure_rate_limiting, RateLimitConfig
 
 # Create tables (DISABLED - using pre-populated SQLite database with demo data)
 # Base.metadata.create_all(bind=engine)
@@ -65,7 +63,7 @@ from backend.middleware.rate_limit import (
 app = FastAPI(
     title="Manufacturing KPI Platform API",
     description="FastAPI backend for production tracking and KPI calculation",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 # CORS middleware
@@ -88,6 +86,7 @@ configure_rate_limiting(app)
 # HEALTH CHECK
 # ============================================================================
 
+
 @app.get("/")
 def root():
     """API health check"""
@@ -95,7 +94,7 @@ def root():
         "status": "healthy",
         "service": "Manufacturing KPI Platform API",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -365,6 +364,7 @@ except ImportError:
 # APPLICATION LIFECYCLE EVENTS
 # ============================================================================
 
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize application services"""
@@ -375,10 +375,9 @@ async def startup_event():
 
         # Set up event persistence to EVENT_STORE
         from backend.database import SessionLocal
+
         event_bus = get_event_bus()
-        event_bus.set_persistence_handler(
-            create_event_persistence_handler(SessionLocal)
-        )
+        event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
         print("[EVENTS] Domain events infrastructure initialized")
     except Exception as e:
         print(f"Warning: Failed to initialize event infrastructure: {e}")
@@ -404,4 +403,5 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

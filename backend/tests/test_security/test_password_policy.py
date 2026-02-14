@@ -12,6 +12,7 @@ Tests verify:
 7. Sequential character detection
 8. Password strength scoring
 """
+
 import pytest
 from backend.auth.password_policy import (
     validate_password_strength,
@@ -20,7 +21,7 @@ from backend.auth.password_policy import (
     password_validator,
     PasswordPolicyConfig,
     DEFAULT_POLICY,
-    COMMON_PASSWORDS
+    COMMON_PASSWORDS,
 )
 
 
@@ -83,13 +84,7 @@ class TestPasswordValidation:
 
     def test_valid_password_all_requirements(self):
         """Test acceptance of password meeting all requirements"""
-        valid_passwords = [
-            "StrongP@ss123",
-            "MyS3cur3P@ssword!",
-            "C0mpl3x!Pass",
-            "Test1ng@2024",
-            "Secur1ty#Key"
-        ]
+        valid_passwords = ["StrongP@ss123", "MyS3cur3P@ssword!", "C0mpl3x!Pass", "Test1ng@2024", "Secur1ty#Key"]
 
         for password in valid_passwords:
             is_valid, message = validate_password_strength(password)
@@ -110,18 +105,23 @@ class TestPasswordValidation:
 
         for pwd in common_passwords:
             # Add required characters to test common password check
-            test_pwd = pwd if all([
-                any(c.isupper() for c in pwd),
-                any(c.islower() for c in pwd),
-                any(c.isdigit() for c in pwd),
-                any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in pwd)
-            ]) else f"{pwd}A1!"
+            test_pwd = (
+                pwd
+                if all(
+                    [
+                        any(c.isupper() for c in pwd),
+                        any(c.islower() for c in pwd),
+                        any(c.isdigit() for c in pwd),
+                        any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in pwd),
+                    ]
+                )
+                else f"{pwd}A1!"
+            )
 
             is_valid, message = validate_password_strength(test_pwd)
             # If still invalid due to common password check
             if pwd.lower() in COMMON_PASSWORDS:
-                assert not is_valid or "common" not in message.lower(), \
-                    f"Common password '{pwd}' should be rejected"
+                assert not is_valid or "common" not in message.lower(), f"Common password '{pwd}' should be rejected"
 
     def test_password_not_in_common_list(self):
         """Test acceptance of unique password not in common list"""
@@ -221,10 +221,7 @@ class TestPasswordPolicyConfig:
 
     def test_custom_config(self):
         """Test custom configuration"""
-        custom_config = PasswordPolicyConfig(
-            min_length=12,
-            require_special=False
-        )
+        custom_config = PasswordPolicyConfig(min_length=12, require_special=False)
 
         # With custom config, shorter password should fail
         is_valid, message = validate_password_strength("Short1!a", custom_config)
@@ -304,14 +301,12 @@ class TestCommonPasswordsList:
         known_common = ["password", "123456", "qwerty", "admin123"]
 
         for pwd in known_common:
-            assert pwd in COMMON_PASSWORDS, \
-                f"'{pwd}' should be in common passwords list"
+            assert pwd in COMMON_PASSWORDS, f"'{pwd}' should be in common passwords list"
 
     def test_common_passwords_lowercase(self):
         """Test common passwords are stored in lowercase for comparison"""
         for pwd in COMMON_PASSWORDS:
-            assert pwd == pwd.lower(), \
-                f"Common password '{pwd}' should be lowercase"
+            assert pwd == pwd.lower(), f"Common password '{pwd}' should be lowercase"
 
 
 class TestUserCreateModelValidation:
@@ -326,7 +321,7 @@ class TestUserCreateModelValidation:
             email="test@example.com",
             password="ValidP@ss123",
             full_name="Test User",
-            role="operator"
+            role="operator",
         )
 
         assert user.password == "ValidP@ss123"
@@ -338,16 +333,12 @@ class TestUserCreateModelValidation:
 
         with pytest.raises(ValidationError) as exc_info:
             UserCreate(
-                username="testuser",
-                email="test@example.com",
-                password="weak",
-                full_name="Test User",
-                role="operator"
+                username="testuser", email="test@example.com", password="weak", full_name="Test User", role="operator"
             )
 
         # Check error is for password field
         errors = exc_info.value.errors()
-        assert any(e['loc'] == ('password',) for e in errors)
+        assert any(e["loc"] == ("password",) for e in errors)
 
     def test_user_create_missing_uppercase_rejected(self):
         """Test UserCreate rejects password missing uppercase"""
@@ -360,11 +351,11 @@ class TestUserCreateModelValidation:
                 email="test@example.com",
                 password="lowercase1!",
                 full_name="Test User",
-                role="operator"
+                role="operator",
             )
 
         errors = exc_info.value.errors()
-        assert any(e['loc'] == ('password',) for e in errors)
+        assert any(e["loc"] == ("password",) for e in errors)
 
 
 class TestEdgeCases:

@@ -3,15 +3,19 @@ Real-database tests for Client CRUD operations.
 Uses transactional_db fixture (in-memory SQLite with automatic rollback).
 No mocks for database operations.
 """
+
 import pytest
 from datetime import date, datetime
 from decimal import Decimal
 
 from backend.schemas import (
-    Client, ClientType,
-    User, UserRole,
+    Client,
+    ClientType,
+    User,
+    UserRole,
     Employee,
-    WorkOrder, WorkOrderStatus,
+    WorkOrder,
+    WorkOrderStatus,
     Product,
 )
 from backend.tests.fixtures.factories import TestDataFactory
@@ -20,6 +24,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _seed_admin_user(db, client_id=None):
     """Create an admin user (no client restriction)."""
@@ -131,10 +136,14 @@ class TestClientCRUD:
         assert from_db.is_active == 0
 
         # But filtered query excludes it
-        active_only = db.query(Client).filter(
-            Client.client_id == "CLIENT-SOFT-DEL",
-            Client.is_active == 1,
-        ).first()
+        active_only = (
+            db.query(Client)
+            .filter(
+                Client.client_id == "CLIENT-SOFT-DEL",
+                Client.is_active == 1,
+            )
+            .first()
+        )
         assert active_only is None
 
     def test_client_type_enum_stored(self, transactional_db):
@@ -163,9 +172,7 @@ class TestClientCRUD:
         db.flush()
 
         user_assigned_client = "CLIENT-001"
-        accessible = db.query(Client).filter(
-            Client.client_id == user_assigned_client
-        ).all()
+        accessible = db.query(Client).filter(Client.client_id == user_assigned_client).all()
         assert len(accessible) == 1
         assert accessible[0].client_id == "CLIENT-001"
 
@@ -207,9 +214,7 @@ class TestClientEmployee:
         )
         db.flush()
 
-        from_db = db.query(Employee).filter_by(
-            employee_code="EMP-001"
-        ).first()
+        from_db = db.query(Employee).filter_by(employee_code="EMP-001").first()
         assert from_db is not None
         assert from_db.employee_name == "John Doe"
         assert from_db.client_id_assigned == client.client_id
@@ -229,9 +234,7 @@ class TestClientEmployee:
             )
         db.flush()
 
-        results = db.query(Employee).filter(
-            Employee.client_id_assigned == client.client_id
-        ).all()
+        results = db.query(Employee).filter(Employee.client_id_assigned == client.client_id).all()
         assert len(results) == 3
 
     def test_employee_department_assignment(self, transactional_db):
@@ -248,9 +251,7 @@ class TestClientEmployee:
         )
         db.flush()
 
-        from_db = db.query(Employee).filter_by(
-            employee_id=employee.employee_id
-        ).first()
+        from_db = db.query(Employee).filter_by(employee_id=employee.employee_id).first()
         assert from_db.department == "Assembly"
 
     def test_employee_active_status(self, transactional_db):
@@ -264,10 +265,14 @@ class TestClientEmployee:
         inactive_emp = TestDataFactory.create_employee(db, client_id=client.client_id, is_active=False)
         db.flush()
 
-        active_only = db.query(Employee).filter(
-            Employee.client_id_assigned == client.client_id,
-            Employee.is_active == 1,
-        ).all()
+        active_only = (
+            db.query(Employee)
+            .filter(
+                Employee.client_id_assigned == client.client_id,
+                Employee.is_active == 1,
+            )
+            .all()
+        )
         assert len(active_only) == 1
 
     def test_floating_pool_employee(self, transactional_db):
@@ -284,9 +289,7 @@ class TestClientEmployee:
         )
         db.flush()
 
-        from_db = db.query(Employee).filter_by(
-            employee_id=fp_emp.employee_id
-        ).first()
+        from_db = db.query(Employee).filter_by(employee_id=fp_emp.employee_id).first()
         assert from_db.is_floating_pool == 1
 
 
@@ -325,9 +328,7 @@ class TestWorkOrderCRUD:
         wo.status = WorkOrderStatus.IN_PROGRESS
         db.flush()
 
-        from_db = db.query(WorkOrder).filter_by(
-            work_order_id=wo.work_order_id
-        ).first()
+        from_db = db.query(WorkOrder).filter_by(work_order_id=wo.work_order_id).first()
         assert from_db.status == WorkOrderStatus.IN_PROGRESS
 
     def test_complete_work_order(self, transactional_db):
@@ -346,9 +347,7 @@ class TestWorkOrderCRUD:
         wo.actual_quantity = 980
         db.flush()
 
-        from_db = db.query(WorkOrder).filter_by(
-            work_order_id=wo.work_order_id
-        ).first()
+        from_db = db.query(WorkOrder).filter_by(work_order_id=wo.work_order_id).first()
         assert from_db.status == WorkOrderStatus.COMPLETED
 
         fulfillment_rate = (from_db.actual_quantity / from_db.planned_quantity) * 100
@@ -369,9 +368,7 @@ class TestWorkOrderCRUD:
         wo.actual_delivery_date = datetime(2026, 1, 14)
         db.flush()
 
-        from_db = db.query(WorkOrder).filter_by(
-            work_order_id=wo.work_order_id
-        ).first()
+        from_db = db.query(WorkOrder).filter_by(work_order_id=wo.work_order_id).first()
         is_on_time = from_db.actual_delivery_date <= from_db.planned_ship_date
         assert is_on_time is True
 
@@ -388,12 +385,8 @@ class TestWorkOrderCRUD:
         TestDataFactory.create_work_order(db, client_id=c2.client_id)
         db.flush()
 
-        c1_orders = db.query(WorkOrder).filter(
-            WorkOrder.client_id == "CLIENT-001"
-        ).all()
-        c2_orders = db.query(WorkOrder).filter(
-            WorkOrder.client_id == "CLIENT-002"
-        ).all()
+        c1_orders = db.query(WorkOrder).filter(WorkOrder.client_id == "CLIENT-001").all()
+        c2_orders = db.query(WorkOrder).filter(WorkOrder.client_id == "CLIENT-002").all()
 
         assert len(c1_orders) == 2
         assert len(c2_orders) == 1
@@ -412,7 +405,5 @@ class TestWorkOrderCRUD:
             wo.status = target_status
             db.flush()
 
-            from_db = db.query(WorkOrder).filter_by(
-                work_order_id=wo.work_order_id
-            ).first()
+            from_db = db.query(WorkOrder).filter_by(work_order_id=wo.work_order_id).first()
             assert from_db.status == target_status

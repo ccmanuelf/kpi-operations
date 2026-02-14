@@ -3,6 +3,7 @@ Real-database tests for Production CRUD operations.
 Uses transactional_db fixture (in-memory SQLite with automatic rollback).
 No mocks for database operations.
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -10,11 +11,15 @@ from unittest.mock import patch
 from fastapi import HTTPException
 
 from backend.schemas import (
-    Client, ClientType,
-    User, UserRole,
-    Product, Shift,
+    Client,
+    ClientType,
+    User,
+    UserRole,
+    Product,
+    Shift,
     ProductionEntry,
-    WorkOrder, WorkOrderStatus,
+    WorkOrder,
+    WorkOrderStatus,
 )
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -22,6 +27,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _seed_production_prereqs(db, client_id="PROD-TEST-C1"):
     """Create the minimal parent rows needed to insert a ProductionEntry."""
@@ -56,9 +62,13 @@ class TestProductionCRUD:
         assert entry.units_produced == 100
 
         # Verify persisted to DB
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db is not None
         assert from_db.units_produced == 100
 
@@ -77,9 +87,9 @@ class TestProductionCRUD:
         )
         db.flush()
 
-        result = db.query(ProductionEntry).filter(
-            ProductionEntry.production_entry_id == entry.production_entry_id
-        ).first()
+        result = (
+            db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == entry.production_entry_id).first()
+        )
 
         assert result is not None
         assert result.units_produced == 250
@@ -89,9 +99,7 @@ class TestProductionCRUD:
         """Test retrieving non-existent production entry returns None."""
         db = transactional_db
 
-        result = db.query(ProductionEntry).filter(
-            ProductionEntry.production_entry_id == "NONEXISTENT-ID"
-        ).first()
+        result = db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == "NONEXISTENT-ID").first()
 
         assert result is None
 
@@ -112,9 +120,9 @@ class TestProductionCRUD:
             )
         db.flush()
 
-        results = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == client.client_id
-        ).limit(5).offset(0).all()
+        results = (
+            db.query(ProductionEntry).filter(ProductionEntry.client_id == client.client_id).limit(5).offset(0).all()
+        )
 
         assert len(results) == 5
 
@@ -122,9 +130,7 @@ class TestProductionCRUD:
         """Test retrieving entries from empty table returns empty list."""
         db = transactional_db
 
-        results = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == "NONEXISTENT-CLIENT"
-        ).all()
+        results = db.query(ProductionEntry).filter(ProductionEntry.client_id == "NONEXISTENT-CLIENT").all()
 
         assert len(results) == 0
 
@@ -148,9 +154,13 @@ class TestProductionCRUD:
         db.flush()
 
         # Verify from DB
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.units_produced == 150
 
     def test_delete_production_entry_success(self, transactional_db):
@@ -171,9 +181,13 @@ class TestProductionCRUD:
         db.delete(entry)
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry_id,
+            )
+            .first()
+        )
         assert from_db is None
 
     def test_batch_create_production_entries(self, transactional_db):
@@ -193,9 +207,13 @@ class TestProductionCRUD:
 
         assert len(entries) == 10
 
-        from_db = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == client.client_id,
-        ).all()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter(
+                ProductionEntry.client_id == client.client_id,
+            )
+            .all()
+        )
         assert len(from_db) == 10
 
     def test_get_production_by_date_range(self, transactional_db):
@@ -218,11 +236,15 @@ class TestProductionCRUD:
         start_dt = datetime.combine(base + timedelta(days=3), datetime.min.time())
         end_dt = datetime.combine(base + timedelta(days=7), datetime.min.time())
 
-        results = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == client.client_id,
-            ProductionEntry.production_date >= start_dt,
-            ProductionEntry.production_date <= end_dt,
-        ).all()
+        results = (
+            db.query(ProductionEntry)
+            .filter(
+                ProductionEntry.client_id == client.client_id,
+                ProductionEntry.production_date >= start_dt,
+                ProductionEntry.production_date <= end_dt,
+            )
+            .all()
+        )
 
         assert len(results) == 5
 
@@ -245,13 +267,15 @@ class TestProductionCRUD:
 
         from sqlalchemy import func
 
-        total_produced, total_defects, entry_count = db.query(
-            func.sum(ProductionEntry.units_produced),
-            func.sum(ProductionEntry.defect_count),
-            func.count(ProductionEntry.production_entry_id),
-        ).filter(
-            ProductionEntry.client_id == client.client_id
-        ).first()
+        total_produced, total_defects, entry_count = (
+            db.query(
+                func.sum(ProductionEntry.units_produced),
+                func.sum(ProductionEntry.defect_count),
+                func.count(ProductionEntry.production_entry_id),
+            )
+            .filter(ProductionEntry.client_id == client.client_id)
+            .first()
+        )
 
         assert total_produced == 1000
         assert total_defects == 50
@@ -273,9 +297,13 @@ class TestProductionCRUD:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.defect_count == 5
 
     def test_production_entry_with_work_order(self, transactional_db):
@@ -296,9 +324,13 @@ class TestProductionCRUD:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.work_order_id == wo.work_order_id
 
     def test_production_entry_date_stored_correctly(self, transactional_db):
@@ -317,9 +349,13 @@ class TestProductionCRUD:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.production_date.date() == target_date
 
 
@@ -342,9 +378,13 @@ class TestProductionEntryEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.units_produced == 0
 
         # Yield rate calculation for zero production
@@ -370,9 +410,13 @@ class TestProductionEntryEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.units_produced == large_qty
 
     def test_multiple_entries_same_shift(self, transactional_db):
@@ -392,10 +436,14 @@ class TestProductionEntryEdgeCases:
             )
         db.flush()
 
-        results = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == client.client_id,
-            ProductionEntry.shift_id == shift.shift_id,
-        ).all()
+        results = (
+            db.query(ProductionEntry)
+            .filter(
+                ProductionEntry.client_id == client.client_id,
+                ProductionEntry.shift_id == shift.shift_id,
+            )
+            .all()
+        )
         assert len(results) == 3
 
     def test_production_metrics_calculation(self, transactional_db):
@@ -415,9 +463,13 @@ class TestProductionEntryEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
 
         # FPY = (produced - defects) / produced * 100
         fpy = 100 * (from_db.units_produced - from_db.defect_count) / from_db.units_produced
@@ -439,9 +491,13 @@ class TestProductionEntryEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         assert from_db.notes == notes_text
 
 
@@ -466,9 +522,13 @@ class TestProductionCRUDIntegration:
         entry_id = entry.production_entry_id
 
         # READ
-        read_entry = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry_id,
-        ).first()
+        read_entry = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry_id,
+            )
+            .first()
+        )
         assert read_entry is not None
         assert read_entry.units_produced == 100
 
@@ -476,18 +536,26 @@ class TestProductionCRUDIntegration:
         read_entry.units_produced = 150
         db.flush()
 
-        updated = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry_id,
-        ).first()
+        updated = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry_id,
+            )
+            .first()
+        )
         assert updated.units_produced == 150
 
         # DELETE
         db.delete(updated)
         db.flush()
 
-        deleted = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry_id,
-        ).first()
+        deleted = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry_id,
+            )
+            .first()
+        )
         assert deleted is None
 
     def test_bulk_create_and_query(self, transactional_db):
@@ -505,9 +573,13 @@ class TestProductionCRUDIntegration:
         )
         db.flush()
 
-        total = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == client.client_id,
-        ).count()
+        total = (
+            db.query(ProductionEntry)
+            .filter(
+                ProductionEntry.client_id == client.client_id,
+            )
+            .count()
+        )
         assert total == 50
 
     def test_transaction_rollback_on_error(self, transactional_db):
@@ -532,9 +604,13 @@ class TestProductionCRUDIntegration:
         # After rollback, entry should be gone (since we never committed)
         # The transactional_db fixture uses autoflush=False, so we
         # verify the rollback behavior
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
         # After rollback, the flushed entry is reverted
         assert from_db is None
 
@@ -565,12 +641,8 @@ class TestProductionCRUDIntegration:
             )
         db.flush()
 
-        a_count = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == "CLIENT-A"
-        ).count()
-        b_count = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == "CLIENT-B"
-        ).count()
+        a_count = db.query(ProductionEntry).filter(ProductionEntry.client_id == "CLIENT-A").count()
+        b_count = db.query(ProductionEntry).filter(ProductionEntry.client_id == "CLIENT-B").count()
 
         assert a_count == 3
         assert b_count == 2
@@ -589,9 +661,13 @@ class TestProductionCRUDIntegration:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
 
         # Relationship should load the product
         assert from_db.product is not None
@@ -611,9 +687,13 @@ class TestProductionCRUDIntegration:
         )
         db.flush()
 
-        from_db = db.query(ProductionEntry).filter_by(
-            production_entry_id=entry.production_entry_id,
-        ).first()
+        from_db = (
+            db.query(ProductionEntry)
+            .filter_by(
+                production_entry_id=entry.production_entry_id,
+            )
+            .first()
+        )
 
         assert from_db.shift is not None
         assert from_db.shift.shift_id == shift.shift_id

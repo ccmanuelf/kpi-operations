@@ -5,10 +5,8 @@ Phase 2.1: Data Layer Normalization
 Replaces comma-separated client_id_assigned field with proper junction table.
 Provides normalized employee-to-client relationship with assignment type support.
 """
-from sqlalchemy import (
-    Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint,
-    Enum as SQLEnum
-)
+
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint, Enum as SQLEnum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from backend.database import Base
@@ -17,8 +15,9 @@ import enum
 
 class AssignmentType(str, enum.Enum):
     """Type of employee assignment to a client."""
-    DEDICATED = "DEDICATED"      # Regular employee, dedicated to one client
-    FLOATING_POOL = "FLOATING"   # Floating pool employee, can serve multiple clients
+
+    DEDICATED = "DEDICATED"  # Regular employee, dedicated to one client
+    FLOATING_POOL = "FLOATING"  # Floating pool employee, can serve multiple clients
 
 
 class EmployeeClientAssignment(Base):
@@ -31,46 +30,35 @@ class EmployeeClientAssignment(Base):
 
     This replaces the comma-separated client_id_assigned column in EMPLOYEE table.
     """
+
     __tablename__ = "EMPLOYEE_CLIENT_ASSIGNMENT"
     __table_args__ = (
-        UniqueConstraint('employee_id', 'client_id', name='uq_employee_client'),
-        Index('idx_employee_client_employee', 'employee_id'),
-        Index('idx_employee_client_client', 'client_id'),
-        Index('idx_employee_client_type', 'assignment_type'),
-        Index('idx_employee_client_active', 'is_active'),
-        {"extend_existing": True}
+        UniqueConstraint("employee_id", "client_id", name="uq_employee_client"),
+        Index("idx_employee_client_employee", "employee_id"),
+        Index("idx_employee_client_client", "client_id"),
+        Index("idx_employee_client_type", "assignment_type"),
+        Index("idx_employee_client_active", "is_active"),
+        {"extend_existing": True},
     )
 
     # Primary key
     assignment_id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    employee_id = Column(
-        Integer,
-        ForeignKey("EMPLOYEE.employee_id", ondelete="CASCADE"),
-        nullable=False
-    )
-    client_id = Column(
-        String(50),
-        ForeignKey("CLIENT.client_id", ondelete="RESTRICT"),
-        nullable=False
-    )
+    employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id", ondelete="RESTRICT"), nullable=False)
 
     # Assignment type
-    assignment_type = Column(
-        String(20),
-        nullable=False,
-        default=AssignmentType.DEDICATED.value
-    )
+    assignment_type = Column(String(20), nullable=False, default=AssignmentType.DEDICATED.value)
 
     # Assignment validity period
     assigned_at = Column(DateTime, nullable=False, server_default=func.now())
     valid_from = Column(DateTime)  # When assignment becomes active
-    valid_to = Column(DateTime)    # When assignment expires (optional)
+    valid_to = Column(DateTime)  # When assignment expires (optional)
 
     # Assignment metadata
     assigned_by = Column(String(50))  # User who made this assignment
-    notes = Column(String(500))       # Optional assignment notes
+    notes = Column(String(500))  # Optional assignment notes
 
     # Soft delete / deactivation
     is_active = Column(Boolean, nullable=False, default=True)
@@ -79,12 +67,7 @@ class EmployeeClientAssignment(Base):
 
     # Audit timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now()
-    )
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 def get_employee_assigned_clients(db, employee_id: int, active_only: bool = True):
@@ -99,10 +82,7 @@ def get_employee_assigned_clients(db, employee_id: int, active_only: bool = True
     Returns:
         List of (client_id, assignment_type) tuples
     """
-    query = db.query(
-        EmployeeClientAssignment.client_id,
-        EmployeeClientAssignment.assignment_type
-    ).filter(
+    query = db.query(EmployeeClientAssignment.client_id, EmployeeClientAssignment.assignment_type).filter(
         EmployeeClientAssignment.employee_id == employee_id
     )
 
@@ -136,10 +116,11 @@ def validate_employee_assignment(db, employee_id: int, client_id: str) -> tuple[
         return False, "Employee not found"
 
     # Get existing active assignments
-    existing = db.query(EmployeeClientAssignment).filter(
-        EmployeeClientAssignment.employee_id == employee_id,
-        EmployeeClientAssignment.is_active == True
-    ).all()
+    existing = (
+        db.query(EmployeeClientAssignment)
+        .filter(EmployeeClientAssignment.employee_id == employee_id, EmployeeClientAssignment.is_active == True)
+        .all()
+    )
 
     # If already assigned to this client, it's valid (idempotent)
     for assignment in existing:
@@ -149,17 +130,16 @@ def validate_employee_assignment(db, employee_id: int, client_id: str) -> tuple[
     # Non-floating pool employees can only have ONE assignment
     if not employee.is_floating_pool and existing:
         current_client = existing[0].client_id
-        return False, f"Regular employee already assigned to client '{current_client}'. Remove existing assignment first."
+        return (
+            False,
+            f"Regular employee already assigned to client '{current_client}'. Remove existing assignment first.",
+        )
 
     return True, ""
 
 
 def assign_employee_to_client(
-    db,
-    employee_id: int,
-    client_id: str,
-    assigned_by: str,
-    assignment_type: str = None
+    db, employee_id: int, client_id: str, assigned_by: str, assignment_type: str = None
 ) -> EmployeeClientAssignment:
     """
     Assign an employee to a client.
@@ -188,15 +168,11 @@ def assign_employee_to_client(
     if assignment_type is None:
         employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
         assignment_type = (
-            AssignmentType.FLOATING_POOL.value if employee.is_floating_pool
-            else AssignmentType.DEDICATED.value
+            AssignmentType.FLOATING_POOL.value if employee.is_floating_pool else AssignmentType.DEDICATED.value
         )
 
     assignment = EmployeeClientAssignment(
-        employee_id=employee_id,
-        client_id=client_id,
-        assignment_type=assignment_type,
-        assigned_by=assigned_by
+        employee_id=employee_id, client_id=client_id, assignment_type=assignment_type, assigned_by=assigned_by
     )
 
     db.add(assignment)
@@ -205,12 +181,7 @@ def assign_employee_to_client(
     return assignment
 
 
-def remove_employee_from_client(
-    db,
-    employee_id: int,
-    client_id: str,
-    removed_by: str
-) -> bool:
+def remove_employee_from_client(db, employee_id: int, client_id: str, removed_by: str) -> bool:
     """
     Remove (deactivate) an employee's client assignment.
 
@@ -225,10 +196,11 @@ def remove_employee_from_client(
     """
     from datetime import datetime
 
-    assignment = db.query(EmployeeClientAssignment).filter(
-        EmployeeClientAssignment.employee_id == employee_id,
-        EmployeeClientAssignment.client_id == client_id
-    ).first()
+    assignment = (
+        db.query(EmployeeClientAssignment)
+        .filter(EmployeeClientAssignment.employee_id == employee_id, EmployeeClientAssignment.client_id == client_id)
+        .first()
+    )
 
     if not assignment:
         return False

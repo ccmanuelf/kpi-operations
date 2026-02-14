@@ -3,6 +3,7 @@ CLIENT table ORM schema (SQLAlchemy)
 Multi-tenant foundation - ALL transactional tables reference this
 Source: 01-Core_DataEntities_Inventory.csv lines 2-15
 """
+
 from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, Enum as SQLEnum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -12,6 +13,7 @@ import enum
 
 class ClientType(str, enum.Enum):
     """Client payment type"""
+
     HOURLY_RATE = "Hourly Rate"
     PIECE_RATE = "Piece Rate"
     HYBRID = "Hybrid"
@@ -21,6 +23,7 @@ class ClientType(str, enum.Enum):
 
 class Client(Base):
     """CLIENT table - Multi-tenant isolation foundation"""
+
     __tablename__ = "CLIENT"
     __table_args__ = {"extend_existing": True}
 
@@ -40,7 +43,11 @@ class Client(Base):
     engineering_id = Column(String(50))
 
     # Business configuration
-    client_type = Column(SQLEnum(ClientType, values_callable=lambda x: [e.value for e in x]), nullable=False, default=ClientType.PIECE_RATE)
+    client_type = Column(
+        SQLEnum(ClientType, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=ClientType.PIECE_RATE,
+    )
     timezone = Column(String(50), default="America/New_York")
 
     # Status

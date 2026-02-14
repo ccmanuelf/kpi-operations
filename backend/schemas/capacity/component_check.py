@@ -2,6 +2,7 @@
 Capacity Component Check - MRP explosion results
 Stores results of component availability checks for orders.
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, Date, ForeignKey, Text, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -11,9 +12,10 @@ import enum
 
 class ComponentStatus(str, enum.Enum):
     """Component availability status"""
-    OK = "OK"           # Full quantity available
+
+    OK = "OK"  # Full quantity available
     SHORTAGE = "SHORTAGE"  # No quantity available
-    PARTIAL = "PARTIAL"    # Partial quantity available
+    PARTIAL = "PARTIAL"  # Partial quantity available
 
 
 class CapacityComponentCheck(Base):
@@ -27,19 +29,20 @@ class CapacityComponentCheck(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_component_check"
     __table_args__ = (
-        Index('ix_capacity_component_check_order', 'client_id', 'order_id'),
-        Index('ix_capacity_component_check_run_date', 'client_id', 'run_date'),
-        Index('ix_capacity_component_check_status', 'client_id', 'status'),
-        {"extend_existing": True}
+        Index("ix_capacity_component_check_order", "client_id", "order_id"),
+        Index("ix_capacity_component_check_run_date", "client_id", "run_date"),
+        Index("ix_capacity_component_check_status", "client_id", "status"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Check run metadata (indexed via composite index in __table_args__)
     run_date = Column(Date, nullable=False)

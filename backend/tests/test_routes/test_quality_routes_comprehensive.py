@@ -3,6 +3,7 @@ Comprehensive Quality Routes Tests
 Tests API endpoints with authenticated clients and real database.
 Target: Increase routes/quality.py coverage from 21% to 80%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -61,35 +62,20 @@ def quality_setup(quality_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="QUALITY-TEST",
-        client_name="Quality Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="QUALITY-TEST", client_name="Quality Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users
     admin = TestDataFactory.create_user(
-        db,
-        user_id="qual-admin-001",
-        username="qual_admin",
-        role="admin",
-        client_id=None
+        db, user_id="qual-admin-001", username="qual_admin", role="admin", client_id=None
     )
 
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="qual-super-001",
-        username="qual_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="qual-super-001", username="qual_supervisor", role="supervisor", client_id=client.client_id
     )
 
     operator = TestDataFactory.create_user(
-        db,
-        user_id="qual-oper-001",
-        username="qual_operator",
-        role="operator",
-        client_id=client.client_id
+        db, user_id="qual-oper-001", username="qual_operator", role="operator", client_id=client.client_id
     )
 
     # Create product
@@ -98,16 +84,12 @@ def quality_setup(quality_db):
         client_id=client.client_id,
         product_code="QUAL-PROD-001",
         product_name="Quality Test Product",
-        ideal_cycle_time=Decimal("0.15")
+        ideal_cycle_time=Decimal("0.15"),
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="Quality Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="Quality Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.flush()
@@ -134,6 +116,7 @@ def authenticated_client(quality_setup):
 
     # Mock auth dependencies
     from backend.auth.jwt import get_current_user, get_current_active_supervisor
+
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_current_active_supervisor] = lambda: user
 
@@ -148,6 +131,7 @@ def admin_client(quality_setup):
     app = create_test_app(db)
 
     from backend.auth.jwt import get_current_user, get_current_active_supervisor
+
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_current_active_supervisor] = lambda: user
 
@@ -183,9 +167,7 @@ class TestListQualityInspections:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/quality?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
 
@@ -209,10 +191,7 @@ class TestUpdateQualityInspection:
         """Test error when inspection doesn't exist."""
         client, _ = authenticated_client
 
-        response = client.put(
-            "/api/quality/99999",
-            json={"units_inspected": 100}
-        )
+        response = client.put("/api/quality/99999", json={"units_inspected": 100})
 
         assert response.status_code == 404
 
@@ -238,9 +217,7 @@ class TestQualityStatistics:
         today = date.today()
         month_ago = today - timedelta(days=30)
 
-        response = client.get(
-            f"/api/quality/statistics/summary?start_date={month_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality/statistics/summary?start_date={month_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -285,9 +262,7 @@ class TestPPMCalculation:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/quality/kpi/ppm?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality/kpi/ppm?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -387,9 +362,7 @@ class TestDPMOByPart:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/quality/kpi/dpmo-by-part?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality/kpi/dpmo-by-part?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -419,9 +392,7 @@ class TestFPYRTYCalculation:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/quality/kpi/fpy-rty?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality/kpi/fpy-rty?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -544,9 +515,7 @@ class TestDefectsByType:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/quality/kpi/defects-by-type?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality/kpi/defects-by-type?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
 
@@ -604,8 +573,6 @@ class TestAdminAccess:
         today = date.today()
         month_ago = today - timedelta(days=30)
 
-        response = client.get(
-            f"/api/quality/statistics/summary?start_date={month_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/quality/statistics/summary?start_date={month_ago}&end_date={today}")
 
         assert response.status_code == 200

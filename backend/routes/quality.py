@@ -3,6 +3,7 @@ Quality Inspection API Routes
 PHASE 4: Quality metrics and defect tracking
 All endpoints enforce multi-tenant client filtering
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -19,14 +20,14 @@ from backend.models.quality import (
     PPMCalculationResponse,
     DPMOCalculationResponse,
     FPYRTYCalculationResponse,
-    InferenceMetadata
+    InferenceMetadata,
 )
 from backend.crud.quality import (
     create_quality_inspection,
     get_quality_inspection,
     get_quality_inspections,
     update_quality_inspection,
-    delete_quality_inspection
+    delete_quality_inspection,
 )
 from backend.calculations.ppm import calculate_ppm, identify_top_defects
 from backend.calculations.dpmo import calculate_dpmo, calculate_dpmo_with_part_lookup
@@ -35,24 +36,19 @@ from backend.calculations.fpy_rty import (
     calculate_rty,
     calculate_quality_score,
     calculate_fpy_with_repair_breakdown,
-    calculate_rty_with_repair_impact
+    calculate_rty_with_repair_impact,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
 
-router = APIRouter(
-    prefix="/api/quality",
-    tags=["Quality Inspection"]
-)
+router = APIRouter(prefix="/api/quality", tags=["Quality Inspection"])
 
 
 @router.post("", response_model=QualityInspectionResponse, status_code=status.HTTP_201_CREATED)
 def create_quality(
-    inspection: QualityInspectionCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    inspection: QualityInspectionCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new quality inspection record
@@ -60,10 +56,14 @@ def create_quality(
     """
     try:
         result = create_quality_inspection(db, inspection, current_user)
-        log_operation(logger, "CREATE", "quality",
-                     resource_id=str(result.quality_entry_id),
-                     user_id=current_user.user_id,
-                     details={"units_inspected": getattr(inspection, 'units_inspected', None)})
+        log_operation(
+            logger,
+            "CREATE",
+            "quality",
+            resource_id=str(result.quality_entry_id),
+            user_id=current_user.user_id,
+            details={"units_inspected": getattr(inspection, "units_inspected", None)},
+        )
         return result
     except Exception as e:
         log_error(logger, "CREATE", "quality", e, user_id=current_user.user_id)
@@ -80,25 +80,27 @@ def list_quality(
     inspection_stage: Optional[str] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List quality inspections with filters
     SECURITY: Returns only inspections for user's authorized clients
     """
     return get_quality_inspections(
-        db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, work_order_id=work_order_id,
-        inspection_stage=inspection_stage, client_id=client_id
+        db,
+        current_user=current_user,
+        skip=skip,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+        work_order_id=work_order_id,
+        inspection_stage=inspection_stage,
+        client_id=client_id,
     )
 
 
 @router.get("/{inspection_id}", response_model=QualityInspectionResponse)
-def get_quality(
-    inspection_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_quality(inspection_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get quality inspection by ID
     SECURITY: Verifies user has access to this inspection record
@@ -115,7 +117,7 @@ def get_quality_by_work_order(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all quality inspections for a specific work order
@@ -123,9 +125,7 @@ def get_quality_by_work_order(
     """
     from backend.schemas.quality_entry import QualityEntry
 
-    query = db.query(QualityEntry).filter(
-        QualityEntry.work_order_id == work_order_id
-    )
+    query = db.query(QualityEntry).filter(QualityEntry.work_order_id == work_order_id)
 
     # SECURITY FIX (VULN-001): Apply client filter to prevent cross-client data access
     client_filter = build_client_filter_clause(current_user, QualityEntry.client_id)
@@ -143,7 +143,7 @@ def get_quality_statistics(
     shift_id: Optional[int] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get quality statistics summary for a date range
@@ -153,12 +153,12 @@ def get_quality_statistics(
     from backend.schemas.quality_entry import QualityEntry
 
     query = db.query(
-        func.sum(QualityEntry.units_inspected).label('total_inspected'),
-        func.sum(QualityEntry.units_defective).label('total_defects'),
-        func.sum(QualityEntry.units_scrapped).label('total_scrap'),
-        func.sum(QualityEntry.units_reworked).label('total_rework'),
-        func.avg(QualityEntry.ppm).label('avg_ppm'),
-        func.avg(QualityEntry.dpmo).label('avg_dpmo')
+        func.sum(QualityEntry.units_inspected).label("total_inspected"),
+        func.sum(QualityEntry.units_defective).label("total_defects"),
+        func.sum(QualityEntry.units_scrapped).label("total_scrap"),
+        func.sum(QualityEntry.units_reworked).label("total_rework"),
+        func.avg(QualityEntry.ppm).label("avg_ppm"),
+        func.avg(QualityEntry.dpmo).label("avg_dpmo"),
     )
 
     # SECURITY FIX (VULN-002): Apply client filter to prevent cross-client data access
@@ -174,8 +174,7 @@ def get_quality_statistics(
 
     # Apply date filters (shift_date is DateTime, cast to Date for comparison)
     query = query.filter(
-        cast(QualityEntry.shift_date, Date) >= start_date,
-        cast(QualityEntry.shift_date, Date) <= end_date
+        cast(QualityEntry.shift_date, Date) >= start_date, cast(QualityEntry.shift_date, Date) <= end_date
     )
 
     # Note: QualityEntry doesn't have product_id/shift_id - these filters are ignored
@@ -194,7 +193,7 @@ def get_quality_statistics(
         "total_rework_units": result.total_rework or 0,
         "average_ppm": float(result.avg_ppm) if result.avg_ppm else 0,
         "average_dpmo": float(result.avg_dpmo) if result.avg_dpmo else 0,
-        "calculation_timestamp": datetime.utcnow()
+        "calculation_timestamp": datetime.utcnow(),
     }
 
 
@@ -203,7 +202,7 @@ def update_quality(
     inspection_id: int,
     inspection_update: QualityInspectionUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update quality inspection record
@@ -213,23 +212,18 @@ def update_quality(
         updated = update_quality_inspection(db, inspection_id, inspection_update, current_user)
         if not updated:
             raise HTTPException(status_code=404, detail="Quality inspection not found")
-        log_operation(logger, "UPDATE", "quality",
-                     resource_id=str(inspection_id),
-                     user_id=current_user.user_id)
+        log_operation(logger, "UPDATE", "quality", resource_id=str(inspection_id), user_id=current_user.user_id)
         return updated
     except HTTPException:
         raise
     except Exception as e:
-        log_error(logger, "UPDATE", "quality", e,
-                 resource_id=str(inspection_id), user_id=current_user.user_id)
+        log_error(logger, "UPDATE", "quality", e, resource_id=str(inspection_id), user_id=current_user.user_id)
         raise
 
 
 @router.delete("/{inspection_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_quality(
-    inspection_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    inspection_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Delete quality inspection record (supervisor only)
@@ -239,20 +233,18 @@ def delete_quality(
         success = delete_quality_inspection(db, inspection_id, current_user)
         if not success:
             raise HTTPException(status_code=404, detail="Quality inspection not found")
-        log_operation(logger, "DELETE", "quality",
-                     resource_id=str(inspection_id),
-                     user_id=current_user.user_id)
+        log_operation(logger, "DELETE", "quality", resource_id=str(inspection_id), user_id=current_user.user_id)
     except HTTPException:
         raise
     except Exception as e:
-        log_error(logger, "DELETE", "quality", e,
-                 resource_id=str(inspection_id), user_id=current_user.user_id)
+        log_error(logger, "DELETE", "quality", e, resource_id=str(inspection_id), user_id=current_user.user_id)
         raise
 
 
 # ============================================================================
 # QUALITY KPI CALCULATION ENDPOINTS
 # ============================================================================
+
 
 @router.get("/kpi/ppm", response_model=PPMCalculationResponse)
 def calculate_ppm_kpi(
@@ -262,7 +254,7 @@ def calculate_ppm_kpi(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate PPM (Parts Per Million) defect rate with client filtering
@@ -282,16 +274,16 @@ def calculate_ppm_kpi(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Build query with client filter - using QUALITY_ENTRY table
     query = db.query(
-        func.sum(QualityEntry.units_inspected).label('inspected'),
-        func.sum(QualityEntry.units_defective).label('defects')
+        func.sum(QualityEntry.units_inspected).label("inspected"),
+        func.sum(QualityEntry.units_defective).label("defects"),
     ).filter(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     # Apply client filter
@@ -311,7 +303,7 @@ def calculate_ppm_kpi(
         is_estimated=inspected == 0,  # Estimated only if no data
         confidence_score=1.0 if inspected > 0 else 0.3,
         inference_source="actual_data" if inspected > 0 else "system_fallback",
-        inference_warning="No inspection data available for the specified period" if inspected == 0 else None
+        inference_warning="No inspection data available for the specified period" if inspected == 0 else None,
     )
 
     return PPMCalculationResponse(
@@ -324,7 +316,7 @@ def calculate_ppm_kpi(
         ppm=round(ppm, 2),
         defect_rate_percentage=round(defect_rate_pct, 2),
         calculation_timestamp=datetime.utcnow(),
-        inference=inference
+        inference=inference,
     )
 
 
@@ -336,23 +328,21 @@ def calculate_dpmo_kpi(
     end_date: date,
     opportunities_per_unit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate DPMO (Defects Per Million Opportunities) and Sigma Level
     Formula: (Total Defects / Total Opportunities) × 1,000,000
     Total Opportunities = Units × Opportunities per Unit
     """
-    dpmo, sigma, units, defects = calculate_dpmo(
-        db, product_id, shift_id, start_date, end_date, opportunities_per_unit
-    )
+    dpmo, sigma, units, defects = calculate_dpmo(db, product_id, shift_id, start_date, end_date, opportunities_per_unit)
 
     # ENHANCEMENT: Include inference metadata per audit requirement
     inference = InferenceMetadata(
         is_estimated=units == 0,
         confidence_score=1.0 if units > 0 else 0.3,
         inference_source="actual_data" if units > 0 else "system_fallback",
-        inference_warning="No production data available for DPMO calculation" if units == 0 else None
+        inference_warning="No production data available for DPMO calculation" if units == 0 else None,
     )
 
     return DPMOCalculationResponse(
@@ -366,7 +356,7 @@ def calculate_dpmo_kpi(
         dpmo=dpmo,
         sigma_level=sigma,
         calculation_timestamp=datetime.utcnow(),
-        inference=inference
+        inference=inference,
     )
 
 
@@ -376,7 +366,7 @@ def calculate_dpmo_by_part(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate DPMO using part-specific opportunities from PART_OPPORTUNITIES table.
@@ -402,19 +392,16 @@ def calculate_dpmo_by_part(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     result = calculate_dpmo_with_part_lookup(db, start_date, end_date, effective_client_id)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "client_id": effective_client_id,
         **result,
-        "calculation_timestamp": datetime.utcnow().isoformat()
+        "calculation_timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -425,7 +412,7 @@ def calculate_fpy_rty_kpi(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate FPY (First Pass Yield) and RTY (Rolled Throughput Yield) with client filtering
@@ -446,16 +433,15 @@ def calculate_fpy_rty_kpi(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Build query with client filter for overall FPY calculation
     query = db.query(
-        func.sum(QualityEntry.units_inspected).label('total'),
-        func.sum(QualityEntry.units_passed).label('good')
+        func.sum(QualityEntry.units_inspected).label("total"), func.sum(QualityEntry.units_passed).label("good")
     ).filter(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
@@ -467,11 +453,9 @@ def calculate_fpy_rty_kpi(
     fpy = (good / total * 100) if total > 0 else 0
 
     # Calculate total scrapped for Final Yield
-    scrapped_query = db.query(
-        func.sum(QualityEntry.units_scrapped).label('scrapped')
-    ).filter(
+    scrapped_query = db.query(func.sum(QualityEntry.units_scrapped).label("scrapped")).filter(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
@@ -488,12 +472,12 @@ def calculate_fpy_rty_kpi(
     # RTY = FPY_stage1 × FPY_stage2 × ... × FPY_stageN
     stage_query = db.query(
         QualityEntry.inspection_stage,
-        func.sum(QualityEntry.units_inspected).label('stage_total'),
-        func.sum(QualityEntry.units_passed).label('stage_passed')
+        func.sum(QualityEntry.units_inspected).label("stage_total"),
+        func.sum(QualityEntry.units_passed).label("stage_passed"),
     ).filter(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
-        QualityEntry.inspection_stage.isnot(None)
+        QualityEntry.inspection_stage.isnot(None),
     )
 
     if effective_client_id:
@@ -510,14 +494,16 @@ def calculate_fpy_rty_kpi(
             stage_total = stage.stage_total or 0
             stage_passed = stage.stage_passed or 0
             if stage_total > 0:
-                stage_fpy = (stage_passed / stage_total)  # As decimal (0.0 to 1.0)
+                stage_fpy = stage_passed / stage_total  # As decimal (0.0 to 1.0)
                 rty_decimal *= stage_fpy
-                steps.append({
-                    "stage": stage.inspection_stage,
-                    "fpy": round(stage_fpy * 100, 2),
-                    "total": stage_total,
-                    "passed": stage_passed
-                })
+                steps.append(
+                    {
+                        "stage": stage.inspection_stage,
+                        "fpy": round(stage_fpy * 100, 2),
+                        "total": stage_total,
+                        "passed": stage_passed,
+                    }
+                )
 
     # Convert RTY back to percentage
     if steps:
@@ -532,8 +518,14 @@ def calculate_fpy_rty_kpi(
     inference = InferenceMetadata(
         is_estimated=is_estimated,
         confidence_score=1.0 if total > 0 and steps else (0.7 if total > 0 else 0.3),
-        inference_source="actual_data" if total > 0 and steps else ("overall_fpy_fallback" if total > 0 else "system_fallback"),
-        inference_warning="RTY calculation used overall FPY as fallback (no stage-specific data)" if (total > 0 and not steps) else ("No quality data available" if total == 0 else None)
+        inference_source=(
+            "actual_data" if total > 0 and steps else ("overall_fpy_fallback" if total > 0 else "system_fallback")
+        ),
+        inference_warning=(
+            "RTY calculation used overall FPY as fallback (no stage-specific data)"
+            if (total > 0 and not steps)
+            else ("No quality data available" if total == 0 else None)
+        ),
     )
 
     return FPYRTYCalculationResponse(
@@ -548,7 +540,7 @@ def calculate_fpy_rty_kpi(
         final_yield_percentage=round(final_yield, 2),
         total_process_steps=len(steps),
         calculation_timestamp=datetime.utcnow(),
-        inference=inference
+        inference=inference,
     )
 
 
@@ -560,7 +552,7 @@ def get_fpy_rty_breakdown(
     inspection_stage: Optional[str] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate FPY and RTY with detailed repair vs rework breakdown
@@ -591,7 +583,7 @@ def get_fpy_rty_breakdown(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Use product_id=0 as placeholder if not specified (calculation functions accept it)
@@ -603,15 +595,10 @@ def get_fpy_rty_breakdown(
     )
 
     # Get RTY with repair impact across all stages
-    rty_breakdown = calculate_rty_with_repair_impact(
-        db, effective_product_id, start_date, end_date
-    )
+    rty_breakdown = calculate_rty_with_repair_impact(db, effective_product_id, start_date, end_date)
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "product_id": product_id,
         "client_id": effective_client_id,
         "inspection_stage_filter": inspection_stage,
@@ -626,7 +613,7 @@ def get_fpy_rty_breakdown(
             "repair_rate": float(fpy_breakdown["repair_rate"]),
             "scrap_rate": float(fpy_breakdown["scrap_rate"]),
             "recovered_units": fpy_breakdown["recovered_units"],
-            "recovery_rate": float(fpy_breakdown["recovery_rate"])
+            "recovery_rate": float(fpy_breakdown["recovery_rate"]),
         },
         "rty_breakdown": {
             "rty_percentage": float(rty_breakdown["rty_percentage"]),
@@ -640,7 +627,7 @@ def get_fpy_rty_breakdown(
                     "units_requiring_repair": step["units_requiring_repair"],
                     "units_scrapped": step["units_scrapped"],
                     "rework_rate": float(step["rework_rate"]),
-                    "repair_rate": float(step["repair_rate"])
+                    "repair_rate": float(step["repair_rate"]),
                 }
                 for step in rty_breakdown["step_details"]
             ],
@@ -650,9 +637,9 @@ def get_fpy_rty_breakdown(
             "rework_impact_percentage": float(rty_breakdown["rework_impact_percentage"]),
             "repair_impact_percentage": float(rty_breakdown["repair_impact_percentage"]),
             "throughput_loss_percentage": float(rty_breakdown["throughput_loss_percentage"]),
-            "interpretation": rty_breakdown["interpretation"]
+            "interpretation": rty_breakdown["interpretation"],
         },
-        "calculation_timestamp": datetime.utcnow().isoformat()
+        "calculation_timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -662,7 +649,7 @@ def get_quality_score(
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate comprehensive quality score combining multiple metrics
@@ -678,7 +665,7 @@ def get_top_defects(
     end_date: Optional[date] = None,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get top defect types (Pareto analysis)
@@ -694,7 +681,7 @@ def get_defects_by_type(
     client_id: Optional[str] = None,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get defect counts grouped by type with client filtering
@@ -711,7 +698,7 @@ def get_defects_by_type(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Use raw SQL for reliable column access
@@ -739,7 +726,7 @@ def get_defects_by_type(
         {
             "defect_type": str(r[0]),
             "count": r[1] or 0,
-            "percentage": round((r[1] / total_defects) * 100, 1) if total_defects > 0 else 0
+            "percentage": round((r[1] / total_defects) * 100, 1) if total_defects > 0 else 0,
         }
         for r in results
     ]
@@ -752,7 +739,7 @@ def get_quality_by_product(
     client_id: Optional[str] = None,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get quality metrics (FPY) grouped by product/style with client filtering
@@ -769,7 +756,7 @@ def get_quality_by_product(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Use raw SQL - WORK_ORDER has style_model, not product_id
@@ -798,7 +785,7 @@ def get_quality_by_product(
             "product_name": r[0] or "Unknown",
             "inspected": r[1] or 0,
             "defects": r[2] or 0,
-            "fpy": round((r[3] / r[1]) * 100, 1) if r[1] and r[1] > 0 else 0
+            "fpy": round((r[3] / r[1]) * 100, 1) if r[1] and r[1] > 0 else 0,
         }
         for r in results
     ]

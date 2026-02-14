@@ -2,6 +2,7 @@
 Capacity KPI Commitment - KPI targets and actuals tracking
 Links committed KPI targets to schedules for variance analysis.
 """
+
 from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey, Text, Index
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -26,19 +27,20 @@ class CapacityKPICommitment(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_kpi_commitment"
     __table_args__ = (
-        Index('ix_capacity_kpi_schedule', 'client_id', 'schedule_id'),
-        Index('ix_capacity_kpi_key', 'client_id', 'kpi_key'),
-        Index('ix_capacity_kpi_period', 'client_id', 'period_start', 'period_end'),
-        {"extend_existing": True}
+        Index("ix_capacity_kpi_schedule", "client_id", "schedule_id"),
+        Index("ix_capacity_kpi_key", "client_id", "kpi_key"),
+        Index("ix_capacity_kpi_period", "client_id", "period_start", "period_end"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Schedule reference (indexed via composite index in __table_args__)
     schedule_id = Column(Integer, ForeignKey("capacity_schedule.id"), nullable=False)

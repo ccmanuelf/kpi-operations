@@ -2,6 +2,7 @@
 Alert ORM models for SQLAlchemy
 Stores alerts and alert configurations
 """
+
 from sqlalchemy import Column, String, Float, DateTime, ForeignKey, Text, JSON, Boolean, Integer
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -9,6 +10,7 @@ from backend.database import Base
 
 class Alert(Base):
     """ALERT table - Stores generated alerts"""
+
     __tablename__ = "ALERT"
     __table_args__ = {"extend_existing": True}
 
@@ -18,7 +20,7 @@ class Alert(Base):
     # Classification
     category = Column(String(30), nullable=False, index=True)  # otd, quality, efficiency, etc.
     severity = Column(String(20), nullable=False, index=True)  # info, warning, critical, urgent
-    status = Column(String(20), nullable=False, default='active', index=True)
+    status = Column(String(20), nullable=False, default="active", index=True)
 
     # Content
     title = Column(String(200), nullable=False)
@@ -50,6 +52,7 @@ class Alert(Base):
 
 class AlertConfig(Base):
     """ALERT_CONFIG table - Alert settings per client or global"""
+
     __tablename__ = "ALERT_CONFIG"
     __table_args__ = {"extend_existing": True}
 
@@ -81,6 +84,7 @@ class AlertConfig(Base):
 
 class AlertHistory(Base):
     """ALERT_HISTORY table - Historical accuracy tracking for predictions"""
+
     __tablename__ = "ALERT_HISTORY"
     __table_args__ = {"extend_existing": True}
 

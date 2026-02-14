@@ -2,6 +2,7 @@
 Capacity Schedule - Production schedule
 Two-table structure: Header (schedule metadata) and Detail (schedule line items).
 """
+
 from sqlalchemy import Column, Integer, String, Date, Numeric, Boolean, ForeignKey, Text, Enum as SQLEnum, JSON, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -20,9 +21,10 @@ class ScheduleStatus(str, enum.Enum):
               v
          CANCELLED
     """
-    DRAFT = "DRAFT"         # Being created/edited
+
+    DRAFT = "DRAFT"  # Being created/edited
     COMMITTED = "COMMITTED"  # Finalized, KPIs locked
-    ACTIVE = "ACTIVE"        # In execution
+    ACTIVE = "ACTIVE"  # In execution
     COMPLETED = "COMPLETED"  # Finished
     CANCELLED = "CANCELLED"  # Cancelled
 
@@ -38,18 +40,19 @@ class CapacitySchedule(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_schedule"
     __table_args__ = (
-        Index('ix_capacity_schedule_period', 'client_id', 'period_start', 'period_end'),
-        Index('ix_capacity_schedule_status', 'client_id', 'status'),
-        {"extend_existing": True}
+        Index("ix_capacity_schedule_period", "client_id", "period_start", "period_end"),
+        Index("ix_capacity_schedule_status", "client_id", "status"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Schedule identification
     schedule_name = Column(String(100), nullable=False)
@@ -78,10 +81,7 @@ class CapacitySchedule(Base):
 
     # Relationship to details
     details = relationship(
-        "CapacityScheduleDetail",
-        back_populates="schedule",
-        cascade="all, delete-orphan",
-        lazy="dynamic"
+        "CapacityScheduleDetail", back_populates="schedule", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     def is_editable(self) -> bool:
@@ -111,13 +111,14 @@ class CapacityScheduleDetail(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_schedule_detail"
     __table_args__ = (
-        Index('ix_capacity_schedule_detail_schedule', 'schedule_id'),
-        Index('ix_capacity_schedule_detail_date', 'client_id', 'scheduled_date'),
-        Index('ix_capacity_schedule_detail_line', 'client_id', 'line_id', 'scheduled_date'),
-        Index('ix_capacity_schedule_detail_order', 'client_id', 'order_id'),
-        {"extend_existing": True}
+        Index("ix_capacity_schedule_detail_schedule", "schedule_id"),
+        Index("ix_capacity_schedule_detail_date", "client_id", "scheduled_date"),
+        Index("ix_capacity_schedule_detail_line", "client_id", "line_id", "scheduled_date"),
+        Index("ix_capacity_schedule_detail_order", "client_id", "order_id"),
+        {"extend_existing": True},
     )
 
     # Primary key
@@ -127,7 +128,7 @@ class CapacityScheduleDetail(Base):
     schedule_id = Column(Integer, ForeignKey("capacity_schedule.id"), nullable=False)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # What to produce (indexed via composite index in __table_args__)
     order_id = Column(Integer, ForeignKey("capacity_orders.id"), nullable=True)

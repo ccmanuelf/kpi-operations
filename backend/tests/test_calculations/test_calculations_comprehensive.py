@@ -2,6 +2,7 @@
 Comprehensive Tests for Calculation Modules
 Target: Increase calculation module coverage to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -381,7 +382,7 @@ class TestTrendAnalysis:
 
         moving_avg = []
         for i in range(len(data) - window + 1):
-            avg = sum(data[i:i+window]) / window
+            avg = sum(data[i : i + window]) / window
             moving_avg.append(avg)
 
         assert moving_avg == [20.0, 30.0, 40.0]

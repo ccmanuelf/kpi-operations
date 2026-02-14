@@ -6,6 +6,7 @@ SECURITY: Multi-tenant client filtering enabled
 Phase 1.3: Decoupled from direct calculation imports.
 KPI calculations are now handled by ProductionKPIService.
 """
+
 from typing import Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -42,10 +43,7 @@ def _calculate_entry_kpis(db: Session, entry: ProductionEntry, product: Optional
 
 
 def create_production_entry(
-    db: Session,
-    entry: ProductionEntryCreate,
-    current_user: User,
-    skip_kpi_calculation: bool = False
+    db: Session, entry: ProductionEntryCreate, current_user: User, skip_kpi_calculation: bool = False
 ) -> ProductionEntry:
     """
     Create new production entry with automatic KPI calculation
@@ -67,7 +65,7 @@ def create_production_entry(
         ClientAccessError: If user doesn't have access to entry.client_id
     """
     # SECURITY: Verify user has access to this client
-    if hasattr(entry, 'client_id') and entry.client_id:
+    if hasattr(entry, "client_id") and entry.client_id:
         verify_client_access(current_user, entry.client_id)
 
     # Generate unique production_entry_id
@@ -87,11 +85,11 @@ def create_production_entry(
         defect_count=entry.defect_count,
         scrap_count=entry.scrap_count,
         notes=entry.notes,
-        entered_by=current_user.user_id  # Use user_id from current_user
+        entered_by=current_user.user_id,  # Use user_id from current_user
     )
 
     # Set client_id if provided
-    if hasattr(entry, 'client_id') and entry.client_id:
+    if hasattr(entry, "client_id") and entry.client_id:
         db_entry.client_id = entry.client_id
 
     db.add(db_entry)
@@ -108,11 +106,7 @@ def create_production_entry(
     return db_entry
 
 
-def get_production_entry(
-    db: Session,
-    entry_id: int,
-    current_user: User
-) -> Optional[ProductionEntry]:
+def get_production_entry(db: Session, entry_id: int, current_user: User) -> Optional[ProductionEntry]:
     """
     Get production entry by ID
     SECURITY: Verifies user has access to the entry's client
@@ -130,25 +124,20 @@ def get_production_entry(
         ClientAccessError: If user doesn't have access to entry's client
     """
     # First, try to find the entry
-    entry = db.query(ProductionEntry).filter(
-        ProductionEntry.production_entry_id == entry_id
-    ).first()
+    entry = db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == entry_id).first()
 
     if not entry:
         raise HTTPException(status_code=404, detail="Production entry not found")
 
     # SECURITY: Verify user has access to this entry's client
-    if hasattr(entry, 'client_id') and entry.client_id:
+    if hasattr(entry, "client_id") and entry.client_id:
         verify_client_access(current_user, entry.client_id)
 
     return entry
 
 
 def update_production_entry(
-    db: Session,
-    entry_id: int,
-    entry_update: ProductionEntryUpdate,
-    current_user: User
+    db: Session, entry_id: int, entry_update: ProductionEntryUpdate, current_user: User
 ) -> Optional[ProductionEntry]:
     """
     Update production entry and recalculate KPIs
@@ -167,25 +156,20 @@ def update_production_entry(
         HTTPException 404: If entry not found
         ClientAccessError: If user doesn't have access to entry's client
     """
-    db_entry = db.query(ProductionEntry).filter(
-        ProductionEntry.production_entry_id == entry_id
-    ).first()
+    db_entry = db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == entry_id).first()
 
     if not db_entry:
         raise HTTPException(status_code=404, detail="Production entry not found")
 
     # SECURITY: Verify user has access to this entry's client BEFORE updating
-    if hasattr(db_entry, 'client_id') and db_entry.client_id:
+    if hasattr(db_entry, "client_id") and db_entry.client_id:
         verify_client_access(current_user, db_entry.client_id)
 
     # Update fields
     update_data = entry_update.dict(exclude_unset=True)
 
     # Track if recalculation needed
-    recalc_needed = any(
-        field in update_data
-        for field in ["units_produced", "run_time_hours", "employees_assigned"]
-    )
+    recalc_needed = any(field in update_data for field in ["units_produced", "run_time_hours", "employees_assigned"])
 
     for field, value in update_data.items():
         setattr(db_entry, field, value)
@@ -196,9 +180,7 @@ def update_production_entry(
 
     # Recalculate KPIs if metrics changed (using service layer)
     if recalc_needed:
-        product = db.query(Product).filter(
-            Product.product_id == db_entry.product_id
-        ).first()
+        product = db.query(Product).filter(Product.product_id == db_entry.product_id).first()
         _calculate_entry_kpis(db, db_entry, product)
 
     db.commit()
@@ -207,11 +189,7 @@ def update_production_entry(
     return db_entry
 
 
-def delete_production_entry(
-    db: Session,
-    entry_id: int,
-    current_user: User
-) -> bool:
+def delete_production_entry(db: Session, entry_id: int, current_user: User) -> bool:
     """
     Soft delete production entry (sets is_active = False)
     SECURITY: Verifies user has access to the entry's client
@@ -228,15 +206,13 @@ def delete_production_entry(
         HTTPException 404: If entry not found
         ClientAccessError: If user doesn't have access to entry's client
     """
-    db_entry = db.query(ProductionEntry).filter(
-        ProductionEntry.production_entry_id == entry_id
-    ).first()
+    db_entry = db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == entry_id).first()
 
     if not db_entry:
         raise HTTPException(status_code=404, detail="Production entry not found")
 
     # SECURITY: Verify user has access to this entry's client BEFORE deleting
-    if hasattr(db_entry, 'client_id') and db_entry.client_id:
+    if hasattr(db_entry, "client_id") and db_entry.client_id:
         verify_client_access(current_user, db_entry.client_id)
 
     # Soft delete - preserves data integrity

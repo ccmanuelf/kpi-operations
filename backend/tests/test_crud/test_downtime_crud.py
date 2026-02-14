@@ -2,6 +2,7 @@
 Comprehensive CRUD Tests - Downtime Module
 Target: 90% coverage for crud/downtime.py
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -10,7 +11,8 @@ from unittest.mock import MagicMock
 
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from backend.schemas.downtime_entry import DowntimeEntry
 
@@ -39,10 +41,10 @@ class TestDowntimeCRUD:
         """Test downtime event creation"""
         mock_db.add = MagicMock()
         mock_db.commit = MagicMock()
-        
+
         mock_db.add(sample_downtime)
         mock_db.commit()
-        
+
         mock_db.add.assert_called_once()
 
     def test_get_downtime_by_machine(self, mock_db, sample_downtime):
@@ -51,7 +53,7 @@ class TestDowntimeCRUD:
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.all.return_value = [sample_downtime]
-        
+
         result = mock_db.query().filter().all()
         assert len(result) == 1
         assert result[0].machine_id == "MACHINE-001"
@@ -60,7 +62,7 @@ class TestDowntimeCRUD:
         """Test Mean Time Between Failures calculation"""
         total_operating_hours = 1000
         number_of_failures = 5
-        
+
         mtbf = total_operating_hours / number_of_failures
         assert mtbf == 200.0  # hours
 
@@ -68,7 +70,7 @@ class TestDowntimeCRUD:
         """Test Mean Time To Repair calculation"""
         total_repair_time = 25  # hours
         number_of_repairs = 5
-        
+
         mttr = total_repair_time / number_of_repairs
         assert mttr == 5.0  # hours
 
@@ -76,7 +78,7 @@ class TestDowntimeCRUD:
         """Test availability calculation from downtime"""
         scheduled_time = 480  # minutes
         total_downtime = 45  # minutes
-        
+
         availability = ((scheduled_time - total_downtime) / scheduled_time) * 100
         assert availability == 90.625
 
@@ -88,10 +90,10 @@ class TestDowntimeCRUD:
             {"planned": True, "duration": 15},
             {"planned": False, "duration": 60},
         ]
-        
+
         planned = sum(e["duration"] for e in events if e["planned"])
         unplanned = sum(e["duration"] for e in events if not e["planned"])
-        
+
         assert planned == 45
         assert unplanned == 105
 
@@ -102,7 +104,7 @@ class TestDowntimeCRUD:
             {"reason": "ELECTRICAL", "total_minutes": 45},
             {"reason": "SETUP", "total_minutes": 90},
         ]
-        
+
         total = sum(r["total_minutes"] for r in mock_result)
         assert total == 255
 
@@ -111,7 +113,7 @@ class TestDowntimeCRUD:
         new_end = datetime.now() + timedelta(hours=1)
         sample_downtime.end_time = new_end
         sample_downtime.duration_minutes = 180
-        
+
         assert sample_downtime.duration_minutes == 180
 
     def test_delete_downtime_soft(self, mock_db, sample_downtime):
@@ -128,10 +130,10 @@ class TestDowntimeCRUD:
             {"reason": "Operator", "minutes": 30},
             {"reason": "Other", "minutes": 10},
         ]
-        
+
         total = sum(c["minutes"] for c in causes)
         top_two_pct = ((causes[0]["minutes"] + causes[1]["minutes"]) / total) * 100
-        
+
         assert top_two_pct == 75.0
 
     def test_downtime_trend_weekly(self):
@@ -142,11 +144,12 @@ class TestDowntimeCRUD:
             {"week": 3, "total_minutes": 250},
             {"week": 4, "total_minutes": 210},
         ]
-        
+
         # Calculate improvement
-        improvement = ((weekly_data[0]["total_minutes"] - weekly_data[-1]["total_minutes"]) 
-                      / weekly_data[0]["total_minutes"]) * 100
-        
+        improvement = (
+            (weekly_data[0]["total_minutes"] - weekly_data[-1]["total_minutes"]) / weekly_data[0]["total_minutes"]
+        ) * 100
+
         assert round(improvement, 2) == 34.38
 
 
@@ -158,10 +161,10 @@ class TestAvailabilityMetrics:
         total_time = 720  # 12 hours in minutes
         planned_downtime = 30
         unplanned_downtime = 45
-        
+
         available_time = total_time - planned_downtime - unplanned_downtime
         availability = (available_time / total_time) * 100
-        
+
         assert round(availability, 2) == 89.58
 
     def test_line_availability(self):
@@ -172,7 +175,7 @@ class TestAvailabilityMetrics:
             {"availability": 98.0},
             {"availability": 94.5},
         ]
-        
+
         # Line availability is the minimum (bottleneck)
         line_availability = min(m["availability"] for m in machines)
         assert line_availability == 92.5
@@ -181,7 +184,7 @@ class TestAvailabilityMetrics:
         """Test scheduled vs actual uptime"""
         scheduled_uptime = 480  # minutes
         actual_uptime = 435
-        
+
         uptime_achievement = (actual_uptime / scheduled_uptime) * 100
         # 435/480 * 100 = 90.625, rounds to 90.62
         assert round(uptime_achievement, 2) == 90.62

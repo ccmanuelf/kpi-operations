@@ -2,6 +2,7 @@
 Reports Routes Tests with Real Database Integration
 Target: Increase routes/reports.py coverage to 75%+
 """
+
 import pytest
 from io import BytesIO
 from datetime import date, datetime, timedelta
@@ -62,27 +63,14 @@ def reports_setup(reports_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="REPORT-TEST-CLIENT",
-        client_name="Reports Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="REPORT-TEST-CLIENT", client_name="Reports Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users
-    admin = TestDataFactory.create_user(
-        db,
-        user_id="rpt-admin-001",
-        username="rpt_admin",
-        role="admin",
-        client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="rpt-admin-001", username="rpt_admin", role="admin", client_id=None)
 
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="rpt-super-001",
-        username="rpt_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="rpt-super-001", username="rpt_supervisor", role="supervisor", client_id=client.client_id
     )
 
     # Create product
@@ -91,16 +79,12 @@ def reports_setup(reports_db):
         client_id=client.client_id,
         product_code="RPT-PROD-001",
         product_name="Reports Test Product",
-        ideal_cycle_time=Decimal("0.10")
+        ideal_cycle_time=Decimal("0.10"),
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="Reports Test Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="Reports Test Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.commit()
@@ -123,6 +107,7 @@ def admin_client(reports_setup):
     app = create_test_app(db)
 
     from backend.auth.jwt import get_current_user
+
     app.dependency_overrides[get_current_user] = lambda: user
 
     return TestClient(app), reports_setup
@@ -136,6 +121,7 @@ def supervisor_client(reports_setup):
     app = create_test_app(db)
 
     from backend.auth.jwt import get_current_user
+
     app.dependency_overrides[get_current_user] = lambda: user
 
     return TestClient(app), reports_setup
@@ -211,8 +197,8 @@ class TestEmailConfiguration:
                 "include_quality": True,
                 "include_availability": True,
                 "include_attendance": True,
-                "include_predictions": True
-            }
+                "include_predictions": True,
+            },
         )
 
         assert response.status_code == 200
@@ -231,7 +217,7 @@ class TestEmailConfiguration:
                 "enabled": True,
                 "frequency": "daily",
                 "recipients": [],  # Empty but enabled
-            }
+            },
         )
 
         assert response.status_code == 400
@@ -242,12 +228,7 @@ class TestEmailConfiguration:
         client, setup = supervisor_client
 
         response = client.post(
-            "/api/reports/email-config",
-            json={
-                "enabled": False,
-                "frequency": "invalid_frequency",
-                "recipients": []
-            }
+            "/api/reports/email-config", json={"enabled": False, "frequency": "invalid_frequency", "recipients": []}
         )
 
         assert response.status_code == 400
@@ -266,7 +247,7 @@ class TestEmailConfiguration:
                 "report_time": "08:00",
                 "recipients": ["weekly@example.com"],
                 "client_id": client_id,
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -280,12 +261,7 @@ class TestEmailConfiguration:
         # Try to PUT without creating first
         response = client.put(
             "/api/reports/email-config",
-            json={
-                "enabled": False,
-                "frequency": "daily",
-                "recipients": [],
-                "client_id": "non-existent-client"
-            }
+            json={"enabled": False, "frequency": "daily", "recipients": [], "client_id": "non-existent-client"},
         )
 
         assert response.status_code == 404
@@ -303,7 +279,7 @@ class TestEmailConfiguration:
                 "frequency": "daily",
                 "recipients": ["test@example.com"],
                 "client_id": client_id,
-            }
+            },
         )
 
         # Then update
@@ -314,7 +290,7 @@ class TestEmailConfiguration:
                 "frequency": "monthly",
                 "recipients": ["updated@example.com"],
                 "client_id": client_id,
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -330,10 +306,7 @@ class TestTestEmail:
         """Test sending a test email."""
         client, setup = supervisor_client
 
-        response = client.post(
-            "/api/reports/email-config/test",
-            json={"email": "test@example.com"}
-        )
+        response = client.post("/api/reports/email-config/test", json={"email": "test@example.com"})
 
         # Accept 200 or 500 (email service may not be configured)
         assert response.status_code in [200, 500]
@@ -350,9 +323,7 @@ class TestPDFReportGeneration:
         """Test error with invalid date format."""
         client, setup = supervisor_client
 
-        response = client.get(
-            "/api/reports/production/pdf?start_date=invalid-date"
-        )
+        response = client.get("/api/reports/production/pdf?start_date=invalid-date")
 
         assert response.status_code == 400
         assert "date" in response.json()["detail"].lower()
@@ -363,9 +334,7 @@ class TestPDFReportGeneration:
         end = date.today() - timedelta(days=30)
         start = date.today()
 
-        response = client.get(
-            f"/api/reports/production/pdf?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/reports/production/pdf?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
         assert "before" in response.json()["detail"].lower()
@@ -378,9 +347,7 @@ class TestExcelReportGeneration:
         """Test error with invalid date format."""
         client, setup = supervisor_client
 
-        response = client.get(
-            "/api/reports/production/excel?start_date=not-a-date"
-        )
+        response = client.get("/api/reports/production/excel?start_date=not-a-date")
 
         assert response.status_code == 400
 
@@ -392,9 +359,7 @@ class TestQualityReports:
         """Test quality PDF with invalid date."""
         client, setup = supervisor_client
 
-        response = client.get(
-            "/api/reports/quality/pdf?start_date=wrong"
-        )
+        response = client.get("/api/reports/quality/pdf?start_date=wrong")
 
         assert response.status_code == 400
 
@@ -406,9 +371,7 @@ class TestAttendanceReports:
         """Test attendance PDF with invalid date."""
         client, setup = supervisor_client
 
-        response = client.get(
-            "/api/reports/attendance/pdf?start_date=2024-13-01"  # Invalid month
-        )
+        response = client.get("/api/reports/attendance/pdf?start_date=2024-13-01")  # Invalid month
 
         assert response.status_code == 400
 
@@ -427,8 +390,8 @@ class TestManualReport:
                 "client_id": client_id,
                 "start_date": "invalid-date",
                 "end_date": "2024-01-31",
-                "recipient_emails": ["test@example.com"]
-            }
+                "recipient_emails": ["test@example.com"],
+            },
         )
 
         assert response.status_code == 400
@@ -444,8 +407,8 @@ class TestManualReport:
                 "client_id": client_id,
                 "start_date": "2024-12-31",
                 "end_date": "2024-01-01",
-                "recipient_emails": ["test@example.com"]
-            }
+                "recipient_emails": ["test@example.com"],
+            },
         )
 
         assert response.status_code == 400
@@ -455,6 +418,7 @@ class TestManualReport:
 # =============================================================================
 # Mocked PDF/Excel Generation Tests
 # =============================================================================
+
 
 class TestProductionPDFWithMock:
     """Tests for production PDF generation with mocked generator."""
@@ -473,9 +437,7 @@ class TestProductionPDFWithMock:
         start = (date.today() - timedelta(days=7)).isoformat()
         end = date.today().isoformat()
 
-        response = client.get(
-            f"/api/reports/production/pdf?client_id={client_id}&start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/reports/production/pdf?client_id={client_id}&start_date={start}&end_date={end}")
 
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
@@ -527,9 +489,7 @@ class TestProductionExcelWithMock:
         start = (date.today() - timedelta(days=7)).isoformat()
         end = date.today().isoformat()
 
-        response = client.get(
-            f"/api/reports/production/excel?client_id={client_id}&start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/reports/production/excel?client_id={client_id}&start_date={start}&end_date={end}")
 
         assert response.status_code == 200
         assert "spreadsheetml" in response.headers["content-type"]
@@ -665,9 +625,7 @@ class TestAttendanceExcelWithMock:
         end = date.today() - timedelta(days=30)
         start = date.today()
 
-        response = client.get(
-            f"/api/reports/attendance/excel?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/reports/attendance/excel?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
         assert "before" in response.json()["detail"].lower()
@@ -689,7 +647,7 @@ class TestMonthlyFrequencyConfig:
                 "report_time": "09:00",
                 "recipients": ["monthly@example.com"],
                 "client_id": client_id,
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -702,11 +660,7 @@ class TestMonthlyFrequencyConfig:
 
         response = client.post(
             "/api/reports/email-config",
-            json={
-                "enabled": False,
-                "frequency": "daily",
-                "recipients": []  # Empty is OK when disabled
-            }
+            json={"enabled": False, "frequency": "daily", "recipients": []},  # Empty is OK when disabled
         )
 
         assert response.status_code == 200
@@ -775,9 +729,7 @@ class TestComprehensiveExcelWithMock:
         end = date.today() - timedelta(days=30)
         start = date.today()
 
-        response = client.get(
-            f"/api/reports/comprehensive/excel?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/reports/comprehensive/excel?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
         assert "before" in response.json()["detail"].lower()
@@ -800,9 +752,7 @@ class TestQualityExcelValidation:
         end = date.today() - timedelta(days=30)
         start = date.today()
 
-        response = client.get(
-            f"/api/reports/quality/excel?start_date={start}&end_date={end}"
-        )
+        response = client.get(f"/api/reports/quality/excel?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
 

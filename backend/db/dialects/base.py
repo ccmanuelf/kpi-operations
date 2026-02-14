@@ -3,6 +3,7 @@ Abstract Base Dialect Adapter
 
 Defines the interface for handling SQL dialect differences between databases.
 """
+
 from abc import ABC, abstractmethod
 from typing import List, Tuple, Optional
 
@@ -39,11 +40,7 @@ class DialectAdapter(ABC):
 
     @abstractmethod
     def get_upsert_sql(
-        self,
-        table: str,
-        columns: List[str],
-        conflict_columns: List[str],
-        update_columns: Optional[List[str]] = None
+        self, table: str, columns: List[str], conflict_columns: List[str], update_columns: Optional[List[str]] = None
     ) -> str:
         """Return upsert (INSERT ... ON CONFLICT) SQL.
 
@@ -105,12 +102,7 @@ class DialectAdapter(ABC):
         """
         return "CURRENT_TIMESTAMP"
 
-    def get_date_diff_sql(
-        self,
-        date1: str,
-        date2: str,
-        unit: str = "day"
-    ) -> str:
+    def get_date_diff_sql(self, date1: str, date2: str, unit: str = "day") -> str:
         """Return SQL for date difference.
 
         Default implementation for most dialects.

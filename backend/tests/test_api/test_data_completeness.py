@@ -6,6 +6,7 @@ Tests for:
 - GET /api/data-completeness/summary - Get completeness summary for date range
 - GET /api/data-completeness/categories - Get detailed category breakdown
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch, PropertyMock
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 # =============================================================================
 # Helper Function Tests
 # =============================================================================
+
 
 class TestGetDateFilter:
     """Tests for get_date_filter helper function"""
@@ -151,6 +153,7 @@ class TestCalculateExpectedEntriesLogic:
 # Status Determination Tests
 # =============================================================================
 
+
 class TestStatusDetermination:
     """Tests for status determination logic"""
 
@@ -174,6 +177,7 @@ class TestStatusDetermination:
 # GET /api/data-completeness Tests
 # =============================================================================
 
+
 class TestGetDataCompletenessEndpoint:
     """Tests for GET /api/data-completeness endpoint"""
 
@@ -182,7 +186,7 @@ class TestGetDataCompletenessEndpoint:
         """Set up mocked dependencies"""
         mock_db = MagicMock(spec=Session)
         mock_user = MagicMock()
-        mock_user.role = 'admin'
+        mock_user.role = "admin"
         mock_user.client_id_assigned = None
         return mock_db, mock_user
 
@@ -191,7 +195,7 @@ class TestGetDataCompletenessEndpoint:
     def test_returns_all_categories(self, mock_get_user, mock_get_db, mock_dependencies):
         """Test that response includes all categories"""
         # This test verifies the response structure
-        expected_categories = ['production', 'downtime', 'attendance', 'quality', 'hold', 'overall']
+        expected_categories = ["production", "downtime", "attendance", "quality", "hold", "overall"]
 
         # Verify expected categories exist
         for category in expected_categories:
@@ -200,16 +204,16 @@ class TestGetDataCompletenessEndpoint:
     def test_response_structure(self):
         """Test expected response structure"""
         expected_fields = {
-            'date': str,
-            'shift_id': (int, type(None)),
-            'client_id': (str, type(None)),
-            'production': dict,
-            'downtime': dict,
-            'attendance': dict,
-            'quality': dict,
-            'hold': dict,
-            'overall': dict,
-            'calculation_timestamp': str
+            "date": str,
+            "shift_id": (int, type(None)),
+            "client_id": (str, type(None)),
+            "production": dict,
+            "downtime": dict,
+            "attendance": dict,
+            "quality": dict,
+            "hold": dict,
+            "overall": dict,
+            "calculation_timestamp": str,
         }
 
         # Verify all fields are expected
@@ -217,7 +221,7 @@ class TestGetDataCompletenessEndpoint:
 
     def test_category_structure(self):
         """Test expected category structure"""
-        expected_category_fields = ['entered', 'expected', 'percentage', 'status']
+        expected_category_fields = ["entered", "expected", "percentage", "status"]
 
         # Verify all fields are expected
         assert len(expected_category_fields) == 4
@@ -250,19 +254,13 @@ class TestDataCompletenessCalculation:
         entered = 8
         expected = 10
 
-        percentage = (entered / expected * 100)
+        percentage = entered / expected * 100
 
         assert percentage == 80.0
 
     def test_weighted_overall_calculation(self):
         """Test weighted overall percentage calculation"""
-        weights = {
-            'production': 0.30,
-            'downtime': 0.15,
-            'attendance': 0.30,
-            'quality': 0.15,
-            'hold': 0.10
-        }
+        weights = {"production": 0.30, "downtime": 0.15, "attendance": 0.30, "quality": 0.15, "hold": 0.10}
 
         # Verify weights sum to 1.0
         assert sum(weights.values()) == 1.0
@@ -275,11 +273,11 @@ class TestDataCompletenessCalculation:
         hold_pct = 50.0
 
         overall = (
-            production_pct * weights['production'] +
-            downtime_pct * weights['downtime'] +
-            attendance_pct * weights['attendance'] +
-            quality_pct * weights['quality'] +
-            hold_pct * weights['hold']
+            production_pct * weights["production"]
+            + downtime_pct * weights["downtime"]
+            + attendance_pct * weights["attendance"]
+            + quality_pct * weights["quality"]
+            + hold_pct * weights["hold"]
         )
 
         # 30 + 12 + 27 + 11.25 + 5 = 85.25
@@ -289,6 +287,7 @@ class TestDataCompletenessCalculation:
 # =============================================================================
 # GET /api/data-completeness/summary Tests
 # =============================================================================
+
 
 class TestGetCompletenessSummaryEndpoint:
     """Tests for GET /api/data-completeness/summary endpoint"""
@@ -303,26 +302,20 @@ class TestGetCompletenessSummaryEndpoint:
 
     def test_summary_response_structure(self):
         """Test expected summary response structure"""
-        expected_fields = [
-            'start_date',
-            'end_date',
-            'average_completeness',
-            'daily',
-            'calculation_timestamp'
-        ]
+        expected_fields = ["start_date", "end_date", "average_completeness", "daily", "calculation_timestamp"]
 
         assert len(expected_fields) == 5
 
     def test_daily_entry_structure(self):
         """Test expected daily entry structure"""
         expected_daily_fields = [
-            'date',
-            'overall_percentage',
-            'status',
-            'production',
-            'downtime',
-            'attendance',
-            'quality'
+            "date",
+            "overall_percentage",
+            "status",
+            "production",
+            "downtime",
+            "attendance",
+            "quality",
         ]
 
         assert len(expected_daily_fields) == 7
@@ -348,97 +341,92 @@ class TestGetCompletenessSummaryEndpoint:
 # GET /api/data-completeness/categories Tests
 # =============================================================================
 
+
 class TestGetCompletenessByCategoryEndpoint:
     """Tests for GET /api/data-completeness/categories endpoint"""
 
     def test_returns_all_five_categories(self):
         """Test that response includes all 5 categories"""
-        expected_categories = [
-            'production',
-            'downtime',
-            'attendance',
-            'quality',
-            'hold'
-        ]
+        expected_categories = ["production", "downtime", "attendance", "quality", "hold"]
 
         assert len(expected_categories) == 5
 
     def test_category_metadata(self):
         """Test category metadata structure"""
         # Each category should have id, name, icon, color, route
-        expected_metadata = ['id', 'name', 'icon', 'color', 'route']
+        expected_metadata = ["id", "name", "icon", "color", "route"]
 
         assert len(expected_metadata) == 5
 
     def test_production_category_metadata(self):
         """Test production category has correct metadata"""
         production = {
-            'id': 'production',
-            'name': 'Production',
-            'icon': 'mdi-factory',
-            'color': 'primary',
-            'route': '/entry/production'
+            "id": "production",
+            "name": "Production",
+            "icon": "mdi-factory",
+            "color": "primary",
+            "route": "/entry/production",
         }
 
-        assert production['id'] == 'production'
-        assert production['name'] == 'Production'
-        assert production['route'] == '/entry/production'
+        assert production["id"] == "production"
+        assert production["name"] == "Production"
+        assert production["route"] == "/entry/production"
 
     def test_downtime_category_metadata(self):
         """Test downtime category has correct metadata"""
         downtime = {
-            'id': 'downtime',
-            'name': 'Downtime',
-            'icon': 'mdi-clock-alert',
-            'color': 'warning',
-            'route': '/entry/downtime'
+            "id": "downtime",
+            "name": "Downtime",
+            "icon": "mdi-clock-alert",
+            "color": "warning",
+            "route": "/entry/downtime",
         }
 
-        assert downtime['id'] == 'downtime'
-        assert downtime['color'] == 'warning'
+        assert downtime["id"] == "downtime"
+        assert downtime["color"] == "warning"
 
     def test_attendance_category_metadata(self):
         """Test attendance category has correct metadata"""
         attendance = {
-            'id': 'attendance',
-            'name': 'Attendance',
-            'icon': 'mdi-account-check',
-            'color': 'info',
-            'route': '/entry/attendance'
+            "id": "attendance",
+            "name": "Attendance",
+            "icon": "mdi-account-check",
+            "color": "info",
+            "route": "/entry/attendance",
         }
 
-        assert attendance['id'] == 'attendance'
-        assert attendance['color'] == 'info'
+        assert attendance["id"] == "attendance"
+        assert attendance["color"] == "info"
 
     def test_quality_category_metadata(self):
         """Test quality category has correct metadata"""
         quality = {
-            'id': 'quality',
-            'name': 'Quality',
-            'icon': 'mdi-check-decagram',
-            'color': 'success',
-            'route': '/entry/quality'
+            "id": "quality",
+            "name": "Quality",
+            "icon": "mdi-check-decagram",
+            "color": "success",
+            "route": "/entry/quality",
         }
 
-        assert quality['id'] == 'quality'
-        assert quality['color'] == 'success'
+        assert quality["id"] == "quality"
+        assert quality["color"] == "success"
 
     def test_hold_category_metadata(self):
         """Test hold category has correct metadata"""
         hold = {
-            'id': 'hold',
-            'name': 'Hold/Resume',
-            'icon': 'mdi-pause-circle',
-            'color': 'error',
-            'route': '/entry/hold'
+            "id": "hold",
+            "name": "Hold/Resume",
+            "icon": "mdi-pause-circle",
+            "color": "error",
+            "route": "/entry/hold",
         }
 
-        assert hold['id'] == 'hold'
-        assert hold['color'] == 'error'
+        assert hold["id"] == "hold"
+        assert hold["color"] == "error"
 
     def test_categories_response_structure(self):
         """Test categories response structure"""
-        expected_fields = ['date', 'overall', 'categories', 'calculation_timestamp']
+        expected_fields = ["date", "overall", "categories", "calculation_timestamp"]
 
         assert len(expected_fields) == 4
 
@@ -447,38 +435,39 @@ class TestGetCompletenessByCategoryEndpoint:
 # Client and Shift Filtering Tests
 # =============================================================================
 
+
 class TestClientFiltering:
     """Tests for client_id filtering behavior"""
 
     def test_admin_user_can_filter_by_client(self):
         """Test that admin users can filter by any client_id"""
         mock_user = MagicMock()
-        mock_user.role = 'admin'
+        mock_user.role = "admin"
         mock_user.client_id_assigned = None
 
         # Admin should be able to specify any client_id
-        requested_client = 'CLIENT_A'
+        requested_client = "CLIENT_A"
 
         # Effective client_id should be the requested one
         effective_client_id = requested_client
 
-        assert effective_client_id == 'CLIENT_A'
+        assert effective_client_id == "CLIENT_A"
 
     def test_non_admin_uses_assigned_client(self):
         """Test that non-admin users default to their assigned client"""
         mock_user = MagicMock()
-        mock_user.role = 'operator'
-        mock_user.client_id_assigned = 'CLIENT_B'
+        mock_user.role = "operator"
+        mock_user.client_id_assigned = "CLIENT_B"
 
         # No client specified in request
         client_id = None
 
         # Effective should be user's assigned client
         effective_client_id = client_id
-        if not effective_client_id and mock_user.role != 'admin' and mock_user.client_id_assigned:
+        if not effective_client_id and mock_user.role != "admin" and mock_user.client_id_assigned:
             effective_client_id = mock_user.client_id_assigned
 
-        assert effective_client_id == 'CLIENT_B'
+        assert effective_client_id == "CLIENT_B"
 
 
 class TestShiftFiltering:
@@ -516,6 +505,7 @@ class TestShiftFiltering:
 # =============================================================================
 # Date Handling Tests
 # =============================================================================
+
 
 class TestDateHandling:
     """Tests for date parameter handling"""
@@ -565,6 +555,7 @@ class TestDateHandling:
 # =============================================================================
 # Edge Cases and Error Handling
 # =============================================================================
+
 
 class TestEdgeCases:
     """Tests for edge cases and error scenarios"""
@@ -620,18 +611,13 @@ class TestEdgeCases:
 # Weights Validation Tests
 # =============================================================================
 
+
 class TestWeightsValidation:
     """Tests for completeness weights configuration"""
 
     def test_weights_sum_to_one(self):
         """Test that category weights sum to exactly 1.0"""
-        weights = {
-            'production': 0.30,
-            'downtime': 0.15,
-            'attendance': 0.30,
-            'quality': 0.15,
-            'hold': 0.10
-        }
+        weights = {"production": 0.30, "downtime": 0.15, "attendance": 0.30, "quality": 0.15, "hold": 0.10}
 
         total = sum(weights.values())
 
@@ -639,54 +625,36 @@ class TestWeightsValidation:
 
     def test_production_has_high_weight(self):
         """Test production has appropriately high weight"""
-        weights = {
-            'production': 0.30,
-            'downtime': 0.15,
-            'attendance': 0.30,
-            'quality': 0.15,
-            'hold': 0.10
-        }
+        weights = {"production": 0.30, "downtime": 0.15, "attendance": 0.30, "quality": 0.15, "hold": 0.10}
 
         # Production should be among the highest weighted
-        assert weights['production'] >= weights['downtime']
-        assert weights['production'] >= weights['quality']
-        assert weights['production'] >= weights['hold']
+        assert weights["production"] >= weights["downtime"]
+        assert weights["production"] >= weights["quality"]
+        assert weights["production"] >= weights["hold"]
 
     def test_attendance_has_high_weight(self):
         """Test attendance has appropriately high weight"""
-        weights = {
-            'production': 0.30,
-            'downtime': 0.15,
-            'attendance': 0.30,
-            'quality': 0.15,
-            'hold': 0.10
-        }
+        weights = {"production": 0.30, "downtime": 0.15, "attendance": 0.30, "quality": 0.15, "hold": 0.10}
 
         # Attendance should be among the highest weighted
-        assert weights['attendance'] >= weights['downtime']
-        assert weights['attendance'] >= weights['quality']
-        assert weights['attendance'] >= weights['hold']
+        assert weights["attendance"] >= weights["downtime"]
+        assert weights["attendance"] >= weights["quality"]
+        assert weights["attendance"] >= weights["hold"]
 
     def test_hold_has_lowest_weight(self):
         """Test hold has lowest weight (event-driven)"""
-        weights = {
-            'production': 0.30,
-            'downtime': 0.15,
-            'attendance': 0.30,
-            'quality': 0.15,
-            'hold': 0.10
-        }
+        weights = {"production": 0.30, "downtime": 0.15, "attendance": 0.30, "quality": 0.15, "hold": 0.10}
 
         # Hold is event-driven, should have lowest weight
-        assert weights['hold'] <= min(weights['production'],
-                                       weights['downtime'],
-                                       weights['attendance'],
-                                       weights['quality'])
+        assert weights["hold"] <= min(
+            weights["production"], weights["downtime"], weights["attendance"], weights["quality"]
+        )
 
 
 # =============================================================================
 # Integration Tests (with mocked database)
 # =============================================================================
+
 
 class TestIntegrationWithMockedDb:
     """Integration tests with mocked database"""
@@ -698,41 +666,13 @@ class TestIntegrationWithMockedDb:
             "date": "2024-01-15",
             "shift_id": None,
             "client_id": None,
-            "production": {
-                "entered": 8,
-                "expected": 10,
-                "percentage": 80.0,
-                "status": "warning"
-            },
-            "downtime": {
-                "entered": 3,
-                "expected": 3,
-                "percentage": 100.0,
-                "status": "complete"
-            },
-            "attendance": {
-                "entered": 15,
-                "expected": 15,
-                "percentage": 100.0,
-                "status": "complete"
-            },
-            "quality": {
-                "entered": 2,
-                "expected": 4,
-                "percentage": 50.0,
-                "status": "incomplete"
-            },
-            "hold": {
-                "entered": 1,
-                "expected": 1,
-                "percentage": 100.0,
-                "status": "complete"
-            },
-            "overall": {
-                "percentage": 85.5,
-                "status": "warning"
-            },
-            "calculation_timestamp": "2024-01-15T12:00:00"
+            "production": {"entered": 8, "expected": 10, "percentage": 80.0, "status": "warning"},
+            "downtime": {"entered": 3, "expected": 3, "percentage": 100.0, "status": "complete"},
+            "attendance": {"entered": 15, "expected": 15, "percentage": 100.0, "status": "complete"},
+            "quality": {"entered": 2, "expected": 4, "percentage": 50.0, "status": "incomplete"},
+            "hold": {"entered": 1, "expected": 1, "percentage": 100.0, "status": "complete"},
+            "overall": {"percentage": 85.5, "status": "warning"},
+            "calculation_timestamp": "2024-01-15T12:00:00",
         }
 
         # Verify all categories present

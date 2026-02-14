@@ -3,6 +3,7 @@ WIP hold tracking models (Pydantic)
 PHASE 2: Work-in-process aging tracking
 Enhanced with P2-001: Hold Duration Auto-Calculation
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
@@ -12,6 +13,7 @@ from enum import Enum
 
 class HoldStatusEnum(str, Enum):
     """Hold status enum for API"""
+
     ON_HOLD = "ON_HOLD"
     RESUMED = "RESUMED"
     RELEASED = "RELEASED"
@@ -20,6 +22,7 @@ class HoldStatusEnum(str, Enum):
 
 class HoldReasonEnum(str, Enum):
     """Hold reason enum for strict validation"""
+
     MATERIAL_INSPECTION = "MATERIAL_INSPECTION"
     QUALITY_ISSUE = "QUALITY_ISSUE"
     ENGINEERING_REVIEW = "ENGINEERING_REVIEW"
@@ -32,6 +35,7 @@ class HoldReasonEnum(str, Enum):
 
 class WIPHoldCreate(BaseModel):
     """Create WIP hold record - aligned with HOLD_ENTRY schema"""
+
     # Multi-tenant isolation - REQUIRED
     client_id: str = Field(..., min_length=1, max_length=50)
 
@@ -76,26 +80,27 @@ class WIPHoldCreate(BaseModel):
             "CAPACITY_CONSTRAINT": HoldReasonEnum.CAPACITY_CONSTRAINT,
         }
 
-        raw_reason = (data.get('hold_category') or data.get('hold_reason') or 'OTHER').upper()
+        raw_reason = (data.get("hold_category") or data.get("hold_reason") or "OTHER").upper()
         reason_enum = reason_mapping.get(raw_reason, HoldReasonEnum.OTHER)
 
         return cls(
-            client_id=data.get('client_id', ''),
-            work_order_id=data.get('work_order_number') or data.get('work_order_id', ''),
-            job_id=data.get('job_id'),
+            client_id=data.get("client_id", ""),
+            work_order_id=data.get("work_order_number") or data.get("work_order_id", ""),
+            job_id=data.get("job_id"),
             hold_status=HoldStatusEnum.ON_HOLD,
-            hold_date=data.get('hold_date'),
-            hold_reason_category=data.get('hold_category') or data.get('hold_reason_category'),
+            hold_date=data.get("hold_date"),
+            hold_reason_category=data.get("hold_category") or data.get("hold_reason_category"),
             hold_reason=reason_enum,
-            hold_reason_description=data.get('hold_reason') or data.get('hold_reason_description'),
-            quality_issue_type=data.get('quality_issue_type'),
-            expected_resolution_date=data.get('expected_resolution_date'),
-            notes=data.get('notes')
+            hold_reason_description=data.get("hold_reason") or data.get("hold_reason_description"),
+            quality_issue_type=data.get("quality_issue_type"),
+            expected_resolution_date=data.get("expected_resolution_date"),
+            notes=data.get("notes"),
         )
 
 
 class WIPHoldUpdate(BaseModel):
     """Update WIP hold record"""
+
     quantity_held: Optional[int] = Field(None, gt=0)
     hold_reason: Optional[str] = Field(None, max_length=255)
     hold_category: Optional[str] = Field(None, max_length=50)
@@ -111,11 +116,13 @@ class WIPHoldUpdate(BaseModel):
 
 class WIPHoldResumeRequest(BaseModel):
     """Request to resume a hold - P2-001"""
+
     notes: Optional[str] = Field(None, description="Optional notes when resuming")
 
 
 class WIPHoldResponse(BaseModel):
     """WIP hold response - matches HOLD_ENTRY schema"""
+
     hold_entry_id: str
     client_id: str
     work_order_id: str
@@ -142,6 +149,7 @@ class WIPHoldResponse(BaseModel):
 
 class WIPAgingResponse(BaseModel):
     """WIP aging analysis"""
+
     total_held_quantity: int
     average_aging_days: Decimal
     aging_0_7_days: int
@@ -154,6 +162,7 @@ class WIPAgingResponse(BaseModel):
 
 class WIPAgingAdjustedResponse(BaseModel):
     """WIP aging with hold-time adjustment - P2-001"""
+
     work_order_number: str
     raw_age_hours: Decimal
     total_hold_duration_hours: Decimal
@@ -164,6 +173,7 @@ class WIPAgingAdjustedResponse(BaseModel):
 
 class TotalHoldDurationResponse(BaseModel):
     """Total hold duration for a work order - P2-001"""
+
     work_order_number: str
     total_hold_duration_hours: Decimal
     hold_count: int

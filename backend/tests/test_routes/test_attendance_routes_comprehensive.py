@@ -3,6 +3,7 @@ Comprehensive Attendance Routes Tests
 Tests API endpoints with authenticated clients and real database.
 Target: Increase routes/attendance.py coverage from 30% to 80%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -61,44 +62,23 @@ def attendance_setup(attendance_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="ATTENDANCE-TEST",
-        client_name="Attendance Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="ATTENDANCE-TEST", client_name="Attendance Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users
-    admin = TestDataFactory.create_user(
-        db,
-        user_id="att-admin-001",
-        username="att_admin",
-        role="admin",
-        client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="att-admin-001", username="att_admin", role="admin", client_id=None)
 
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="att-super-001",
-        username="att_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="att-super-001", username="att_supervisor", role="supervisor", client_id=client.client_id
     )
 
     operator = TestDataFactory.create_user(
-        db,
-        user_id="att-oper-001",
-        username="att_operator",
-        role="operator",
-        client_id=client.client_id
+        db, user_id="att-oper-001", username="att_operator", role="operator", client_id=client.client_id
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="Attendance Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="Attendance Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     # Create employees
@@ -136,6 +116,7 @@ def authenticated_client(attendance_setup):
 
     # Mock auth dependencies
     from backend.auth.jwt import get_current_user, get_current_active_supervisor
+
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_current_active_supervisor] = lambda: user
 
@@ -150,6 +131,7 @@ def admin_client(attendance_setup):
     app = create_test_app(db)
 
     from backend.auth.jwt import get_current_user, get_current_active_supervisor
+
     app.dependency_overrides[get_current_user] = lambda: user
     app.dependency_overrides[get_current_active_supervisor] = lambda: user
 
@@ -185,9 +167,7 @@ class TestListAttendance:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/attendance?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/attendance?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
 
@@ -252,8 +232,7 @@ class TestGetAttendanceByEmployee:
         week_ago = today - timedelta(days=7)
 
         response = client.get(
-            f"/api/attendance/by-employee/{employee.employee_id}?"
-            f"start_date={week_ago}&end_date={today}"
+            f"/api/attendance/by-employee/{employee.employee_id}?" f"start_date={week_ago}&end_date={today}"
         )
 
         assert response.status_code == 200
@@ -268,9 +247,7 @@ class TestGetAttendanceByDateRange:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/attendance/by-date-range?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/attendance/by-date-range?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -284,10 +261,7 @@ class TestUpdateAttendance:
         """Test error when record doesn't exist."""
         client, _ = authenticated_client
 
-        response = client.put(
-            "/api/attendance/99999",
-            json={"actual_hours_worked": 7.5}
-        )
+        response = client.put("/api/attendance/99999", json={"actual_hours_worked": 7.5})
 
         assert response.status_code == 404
 
@@ -313,9 +287,7 @@ class TestAttendanceStatistics:
         today = date.today()
         month_ago = today - timedelta(days=30)
 
-        response = client.get(
-            f"/api/attendance/statistics/summary?start_date={month_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/attendance/statistics/summary?start_date={month_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -331,8 +303,7 @@ class TestAttendanceStatistics:
         month_ago = today - timedelta(days=30)
 
         response = client.get(
-            f"/api/attendance/statistics/summary?"
-            f"start_date={month_ago}&end_date={today}&shift_id={shift.shift_id}"
+            f"/api/attendance/statistics/summary?" f"start_date={month_ago}&end_date={today}&shift_id={shift.shift_id}"
         )
 
         assert response.status_code == 200
@@ -359,9 +330,7 @@ class TestAbsenteeismKPI:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/attendance/kpi/absenteeism?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/attendance/kpi/absenteeism?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -424,9 +393,7 @@ class TestAbsenteeismTrend:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/attendance/kpi/absenteeism/trend?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/attendance/kpi/absenteeism/trend?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
         data = response.json()
@@ -458,8 +425,7 @@ class TestBradfordFactor:
         month_ago = today - timedelta(days=30)
 
         response = client.get(
-            f"/api/attendance/kpi/bradford-factor/{employee.employee_id}?"
-            f"start_date={month_ago}&end_date={today}"
+            f"/api/attendance/kpi/bradford-factor/{employee.employee_id}?" f"start_date={month_ago}&end_date={today}"
         )
 
         assert response.status_code == 200
@@ -477,8 +443,7 @@ class TestBradfordFactor:
         month_ago = today - timedelta(days=30)
 
         response = client.get(
-            f"/api/attendance/kpi/bradford-factor/{employee.employee_id}?"
-            f"start_date={month_ago}&end_date={today}"
+            f"/api/attendance/kpi/bradford-factor/{employee.employee_id}?" f"start_date={month_ago}&end_date={today}"
         )
 
         assert response.status_code == 200
@@ -505,9 +470,7 @@ class TestAdminAccess:
         today = date.today()
         month_ago = today - timedelta(days=30)
 
-        response = client.get(
-            f"/api/attendance/statistics/summary?start_date={month_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/attendance/statistics/summary?start_date={month_ago}&end_date={today}")
 
         assert response.status_code == 200
 

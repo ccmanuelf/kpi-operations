@@ -10,6 +10,7 @@ Tests cover:
 - Elapsed time analytics endpoints
 - Statistics endpoints
 """
+
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import Mock, MagicMock, patch
@@ -54,18 +55,11 @@ class TestTransitionWorkOrder:
         transition.to_status = WorkflowStatusEnum.RELEASED
         transition.notes = "Test transition"
 
-        with patch('backend.routes.workflow.transition_work_order') as mock_func:
-            mock_func.return_value = {
-                "work_order": Mock(),
-                "transition": Mock(),
-                "success": True
-            }
+        with patch("backend.routes.workflow.transition_work_order") as mock_func:
+            mock_func.return_value = {"work_order": Mock(), "transition": Mock(), "success": True}
 
             result = transition_work_order_status(
-                work_order_id="WO-001",
-                transition=transition,
-                db=mock_db,
-                current_user=mock_user
+                work_order_id="WO-001", transition=transition, db=mock_db, current_user=mock_user
             )
 
             assert result["success"] is True
@@ -82,20 +76,17 @@ class TestValidateTransition:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.validate_transition') as mock_func:
+        with patch("backend.routes.workflow.validate_transition") as mock_func:
             mock_func.return_value = {
                 "is_valid": True,
                 "from_status": "RECEIVED",
                 "to_status": "RELEASED",
                 "reason": None,
-                "allowed_transitions": ["RELEASED", "ON_HOLD"]
+                "allowed_transitions": ["RELEASED", "ON_HOLD"],
             }
 
             result = validate_work_order_transition(
-                work_order_id="WO-001",
-                to_status="RELEASED",
-                db=mock_db,
-                current_user=mock_user
+                work_order_id="WO-001", to_status="RELEASED", db=mock_db, current_user=mock_user
             )
 
             assert result["is_valid"] is True
@@ -112,19 +103,15 @@ class TestGetAllowedTransitions:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.get_allowed_transitions_for_work_order') as mock_func:
+        with patch("backend.routes.workflow.get_allowed_transitions_for_work_order") as mock_func:
             mock_func.return_value = {
                 "work_order_id": "WO-001",
                 "current_status": "RECEIVED",
                 "allowed_next_statuses": ["RELEASED", "ON_HOLD", "CANCELLED"],
-                "client_id": "CLIENT-001"
+                "client_id": "CLIENT-001",
             }
 
-            result = get_work_order_allowed_transitions(
-                work_order_id="WO-001",
-                db=mock_db,
-                current_user=mock_user
-            )
+            result = get_work_order_allowed_transitions(work_order_id="WO-001", db=mock_db, current_user=mock_user)
 
             assert result["current_status"] == "RECEIVED"
             assert "RELEASED" in result["allowed_next_statuses"]
@@ -146,25 +133,21 @@ class TestGetTransitionHistory:
                 from_status=None,
                 to_status="RECEIVED",
                 transitioned_at=datetime.utcnow(),
-                notes="Initial"
+                notes="Initial",
             ),
             Mock(
                 transition_id=2,
                 from_status="RECEIVED",
                 to_status="RELEASED",
                 transitioned_at=datetime.utcnow(),
-                notes=None
-            )
+                notes=None,
+            ),
         ]
 
-        with patch('backend.routes.workflow.get_work_order_transitions') as mock_func:
+        with patch("backend.routes.workflow.get_work_order_transitions") as mock_func:
             mock_func.return_value = mock_transitions
 
-            result = get_work_order_transition_history(
-                work_order_id="WO-001",
-                db=mock_db,
-                current_user=mock_user
-            )
+            result = get_work_order_transition_history(work_order_id="WO-001", db=mock_db, current_user=mock_user)
 
             assert len(result) == 2
 
@@ -185,19 +168,11 @@ class TestBulkTransition:
         request.to_status = WorkflowStatusEnum.RELEASED
         request.notes = "Bulk test"
 
-        with patch('backend.routes.workflow.bulk_transition_work_orders') as mock_func:
-            mock_func.return_value = {
-                "total_requested": 3,
-                "successful": 2,
-                "failed": 1,
-                "results": []
-            }
+        with patch("backend.routes.workflow.bulk_transition_work_orders") as mock_func:
+            mock_func.return_value = {"total_requested": 3, "successful": 2, "failed": 1, "results": []}
 
             result = bulk_transition_work_orders_endpoint(
-                request=request,
-                client_id="CLIENT-001",
-                db=mock_db,
-                current_user=mock_user
+                request=request, client_id="CLIENT-001", db=mock_db, current_user=mock_user
             )
 
             assert result["total_requested"] == 3
@@ -214,19 +189,15 @@ class TestWorkflowConfiguration:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.get_workflow_configuration') as mock_func:
+        with patch("backend.routes.workflow.get_workflow_configuration") as mock_func:
             mock_func.return_value = {
                 "client_id": "CLIENT-001",
                 "workflow_statuses": ["RECEIVED", "RELEASED", "COMPLETED"],
                 "workflow_transitions": {},
-                "workflow_closure_trigger": "at_shipment"
+                "workflow_closure_trigger": "at_shipment",
             }
 
-            result = get_client_workflow_config(
-                client_id="CLIENT-001",
-                db=mock_db,
-                current_user=mock_user
-            )
+            result = get_client_workflow_config(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
 
             assert result["client_id"] == "CLIENT-001"
             assert "workflow_statuses" in result
@@ -241,21 +212,18 @@ class TestWorkflowConfiguration:
         config = Mock()
         config.model_dump.return_value = {
             "workflow_statuses": ["RECEIVED", "COMPLETED"],
-            "workflow_closure_trigger": "at_completion"
+            "workflow_closure_trigger": "at_completion",
         }
 
-        with patch('backend.routes.workflow.update_workflow_configuration') as mock_func:
+        with patch("backend.routes.workflow.update_workflow_configuration") as mock_func:
             mock_func.return_value = {
                 "client_id": "CLIENT-001",
                 "workflow_statuses": ["RECEIVED", "COMPLETED"],
-                "workflow_closure_trigger": "at_completion"
+                "workflow_closure_trigger": "at_completion",
             }
 
             result = update_client_workflow_config(
-                client_id="CLIENT-001",
-                config=config,
-                db=mock_db,
-                current_user=mock_user
+                client_id="CLIENT-001", config=config, db=mock_db, current_user=mock_user
             )
 
             assert result["workflow_closure_trigger"] == "at_completion"
@@ -271,18 +239,15 @@ class TestApplyTemplate:
         mock_db = Mock()
         mock_user = create_mock_supervisor_user()
 
-        with patch('backend.routes.workflow.apply_workflow_template') as mock_func:
+        with patch("backend.routes.workflow.apply_workflow_template") as mock_func:
             mock_func.return_value = {
                 "client_id": "CLIENT-001",
                 "workflow_statuses": ["RECEIVED", "RELEASED", "IN_PROGRESS"],
-                "template_applied": "standard"
+                "template_applied": "standard",
             }
 
             result = apply_workflow_template_endpoint(
-                client_id="CLIENT-001",
-                template_id="standard",
-                db=mock_db,
-                current_user=mock_user
+                client_id="CLIENT-001", template_id="standard", db=mock_db, current_user=mock_user
             )
 
             assert "workflow_statuses" in result
@@ -338,19 +303,11 @@ class TestElapsedTimeEndpoints:
         mock_query.filter.return_value = mock_query
         mock_query.first.return_value = mock_wo
 
-        with patch('backend.middleware.client_auth.verify_client_access'):
-            with patch('backend.routes.workflow.calculate_work_order_elapsed_times') as mock_func:
-                mock_func.return_value = {
-                    "work_order_id": "WO-001",
-                    "lifecycle": {"total_hours": 24},
-                    "stages": {}
-                }
+        with patch("backend.middleware.client_auth.verify_client_access"):
+            with patch("backend.routes.workflow.calculate_work_order_elapsed_times") as mock_func:
+                mock_func.return_value = {"work_order_id": "WO-001", "lifecycle": {"total_hours": 24}, "stages": {}}
 
-                result = get_work_order_elapsed_time(
-                    work_order_id="WO-001",
-                    db=mock_db,
-                    current_user=mock_user
-                )
+                result = get_work_order_elapsed_time(work_order_id="WO-001", db=mock_db, current_user=mock_user)
 
                 assert result["work_order_id"] == "WO-001"
 
@@ -368,11 +325,7 @@ class TestElapsedTimeEndpoints:
         mock_query.first.return_value = None
 
         with pytest.raises(HTTPException) as exc_info:
-            get_work_order_elapsed_time(
-                work_order_id="WO-NOTFOUND",
-                db=mock_db,
-                current_user=mock_user
-            )
+            get_work_order_elapsed_time(work_order_id="WO-NOTFOUND", db=mock_db, current_user=mock_user)
 
         assert exc_info.value.status_code == 404
 
@@ -392,18 +345,14 @@ class TestElapsedTimeEndpoints:
         mock_query.filter.return_value = mock_query
         mock_query.first.return_value = mock_wo
 
-        with patch('backend.middleware.client_auth.verify_client_access'):
-            with patch('backend.routes.workflow.get_transition_elapsed_times') as mock_func:
+        with patch("backend.middleware.client_auth.verify_client_access"):
+            with patch("backend.routes.workflow.get_transition_elapsed_times") as mock_func:
                 mock_func.return_value = [
                     {"from_status": None, "to_status": "RECEIVED", "elapsed_from_previous_hours": None},
-                    {"from_status": "RECEIVED", "to_status": "RELEASED", "elapsed_from_previous_hours": 4}
+                    {"from_status": "RECEIVED", "to_status": "RELEASED", "elapsed_from_previous_hours": 4},
                 ]
 
-                result = get_work_order_transition_times(
-                    work_order_id="WO-001",
-                    db=mock_db,
-                    current_user=mock_user
-                )
+                result = get_work_order_transition_times(work_order_id="WO-001", db=mock_db, current_user=mock_user)
 
                 assert len(result) == 2
 
@@ -414,22 +363,15 @@ class TestElapsedTimeEndpoints:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.middleware.client_auth.verify_client_access'):
-            with patch('backend.routes.workflow.calculate_client_average_times') as mock_func:
+        with patch("backend.middleware.client_auth.verify_client_access"):
+            with patch("backend.routes.workflow.calculate_client_average_times") as mock_func:
                 mock_func.return_value = {
                     "client_id": "CLIENT-001",
                     "count": 50,
-                    "averages": {
-                        "lifecycle_hours": 72,
-                        "lead_time_hours": 8
-                    }
+                    "averages": {"lifecycle_hours": 72, "lead_time_hours": 8},
                 }
 
-                result = get_client_average_elapsed_times(
-                    client_id="CLIENT-001",
-                    db=mock_db,
-                    current_user=mock_user
-                )
+                result = get_client_average_elapsed_times(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
 
                 assert result["count"] == 50
                 assert result["averages"]["lifecycle_hours"] == 72
@@ -441,20 +383,14 @@ class TestElapsedTimeEndpoints:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.middleware.client_auth.verify_client_access'):
-            with patch('backend.routes.workflow.calculate_stage_duration_summary') as mock_func:
+        with patch("backend.middleware.client_auth.verify_client_access"):
+            with patch("backend.routes.workflow.calculate_stage_duration_summary") as mock_func:
                 mock_func.return_value = {
                     "client_id": "CLIENT-001",
-                    "stage_durations": [
-                        {"from_status": "RECEIVED", "to_status": "RELEASED", "avg_hours": 4.5}
-                    ]
+                    "stage_durations": [{"from_status": "RECEIVED", "to_status": "RELEASED", "avg_hours": 4.5}],
                 }
 
-                result = get_client_stage_durations(
-                    client_id="CLIENT-001",
-                    db=mock_db,
-                    current_user=mock_user
-                )
+                result = get_client_stage_durations(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
 
                 assert len(result["stage_durations"]) == 1
 
@@ -469,19 +405,15 @@ class TestStatisticsEndpoints:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.get_transition_statistics') as mock_func:
+        with patch("backend.routes.workflow.get_transition_statistics") as mock_func:
             mock_func.return_value = {
                 "client_id": "CLIENT-001",
                 "total_transitions": 150,
                 "by_transition": [],
-                "by_source": []
+                "by_source": [],
             }
 
-            result = get_client_transition_statistics(
-                client_id="CLIENT-001",
-                db=mock_db,
-                current_user=mock_user
-            )
+            result = get_client_transition_statistics(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
 
             assert result["total_transitions"] == 150
 
@@ -492,21 +424,17 @@ class TestStatisticsEndpoints:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.get_status_distribution') as mock_func:
+        with patch("backend.routes.workflow.get_status_distribution") as mock_func:
             mock_func.return_value = {
                 "client_id": "CLIENT-001",
                 "total_work_orders": 100,
                 "by_status": [
                     {"status": "IN_PROGRESS", "count": 30, "percentage": 30.0},
-                    {"status": "COMPLETED", "count": 70, "percentage": 70.0}
-                ]
+                    {"status": "COMPLETED", "count": 70, "percentage": 70.0},
+                ],
             }
 
-            result = get_client_status_distribution(
-                client_id="CLIENT-001",
-                db=mock_db,
-                current_user=mock_user
-            )
+            result = get_client_status_distribution(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
 
             assert result["total_work_orders"] == 100
             assert len(result["by_status"]) == 2
@@ -518,15 +446,11 @@ class TestStatisticsEndpoints:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.get_client_transitions') as mock_func:
+        with patch("backend.routes.workflow.get_client_transitions") as mock_func:
             mock_transitions = [Mock() for _ in range(5)]
             mock_func.return_value = mock_transitions
 
-            result = get_client_all_transitions(
-                client_id="CLIENT-001",
-                db=mock_db,
-                current_user=mock_user
-            )
+            result = get_client_all_transitions(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
 
             assert len(result) == 5
 
@@ -537,7 +461,7 @@ class TestStatisticsEndpoints:
         mock_db = Mock()
         mock_user = create_mock_user()
 
-        with patch('backend.routes.workflow.get_client_transitions') as mock_func:
+        with patch("backend.routes.workflow.get_client_transitions") as mock_func:
             mock_func.return_value = []
 
             result = get_client_all_transitions(
@@ -548,15 +472,15 @@ class TestStatisticsEndpoints:
                 to_status="RELEASED",
                 trigger_source="manual",
                 db=mock_db,
-                current_user=mock_user
+                current_user=mock_user,
             )
 
             # Verify filters were passed
             mock_func.assert_called_once()
             call_args = mock_func.call_args
-            assert call_args.kwargs.get('skip') == 10
-            assert call_args.kwargs.get('limit') == 50
-            assert call_args.kwargs.get('from_status') == "RECEIVED"
+            assert call_args.kwargs.get("skip") == 10
+            assert call_args.kwargs.get("limit") == 50
+            assert call_args.kwargs.get("from_status") == "RECEIVED"
 
 
 class TestWorkflowTemplatesContent:
@@ -567,13 +491,13 @@ class TestWorkflowTemplatesContent:
         from backend.models.workflow import WORKFLOW_TEMPLATES
 
         required_fields = [
-            'template_id',
-            'name',
-            'description',
-            'workflow_statuses',
-            'workflow_transitions',
-            'workflow_optional_statuses',
-            'workflow_closure_trigger'
+            "template_id",
+            "name",
+            "description",
+            "workflow_statuses",
+            "workflow_transitions",
+            "workflow_optional_statuses",
+            "workflow_closure_trigger",
         ]
 
         for template_id, template in WORKFLOW_TEMPLATES.items():
@@ -584,7 +508,7 @@ class TestWorkflowTemplatesContent:
         """Test standard template has complete workflow"""
         from backend.models.workflow import WORKFLOW_TEMPLATES
 
-        standard = WORKFLOW_TEMPLATES.get('standard')
+        standard = WORKFLOW_TEMPLATES.get("standard")
         assert standard is not None
 
         # Should have standard statuses
@@ -596,17 +520,17 @@ class TestWorkflowTemplatesContent:
         """Test simple template has fewer statuses"""
         from backend.models.workflow import WORKFLOW_TEMPLATES
 
-        simple = WORKFLOW_TEMPLATES.get('simple')
+        simple = WORKFLOW_TEMPLATES.get("simple")
         if simple:
             # Simple should have fewer steps than standard
-            standard = WORKFLOW_TEMPLATES.get('standard')
+            standard = WORKFLOW_TEMPLATES.get("standard")
             assert len(simple.workflow_statuses) <= len(standard.workflow_statuses)
 
     def test_express_template_closure_trigger(self):
         """Test express template closes at completion"""
         from backend.models.workflow import WORKFLOW_TEMPLATES
 
-        express = WORKFLOW_TEMPLATES.get('express')
+        express = WORKFLOW_TEMPLATES.get("express")
         if express:
             # Express typically auto-closes at completion
             assert express.workflow_closure_trigger in ["at_completion", "at_shipment"]

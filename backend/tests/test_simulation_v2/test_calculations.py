@@ -71,10 +71,7 @@ class TestCalculateAllBlocks:
         validation_report = ValidationReport()
 
         results = calculate_all_blocks(
-            config=simple_config,
-            metrics=sample_metrics,
-            validation_report=validation_report,
-            duration_seconds=1.5
+            config=simple_config, metrics=sample_metrics, validation_report=validation_report, duration_seconds=1.5
         )
 
         assert results.weekly_demand_capacity is not None
@@ -148,9 +145,7 @@ class TestBlock3StationPerformance:
         """Test station performance calculation."""
         horizon_minutes = 8.0 * 60  # 1 day
 
-        results = _calculate_block3_station_performance(
-            simple_config, sample_metrics, horizon_minutes
-        )
+        results = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
         assert len(results) == 3  # 3 operations
 
@@ -166,9 +161,7 @@ class TestBlock3StationPerformance:
 
         horizon_minutes = 8.0 * 60
 
-        results = _calculate_block3_station_performance(
-            simple_config, sample_metrics, horizon_minutes
-        )
+        results = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
         overlock_row = next(r for r in results if r.machine_tool == "Overlock 4-thread")
         # With 500 min busy time over 480 min available (with 3 operators = 1440)
@@ -182,9 +175,7 @@ class TestBlock3StationPerformance:
 
         horizon_minutes = 8.0 * 60
 
-        results = _calculate_block3_station_performance(
-            simple_config, sample_metrics, horizon_minutes
-        )
+        results = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
         cutting_row = next(r for r in results if r.machine_tool == "Cutting Table")
         # Cutting has 2 operators, low util could make it donor
@@ -197,13 +188,9 @@ class TestBlock4FreeCapacity:
         """Test free capacity calculation."""
         horizon_minutes = 8.0 * 60
 
-        station_perf = _calculate_block3_station_performance(
-            simple_config, sample_metrics, horizon_minutes
-        )
+        station_perf = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
-        result = _calculate_block4_free_capacity(
-            simple_config, sample_metrics, station_perf
-        )
+        result = _calculate_block4_free_capacity(simple_config, sample_metrics, station_perf)
 
         assert result.daily_demand_pcs == 200
         assert result.daily_max_capacity_pcs >= 0
@@ -244,9 +231,7 @@ class TestBlock7RebalancingSuggestions:
         """Test that balanced line has no suggestions."""
         horizon_minutes = 8.0 * 60
 
-        station_perf = _calculate_block3_station_performance(
-            simple_config, sample_metrics, horizon_minutes
-        )
+        station_perf = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
         # With default metrics, no station should be flagged
         results = _calculate_block7_rebalancing(station_perf, simple_config)
@@ -261,9 +246,7 @@ class TestBlock8AssumptionLog:
 
     def test_assumption_log_structure(self, simple_config: SimulationConfig):
         """Test assumption log contains required fields."""
-        defaults = [
-            {"product": "A", "step": 1, "defaults_used": ["grade_pct: 85"]}
-        ]
+        defaults = [{"product": "A", "step": 1, "defaults_used": ["grade_pct: 85"]}]
 
         result = _calculate_block8_assumption_log(simple_config, defaults)
 

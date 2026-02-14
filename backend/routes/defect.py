@@ -3,6 +3,7 @@ Defect Detail API Routes
 Detailed defect tracking for quality inspections
 All endpoints enforce multi-tenant client filtering
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -13,7 +14,7 @@ from backend.models.defect_detail import (
     DefectDetailCreate,
     DefectDetailUpdate,
     DefectDetailResponse,
-    DefectSummaryResponse
+    DefectSummaryResponse,
 )
 from backend.crud.defect_detail import (
     create_defect_detail,
@@ -22,23 +23,18 @@ from backend.crud.defect_detail import (
     get_defect_details_by_quality_entry,
     update_defect_detail,
     delete_defect_detail,
-    get_defect_summary_by_type
+    get_defect_summary_by_type,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/defects",
-    tags=["Defect Details"]
-)
+router = APIRouter(prefix="/api/defects", tags=["Defect Details"])
 
 
 @router.post("", response_model=DefectDetailResponse, status_code=status.HTTP_201_CREATED)
 def create_defect(
-    defect: DefectDetailCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    defect: DefectDetailCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new defect detail record
@@ -54,7 +50,7 @@ def list_defects(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List defect details with optional quality entry filter
@@ -64,11 +60,7 @@ def list_defects(
 
 
 @router.get("/{defect_detail_id}", response_model=DefectDetailResponse)
-def get_defect(
-    defect_detail_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_defect(defect_detail_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get defect detail by ID
     SECURITY: Verifies user has access to defect's client
@@ -81,9 +73,7 @@ def get_defect(
 
 @router.get("/by-quality-entry/{quality_entry_id}", response_model=List[DefectDetailResponse])
 def get_quality_entry_defects(
-    quality_entry_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    quality_entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all defect details for a specific quality entry
@@ -97,7 +87,7 @@ def update_defect(
     defect_detail_id: str,
     defect_update: DefectDetailUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update defect detail record
@@ -112,9 +102,7 @@ def update_defect(
 
 @router.delete("/{defect_detail_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_defect(
-    defect_detail_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    defect_detail_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Delete defect detail record (supervisor only)
@@ -130,7 +118,7 @@ def get_defect_summary(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get defect summary grouped by type with optional date filtering

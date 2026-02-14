@@ -2,6 +2,7 @@
 CRUD operations for Hold Duration calculations
 P2-001: Hold Duration Auto-Calculation functions
 """
+
 from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date, datetime
@@ -9,20 +10,13 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
-from backend.models.hold import (
-    WIPHoldResponse,
-    TotalHoldDurationResponse
-)
+from backend.models.hold import WIPHoldResponse, TotalHoldDurationResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
 
 
 def resume_hold(
-    db: Session,
-    hold_id: int,
-    resumed_by: int,
-    current_user: User,
-    notes: Optional[str] = None
+    db: Session, hold_id: int, resumed_by: int, current_user: User, notes: Optional[str] = None
 ) -> Optional[WIPHoldResponse]:
     """
     Resume a hold and auto-calculate hold duration
@@ -51,7 +45,7 @@ def resume_hold(
     if db_hold.hold_status != HoldStatus.ON_HOLD:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot resume hold with status {db_hold.hold_status}. Only ON_HOLD status can be resumed."
+            detail=f"Cannot resume hold with status {db_hold.hold_status}. Only ON_HOLD status can be resumed.",
         )
 
     # Set resume date and status
@@ -81,9 +75,7 @@ def resume_hold(
 
 
 def get_total_hold_duration(
-    db: Session,
-    work_order_number: str,
-    current_user: Optional[User] = None
+    db: Session, work_order_number: str, current_user: Optional[User] = None
 ) -> TotalHoldDurationResponse:
     """
     Get total hold duration for a work order across all holds
@@ -97,9 +89,7 @@ def get_total_hold_duration(
     Returns:
         TotalHoldDurationResponse with aggregated duration
     """
-    query = db.query(WIPHold).filter(
-        WIPHold.work_order_id == work_order_number
-    )
+    query = db.query(WIPHold).filter(WIPHold.work_order_id == work_order_number)
 
     # Apply client filtering if user provided
     if current_user:
@@ -134,7 +124,7 @@ def get_total_hold_duration(
         work_order_number=work_order_number,
         total_hold_duration_hours=total_duration.quantize(Decimal("0.0001")),
         hold_count=hold_count,
-        active_holds=active_holds
+        active_holds=active_holds,
     )
 
 
@@ -144,7 +134,7 @@ def release_hold(
     current_user: User,
     quantity_released: Optional[int] = None,
     quantity_scrapped: Optional[int] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> Optional[WIPHoldResponse]:
     """
     Release a hold (marks as RELEASED status)

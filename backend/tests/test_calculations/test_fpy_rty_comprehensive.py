@@ -2,6 +2,7 @@
 Comprehensive Tests for FPY (First Pass Yield) and RTY (Rolled Throughput Yield) Calculations
 Target: Increase fpy_rty.py coverage from 29% to 60%+
 """
+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
@@ -14,6 +15,7 @@ class TestFPYBasic:
     def test_import_fpy_rty(self):
         """Test module imports correctly"""
         from backend.calculations import fpy_rty
+
         assert fpy_rty is not None
 
     def test_fpy_formula(self):
@@ -87,10 +89,7 @@ class TestCalculateFPY:
         from backend.calculations.fpy_rty import calculate_fpy
 
         result = calculate_fpy(
-            db_session,
-            product_id=1,
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            db_session, product_id=1, start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         # Should return 0 or default when no data
@@ -101,10 +100,7 @@ class TestCalculateFPY:
         from backend.calculations.fpy_rty import calculate_fpy
 
         result = calculate_fpy(
-            db_session,
-            product_id=1,
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            db_session, product_id=1, start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         assert isinstance(result, tuple)
@@ -119,10 +115,7 @@ class TestCalculateRTY:
         from backend.calculations.fpy_rty import calculate_rty
 
         result = calculate_rty(
-            db_session,
-            product_id=1,
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            db_session, product_id=1, start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         # RTY returns (rty_percentage, step_details list)
@@ -144,7 +137,7 @@ class TestFPYByWorkOrder:
             db_session,
             product_id=999,  # Non-existent product
             start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            end_date=date.today(),
         )
 
         # Should return dict with 0 values for non-existent product
@@ -200,13 +193,7 @@ class TestFPYTrend:
 
     def test_fpy_trend_weekly(self):
         """Test weekly FPY trend calculation"""
-        weekly_fpy = [
-            Decimal("92.5"),
-            Decimal("93.0"),
-            Decimal("94.2"),
-            Decimal("93.8"),
-            Decimal("95.1")
-        ]
+        weekly_fpy = [Decimal("92.5"), Decimal("93.0"), Decimal("94.2"), Decimal("93.8"), Decimal("95.1")]
 
         average_fpy = sum(weekly_fpy) / len(weekly_fpy)
         assert Decimal("93.7") < average_fpy < Decimal("93.8")
@@ -233,13 +220,13 @@ class TestFPYByProcess:
             "Assembly": Decimal("98.5"),
             "Soldering": Decimal("96.2"),
             "Testing": Decimal("99.1"),
-            "Packaging": Decimal("99.8")
+            "Packaging": Decimal("99.8"),
         }
 
         # RTY = product of all FPY
         rty = Decimal("1.0")
         for fpy in process_fpy.values():
-            rty *= (fpy / 100)
+            rty *= fpy / 100
         rty *= 100
 
         # 0.985 * 0.962 * 0.991 * 0.998 = 0.9374
@@ -251,7 +238,7 @@ class TestFPYByProcess:
             "Assembly": Decimal("98.5"),
             "Soldering": Decimal("92.2"),
             "Testing": Decimal("99.1"),
-            "Packaging": Decimal("99.8")
+            "Packaging": Decimal("99.8"),
         }
 
         bottleneck = min(process_fpy.items(), key=lambda x: x[1])
@@ -265,6 +252,7 @@ class TestFPYValidation:
 
     def test_fpy_bounds_0_100(self):
         """Test FPY is bounded between 0 and 100"""
+
         def validate_fpy(fpy: Decimal) -> bool:
             return Decimal("0") <= fpy <= Decimal("100")
 
@@ -291,12 +279,14 @@ class TestFPYValidation:
 # Test get_rty_interpretation (pure function)
 # =============================================================================
 
+
 class TestGetRTYInterpretation:
     """Test RTY interpretation function"""
 
     def test_excellent_rty_low_repair(self):
         """Test excellent RTY with minimal repair"""
         from backend.calculations.fpy_rty import get_rty_interpretation
+
         result = get_rty_interpretation(Decimal("96"), Decimal("1.5"))
         assert "Excellent" in result
         assert "minimal repair" in result
@@ -304,6 +294,7 @@ class TestGetRTYInterpretation:
     def test_good_rty_moderate_repair(self):
         """Test good RTY with moderate repair"""
         from backend.calculations.fpy_rty import get_rty_interpretation
+
         result = get_rty_interpretation(Decimal("92"), Decimal("4"))
         assert "Good" in result
         assert "monitor" in result.lower()
@@ -311,6 +302,7 @@ class TestGetRTYInterpretation:
     def test_acceptable_rty_high_repair(self):
         """Test acceptable RTY with high repair rate"""
         from backend.calculations.fpy_rty import get_rty_interpretation
+
         result = get_rty_interpretation(Decimal("85"), Decimal("12"))
         assert "Warning" in result
         assert "process issues" in result.lower()
@@ -318,6 +310,7 @@ class TestGetRTYInterpretation:
     def test_acceptable_rty_low_repair(self):
         """Test acceptable RTY with low repair"""
         from backend.calculations.fpy_rty import get_rty_interpretation
+
         result = get_rty_interpretation(Decimal("82"), Decimal("3"))
         assert "Acceptable" in result
         assert "improvement opportunity" in result.lower()
@@ -325,6 +318,7 @@ class TestGetRTYInterpretation:
     def test_low_rty_excessive_repair(self):
         """Test low RTY with excessive repair"""
         from backend.calculations.fpy_rty import get_rty_interpretation
+
         result = get_rty_interpretation(Decimal("75"), Decimal("18"))
         assert "Critical" in result
         assert "immediate" in result.lower()
@@ -332,6 +326,7 @@ class TestGetRTYInterpretation:
     def test_low_rty_moderate_repair(self):
         """Test low RTY with moderate repair"""
         from backend.calculations.fpy_rty import get_rty_interpretation
+
         result = get_rty_interpretation(Decimal("78"), Decimal("8"))
         assert "Needs Improvement" in result
         assert "investigate" in result.lower()
@@ -343,36 +338,42 @@ class TestGetJobRTYInterpretation:
     def test_excellent_job_rty(self):
         """Test excellent job-level RTY"""
         from backend.calculations.fpy_rty import get_job_rty_interpretation
+
         result = get_job_rty_interpretation(Decimal("99"))
         assert "Excellent" in result
 
     def test_good_job_rty(self):
         """Test good job-level RTY"""
         from backend.calculations.fpy_rty import get_job_rty_interpretation
+
         result = get_job_rty_interpretation(Decimal("96"))
         assert "Good" in result
 
     def test_acceptable_job_rty(self):
         """Test acceptable job-level RTY"""
         from backend.calculations.fpy_rty import get_job_rty_interpretation
+
         result = get_job_rty_interpretation(Decimal("92"))
         assert "Acceptable" in result
 
     def test_warning_job_rty(self):
         """Test warning job-level RTY"""
         from backend.calculations.fpy_rty import get_job_rty_interpretation
+
         result = get_job_rty_interpretation(Decimal("87"))
         assert "Warning" in result
 
     def test_critical_job_rty(self):
         """Test critical job-level RTY"""
         from backend.calculations.fpy_rty import get_job_rty_interpretation
+
         result = get_job_rty_interpretation(Decimal("80"))
         assert "Critical" in result
 
     def test_float_input(self):
         """Test interpretation with float input"""
         from backend.calculations.fpy_rty import get_job_rty_interpretation
+
         result = get_job_rty_interpretation(98.5)
         assert "Excellent" in result
 
@@ -381,21 +382,21 @@ class TestGetJobRTYInterpretation:
 # Test calculate_fpy_with_repair_breakdown (mocked)
 # =============================================================================
 
+
 class TestCalculateFPYWithRepairBreakdown:
     """Test FPY with detailed repair/rework breakdown"""
 
     def test_breakdown_no_inspections(self):
         """Test breakdown with no inspection data"""
         from backend.calculations.fpy_rty import calculate_fpy_with_repair_breakdown
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.all.return_value = []
 
-        result = calculate_fpy_with_repair_breakdown(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_fpy_with_repair_breakdown(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         assert result["fpy_percentage"] == Decimal("0")
         assert result["first_pass_good"] == 0
@@ -406,6 +407,7 @@ class TestCalculateFPYWithRepairBreakdown:
     def test_breakdown_with_data(self):
         """Test breakdown with inspection data"""
         from backend.calculations.fpy_rty import calculate_fpy_with_repair_breakdown
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -419,9 +421,7 @@ class TestCalculateFPYWithRepairBreakdown:
         mock_inspection.units_scrapped = 2
         mock_query.all.return_value = [mock_inspection]
 
-        result = calculate_fpy_with_repair_breakdown(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_fpy_with_repair_breakdown(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         assert result["fpy_percentage"] == Decimal("90")
         assert result["first_pass_good"] == 90
@@ -432,6 +432,7 @@ class TestCalculateFPYWithRepairBreakdown:
     def test_breakdown_recovery_rate_calculation(self):
         """Test recovery rate calculation"""
         from backend.calculations.fpy_rty import calculate_fpy_with_repair_breakdown
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -445,9 +446,7 @@ class TestCalculateFPYWithRepairBreakdown:
         mock_inspection.units_scrapped = 2
         mock_query.all.return_value = [mock_inspection]
 
-        result = calculate_fpy_with_repair_breakdown(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_fpy_with_repair_breakdown(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         # Recovery = 8 / 10 = 80%
         assert result["recovery_rate"] == Decimal("80")
@@ -457,12 +456,14 @@ class TestCalculateFPYWithRepairBreakdown:
 # Test calculate_rty_with_repair_impact (mocked)
 # =============================================================================
 
+
 class TestCalculateRTYWithRepairImpact:
     """Test RTY with repair impact analysis"""
 
     def test_rty_with_repair_impact_structure(self):
         """Test RTY with repair impact returns correct structure"""
         from backend.calculations.fpy_rty import calculate_rty_with_repair_impact
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -476,9 +477,7 @@ class TestCalculateRTYWithRepairImpact:
         mock_inspection.units_scrapped = 2
         mock_query.all.return_value = [mock_inspection]
 
-        result = calculate_rty_with_repair_impact(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_rty_with_repair_impact(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         assert "rty_percentage" in result
         assert "step_details" in result
@@ -490,6 +489,7 @@ class TestCalculateRTYWithRepairImpact:
     def test_rty_with_repair_custom_steps(self):
         """Test RTY with repair impact and custom steps"""
         from backend.calculations.fpy_rty import calculate_rty_with_repair_impact
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -504,8 +504,7 @@ class TestCalculateRTYWithRepairImpact:
         mock_query.all.return_value = [mock_inspection]
 
         result = calculate_rty_with_repair_impact(
-            mock_db, 1, date.today() - timedelta(days=30), date.today(),
-            process_steps=["Step1", "Step2"]
+            mock_db, 1, date.today() - timedelta(days=30), date.today(), process_steps=["Step1", "Step2"]
         )
 
         assert len(result["step_details"]) == 2
@@ -515,12 +514,14 @@ class TestCalculateRTYWithRepairImpact:
 # Test calculate_defect_escape_rate (mocked)
 # =============================================================================
 
+
 class TestCalculateDefectEscapeRate:
     """Test defect escape rate calculation"""
 
     def test_escape_rate_basic(self):
         """Test basic escape rate calculation"""
         from backend.calculations.fpy_rty import calculate_defect_escape_rate
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -536,9 +537,7 @@ class TestCalculateDefectEscapeRate:
 
         mock_query.all.return_value = [mock_in_process, mock_final]
 
-        escape_rate = calculate_defect_escape_rate(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        escape_rate = calculate_defect_escape_rate(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         # 2 / 10 * 100 = 20%
         assert escape_rate == Decimal("20")
@@ -546,21 +545,21 @@ class TestCalculateDefectEscapeRate:
     def test_escape_rate_no_inspections(self):
         """Test escape rate with no inspections"""
         from backend.calculations.fpy_rty import calculate_defect_escape_rate
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.all.return_value = []
 
-        escape_rate = calculate_defect_escape_rate(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        escape_rate = calculate_defect_escape_rate(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         assert escape_rate == Decimal("0")
 
     def test_escape_rate_no_defects(self):
         """Test escape rate with no defects"""
         from backend.calculations.fpy_rty import calculate_defect_escape_rate
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -571,9 +570,7 @@ class TestCalculateDefectEscapeRate:
         mock_inspection.units_defective = 0
         mock_query.all.return_value = [mock_inspection]
 
-        escape_rate = calculate_defect_escape_rate(
-            mock_db, 1, date.today() - timedelta(days=30), date.today()
-        )
+        escape_rate = calculate_defect_escape_rate(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         assert escape_rate == Decimal("0")
 
@@ -582,12 +579,14 @@ class TestCalculateDefectEscapeRate:
 # Test calculate_job_yield (Phase 6.6, mocked)
 # =============================================================================
 
+
 class TestCalculateJobYield:
     """Test job-level yield calculation"""
 
     def test_job_yield_basic(self):
         """Test basic job yield calculation"""
         from backend.calculations.fpy_rty import calculate_job_yield
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -613,6 +612,7 @@ class TestCalculateJobYield:
     def test_job_yield_not_found(self):
         """Test job yield with non-existent job"""
         from backend.calculations.fpy_rty import calculate_job_yield
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -628,6 +628,7 @@ class TestCalculateJobYield:
     def test_job_yield_zero_completed(self):
         """Test job yield with zero completed quantity"""
         from backend.calculations.fpy_rty import calculate_job_yield
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -649,6 +650,7 @@ class TestCalculateJobYield:
     def test_job_yield_with_none_values(self):
         """Test job yield handles None values"""
         from backend.calculations.fpy_rty import calculate_job_yield
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -673,12 +675,14 @@ class TestCalculateJobYield:
 # Test calculate_work_order_job_rty (Phase 6.6, mocked)
 # =============================================================================
 
+
 class TestCalculateWorkOrderJobRTY:
     """Test work order job-level RTY calculation"""
 
     def test_work_order_job_rty_basic(self):
         """Test basic work order job RTY calculation"""
         from backend.calculations.fpy_rty import calculate_work_order_job_rty
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -717,6 +721,7 @@ class TestCalculateWorkOrderJobRTY:
     def test_work_order_job_rty_no_jobs(self):
         """Test work order job RTY with no jobs"""
         from backend.calculations.fpy_rty import calculate_work_order_job_rty
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -733,6 +738,7 @@ class TestCalculateWorkOrderJobRTY:
     def test_work_order_job_rty_bottleneck_identification(self):
         """Test bottleneck job identification"""
         from backend.calculations.fpy_rty import calculate_work_order_job_rty
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -773,12 +779,14 @@ class TestCalculateWorkOrderJobRTY:
 # Test calculate_job_rty_summary (Phase 6.6, mocked)
 # =============================================================================
 
+
 class TestCalculateJobRTYSummary:
     """Test job RTY summary calculation"""
 
     def test_job_rty_summary_basic(self):
         """Test basic job RTY summary"""
         from backend.calculations.fpy_rty import calculate_job_rty_summary
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -796,9 +804,7 @@ class TestCalculateJobRTYSummary:
 
         mock_query.all.return_value = [mock_job1, mock_job2]
 
-        result = calculate_job_rty_summary(
-            mock_db, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_job_rty_summary(mock_db, date.today() - timedelta(days=30), date.today())
 
         assert result["total_jobs_completed"] == 2
         assert result["total_units_completed"] == 200
@@ -808,15 +814,14 @@ class TestCalculateJobRTYSummary:
     def test_job_rty_summary_no_jobs(self):
         """Test job RTY summary with no jobs"""
         from backend.calculations.fpy_rty import calculate_job_rty_summary
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.all.return_value = []
 
-        result = calculate_job_rty_summary(
-            mock_db, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_job_rty_summary(mock_db, date.today() - timedelta(days=30), date.today())
 
         assert result["total_jobs_completed"] == 0
         assert result["average_job_yield"] == Decimal("0")
@@ -824,6 +829,7 @@ class TestCalculateJobRTYSummary:
     def test_job_rty_summary_top_scrap_operations(self):
         """Test top scrap operations ranking"""
         from backend.calculations.fpy_rty import calculate_job_rty_summary
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -839,9 +845,7 @@ class TestCalculateJobRTYSummary:
 
         mock_query.all.return_value = mock_jobs
 
-        result = calculate_job_rty_summary(
-            mock_db, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_job_rty_summary(mock_db, date.today() - timedelta(days=30), date.today())
 
         top_scrap = result["top_scrap_operations"]
         assert len(top_scrap) <= 5
@@ -852,6 +856,7 @@ class TestCalculateJobRTYSummary:
     def test_job_rty_summary_jobs_below_target(self):
         """Test counting jobs below 95% target"""
         from backend.calculations.fpy_rty import calculate_job_rty_summary
+
         mock_db = MagicMock()
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
@@ -875,9 +880,7 @@ class TestCalculateJobRTYSummary:
 
         mock_query.all.return_value = [mock_job1, mock_job2, mock_job3]
 
-        result = calculate_job_rty_summary(
-            mock_db, date.today() - timedelta(days=30), date.today()
-        )
+        result = calculate_job_rty_summary(mock_db, date.today() - timedelta(days=30), date.today())
 
         assert result["jobs_below_target"] == 1
         assert result["jobs_meeting_target"] == 2

@@ -2,6 +2,7 @@
 QR Code Service for KPI Platform
 Handles QR code generation, decoding, and auto-fill field mapping
 """
+
 import json
 import qrcode
 from io import BytesIO
@@ -13,6 +14,7 @@ from backend.models.qr import QRCodeData, QREntityType
 
 class QRServiceError(Exception):
     """Custom exception for QR service errors"""
+
     pass
 
 
@@ -90,11 +92,7 @@ class QRService:
             QRServiceError: If entity type is invalid
         """
         try:
-            return QRCodeData(
-                type=entity_type,
-                id=str(entity_id),
-                version=QRService.QR_VERSION
-            )
+            return QRCodeData(type=entity_type, id=str(entity_id), version=QRService.QR_VERSION)
         except ValidationError as e:
             raise QRServiceError(f"Invalid entity type: {entity_type}")
 
@@ -245,9 +243,5 @@ class QRService:
         Returns:
             JSON string for QR code
         """
-        data = QRCodeData(
-            type=entity_type,
-            id=str(entity_id),
-            version=QRService.QR_VERSION
-        )
+        data = QRCodeData(type=entity_type, id=str(entity_id), version=QRService.QR_VERSION)
         return data.model_dump_json()

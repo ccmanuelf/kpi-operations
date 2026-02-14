@@ -1,6 +1,7 @@
 """
 Comprehensive tests for OTD (On Time Delivery) calculations
 """
+
 import pytest
 from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock
@@ -74,27 +75,24 @@ class TestOTDCalculations:
     def test_otd_by_customer(self):
         """Test OTD grouped by customer."""
         customer_orders = {
-            'CustomerA': {'total': 50, 'on_time': 48},
-            'CustomerB': {'total': 30, 'on_time': 27},
-            'CustomerC': {'total': 20, 'on_time': 20}
+            "CustomerA": {"total": 50, "on_time": 48},
+            "CustomerB": {"total": 30, "on_time": 27},
+            "CustomerC": {"total": 20, "on_time": 20},
         }
-        
+
         for customer, data in customer_orders.items():
-            otd = (data['on_time'] / data['total']) * 100
+            otd = (data["on_time"] / data["total"]) * 100
             assert otd >= 0
 
     def test_otd_by_product(self):
         """Test OTD grouped by product."""
-        product_orders = {
-            'ProductX': {'total': 100, 'on_time': 95},
-            'ProductY': {'total': 75, 'on_time': 70}
-        }
-        
+        product_orders = {"ProductX": {"total": 100, "on_time": 95}, "ProductY": {"total": 75, "on_time": 70}}
+
         for product, data in product_orders.items():
-            otd = (data['on_time'] / data['total']) * 100
-            if product == 'ProductX':
+            otd = (data["on_time"] / data["total"]) * 100
+            if product == "ProductX":
                 assert otd == 95.0
-            elif product == 'ProductY':
+            elif product == "ProductY":
                 assert round(otd, 1) == 93.3
 
     def test_otd_trend_analysis(self):
@@ -102,25 +100,21 @@ class TestOTDCalculations:
         weekly_otd = [92.5, 94.0, 93.5, 96.0, 97.5]
         avg_otd = sum(weekly_otd) / len(weekly_otd)
         trend = weekly_otd[-1] - weekly_otd[0]
-        
+
         assert avg_otd == 94.7
         assert trend == 5.0  # Positive trend
 
     def test_otd_with_partial_delivery(self):
         """Test OTD with partial deliveries."""
-        order = {'total_qty': 100, 'delivered_qty': 100, 'on_time_qty': 80}
-        partial_otd = (order['on_time_qty'] / order['total_qty']) * 100
+        order = {"total_qty": 100, "delivered_qty": 100, "on_time_qty": 80}
+        partial_otd = (order["on_time_qty"] / order["total_qty"]) * 100
         assert partial_otd == 80.0
 
     def test_weighted_otd(self):
         """Test weighted OTD by order value."""
-        orders = [
-            {'value': 1000, 'on_time': True},
-            {'value': 5000, 'on_time': True},
-            {'value': 2000, 'on_time': False}
-        ]
-        total_value = sum(o['value'] for o in orders)
-        on_time_value = sum(o['value'] for o in orders if o['on_time'])
+        orders = [{"value": 1000, "on_time": True}, {"value": 5000, "on_time": True}, {"value": 2000, "on_time": False}]
+        total_value = sum(o["value"] for o in orders)
+        on_time_value = sum(o["value"] for o in orders if o["on_time"])
         weighted_otd = (on_time_value / total_value) * 100
         assert weighted_otd == 75.0
 
@@ -147,16 +141,16 @@ class TestOTDPredictions:
         days_until_due = 5
         work_remaining_days = 4
         buffer = days_until_due - work_remaining_days  # buffer = 1
-        
+
         if buffer < 0:
-            risk = 'high'
+            risk = "high"
         elif buffer <= 1:
-            risk = 'medium'
+            risk = "medium"
         else:
-            risk = 'low'
-        
+            risk = "low"
+
         # buffer = 1 meets condition "<= 1", so risk is 'medium'
-        assert risk == 'medium'
+        assert risk == "medium"
 
 
 class TestWIPAgingCalculations:
@@ -171,20 +165,21 @@ class TestWIPAgingCalculations:
 
     def test_wip_aging_buckets(self):
         """Test WIP aging bucket categorization."""
+
         def categorize_age(age_days):
             if age_days <= 2:
-                return '0-2 days'
+                return "0-2 days"
             elif age_days <= 5:
-                return '3-5 days'
+                return "3-5 days"
             elif age_days <= 10:
-                return '6-10 days'
+                return "6-10 days"
             else:
-                return '>10 days'
-        
-        assert categorize_age(1) == '0-2 days'
-        assert categorize_age(4) == '3-5 days'
-        assert categorize_age(7) == '6-10 days'
-        assert categorize_age(15) == '>10 days'
+                return ">10 days"
+
+        assert categorize_age(1) == "0-2 days"
+        assert categorize_age(4) == "3-5 days"
+        assert categorize_age(7) == "6-10 days"
+        assert categorize_age(15) == ">10 days"
 
     def test_average_wip_age(self):
         """Test calculating average WIP age."""
@@ -194,13 +189,9 @@ class TestWIPAgingCalculations:
 
     def test_wip_value_by_age(self):
         """Test WIP value bucketed by age."""
-        wip_items = [
-            {'age': 2, 'value': 1000},
-            {'age': 5, 'value': 2000},
-            {'age': 12, 'value': 3000}
-        ]
-        
-        over_10_days_value = sum(item['value'] for item in wip_items if item['age'] > 10)
+        wip_items = [{"age": 2, "value": 1000}, {"age": 5, "value": 2000}, {"age": 12, "value": 3000}]
+
+        over_10_days_value = sum(item["value"] for item in wip_items if item["age"] > 10)
         assert over_10_days_value == 3000
 
     def test_wip_target_compliance(self):
@@ -220,13 +211,9 @@ class TestWIPAgingCalculations:
 
     def test_oldest_wip_item(self):
         """Test finding oldest WIP item."""
-        wip_items = [
-            {'id': 1, 'age': 5},
-            {'id': 2, 'age': 12},
-            {'id': 3, 'age': 3}
-        ]
-        oldest = max(wip_items, key=lambda x: x['age'])
-        assert oldest['id'] == 2
+        wip_items = [{"id": 1, "age": 5}, {"id": 2, "age": 12}, {"id": 3, "age": 3}]
+        oldest = max(wip_items, key=lambda x: x["age"])
+        assert oldest["id"] == 2
 
     def test_wip_resolution_time(self):
         """Test WIP resolution time calculation."""
@@ -244,13 +231,9 @@ class TestWIPAgingCalculations:
 
     def test_wip_bottleneck_identification(self):
         """Test identifying WIP bottleneck stages."""
-        stage_wip = {
-            'assembly': 10,
-            'testing': 25,
-            'packaging': 5
-        }
+        stage_wip = {"assembly": 10, "testing": 25, "packaging": 5}
         bottleneck = max(stage_wip, key=stage_wip.get)
-        assert bottleneck == 'testing'
+        assert bottleneck == "testing"
 
 
 class TestFPYRTYCalculations:

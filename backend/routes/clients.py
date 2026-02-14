@@ -2,40 +2,24 @@
 Client Management API Routes
 All client CRUD endpoints
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from backend.database import get_db
-from backend.models.client import (
-    ClientCreate,
-    ClientUpdate,
-    ClientResponse,
-    ClientSummary
-)
-from backend.crud.client import (
-    create_client,
-    get_client,
-    get_clients,
-    update_client,
-    delete_client,
-    get_active_clients
-)
+from backend.models.client import ClientCreate, ClientUpdate, ClientResponse, ClientSummary
+from backend.crud.client import create_client, get_client, get_clients, update_client, delete_client, get_active_clients
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/clients",
-    tags=["Clients"]
-)
+router = APIRouter(prefix="/api/clients", tags=["Clients"])
 
 
 @router.post("", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
 def create_client_endpoint(
-    client: ClientCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client: ClientCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new client
@@ -51,7 +35,7 @@ def list_clients(
     limit: int = 100,
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List clients with filters
@@ -62,10 +46,7 @@ def list_clients(
 
 @router.get("/active/list", response_model=List[ClientResponse])
 def get_active_clients_endpoint(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all active clients
@@ -75,11 +56,7 @@ def get_active_clients_endpoint(
 
 
 @router.get("/{client_id}", response_model=ClientResponse)
-def get_client_endpoint(
-    client_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_client_endpoint(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get client by ID
     SECURITY: Verifies user has access to client
@@ -95,7 +72,7 @@ def update_client_endpoint(
     client_id: str,
     client_update: ClientUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update client
@@ -110,9 +87,7 @@ def update_client_endpoint(
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_client_endpoint(
-    client_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Delete client (soft delete - admin only)

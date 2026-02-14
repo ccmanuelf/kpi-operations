@@ -4,6 +4,7 @@ Run with: pytest backend/tests/test_reports.py -v
 
 Uses shared auth_headers fixture from conftest.py
 """
+
 import pytest
 from datetime import date, timedelta
 
@@ -39,8 +40,7 @@ class TestReportEndpoints:
         end_date = date.today().strftime("%Y-%m-%d")
 
         response = test_client.get(
-            f"/api/reports/production/pdf?start_date={start_date}&end_date={end_date}",
-            headers=auth_headers
+            f"/api/reports/production/pdf?start_date={start_date}&end_date={end_date}", headers=auth_headers
         )
 
         if response.status_code != 200:
@@ -58,8 +58,7 @@ class TestReportEndpoints:
         end_date = date.today().strftime("%Y-%m-%d")
 
         response = test_client.get(
-            f"/api/reports/production/excel?start_date={start_date}&end_date={end_date}",
-            headers=auth_headers
+            f"/api/reports/production/excel?start_date={start_date}&end_date={end_date}", headers=auth_headers
         )
 
         # Accept 200 for success, 500 if report generation fails due to no data
@@ -74,10 +73,7 @@ class TestReportEndpoints:
 
     def test_generate_quality_pdf(self, test_client, auth_headers):
         """Test quality PDF report generation"""
-        response = test_client.get(
-            "/api/reports/quality/pdf",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/quality/pdf", headers=auth_headers)
 
         # Accept 200 for success, 500 if report generation fails due to no data
         if response.status_code == 200:
@@ -88,10 +84,7 @@ class TestReportEndpoints:
 
     def test_generate_quality_excel(self, test_client, auth_headers):
         """Test quality Excel report generation"""
-        response = test_client.get(
-            "/api/reports/quality/excel",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/quality/excel", headers=auth_headers)
 
         # Accept 200 for success, 500 if report generation fails due to no data
         if response.status_code == 200:
@@ -101,10 +94,7 @@ class TestReportEndpoints:
 
     def test_generate_attendance_pdf(self, test_client, auth_headers):
         """Test attendance PDF report generation"""
-        response = test_client.get(
-            "/api/reports/attendance/pdf",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/attendance/pdf", headers=auth_headers)
 
         # Accept 200 for success, 500 if report generation fails due to no data
         if response.status_code == 200:
@@ -115,10 +105,7 @@ class TestReportEndpoints:
 
     def test_generate_attendance_excel(self, test_client, auth_headers):
         """Test attendance Excel report generation"""
-        response = test_client.get(
-            "/api/reports/attendance/excel",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/attendance/excel", headers=auth_headers)
 
         # Accept 200 for success, 500 if report generation fails due to no data
         if response.status_code == 200:
@@ -128,10 +115,7 @@ class TestReportEndpoints:
 
     def test_generate_comprehensive_pdf(self, test_client, auth_headers):
         """Test comprehensive PDF report generation"""
-        response = test_client.get(
-            "/api/reports/comprehensive/pdf",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/comprehensive/pdf", headers=auth_headers)
 
         # Accept 200 for success, 500 if report generation fails due to no data
         if response.status_code == 200:
@@ -144,10 +128,7 @@ class TestReportEndpoints:
 
     def test_generate_comprehensive_excel(self, test_client, auth_headers):
         """Test comprehensive Excel report generation"""
-        response = test_client.get(
-            "/api/reports/comprehensive/excel",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/comprehensive/excel", headers=auth_headers)
 
         # Accept 200 for success, 500 if report generation fails due to no data
         if response.status_code == 200:
@@ -158,10 +139,7 @@ class TestReportEndpoints:
 
     def test_invalid_date_format(self, test_client, auth_headers):
         """Test error handling for invalid date format"""
-        response = test_client.get(
-            "/api/reports/production/pdf?start_date=invalid-date",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/production/pdf?start_date=invalid-date", headers=auth_headers)
 
         assert response.status_code == 400
         assert "Invalid date format" in response.json()["detail"]
@@ -172,8 +150,7 @@ class TestReportEndpoints:
         end_date = (date.today() - timedelta(days=10)).strftime("%Y-%m-%d")
 
         response = test_client.get(
-            f"/api/reports/production/pdf?start_date={start_date}&end_date={end_date}",
-            headers=auth_headers
+            f"/api/reports/production/pdf?start_date={start_date}&end_date={end_date}", headers=auth_headers
         )
 
         assert response.status_code == 400
@@ -181,10 +158,7 @@ class TestReportEndpoints:
 
     def test_client_filtering(self, test_client, auth_headers):
         """Test client_id filtering in reports"""
-        response = test_client.get(
-            "/api/reports/production/pdf?client_id=TEST_CLIENT",
-            headers=auth_headers
-        )
+        response = test_client.get("/api/reports/production/pdf?client_id=TEST_CLIENT", headers=auth_headers)
 
         # Accept 200 for success, 400 for invalid date, 403 for access denied, 500 if report generation fails
         assert response.status_code in [200, 400, 403, 500]
@@ -204,11 +178,13 @@ class TestReportGenerators:
     def test_pdf_generator_import(self):
         """Test PDFReportGenerator can be imported"""
         from reports.pdf_generator import PDFReportGenerator
+
         assert PDFReportGenerator is not None
 
     def test_excel_generator_import(self):
         """Test ExcelReportGenerator can be imported"""
         from reports.excel_generator import ExcelReportGenerator
+
         assert ExcelReportGenerator is not None
 
 

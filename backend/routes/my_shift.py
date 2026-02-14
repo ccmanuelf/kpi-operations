@@ -2,6 +2,7 @@
 My Shift Routes
 Provides personalized shift summary data for line operators
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -23,8 +24,10 @@ router = APIRouter(prefix="/api/my-shift", tags=["my-shift"])
 # Response Models
 # =============================================================================
 
+
 class ShiftStats(BaseModel):
     """Statistics for the operator's current shift"""
+
     units_produced: int
     efficiency: float
     downtime_incidents: int
@@ -38,6 +41,7 @@ class ShiftStats(BaseModel):
 
 class WorkOrderProgress(BaseModel):
     """Progress on a specific work order"""
+
     id: int
     work_order_id: str
     product_name: str
@@ -51,6 +55,7 @@ class WorkOrderProgress(BaseModel):
 
 class ActivityEntry(BaseModel):
     """A single activity log entry"""
+
     id: str
     type: str  # production, downtime, quality, hold
     description: str
@@ -62,6 +67,7 @@ class ActivityEntry(BaseModel):
 
 class MyShiftSummary(BaseModel):
     """Complete shift summary response"""
+
     date: date
     shift_number: Optional[int]
     operator_id: Optional[str]
@@ -78,12 +84,13 @@ class MyShiftSummary(BaseModel):
 # Endpoints
 # =============================================================================
 
+
 @router.get("/summary", response_model=MyShiftSummary)
 def get_my_shift_summary(
     shift_date: Optional[date] = Query(None, description="Date for shift summary"),
     shift_number: Optional[int] = Query(None, ge=1, le=3, description="Shift number (1-3)"),
     operator_id: Optional[str] = Query(None, description="Operator employee ID"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get personalized shift summary for an operator.
@@ -98,9 +105,7 @@ def get_my_shift_summary(
     target_date = shift_date or date.today()
 
     # Query production entries for this shift
-    production_query = db.query(ProductionEntry).filter(
-        func.date(ProductionEntry.date) == target_date
-    )
+    production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.date) == target_date)
     if shift_number:
         production_query = production_query.filter(ProductionEntry.shift == shift_number)
     if operator_id:
@@ -114,9 +119,7 @@ def get_my_shift_summary(
     efficiency = (total_units / total_target * 100) if total_target > 0 else 0
 
     # Query downtime entries
-    downtime_query = db.query(DowntimeEntry).filter(
-        func.date(DowntimeEntry.date) == target_date
-    )
+    downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.date) == target_date)
     if shift_number:
         downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
@@ -125,9 +128,7 @@ def get_my_shift_summary(
     downtime_minutes = sum(d.downtime_minutes or 0 for d in downtimes)
 
     # Query quality entries
-    quality_query = db.query(QualityEntry).filter(
-        func.date(QualityEntry.date) == target_date
-    )
+    quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.date) == target_date)
     if shift_number:
         quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
@@ -142,7 +143,7 @@ def get_my_shift_summary(
         downtime_incidents=downtime_incidents,
         downtime_minutes=downtime_minutes,
         quality_checks=quality_checks,
-        defect_count=defect_count
+        defect_count=defect_count,
     )
 
     # Get work orders with progress
@@ -151,57 +152,61 @@ def get_my_shift_summary(
     for p in productions:
         wo_id = p.work_order_id
         if wo_id not in work_order_stats:
-            work_order_stats[wo_id] = {
-                'produced': 0,
-                'target': 0,
-                'product_name': p.product_name or 'Unknown'
-            }
-        work_order_stats[wo_id]['produced'] += p.units_produced or 0
-        work_order_stats[wo_id]['target'] += p.target_production or p.units_produced or 0
+            work_order_stats[wo_id] = {"produced": 0, "target": 0, "product_name": p.product_name or "Unknown"}
+        work_order_stats[wo_id]["produced"] += p.units_produced or 0
+        work_order_stats[wo_id]["target"] += p.target_production or p.units_produced or 0
 
     # Build work order progress list
     assigned_work_orders = []
     for i, (wo_id, wo_data) in enumerate(work_order_stats.items(), 1):
-        target_qty = wo_data['target'] or 1
-        progress = (wo_data['produced'] / target_qty * 100) if target_qty > 0 else 0
-        assigned_work_orders.append(WorkOrderProgress(
-            id=i,
-            work_order_id=wo_id,
-            product_name=wo_data['product_name'],
-            target_qty=target_qty,
-            produced=wo_data['produced'],
-            progress_percent=round(min(progress, 100), 1)
-        ))
+        target_qty = wo_data["target"] or 1
+        progress = (wo_data["produced"] / target_qty * 100) if target_qty > 0 else 0
+        assigned_work_orders.append(
+            WorkOrderProgress(
+                id=i,
+                work_order_id=wo_id,
+                product_name=wo_data["product_name"],
+                target_qty=target_qty,
+                produced=wo_data["produced"],
+                progress_percent=round(min(progress, 100), 1),
+            )
+        )
 
     # Build recent activity (last 10 entries)
     activities = []
 
     # Add production activities
     for p in productions[:5]:
-        activities.append(ActivityEntry(
-            id=f"prod-{p.id}",
-            type="production",
-            description=f"Logged {p.units_produced} units for {p.work_order_id}",
-            timestamp=p.created_at or datetime.combine(p.date, datetime.min.time())
-        ))
+        activities.append(
+            ActivityEntry(
+                id=f"prod-{p.id}",
+                type="production",
+                description=f"Logged {p.units_produced} units for {p.work_order_id}",
+                timestamp=p.created_at or datetime.combine(p.date, datetime.min.time()),
+            )
+        )
 
     # Add downtime activities
     for d in downtimes[:3]:
-        activities.append(ActivityEntry(
-            id=f"down-{d.id}",
-            type="downtime",
-            description=f"{d.reason}: {d.downtime_minutes} min downtime",
-            timestamp=d.created_at or datetime.combine(d.date, datetime.min.time())
-        ))
+        activities.append(
+            ActivityEntry(
+                id=f"down-{d.id}",
+                type="downtime",
+                description=f"{d.reason}: {d.downtime_minutes} min downtime",
+                timestamp=d.created_at or datetime.combine(d.date, datetime.min.time()),
+            )
+        )
 
     # Add quality activities
     for q in qualities[:2]:
-        activities.append(ActivityEntry(
-            id=f"qual-{q.id}",
-            type="quality",
-            description=f"Quality check: {q.inspected_quantity} inspected, {q.defect_quantity} defects",
-            timestamp=q.created_at or datetime.combine(q.date, datetime.min.time())
-        ))
+        activities.append(
+            ActivityEntry(
+                id=f"qual-{q.id}",
+                type="quality",
+                description=f"Quality check: {q.inspected_quantity} inspected, {q.defect_quantity} defects",
+                timestamp=q.created_at or datetime.combine(q.date, datetime.min.time()),
+            )
+        )
 
     # Sort by timestamp descending
     activities.sort(key=lambda x: x.timestamp, reverse=True)
@@ -217,24 +222,45 @@ def get_my_shift_summary(
             "entered": len(productions),
             "expected": expected_production,
             "percentage": min(round(len(productions) / expected_production * 100), 100),
-            "status": "complete" if len(productions) >= expected_production else "warning" if len(productions) >= expected_production * 0.5 else "incomplete"
+            "status": (
+                "complete"
+                if len(productions) >= expected_production
+                else "warning" if len(productions) >= expected_production * 0.5 else "incomplete"
+            ),
         },
         "downtime": {
             "entered": downtime_incidents,
             "expected": downtime_incidents,  # Downtime is recorded as-needed
             "percentage": 100,
-            "status": "complete"
+            "status": "complete",
         },
         "quality": {
             "entered": quality_checks,
             "expected": expected_quality,
             "percentage": min(round(quality_checks / expected_quality * 100), 100),
-            "status": "complete" if quality_checks >= expected_quality else "warning" if quality_checks >= 1 else "incomplete"
+            "status": (
+                "complete" if quality_checks >= expected_quality else "warning" if quality_checks >= 1 else "incomplete"
+            ),
         },
         "overall": {
-            "percentage": round((data_completeness.get("production", {}).get("percentage", 0) + 100 + data_completeness.get("quality", {}).get("percentage", 0)) / 3) if "production" in data_completeness else 50,
-            "status": "complete" if len(productions) >= expected_production and quality_checks >= expected_quality else "warning"
-        }
+            "percentage": (
+                round(
+                    (
+                        data_completeness.get("production", {}).get("percentage", 0)
+                        + 100
+                        + data_completeness.get("quality", {}).get("percentage", 0)
+                    )
+                    / 3
+                )
+                if "production" in data_completeness
+                else 50
+            ),
+            "status": (
+                "complete"
+                if len(productions) >= expected_production and quality_checks >= expected_quality
+                else "warning"
+            ),
+        },
     }
 
     # Recalculate overall
@@ -243,7 +269,7 @@ def get_my_shift_summary(
     overall_pct = round((prod_pct + 100 + qual_pct) / 3)
     data_completeness["overall"] = {
         "percentage": overall_pct,
-        "status": "complete" if overall_pct >= 90 else "warning" if overall_pct >= 60 else "incomplete"
+        "status": "complete" if overall_pct >= 90 else "warning" if overall_pct >= 60 else "incomplete",
     }
 
     return MyShiftSummary(
@@ -253,7 +279,7 @@ def get_my_shift_summary(
         stats=stats,
         assigned_work_orders=assigned_work_orders,
         recent_activity=activities,
-        data_completeness=data_completeness
+        data_completeness=data_completeness,
     )
 
 
@@ -262,7 +288,7 @@ def get_my_shift_stats(
     shift_date: Optional[date] = Query(None),
     shift_number: Optional[int] = Query(None, ge=1, le=3),
     operator_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get just the statistics portion of shift summary.
@@ -272,12 +298,10 @@ def get_my_shift_stats(
 
     # Query production
     production_query = db.query(
-        func.sum(ProductionEntry.units_produced).label('total_units'),
-        func.sum(ProductionEntry.target_production).label('total_target'),
-        func.count(ProductionEntry.id).label('entry_count')
-    ).filter(
-        func.date(ProductionEntry.date) == target_date
-    )
+        func.sum(ProductionEntry.units_produced).label("total_units"),
+        func.sum(ProductionEntry.target_production).label("total_target"),
+        func.count(ProductionEntry.id).label("entry_count"),
+    ).filter(func.date(ProductionEntry.date) == target_date)
     if shift_number:
         production_query = production_query.filter(ProductionEntry.shift == shift_number)
     if operator_id:
@@ -287,11 +311,8 @@ def get_my_shift_stats(
 
     # Query downtime
     downtime_query = db.query(
-        func.count(DowntimeEntry.id).label('incidents'),
-        func.sum(DowntimeEntry.downtime_minutes).label('total_minutes')
-    ).filter(
-        func.date(DowntimeEntry.date) == target_date
-    )
+        func.count(DowntimeEntry.id).label("incidents"), func.sum(DowntimeEntry.downtime_minutes).label("total_minutes")
+    ).filter(func.date(DowntimeEntry.date) == target_date)
     if shift_number:
         downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
@@ -299,11 +320,8 @@ def get_my_shift_stats(
 
     # Query quality
     quality_query = db.query(
-        func.count(QualityEntry.id).label('checks'),
-        func.sum(QualityEntry.defect_quantity).label('defects')
-    ).filter(
-        func.date(QualityEntry.date) == target_date
-    )
+        func.count(QualityEntry.id).label("checks"), func.sum(QualityEntry.defect_quantity).label("defects")
+    ).filter(func.date(QualityEntry.date) == target_date)
     if shift_number:
         quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
@@ -322,7 +340,7 @@ def get_my_shift_stats(
         "downtime_incidents": down_result.incidents or 0,
         "downtime_minutes": down_result.total_minutes or 0,
         "quality_checks": qual_result.checks or 0,
-        "defect_count": qual_result.defects or 0
+        "defect_count": qual_result.defects or 0,
     }
 
 
@@ -331,7 +349,7 @@ def get_my_recent_activity(
     shift_date: Optional[date] = Query(None),
     shift_number: Optional[int] = Query(None, ge=1, le=3),
     limit: int = Query(10, ge=1, le=50),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Get recent activity entries for the shift.
@@ -342,61 +360,57 @@ def get_my_recent_activity(
     activities = []
 
     # Query production entries
-    production_query = db.query(ProductionEntry).filter(
-        func.date(ProductionEntry.date) == target_date
-    )
+    production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.date) == target_date)
     if shift_number:
         production_query = production_query.filter(ProductionEntry.shift == shift_number)
 
     for p in production_query.order_by(ProductionEntry.created_at.desc()).limit(limit):
-        activities.append({
-            "id": f"prod-{p.id}",
-            "type": "production",
-            "description": f"Logged {p.units_produced} units for {p.work_order_id}",
-            "timestamp": (p.created_at or datetime.combine(p.date, datetime.min.time())).isoformat(),
-            "work_order_id": p.work_order_id,
-            "value": p.units_produced
-        })
+        activities.append(
+            {
+                "id": f"prod-{p.id}",
+                "type": "production",
+                "description": f"Logged {p.units_produced} units for {p.work_order_id}",
+                "timestamp": (p.created_at or datetime.combine(p.date, datetime.min.time())).isoformat(),
+                "work_order_id": p.work_order_id,
+                "value": p.units_produced,
+            }
+        )
 
     # Query downtime entries
-    downtime_query = db.query(DowntimeEntry).filter(
-        func.date(DowntimeEntry.date) == target_date
-    )
+    downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.date) == target_date)
     if shift_number:
         downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
     for d in downtime_query.order_by(DowntimeEntry.created_at.desc()).limit(limit):
-        activities.append({
-            "id": f"down-{d.id}",
-            "type": "downtime",
-            "description": f"{d.reason}: {d.downtime_minutes} min downtime",
-            "timestamp": (d.created_at or datetime.combine(d.date, datetime.min.time())).isoformat(),
-            "work_order_id": d.work_order_id,
-            "value": d.downtime_minutes
-        })
+        activities.append(
+            {
+                "id": f"down-{d.id}",
+                "type": "downtime",
+                "description": f"{d.reason}: {d.downtime_minutes} min downtime",
+                "timestamp": (d.created_at or datetime.combine(d.date, datetime.min.time())).isoformat(),
+                "work_order_id": d.work_order_id,
+                "value": d.downtime_minutes,
+            }
+        )
 
     # Query quality entries
-    quality_query = db.query(QualityEntry).filter(
-        func.date(QualityEntry.date) == target_date
-    )
+    quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.date) == target_date)
     if shift_number:
         quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
     for q in quality_query.order_by(QualityEntry.created_at.desc()).limit(limit):
-        activities.append({
-            "id": f"qual-{q.id}",
-            "type": "quality",
-            "description": f"Quality check: {q.inspected_quantity} inspected, {q.defect_quantity} defects",
-            "timestamp": (q.created_at or datetime.combine(q.date, datetime.min.time())).isoformat(),
-            "work_order_id": q.work_order_id,
-            "value": q.inspected_quantity
-        })
+        activities.append(
+            {
+                "id": f"qual-{q.id}",
+                "type": "quality",
+                "description": f"Quality check: {q.inspected_quantity} inspected, {q.defect_quantity} defects",
+                "timestamp": (q.created_at or datetime.combine(q.date, datetime.min.time())).isoformat(),
+                "work_order_id": q.work_order_id,
+                "value": q.inspected_quantity,
+            }
+        )
 
     # Sort all activities by timestamp descending
     activities.sort(key=lambda x: x["timestamp"], reverse=True)
 
-    return {
-        "date": target_date.isoformat(),
-        "shift_number": shift_number,
-        "activity": activities[:limit]
-    }
+    return {"date": target_date.isoformat(), "shift_number": shift_number, "activity": activities[:limit]}

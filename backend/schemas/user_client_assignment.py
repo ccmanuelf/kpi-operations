@@ -5,9 +5,8 @@ Phase 2.1: Data Layer Normalization
 Replaces comma-separated client_id_assigned field with proper junction table.
 Provides normalized user-to-client many-to-many relationship.
 """
-from sqlalchemy import (
-    Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint
-)
+
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from backend.database import Base
@@ -20,29 +19,22 @@ class UserClientAssignment(Base):
     This replaces the comma-separated client_id_assigned column in USER table.
     Each row represents one user's access to one client.
     """
+
     __tablename__ = "USER_CLIENT_ASSIGNMENT"
     __table_args__ = (
-        UniqueConstraint('user_id', 'client_id', name='uq_user_client'),
-        Index('idx_user_client_user', 'user_id'),
-        Index('idx_user_client_client', 'client_id'),
-        Index('idx_user_client_active', 'is_active'),
-        {"extend_existing": True}
+        UniqueConstraint("user_id", "client_id", name="uq_user_client"),
+        Index("idx_user_client_user", "user_id"),
+        Index("idx_user_client_client", "client_id"),
+        Index("idx_user_client_active", "is_active"),
+        {"extend_existing": True},
     )
 
     # Primary key
     assignment_id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    user_id = Column(
-        String(50),
-        ForeignKey("USER.user_id", ondelete="CASCADE"),
-        nullable=False
-    )
-    client_id = Column(
-        String(50),
-        ForeignKey("CLIENT.client_id", ondelete="RESTRICT"),
-        nullable=False
-    )
+    user_id = Column(String(50), ForeignKey("USER.user_id", ondelete="CASCADE"), nullable=False)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id", ondelete="RESTRICT"), nullable=False)
 
     # Assignment metadata
     assigned_at = Column(DateTime, nullable=False, server_default=func.now())
@@ -58,12 +50,7 @@ class UserClientAssignment(Base):
 
     # Audit timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now()
-    )
+    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 def get_user_assigned_clients(db, user_id: str, active_only: bool = True):
@@ -78,9 +65,7 @@ def get_user_assigned_clients(db, user_id: str, active_only: bool = True):
     Returns:
         List of client_id strings
     """
-    query = db.query(UserClientAssignment.client_id).filter(
-        UserClientAssignment.user_id == user_id
-    )
+    query = db.query(UserClientAssignment.client_id).filter(UserClientAssignment.user_id == user_id)
 
     if active_only:
         query = query.filter(UserClientAssignment.is_active == True)
@@ -89,11 +74,7 @@ def get_user_assigned_clients(db, user_id: str, active_only: bool = True):
 
 
 def assign_user_to_client(
-    db,
-    user_id: str,
-    client_id: str,
-    assigned_by: str,
-    is_primary: bool = False
+    db, user_id: str, client_id: str, assigned_by: str, is_primary: bool = False
 ) -> UserClientAssignment:
     """
     Assign a user to a client.
@@ -112,10 +93,7 @@ def assign_user_to_client(
         IntegrityError: If assignment already exists
     """
     assignment = UserClientAssignment(
-        user_id=user_id,
-        client_id=client_id,
-        assigned_by=assigned_by,
-        is_primary=is_primary
+        user_id=user_id, client_id=client_id, assigned_by=assigned_by, is_primary=is_primary
     )
 
     db.add(assignment)
@@ -124,12 +102,7 @@ def assign_user_to_client(
     return assignment
 
 
-def remove_user_from_client(
-    db,
-    user_id: str,
-    client_id: str,
-    removed_by: str
-) -> bool:
+def remove_user_from_client(db, user_id: str, client_id: str, removed_by: str) -> bool:
     """
     Remove (deactivate) a user's client assignment.
 
@@ -144,10 +117,11 @@ def remove_user_from_client(
     """
     from datetime import datetime
 
-    assignment = db.query(UserClientAssignment).filter(
-        UserClientAssignment.user_id == user_id,
-        UserClientAssignment.client_id == client_id
-    ).first()
+    assignment = (
+        db.query(UserClientAssignment)
+        .filter(UserClientAssignment.user_id == user_id, UserClientAssignment.client_id == client_id)
+        .first()
+    )
 
     if not assignment:
         return False

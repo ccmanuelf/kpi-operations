@@ -6,6 +6,7 @@ Orders (7), Standards (7).
 Uses real in-memory SQLite database -- NO mocks for DB layer.
 Follows the exact pattern from test_kpi_routes_real.py.
 """
+
 import pytest
 from datetime import date, timedelta
 from sqlalchemy import create_engine
@@ -97,6 +98,7 @@ def cap_client(cap_db):
 # Helper: Create entities via API
 # =============================================================================
 
+
 def _create_calendar_entry(client, cal_date=None, **overrides):
     """Helper to POST a calendar entry and return the response."""
     payload = {
@@ -169,6 +171,7 @@ def _create_standard(client, style_code=None, operation_code=None, **overrides):
 # Calendar CRUD Tests
 # =============================================================================
 
+
 class TestCalendarCreate:
     """POST /api/capacity/calendar"""
 
@@ -202,9 +205,12 @@ class TestCalendarCreate:
 
     def test_create_calendar_entry_missing_client_id(self, cap_client):
         client, _ = cap_client
-        resp = client.post("/api/capacity/calendar", json={
-            "calendar_date": date.today().isoformat(),
-        })
+        resp = client.post(
+            "/api/capacity/calendar",
+            json={
+                "calendar_date": date.today().isoformat(),
+            },
+        )
         assert resp.status_code == 422
 
 
@@ -243,10 +249,7 @@ class TestCalendarList:
         _create_calendar_entry(client, cal_date=date(2026, 5, 15))
         _create_calendar_entry(client, cal_date=date(2026, 6, 1))
 
-        resp = client.get(
-            f"/api/capacity/calendar?client_id={CLIENT_ID}"
-            f"&start_date=2026-05-01&end_date=2026-05-31"
-        )
+        resp = client.get(f"/api/capacity/calendar?client_id={CLIENT_ID}" f"&start_date=2026-05-01&end_date=2026-05-31")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 2
@@ -335,6 +338,7 @@ class TestCalendarDelete:
 # =============================================================================
 # Production Lines CRUD Tests
 # =============================================================================
+
 
 class TestProductionLineCreate:
     """POST /api/capacity/lines"""
@@ -500,9 +504,7 @@ class TestProductionLineDelete:
         assert resp.status_code == 200
 
         # Record still exists but is inactive (include_inactive=true to see it)
-        resp2 = client.get(
-            f"/api/capacity/lines?client_id={CLIENT_ID}&include_inactive=true"
-        )
+        resp2 = client.get(f"/api/capacity/lines?client_id={CLIENT_ID}&include_inactive=true")
         assert resp2.status_code == 200
         lines = resp2.json()
         deactivated = [ln for ln in lines if ln["id"] == line_id]
@@ -513,6 +515,7 @@ class TestProductionLineDelete:
 # =============================================================================
 # Orders CRUD Tests
 # =============================================================================
+
 
 class TestOrderCreate:
     """POST /api/capacity/orders"""
@@ -641,17 +644,13 @@ class TestOrderStatusUpdate:
         created = _create_order(client, order_number="ORD-STAT-001").json()
         order_id = created["id"]
 
-        resp = client.patch(
-            f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}&new_status=CONFIRMED"
-        )
+        resp = client.patch(f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}&new_status=CONFIRMED")
         assert resp.status_code == 200
         assert resp.json()["status"] == "CONFIRMED"
 
     def test_update_order_status_not_found(self, cap_client):
         client, _ = cap_client
-        resp = client.patch(
-            f"/api/capacity/orders/99999/status?client_id={CLIENT_ID}&new_status=CONFIRMED"
-        )
+        resp = client.patch(f"/api/capacity/orders/99999/status?client_id={CLIENT_ID}&new_status=CONFIRMED")
         assert resp.status_code == 404
 
     def test_update_order_status_to_completed(self, cap_client):
@@ -659,9 +658,7 @@ class TestOrderStatusUpdate:
         created = _create_order(client, order_number="ORD-COMP-001").json()
         order_id = created["id"]
 
-        resp = client.patch(
-            f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}&new_status=COMPLETED"
-        )
+        resp = client.patch(f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}&new_status=COMPLETED")
         assert resp.status_code == 200
         assert resp.json()["status"] == "COMPLETED"
 
@@ -670,9 +667,7 @@ class TestOrderStatusUpdate:
         created = _create_order(client, order_number="ORD-CANCEL-001").json()
         order_id = created["id"]
 
-        resp = client.patch(
-            f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}&new_status=CANCELLED"
-        )
+        resp = client.patch(f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}&new_status=CANCELLED")
         assert resp.status_code == 200
         assert resp.json()["status"] == "CANCELLED"
 
@@ -738,6 +733,7 @@ class TestOrderDelete:
 # Standards CRUD Tests
 # =============================================================================
 
+
 class TestStandardCreate:
     """POST /api/capacity/standards"""
 
@@ -801,9 +797,7 @@ class TestStandardList:
         _create_standard(client, style_code="SD1", operation_code="OD1", department="SEWING")
         _create_standard(client, style_code="SD2", operation_code="OD2", department="CUTTING")
 
-        resp = client.get(
-            f"/api/capacity/standards?client_id={CLIENT_ID}&department=CUTTING"
-        )
+        resp = client.get(f"/api/capacity/standards?client_id={CLIENT_ID}&department=CUTTING")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 1
@@ -818,9 +812,7 @@ class TestStandardGetSingle:
         created = _create_standard(client, style_code="SG-1", operation_code="OG-1").json()
         standard_id = created["id"]
 
-        resp = client.get(
-            f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}"
-        )
+        resp = client.get(f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         assert resp.json()["style_code"] == "SG-1"
 
@@ -839,9 +831,7 @@ class TestStandardByStyle:
         _create_standard(client, style_code="MATCH-STY", operation_code="OP-B")
         _create_standard(client, style_code="OTHER-STY", operation_code="OP-C")
 
-        resp = client.get(
-            f"/api/capacity/standards/style/MATCH-STY?client_id={CLIENT_ID}"
-        )
+        resp = client.get(f"/api/capacity/standards/style/MATCH-STY?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 2
@@ -849,9 +839,7 @@ class TestStandardByStyle:
 
     def test_get_standards_by_style_empty(self, cap_client):
         client, _ = cap_client
-        resp = client.get(
-            f"/api/capacity/standards/style/NONEXISTENT?client_id={CLIENT_ID}"
-        )
+        resp = client.get(f"/api/capacity/standards/style/NONEXISTENT?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -865,9 +853,7 @@ class TestStandardTotalSAM:
         _create_standard(client, style_code="SAM-STY", operation_code="OP-1", sam_minutes=3.0)
         _create_standard(client, style_code="SAM-STY", operation_code="OP-2", sam_minutes=4.5)
 
-        resp = client.get(
-            f"/api/capacity/standards/style/SAM-STY/total-sam?client_id={CLIENT_ID}"
-        )
+        resp = client.get(f"/api/capacity/standards/style/SAM-STY/total-sam?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert data["style_code"] == "SAM-STY"
@@ -879,18 +865,14 @@ class TestStandardTotalSAM:
         _create_standard(client, style_code="SAM-DEP", operation_code="OP-1", sam_minutes=3.0, department="SEWING")
         _create_standard(client, style_code="SAM-DEP", operation_code="OP-2", sam_minutes=4.0, department="CUTTING")
 
-        resp = client.get(
-            f"/api/capacity/standards/style/SAM-DEP/total-sam?client_id={CLIENT_ID}&department=SEWING"
-        )
+        resp = client.get(f"/api/capacity/standards/style/SAM-DEP/total-sam?client_id={CLIENT_ID}&department=SEWING")
         assert resp.status_code == 200
         assert resp.json()["total_sam_minutes"] == 3.0
 
     def test_total_sam_no_standards(self, cap_client):
         """Total SAM returns 0 when no standards exist for style."""
         client, _ = cap_client
-        resp = client.get(
-            f"/api/capacity/standards/style/NONEXISTENT/total-sam?client_id={CLIENT_ID}"
-        )
+        resp = client.get(f"/api/capacity/standards/style/NONEXISTENT/total-sam?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         assert resp.json()["total_sam_minutes"] == 0
 
@@ -922,9 +904,7 @@ class TestStandardUpdate:
 
     def test_update_standard_partial(self, cap_client):
         client, _ = cap_client
-        created = _create_standard(
-            client, style_code="SP-1", operation_code="OP-P1", sam_minutes=3.0
-        ).json()
+        created = _create_standard(client, style_code="SP-1", operation_code="OP-P1", sam_minutes=3.0).json()
         standard_id = created["id"]
 
         resp = client.put(
@@ -945,16 +925,12 @@ class TestStandardDelete:
         created = _create_standard(client, style_code="DEL-S", operation_code="DEL-O").json()
         standard_id = created["id"]
 
-        resp = client.delete(
-            f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}"
-        )
+        resp = client.delete(f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         assert resp.json()["message"] == "Standard deleted"
 
         # Verify gone
-        resp2 = client.get(
-            f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}"
-        )
+        resp2 = client.get(f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}")
         assert resp2.status_code == 404
 
     def test_delete_standard_not_found(self, cap_client):
@@ -966,6 +942,7 @@ class TestStandardDelete:
 # =============================================================================
 # Multi-Tenant Isolation Tests
 # =============================================================================
+
 
 class TestMultiTenantIsolation:
     """Verify that data from one client does not leak to another."""
@@ -981,14 +958,17 @@ class TestMultiTenantIsolation:
         tc = TestClient(app)
 
         # Create entries for CLIENT-A
-        tc.post("/api/capacity/calendar?client_id=CLIENT-A", json={
-            "calendar_date": "2026-06-01",
-            "is_working_day": True,
-            "shifts_available": 1,
-            "shift1_hours": 8.0,
-            "shift2_hours": 0,
-            "shift3_hours": 0,
-        })
+        tc.post(
+            "/api/capacity/calendar?client_id=CLIENT-A",
+            json={
+                "calendar_date": "2026-06-01",
+                "is_working_day": True,
+                "shifts_available": 1,
+                "shift1_hours": 8.0,
+                "shift2_hours": 0,
+                "shift3_hours": 0,
+            },
+        )
 
         # CLIENT-B should see no entries
         resp = tc.get("/api/capacity/calendar?client_id=CLIENT-B")
@@ -1010,12 +990,15 @@ class TestMultiTenantIsolation:
         app = create_test_app(db)
         tc = TestClient(app)
 
-        tc.post("/api/capacity/orders?client_id=ISO-A", json={
-            "order_number": "ORD-ISO-001",
-            "style_code": "STY-ISO",
-            "order_quantity": 100,
-            "required_date": (date.today() + timedelta(days=30)).isoformat(),
-        })
+        tc.post(
+            "/api/capacity/orders?client_id=ISO-A",
+            json={
+                "order_number": "ORD-ISO-001",
+                "style_code": "STY-ISO",
+                "order_quantity": 100,
+                "required_date": (date.today() + timedelta(days=30)).isoformat(),
+            },
+        )
 
         resp = tc.get("/api/capacity/orders?client_id=ISO-B")
         assert resp.status_code == 200
@@ -1031,10 +1014,13 @@ class TestMultiTenantIsolation:
         app = create_test_app(db)
         tc = TestClient(app)
 
-        tc.post("/api/capacity/lines?client_id=LINE-A", json={
-            "line_code": "L-ISOL",
-            "line_name": "Isolated Line",
-        })
+        tc.post(
+            "/api/capacity/lines?client_id=LINE-A",
+            json={
+                "line_code": "L-ISOL",
+                "line_name": "Isolated Line",
+            },
+        )
 
         resp = tc.get("/api/capacity/lines?client_id=LINE-B")
         assert resp.status_code == 200
@@ -1050,11 +1036,14 @@ class TestMultiTenantIsolation:
         app = create_test_app(db)
         tc = TestClient(app)
 
-        tc.post("/api/capacity/standards?client_id=STD-A", json={
-            "style_code": "ISO-STY",
-            "operation_code": "ISO-OP",
-            "sam_minutes": 2.0,
-        })
+        tc.post(
+            "/api/capacity/standards?client_id=STD-A",
+            json={
+                "style_code": "ISO-STY",
+                "operation_code": "ISO-OP",
+                "sam_minutes": 2.0,
+            },
+        )
 
         resp = tc.get("/api/capacity/standards?client_id=STD-B")
         assert resp.status_code == 200
@@ -1064,6 +1053,7 @@ class TestMultiTenantIsolation:
 # =============================================================================
 # Edge Case & Validation Tests
 # =============================================================================
+
 
 class TestEdgeCases:
     """Edge cases and data integrity checks."""
@@ -1177,9 +1167,7 @@ class TestEdgeCases:
         """Creating multiple entries on different dates works."""
         client, _ = cap_client
         for i in range(7):
-            resp = _create_calendar_entry(
-                client, cal_date=date(2026, 8, 1) + timedelta(days=i)
-            )
+            resp = _create_calendar_entry(client, cal_date=date(2026, 8, 1) + timedelta(days=i))
             assert resp.status_code == 201
 
         resp = client.get(f"/api/capacity/calendar?client_id={CLIENT_ID}")
@@ -1194,8 +1182,7 @@ class TestEdgeCases:
 
         for new_status in ["CONFIRMED", "IN_PROGRESS", "COMPLETED"]:
             resp = client.patch(
-                f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}"
-                f"&new_status={new_status}"
+                f"/api/capacity/orders/{order_id}/status?client_id={CLIENT_ID}" f"&new_status={new_status}"
             )
             assert resp.status_code == 200
             assert resp.json()["status"] == new_status

@@ -9,6 +9,7 @@ Provides endpoints for:
 - Bulk operations
 - Elapsed time analytics
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict
@@ -30,7 +31,7 @@ from backend.models.workflow import (
     BulkTransitionRequest,
     BulkTransitionResponse,
     WorkflowTemplate,
-    WORKFLOW_TEMPLATES
+    WORKFLOW_TEMPLATES,
 )
 from backend.crud.workflow import (
     get_work_order_transitions,
@@ -43,33 +44,31 @@ from backend.crud.workflow import (
     get_allowed_transitions_for_work_order,
     bulk_transition_work_orders,
     get_transition_statistics,
-    get_status_distribution
+    get_status_distribution,
 )
 from backend.calculations.elapsed_time import (
     calculate_work_order_elapsed_times,
     calculate_client_average_times,
     get_transition_elapsed_times,
-    calculate_stage_duration_summary
+    calculate_stage_duration_summary,
 )
 from backend.schemas.work_order import WorkOrder
 
 
-router = APIRouter(
-    prefix="/api/workflow",
-    tags=["Workflow"]
-)
+router = APIRouter(prefix="/api/workflow", tags=["Workflow"])
 
 
 # ============================================
 # Status Transitions
 # ============================================
 
+
 @router.post("/work-orders/{work_order_id}/transition", response_model=Dict)
 def transition_work_order_status(
     work_order_id: str,
     transition: WorkflowTransitionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Transition a work order to a new status.
@@ -84,7 +83,7 @@ def transition_work_order_status(
         work_order_id=work_order_id,
         to_status=transition.to_status.value,
         current_user=current_user,
-        notes=transition.notes
+        notes=transition.notes,
     )
 
 
@@ -93,7 +92,7 @@ def validate_work_order_transition(
     work_order_id: str,
     to_status: str = Query(..., description="Target status to validate"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Validate if a transition is allowed without executing it.
@@ -102,19 +101,12 @@ def validate_work_order_transition(
 
     SECURITY: Requires authentication and client access.
     """
-    return validate_transition(
-        db=db,
-        work_order_id=work_order_id,
-        to_status=to_status,
-        current_user=current_user
-    )
+    return validate_transition(db=db, work_order_id=work_order_id, to_status=to_status, current_user=current_user)
 
 
 @router.get("/work-orders/{work_order_id}/allowed-transitions", response_model=Dict)
 def get_work_order_allowed_transitions(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get list of allowed status transitions for a work order.
@@ -123,18 +115,12 @@ def get_work_order_allowed_transitions(
 
     SECURITY: Requires authentication and client access.
     """
-    return get_allowed_transitions_for_work_order(
-        db=db,
-        work_order_id=work_order_id,
-        current_user=current_user
-    )
+    return get_allowed_transitions_for_work_order(db=db, work_order_id=work_order_id, current_user=current_user)
 
 
 @router.get("/work-orders/{work_order_id}/history", response_model=List[WorkflowTransitionResponse])
 def get_work_order_transition_history(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get complete transition history for a work order.
@@ -143,23 +129,20 @@ def get_work_order_transition_history(
 
     SECURITY: Requires authentication and client access.
     """
-    return get_work_order_transitions(
-        db=db,
-        work_order_id=work_order_id,
-        current_user=current_user
-    )
+    return get_work_order_transitions(db=db, work_order_id=work_order_id, current_user=current_user)
 
 
 # ============================================
 # Bulk Operations
 # ============================================
 
+
 @router.post("/bulk-transition", response_model=Dict)
 def bulk_transition_work_orders_endpoint(
     request: BulkTransitionRequest,
     client_id: str = Query(..., description="Client ID for the work orders"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ):
     """
     Transition multiple work orders to a new status.
@@ -175,7 +158,7 @@ def bulk_transition_work_orders_endpoint(
         to_status=request.to_status.value,
         client_id=client_id,
         current_user=current_user,
-        notes=request.notes
+        notes=request.notes,
     )
 
 
@@ -183,11 +166,10 @@ def bulk_transition_work_orders_endpoint(
 # Workflow Configuration
 # ============================================
 
+
 @router.get("/config/{client_id}", response_model=Dict)
 def get_client_workflow_config(
-    client_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get workflow configuration for a client.
@@ -196,11 +178,7 @@ def get_client_workflow_config(
 
     SECURITY: Requires authentication and client access.
     """
-    return get_workflow_configuration(
-        db=db,
-        client_id=client_id,
-        current_user=current_user
-    )
+    return get_workflow_configuration(db=db, client_id=client_id, current_user=current_user)
 
 
 @router.put("/config/{client_id}", response_model=Dict)
@@ -208,7 +186,7 @@ def update_client_workflow_config(
     client_id: str,
     config: WorkflowConfigUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ):
     """
     Update workflow configuration for a client.
@@ -217,10 +195,7 @@ def update_client_workflow_config(
     """
     config_dict = config.model_dump(exclude_none=True)
     return update_workflow_configuration(
-        db=db,
-        client_id=client_id,
-        config_update=config_dict,
-        current_user=current_user
+        db=db, client_id=client_id, config_update=config_dict, current_user=current_user
     )
 
 
@@ -229,7 +204,7 @@ def apply_workflow_template_endpoint(
     client_id: str,
     template_id: str = Query(..., description="Template ID to apply"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ):
     """
     Apply a workflow template to a client.
@@ -238,18 +213,11 @@ def apply_workflow_template_endpoint(
 
     SECURITY: Requires admin role.
     """
-    return apply_workflow_template(
-        db=db,
-        client_id=client_id,
-        template_id=template_id,
-        current_user=current_user
-    )
+    return apply_workflow_template(db=db, client_id=client_id, template_id=template_id, current_user=current_user)
 
 
 @router.get("/templates", response_model=Dict)
-def list_workflow_templates(
-    current_user: User = Depends(get_current_user)
-):
+def list_workflow_templates(current_user: User = Depends(get_current_user)):
     """
     List available workflow templates.
 
@@ -257,29 +225,27 @@ def list_workflow_templates(
     """
     templates = []
     for template_id, template in WORKFLOW_TEMPLATES.items():
-        templates.append({
-            "template_id": template.template_id,
-            "name": template.name,
-            "description": template.description,
-            "workflow_statuses": template.workflow_statuses,
-            "workflow_closure_trigger": template.workflow_closure_trigger
-        })
+        templates.append(
+            {
+                "template_id": template.template_id,
+                "name": template.name,
+                "description": template.description,
+                "workflow_statuses": template.workflow_statuses,
+                "workflow_closure_trigger": template.workflow_closure_trigger,
+            }
+        )
 
-    return {
-        "templates": templates,
-        "count": len(templates)
-    }
+    return {"templates": templates, "count": len(templates)}
 
 
 # ============================================
 # Elapsed Time Analytics
 # ============================================
 
+
 @router.get("/work-orders/{work_order_id}/elapsed-time", response_model=Dict)
 def get_work_order_elapsed_time(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get elapsed time metrics for a work order.
@@ -290,9 +256,7 @@ def get_work_order_elapsed_time(
     """
     from backend.middleware.client_auth import verify_client_access
 
-    work_order = db.query(WorkOrder).filter(
-        WorkOrder.work_order_id == work_order_id
-    ).first()
+    work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == work_order_id).first()
 
     if not work_order:
         raise HTTPException(status_code=404, detail="Work order not found")
@@ -304,9 +268,7 @@ def get_work_order_elapsed_time(
 
 @router.get("/work-orders/{work_order_id}/transition-times", response_model=List[Dict])
 def get_work_order_transition_times(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get elapsed times between each transition for a work order.
@@ -317,20 +279,14 @@ def get_work_order_transition_times(
     """
     from backend.middleware.client_auth import verify_client_access
 
-    work_order = db.query(WorkOrder).filter(
-        WorkOrder.work_order_id == work_order_id
-    ).first()
+    work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == work_order_id).first()
 
     if not work_order:
         raise HTTPException(status_code=404, detail="Work order not found")
 
     verify_client_access(current_user, work_order.client_id)
 
-    return get_transition_elapsed_times(
-        db=db,
-        work_order_id=work_order_id,
-        client_id=work_order.client_id
-    )
+    return get_transition_elapsed_times(db=db, work_order_id=work_order_id, client_id=work_order.client_id)
 
 
 @router.get("/analytics/{client_id}/average-times", response_model=Dict)
@@ -340,7 +296,7 @@ def get_client_average_elapsed_times(
     start_date: Optional[datetime] = Query(None, description="Start date filter"),
     end_date: Optional[datetime] = Query(None, description="End date filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get average elapsed times for a client's work orders.
@@ -350,14 +306,11 @@ def get_client_average_elapsed_times(
     SECURITY: Requires authentication and client access.
     """
     from backend.middleware.client_auth import verify_client_access
+
     verify_client_access(current_user, client_id)
 
     return calculate_client_average_times(
-        db=db,
-        client_id=client_id,
-        status=status,
-        start_date=start_date,
-        end_date=end_date
+        db=db, client_id=client_id, status=status, start_date=start_date, end_date=end_date
     )
 
 
@@ -367,7 +320,7 @@ def get_client_stage_durations(
     start_date: Optional[datetime] = Query(None, description="Start date filter"),
     end_date: Optional[datetime] = Query(None, description="End date filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get average duration for each workflow stage.
@@ -377,25 +330,20 @@ def get_client_stage_durations(
     SECURITY: Requires authentication and client access.
     """
     from backend.middleware.client_auth import verify_client_access
+
     verify_client_access(current_user, client_id)
 
-    return calculate_stage_duration_summary(
-        db=db,
-        client_id=client_id,
-        start_date=start_date,
-        end_date=end_date
-    )
+    return calculate_stage_duration_summary(db=db, client_id=client_id, start_date=start_date, end_date=end_date)
 
 
 # ============================================
 # Statistics & Reporting
 # ============================================
 
+
 @router.get("/statistics/{client_id}/transitions", response_model=Dict)
 def get_client_transition_statistics(
-    client_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get transition statistics for a client.
@@ -404,18 +352,12 @@ def get_client_transition_statistics(
 
     SECURITY: Requires authentication and client access.
     """
-    return get_transition_statistics(
-        db=db,
-        client_id=client_id,
-        current_user=current_user
-    )
+    return get_transition_statistics(db=db, client_id=client_id, current_user=current_user)
 
 
 @router.get("/statistics/{client_id}/status-distribution", response_model=Dict)
 def get_client_status_distribution(
-    client_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get current status distribution for work orders.
@@ -424,11 +366,7 @@ def get_client_status_distribution(
 
     SECURITY: Requires authentication and client access.
     """
-    return get_status_distribution(
-        db=db,
-        client_id=client_id,
-        current_user=current_user
-    )
+    return get_status_distribution(db=db, client_id=client_id, current_user=current_user)
 
 
 @router.get("/transitions/{client_id}", response_model=List[WorkflowTransitionResponse])
@@ -440,7 +378,7 @@ def get_client_all_transitions(
     to_status: Optional[str] = Query(None, description="Filter by to_status"),
     trigger_source: Optional[str] = Query(None, description="Filter by trigger source"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all transitions for a client with filtering.
@@ -457,5 +395,5 @@ def get_client_all_transitions(
         limit=limit,
         from_status=from_status,
         to_status=to_status,
-        trigger_source=trigger_source
+        trigger_source=trigger_source,
     )

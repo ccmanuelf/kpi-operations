@@ -4,48 +4,25 @@ All job CRUD endpoints - core data entity
 
 Phase 6.6: Includes job-level RTY calculation endpoints
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
 
 from backend.database import get_db
-from backend.models.job import (
-    JobCreate,
-    JobUpdate,
-    JobComplete,
-    JobResponse
-)
-from backend.crud.job import (
-    create_job,
-    get_job,
-    get_jobs,
-    get_jobs_by_work_order,
-    update_job,
-    delete_job,
-    complete_job
-)
-from backend.calculations.fpy_rty import (
-    calculate_job_yield,
-    calculate_work_order_job_rty,
-    calculate_job_rty_summary
-)
+from backend.models.job import JobCreate, JobUpdate, JobComplete, JobResponse
+from backend.crud.job import create_job, get_job, get_jobs, get_jobs_by_work_order, update_job, delete_job, complete_job
+from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/jobs",
-    tags=["Jobs"]
-)
+router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
 
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-def create_job_endpoint(
-    job: JobCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def create_job_endpoint(job: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Create new job (work order line item)
     SECURITY: Enforces client filtering
@@ -60,7 +37,7 @@ def list_jobs(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List jobs with optional work order filter
@@ -70,11 +47,7 @@ def list_jobs(
 
 
 @router.get("/{job_id}", response_model=JobResponse)
-def get_job_endpoint(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_endpoint(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get job by ID
     SECURITY: Verifies user has access to job's client
@@ -87,10 +60,7 @@ def get_job_endpoint(
 
 @router.put("/{job_id}", response_model=JobResponse)
 def update_job_endpoint(
-    job_id: str,
-    job_update: JobUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    job_id: str, job_update: JobUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Update job
@@ -105,22 +75,13 @@ def update_job_endpoint(
 
 @router.post("/{job_id}/complete", response_model=JobResponse)
 def complete_job_endpoint(
-    job_id: str,
-    completion: JobComplete,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    job_id: str, completion: JobComplete, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Mark job as completed with actual quantities and hours
     SECURITY: Verifies user has access to job's client
     """
-    completed = complete_job(
-        db,
-        job_id,
-        completion.completed_quantity,
-        float(completion.actual_hours),
-        current_user
-    )
+    completed = complete_job(db, job_id, completion.completed_quantity, float(completion.actual_hours), current_user)
     if not completed:
         raise HTTPException(status_code=404, detail="Job not found or access denied")
     return completed
@@ -128,9 +89,7 @@ def complete_job_endpoint(
 
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_job_endpoint(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Delete job (supervisor only)
@@ -142,17 +101,12 @@ def delete_job_endpoint(
 
 
 # Work order jobs endpoint (separate prefix for /api/work-orders namespace)
-work_order_jobs_router = APIRouter(
-    prefix="/api/work-orders",
-    tags=["Jobs"]
-)
+work_order_jobs_router = APIRouter(prefix="/api/work-orders", tags=["Jobs"])
 
 
 @work_order_jobs_router.get("/{work_order_id}/jobs", response_model=List[JobResponse])
 def get_work_order_jobs(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all jobs for a specific work order
@@ -165,12 +119,9 @@ def get_work_order_jobs(
 # PHASE 6.6: JOB-LEVEL RTY CALCULATION ENDPOINTS
 # ============================================================================
 
+
 @router.get("/{job_id}/yield")
-def get_job_yield(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Calculate yield metrics for a specific job (line item).
 
@@ -188,9 +139,7 @@ def get_job_yield(
 
 @work_order_jobs_router.get("/{work_order_id}/rty")
 def get_work_order_job_rty(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Calculate RTY across all jobs within a work order.
@@ -205,7 +154,7 @@ def get_work_order_job_rty(
     """
     # Determine client filter
     client_id = None
-    if current_user.role != 'admin' and current_user.client_id_assigned:
+    if current_user.role != "admin" and current_user.client_id_assigned:
         client_id = current_user.client_id_assigned
 
     result = calculate_work_order_job_rty(db, work_order_id, client_id)
@@ -222,7 +171,7 @@ def get_job_rty_summary(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get aggregate job-level RTY summary for a date range.
@@ -246,7 +195,7 @@ def get_job_rty_summary(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     return calculate_job_rty_summary(db, start_date, end_date, effective_client_id)
@@ -256,12 +205,9 @@ def get_job_rty_summary(
 # PHASE 4: JOB-LEVEL KPI CALCULATION ENDPOINTS
 # ============================================================================
 
+
 @router.get("/{job_id}/efficiency")
-def get_job_efficiency(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_efficiency(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Calculate efficiency metrics for a specific job.
 
@@ -284,9 +230,7 @@ def get_job_efficiency(
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 
     # Get all production entries for this job
-    entries = db.query(ProductionEntry).filter(
-        ProductionEntry.job_id == job_id
-    ).all()
+    entries = db.query(ProductionEntry).filter(ProductionEntry.job_id == job_id).all()
 
     if not entries:
         return {
@@ -295,7 +239,7 @@ def get_job_efficiency(
             "total_units_produced": 0,
             "total_labor_hours": 0,
             "entry_count": 0,
-            "message": "No production entries found for this job"
+            "message": "No production entries found for this job",
         }
 
     # Calculate aggregated metrics
@@ -317,7 +261,7 @@ def get_job_efficiency(
 
     return {
         "job_id": job_id,
-        "part_number": job.part_number if hasattr(job, 'part_number') else None,
+        "part_number": job.part_number if hasattr(job, "part_number") else None,
         "efficiency_percentage": float(avg_efficiency),
         "total_units_produced": total_units,
         "total_labor_hours": float(total_labor_hours),
@@ -326,19 +270,15 @@ def get_job_efficiency(
             {
                 "production_entry_id": e.production_entry_id,
                 "units_produced": e.units_produced,
-                "efficiency_percentage": float(e.efficiency_percentage or 0)
+                "efficiency_percentage": float(e.efficiency_percentage or 0),
             }
             for e in entries
-        ]
+        ],
     }
 
 
 @router.get("/{job_id}/performance")
-def get_job_performance(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_performance(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Calculate performance metrics for a specific job.
 
@@ -356,9 +296,7 @@ def get_job_performance(
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 
     # Get all production entries for this job
-    entries = db.query(ProductionEntry).filter(
-        ProductionEntry.job_id == job_id
-    ).all()
+    entries = db.query(ProductionEntry).filter(ProductionEntry.job_id == job_id).all()
 
     if not entries:
         return {
@@ -366,7 +304,7 @@ def get_job_performance(
             "performance_percentage": 0,
             "total_units_produced": 0,
             "entry_count": 0,
-            "message": "No production entries found for this job"
+            "message": "No production entries found for this job",
         }
 
     # Calculate aggregated metrics
@@ -389,16 +327,12 @@ def get_job_performance(
         "performance_percentage": float(avg_performance),
         "total_units_produced": total_units,
         "total_run_time_hours": float(total_run_time),
-        "entry_count": len(entries)
+        "entry_count": len(entries),
     }
 
 
 @router.get("/{job_id}/ppm")
-def get_job_ppm(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_ppm(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Calculate PPM (Parts Per Million) for a specific job.
 
@@ -416,9 +350,7 @@ def get_job_ppm(
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 
     # Get all quality entries for this job
-    entries = db.query(QualityEntry).filter(
-        QualityEntry.job_id == job_id
-    ).all()
+    entries = db.query(QualityEntry).filter(QualityEntry.job_id == job_id).all()
 
     if not entries:
         return {
@@ -427,7 +359,7 @@ def get_job_ppm(
             "total_inspected": 0,
             "total_defects": 0,
             "entry_count": 0,
-            "message": "No quality entries found for this job"
+            "message": "No quality entries found for this job",
         }
 
     # Aggregate totals
@@ -441,16 +373,12 @@ def get_job_ppm(
         "ppm": float(ppm),
         "total_inspected": total_inspected,
         "total_defects": total_defects,
-        "entry_count": len(entries)
+        "entry_count": len(entries),
     }
 
 
 @router.get("/{job_id}/dpmo")
-def get_job_dpmo(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_dpmo(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Calculate DPMO (Defects Per Million Opportunities) for a specific job.
 
@@ -463,7 +391,7 @@ def get_job_dpmo(
         calculate_dpmo_pure,
         calculate_sigma_level_pure,
         get_opportunities_for_part,
-        get_client_opportunities_default
+        get_client_opportunities_default,
     )
 
     # Verify user has access to this job
@@ -472,9 +400,7 @@ def get_job_dpmo(
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 
     # Get all quality entries for this job
-    entries = db.query(QualityEntry).filter(
-        QualityEntry.job_id == job_id
-    ).all()
+    entries = db.query(QualityEntry).filter(QualityEntry.job_id == job_id).all()
 
     if not entries:
         return {
@@ -483,12 +409,12 @@ def get_job_dpmo(
             "sigma_level": 0,
             "total_opportunities": 0,
             "entry_count": 0,
-            "message": "No quality entries found for this job"
+            "message": "No quality entries found for this job",
         }
 
     # Get opportunities per unit (part-specific or default)
-    client_id = getattr(job, 'client_id', None)
-    part_number = getattr(job, 'part_number', None)
+    client_id = getattr(job, "client_id", None)
+    part_number = getattr(job, "part_number", None)
 
     if part_number:
         opportunities_per_unit = get_opportunities_for_part(db, part_number, client_id)
@@ -513,16 +439,12 @@ def get_job_dpmo(
         "total_opportunities": total_opportunities,
         "opportunities_per_unit": opportunities_per_unit,
         "using_part_specific_opportunities": using_part_specific,
-        "entry_count": len(entries)
+        "entry_count": len(entries),
     }
 
 
 @router.get("/{job_id}/kpi-summary")
-def get_job_kpi_summary(
-    job_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_job_kpi_summary(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get comprehensive KPI summary for a specific job.
 
@@ -543,7 +465,7 @@ def get_job_kpi_summary(
         calculate_dpmo_pure,
         calculate_sigma_level_pure,
         get_opportunities_for_part,
-        get_client_opportunities_default
+        get_client_opportunities_default,
     )
     from backend.calculations.fpy_rty import calculate_job_yield_pure
     from decimal import Decimal
@@ -554,14 +476,10 @@ def get_job_kpi_summary(
         raise HTTPException(status_code=404, detail="Job not found or access denied")
 
     # Get production entries
-    production_entries = db.query(ProductionEntry).filter(
-        ProductionEntry.job_id == job_id
-    ).all()
+    production_entries = db.query(ProductionEntry).filter(ProductionEntry.job_id == job_id).all()
 
     # Get quality entries
-    quality_entries = db.query(QualityEntry).filter(
-        QualityEntry.job_id == job_id
-    ).all()
+    quality_entries = db.query(QualityEntry).filter(QualityEntry.job_id == job_id).all()
 
     # Calculate production KPIs
     service = ProductionKPIService(db)
@@ -599,8 +517,8 @@ def get_job_kpi_summary(
     ppm = calculate_ppm_pure(qc_total_inspected, qc_total_defects)
 
     # Get opportunities for DPMO
-    client_id = getattr(job, 'client_id', None)
-    part_number = getattr(job, 'part_number', None)
+    client_id = getattr(job, "client_id", None)
+    part_number = getattr(job, "part_number", None)
     if part_number:
         opportunities_per_unit = get_opportunities_for_part(db, part_number, client_id)
     else:
@@ -610,14 +528,14 @@ def get_job_kpi_summary(
     sigma_level = calculate_sigma_level_pure(dpmo)
 
     # Calculate job yield
-    completed_qty = getattr(job, 'completed_quantity', 0) or 0
-    scrapped_qty = getattr(job, 'quantity_scrapped', 0) or 0
+    completed_qty = getattr(job, "completed_quantity", 0) or 0
+    scrapped_qty = getattr(job, "quantity_scrapped", 0) or 0
     yield_pct = calculate_job_yield_pure(completed_qty, scrapped_qty)
 
     return {
         "job_id": job_id,
         "part_number": part_number,
-        "status": getattr(job, 'status', None),
+        "status": getattr(job, "status", None),
         "production_kpis": {
             "efficiency_percentage": float(avg_efficiency),
             "performance_percentage": float(avg_performance),
@@ -625,7 +543,7 @@ def get_job_kpi_summary(
             "total_units_produced": total_units,
             "defect_count": total_defects,
             "scrap_count": total_scrap,
-            "entry_count": len(production_entries)
+            "entry_count": len(production_entries),
         },
         "quality_kpis": {
             "ppm": float(ppm),
@@ -634,11 +552,11 @@ def get_job_kpi_summary(
             "total_inspected": qc_total_inspected,
             "total_defects": qc_total_defects,
             "opportunities_per_unit": opportunities_per_unit,
-            "entry_count": len(quality_entries)
+            "entry_count": len(quality_entries),
         },
         "yield": {
             "yield_percentage": float(yield_pct),
             "completed_quantity": completed_qty,
-            "quantity_scrapped": scrapped_qty
-        }
+            "quantity_scrapped": scrapped_qty,
+        },
     }

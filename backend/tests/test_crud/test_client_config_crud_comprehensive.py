@@ -3,6 +3,7 @@ Comprehensive Client Config CRUD Tests
 Tests CRUD operations with real database transactions.
 Target: Increase crud/client_config.py coverage to 85%+
 """
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -43,42 +44,24 @@ def config_setup(config_db):
 
     # Create clients
     client_a = TestDataFactory.create_client(
-        db,
-        client_id="CONFIG-CLIENT-A",
-        client_name="Config Test Client A",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="CONFIG-CLIENT-A", client_name="Config Test Client A", client_type=ClientType.HOURLY_RATE
     )
 
     client_b = TestDataFactory.create_client(
-        db,
-        client_id="CONFIG-CLIENT-B",
-        client_name="Config Test Client B",
-        client_type=ClientType.PIECE_RATE
+        db, client_id="CONFIG-CLIENT-B", client_name="Config Test Client B", client_type=ClientType.PIECE_RATE
     )
 
     # Create users
     admin = TestDataFactory.create_user(
-        db,
-        user_id="cfg-admin-001",
-        username="config_admin",
-        role="admin",
-        client_id=None
+        db, user_id="cfg-admin-001", username="config_admin", role="admin", client_id=None
     )
 
     supervisor_a = TestDataFactory.create_user(
-        db,
-        user_id="cfg-super-001",
-        username="config_supervisor_a",
-        role="supervisor",
-        client_id=client_a.client_id
+        db, user_id="cfg-super-001", username="config_supervisor_a", role="supervisor", client_id=client_a.client_id
     )
 
     supervisor_b = TestDataFactory.create_user(
-        db,
-        user_id="cfg-super-002",
-        username="config_supervisor_b",
-        role="supervisor",
-        client_id=client_b.client_id
+        db, user_id="cfg-super-002", username="config_supervisor_b", role="supervisor", client_id=client_b.client_id
     )
 
     db.commit()
@@ -195,9 +178,7 @@ class TestGetClientConfig:
         config_data = {"client_id": client.client_id}
         client_config_crud.create_client_config(db, config_data, admin)
 
-        result = client_config_crud.get_client_config(
-            db, client.client_id, admin
-        )
+        result = client_config_crud.get_client_config(db, client.client_id, admin)
 
         assert result is not None
         assert result.client_id == client.client_id
@@ -208,9 +189,7 @@ class TestGetClientConfig:
         admin = config_setup["admin"]
         client = config_setup["client_a"]
 
-        result = client_config_crud.get_client_config(
-            db, client.client_id, admin, create_if_missing=False
-        )
+        result = client_config_crud.get_client_config(db, client.client_id, admin, create_if_missing=False)
 
         assert result is None
 
@@ -220,9 +199,7 @@ class TestGetClientConfig:
         admin = config_setup["admin"]
         client = config_setup["client_a"]
 
-        result = client_config_crud.get_client_config(
-            db, client.client_id, admin, create_if_missing=True
-        )
+        result = client_config_crud.get_client_config(db, client.client_id, admin, create_if_missing=True)
 
         assert result is not None
         assert result.client_id == client.client_id
@@ -234,9 +211,7 @@ class TestGetClientConfig:
         client_b = config_setup["client_b"]
 
         with pytest.raises(HTTPException) as exc_info:
-            client_config_crud.get_client_config(
-                db, client_b.client_id, supervisor_a
-            )
+            client_config_crud.get_client_config(db, client_b.client_id, supervisor_a)
 
         assert exc_info.value.status_code == 403
 
@@ -257,9 +232,7 @@ class TestGetClientConfigOrDefaults:
         }
         client_config_crud.create_client_config(db, config_data, admin)
 
-        result = client_config_crud.get_client_config_or_defaults(
-            db, client.client_id
-        )
+        result = client_config_crud.get_client_config_or_defaults(db, client.client_id)
 
         assert result["efficiency_target_percent"] == 92.0
         assert result["is_default"] is False
@@ -272,13 +245,12 @@ class TestGetClientConfigOrDefaults:
 
         # Clear cache to ensure we're testing fresh lookup
         from backend.cache import get_cache, build_cache_key
+
         cache = get_cache()
         cache_key = build_cache_key("client_config", client.client_id)
         cache.delete(cache_key)
 
-        result = client_config_crud.get_client_config_or_defaults(
-            db, client.client_id
-        )
+        result = client_config_crud.get_client_config_or_defaults(db, client.client_id)
 
         assert result["is_default"] is True
         # Should have default values
@@ -301,9 +273,7 @@ class TestUpdateClientConfig:
 
         # Update
         update_data = {"efficiency_target_percent": 95.0}
-        result = client_config_crud.update_client_config(
-            db, client.client_id, update_data, admin
-        )
+        result = client_config_crud.update_client_config(db, client.client_id, update_data, admin)
 
         assert result.efficiency_target_percent == 95.0
 
@@ -314,9 +284,7 @@ class TestUpdateClientConfig:
         client = config_setup["client_a"]
 
         with pytest.raises(HTTPException) as exc_info:
-            client_config_crud.update_client_config(
-                db, client.client_id, {}, admin
-            )
+            client_config_crud.update_client_config(db, client.client_id, {}, admin)
 
         assert exc_info.value.status_code == 404
 
@@ -354,9 +322,7 @@ class TestDeleteClientConfig:
         client_config_crud.create_client_config(db, config_data, admin)
 
         # Delete
-        result = client_config_crud.delete_client_config(
-            db, client.client_id, admin
-        )
+        result = client_config_crud.delete_client_config(db, client.client_id, admin)
 
         assert result is True
 
@@ -373,9 +339,7 @@ class TestDeleteClientConfig:
 
         # Supervisor tries to delete
         with pytest.raises(HTTPException) as exc_info:
-            client_config_crud.delete_client_config(
-                db, client.client_id, supervisor
-            )
+            client_config_crud.delete_client_config(db, client.client_id, supervisor)
 
         assert exc_info.value.status_code == 403
 
@@ -386,9 +350,7 @@ class TestDeleteClientConfig:
         client = config_setup["client_a"]
 
         with pytest.raises(HTTPException) as exc_info:
-            client_config_crud.delete_client_config(
-                db, client.client_id, admin
-            )
+            client_config_crud.delete_client_config(db, client.client_id, admin)
 
         assert exc_info.value.status_code == 404
 
@@ -404,12 +366,8 @@ class TestGetAllClientConfigs:
         client_b = config_setup["client_b"]
 
         # Create configs for both clients
-        client_config_crud.create_client_config(
-            db, {"client_id": client_a.client_id}, admin
-        )
-        client_config_crud.create_client_config(
-            db, {"client_id": client_b.client_id}, admin
-        )
+        client_config_crud.create_client_config(db, {"client_id": client_a.client_id}, admin)
+        client_config_crud.create_client_config(db, {"client_id": client_b.client_id}, admin)
 
         results = client_config_crud.get_all_client_configs(db, admin)
 
@@ -433,17 +391,11 @@ class TestGetAllClientConfigs:
         client_b = config_setup["client_b"]
 
         # Create configs
-        client_config_crud.create_client_config(
-            db, {"client_id": client_a.client_id}, admin
-        )
-        client_config_crud.create_client_config(
-            db, {"client_id": client_b.client_id}, admin
-        )
+        client_config_crud.create_client_config(db, {"client_id": client_a.client_id}, admin)
+        client_config_crud.create_client_config(db, {"client_id": client_b.client_id}, admin)
 
         # Get with limit
-        results = client_config_crud.get_all_client_configs(
-            db, admin, skip=0, limit=1
-        )
+        results = client_config_crud.get_all_client_configs(db, admin, skip=0, limit=1)
 
         assert len(results) == 1
 

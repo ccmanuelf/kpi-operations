@@ -8,6 +8,7 @@ Provides event publishing and handling with:
 - Async handler support
 - Error isolation
 """
+
 from typing import List, Dict, Type, Callable, Optional, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class HandlerRegistration:
     """Registration entry for an event handler."""
+
     handler: EventHandler
     event_type: str
     priority: int
@@ -42,10 +44,10 @@ class EventBus:
     - Error isolation prevents cascade failures
     """
 
-    _instance: Optional['EventBus'] = None
+    _instance: Optional["EventBus"] = None
     _lock = threading.Lock()
 
-    def __new__(cls) -> 'EventBus':
+    def __new__(cls) -> "EventBus":
         """Singleton pattern for global event bus."""
         if cls._instance is None:
             with cls._lock:
@@ -64,13 +66,7 @@ class EventBus:
         self._persistence_handler: Optional[Callable] = None
         self._initialized = True
 
-    def subscribe(
-        self,
-        event_type: str,
-        handler: EventHandler,
-        priority: int = 100,
-        is_async: bool = False
-    ) -> None:
+    def subscribe(self, event_type: str, handler: EventHandler, priority: int = 100, is_async: bool = False) -> None:
         """
         Subscribe a handler to an event type.
 
@@ -80,12 +76,7 @@ class EventBus:
             priority: Lower numbers run first (default 100)
             is_async: If True, handler runs after HTTP response
         """
-        registration = HandlerRegistration(
-            handler=handler,
-            event_type=event_type,
-            priority=priority,
-            is_async=is_async
-        )
+        registration = HandlerRegistration(handler=handler, event_type=event_type, priority=priority, is_async=is_async)
         self._handlers[event_type].append(registration)
         # Sort by priority
         self._handlers[event_type].sort(key=lambda r: r.priority)
@@ -181,10 +172,7 @@ class EventBus:
         """
         return self._collected_events.copy()
 
-    def set_persistence_handler(
-        self,
-        handler: Callable[[DomainEvent], None]
-    ) -> None:
+    def set_persistence_handler(self, handler: Callable[[DomainEvent], None]) -> None:
         """
         Set a handler for persisting events to EVENT_STORE.
 
@@ -193,11 +181,7 @@ class EventBus:
         """
         self._persistence_handler = handler
 
-    def _dispatch_to_handlers(
-        self,
-        event: DomainEvent,
-        sync_only: bool = False
-    ) -> None:
+    def _dispatch_to_handlers(self, event: DomainEvent, sync_only: bool = False) -> None:
         """
         Dispatch event to registered handlers.
 
@@ -224,9 +208,7 @@ class EventBus:
                     asyncio.create_task(self._run_async_handler(reg.handler, event))
                 else:
                     # Run sync handler directly
-                    asyncio.get_event_loop().run_until_complete(
-                        reg.handler.handle(event)
-                    )
+                    asyncio.get_event_loop().run_until_complete(reg.handler.handle(event))
             except RuntimeError:
                 # No event loop - run synchronously
                 try:
@@ -237,11 +219,7 @@ class EventBus:
                 logger.error(f"Handler error for {event.event_type}: {e}")
                 # Continue with other handlers
 
-    async def _run_async_handler(
-        self,
-        handler: EventHandler,
-        event: DomainEvent
-    ) -> None:
+    async def _run_async_handler(self, handler: EventHandler, event: DomainEvent) -> None:
         """Run an async handler with error isolation."""
         try:
             await handler.handle(event)

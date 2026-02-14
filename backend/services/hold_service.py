@@ -5,6 +5,7 @@ Coordinates CRUD operations with hold/resume workflow and aging tracking.
 
 Phase 2: Service Layer Enforcement
 """
+
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
@@ -52,11 +53,7 @@ class HoldService:
         """
         self.db = db
 
-    def create_hold(
-        self,
-        data: WIPHoldCreate,
-        user: User
-    ) -> WIPHoldResponse:
+    def create_hold(self, data: WIPHoldCreate, user: User) -> WIPHoldResponse:
         """
         Create a new WIP hold.
 
@@ -73,11 +70,7 @@ class HoldService:
         """
         return create_wip_hold(self.db, data, user)
 
-    def get_hold(
-        self,
-        hold_id: str,
-        user: User
-    ) -> Optional[WIPHoldResponse]:
+    def get_hold(self, hold_id: str, user: User) -> Optional[WIPHoldResponse]:
         """
         Get a hold by ID.
 
@@ -101,7 +94,7 @@ class HoldService:
         client_id: Optional[str] = None,
         work_order_id: Optional[str] = None,
         released: Optional[bool] = None,
-        hold_reason_category: Optional[str] = None
+        hold_reason_category: Optional[str] = None,
     ) -> List:
         """
         List holds with filtering.
@@ -121,17 +114,10 @@ class HoldService:
             List of holds
         """
         return get_wip_holds(
-            self.db, user, skip, limit,
-            start_date, end_date, client_id, work_order_id,
-            released, hold_reason_category
+            self.db, user, skip, limit, start_date, end_date, client_id, work_order_id, released, hold_reason_category
         )
 
-    def update_hold(
-        self,
-        hold_id: int,
-        data: WIPHoldUpdate,
-        user: User
-    ) -> Optional[WIPHoldResponse]:
+    def update_hold(self, hold_id: int, data: WIPHoldUpdate, user: User) -> Optional[WIPHoldResponse]:
         """
         Update a hold.
 
@@ -145,11 +131,7 @@ class HoldService:
         """
         return update_wip_hold(self.db, hold_id, data, user)
 
-    def delete_hold(
-        self,
-        hold_id: int,
-        user: User
-    ) -> bool:
+    def delete_hold(self, hold_id: int, user: User) -> bool:
         """
         Soft delete a hold.
 
@@ -162,12 +144,7 @@ class HoldService:
         """
         return delete_wip_hold(self.db, hold_id, user)
 
-    def resume_hold(
-        self,
-        hold_id: int,
-        user: User,
-        notes: Optional[str] = None
-    ) -> Optional[WIPHoldResponse]:
+    def resume_hold(self, hold_id: int, user: User, notes: Optional[str] = None) -> Optional[WIPHoldResponse]:
         """
         Resume a hold (mark as RESUMED).
 
@@ -181,9 +158,7 @@ class HoldService:
         Returns:
             Updated hold with calculated duration
         """
-        return resume_hold(
-            self.db, hold_id, user.user_id, user, notes
-        )
+        return resume_hold(self.db, hold_id, user.user_id, user, notes)
 
     def release_hold(
         self,
@@ -191,7 +166,7 @@ class HoldService:
         user: User,
         quantity_released: Optional[int] = None,
         quantity_scrapped: Optional[int] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> Optional[WIPHoldResponse]:
         """
         Release a hold with quantities.
@@ -206,16 +181,9 @@ class HoldService:
         Returns:
             Updated hold
         """
-        return release_hold(
-            self.db, hold_id, user,
-            quantity_released, quantity_scrapped, notes
-        )
+        return release_hold(self.db, hold_id, user, quantity_released, quantity_scrapped, notes)
 
-    def get_total_hold_duration(
-        self,
-        work_order_number: str,
-        user: Optional[User] = None
-    ) -> TotalHoldDurationResponse:
+    def get_total_hold_duration(self, work_order_number: str, user: Optional[User] = None) -> TotalHoldDurationResponse:
         """
         Get total hold duration for a work order.
 
@@ -230,11 +198,7 @@ class HoldService:
         """
         return get_total_hold_duration(self.db, work_order_number, user)
 
-    def get_holds_by_work_order(
-        self,
-        work_order_number: str,
-        user: User
-    ) -> List[WIPHoldResponse]:
+    def get_holds_by_work_order(self, work_order_number: str, user: User) -> List[WIPHoldResponse]:
         """
         Get all holds for a work order.
 
@@ -247,10 +211,7 @@ class HoldService:
         """
         return get_holds_by_work_order(self.db, work_order_number, user)
 
-    def bulk_update_aging(
-        self,
-        user: User
-    ) -> int:
+    def bulk_update_aging(self, user: User) -> int:
         """
         Bulk update aging for all unreleased holds.
 

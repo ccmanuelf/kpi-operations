@@ -9,6 +9,7 @@ Connection Pool Configuration:
 - Pool Recycle: Seconds before recycling connections (prevents stale connections)
 - Pool Pre-ping: Test connection health before using (prevents invalid connections)
 """
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -31,7 +32,7 @@ if is_sqlite:
         settings.DATABASE_URL,
         echo=settings.DEBUG,
         connect_args={"check_same_thread": False},
-        poolclass=NullPool  # SQLite doesn't benefit from connection pooling
+        poolclass=NullPool,  # SQLite doesn't benefit from connection pooling
     )
     logger.info("Database engine created with SQLite (NullPool)")
 else:
@@ -44,7 +45,7 @@ else:
         max_overflow=settings.DATABASE_MAX_OVERFLOW,  # Additional connections: 10
         pool_timeout=settings.DATABASE_POOL_TIMEOUT,  # Wait timeout: 30 seconds
         pool_recycle=settings.DATABASE_POOL_RECYCLE,  # Recycle after: 3600 seconds (1 hour)
-        pool_pre_ping=True  # Test connections before using (prevents invalid connections)
+        pool_pre_ping=True,  # Test connections before using (prevents invalid connections)
     )
     logger.info(
         f"Database engine created with connection pooling: "
@@ -53,6 +54,7 @@ else:
         f"timeout={settings.DATABASE_POOL_TIMEOUT}s, "
         f"recycle={settings.DATABASE_POOL_RECYCLE}s"
     )
+
 
 # Connection pool event listeners for monitoring and debugging
 @event.listens_for(engine, "connect")
@@ -98,10 +100,7 @@ def get_pool_status():
     Returns dictionary with pool metrics for monitoring
     """
     if isinstance(engine.pool, NullPool):
-        return {
-            "pool_type": "NullPool",
-            "description": "SQLite - No connection pooling"
-        }
+        return {"pool_type": "NullPool", "description": "SQLite - No connection pooling"}
 
     pool = engine.pool
     return {
@@ -111,14 +110,16 @@ def get_pool_status():
         "overflow": pool.overflow(),
         "total_connections": pool.size() + pool.overflow(),
         "max_capacity": settings.DATABASE_POOL_SIZE + settings.DATABASE_MAX_OVERFLOW,
-        "utilization_percent": round(
-            ((pool.checkedout()) / (settings.DATABASE_POOL_SIZE + settings.DATABASE_MAX_OVERFLOW)) * 100, 2
-        ) if settings.DATABASE_POOL_SIZE + settings.DATABASE_MAX_OVERFLOW > 0 else 0,
+        "utilization_percent": (
+            round(((pool.checkedout()) / (settings.DATABASE_POOL_SIZE + settings.DATABASE_MAX_OVERFLOW)) * 100, 2)
+            if settings.DATABASE_POOL_SIZE + settings.DATABASE_MAX_OVERFLOW > 0
+            else 0
+        ),
         "configuration": {
             "pool_size": settings.DATABASE_POOL_SIZE,
             "max_overflow": settings.DATABASE_MAX_OVERFLOW,
             "pool_timeout": settings.DATABASE_POOL_TIMEOUT,
             "pool_recycle": settings.DATABASE_POOL_RECYCLE,
-            "pool_pre_ping": True if not is_sqlite else False
-        }
+            "pool_pre_ping": True if not is_sqlite else False,
+        },
     }

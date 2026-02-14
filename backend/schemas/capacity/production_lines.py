@@ -2,6 +2,7 @@
 Capacity Production Lines - Line capacity specifications
 Defines production lines with capacity parameters for capacity planning.
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, Text
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -19,6 +20,7 @@ class CapacityProductionLine(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_production_lines"
     __table_args__ = {"extend_existing": True}
 
@@ -26,7 +28,7 @@ class CapacityProductionLine(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Line identification
     line_code = Column(String(50), nullable=False, index=True)

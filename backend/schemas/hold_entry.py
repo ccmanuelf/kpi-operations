@@ -3,6 +3,7 @@ HOLD_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation for KPI #1 WIP Aging calculation
 Source: 03-Phase2_Downtime_WIP_Inventory.csv lines 20-38
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -11,6 +12,7 @@ import enum
 
 class HoldStatus(str, enum.Enum):
     """Hold status tracking with approval workflow"""
+
     PENDING_HOLD_APPROVAL = "PENDING_HOLD_APPROVAL"  # Operator requested hold, awaiting supervisor approval
     ON_HOLD = "ON_HOLD"  # Hold approved and active
     PENDING_RESUME_APPROVAL = "PENDING_RESUME_APPROVAL"  # Resume requested, awaiting supervisor approval
@@ -20,6 +22,7 @@ class HoldStatus(str, enum.Enum):
 
 class HoldReason(str, enum.Enum):
     """Hold reason classification - strict validation"""
+
     MATERIAL_INSPECTION = "MATERIAL_INSPECTION"
     MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
     QUALITY_ISSUE = "QUALITY_ISSUE"
@@ -35,6 +38,7 @@ class HoldReason(str, enum.Enum):
 
 class HoldEntry(Base):
     """HOLD_ENTRY table - WIP hold/resume tracking for aging calculation"""
+
     __tablename__ = "HOLD_ENTRY"
     __table_args__ = {"extend_existing": True}
 
@@ -42,11 +46,11 @@ class HoldEntry(Base):
     hold_entry_id = Column(String(50), primary_key=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Work order reference
-    work_order_id = Column(String(50), ForeignKey('WORK_ORDER.work_order_id'), nullable=False, index=True)
-    job_id = Column(String(50), ForeignKey('JOB.job_id'), index=True)  # Job-level tracking
+    work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)
+    job_id = Column(String(50), ForeignKey("JOB.job_id"), index=True)  # Job-level tracking
 
     # Hold tracking
     hold_status = Column(SQLEnum(HoldStatus), nullable=False, default=HoldStatus.ON_HOLD, index=True)
@@ -67,15 +71,15 @@ class HoldEntry(Base):
     expected_resolution_date = Column(DateTime)
 
     # Responsible parties
-    hold_initiated_by = Column(String(50), ForeignKey('USER.user_id'))
-    hold_approved_by = Column(String(50), ForeignKey('USER.user_id'))
-    resumed_by = Column(String(50), ForeignKey('USER.user_id'))
+    hold_initiated_by = Column(String(50), ForeignKey("USER.user_id"))
+    hold_approved_by = Column(String(50), ForeignKey("USER.user_id"))
+    resumed_by = Column(String(50), ForeignKey("USER.user_id"))
 
     # Metadata
     notes = Column(Text)
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(String(50), ForeignKey('USER.user_id'))
+    updated_by = Column(String(50), ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

@@ -2,6 +2,7 @@
 Data Completeness API Routes
 Provides data entry completeness indicators for dashboard and data entry views
 """
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -13,10 +14,7 @@ from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 from backend.middleware.client_auth import build_client_filter_clause
 
-router = APIRouter(
-    prefix="/api/data-completeness",
-    tags=["Data Completeness"]
-)
+router = APIRouter(prefix="/api/data-completeness", tags=["Data Completeness"])
 
 
 def get_date_filter(target_date: date, model_date_column):
@@ -27,11 +25,7 @@ def get_date_filter(target_date: date, model_date_column):
 
 
 def calculate_expected_entries(
-    db: Session,
-    target_date: date,
-    shift_id: Optional[int],
-    client_id: Optional[str],
-    entry_type: str
+    db: Session, target_date: date, shift_id: Optional[int], client_id: Optional[str], entry_type: str
 ) -> int:
     """
     Calculate expected entries based on business rules.
@@ -53,7 +47,7 @@ def calculate_expected_entries(
     work_order_query = db.query(func.count(WorkOrder.work_order_id)).filter(
         WorkOrder.planned_start_date <= target_date,
         (WorkOrder.actual_delivery_date >= target_date) | (WorkOrder.actual_delivery_date.is_(None)),
-        WorkOrder.status != 'COMPLETED'
+        WorkOrder.status != "COMPLETED",
     )
 
     if client_id:
@@ -61,34 +55,30 @@ def calculate_expected_entries(
 
     active_work_orders = work_order_query.scalar() or 0
 
-    if entry_type == 'production':
+    if entry_type == "production":
         # Expect 1 production entry per active work order per shift
         shifts_per_day = 2 if shift_id is None else 1
         return max(active_work_orders * shifts_per_day, 5)  # Minimum 5 entries expected
 
-    elif entry_type == 'downtime':
+    elif entry_type == "downtime":
         # Expect at least 1 downtime entry per active work order (can be 0 minutes)
         return max(active_work_orders, 3)  # Minimum 3 entries expected
 
-    elif entry_type == 'attendance':
+    elif entry_type == "attendance":
         # Get scheduled employees count
-        employee_query = db.query(func.count(Employee.employee_id)).filter(
-            Employee.is_active == 1
-        )
+        employee_query = db.query(func.count(Employee.employee_id)).filter(Employee.is_active == 1)
         if client_id:
             # Employee uses client_id_assigned which can be comma-separated
-            employee_query = employee_query.filter(
-                Employee.client_id_assigned.contains(client_id)
-            )
+            employee_query = employee_query.filter(Employee.client_id_assigned.contains(client_id))
 
         scheduled_employees = employee_query.scalar() or 0
         return max(scheduled_employees, 10)  # Minimum 10 employees expected
 
-    elif entry_type == 'quality':
+    elif entry_type == "quality":
         # Expect quality entries for ~80% of active work orders (inspection sampling)
         return max(int(active_work_orders * 0.8), 2)  # Minimum 2 entries expected
 
-    elif entry_type == 'hold':
+    elif entry_type == "hold":
         # Holds are event-driven, expect ~10% of work orders to have holds
         return max(int(active_work_orders * 0.1), 1)  # Minimum 1 entry expected
 
@@ -101,7 +91,7 @@ def get_data_completeness(
     shift_id: Optional[int] = Query(None, description="Shift ID filter"),
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get data completeness indicators for a specific date and shift.
@@ -131,7 +121,7 @@ def get_data_completeness(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Helper function to count entries
@@ -140,15 +130,15 @@ def get_data_completeness(
         query = db.query(func.count()).filter(date_start, date_end)
 
         # Apply client filter if model has client_id
-        if hasattr(model, 'client_id') and effective_client_id:
+        if hasattr(model, "client_id") and effective_client_id:
             query = query.filter(model.client_id == effective_client_id)
-        elif hasattr(model, 'client_id'):
+        elif hasattr(model, "client_id"):
             client_filter = build_client_filter_clause(current_user, model.client_id)
             if client_filter is not None:
                 query = query.filter(client_filter)
 
         # Apply shift filter if provided and model supports it
-        if shift_id and hasattr(model, 'shift_id'):
+        if shift_id and hasattr(model, "shift_id"):
             query = query.filter(model.shift_id == shift_id)
 
         # Apply any extra filters
@@ -167,67 +157,36 @@ def get_data_completeness(
         return "incomplete"
 
     # Count entries for each category
-    production_entered = count_entries(
-        ProductionEntry,
-        ProductionEntry.shift_date
-    )
-    production_expected = calculate_expected_entries(
-        db, target_date, shift_id, effective_client_id, 'production'
-    )
+    production_entered = count_entries(ProductionEntry, ProductionEntry.shift_date)
+    production_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "production")
     production_pct = min((production_entered / production_expected * 100) if production_expected > 0 else 100, 100)
 
-    downtime_entered = count_entries(
-        DowntimeEntry,
-        DowntimeEntry.shift_date
-    )
-    downtime_expected = calculate_expected_entries(
-        db, target_date, shift_id, effective_client_id, 'downtime'
-    )
+    downtime_entered = count_entries(DowntimeEntry, DowntimeEntry.shift_date)
+    downtime_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "downtime")
     downtime_pct = min((downtime_entered / downtime_expected * 100) if downtime_expected > 0 else 100, 100)
 
-    attendance_entered = count_entries(
-        AttendanceEntry,
-        AttendanceEntry.shift_date
-    )
-    attendance_expected = calculate_expected_entries(
-        db, target_date, shift_id, effective_client_id, 'attendance'
-    )
+    attendance_entered = count_entries(AttendanceEntry, AttendanceEntry.shift_date)
+    attendance_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "attendance")
     attendance_pct = min((attendance_entered / attendance_expected * 100) if attendance_expected > 0 else 100, 100)
 
-    quality_entered = count_entries(
-        QualityEntry,
-        QualityEntry.shift_date
-    )
-    quality_expected = calculate_expected_entries(
-        db, target_date, shift_id, effective_client_id, 'quality'
-    )
+    quality_entered = count_entries(QualityEntry, QualityEntry.shift_date)
+    quality_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "quality")
     quality_pct = min((quality_entered / quality_expected * 100) if quality_expected > 0 else 100, 100)
 
-    hold_entered = count_entries(
-        HoldEntry,
-        HoldEntry.hold_date
-    )
-    hold_expected = calculate_expected_entries(
-        db, target_date, shift_id, effective_client_id, 'hold'
-    )
+    hold_entered = count_entries(HoldEntry, HoldEntry.hold_date)
+    hold_expected = calculate_expected_entries(db, target_date, shift_id, effective_client_id, "hold")
     hold_pct = min((hold_entered / hold_expected * 100) if hold_expected > 0 else 100, 100)
 
     # Calculate overall completeness (weighted average)
     # Production and Attendance are weighted higher as they're critical for KPIs
-    weights = {
-        'production': 0.30,
-        'downtime': 0.15,
-        'attendance': 0.30,
-        'quality': 0.15,
-        'hold': 0.10
-    }
+    weights = {"production": 0.30, "downtime": 0.15, "attendance": 0.30, "quality": 0.15, "hold": 0.10}
 
     overall_pct = (
-        production_pct * weights['production'] +
-        downtime_pct * weights['downtime'] +
-        attendance_pct * weights['attendance'] +
-        quality_pct * weights['quality'] +
-        hold_pct * weights['hold']
+        production_pct * weights["production"]
+        + downtime_pct * weights["downtime"]
+        + attendance_pct * weights["attendance"]
+        + quality_pct * weights["quality"]
+        + hold_pct * weights["hold"]
     )
 
     return {
@@ -238,37 +197,34 @@ def get_data_completeness(
             "entered": production_entered,
             "expected": production_expected,
             "percentage": round(production_pct, 1),
-            "status": get_status(production_pct)
+            "status": get_status(production_pct),
         },
         "downtime": {
             "entered": downtime_entered,
             "expected": downtime_expected,
             "percentage": round(downtime_pct, 1),
-            "status": get_status(downtime_pct)
+            "status": get_status(downtime_pct),
         },
         "attendance": {
             "entered": attendance_entered,
             "expected": attendance_expected,
             "percentage": round(attendance_pct, 1),
-            "status": get_status(attendance_pct)
+            "status": get_status(attendance_pct),
         },
         "quality": {
             "entered": quality_entered,
             "expected": quality_expected,
             "percentage": round(quality_pct, 1),
-            "status": get_status(quality_pct)
+            "status": get_status(quality_pct),
         },
         "hold": {
             "entered": hold_entered,
             "expected": hold_expected,
             "percentage": round(hold_pct, 1),
-            "status": get_status(hold_pct)
+            "status": get_status(hold_pct),
         },
-        "overall": {
-            "percentage": round(overall_pct, 1),
-            "status": get_status(overall_pct)
-        },
-        "calculation_timestamp": datetime.utcnow().isoformat()
+        "overall": {"percentage": round(overall_pct, 1), "status": get_status(overall_pct)},
+        "calculation_timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -278,7 +234,7 @@ def get_completeness_summary(
     end_date: Optional[date] = Query(None, description="End date (default: today)"),
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get data completeness summary for a date range.
@@ -298,34 +254,34 @@ def get_completeness_summary(
     while current_date <= end_date:
         # Get completeness for this day (simplified - just overall percentage)
         completeness = get_data_completeness(
-            target_date=current_date,
-            shift_id=None,
-            client_id=client_id,
-            db=db,
-            current_user=current_user
+            target_date=current_date, shift_id=None, client_id=client_id, db=db, current_user=current_user
         )
 
-        daily_completeness.append({
-            "date": current_date.isoformat(),
-            "overall_percentage": completeness["overall"]["percentage"],
-            "status": completeness["overall"]["status"],
-            "production": completeness["production"]["percentage"],
-            "downtime": completeness["downtime"]["percentage"],
-            "attendance": completeness["attendance"]["percentage"],
-            "quality": completeness["quality"]["percentage"]
-        })
+        daily_completeness.append(
+            {
+                "date": current_date.isoformat(),
+                "overall_percentage": completeness["overall"]["percentage"],
+                "status": completeness["overall"]["status"],
+                "production": completeness["production"]["percentage"],
+                "downtime": completeness["downtime"]["percentage"],
+                "attendance": completeness["attendance"]["percentage"],
+                "quality": completeness["quality"]["percentage"],
+            }
+        )
 
         current_date += timedelta(days=1)
 
     # Calculate average completeness
-    avg_overall = sum(d["overall_percentage"] for d in daily_completeness) / len(daily_completeness) if daily_completeness else 0
+    avg_overall = (
+        sum(d["overall_percentage"] for d in daily_completeness) / len(daily_completeness) if daily_completeness else 0
+    )
 
     return {
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
         "average_completeness": round(avg_overall, 1),
         "daily": daily_completeness,
-        "calculation_timestamp": datetime.utcnow().isoformat()
+        "calculation_timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -334,7 +290,7 @@ def get_completeness_by_category(
     target_date: Optional[date] = Query(None, alias="date", description="Target date (default: today)"),
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get detailed completeness breakdown by category.
@@ -347,11 +303,7 @@ def get_completeness_by_category(
 
     # Get base completeness
     completeness = get_data_completeness(
-        target_date=target_date,
-        shift_id=None,
-        client_id=client_id,
-        db=db,
-        current_user=current_user
+        target_date=target_date, shift_id=None, client_id=client_id, db=db, current_user=current_user
     )
 
     # Build category details with navigation hints
@@ -362,7 +314,7 @@ def get_completeness_by_category(
             "icon": "mdi-factory",
             "color": "primary",
             "route": "/entry/production",
-            **completeness["production"]
+            **completeness["production"],
         },
         {
             "id": "downtime",
@@ -370,7 +322,7 @@ def get_completeness_by_category(
             "icon": "mdi-clock-alert",
             "color": "warning",
             "route": "/entry/downtime",
-            **completeness["downtime"]
+            **completeness["downtime"],
         },
         {
             "id": "attendance",
@@ -378,7 +330,7 @@ def get_completeness_by_category(
             "icon": "mdi-account-check",
             "color": "info",
             "route": "/entry/attendance",
-            **completeness["attendance"]
+            **completeness["attendance"],
         },
         {
             "id": "quality",
@@ -386,7 +338,7 @@ def get_completeness_by_category(
             "icon": "mdi-check-decagram",
             "color": "success",
             "route": "/entry/quality",
-            **completeness["quality"]
+            **completeness["quality"],
         },
         {
             "id": "hold",
@@ -394,13 +346,13 @@ def get_completeness_by_category(
             "icon": "mdi-pause-circle",
             "color": "error",
             "route": "/entry/hold",
-            **completeness["hold"]
-        }
+            **completeness["hold"],
+        },
     ]
 
     return {
         "date": target_date.isoformat(),
         "overall": completeness["overall"],
         "categories": categories,
-        "calculation_timestamp": datetime.utcnow().isoformat()
+        "calculation_timestamp": datetime.utcnow().isoformat(),
     }

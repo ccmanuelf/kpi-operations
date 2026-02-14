@@ -4,6 +4,7 @@ PHASE 2: Machine/Line availability tracking
 
 Availability = (Total Scheduled Time - Downtime) / Total Scheduled Time * 100
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, cast, Date
 from datetime import date
@@ -15,10 +16,7 @@ from backend.schemas.shift import Shift
 
 
 def calculate_availability(
-    db: Session,
-    work_order_id: str,
-    target_date: date,
-    client_id: Optional[str] = None
+    db: Session, work_order_id: str, target_date: date, client_id: Optional[str] = None
 ) -> tuple[Decimal, Decimal, Decimal, int]:
     """
     Calculate availability for a specific work order/date
@@ -36,13 +34,8 @@ def calculate_availability(
     scheduled_hours = Decimal("8.0")
 
     # Build query for downtime entries
-    query = db.query(
-        func.coalesce(func.sum(DowntimeEntry.downtime_duration_minutes), 0)
-    ).filter(
-        and_(
-            DowntimeEntry.work_order_id == work_order_id,
-            cast(DowntimeEntry.shift_date, Date) == target_date
-        )
+    query = db.query(func.coalesce(func.sum(DowntimeEntry.downtime_duration_minutes), 0)).filter(
+        and_(DowntimeEntry.work_order_id == work_order_id, cast(DowntimeEntry.shift_date, Date) == target_date)
     )
 
     if client_id:
@@ -55,10 +48,7 @@ def calculate_availability(
 
     # Count downtime events
     count_query = db.query(func.count(DowntimeEntry.downtime_entry_id)).filter(
-        and_(
-            DowntimeEntry.work_order_id == work_order_id,
-            cast(DowntimeEntry.shift_date, Date) == target_date
-        )
+        and_(DowntimeEntry.work_order_id == work_order_id, cast(DowntimeEntry.shift_date, Date) == target_date)
     )
 
     if client_id:
@@ -80,11 +70,7 @@ def calculate_availability(
 
 
 def calculate_mtbf(
-    db: Session,
-    machine_id: str,
-    start_date: date,
-    end_date: date,
-    client_id: Optional[str] = None
+    db: Session, machine_id: str, start_date: date, end_date: date, client_id: Optional[str] = None
 ) -> Optional[Decimal]:
     """
     Calculate Mean Time Between Failures (MTBF)
@@ -98,7 +84,7 @@ def calculate_mtbf(
             DowntimeEntry.machine_id == machine_id,
             cast(DowntimeEntry.shift_date, Date) >= start_date,
             cast(DowntimeEntry.shift_date, Date) <= end_date,
-            DowntimeEntry.root_cause_category.in_(['Breakdown', 'Failure', 'Equipment Failure'])
+            DowntimeEntry.root_cause_category.in_(["Breakdown", "Failure", "Equipment Failure"]),
         )
     )
 
@@ -128,11 +114,7 @@ def calculate_mtbf(
 
 
 def calculate_mttr(
-    db: Session,
-    machine_id: str,
-    start_date: date,
-    end_date: date,
-    client_id: Optional[str] = None
+    db: Session, machine_id: str, start_date: date, end_date: date, client_id: Optional[str] = None
 ) -> Optional[Decimal]:
     """
     Calculate Mean Time To Repair (MTTR)
@@ -145,7 +127,7 @@ def calculate_mttr(
             DowntimeEntry.machine_id == machine_id,
             cast(DowntimeEntry.shift_date, Date) >= start_date,
             cast(DowntimeEntry.shift_date, Date) <= end_date,
-            DowntimeEntry.root_cause_category.in_(['Breakdown', 'Failure', 'Maintenance', 'Equipment Failure'])
+            DowntimeEntry.root_cause_category.in_(["Breakdown", "Failure", "Maintenance", "Equipment Failure"]),
         )
     )
 

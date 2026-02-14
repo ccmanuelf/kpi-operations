@@ -2,6 +2,7 @@
 Tests for actual calculation module functions with mocked database sessions.
 Target: Cover calculations/ directory to reach 85% overall coverage.
 """
+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
@@ -25,9 +26,7 @@ class TestEfficiencyModule:
         mock_query.filter.return_value = mock_query
         mock_query.scalar.return_value = 3
 
-        result = get_floating_pool_coverage_count(
-            mock_db, "CLIENT-001", date.today(), shift_id=1
-        )
+        result = get_floating_pool_coverage_count(mock_db, "CLIENT-001", date.today(), shift_id=1)
 
         assert result == 3
         mock_db.query.assert_called_once()
@@ -42,9 +41,7 @@ class TestEfficiencyModule:
         mock_query.filter.return_value = mock_query
         mock_query.scalar.return_value = 5
 
-        result = get_floating_pool_coverage_count(
-            mock_db, "CLIENT-001", date.today(), shift_id=None
-        )
+        result = get_floating_pool_coverage_count(mock_db, "CLIENT-001", date.today(), shift_id=None)
 
         assert result == 5
 
@@ -58,9 +55,7 @@ class TestEfficiencyModule:
         mock_query.filter.return_value = mock_query
         mock_query.scalar.return_value = None
 
-        result = get_floating_pool_coverage_count(
-            mock_db, "CLIENT-001", date.today()
-        )
+        result = get_floating_pool_coverage_count(mock_db, "CLIENT-001", date.today())
 
         assert result == 0
 
@@ -68,12 +63,7 @@ class TestEfficiencyModule:
         """Test InferredEmployees dataclass"""
         from calculations.efficiency import InferredEmployees
 
-        inferred = InferredEmployees(
-            count=5,
-            is_inferred=True,
-            inference_source="historical_avg",
-            confidence_score=0.5
-        )
+        inferred = InferredEmployees(count=5, is_inferred=True, inference_source="historical_avg", confidence_score=0.5)
 
         assert inferred.count == 5
         assert inferred.is_inferred is True
@@ -145,9 +135,7 @@ class TestAvailabilityModule:
         # The scalar returns total downtime in minutes
         mock_db.query.return_value.filter.return_value.scalar.return_value = 90  # 90 minutes = 1.5 hours
 
-        result = calculate_availability(
-            mock_db, work_order_id="WO-001", target_date=date.today()
-        )
+        result = calculate_availability(mock_db, work_order_id="WO-001", target_date=date.today())
 
         # Should return tuple of (availability_pct, scheduled_hours, downtime_hours, event_count)
         assert isinstance(result, tuple)
@@ -162,9 +150,7 @@ class TestAvailabilityModule:
         # Mock no downtime - scalar returns 0 minutes
         mock_db.query.return_value.filter.return_value.scalar.return_value = 0
 
-        result = calculate_availability(
-            mock_db, work_order_id="WO-001", target_date=date.today()
-        )
+        result = calculate_availability(mock_db, work_order_id="WO-001", target_date=date.today())
 
         assert isinstance(result, tuple)
         # With 0 downtime and 8 hours default, availability should be 100%
@@ -179,9 +165,7 @@ class TestAvailabilityModule:
         # Mock zero downtime (scalar returns minutes)
         mock_db.query.return_value.filter.return_value.scalar.return_value = 0
 
-        result = calculate_availability(
-            mock_db, work_order_id="WO-001", target_date=date.today()
-        )
+        result = calculate_availability(mock_db, work_order_id="WO-001", target_date=date.today())
 
         # Result should be a valid tuple
         assert isinstance(result, tuple)
@@ -198,11 +182,7 @@ class TestAvailabilityModule:
         mock_query.count.return_value = 5
         mock_query.scalar.return_value = 40  # 40 hours total
 
-        result = calculate_mtbf(
-            mock_db, "MACHINE-001",
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_mtbf(mock_db, "MACHINE-001", date.today() - timedelta(days=30), date.today())
 
         # MTBF = total_operating_hours / number_of_failures
         assert result is None or isinstance(result, Decimal)
@@ -218,11 +198,7 @@ class TestAvailabilityModule:
         mock_query.count.return_value = 5
         mock_query.scalar.return_value = 10  # 10 hours total repair time
 
-        result = calculate_mttr(
-            mock_db, "MACHINE-001",
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_mttr(mock_db, "MACHINE-001", date.today() - timedelta(days=30), date.today())
 
         assert result is None or isinstance(result, Decimal)
 
@@ -246,10 +222,7 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db,
-            work_order_id="WO-001",
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            mock_db, work_order_id="WO-001", start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         # Returns (ppm, total_inspected, total_defects)
@@ -272,10 +245,7 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db,
-            work_order_id="WO-001",
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            mock_db, work_order_id="WO-001", start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         # Should return 0 PPM with no inspections
@@ -293,10 +263,7 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db,
-            work_order_id="WO-001",
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            mock_db, work_order_id="WO-001", start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         # Should return 0 PPM with no defects
@@ -322,10 +289,7 @@ class TestPPMModule:
         mock_db.query.return_value.filter.return_value.all.return_value = [mock_insp1, mock_insp2]
 
         result = calculate_ppm_by_category(
-            mock_db,
-            work_order_id="WO-001",
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            mock_db, work_order_id="WO-001", start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         assert isinstance(result, dict)
@@ -463,38 +427,29 @@ class TestTrendAnalysisModule:
         from calculations.trend_analysis import determine_trend_direction
 
         # Function takes (slope, r_squared, std_deviation, mean_value)
-        result = determine_trend_direction(
-            Decimal("5.0"), Decimal("0.95"), Decimal("2.0"), Decimal("100")
-        )
-        assert result == 'increasing'
+        result = determine_trend_direction(Decimal("5.0"), Decimal("0.95"), Decimal("2.0"), Decimal("100"))
+        assert result == "increasing"
 
     def test_determine_trend_direction_decreasing(self):
         """Test trend direction determination - decreasing"""
         from calculations.trend_analysis import determine_trend_direction
 
-        result = determine_trend_direction(
-            Decimal("-5.0"), Decimal("0.95"), Decimal("2.0"), Decimal("100")
-        )
-        assert result == 'decreasing'
+        result = determine_trend_direction(Decimal("-5.0"), Decimal("0.95"), Decimal("2.0"), Decimal("100"))
+        assert result == "decreasing"
 
     def test_determine_trend_direction_stable(self):
         """Test trend direction determination - stable"""
         from calculations.trend_analysis import determine_trend_direction
 
-        result = determine_trend_direction(
-            Decimal("0.001"), Decimal("0.95"), Decimal("2.0"), Decimal("100")
-        )
-        assert result == 'stable'
+        result = determine_trend_direction(Decimal("0.001"), Decimal("0.95"), Decimal("2.0"), Decimal("100"))
+        assert result == "stable"
 
     def test_trend_result_dataclass(self):
         """Test TrendResult dataclass"""
         from calculations.trend_analysis import TrendResult
 
         result = TrendResult(
-            slope=Decimal("2.5"),
-            intercept=Decimal("100"),
-            r_squared=Decimal("0.95"),
-            trend_direction="increasing"
+            slope=Decimal("2.5"), intercept=Decimal("100"), r_squared=Decimal("0.95"), trend_direction="increasing"
         )
 
         assert result.slope == Decimal("2.5")
@@ -519,7 +474,7 @@ class TestPredictionsModule:
         result = simple_exponential_smoothing(values, alpha, forecast_periods=3)
 
         # Should return ForecastResult with predictions
-        assert hasattr(result, 'predictions') or isinstance(result, (list, dict))
+        assert hasattr(result, "predictions") or isinstance(result, (list, dict))
 
     def test_double_exponential_smoothing(self):
         """Test double exponential smoothing (Holt's method)"""
@@ -527,15 +482,10 @@ class TestPredictionsModule:
 
         values = [Decimal("100"), Decimal("110"), Decimal("120"), Decimal("130"), Decimal("140")]
 
-        result = double_exponential_smoothing(
-            values,
-            alpha=Decimal("0.3"),
-            beta=Decimal("0.2"),
-            forecast_periods=3
-        )
+        result = double_exponential_smoothing(values, alpha=Decimal("0.3"), beta=Decimal("0.2"), forecast_periods=3)
 
         # Should return ForecastResult with predictions
-        assert hasattr(result, 'predictions') or isinstance(result, (list, dict))
+        assert hasattr(result, "predictions") or isinstance(result, (list, dict))
 
     def test_linear_trend_extrapolation(self):
         """Test linear trend extrapolation"""
@@ -546,7 +496,7 @@ class TestPredictionsModule:
         result = linear_trend_extrapolation(values, forecast_periods=3)
 
         # Should return ForecastResult with predictions
-        assert hasattr(result, 'predictions') or isinstance(result, (list, dict))
+        assert hasattr(result, "predictions") or isinstance(result, (list, dict))
 
 
 # =============================================================================
@@ -587,11 +537,7 @@ class TestWIPAgingModule:
         # Mock query that returns no holds (empty result)
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
-        result = calculate_hold_resolution_rate(
-            mock_db,
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_hold_resolution_rate(mock_db, date.today() - timedelta(days=30), date.today())
 
         # Should return dict with resolution_rate when no holds found
         assert isinstance(result, dict)
@@ -635,10 +581,7 @@ class TestCalculationEdgeCases:
         mock_db.query.return_value.filter.return_value.first.return_value = mock_result
 
         result = calculate_ppm(
-            mock_db,
-            work_order_id="WO-001",
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today()
+            mock_db, work_order_id="WO-001", start_date=date.today() - timedelta(days=30), end_date=date.today()
         )
 
         # Should handle gracefully, return 0 PPM
@@ -687,10 +630,7 @@ class TestOTDModuleExtended:
         from calculations.otd import InferredDate
 
         inferred = InferredDate(
-            date=date.today(),
-            is_inferred=True,
-            inference_source="lead_time_estimate",
-            confidence_score=0.7
+            date=date.today(), is_inferred=True, inference_source="lead_time_estimate", confidence_score=0.7
         )
 
         assert inferred.date == date.today()
@@ -749,11 +689,7 @@ class TestFPYRTYModuleExtended:
         # First call returns total units, second returns passed units
         mock_query.scalar.side_effect = [1000, 950]
 
-        result = calculate_fpy(
-            mock_db, 1,
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_fpy(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         # Returns tuple: (fpy_percentage, units_inspected, units_passed)
         assert isinstance(result, tuple)
@@ -769,11 +705,7 @@ class TestFPYRTYModuleExtended:
         # Both return 0
         mock_query.scalar.return_value = 0
 
-        result = calculate_fpy(
-            mock_db, 1,
-            date.today() - timedelta(days=30),
-            date.today()
-        )
+        result = calculate_fpy(mock_db, 1, date.today() - timedelta(days=30), date.today())
 
         # Should handle gracefully
         assert isinstance(result, tuple)
@@ -782,11 +714,11 @@ class TestFPYRTYModuleExtended:
         """Test FPY/RTY module can be imported and has expected functions"""
         from calculations import fpy_rty
 
-        assert hasattr(fpy_rty, 'calculate_fpy')
-        assert hasattr(fpy_rty, 'calculate_rty')
-        assert hasattr(fpy_rty, 'calculate_process_yield')
-        assert hasattr(fpy_rty, 'calculate_defect_escape_rate')
-        assert hasattr(fpy_rty, 'calculate_quality_score')
+        assert hasattr(fpy_rty, "calculate_fpy")
+        assert hasattr(fpy_rty, "calculate_rty")
+        assert hasattr(fpy_rty, "calculate_process_yield")
+        assert hasattr(fpy_rty, "calculate_defect_escape_rate")
+        assert hasattr(fpy_rty, "calculate_quality_score")
 
 
 # =============================================================================
@@ -799,10 +731,10 @@ class TestAbsenteeismModuleExtended:
         """Test absenteeism module can be imported and has expected functions"""
         from calculations import absenteeism
 
-        assert hasattr(absenteeism, 'calculate_absenteeism')
-        assert hasattr(absenteeism, 'calculate_attendance_rate')
-        assert hasattr(absenteeism, 'identify_chronic_absentees')
-        assert hasattr(absenteeism, 'calculate_bradford_factor')
+        assert hasattr(absenteeism, "calculate_absenteeism")
+        assert hasattr(absenteeism, "calculate_attendance_rate")
+        assert hasattr(absenteeism, "identify_chronic_absentees")
+        assert hasattr(absenteeism, "calculate_bradford_factor")
 
     def test_absenteeism_formula_validation(self):
         """Test absenteeism formula: (absent/scheduled)*100"""
@@ -819,7 +751,7 @@ class TestAbsenteeismModuleExtended:
         instances = 3  # S = number of instances
         total_days = 6  # D = total days
 
-        bradford = (instances ** 2) * total_days
+        bradford = (instances**2) * total_days
         assert bradford == 54
 
 
@@ -862,11 +794,11 @@ class TestEfficiencyModuleExtended:
         """Test efficiency module can be imported and has expected functions"""
         from calculations import efficiency
 
-        assert hasattr(efficiency, 'calculate_efficiency')
-        assert hasattr(efficiency, 'calculate_efficiency_with_metadata')
-        assert hasattr(efficiency, 'calculate_shift_hours')
-        assert hasattr(efficiency, 'infer_employees_count')
-        assert hasattr(efficiency, 'get_floating_pool_coverage_count')
+        assert hasattr(efficiency, "calculate_efficiency")
+        assert hasattr(efficiency, "calculate_efficiency_with_metadata")
+        assert hasattr(efficiency, "calculate_shift_hours")
+        assert hasattr(efficiency, "infer_employees_count")
+        assert hasattr(efficiency, "get_floating_pool_coverage_count")
 
 
 # =============================================================================
@@ -906,9 +838,9 @@ class TestAvailabilityModuleExtended:
         """Test availability module can be imported and has expected functions"""
         from calculations import availability
 
-        assert hasattr(availability, 'calculate_availability')
-        assert hasattr(availability, 'calculate_mtbf')
-        assert hasattr(availability, 'calculate_mttr')
+        assert hasattr(availability, "calculate_availability")
+        assert hasattr(availability, "calculate_mtbf")
+        assert hasattr(availability, "calculate_mttr")
 
 
 # =============================================================================
@@ -950,8 +882,8 @@ class TestWIPAgingModuleExtended:
         """Test WIP aging module can be imported and has expected functions"""
         from calculations import wip_aging
 
-        assert hasattr(wip_aging, 'calculate_wip_aging')
-        assert hasattr(wip_aging, 'calculate_hold_resolution_rate')
-        assert hasattr(wip_aging, 'identify_chronic_holds')
-        assert hasattr(wip_aging, 'get_total_hold_duration_hours')
-        assert hasattr(wip_aging, 'calculate_wip_age_adjusted')
+        assert hasattr(wip_aging, "calculate_wip_aging")
+        assert hasattr(wip_aging, "calculate_hold_resolution_rate")
+        assert hasattr(wip_aging, "identify_chronic_holds")
+        assert hasattr(wip_aging, "get_total_hold_duration_hours")
+        assert hasattr(wip_aging, "calculate_wip_age_adjusted")

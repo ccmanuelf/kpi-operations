@@ -2,6 +2,7 @@
 JWT Authentication utilities
 Token creation, validation, password hashing
 """
+
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -47,9 +48,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(
-            minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-        )
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -86,10 +85,7 @@ def decode_access_token(token: str) -> dict:
         raise credentials_exception
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-) -> User:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """
     Dependency to get current authenticated user
 
@@ -119,10 +115,7 @@ def get_current_user(
         )
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
 
     # ENHANCEMENT: Attach JWT payload data for stateless validation
     # This allows client_auth middleware to validate without DB lookup
@@ -132,9 +125,7 @@ def get_current_user(
     return user
 
 
-def get_current_active_supervisor(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_current_active_supervisor(current_user: User = Depends(get_current_user)) -> User:
     """
     Dependency to require supervisor or admin role
 
@@ -148,16 +139,11 @@ def get_current_active_supervisor(
         HTTPException: If user lacks permissions
     """
     if current_user.role not in ["supervisor", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Insufficient permissions"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return current_user
 
 
-def get_current_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Dependency to require admin role
 
@@ -171,8 +157,5 @@ def get_current_admin(
         HTTPException: If user is not admin
     """
     if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user

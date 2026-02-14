@@ -3,6 +3,7 @@ SQLite Dialect Adapter
 
 Handles SQLite-specific SQL syntax and features.
 """
+
 from typing import List, Optional
 
 from backend.db.dialects.base import DialectAdapter
@@ -38,11 +39,7 @@ class SQLiteDialect(DialectAdapter):
         return "SELECT last_insert_rowid()"
 
     def get_upsert_sql(
-        self,
-        table: str,
-        columns: List[str],
-        conflict_columns: List[str],
-        update_columns: Optional[List[str]] = None
+        self, table: str, columns: List[str], conflict_columns: List[str], update_columns: Optional[List[str]] = None
     ) -> str:
         """Return SQLite upsert SQL using ON CONFLICT.
 
@@ -117,12 +114,7 @@ class SQLiteDialect(DialectAdapter):
         """
         return "?"
 
-    def get_date_diff_sql(
-        self,
-        date1: str,
-        date2: str,
-        unit: str = "day"
-    ) -> str:
+    def get_date_diff_sql(self, date1: str, date2: str, unit: str = "day") -> str:
         """Return SQLite date difference SQL.
 
         SQLite uses julianday() for date calculations.

@@ -10,6 +10,7 @@ Tests cover:
 - get_transition_elapsed_times function
 - calculate_stage_duration_summary function
 """
+
 import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -117,7 +118,7 @@ class TestBusinessHoursCalculation:
 
         # Monday to Friday (5 days)
         from_dt = datetime(2025, 1, 6, 0, 0, 0)  # Monday
-        to_dt = datetime(2025, 1, 10, 0, 0, 0)   # Friday
+        to_dt = datetime(2025, 1, 10, 0, 0, 0)  # Friday
 
         result = calculate_business_hours(from_dt, to_dt, hours_per_day=8)
         assert result == 5 * 8  # 40 hours
@@ -128,7 +129,7 @@ class TestBusinessHoursCalculation:
 
         # Monday to next Monday (8 days, 5 working)
         from_dt = datetime(2025, 1, 6, 0, 0, 0)  # Monday
-        to_dt = datetime(2025, 1, 13, 0, 0, 0)   # Next Monday
+        to_dt = datetime(2025, 1, 13, 0, 0, 0)  # Next Monday
 
         result = calculate_business_hours(from_dt, to_dt, hours_per_day=8)
         assert result == 6 * 8  # 6 working days (Mon-Fri + Mon)
@@ -145,13 +146,9 @@ class TestBusinessHoursCalculation:
         from backend.calculations.elapsed_time import calculate_business_hours
 
         from_dt = datetime(2025, 1, 6, 0, 0, 0)  # Monday
-        to_dt = datetime(2025, 1, 13, 0, 0, 0)   # Next Monday
+        to_dt = datetime(2025, 1, 13, 0, 0, 0)  # Next Monday
 
-        result = calculate_business_hours(
-            from_dt, to_dt,
-            hours_per_day=8,
-            working_days=[0, 1, 2, 3, 4, 5]  # Mon-Sat
-        )
+        result = calculate_business_hours(from_dt, to_dt, hours_per_day=8, working_days=[0, 1, 2, 3, 4, 5])  # Mon-Sat
         assert result == 7 * 8  # 7 working days
 
 
@@ -167,7 +164,7 @@ class TestWorkOrderElapsedTime:
         expected_date=None,
         status="IN_PROGRESS",
         actual_delivery_date=None,
-        updated_at=None
+        updated_at=None,
     ):
         """Create a mock work order for testing"""
         wo = Mock()
@@ -189,10 +186,7 @@ class TestWorkOrderElapsedTime:
         received = datetime(2025, 1, 1, 10, 0, 0)
         closed = datetime(2025, 1, 3, 10, 0, 0)  # 48 hours
 
-        wo = self._create_mock_work_order(
-            received_date=received,
-            closure_date=closed
-        )
+        wo = self._create_mock_work_order(received_date=received, closure_date=closed)
 
         calc = WorkOrderElapsedTime(wo)
         assert calc.total_lifecycle_hours == 48
@@ -215,10 +209,7 @@ class TestWorkOrderElapsedTime:
         received = datetime(2025, 1, 1, 10, 0, 0)
         dispatch = datetime(2025, 1, 1, 14, 0, 0)  # 4 hours
 
-        wo = self._create_mock_work_order(
-            received_date=received,
-            dispatch_date=dispatch
-        )
+        wo = self._create_mock_work_order(received_date=received, dispatch_date=dispatch)
 
         calc = WorkOrderElapsedTime(wo)
         assert calc.lead_time_hours == 4
@@ -230,10 +221,7 @@ class TestWorkOrderElapsedTime:
         dispatch = datetime(2025, 1, 1, 14, 0, 0)
         closed = datetime(2025, 1, 2, 14, 0, 0)  # 24 hours
 
-        wo = self._create_mock_work_order(
-            dispatch_date=dispatch,
-            closure_date=closed
-        )
+        wo = self._create_mock_work_order(dispatch_date=dispatch, closure_date=closed)
 
         calc = WorkOrderElapsedTime(wo)
         assert calc.processing_time_hours == 24
@@ -267,10 +255,7 @@ class TestWorkOrderElapsedTime:
         expected = datetime.utcnow() - timedelta(days=1)  # Yesterday
         closed = datetime.utcnow()
 
-        wo = self._create_mock_work_order(
-            expected_date=expected,
-            closure_date=closed
-        )
+        wo = self._create_mock_work_order(expected_date=expected, closure_date=closed)
         calc = WorkOrderElapsedTime(wo)
 
         assert calc.is_overdue is False
@@ -316,11 +301,7 @@ class TestWorkOrderElapsedTime:
         dispatch = datetime.utcnow() - timedelta(hours=24)
         expected = datetime.utcnow() + timedelta(days=1)
 
-        wo = self._create_mock_work_order(
-            received_date=received,
-            dispatch_date=dispatch,
-            expected_date=expected
-        )
+        wo = self._create_mock_work_order(received_date=received, dispatch_date=dispatch, expected_date=expected)
 
         calc = WorkOrderElapsedTime(wo)
         metrics = calc.get_all_metrics()

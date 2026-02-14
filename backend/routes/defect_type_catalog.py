@@ -2,6 +2,7 @@
 API Routes for Client-specific Defect Type Catalog
 Allows clients to manage their own defect types
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -13,7 +14,7 @@ from backend.models.defect_type_catalog import (
     DefectTypeCatalogCreate,
     DefectTypeCatalogUpdate,
     DefectTypeCatalogResponse,
-    DefectTypeCatalogCSVRow
+    DefectTypeCatalogCSVRow,
 )
 from backend.crud.defect_type_catalog import (
     create_defect_type,
@@ -24,16 +25,13 @@ from backend.crud.defect_type_catalog import (
     delete_defect_type,
     bulk_create_defect_types,
     GLOBAL_CLIENT_ID,
-    is_global_client
+    is_global_client,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/defect-types",
-    tags=["Defect Type Catalog"]
-)
+router = APIRouter(prefix="/api/defect-types", tags=["Defect Type Catalog"])
 
 
 @router.get("/constants")
@@ -41,16 +39,14 @@ def get_constants():
     """
     Get constants used for defect type management
     """
-    return {
-        "GLOBAL_CLIENT_ID": GLOBAL_CLIENT_ID
-    }
+    return {"GLOBAL_CLIENT_ID": GLOBAL_CLIENT_ID}
 
 
 @router.post("", response_model=DefectTypeCatalogResponse, status_code=status.HTTP_201_CREATED)
 def create_defect_type_endpoint(
     defect_type: DefectTypeCatalogCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ):
     """
     Create a new defect type for a client
@@ -64,9 +60,7 @@ def create_defect_type_endpoint(
 
 @router.get("/global", response_model=List[DefectTypeCatalogResponse])
 def get_global_defect_types_endpoint(
-    include_inactive: bool = False,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    include_inactive: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all global defect types (available to all clients)
@@ -80,7 +74,7 @@ def get_client_defect_types(
     include_inactive: bool = False,
     include_global: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all defect types for a specific client
@@ -98,9 +92,7 @@ def get_client_defect_types(
 
 @router.get("/{defect_type_id}", response_model=DefectTypeCatalogResponse)
 def get_defect_type_endpoint(
-    defect_type_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    defect_type_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """Get a specific defect type by ID"""
     defect_type = get_defect_type(db, defect_type_id, current_user)
@@ -114,7 +106,7 @@ def update_defect_type_endpoint(
     defect_type_id: str,
     defect_type_update: DefectTypeCatalogUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ):
     """
     Update a defect type
@@ -128,9 +120,7 @@ def update_defect_type_endpoint(
 
 @router.delete("/{defect_type_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_defect_type_endpoint(
-    defect_type_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    defect_type_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Soft delete a defect type (deactivate)
@@ -146,7 +136,7 @@ async def upload_defect_types_csv(
     file: UploadFile = File(...),
     replace_existing: bool = Form(False),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ):
     """
     Upload defect types from CSV file
@@ -158,12 +148,12 @@ async def upload_defect_types_csv(
     SOLDER_DEF,Solder Defect,Issues with solder joints,Assembly,MAJOR,IPC-5.2,1
     COMP_MISS,Component Missing,Missing component on PCB,Assembly,CRITICAL,,2
     """
-    if not file.filename.endswith('.csv'):
+    if not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")
 
     try:
         contents = await file.read()
-        decoded = contents.decode('utf-8')
+        decoded = contents.decode("utf-8")
         reader = csv.DictReader(io.StringIO(decoded))
 
         defect_types = []
@@ -178,15 +168,9 @@ async def upload_defect_types_csv(
         if not defect_types:
             raise HTTPException(status_code=400, detail="No valid defect types found in CSV")
 
-        result = bulk_create_defect_types(
-            db, client_id, defect_types, current_user, replace_existing
-        )
+        result = bulk_create_defect_types(db, client_id, defect_types, current_user, replace_existing)
 
-        return {
-            "message": "Upload completed",
-            "client_id": client_id,
-            **result
-        }
+        return {"message": "Upload completed", "client_id": client_id, **result}
 
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="Invalid file encoding. Use UTF-8")
@@ -209,7 +193,7 @@ def download_csv_template():
                 "category",
                 "severity_default",
                 "industry_standard_code",
-                "sort_order"
+                "sort_order",
             ],
             "example_rows": [
                 {
@@ -219,7 +203,7 @@ def download_csv_template():
                     "category": "Assembly",
                     "severity_default": "MAJOR",
                     "industry_standard_code": "IPC-A-610-5.2",
-                    "sort_order": 1
+                    "sort_order": 1,
                 },
                 {
                     "defect_code": "COMP_MISS",
@@ -228,9 +212,9 @@ def download_csv_template():
                     "category": "Assembly",
                     "severity_default": "CRITICAL",
                     "industry_standard_code": "",
-                    "sort_order": 2
-                }
-            ]
+                    "sort_order": 2,
+                },
+            ],
         },
         "notes": [
             "defect_code: Required. Unique short code (max 20 chars)",
@@ -239,6 +223,6 @@ def download_csv_template():
             "category: Optional. Grouping category (Assembly, Material, Process, etc.)",
             "severity_default: Optional. Default severity (CRITICAL, MAJOR, MINOR). Defaults to MAJOR",
             "industry_standard_code: Optional. Reference to industry standards",
-            "sort_order: Optional. Display order (0-999). Defaults to 0"
-        ]
+            "sort_order: Optional. Display order (0-999). Defaults to 0",
+        ],
     }

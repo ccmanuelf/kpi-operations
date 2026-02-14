@@ -11,6 +11,7 @@ Provides unified interface for:
 - What-if scenarios
 - KPI integration
 """
+
 from decimal import Decimal
 from typing import List, Dict, Optional, Any
 from datetime import date
@@ -21,17 +22,13 @@ from backend.database import get_db
 from backend.services.capacity.bom_service import BOMService, BOMExplosionResult
 from backend.services.capacity.mrp_service import MRPService, MRPRunResult
 from backend.services.capacity.analysis_service import (
-    CapacityAnalysisService, CapacityAnalysisResult, LineCapacityResult
+    CapacityAnalysisService,
+    CapacityAnalysisResult,
+    LineCapacityResult,
 )
-from backend.services.capacity.scheduling_service import (
-    SchedulingService, GeneratedSchedule, ScheduleSummary
-)
-from backend.services.capacity.scenario_service import (
-    ScenarioService, ScenarioResult, ScenarioComparison
-)
-from backend.services.capacity.kpi_integration_service import (
-    KPIIntegrationService, KPIActual, KPIVariance
-)
+from backend.services.capacity.scheduling_service import SchedulingService, GeneratedSchedule, ScheduleSummary
+from backend.services.capacity.scenario_service import ScenarioService, ScenarioResult, ScenarioComparison
+from backend.services.capacity.kpi_integration_service import KPIIntegrationService, KPIActual, KPIVariance
 from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
 from backend.schemas.capacity.scenario import CapacityScenario
 
@@ -70,12 +67,7 @@ class CapacityPlanningService:
     # BOM Operations
     # =========================================================================
 
-    def explode_bom(
-        self,
-        client_id: str,
-        parent_item_code: str,
-        quantity: Decimal
-    ) -> BOMExplosionResult:
+    def explode_bom(self, client_id: str, parent_item_code: str, quantity: Decimal) -> BOMExplosionResult:
         """
         Explode a BOM to get required components.
 
@@ -89,11 +81,7 @@ class CapacityPlanningService:
         """
         return self.bom_service.explode_bom(client_id, parent_item_code, quantity)
 
-    def get_bom_structure(
-        self,
-        client_id: str,
-        parent_item_code: str
-    ) -> Optional[Dict]:
+    def get_bom_structure(self, client_id: str, parent_item_code: str) -> Optional[Dict]:
         """Get BOM structure without explosion."""
         return self.bom_service.get_bom_structure(client_id, parent_item_code)
 
@@ -101,11 +89,7 @@ class CapacityPlanningService:
     # MRP / Component Check Operations
     # =========================================================================
 
-    def run_component_check(
-        self,
-        client_id: str,
-        order_ids: Optional[List[int]] = None
-    ) -> MRPRunResult:
+    def run_component_check(self, client_id: str, order_ids: Optional[List[int]] = None) -> MRPRunResult:
         """
         Run component availability check (Mini-MRP).
 
@@ -118,11 +102,7 @@ class CapacityPlanningService:
         """
         return self.mrp_service.run_component_check(client_id, order_ids)
 
-    def get_shortages_by_order(
-        self,
-        client_id: str,
-        order_number: str
-    ) -> List:
+    def get_shortages_by_order(self, client_id: str, order_number: str) -> List:
         """Get component shortages for a specific order."""
         return self.mrp_service.get_shortages_by_order(client_id, order_number)
 
@@ -136,7 +116,7 @@ class CapacityPlanningService:
         period_start: date,
         period_end: date,
         line_ids: Optional[List[int]] = None,
-        schedule_id: Optional[int] = None
+        schedule_id: Optional[int] = None,
     ) -> CapacityAnalysisResult:
         """
         Run capacity analysis for specified period.
@@ -153,33 +133,19 @@ class CapacityPlanningService:
         Returns:
             CapacityAnalysisResult with all line analyses
         """
-        return self.analysis_service.analyze_capacity(
-            client_id, period_start, period_end, line_ids, schedule_id
-        )
+        return self.analysis_service.analyze_capacity(client_id, period_start, period_end, line_ids, schedule_id)
 
     def get_line_capacity(
-        self,
-        client_id: str,
-        line_id: int,
-        period_start: date,
-        period_end: date
+        self, client_id: str, line_id: int, period_start: date, period_end: date
     ) -> Optional[LineCapacityResult]:
         """Get capacity for a single line."""
-        return self.analysis_service.get_line_capacity(
-            client_id, line_id, period_start, period_end
-        )
+        return self.analysis_service.get_line_capacity(client_id, line_id, period_start, period_end)
 
     def identify_bottlenecks(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date,
-        threshold: Optional[Decimal] = None
+        self, client_id: str, period_start: date, period_end: date, threshold: Optional[Decimal] = None
     ) -> List[LineCapacityResult]:
         """Identify bottleneck lines for a period."""
-        return self.analysis_service.identify_bottlenecks(
-            client_id, period_start, period_end, threshold
-        )
+        return self.analysis_service.identify_bottlenecks(client_id, period_start, period_end, threshold)
 
     # =========================================================================
     # Scheduling Operations
@@ -193,7 +159,7 @@ class CapacityPlanningService:
         period_end: date,
         order_ids: Optional[List[int]] = None,
         line_ids: Optional[List[int]] = None,
-        prioritize_by: str = "required_date"
+        prioritize_by: str = "required_date",
     ) -> GeneratedSchedule:
         """
         Auto-generate schedule based on orders and capacity.
@@ -211,29 +177,17 @@ class CapacityPlanningService:
             GeneratedSchedule with scheduled items
         """
         return self.scheduling_service.generate_schedule(
-            client_id, schedule_name, period_start, period_end,
-            order_ids, line_ids, prioritize_by
+            client_id, schedule_name, period_start, period_end, order_ids, line_ids, prioritize_by
         )
 
     def create_schedule(
-        self,
-        client_id: str,
-        schedule_name: str,
-        period_start: date,
-        period_end: date,
-        items: List[Dict]
+        self, client_id: str, schedule_name: str, period_start: date, period_end: date, items: List[Dict]
     ) -> CapacitySchedule:
         """Create a new schedule with specified items."""
-        return self.scheduling_service.create_schedule(
-            client_id, schedule_name, period_start, period_end, items
-        )
+        return self.scheduling_service.create_schedule(client_id, schedule_name, period_start, period_end, items)
 
     def commit_schedule(
-        self,
-        client_id: str,
-        schedule_id: int,
-        committed_by: int,
-        kpi_commitments: Optional[Dict] = None
+        self, client_id: str, schedule_id: int, committed_by: int, kpi_commitments: Optional[Dict] = None
     ) -> CapacitySchedule:
         """
         Commit a schedule for KPI tracking.
@@ -247,24 +201,17 @@ class CapacityPlanningService:
         Returns:
             Updated CapacitySchedule
         """
-        schedule = self.scheduling_service.commit_schedule(
-            client_id, schedule_id, committed_by, kpi_commitments
-        )
+        schedule = self.scheduling_service.commit_schedule(client_id, schedule_id, committed_by, kpi_commitments)
 
         # Store KPI commitments if provided
         if kpi_commitments:
             self.kpi_service.store_kpi_commitments(
-                client_id, schedule_id,
-                {k: Decimal(str(v)) for k, v in kpi_commitments.items()}
+                client_id, schedule_id, {k: Decimal(str(v)) for k, v in kpi_commitments.items()}
             )
 
         return schedule
 
-    def get_schedule_summary(
-        self,
-        client_id: str,
-        schedule_id: int
-    ) -> Optional[ScheduleSummary]:
+    def get_schedule_summary(self, client_id: str, schedule_id: int) -> Optional[ScheduleSummary]:
         """Get summary of a schedule."""
         return self.scheduling_service.get_schedule_summary(client_id, schedule_id)
 
@@ -273,12 +220,10 @@ class CapacityPlanningService:
         client_id: str,
         status: Optional[ScheduleStatus] = None,
         period_start: Optional[date] = None,
-        period_end: Optional[date] = None
+        period_end: Optional[date] = None,
     ) -> List[CapacitySchedule]:
         """List schedules with optional filters."""
-        return self.scheduling_service.list_schedules(
-            client_id, status, period_start, period_end
-        )
+        return self.scheduling_service.list_schedules(client_id, status, period_start, period_end)
 
     # =========================================================================
     # Scenario Operations
@@ -291,7 +236,7 @@ class CapacityPlanningService:
         scenario_type: str,
         base_schedule_id: Optional[int] = None,
         parameters: Optional[Dict] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
     ) -> CapacityScenario:
         """
         Create a new what-if scenario.
@@ -308,56 +253,37 @@ class CapacityPlanningService:
             Created CapacityScenario
         """
         return self.scenario_service.create_scenario(
-            client_id, scenario_name, scenario_type,
-            base_schedule_id, parameters, notes
+            client_id, scenario_name, scenario_type, base_schedule_id, parameters, notes
         )
 
     def analyze_scenario(
-        self,
-        client_id: str,
-        scenario_id: int,
-        period_start: date,
-        period_end: date
+        self, client_id: str, scenario_id: int, period_start: date, period_end: date
     ) -> ScenarioResult:
         """Apply scenario parameters and analyze impact."""
-        return self.scenario_service.apply_scenario_parameters(
-            client_id, scenario_id, period_start, period_end
-        )
+        return self.scenario_service.apply_scenario_parameters(client_id, scenario_id, period_start, period_end)
 
     def compare_scenarios(
-        self,
-        client_id: str,
-        scenario_ids: List[int],
-        period_start: date,
-        period_end: date
+        self, client_id: str, scenario_ids: List[int], period_start: date, period_end: date
     ) -> List[ScenarioComparison]:
         """Compare multiple scenarios."""
-        return self.scenario_service.compare_scenarios(
-            client_id, scenario_ids, period_start, period_end
-        )
+        return self.scenario_service.compare_scenarios(client_id, scenario_ids, period_start, period_end)
 
     def list_scenarios(
         self,
         client_id: str,
         scenario_type: Optional[str] = None,
         base_schedule_id: Optional[int] = None,
-        active_only: bool = True
+        active_only: bool = True,
     ) -> List[CapacityScenario]:
         """List scenarios with optional filters."""
-        return self.scenario_service.list_scenarios(
-            client_id, scenario_type, base_schedule_id, active_only
-        )
+        return self.scenario_service.list_scenarios(client_id, scenario_type, base_schedule_id, active_only)
 
     # =========================================================================
     # KPI Operations
     # =========================================================================
 
     def get_actual_kpis(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date,
-        kpi_keys: Optional[List[str]] = None
+        self, client_id: str, period_start: date, period_end: date, kpi_keys: Optional[List[str]] = None
     ) -> List[KPIActual]:
         """
         Get actual KPI values from production data.
@@ -371,15 +297,9 @@ class CapacityPlanningService:
         Returns:
             List of KPIActual values
         """
-        return self.kpi_service.get_actual_kpis(
-            client_id, period_start, period_end, kpi_keys
-        )
+        return self.kpi_service.get_actual_kpis(client_id, period_start, period_end, kpi_keys)
 
-    def calculate_kpi_variance(
-        self,
-        client_id: str,
-        schedule_id: int
-    ) -> List[KPIVariance]:
+    def calculate_kpi_variance(self, client_id: str, schedule_id: int) -> List[KPIVariance]:
         """
         Calculate variance between committed and actual KPIs.
 
@@ -393,38 +313,22 @@ class CapacityPlanningService:
         return self.kpi_service.calculate_variance(client_id, schedule_id)
 
     def check_kpi_alerts(
-        self,
-        client_id: str,
-        schedule_id: int,
-        threshold: Optional[Decimal] = None
+        self, client_id: str, schedule_id: int, threshold: Optional[Decimal] = None
     ) -> List[KPIVariance]:
         """Check for KPI variance alerts."""
-        return self.kpi_service.check_variance_alerts(
-            client_id, schedule_id, threshold
-        )
+        return self.kpi_service.check_variance_alerts(client_id, schedule_id, threshold)
 
     def get_kpi_history(
-        self,
-        client_id: str,
-        kpi_key: str,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        self, client_id: str, kpi_key: str, start_date: Optional[date] = None, end_date: Optional[date] = None
     ) -> List[Dict]:
         """Get historical KPI values over time."""
-        return self.kpi_service.get_kpi_history(
-            client_id, kpi_key, start_date, end_date
-        )
+        return self.kpi_service.get_kpi_history(client_id, kpi_key, start_date, end_date)
 
     # =========================================================================
     # Dashboard / Summary Operations
     # =========================================================================
 
-    def get_planning_dashboard(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date
-    ) -> Dict[str, Any]:
+    def get_planning_dashboard(self, client_id: str, period_start: date, period_end: date) -> Dict[str, Any]:
         """
         Get comprehensive planning dashboard data.
 
@@ -444,30 +348,26 @@ class CapacityPlanningService:
 
         # Get active schedules
         schedules = self.list_schedules(
-            client_id, status=ScheduleStatus.ACTIVE,
-            period_start=period_start, period_end=period_end
+            client_id, status=ScheduleStatus.ACTIVE, period_start=period_start, period_end=period_end
         )
 
         # Get KPIs
         kpis = self.get_actual_kpis(client_id, period_start, period_end)
 
         return {
-            "period": {
-                "start": period_start.isoformat(),
-                "end": period_end.isoformat()
-            },
+            "period": {"start": period_start.isoformat(), "end": period_end.isoformat()},
             "capacity": {
                 "total_capacity_hours": float(analysis.total_capacity_hours),
                 "total_demand_hours": float(analysis.total_demand_hours),
                 "overall_utilization": float(analysis.overall_utilization),
                 "bottleneck_count": analysis.bottleneck_count,
-                "lines_analyzed": analysis.lines_analyzed
+                "lines_analyzed": analysis.lines_analyzed,
             },
             "materials": {
                 "components_checked": mrp_result.total_components_checked,
                 "components_ok": mrp_result.components_ok,
                 "components_short": mrp_result.components_short,
-                "orders_affected": mrp_result.orders_affected
+                "orders_affected": mrp_result.orders_affected,
             },
             "schedules": {
                 "active_count": len(schedules),
@@ -476,26 +376,19 @@ class CapacityPlanningService:
                         "id": s.id,
                         "name": s.schedule_name,
                         "period_start": s.period_start.isoformat(),
-                        "period_end": s.period_end.isoformat()
+                        "period_end": s.period_end.isoformat(),
                     }
                     for s in schedules
-                ]
+                ],
             },
             "kpis": [
-                {
-                    "key": kpi.kpi_key,
-                    "name": kpi.kpi_name,
-                    "value": float(kpi.actual_value),
-                    "source": kpi.source
-                }
+                {"key": kpi.kpi_key, "name": kpi.kpi_name, "value": float(kpi.actual_value), "source": kpi.source}
                 for kpi in kpis
-            ]
+            ],
         }
 
 
-def get_capacity_planning_service(
-    db: Session = Depends(get_db)
-) -> CapacityPlanningService:
+def get_capacity_planning_service(db: Session = Depends(get_db)) -> CapacityPlanningService:
     """
     FastAPI dependency to get CapacityPlanningService instance.
 

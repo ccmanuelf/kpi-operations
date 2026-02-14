@@ -22,12 +22,7 @@ from backend.simulation_v2.models import (
 def simple_schedule() -> ScheduleConfig:
     """A simple single-shift schedule."""
     return ScheduleConfig(
-        shifts_enabled=1,
-        shift1_hours=8.0,
-        shift2_hours=0.0,
-        shift3_hours=0.0,
-        work_days=5,
-        ot_enabled=False
+        shifts_enabled=1, shift1_hours=8.0, shift2_hours=0.0, shift3_hours=0.0, work_days=5, ot_enabled=False
     )
 
 
@@ -35,12 +30,7 @@ def simple_schedule() -> ScheduleConfig:
 def two_shift_schedule() -> ScheduleConfig:
     """A two-shift schedule."""
     return ScheduleConfig(
-        shifts_enabled=2,
-        shift1_hours=8.0,
-        shift2_hours=8.0,
-        shift3_hours=0.0,
-        work_days=5,
-        ot_enabled=False
+        shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, shift3_hours=0.0, work_days=5, ot_enabled=False
     )
 
 
@@ -60,7 +50,7 @@ def simple_operations() -> List[OperationInput]:
             variability=VariabilityType.TRIANGULAR,
             rework_pct=0.0,
             grade_pct=85.0,
-            fpd_pct=15.0
+            fpd_pct=15.0,
         ),
         OperationInput(
             product="PRODUCT_A",
@@ -74,7 +64,7 @@ def simple_operations() -> List[OperationInput]:
             variability=VariabilityType.TRIANGULAR,
             rework_pct=2.0,
             grade_pct=90.0,
-            fpd_pct=15.0
+            fpd_pct=15.0,
         ),
         OperationInput(
             product="PRODUCT_A",
@@ -88,7 +78,7 @@ def simple_operations() -> List[OperationInput]:
             variability=VariabilityType.DETERMINISTIC,
             rework_pct=0.0,
             grade_pct=100.0,
-            fpd_pct=10.0
+            fpd_pct=10.0,
         ),
     ]
 
@@ -104,15 +94,10 @@ def multi_product_operations() -> List[OperationInput]:
             operation="Cut fabric A",
             machine_tool="Cutting Table",
             sam_min=2.0,
-            operators=2
+            operators=2,
         ),
         OperationInput(
-            product="PRODUCT_A",
-            step=2,
-            operation="Sew A",
-            machine_tool="Overlock 4-thread",
-            sam_min=4.0,
-            operators=2
+            product="PRODUCT_A", step=2, operation="Sew A", machine_tool="Overlock 4-thread", sam_min=4.0, operators=2
         ),
         # Product B
         OperationInput(
@@ -121,7 +106,7 @@ def multi_product_operations() -> List[OperationInput]:
             operation="Cut fabric B",
             machine_tool="Cutting Table",  # Shared with A
             sam_min=2.5,
-            operators=2
+            operators=2,
         ),
         OperationInput(
             product="PRODUCT_B",
@@ -129,7 +114,7 @@ def multi_product_operations() -> List[OperationInput]:
             operation="Sew B",
             machine_tool="Flatlock",  # Different machine
             sam_min=3.0,
-            operators=2
+            operators=2,
         ),
     ]
 
@@ -137,30 +122,15 @@ def multi_product_operations() -> List[OperationInput]:
 @pytest.fixture
 def simple_demand() -> List[DemandInput]:
     """Simple demand for one product."""
-    return [
-        DemandInput(
-            product="PRODUCT_A",
-            bundle_size=10,
-            daily_demand=200,
-            weekly_demand=1000
-        )
-    ]
+    return [DemandInput(product="PRODUCT_A", bundle_size=10, daily_demand=200, weekly_demand=1000)]
 
 
 @pytest.fixture
 def multi_product_demand() -> List[DemandInput]:
     """Demand for two products."""
     return [
-        DemandInput(
-            product="PRODUCT_A",
-            bundle_size=10,
-            daily_demand=150
-        ),
-        DemandInput(
-            product="PRODUCT_B",
-            bundle_size=5,
-            daily_demand=100
-        ),
+        DemandInput(product="PRODUCT_A", bundle_size=10, daily_demand=150),
+        DemandInput(product="PRODUCT_B", bundle_size=5, daily_demand=100),
     ]
 
 
@@ -168,16 +138,8 @@ def multi_product_demand() -> List[DemandInput]:
 def mix_driven_demand() -> List[DemandInput]:
     """Demand using mix percentages."""
     return [
-        DemandInput(
-            product="PRODUCT_A",
-            bundle_size=10,
-            mix_share_pct=60.0
-        ),
-        DemandInput(
-            product="PRODUCT_B",
-            bundle_size=5,
-            mix_share_pct=40.0
-        ),
+        DemandInput(product="PRODUCT_A", bundle_size=10, mix_share_pct=60.0),
+        DemandInput(product="PRODUCT_B", bundle_size=5, mix_share_pct=40.0),
     ]
 
 
@@ -192,9 +154,7 @@ def sample_breakdowns() -> List[BreakdownInput]:
 
 @pytest.fixture
 def simple_config(
-    simple_operations: List[OperationInput],
-    simple_schedule: ScheduleConfig,
-    simple_demand: List[DemandInput]
+    simple_operations: List[OperationInput], simple_schedule: ScheduleConfig, simple_demand: List[DemandInput]
 ) -> SimulationConfig:
     """Complete simple simulation configuration."""
     return SimulationConfig(
@@ -202,7 +162,7 @@ def simple_config(
         schedule=simple_schedule,
         demands=simple_demand,
         mode=DemandMode.DEMAND_DRIVEN,
-        horizon_days=1
+        horizon_days=1,
     )
 
 
@@ -210,7 +170,7 @@ def simple_config(
 def multi_product_config(
     multi_product_operations: List[OperationInput],
     two_shift_schedule: ScheduleConfig,
-    multi_product_demand: List[DemandInput]
+    multi_product_demand: List[DemandInput],
 ) -> SimulationConfig:
     """Configuration with multiple products."""
     return SimulationConfig(
@@ -218,7 +178,7 @@ def multi_product_config(
         schedule=two_shift_schedule,
         demands=multi_product_demand,
         mode=DemandMode.DEMAND_DRIVEN,
-        horizon_days=1
+        horizon_days=1,
     )
 
 
@@ -226,7 +186,7 @@ def multi_product_config(
 def mix_driven_config(
     multi_product_operations: List[OperationInput],
     simple_schedule: ScheduleConfig,
-    mix_driven_demand: List[DemandInput]
+    mix_driven_demand: List[DemandInput],
 ) -> SimulationConfig:
     """Configuration using mix-driven mode."""
     return SimulationConfig(
@@ -235,7 +195,7 @@ def mix_driven_config(
         demands=mix_driven_demand,
         mode=DemandMode.MIX_DRIVEN,
         total_demand=500,
-        horizon_days=1
+        horizon_days=1,
     )
 
 
@@ -244,7 +204,7 @@ def config_with_breakdowns(
     simple_operations: List[OperationInput],
     simple_schedule: ScheduleConfig,
     simple_demand: List[DemandInput],
-    sample_breakdowns: List[BreakdownInput]
+    sample_breakdowns: List[BreakdownInput],
 ) -> SimulationConfig:
     """Configuration with equipment breakdowns."""
     return SimulationConfig(
@@ -253,5 +213,5 @@ def config_with_breakdowns(
         demands=simple_demand,
         breakdowns=sample_breakdowns,
         mode=DemandMode.DEMAND_DRIVEN,
-        horizon_days=1
+        horizon_days=1,
     )

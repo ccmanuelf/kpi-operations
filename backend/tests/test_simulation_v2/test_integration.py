@@ -80,7 +80,7 @@ def valid_config_payload():
                     "variability": "triangular",
                     "rework_pct": 0,
                     "grade_pct": 85,
-                    "fpd_pct": 15
+                    "fpd_pct": 15,
                 },
                 {
                     "product": "T_SHIRT_A",
@@ -94,7 +94,7 @@ def valid_config_payload():
                     "variability": "triangular",
                     "rework_pct": 2,
                     "grade_pct": 90,
-                    "fpd_pct": 15
+                    "fpd_pct": 15,
                 },
                 {
                     "product": "T_SHIRT_A",
@@ -108,8 +108,8 @@ def valid_config_payload():
                     "variability": "deterministic",
                     "rework_pct": 0,
                     "grade_pct": 100,
-                    "fpd_pct": 10
-                }
+                    "fpd_pct": 10,
+                },
             ],
             "schedule": {
                 "shifts_enabled": 1,
@@ -117,18 +117,11 @@ def valid_config_payload():
                 "shift2_hours": 0.0,
                 "shift3_hours": 0.0,
                 "work_days": 5,
-                "ot_enabled": False
+                "ot_enabled": False,
             },
-            "demands": [
-                {
-                    "product": "T_SHIRT_A",
-                    "bundle_size": 10,
-                    "daily_demand": 200,
-                    "weekly_demand": 1000
-                }
-            ],
+            "demands": [{"product": "T_SHIRT_A", "bundle_size": 10, "daily_demand": 200, "weekly_demand": 1000}],
             "mode": "demand-driven",
-            "horizon_days": 1
+            "horizon_days": 1,
         }
     }
 
@@ -144,30 +137,20 @@ def invalid_config_payload():
                     "step": 1,
                     "operation": "Cut fabric panels",
                     "machine_tool": "Cutting Table",
-                    "sam_min": 2.0
+                    "sam_min": 2.0,
                 },
                 {
                     "product": "T_SHIRT_A",
                     "step": 3,  # Gap - step 2 is missing!
                     "operation": "Final inspection",
                     "machine_tool": "QC Station",
-                    "sam_min": 1.0
-                }
+                    "sam_min": 1.0,
+                },
             ],
-            "schedule": {
-                "shifts_enabled": 1,
-                "shift1_hours": 8.0,
-                "work_days": 5
-            },
-            "demands": [
-                {
-                    "product": "T_SHIRT_A",
-                    "bundle_size": 10,
-                    "daily_demand": 200
-                }
-            ],
+            "schedule": {"shifts_enabled": 1, "shift1_hours": 8.0, "work_days": 5},
+            "demands": [{"product": "T_SHIRT_A", "bundle_size": 10, "daily_demand": 200}],
             "mode": "demand-driven",
-            "horizon_days": 1
+            "horizon_days": 1,
         }
     }
 
@@ -202,19 +185,13 @@ class TestValidationEndpoint:
 
     def test_validate_requires_auth(self, client, valid_config_payload):
         """Test that validation endpoint requires authentication."""
-        response = client.post(
-            "/api/v2/simulation/validate",
-            json=valid_config_payload
-        )
+        response = client.post("/api/v2/simulation/validate", json=valid_config_payload)
 
         assert response.status_code == 401
 
     def test_validate_valid_config(self, admin_client, valid_config_payload):
         """Test validation of a valid configuration."""
-        response = admin_client.post(
-            "/api/v2/simulation/validate",
-            json=valid_config_payload
-        )
+        response = admin_client.post("/api/v2/simulation/validate", json=valid_config_payload)
 
         assert response.status_code == 200
         data = response.json()
@@ -223,10 +200,7 @@ class TestValidationEndpoint:
 
     def test_validate_invalid_config_returns_errors(self, admin_client, invalid_config_payload):
         """Test validation of invalid configuration returns errors."""
-        response = admin_client.post(
-            "/api/v2/simulation/validate",
-            json=invalid_config_payload
-        )
+        response = admin_client.post("/api/v2/simulation/validate", json=invalid_config_payload)
 
         assert response.status_code == 200
         data = response.json()
@@ -241,28 +215,19 @@ class TestRunSimulationEndpoint:
 
     def test_run_requires_auth(self, client, valid_config_payload):
         """Test that run endpoint requires authentication."""
-        response = client.post(
-            "/api/v2/simulation/run",
-            json=valid_config_payload
-        )
+        response = client.post("/api/v2/simulation/run", json=valid_config_payload)
 
         assert response.status_code == 401
 
     def test_run_requires_sufficient_role(self, operator_client, valid_config_payload):
         """Test that run endpoint requires appropriate role."""
-        response = operator_client.post(
-            "/api/v2/simulation/run",
-            json=valid_config_payload
-        )
+        response = operator_client.post("/api/v2/simulation/run", json=valid_config_payload)
 
         assert response.status_code == 403
 
     def test_run_valid_simulation(self, admin_client, valid_config_payload):
         """Test running a valid simulation."""
-        response = admin_client.post(
-            "/api/v2/simulation/run",
-            json=valid_config_payload
-        )
+        response = admin_client.post("/api/v2/simulation/run", json=valid_config_payload)
 
         assert response.status_code == 200
         data = response.json()
@@ -282,10 +247,7 @@ class TestRunSimulationEndpoint:
 
     def test_run_invalid_config_returns_validation_errors(self, admin_client, invalid_config_payload):
         """Test that invalid config returns validation errors without running."""
-        response = admin_client.post(
-            "/api/v2/simulation/run",
-            json=invalid_config_payload
-        )
+        response = admin_client.post("/api/v2/simulation/run", json=invalid_config_payload)
 
         assert response.status_code == 200
         data = response.json()
@@ -300,10 +262,7 @@ class TestSimulationOutputBlocks:
     @pytest.fixture
     def run_simulation(self, admin_client, valid_config_payload):
         """Run a simulation and return results."""
-        response = admin_client.post(
-            "/api/v2/simulation/run",
-            json=valid_config_payload
-        )
+        response = admin_client.post("/api/v2/simulation/run", json=valid_config_payload)
         return response.json()["results"]
 
     def test_block1_weekly_demand_capacity(self, run_simulation):

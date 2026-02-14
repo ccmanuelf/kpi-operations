@@ -3,6 +3,7 @@ Authentication Test Fixtures
 Provides pre-authenticated test clients for different user roles.
 Uses real JWT tokens instead of mocks.
 """
+
 from typing import Optional, Dict, Any
 from datetime import timedelta
 from sqlalchemy.orm import Session
@@ -18,7 +19,7 @@ def create_test_user(
     role: str = "operator",
     client_id: Optional[str] = None,
     password: str = "TestPass123!",
-    **kwargs
+    **kwargs,
 ) -> User:
     """
     Create a test user in the database with proper password hashing.
@@ -48,10 +49,7 @@ def create_test_user(
     return user
 
 
-def create_test_token(
-    user: User,
-    expires_delta: Optional[timedelta] = None
-) -> str:
+def create_test_token(user: User, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a real JWT token for a test user.
 
@@ -147,10 +145,7 @@ class AuthenticatedClient:
 
 
 def get_admin_client(
-    test_client: TestClient,
-    db: Session,
-    username: str = "test_admin",
-    client_ids: Optional[str] = None
+    test_client: TestClient, db: Session, username: str = "test_admin", client_ids: Optional[str] = None
 ) -> AuthenticatedClient:
     """
     Get an authenticated client with admin role.
@@ -165,13 +160,7 @@ def get_admin_client(
     Returns:
         AuthenticatedClient with admin privileges
     """
-    user = create_test_user(
-        db,
-        username=username,
-        role="admin",
-        client_id=client_ids,
-        full_name="Test Admin User"
-    )
+    user = create_test_user(db, username=username, role="admin", client_id=client_ids, full_name="Test Admin User")
     db.commit()
 
     token = create_test_token(user)
@@ -179,10 +168,7 @@ def get_admin_client(
 
 
 def get_supervisor_client(
-    test_client: TestClient,
-    db: Session,
-    client_id: str,
-    username: str = "test_supervisor"
+    test_client: TestClient, db: Session, client_id: str, username: str = "test_supervisor"
 ) -> AuthenticatedClient:
     """
     Get an authenticated client with supervisor role.
@@ -198,11 +184,7 @@ def get_supervisor_client(
         AuthenticatedClient with supervisor privileges
     """
     user = create_test_user(
-        db,
-        username=username,
-        role="supervisor",
-        client_id=client_id,
-        full_name="Test Supervisor User"
+        db, username=username, role="supervisor", client_id=client_id, full_name="Test Supervisor User"
     )
     db.commit()
 
@@ -211,10 +193,7 @@ def get_supervisor_client(
 
 
 def get_leader_client(
-    test_client: TestClient,
-    db: Session,
-    client_ids: str,
-    username: str = "test_leader"
+    test_client: TestClient, db: Session, client_ids: str, username: str = "test_leader"
 ) -> AuthenticatedClient:
     """
     Get an authenticated client with leader role.
@@ -229,13 +208,7 @@ def get_leader_client(
     Returns:
         AuthenticatedClient with leader privileges
     """
-    user = create_test_user(
-        db,
-        username=username,
-        role="leader",
-        client_id=client_ids,
-        full_name="Test Leader User"
-    )
+    user = create_test_user(db, username=username, role="leader", client_id=client_ids, full_name="Test Leader User")
     db.commit()
 
     token = create_test_token(user)
@@ -243,10 +216,7 @@ def get_leader_client(
 
 
 def get_operator_client(
-    test_client: TestClient,
-    db: Session,
-    client_id: str,
-    username: str = "test_operator"
+    test_client: TestClient, db: Session, client_id: str, username: str = "test_operator"
 ) -> AuthenticatedClient:
     """
     Get an authenticated client with operator role.
@@ -261,13 +231,7 @@ def get_operator_client(
     Returns:
         AuthenticatedClient with operator privileges
     """
-    user = create_test_user(
-        db,
-        username=username,
-        role="operator",
-        client_id=client_id,
-        full_name="Test Operator User"
-    )
+    user = create_test_user(db, username=username, role="operator", client_id=client_id, full_name="Test Operator User")
     db.commit()
 
     token = create_test_token(user)
@@ -275,10 +239,7 @@ def get_operator_client(
 
 
 def get_viewer_client(
-    test_client: TestClient,
-    db: Session,
-    client_id: str,
-    username: str = "test_viewer"
+    test_client: TestClient, db: Session, client_id: str, username: str = "test_viewer"
 ) -> AuthenticatedClient:
     """
     Get an authenticated client with viewer role.
@@ -293,13 +254,7 @@ def get_viewer_client(
     Returns:
         AuthenticatedClient with viewer privileges (read-only)
     """
-    user = create_test_user(
-        db,
-        username=username,
-        role="viewer",
-        client_id=client_id,
-        full_name="Test Viewer User"
-    )
+    user = create_test_user(db, username=username, role="viewer", client_id=client_id, full_name="Test Viewer User")
     db.commit()
 
     token = create_test_token(user)
@@ -307,11 +262,7 @@ def get_viewer_client(
 
 
 def get_multi_tenant_client(
-    test_client: TestClient,
-    db: Session,
-    client_ids: str,
-    role: str = "supervisor",
-    username: str = "test_multi_tenant"
+    test_client: TestClient, db: Session, client_ids: str, role: str = "supervisor", username: str = "test_multi_tenant"
 ) -> AuthenticatedClient:
     """
     Get an authenticated client with access to multiple clients.
@@ -327,13 +278,7 @@ def get_multi_tenant_client(
     Returns:
         AuthenticatedClient with multi-tenant access
     """
-    user = create_test_user(
-        db,
-        username=username,
-        role=role,
-        client_id=client_ids,
-        full_name="Test Multi-Tenant User"
-    )
+    user = create_test_user(db, username=username, role=role, client_id=client_ids, full_name="Test Multi-Tenant User")
     db.commit()
 
     token = create_test_token(user)
@@ -361,5 +306,5 @@ def create_authenticated_clients_fixture(test_client, db):
         "operator_b": get_operator_client(test_client, db, "CLIENT-B", username="fixture_operator_b"),
         "viewer_a": get_viewer_client(test_client, db, "CLIENT-A", username="fixture_viewer_a"),
         "leader_multi": get_leader_client(test_client, db, "CLIENT-A,CLIENT-B", username="fixture_leader"),
-        "clients": {"a": client_a, "b": client_b}
+        "clients": {"a": client_a, "b": client_b},
     }

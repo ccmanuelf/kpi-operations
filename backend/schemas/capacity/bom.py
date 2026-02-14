@@ -3,6 +3,7 @@ Capacity BOM - Bill of Materials
 Two-table structure: Header (parent items) and Detail (components).
 Used for MRP explosion and component availability checking.
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Text, Boolean, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -21,18 +22,19 @@ class CapacityBOMHeader(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_bom_header"
     __table_args__ = (
-        Index('ix_capacity_bom_header_parent', 'client_id', 'parent_item_code'),
-        Index('ix_capacity_bom_header_style', 'client_id', 'style_code'),
-        {"extend_existing": True}
+        Index("ix_capacity_bom_header_parent", "client_id", "parent_item_code"),
+        Index("ix_capacity_bom_header_style", "client_id", "style_code"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Parent item identification (indexed via composite index in __table_args__)
     parent_item_code = Column(String(50), nullable=False)
@@ -56,10 +58,7 @@ class CapacityBOMHeader(Base):
 
     # Relationship to details
     components = relationship(
-        "CapacityBOMDetail",
-        back_populates="header",
-        cascade="all, delete-orphan",
-        lazy="dynamic"
+        "CapacityBOMDetail", back_populates="header", cascade="all, delete-orphan", lazy="dynamic"
     )
 
     def __repr__(self):
@@ -78,11 +77,12 @@ class CapacityBOMDetail(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_bom_detail"
     __table_args__ = (
-        Index('ix_capacity_bom_detail_header', 'header_id'),
-        Index('ix_capacity_bom_detail_component', 'client_id', 'component_item_code'),
-        {"extend_existing": True}
+        Index("ix_capacity_bom_detail_header", "header_id"),
+        Index("ix_capacity_bom_detail_component", "client_id", "component_item_code"),
+        {"extend_existing": True},
     )
 
     # Primary key
@@ -92,7 +92,7 @@ class CapacityBOMDetail(Base):
     header_id = Column(Integer, ForeignKey("capacity_bom_header.id"), nullable=False)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Component identification (indexed via composite index in __table_args__)
     component_item_code = Column(String(50), nullable=False)

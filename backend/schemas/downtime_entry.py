@@ -3,6 +3,7 @@ DOWNTIME_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation for KPI #8 Availability calculation
 Source: 03-Phase2_Downtime_WIP_Inventory.csv lines 2-19
 """
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -10,6 +11,7 @@ from backend.database import Base
 
 class DowntimeEntry(Base):
     """DOWNTIME_ENTRY table - Equipment downtime tracking for Availability KPI"""
+
     __tablename__ = "DOWNTIME_ENTRY"
     __table_args__ = {"extend_existing": True}
 
@@ -17,10 +19,10 @@ class DowntimeEntry(Base):
     downtime_entry_id = Column(String(50), primary_key=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Work order reference
-    work_order_id = Column(String(50), ForeignKey('WORK_ORDER.work_order_id'), nullable=False, index=True)
+    work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)
 
     # Date tracking
     shift_date = Column(DateTime, nullable=False, index=True)
@@ -38,15 +40,15 @@ class DowntimeEntry(Base):
     corrective_action = Column(Text)
 
     # Responsible parties
-    reported_by = Column(Integer, ForeignKey('USER.user_id'))
-    resolved_by = Column(Integer, ForeignKey('USER.user_id'))
+    reported_by = Column(Integer, ForeignKey("USER.user_id"))
+    resolved_by = Column(Integer, ForeignKey("USER.user_id"))
     resolution_timestamp = Column(DateTime)
 
     # Metadata
     notes = Column(Text)
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(Integer, ForeignKey('USER.user_id'))
+    updated_by = Column(Integer, ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

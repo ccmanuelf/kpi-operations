@@ -2,6 +2,7 @@
 Comprehensive QR Routes Tests
 Target: Increase QR routes coverage from 15% to 60%+
 """
+
 import pytest
 from datetime import date
 import json
@@ -141,18 +142,14 @@ class TestQRBulkRoutes:
     def test_bulk_work_order_qr_images(self, authenticated_client):
         """Test bulk work order QR image generation"""
         response = authenticated_client.post(
-            "/api/qr/bulk/work-orders/images",
-            json={"work_order_ids": ["WO-001", "WO-002"]}
+            "/api/qr/bulk/work-orders/images", json={"work_order_ids": ["WO-001", "WO-002"]}
         )
         # 405 indicates endpoint doesn't exist
         assert response.status_code in [200, 400, 403, 404, 405, 422]
 
     def test_bulk_product_qr_images(self, authenticated_client):
         """Test bulk product QR image generation"""
-        response = authenticated_client.post(
-            "/api/qr/bulk/products/images",
-            json={"product_ids": [1, 2, 3]}
-        )
+        response = authenticated_client.post("/api/qr/bulk/products/images", json={"product_ids": [1, 2, 3]})
         assert response.status_code in [200, 400, 403, 404, 405, 422]
 
 
@@ -182,16 +179,10 @@ class TestQRValidationRoutes:
     def test_validate_qr_data(self, authenticated_client):
         """Test QR data validation"""
         qr_data = json.dumps({"type": "work_order", "id": "WO-001", "version": "1.0"})
-        response = authenticated_client.post(
-            "/api/qr/validate",
-            json={"qr_data": qr_data}
-        )
+        response = authenticated_client.post("/api/qr/validate", json={"qr_data": qr_data})
         assert response.status_code in [200, 400, 403, 404, 405, 422]
 
     def test_validate_invalid_qr_data(self, authenticated_client):
         """Test invalid QR data validation"""
-        response = authenticated_client.post(
-            "/api/qr/validate",
-            json={"qr_data": "invalid-json"}
-        )
+        response = authenticated_client.post("/api/qr/validate", json={"qr_data": "invalid-json"})
         assert response.status_code in [200, 400, 403, 404, 405, 422]

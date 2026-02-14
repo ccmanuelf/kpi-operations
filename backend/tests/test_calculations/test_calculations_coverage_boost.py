@@ -2,6 +2,7 @@
 Coverage Boost Tests for Low-Coverage Calculation Modules
 Target: Push overall coverage from 80% to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -23,8 +24,7 @@ class TestEfficiencyCalculations:
         scheduled_hours = Decimal("8.0")
 
         efficiency = (
-            (Decimal(str(units_produced)) * ideal_cycle_time) /
-            (Decimal(str(employees)) * scheduled_hours)
+            (Decimal(str(units_produced)) * ideal_cycle_time) / (Decimal(str(employees)) * scheduled_hours)
         ) * 100
 
         # (100 * 0.25) / (2 * 8) * 100 = 25 / 16 * 100 = 156.25%
@@ -35,22 +35,14 @@ class TestEfficiencyCalculations:
         """Test floating pool coverage count"""
         from backend.calculations.efficiency import get_floating_pool_coverage_count
 
-        result = get_floating_pool_coverage_count(
-            db_session,
-            "TEST-CLIENT",
-            date.today()
-        )
+        result = get_floating_pool_coverage_count(db_session, "TEST-CLIENT", date.today())
 
         assert isinstance(result, int)
         assert result >= 0
 
     def test_default_values(self):
         """Test default values for efficiency calculation"""
-        from backend.calculations.efficiency import (
-            DEFAULT_CYCLE_TIME,
-            DEFAULT_SHIFT_HOURS,
-            DEFAULT_EMPLOYEES
-        )
+        from backend.calculations.efficiency import DEFAULT_CYCLE_TIME, DEFAULT_SHIFT_HOURS, DEFAULT_EMPLOYEES
 
         assert DEFAULT_CYCLE_TIME == Decimal("0.25")
         assert DEFAULT_SHIFT_HOURS == Decimal("8.0")
@@ -83,16 +75,12 @@ class TestInferenceCalculations:
     def test_import_inference(self):
         """Test inference module imports"""
         from backend.calculations import inference
+
         assert inference is not None
 
     def test_inference_confidence_levels(self):
         """Test inference confidence levels"""
-        confidence_levels = {
-            "actual": 1.0,
-            "inferred_high": 0.8,
-            "inferred_medium": 0.5,
-            "inferred_low": 0.3
-        }
+        confidence_levels = {"actual": 1.0, "inferred_high": 0.8, "inferred_medium": 0.5, "inferred_low": 0.3}
 
         assert confidence_levels["actual"] == 1.0
         assert confidence_levels["inferred_high"] > confidence_levels["inferred_medium"]
@@ -107,6 +95,7 @@ class TestTrendAnalysis:
     def test_import_trend_analysis(self):
         """Test trend analysis module imports"""
         from backend.calculations import trend_analysis
+
         assert trend_analysis is not None
 
     def test_calculate_trend(self):
@@ -118,7 +107,7 @@ class TestTrendAnalysis:
             {"date": date.today() - timedelta(days=3), "value": 110},
             {"date": date.today() - timedelta(days=2), "value": 115},
             {"date": date.today() - timedelta(days=1), "value": 112},
-            {"date": date.today(), "value": 120}
+            {"date": date.today(), "value": 120},
         ]
 
         # Simple trend: compare first and last
@@ -136,7 +125,7 @@ class TestTrendAnalysis:
 
         moving_avgs = []
         for i in range(len(values) - window + 1):
-            avg = sum(values[i:i + window]) / window
+            avg = sum(values[i : i + window]) / window
             moving_avgs.append(avg)
 
         assert len(moving_avgs) == 5
@@ -159,7 +148,7 @@ class TestPPMCalculations:
                 product_id=1,
                 shift_id=1,
                 start_date=date.today() - timedelta(days=30),
-                end_date=date.today()
+                end_date=date.today(),
             )
             assert isinstance(result, tuple)
         except Exception:
@@ -186,7 +175,7 @@ class TestAvailabilityCalculations:
         """Test availability formula"""
         # Availability = (Operating Time / Planned Production Time) * 100
         operating_time = Decimal("7.0")  # 7 hours
-        planned_time = Decimal("8.0")    # 8 hours
+        planned_time = Decimal("8.0")  # 8 hours
 
         availability = (operating_time / planned_time) * 100
 
@@ -202,7 +191,7 @@ class TestAbsenteeismCalculations:
     def test_calculate_absenteeism_formula(self):
         """Test absenteeism formula"""
         # Absenteeism = (Absent Hours / Scheduled Hours) * 100
-        absent_hours = Decimal("16")    # 16 hours absent
+        absent_hours = Decimal("16")  # 16 hours absent
         scheduled_hours = Decimal("400")  # 400 total scheduled
 
         absenteeism = (absent_hours / scheduled_hours) * 100
@@ -233,8 +222,8 @@ class TestFormulaValidations:
     def test_oee_formula(self):
         """Test OEE = Availability * Performance * Quality"""
         availability = Decimal("0.90")  # 90%
-        performance = Decimal("0.85")   # 85%
-        quality = Decimal("0.95")       # 95%
+        performance = Decimal("0.85")  # 85%
+        quality = Decimal("0.95")  # 95%
 
         oee = availability * performance * quality * 100
 

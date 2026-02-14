@@ -2,6 +2,7 @@
 Tests for KPI Threshold Pydantic models
 Target: Cover all 6 models in backend/models/kpi_threshold.py
 """
+
 import pytest
 from datetime import datetime
 from pydantic import ValidationError
@@ -108,9 +109,7 @@ class TestKPIThresholdSet:
         assert s.thresholds == []
 
     def test_populated_set(self):
-        resp = KPIThresholdResponse(
-            threshold_id="TH-1", kpi_key="quality", target_value=99.0
-        )
+        resp = KPIThresholdResponse(threshold_id="TH-1", kpi_key="quality", target_value=99.0)
         s = KPIThresholdSet(client_id="C1", client_name="Acme", thresholds=[resp])
         assert len(s.thresholds) == 1
         assert s.client_name == "Acme"

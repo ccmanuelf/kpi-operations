@@ -4,6 +4,7 @@ Dashboard customization and widget configuration endpoints
 
 All endpoints require authentication via JWT token
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -21,7 +22,7 @@ from backend.models.preferences import (
     RoleDefaultsResponse,
     ResetPreferencesRequest,
     ResetPreferencesResponse,
-    WidgetDefaultResponse
+    WidgetDefaultResponse,
 )
 from backend.crud.preferences import (
     get_user_dashboard_preferences,
@@ -29,7 +30,7 @@ from backend.crud.preferences import (
     save_user_dashboard_preferences,
     update_user_dashboard_preferences,
     get_role_default_widgets,
-    reset_to_role_defaults
+    reset_to_role_defaults,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,20 +60,17 @@ router = APIRouter(prefix="/api/preferences", tags=["preferences"])
     responses={
         200: {"description": "Dashboard preferences retrieved successfully"},
         401: {"description": "Not authenticated"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_dashboard_preferences(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> PreferenceResponse:
     """
     GET /api/preferences/dashboard - Get user's dashboard preferences
     """
     try:
-        preference_record, preferences = get_user_dashboard_preferences_full(
-            db, current_user.user_id
-        )
+        preference_record, preferences = get_user_dashboard_preferences_full(db, current_user.user_id)
 
         # If no saved preference exists, return defaults with placeholder metadata
         if preference_record is None:
@@ -82,7 +80,7 @@ async def get_dashboard_preferences(
                 preference_type="dashboard",
                 preferences=preferences,
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
 
         return PreferenceResponse(
@@ -91,19 +89,16 @@ async def get_dashboard_preferences(
             preference_type=preference_record.preference_type,
             preferences=preferences,
             created_at=preference_record.created_at,
-            updated_at=preference_record.updated_at
+            updated_at=preference_record.updated_at,
         )
 
     except Exception as e:
         logger.warning(f"Error retrieving dashboard preferences (returning defaults): {e}")
         # Return default preferences if DB is unavailable or table doesn't exist
         from backend.crud.preferences import FALLBACK_DEFAULT_WIDGETS
+
         default_prefs = DashboardPreferences(
-            layout="grid",
-            widgets=FALLBACK_DEFAULT_WIDGETS,
-            theme="light",
-            auto_refresh=0,
-            default_time_range="7d"
+            layout="grid", widgets=FALLBACK_DEFAULT_WIDGETS, theme="light", auto_refresh=0, default_time_range="7d"
         )
         return PreferenceResponse(
             preference_id=0,
@@ -111,7 +106,7 @@ async def get_dashboard_preferences(
             preference_type="dashboard",
             preferences=default_prefs,
             created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
 
 
@@ -143,21 +138,17 @@ async def get_dashboard_preferences(
         400: {"description": "Invalid preference data"},
         401: {"description": "Not authenticated"},
         422: {"description": "Validation error"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def save_dashboard_preferences(
-    preferences: DashboardPreferences,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    preferences: DashboardPreferences, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> PreferenceResponse:
     """
     PUT /api/preferences/dashboard - Save dashboard preferences
     """
     try:
-        preference_record = save_user_dashboard_preferences(
-            db, current_user.user_id, preferences
-        )
+        preference_record = save_user_dashboard_preferences(db, current_user.user_id, preferences)
 
         logger.info(f"Saved dashboard preferences for user {current_user.user_id}")
 
@@ -167,20 +158,16 @@ async def save_dashboard_preferences(
             preference_type=preference_record.preference_type,
             preferences=preferences,
             created_at=preference_record.created_at,
-            updated_at=preference_record.updated_at
+            updated_at=preference_record.updated_at,
         )
 
     except ValueError as e:
         logger.warning(f"Validation error saving preferences: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error saving dashboard preferences: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to save dashboard preferences"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save dashboard preferences"
         )
 
 
@@ -200,21 +187,17 @@ async def save_dashboard_preferences(
         400: {"description": "Invalid preference data"},
         401: {"description": "Not authenticated"},
         422: {"description": "Validation error"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def patch_dashboard_preferences(
-    updates: DashboardPreferencesUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    updates: DashboardPreferencesUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> PreferenceResponse:
     """
     PATCH /api/preferences/dashboard - Partially update dashboard preferences
     """
     try:
-        preference_record = update_user_dashboard_preferences(
-            db, current_user.user_id, updates
-        )
+        preference_record = update_user_dashboard_preferences(db, current_user.user_id, updates)
 
         # Re-fetch to get updated preferences
         _, preferences = get_user_dashboard_preferences(db, current_user.user_id)
@@ -227,20 +210,16 @@ async def patch_dashboard_preferences(
             preference_type=preference_record.preference_type,
             preferences=preferences,
             created_at=preference_record.created_at,
-            updated_at=preference_record.updated_at
+            updated_at=preference_record.updated_at,
         )
 
     except ValueError as e:
         logger.warning(f"Validation error updating preferences: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error updating dashboard preferences: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update dashboard preferences"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update dashboard preferences"
         )
 
 
@@ -267,13 +246,11 @@ async def patch_dashboard_preferences(
         200: {"description": "Role defaults retrieved successfully"},
         401: {"description": "Not authenticated"},
         404: {"description": "No defaults configured for role"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_role_defaults(
-    role: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    role: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> RoleDefaultsResponse:
     """
     GET /api/preferences/defaults/{role} - Get role default widgets
@@ -287,24 +264,19 @@ async def get_role_defaults(
         if role not in valid_roles:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}",
             )
 
         defaults = get_role_default_widgets(db, role)
 
-        return RoleDefaultsResponse(
-            role=role,
-            widgets=defaults,
-            total_widgets=len(defaults)
-        )
+        return RoleDefaultsResponse(role=role, widgets=defaults, total_widgets=len(defaults))
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error retrieving role defaults: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve role defaults"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve role defaults"
         )
 
 
@@ -327,13 +299,13 @@ async def get_role_defaults(
         200: {"description": "Preferences reset successfully"},
         400: {"description": "Invalid role specified"},
         401: {"description": "Not authenticated"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def reset_preferences(
     request: ResetPreferencesRequest = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> ResetPreferencesResponse:
     """
     POST /api/preferences/reset - Reset preferences to role defaults
@@ -351,13 +323,11 @@ async def reset_preferences(
         if role not in valid_roles:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}"
+                detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}",
             )
 
         # Reset to defaults
-        preferences, widgets_applied = reset_to_role_defaults(
-            db, current_user.user_id, role
-        )
+        preferences, widgets_applied = reset_to_role_defaults(db, current_user.user_id, role)
 
         logger.info(
             f"Reset preferences for user {current_user.user_id} to role '{role}' defaults "
@@ -369,17 +339,14 @@ async def reset_preferences(
             message=f"Preferences reset to {role} defaults successfully",
             reset_to_role=role,
             widgets_applied=widgets_applied,
-            preferences=preferences
+            preferences=preferences,
         )
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error resetting preferences: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset preferences"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reset preferences")
 
 
 @router.get(
@@ -397,12 +364,11 @@ async def reset_preferences(
     responses={
         200: {"description": "Role defaults retrieved successfully"},
         401: {"description": "Not authenticated"},
-        500: {"description": "Internal server error"}
-    }
+        500: {"description": "Internal server error"},
+    },
 )
 async def get_my_role_defaults(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> RoleDefaultsResponse:
     """
     GET /api/preferences/defaults - Get current user's role defaults
@@ -412,15 +378,10 @@ async def get_my_role_defaults(
 
         defaults = get_role_default_widgets(db, role)
 
-        return RoleDefaultsResponse(
-            role=role,
-            widgets=defaults,
-            total_widgets=len(defaults)
-        )
+        return RoleDefaultsResponse(role=role, widgets=defaults, total_widgets=len(defaults))
 
     except Exception as e:
         logger.error(f"Error retrieving user role defaults: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to retrieve role defaults"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve role defaults"
         )

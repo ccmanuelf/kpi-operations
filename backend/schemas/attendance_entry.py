@@ -4,6 +4,7 @@ Complete implementation for KPI #10 Absenteeism calculation
 Source: 04-Phase3_Attendance_Inventory.csv lines 2-21
 Enhanced with composite indexes for query performance (per audit requirement)
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -12,35 +13,37 @@ import enum
 
 class AbsenceType(str, enum.Enum):
     """Absence classification for absenteeism tracking"""
+
     UNSCHEDULED_ABSENCE = "UNSCHEDULED_ABSENCE"  # Counts toward absenteeism
-    VACATION = "VACATION"                        # Scheduled, doesn't count
-    MEDICAL_LEAVE = "MEDICAL_LEAVE"              # Counts toward absenteeism
-    PERSONAL_LEAVE = "PERSONAL_LEAVE"            # Counts toward absenteeism
+    VACATION = "VACATION"  # Scheduled, doesn't count
+    MEDICAL_LEAVE = "MEDICAL_LEAVE"  # Counts toward absenteeism
+    PERSONAL_LEAVE = "PERSONAL_LEAVE"  # Counts toward absenteeism
 
 
 class AttendanceEntry(Base):
     """ATTENDANCE_ENTRY table - Daily attendance tracking for Absenteeism KPI"""
+
     __tablename__ = "ATTENDANCE_ENTRY"
     __table_args__ = (
         # Composite indexes for query performance (per audit requirement)
-        Index('ix_attendance_client_shift_date', 'client_id', 'shift_date'),  # Most common query pattern
-        Index('ix_attendance_client_employee', 'client_id', 'employee_id'),  # Employee attendance history
-        Index('ix_attendance_shift_date_absent', 'shift_date', 'is_absent'),  # Absenteeism reports
-        {"extend_existing": True}
+        Index("ix_attendance_client_shift_date", "client_id", "shift_date"),  # Most common query pattern
+        Index("ix_attendance_client_employee", "client_id", "employee_id"),  # Employee attendance history
+        Index("ix_attendance_shift_date_absent", "shift_date", "is_absent"),  # Absenteeism reports
+        {"extend_existing": True},
     )
 
     # Primary key
     attendance_entry_id = Column(String(50), primary_key=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Employee reference
-    employee_id = Column(Integer, ForeignKey('EMPLOYEE.employee_id'), nullable=False, index=True)
+    employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"), nullable=False, index=True)
 
     # Date tracking
     shift_date = Column(DateTime, nullable=False, index=True)
-    shift_id = Column(Integer, ForeignKey('SHIFT.shift_id'))
+    shift_id = Column(Integer, ForeignKey("SHIFT.shift_id"))
 
     # Hours tracking - REQUIRED for Absenteeism calculation
     scheduled_hours = Column(Numeric(5, 2), nullable=False)
@@ -52,7 +55,7 @@ class AttendanceEntry(Base):
     absence_type = Column(SQLEnum(AbsenceType))
 
     # Coverage tracking - for floating pool assignments
-    covered_by_employee_id = Column(Integer, ForeignKey('EMPLOYEE.employee_id'))  # FK to floating pool employee
+    covered_by_employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"))  # FK to floating pool employee
     coverage_confirmed = Column(Integer, default=0)  # Boolean: 0=pending, 1=confirmed
 
     # Late/early departure tracking
@@ -64,10 +67,10 @@ class AttendanceEntry(Base):
     # Metadata
     absence_reason = Column(Text)
     notes = Column(Text)
-    entered_by = Column(Integer, ForeignKey('USER.user_id'))
+    entered_by = Column(Integer, ForeignKey("USER.user_id"))
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(Integer, ForeignKey('USER.user_id'))
+    updated_by = Column(Integer, ForeignKey("USER.user_id"))
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())

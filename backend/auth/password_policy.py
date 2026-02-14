@@ -9,6 +9,7 @@ Requirements:
 - At least 1 digit
 - At least 1 special character
 """
+
 import re
 from typing import Tuple, List, Optional
 from dataclasses import dataclass
@@ -43,20 +44,45 @@ DEFAULT_POLICY = PasswordPolicyConfig()
 
 # List of common weak passwords to reject
 COMMON_PASSWORDS = {
-    "password", "password123", "123456", "12345678", "qwerty",
-    "abc123", "monkey", "1234567", "letmein", "trustno1",
-    "dragon", "baseball", "iloveyou", "master", "sunshine",
-    "ashley", "bailey", "shadow", "123123", "654321",
-    "superman", "qazwsx", "michael", "football", "password1",
-    "password12", "passw0rd", "admin123", "root123", "welcome1",
-    "welcome123", "changeme", "changeme123", "test123", "guest123"
+    "password",
+    "password123",
+    "123456",
+    "12345678",
+    "qwerty",
+    "abc123",
+    "monkey",
+    "1234567",
+    "letmein",
+    "trustno1",
+    "dragon",
+    "baseball",
+    "iloveyou",
+    "master",
+    "sunshine",
+    "ashley",
+    "bailey",
+    "shadow",
+    "123123",
+    "654321",
+    "superman",
+    "qazwsx",
+    "michael",
+    "football",
+    "password1",
+    "password12",
+    "passw0rd",
+    "admin123",
+    "root123",
+    "welcome1",
+    "welcome123",
+    "changeme",
+    "changeme123",
+    "test123",
+    "guest123",
 }
 
 
-def validate_password_strength(
-    password: str,
-    config: Optional[PasswordPolicyConfig] = None
-) -> Tuple[bool, str]:
+def validate_password_strength(password: str, config: Optional[PasswordPolicyConfig] = None) -> Tuple[bool, str]:
     """
     Validate password against security policy
 
@@ -90,31 +116,29 @@ def validate_password_strength(
         errors.append(f"Password must not exceed {config.max_length} characters")
 
     # Check for uppercase letter
-    if config.require_uppercase and not re.search(r'[A-Z]', password):
+    if config.require_uppercase and not re.search(r"[A-Z]", password):
         errors.append("Password must contain at least 1 uppercase letter (A-Z)")
 
     # Check for lowercase letter
-    if config.require_lowercase and not re.search(r'[a-z]', password):
+    if config.require_lowercase and not re.search(r"[a-z]", password):
         errors.append("Password must contain at least 1 lowercase letter (a-z)")
 
     # Check for digit
-    if config.require_digit and not re.search(r'[0-9]', password):
+    if config.require_digit and not re.search(r"[0-9]", password):
         errors.append("Password must contain at least 1 digit (0-9)")
 
     # Check for special character
     if config.require_special:
-        special_pattern = f'[{re.escape(config.special_characters)}]'
+        special_pattern = f"[{re.escape(config.special_characters)}]"
         if not re.search(special_pattern, password):
-            errors.append(
-                f"Password must contain at least 1 special character ({config.special_characters[:10]}...)"
-            )
+            errors.append(f"Password must contain at least 1 special character ({config.special_characters[:10]}...)")
 
     # Check against common passwords
     if config.check_common_passwords and password.lower() in COMMON_PASSWORDS:
         errors.append("Password is too common and easily guessable")
 
     # Check for repeated characters (e.g., "aaaaaa")
-    if re.search(r'(.)\1{3,}', password):
+    if re.search(r"(.)\1{3,}", password):
         errors.append("Password cannot contain more than 3 consecutive identical characters")
 
     # Check for sequential characters (e.g., "123456" or "abcdef")
@@ -143,31 +167,19 @@ def _has_sequential_chars(password: str, min_sequential: int = 4) -> bool:
 
     # Check for numeric sequences
     for i in range(len(password_lower) - min_sequential + 1):
-        if password_lower[i:i + min_sequential].isdigit():
-            substring = password_lower[i:i + min_sequential]
-            is_ascending = all(
-                int(substring[j]) + 1 == int(substring[j + 1])
-                for j in range(len(substring) - 1)
-            )
-            is_descending = all(
-                int(substring[j]) - 1 == int(substring[j + 1])
-                for j in range(len(substring) - 1)
-            )
+        if password_lower[i : i + min_sequential].isdigit():
+            substring = password_lower[i : i + min_sequential]
+            is_ascending = all(int(substring[j]) + 1 == int(substring[j + 1]) for j in range(len(substring) - 1))
+            is_descending = all(int(substring[j]) - 1 == int(substring[j + 1]) for j in range(len(substring) - 1))
             if is_ascending or is_descending:
                 return True
 
     # Check for alphabetic sequences
     for i in range(len(password_lower) - min_sequential + 1):
-        substring = password_lower[i:i + min_sequential]
+        substring = password_lower[i : i + min_sequential]
         if substring.isalpha():
-            is_ascending = all(
-                ord(substring[j]) + 1 == ord(substring[j + 1])
-                for j in range(len(substring) - 1)
-            )
-            is_descending = all(
-                ord(substring[j]) - 1 == ord(substring[j + 1])
-                for j in range(len(substring) - 1)
-            )
+            is_ascending = all(ord(substring[j]) + 1 == ord(substring[j + 1]) for j in range(len(substring) - 1))
+            is_descending = all(ord(substring[j]) - 1 == ord(substring[j + 1]) for j in range(len(substring) - 1))
             if is_ascending or is_descending:
                 return True
 
@@ -205,27 +217,27 @@ def get_password_strength_score(password: str) -> Tuple[int, str]:
         score += 5
 
     # Character variety scoring (up to 40 points)
-    if re.search(r'[a-z]', password):
+    if re.search(r"[a-z]", password):
         score += 10
-    if re.search(r'[A-Z]', password):
+    if re.search(r"[A-Z]", password):
         score += 10
-    if re.search(r'[0-9]', password):
+    if re.search(r"[0-9]", password):
         score += 10
     if re.search(r'[!@#$%^&*()_+\-=\[\]{}|;\':",./<>?]', password):
         score += 10
 
     # Complexity scoring (up to 35 points)
     # Mixed case
-    if re.search(r'[a-z]', password) and re.search(r'[A-Z]', password):
+    if re.search(r"[a-z]", password) and re.search(r"[A-Z]", password):
         score += 10
 
     # Numbers and letters
-    if re.search(r'[0-9]', password) and re.search(r'[a-zA-Z]', password):
+    if re.search(r"[0-9]", password) and re.search(r"[a-zA-Z]", password):
         score += 10
 
     # Special characters with alphanumeric
     if re.search(r'[!@#$%^&*()_+\-=\[\]{}|;\':",./<>?]', password):
-        if re.search(r'[a-zA-Z0-9]', password):
+        if re.search(r"[a-zA-Z0-9]", password):
             score += 10
 
     # Unique characters bonus
@@ -310,5 +322,5 @@ __all__ = [
     "validate_password_strength",
     "get_password_strength_score",
     "generate_password_requirements_message",
-    "password_validator"
+    "password_validator",
 ]

@@ -34,16 +34,16 @@ from backend.crud.employee.client_assignment import (
 
 __all__ = [
     # Core
-    'create_employee',
-    'get_employee',
-    'get_employees',
-    'update_employee',
-    'delete_employee',
+    "create_employee",
+    "get_employee",
+    "get_employees",
+    "update_employee",
+    "delete_employee",
     # Floating pool
-    'get_floating_pool_employees',
-    'assign_to_floating_pool',
-    'remove_from_floating_pool',
+    "get_floating_pool_employees",
+    "assign_to_floating_pool",
+    "remove_from_floating_pool",
     # Client assignment
-    'get_employees_by_client',
-    'assign_employee_to_client',
+    "get_employees_by_client",
+    "assign_employee_to_client",
 ]

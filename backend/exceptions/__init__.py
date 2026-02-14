@@ -1,4 +1,5 @@
 """Domain exceptions module."""
+
 from backend.exceptions.domain_exceptions import (
     DomainException,
     ValidationError,

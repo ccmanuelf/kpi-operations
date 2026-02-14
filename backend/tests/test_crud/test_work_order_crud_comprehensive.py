@@ -3,6 +3,7 @@ Comprehensive Work Order CRUD Tests
 Tests CRUD operations with real database transactions (no mocking).
 Target: Increase crud/work_order.py coverage from 39% to 85%+
 """
+
 import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -45,37 +46,20 @@ def work_order_setup(work_order_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="WO-TEST-CLIENT",
-        client_name="Work Order Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="WO-TEST-CLIENT", client_name="Work Order Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create admin user (no client restriction)
-    admin = TestDataFactory.create_user(
-        db,
-        user_id="wo-admin-001",
-        username="wo_admin",
-        role="admin",
-        client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="wo-admin-001", username="wo_admin", role="admin", client_id=None)
 
     # Create supervisor (client-bound)
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="wo-super-001",
-        username="wo_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="wo-super-001", username="wo_supervisor", role="supervisor", client_id=client.client_id
     )
 
     # Create operator (client-bound)
     operator = TestDataFactory.create_user(
-        db,
-        user_id="wo-oper-001",
-        username="wo_operator",
-        role="operator",
-        client_id=client.client_id
+        db, user_id="wo-oper-001", username="wo_operator", role="operator", client_id=client.client_id
     )
 
     db.flush()
@@ -92,7 +76,7 @@ def work_order_setup(work_order_db):
         status=WorkOrderStatus.RECEIVED,
         planned_quantity=1000,
         received_date=base_date,
-        planned_ship_date=base_date + timedelta(days=30)
+        planned_ship_date=base_date + timedelta(days=30),
     )
     work_orders.append(wo1)
 
@@ -104,7 +88,7 @@ def work_order_setup(work_order_db):
         status=WorkOrderStatus.IN_PROGRESS,
         planned_quantity=2000,
         received_date=base_date + timedelta(days=5),
-        planned_ship_date=base_date + timedelta(days=45)
+        planned_ship_date=base_date + timedelta(days=45),
     )
     work_orders.append(wo2)
 
@@ -116,7 +100,7 @@ def work_order_setup(work_order_db):
         status=WorkOrderStatus.COMPLETED,
         planned_quantity=500,
         received_date=base_date - timedelta(days=30),
-        planned_ship_date=base_date + timedelta(days=10)
+        planned_ship_date=base_date + timedelta(days=10),
     )
     work_orders.append(wo3)
 
@@ -140,24 +124,16 @@ def multi_tenant_setup(work_order_db):
 
     # Client A
     client_a = TestDataFactory.create_client(
-        db,
-        client_id="CLIENT-A",
-        client_name="Client A",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="CLIENT-A", client_name="Client A", client_type=ClientType.HOURLY_RATE
     )
 
     # Client B
     client_b = TestDataFactory.create_client(
-        db,
-        client_id="CLIENT-B",
-        client_name="Client B",
-        client_type=ClientType.PIECE_RATE
+        db, client_id="CLIENT-B", client_name="Client B", client_type=ClientType.PIECE_RATE
     )
 
     # Users
-    admin = TestDataFactory.create_user(
-        db, user_id="mt-admin", username="mt_admin", role="admin", client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="mt-admin", username="mt_admin", role="admin", client_id=None)
 
     user_a = TestDataFactory.create_user(
         db, user_id="mt-user-a", username="user_a", role="supervisor", client_id="CLIENT-A"
@@ -175,7 +151,7 @@ def multi_tenant_setup(work_order_db):
         client_id="CLIENT-A",
         work_order_id="WO-A-001",
         style_model="STYLE-CLIENT-A",
-        status=WorkOrderStatus.RECEIVED
+        status=WorkOrderStatus.RECEIVED,
     )
 
     wo_b = TestDataFactory.create_work_order(
@@ -183,7 +159,7 @@ def multi_tenant_setup(work_order_db):
         client_id="CLIENT-B",
         work_order_id="WO-B-001",
         style_model="STYLE-CLIENT-B",
-        status=WorkOrderStatus.IN_PROGRESS
+        status=WorkOrderStatus.IN_PROGRESS,
     )
 
     db.commit()
@@ -380,9 +356,7 @@ class TestGetWorkOrders:
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
 
-        results = work_order_crud.get_work_orders(
-            db, admin, status="IN_PROGRESS"
-        )
+        results = work_order_crud.get_work_orders(db, admin, status="IN_PROGRESS")
 
         assert len(results) == 1
         assert results[0].status == "IN_PROGRESS"
@@ -392,9 +366,7 @@ class TestGetWorkOrders:
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
 
-        results = work_order_crud.get_work_orders(
-            db, admin, style_model="STYLE-A"
-        )
+        results = work_order_crud.get_work_orders(db, admin, style_model="STYLE-A")
 
         assert len(results) == 2
         for wo in results:
@@ -406,9 +378,7 @@ class TestGetWorkOrders:
         admin = work_order_setup["admin"]
         client = work_order_setup["client"]
 
-        results = work_order_crud.get_work_orders(
-            db, admin, client_id=client.client_id
-        )
+        results = work_order_crud.get_work_orders(db, admin, client_id=client.client_id)
 
         assert len(results) == 3
         for wo in results:
@@ -440,9 +410,7 @@ class TestUpdateWorkOrder:
             "planned_quantity": 9999,
         }
 
-        result = work_order_crud.update_work_order(
-            db, wo.work_order_id, update_data, admin
-        )
+        result = work_order_crud.update_work_order(db, wo.work_order_id, update_data, admin)
 
         assert result is not None
         assert result.style_model == "UPDATED-STYLE"
@@ -454,9 +422,7 @@ class TestUpdateWorkOrder:
         admin = work_order_setup["admin"]
 
         with pytest.raises(HTTPException) as exc_info:
-            work_order_crud.update_work_order(
-                db, "NON-EXISTENT-WO", {"style_model": "X"}, admin
-            )
+            work_order_crud.update_work_order(db, "NON-EXISTENT-WO", {"style_model": "X"}, admin)
 
         assert exc_info.value.status_code == 404
 
@@ -470,8 +436,7 @@ class TestUpdateWorkOrder:
         update_data = {"status": "RELEASED"}
 
         result = work_order_crud.update_work_order(
-            db, wo.work_order_id, update_data, admin,
-            validate_status_transition=True
+            db, wo.work_order_id, update_data, admin, validate_status_transition=True
         )
 
         assert result.status == "RELEASED"
@@ -486,8 +451,7 @@ class TestUpdateWorkOrder:
         update_data = {"status": "COMPLETED"}
 
         result = work_order_crud.update_work_order(
-            db, wo.work_order_id, update_data, admin,
-            validate_status_transition=False
+            db, wo.work_order_id, update_data, admin, validate_status_transition=False
         )
 
         # Should update without validation
@@ -500,9 +464,7 @@ class TestUpdateWorkOrder:
         wo_b = multi_tenant_setup["wo_b"]
 
         with pytest.raises(HTTPException) as exc_info:
-            work_order_crud.update_work_order(
-                db, wo_b.work_order_id, {"style_model": "HACK"}, user_a
-            )
+            work_order_crud.update_work_order(db, wo_b.work_order_id, {"style_model": "HACK"}, user_a)
 
         assert exc_info.value.status_code == 403
 
@@ -555,9 +517,7 @@ class TestGetWorkOrdersByClient:
         admin = work_order_setup["admin"]
         client = work_order_setup["client"]
 
-        results = work_order_crud.get_work_orders_by_client(
-            db, client.client_id, admin
-        )
+        results = work_order_crud.get_work_orders_by_client(db, client.client_id, admin)
 
         assert len(results) == 3
         for wo in results:
@@ -569,9 +529,7 @@ class TestGetWorkOrdersByClient:
         admin = work_order_setup["admin"]
         client = work_order_setup["client"]
 
-        results = work_order_crud.get_work_orders_by_client(
-            db, client.client_id, admin, skip=0, limit=2
-        )
+        results = work_order_crud.get_work_orders_by_client(db, client.client_id, admin, skip=0, limit=2)
 
         assert len(results) == 2
 
@@ -594,9 +552,7 @@ class TestGetWorkOrdersByStatus:
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
 
-        results = work_order_crud.get_work_orders_by_status(
-            db, "RECEIVED", admin
-        )
+        results = work_order_crud.get_work_orders_by_status(db, "RECEIVED", admin)
 
         assert len(results) == 1
         assert results[0].status == "RECEIVED"
@@ -606,9 +562,7 @@ class TestGetWorkOrdersByStatus:
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
 
-        results = work_order_crud.get_work_orders_by_status(
-            db, "RECEIVED", admin, skip=0, limit=10
-        )
+        results = work_order_crud.get_work_orders_by_status(db, "RECEIVED", admin, skip=0, limit=10)
 
         assert len(results) >= 1
 
@@ -618,9 +572,7 @@ class TestGetWorkOrdersByStatus:
         user_a = multi_tenant_setup["user_a"]
 
         # User A should only see Client A's work orders with this status
-        results = work_order_crud.get_work_orders_by_status(
-            db, "RECEIVED", user_a
-        )
+        results = work_order_crud.get_work_orders_by_status(db, "RECEIVED", user_a)
 
         # All results should belong to Client A
         for wo in results:
@@ -639,9 +591,7 @@ class TestGetWorkOrdersByDateRange:
         start_date = base_date + timedelta(days=20)
         end_date = base_date + timedelta(days=50)
 
-        results = work_order_crud.get_work_orders_by_date_range(
-            db, start_date, end_date, admin
-        )
+        results = work_order_crud.get_work_orders_by_date_range(db, start_date, end_date, admin)
 
         # Should find work orders with planned_ship_date in range
         assert len(results) >= 1
@@ -658,9 +608,7 @@ class TestGetWorkOrdersByDateRange:
         start_date = datetime.now() + timedelta(days=1000)
         end_date = datetime.now() + timedelta(days=1100)
 
-        results = work_order_crud.get_work_orders_by_date_range(
-            db, start_date, end_date, admin
-        )
+        results = work_order_crud.get_work_orders_by_date_range(db, start_date, end_date, admin)
 
         assert len(results) == 0
 
@@ -673,9 +621,7 @@ class TestGetWorkOrdersByDateRange:
         start_date = base_date
         end_date = base_date + timedelta(days=100)
 
-        results = work_order_crud.get_work_orders_by_date_range(
-            db, start_date, end_date, admin, skip=0, limit=2
-        )
+        results = work_order_crud.get_work_orders_by_date_range(db, start_date, end_date, admin, skip=0, limit=2)
 
         assert len(results) <= 2
 
@@ -687,9 +633,7 @@ class TestGetWorkOrdersByDateRange:
         start_date = datetime.now() - timedelta(days=100)
         end_date = datetime.now() + timedelta(days=100)
 
-        results = work_order_crud.get_work_orders_by_date_range(
-            db, start_date, end_date, user_a
-        )
+        results = work_order_crud.get_work_orders_by_date_range(db, start_date, end_date, user_a)
 
         # All results should belong to Client A
         for wo in results:
@@ -735,9 +679,7 @@ class TestClientIsolation:
 
         # Try to update
         with pytest.raises(HTTPException) as exc_info:
-            work_order_crud.update_work_order(
-                db, wo_b.work_order_id, {"style_model": "HACKED"}, user_a
-            )
+            work_order_crud.update_work_order(db, wo_b.work_order_id, {"style_model": "HACKED"}, user_a)
         assert exc_info.value.status_code == 403
 
         # Try to delete
@@ -756,9 +698,7 @@ class TestEdgeCases:
         wo = work_order_setup["work_orders"][0]
 
         # Empty update should not fail
-        result = work_order_crud.update_work_order(
-            db, wo.work_order_id, {}, admin
-        )
+        result = work_order_crud.update_work_order(db, wo.work_order_id, {}, admin)
 
         assert result is not None
 
@@ -769,9 +709,7 @@ class TestEdgeCases:
         wo = work_order_setup["work_orders"][0]
 
         # Unknown field should be ignored
-        result = work_order_crud.update_work_order(
-            db, wo.work_order_id, {"unknown_field": "value"}, admin
-        )
+        result = work_order_crud.update_work_order(db, wo.work_order_id, {"unknown_field": "value"}, admin)
 
         assert result is not None
         assert not hasattr(result, "unknown_field")
@@ -781,9 +719,7 @@ class TestEdgeCases:
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
 
-        results = work_order_crud.get_work_orders(
-            db, admin, status="NON_EXISTENT_STATUS"
-        )
+        results = work_order_crud.get_work_orders(db, admin, status="NON_EXISTENT_STATUS")
 
         assert len(results) == 0
 
@@ -792,9 +728,7 @@ class TestEdgeCases:
         db = work_order_setup["db"]
         admin = work_order_setup["admin"]
 
-        results = work_order_crud.get_work_orders(
-            db, admin, skip=1000, limit=10
-        )
+        results = work_order_crud.get_work_orders(db, admin, skip=1000, limit=10)
 
         assert len(results) == 0
 
@@ -805,8 +739,6 @@ class TestEdgeCases:
         wo = work_order_setup["work_orders"][1]  # Status: IN_PROGRESS
 
         # Update to same status
-        result = work_order_crud.update_work_order(
-            db, wo.work_order_id, {"status": "IN_PROGRESS"}, admin
-        )
+        result = work_order_crud.update_work_order(db, wo.work_order_id, {"status": "IN_PROGRESS"}, admin)
 
         assert result.status == "IN_PROGRESS"

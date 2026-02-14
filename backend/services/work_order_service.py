@@ -5,12 +5,14 @@ Coordinates CRUD operations with workflow transitions and status validation.
 
 Phase 2: Service Layer Enforcement
 """
+
 from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
 from backend.schemas.work_order import WorkOrder
 from backend.schemas.user import User
+
 # Note: Using lazy imports in methods to avoid circular import with crud.workflow
 from backend.database import get_db
 
@@ -35,11 +37,7 @@ class WorkOrderService:
         """
         self.db = db
 
-    def get_work_order(
-        self,
-        work_order_id: str,
-        user: User
-    ) -> Optional[WorkOrder]:
+    def get_work_order(self, work_order_id: str, user: User) -> Optional[WorkOrder]:
         """
         Get a work order by ID.
 
@@ -51,15 +49,11 @@ class WorkOrderService:
             Work order or None
         """
         from backend.crud.work_order import get_work_order
+
         return get_work_order(self.db, work_order_id, user)
 
     def list_work_orders(
-        self,
-        user: User,
-        client_id: Optional[str] = None,
-        status: Optional[str] = None,
-        skip: int = 0,
-        limit: int = 100
+        self, user: User, client_id: Optional[str] = None, status: Optional[str] = None, skip: int = 0, limit: int = 100
     ) -> List[WorkOrder]:
         """
         List work orders with filtering.
@@ -75,18 +69,10 @@ class WorkOrderService:
             List of work orders
         """
         from backend.crud.work_order import get_work_orders
-        return get_work_orders(
-            self.db, user, skip=skip, limit=limit,
-            client_id=client_id, status=status
-        )
 
-    def transition_status(
-        self,
-        work_order_id: str,
-        to_status: str,
-        user: User,
-        notes: Optional[str] = None
-    ) -> Dict:
+        return get_work_orders(self.db, user, skip=skip, limit=limit, client_id=client_id, status=status)
+
+    def transition_status(self, work_order_id: str, to_status: str, user: User, notes: Optional[str] = None) -> Dict:
         """
         Transition a work order to a new status.
 
@@ -102,16 +88,10 @@ class WorkOrderService:
             Dictionary with work order and transition log
         """
         from backend.crud.workflow import transition_work_order
-        return transition_work_order(
-            self.db, work_order_id, to_status, user, notes
-        )
 
-    def validate_transition(
-        self,
-        work_order_id: str,
-        to_status: str,
-        user: User
-    ) -> Dict:
+        return transition_work_order(self.db, work_order_id, to_status, user, notes)
+
+    def validate_transition(self, work_order_id: str, to_status: str, user: User) -> Dict:
         """
         Validate if a transition is allowed (without executing).
 
@@ -124,15 +104,10 @@ class WorkOrderService:
             Validation result with reason
         """
         from backend.crud.workflow import validate_transition
-        return validate_transition(
-            self.db, work_order_id, to_status, user
-        )
 
-    def get_allowed_transitions(
-        self,
-        work_order_id: str,
-        user: User
-    ) -> Dict:
+        return validate_transition(self.db, work_order_id, to_status, user)
+
+    def get_allowed_transitions(self, work_order_id: str, user: User) -> Dict:
         """
         Get allowed next statuses for a work order.
 
@@ -144,17 +119,11 @@ class WorkOrderService:
             Current status and allowed transitions
         """
         from backend.crud.workflow import get_allowed_transitions_for_work_order
-        return get_allowed_transitions_for_work_order(
-            self.db, work_order_id, user
-        )
+
+        return get_allowed_transitions_for_work_order(self.db, work_order_id, user)
 
     def bulk_transition(
-        self,
-        work_order_ids: List[str],
-        to_status: str,
-        client_id: str,
-        user: User,
-        notes: Optional[str] = None
+        self, work_order_ids: List[str], to_status: str, client_id: str, user: User, notes: Optional[str] = None
     ) -> Dict:
         """
         Perform bulk status transition.
@@ -170,15 +139,10 @@ class WorkOrderService:
             Bulk operation results
         """
         from backend.crud.workflow import bulk_transition_work_orders
-        return bulk_transition_work_orders(
-            self.db, work_order_ids, to_status, client_id, user, notes
-        )
 
-    def get_transition_history(
-        self,
-        work_order_id: str,
-        user: User
-    ) -> List:
+        return bulk_transition_work_orders(self.db, work_order_ids, to_status, client_id, user, notes)
+
+    def get_transition_history(self, work_order_id: str, user: User) -> List:
         """
         Get transition history for a work order.
 
@@ -190,6 +154,7 @@ class WorkOrderService:
             List of transition log entries
         """
         from backend.crud.workflow import get_work_order_transitions
+
         return get_work_order_transitions(self.db, work_order_id, user)
 
 

@@ -2,6 +2,7 @@
 Additional Tests for Low Coverage Calculation Modules
 Target: Increase calculation coverage for alerts, wip_aging, inference, performance
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -12,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
 from backend.database import Base
 from backend.schemas.client import Client, ClientType
@@ -21,21 +22,14 @@ from backend.schemas.client import Client, ClientType
 @pytest.fixture(scope="function")
 def test_db():
     """Create fresh in-memory database for each test"""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(bind=engine)
     TestingSession = sessionmaker(bind=engine)
     db = TestingSession()
 
     # Create test client
     client = Client(
-        client_id="CLIENT001",
-        client_name="Test Client",
-        client_type=ClientType.HOURLY_RATE,
-        is_active=True
+        client_id="CLIENT001", client_name="Test Client", client_type=ClientType.HOURLY_RATE, is_active=True
     )
     db.add(client)
     db.commit()
@@ -67,11 +61,7 @@ class TestAlerts:
         from backend.calculations.alerts import check_threshold_breach
 
         try:
-            result = check_threshold_breach(
-                value=80.0,
-                threshold=85.0,
-                direction="min"
-            )
+            result = check_threshold_breach(value=80.0, threshold=85.0, direction="min")
             assert isinstance(result, (dict, bool))
         except Exception:
             pass
@@ -81,11 +71,7 @@ class TestAlerts:
         from backend.calculations.alerts import check_threshold_breach
 
         try:
-            result = check_threshold_breach(
-                value=90.0,
-                threshold=85.0,
-                direction="max"
-            )
+            result = check_threshold_breach(value=90.0, threshold=85.0, direction="max")
             assert isinstance(result, (dict, bool))
         except Exception:
             pass
@@ -95,11 +81,7 @@ class TestAlerts:
         from backend.calculations.alerts import check_threshold_breach
 
         try:
-            result = check_threshold_breach(
-                value=85.0,
-                threshold=85.0,
-                direction="min"
-            )
+            result = check_threshold_breach(value=85.0, threshold=85.0, direction="min")
             assert result is not None
         except Exception:
             pass
@@ -114,7 +96,7 @@ class TestAlerts:
                 shift_id=1,
                 efficiency_value=Decimal("65.5"),
                 threshold=Decimal("80.0"),
-                production_date=date.today()
+                production_date=date.today(),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -130,7 +112,7 @@ class TestAlerts:
                 shift_id=1,
                 efficiency_value=Decimal("95.0"),
                 threshold=Decimal("80.0"),
-                production_date=date.today()
+                production_date=date.today(),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -146,7 +128,7 @@ class TestAlerts:
                 work_order_id="WO-001",
                 due_date=date.today() + timedelta(days=2),
                 completion_percentage=Decimal("50.0"),
-                projected_date=date.today() + timedelta(days=5)
+                projected_date=date.today() + timedelta(days=5),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -162,7 +144,7 @@ class TestAlerts:
                 product_id=1,
                 defect_rate=Decimal("5.5"),
                 threshold=Decimal("2.0"),
-                production_date=date.today()
+                production_date=date.today(),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -178,7 +160,7 @@ class TestAlerts:
                 product_id=1,
                 defect_rate=Decimal("1.0"),
                 threshold=Decimal("2.0"),
-                production_date=date.today()
+                production_date=date.today(),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -194,7 +176,7 @@ class TestAlerts:
                 shift_id=1,
                 capacity_utilization=Decimal("95.0"),
                 threshold=Decimal("85.0"),
-                production_date=date.today()
+                production_date=date.today(),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -210,7 +192,7 @@ class TestAlerts:
                 metric_name="efficiency",
                 current_value=Decimal("70.0"),
                 predicted_value=Decimal("65.0"),
-                confidence=0.85
+                confidence=0.85,
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -226,7 +208,7 @@ class TestAlerts:
                 shift_id=1,
                 absenteeism_rate=Decimal("15.0"),
                 threshold=Decimal("5.0"),
-                attendance_date=date.today()
+                attendance_date=date.today(),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -238,10 +220,7 @@ class TestAlerts:
 
         try:
             result = generate_hold_alert(
-                client_id="CLIENT001",
-                hold_id="HOLD-001",
-                hold_duration_hours=72,
-                threshold_hours=24
+                client_id="CLIENT001", hold_id="HOLD-001", hold_duration_hours=72, threshold_hours=24
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -259,10 +238,7 @@ class TestWipAging:
         from backend.calculations.wip_aging import get_client_wip_thresholds
 
         try:
-            warning, critical = get_client_wip_thresholds(
-                db=test_db,
-                client_id="CLIENT001"
-            )
+            warning, critical = get_client_wip_thresholds(db=test_db, client_id="CLIENT001")
             assert isinstance(warning, int)
             assert isinstance(critical, int)
             assert critical >= warning
@@ -274,10 +250,7 @@ class TestWipAging:
         from backend.calculations.wip_aging import get_client_wip_thresholds
 
         try:
-            warning, critical = get_client_wip_thresholds(
-                db=test_db,
-                client_id=None
-            )
+            warning, critical = get_client_wip_thresholds(db=test_db, client_id=None)
             assert isinstance(warning, int)
             assert isinstance(critical, int)
         except Exception:
@@ -292,7 +265,7 @@ class TestWipAging:
                 db=test_db,
                 work_order_id="WO-001",
                 client_id="CLIENT001",
-                received_date=date.today() - timedelta(days=5)
+                received_date=date.today() - timedelta(days=5),
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -308,7 +281,7 @@ class TestWipAging:
                 work_order_id="WO-002",
                 client_id="CLIENT001",
                 received_date=date.today() - timedelta(days=10),
-                include_hold_adjustment=True
+                include_hold_adjustment=True,
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -320,10 +293,7 @@ class TestWipAging:
 
         try:
             result = calculate_hold_resolution_rate(
-                db=test_db,
-                client_id="CLIENT001",
-                start_date=date.today() - timedelta(days=30),
-                end_date=date.today()
+                db=test_db, client_id="CLIENT001", start_date=date.today() - timedelta(days=30), end_date=date.today()
             )
             assert result is None or isinstance(result, (int, float, Decimal, dict))
         except Exception:
@@ -334,11 +304,7 @@ class TestWipAging:
         from backend.calculations.wip_aging import identify_chronic_holds
 
         try:
-            result = identify_chronic_holds(
-                db=test_db,
-                client_id="CLIENT001",
-                threshold_days=7
-            )
+            result = identify_chronic_holds(db=test_db, client_id="CLIENT001", threshold_days=7)
             assert result is None or isinstance(result, list)
         except Exception:
             pass
@@ -348,10 +314,7 @@ class TestWipAging:
         from backend.calculations.wip_aging import get_total_hold_duration_hours
 
         try:
-            result = get_total_hold_duration_hours(
-                db=test_db,
-                work_order_id="WO-001"
-            )
+            result = get_total_hold_duration_hours(db=test_db, work_order_id="WO-001")
             assert result is None or isinstance(result, (int, float, Decimal))
         except Exception:
             pass
@@ -362,9 +325,7 @@ class TestWipAging:
 
         try:
             result = calculate_wip_age_adjusted(
-                db=test_db,
-                work_order_id="WO-001",
-                received_date=date.today() - timedelta(days=15)
+                db=test_db, work_order_id="WO-001", received_date=date.today() - timedelta(days=15)
             )
             assert result is None or isinstance(result, (int, float, dict))
         except Exception:
@@ -375,10 +336,7 @@ class TestWipAging:
         from backend.calculations.wip_aging import calculate_work_order_wip_age
 
         try:
-            result = calculate_work_order_wip_age(
-                db=test_db,
-                work_order_id="WO-001"
-            )
+            result = calculate_work_order_wip_age(db=test_db, work_order_id="WO-001")
             assert result is None or isinstance(result, (int, dict))
         except Exception:
             pass
@@ -389,9 +347,7 @@ class TestWipAging:
 
         try:
             result = calculate_wip_aging_with_hold_adjustment(
-                db=test_db,
-                work_order_id="WO-001",
-                received_date=date.today() - timedelta(days=20)
+                db=test_db, work_order_id="WO-001", received_date=date.today() - timedelta(days=20)
             )
             assert result is None or isinstance(result, dict)
         except Exception:
@@ -410,10 +366,7 @@ class TestInference:
 
         try:
             value, confidence, source, is_estimated = InferenceEngine.infer_ideal_cycle_time(
-                db=test_db,
-                product_id=1,
-                shift_id=1,
-                client_id=1
+                db=test_db, product_id=1, shift_id=1, client_id=1
             )
             assert isinstance(value, Decimal)
             assert 0 <= confidence <= 1
@@ -428,8 +381,7 @@ class TestInference:
 
         try:
             value, confidence, source, is_estimated = InferenceEngine.infer_ideal_cycle_time(
-                db=test_db,
-                product_id=99999
+                db=test_db, product_id=99999
             )
             assert isinstance(value, Decimal)
             assert confidence <= 0.7  # Should be lower confidence for fallback
@@ -441,11 +393,7 @@ class TestInference:
         from backend.calculations.inference import InferenceEngine
 
         try:
-            value, confidence, source = InferenceEngine.infer_target_oee(
-                db=test_db,
-                product_id=1,
-                shift_id=1
-            )
+            value, confidence, source = InferenceEngine.infer_target_oee(db=test_db, product_id=1, shift_id=1)
             assert isinstance(value, Decimal)
             assert 0 <= confidence <= 1
             assert isinstance(source, str)
@@ -457,10 +405,7 @@ class TestInference:
         from backend.calculations.inference import InferenceEngine
 
         try:
-            value, confidence, source = InferenceEngine.infer_target_oee(
-                db=test_db,
-                product_id=99999
-            )
+            value, confidence, source = InferenceEngine.infer_target_oee(db=test_db, product_id=99999)
             assert isinstance(value, Decimal)
             assert source in ["product_standard", "historical_avg", "industry_standard"]
         except Exception:
@@ -471,10 +416,7 @@ class TestInference:
         from backend.calculations.inference import InferenceEngine
 
         try:
-            value, confidence, source = InferenceEngine.infer_target_ppm(
-                db=test_db,
-                product_id=1
-            )
+            value, confidence, source = InferenceEngine.infer_target_ppm(db=test_db, product_id=1)
             assert isinstance(value, Decimal)
             assert 0 <= confidence <= 1
         except Exception:
@@ -486,9 +428,7 @@ class TestInference:
 
         try:
             value, confidence, source = InferenceEngine.infer_target_ppm(
-                db=test_db,
-                product_id=99999,
-                defect_category="cosmetic"
+                db=test_db, product_id=99999, defect_category="cosmetic"
             )
             assert isinstance(value, Decimal)
         except Exception:
@@ -499,10 +439,7 @@ class TestInference:
         from backend.calculations.inference import InferenceEngine
 
         try:
-            value, confidence, source = InferenceEngine.infer_target_absenteeism(
-                db=test_db,
-                shift_id=1
-            )
+            value, confidence, source = InferenceEngine.infer_target_absenteeism(db=test_db, shift_id=1)
             assert isinstance(value, Decimal)
             assert value >= 0
         except Exception:
@@ -514,9 +451,7 @@ class TestInference:
 
         try:
             score = InferenceEngine.calculate_confidence_score(
-                source_level="client_style_standard",
-                data_points=100,
-                recency_days=5
+                source_level="client_style_standard", data_points=100, recency_days=5
             )
             assert 0 <= score <= 1
             assert score >= 0.9  # Should be high confidence
@@ -529,9 +464,7 @@ class TestInference:
 
         try:
             score = InferenceEngine.calculate_confidence_score(
-                source_level="system_fallback",
-                data_points=0,
-                recency_days=90
+                source_level="system_fallback", data_points=0, recency_days=90
             )
             assert 0 <= score <= 1
             assert score <= 0.5  # Should be low confidence
@@ -544,9 +477,7 @@ class TestInference:
 
         try:
             score = InferenceEngine.calculate_confidence_score(
-                source_level="unknown_source",
-                data_points=10,
-                recency_days=15
+                source_level="unknown_source", data_points=10, recency_days=15
             )
             assert 0 <= score <= 1
         except Exception:
@@ -557,10 +488,7 @@ class TestInference:
         from backend.calculations.inference import InferenceEngine
 
         try:
-            result = InferenceEngine.flag_low_confidence(
-                confidence=0.5,
-                threshold=0.7
-            )
+            result = InferenceEngine.flag_low_confidence(confidence=0.5, threshold=0.7)
             assert isinstance(result, dict)
             assert result.get("needs_review") == True
             assert result.get("warning") is not None
@@ -572,10 +500,7 @@ class TestInference:
         from backend.calculations.inference import InferenceEngine
 
         try:
-            result = InferenceEngine.flag_low_confidence(
-                confidence=0.85,
-                threshold=0.7
-            )
+            result = InferenceEngine.flag_low_confidence(confidence=0.85, threshold=0.7)
             assert isinstance(result, dict)
             assert result.get("needs_review") == False
             assert result.get("warning") is None
@@ -595,9 +520,7 @@ class TestPerformance:
 
         try:
             result = calculate_performance(
-                units_produced=100,
-                run_time_hours=Decimal("8.0"),
-                ideal_cycle_time=Decimal("0.1")
+                units_produced=100, run_time_hours=Decimal("8.0"), ideal_cycle_time=Decimal("0.1")
             )
             assert isinstance(result, (int, float, Decimal))
             assert result >= 0
@@ -610,9 +533,7 @@ class TestPerformance:
 
         try:
             result = calculate_performance(
-                units_produced=100,
-                run_time_hours=Decimal("8.0"),
-                ideal_cycle_time=Decimal("0.08")
+                units_produced=100, run_time_hours=Decimal("8.0"), ideal_cycle_time=Decimal("0.08")
             )
             assert result > 0
         except Exception:
@@ -624,9 +545,7 @@ class TestPerformance:
 
         try:
             result = calculate_performance(
-                units_produced=100,
-                run_time_hours=Decimal("0"),
-                ideal_cycle_time=Decimal("0.1")
+                units_produced=100, run_time_hours=Decimal("0"), ideal_cycle_time=Decimal("0.1")
             )
             assert result is None or result >= 0
         except Exception:
@@ -638,9 +557,7 @@ class TestPerformance:
 
         try:
             result = calculate_performance(
-                units_produced=0,
-                run_time_hours=Decimal("8.0"),
-                ideal_cycle_time=Decimal("0.1")
+                units_produced=0, run_time_hours=Decimal("8.0"), ideal_cycle_time=Decimal("0.1")
             )
             assert result == 0 or result is None
         except Exception:
@@ -683,11 +600,7 @@ class TestPerformance:
         from backend.calculations.performance import calculate_oee
 
         try:
-            result = calculate_oee(
-                availability=Decimal("90.0"),
-                performance=Decimal("85.0"),
-                quality=Decimal("95.0")
-            )
+            result = calculate_oee(availability=Decimal("90.0"), performance=Decimal("85.0"), quality=Decimal("95.0"))
             assert isinstance(result, Decimal)
             # OEE = 0.90 * 0.85 * 0.95 = 72.675%
             assert result > 0
@@ -700,9 +613,7 @@ class TestPerformance:
 
         try:
             result = calculate_oee(
-                availability=Decimal("100.0"),
-                performance=Decimal("100.0"),
-                quality=Decimal("100.0")
+                availability=Decimal("100.0"), performance=Decimal("100.0"), quality=Decimal("100.0")
             )
             assert result == Decimal("100")
         except Exception:
@@ -713,11 +624,7 @@ class TestPerformance:
         from backend.calculations.performance import calculate_oee
 
         try:
-            result = calculate_oee(
-                availability=Decimal("0"),
-                performance=Decimal("85.0"),
-                quality=Decimal("95.0")
-            )
+            result = calculate_oee(availability=Decimal("0"), performance=Decimal("85.0"), quality=Decimal("95.0"))
             assert result == Decimal("0") or result == 0
         except Exception:
             pass
@@ -786,10 +693,7 @@ class TestOTD:
             from backend.calculations.otd import calculate_otd_percentage
 
             result = calculate_otd_percentage(
-                db=test_db,
-                client_id="CLIENT001",
-                start_date=date.today() - timedelta(days=30),
-                end_date=date.today()
+                db=test_db, client_id="CLIENT001", start_date=date.today() - timedelta(days=30), end_date=date.today()
             )
             assert result is None or isinstance(result, (int, float, Decimal, dict))
         except (ImportError, AttributeError):
@@ -800,11 +704,7 @@ class TestOTD:
         try:
             from backend.calculations.otd import calculate_otd_risk
 
-            result = calculate_otd_risk(
-                db=test_db,
-                work_order_id="WO-001",
-                due_date=date.today() + timedelta(days=5)
-            )
+            result = calculate_otd_risk(db=test_db, work_order_id="WO-001", due_date=date.today() + timedelta(days=5))
             assert result is None or isinstance(result, (dict, str))
         except (ImportError, AttributeError):
             pass
@@ -822,10 +722,7 @@ class TestEfficiency:
 
         try:
             result = calculate_efficiency(
-                units_produced=80,
-                target_units=100,
-                run_time_hours=Decimal("8.0"),
-                scheduled_time_hours=Decimal("8.0")
+                units_produced=80, target_units=100, run_time_hours=Decimal("8.0"), scheduled_time_hours=Decimal("8.0")
             )
             assert isinstance(result, (int, float, Decimal))
             assert result >= 0
@@ -838,10 +735,7 @@ class TestEfficiency:
 
         try:
             result = calculate_efficiency(
-                units_produced=120,
-                target_units=100,
-                run_time_hours=Decimal("8.0"),
-                scheduled_time_hours=Decimal("8.0")
+                units_produced=120, target_units=100, run_time_hours=Decimal("8.0"), scheduled_time_hours=Decimal("8.0")
             )
             assert result > 100 or result == 100
         except Exception:
@@ -853,10 +747,7 @@ class TestEfficiency:
 
         try:
             result = calculate_efficiency(
-                units_produced=80,
-                target_units=0,
-                run_time_hours=Decimal("8.0"),
-                scheduled_time_hours=Decimal("8.0")
+                units_produced=80, target_units=0, run_time_hours=Decimal("8.0"), scheduled_time_hours=Decimal("8.0")
             )
             assert result is None or result >= 0
         except Exception:

@@ -2,6 +2,7 @@
 Capacity Orders - Planning orders (separate from Work Orders)
 Orders specifically for capacity planning, with their own lifecycle.
 """
+
 from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey, Text, Enum as SQLEnum, Index
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -11,6 +12,7 @@ import enum
 
 class OrderPriority(str, enum.Enum):
     """Order priority levels for scheduling"""
+
     LOW = "LOW"
     NORMAL = "NORMAL"
     HIGH = "HIGH"
@@ -27,12 +29,13 @@ class OrderStatus(str, enum.Enum):
                 v
            CANCELLED
     """
-    DRAFT = "DRAFT"           # Initial state, order being created
-    CONFIRMED = "CONFIRMED"   # Order confirmed by customer/planner
-    SCHEDULED = "SCHEDULED"   # Assigned to schedule/production lines
+
+    DRAFT = "DRAFT"  # Initial state, order being created
+    CONFIRMED = "CONFIRMED"  # Order confirmed by customer/planner
+    SCHEDULED = "SCHEDULED"  # Assigned to schedule/production lines
     IN_PROGRESS = "IN_PROGRESS"  # Production started
-    COMPLETED = "COMPLETED"   # Production completed
-    CANCELLED = "CANCELLED"   # Order cancelled
+    COMPLETED = "COMPLETED"  # Production completed
+    CANCELLED = "CANCELLED"  # Order cancelled
 
 
 class CapacityOrder(Base):
@@ -49,19 +52,20 @@ class CapacityOrder(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_orders"
     __table_args__ = (
-        Index('ix_capacity_orders_client_status', 'client_id', 'status'),
-        Index('ix_capacity_orders_client_required_date', 'client_id', 'required_date'),
-        Index('ix_capacity_orders_style', 'client_id', 'style_code'),
-        {"extend_existing": True}
+        Index("ix_capacity_orders_client_status", "client_id", "status"),
+        Index("ix_capacity_orders_client_required_date", "client_id", "required_date"),
+        Index("ix_capacity_orders_style", "client_id", "style_code"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Order identification
     order_number = Column(String(50), nullable=False, index=True)

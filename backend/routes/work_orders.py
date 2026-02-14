@@ -2,6 +2,7 @@
 Work Order API Routes
 All work order CRUD endpoints with progress tracking and timeline
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -10,12 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from backend.database import get_db
-from backend.models.work_order import (
-    WorkOrderCreate,
-    WorkOrderUpdate,
-    WorkOrderResponse,
-    WorkOrderWithMetrics
-)
+from backend.models.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderWithMetrics
 from backend.crud.work_order import (
     create_work_order,
     get_work_order,
@@ -24,24 +20,19 @@ from backend.crud.work_order import (
     delete_work_order,
     get_work_orders_by_client,
     get_work_orders_by_status,
-    get_work_orders_by_date_range
+    get_work_orders_by_date_range,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 from backend.schemas.work_order import WorkOrder
 
 
-router = APIRouter(
-    prefix="/api/work-orders",
-    tags=["Work Orders"]
-)
+router = APIRouter(prefix="/api/work-orders", tags=["Work Orders"])
 
 
 @router.post("", response_model=WorkOrderResponse, status_code=status.HTTP_201_CREATED)
 def create_work_order_endpoint(
-    work_order: WorkOrderCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order: WorkOrderCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new work order
@@ -59,7 +50,7 @@ def list_work_orders(
     status_filter: Optional[str] = None,
     style_model: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List work orders with filters
@@ -74,7 +65,7 @@ def get_work_orders_by_status_endpoint(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get work orders by status
@@ -90,7 +81,7 @@ def get_work_orders_by_date_range_endpoint(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get work orders within date range
@@ -101,9 +92,7 @@ def get_work_orders_by_date_range_endpoint(
 
 @router.get("/{work_order_id}", response_model=WorkOrderResponse)
 def get_work_order_endpoint(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get work order by ID
@@ -117,9 +106,7 @@ def get_work_order_endpoint(
 
 @router.get("/{work_order_id}/progress")
 def get_work_order_progress(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Get detailed progress information for a work order including production entries.
@@ -139,7 +126,8 @@ def get_work_order_progress(
     production_entries = []
     try:
         result = db.execute(
-            text("""
+            text(
+                """
             SELECT
                 pe.production_entry_id,
                 pe.production_date,
@@ -156,21 +144,24 @@ def get_work_order_progress(
             WHERE pe.work_order_id = :work_order_id
             ORDER BY pe.production_date DESC
             LIMIT 50
-            """),
-            {"work_order_id": work_order_id}
+            """
+            ),
+            {"work_order_id": work_order_id},
         )
         for row in result:
-            production_entries.append({
-                "production_entry_id": row[0],
-                "production_date": row[1].isoformat() if row[1] else None,
-                "units_produced": row[2],
-                "run_time_hours": float(row[3]) if row[3] else None,
-                "employees_assigned": row[4],
-                "defect_count": row[5] or 0,
-                "scrap_count": row[6] or 0,
-                "shift_name": row[7],
-                "product_name": row[8]
-            })
+            production_entries.append(
+                {
+                    "production_entry_id": row[0],
+                    "production_date": row[1].isoformat() if row[1] else None,
+                    "units_produced": row[2],
+                    "run_time_hours": float(row[3]) if row[3] else None,
+                    "employees_assigned": row[4],
+                    "defect_count": row[5] or 0,
+                    "scrap_count": row[6] or 0,
+                    "shift_name": row[7],
+                    "product_name": row[8],
+                }
+            )
     except Exception as e:
         # Table might not exist or have different schema
         print(f"Warning: Could not fetch production entries: {e}")
@@ -179,7 +170,8 @@ def get_work_order_progress(
     quality_inspections = []
     try:
         result = db.execute(
-            text("""
+            text(
+                """
             SELECT
                 qi.inspection_id,
                 qi.inspection_date,
@@ -191,18 +183,21 @@ def get_work_order_progress(
             WHERE qi.work_order_id = :work_order_id
             ORDER BY qi.inspection_date DESC
             LIMIT 20
-            """),
-            {"work_order_id": work_order_id}
+            """
+            ),
+            {"work_order_id": work_order_id},
         )
         for row in result:
-            quality_inspections.append({
-                "inspection_id": row[0],
-                "inspection_date": row[1].isoformat() if row[1] else None,
-                "inspection_type": row[2],
-                "result": row[3],
-                "defects_found": row[4] or 0,
-                "notes": row[5]
-            })
+            quality_inspections.append(
+                {
+                    "inspection_id": row[0],
+                    "inspection_date": row[1].isoformat() if row[1] else None,
+                    "inspection_type": row[2],
+                    "result": row[3],
+                    "defects_found": row[4] or 0,
+                    "notes": row[5],
+                }
+            )
     except Exception as e:
         print(f"Warning: Could not fetch quality inspections: {e}")
 
@@ -210,7 +205,8 @@ def get_work_order_progress(
     hold_history = []
     try:
         result = db.execute(
-            text("""
+            text(
+                """
             SELECT
                 wh.hold_id,
                 wh.hold_date,
@@ -222,44 +218,45 @@ def get_work_order_progress(
             WHERE wh.work_order_id = :work_order_id
             ORDER BY wh.hold_date DESC
             LIMIT 20
-            """),
-            {"work_order_id": work_order_id}
+            """
+            ),
+            {"work_order_id": work_order_id},
         )
         for row in result:
-            hold_history.append({
-                "hold_id": row[0],
-                "hold_date": row[1].isoformat() if row[1] else None,
-                "resume_date": row[2].isoformat() if row[2] else None,
-                "reason": row[3],
-                "quantity": row[4],
-                "status": row[5]
-            })
+            hold_history.append(
+                {
+                    "hold_id": row[0],
+                    "hold_date": row[1].isoformat() if row[1] else None,
+                    "resume_date": row[2].isoformat() if row[2] else None,
+                    "reason": row[3],
+                    "quantity": row[4],
+                    "status": row[5],
+                }
+            )
     except Exception as e:
         print(f"Warning: Could not fetch hold history: {e}")
 
     return {
         "work_order_id": work_order.work_order_id,
         "style_model": work_order.style_model,
-        "status": work_order.status.value if hasattr(work_order.status, 'value') else work_order.status,
+        "status": work_order.status.value if hasattr(work_order.status, "value") else work_order.status,
         "planned_quantity": work_order.planned_quantity,
         "actual_quantity": work_order.actual_quantity,
         "progress_percentage": round(progress_percentage, 2),
         "remaining_quantity": max(0, work_order.planned_quantity - work_order.actual_quantity),
-        "is_on_track": progress_percentage >= 50 or work_order.status in ['COMPLETED', 'CANCELLED'],
+        "is_on_track": progress_percentage >= 50 or work_order.status in ["COMPLETED", "CANCELLED"],
         "production_entries": production_entries,
         "quality_inspections": quality_inspections,
         "hold_history": hold_history,
         "total_production_entries": len(production_entries),
         "total_defects": sum(e["defect_count"] for e in production_entries),
-        "total_scrap": sum(e["scrap_count"] for e in production_entries)
+        "total_scrap": sum(e["scrap_count"] for e in production_entries),
     }
 
 
 @router.get("/{work_order_id}/timeline")
 def get_work_order_timeline(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Dict[str, Any]:
     """
     Get activity timeline for a work order.
@@ -274,90 +271,106 @@ def get_work_order_timeline(
 
     # Add work order creation event
     if work_order.created_at:
-        timeline_events.append({
-            "event_type": "created",
-            "title": "Work Order Created",
-            "description": f"Work order {work_order_id} was created",
-            "timestamp": work_order.created_at.isoformat(),
-            "icon": "mdi-plus-circle",
-            "color": "primary"
-        })
+        timeline_events.append(
+            {
+                "event_type": "created",
+                "title": "Work Order Created",
+                "description": f"Work order {work_order_id} was created",
+                "timestamp": work_order.created_at.isoformat(),
+                "icon": "mdi-plus-circle",
+                "color": "primary",
+            }
+        )
 
     # Add actual start date if available
     if work_order.actual_start_date:
-        timeline_events.append({
-            "event_type": "started",
-            "title": "Production Started",
-            "description": "Production work began on this order",
-            "timestamp": work_order.actual_start_date.isoformat(),
-            "icon": "mdi-play-circle",
-            "color": "info"
-        })
+        timeline_events.append(
+            {
+                "event_type": "started",
+                "title": "Production Started",
+                "description": "Production work began on this order",
+                "timestamp": work_order.actual_start_date.isoformat(),
+                "icon": "mdi-play-circle",
+                "color": "info",
+            }
+        )
 
     # Add QC approval if available
     if work_order.qc_approved and work_order.qc_approved_date:
-        timeline_events.append({
-            "event_type": "qc_approved",
-            "title": "QC Approved",
-            "description": "Quality control inspection passed",
-            "timestamp": work_order.qc_approved_date.isoformat(),
-            "icon": "mdi-check-circle",
-            "color": "success"
-        })
+        timeline_events.append(
+            {
+                "event_type": "qc_approved",
+                "title": "QC Approved",
+                "description": "Quality control inspection passed",
+                "timestamp": work_order.qc_approved_date.isoformat(),
+                "icon": "mdi-check-circle",
+                "color": "success",
+            }
+        )
 
     # Add rejection if applicable
     if work_order.rejected_date:
-        timeline_events.append({
-            "event_type": "rejected",
-            "title": "Work Order Rejected",
-            "description": work_order.rejection_reason or "Work order was rejected",
-            "timestamp": work_order.rejected_date.isoformat(),
-            "icon": "mdi-close-circle",
-            "color": "error"
-        })
+        timeline_events.append(
+            {
+                "event_type": "rejected",
+                "title": "Work Order Rejected",
+                "description": work_order.rejection_reason or "Work order was rejected",
+                "timestamp": work_order.rejected_date.isoformat(),
+                "icon": "mdi-close-circle",
+                "color": "error",
+            }
+        )
 
     # Add delivery if applicable
     if work_order.actual_delivery_date:
-        timeline_events.append({
-            "event_type": "delivered",
-            "title": "Order Delivered",
-            "description": "Work order was delivered to customer",
-            "timestamp": work_order.actual_delivery_date.isoformat(),
-            "icon": "mdi-truck-check",
-            "color": "success"
-        })
+        timeline_events.append(
+            {
+                "event_type": "delivered",
+                "title": "Order Delivered",
+                "description": "Work order was delivered to customer",
+                "timestamp": work_order.actual_delivery_date.isoformat(),
+                "icon": "mdi-truck-check",
+                "color": "success",
+            }
+        )
 
     # Get hold/resume events
     try:
         result = db.execute(
-            text("""
+            text(
+                """
             SELECT
                 hold_date, resume_date, reason, quantity
             FROM WIP_HOLD
             WHERE work_order_id = :work_order_id
             ORDER BY hold_date ASC
-            """),
-            {"work_order_id": work_order_id}
+            """
+            ),
+            {"work_order_id": work_order_id},
         )
         for row in result:
             if row[0]:  # hold_date
-                timeline_events.append({
-                    "event_type": "hold",
-                    "title": "Put On Hold",
-                    "description": f"Reason: {row[2] or 'Not specified'} ({row[3] or 0} units)",
-                    "timestamp": row[0].isoformat(),
-                    "icon": "mdi-pause-circle",
-                    "color": "warning"
-                })
+                timeline_events.append(
+                    {
+                        "event_type": "hold",
+                        "title": "Put On Hold",
+                        "description": f"Reason: {row[2] or 'Not specified'} ({row[3] or 0} units)",
+                        "timestamp": row[0].isoformat(),
+                        "icon": "mdi-pause-circle",
+                        "color": "warning",
+                    }
+                )
             if row[1]:  # resume_date
-                timeline_events.append({
-                    "event_type": "resume",
-                    "title": "Resumed from Hold",
-                    "description": f"Production resumed ({row[3] or 0} units)",
-                    "timestamp": row[1].isoformat(),
-                    "icon": "mdi-play-circle",
-                    "color": "info"
-                })
+                timeline_events.append(
+                    {
+                        "event_type": "resume",
+                        "title": "Resumed from Hold",
+                        "description": f"Production resumed ({row[3] or 0} units)",
+                        "timestamp": row[1].isoformat(),
+                        "icon": "mdi-play-circle",
+                        "color": "info",
+                    }
+                )
     except Exception as e:
         print(f"Warning: Could not fetch hold events: {e}")
 
@@ -365,22 +378,20 @@ def get_work_order_timeline(
     timeline_events.sort(key=lambda x: x["timestamp"])
 
     # Add completion event if status is completed
-    status_value = work_order.status.value if hasattr(work_order.status, 'value') else work_order.status
-    if status_value == 'COMPLETED' and work_order.updated_at:
-        timeline_events.append({
-            "event_type": "completed",
-            "title": "Work Order Completed",
-            "description": f"All {work_order.actual_quantity} units completed",
-            "timestamp": work_order.updated_at.isoformat(),
-            "icon": "mdi-flag-checkered",
-            "color": "success"
-        })
+    status_value = work_order.status.value if hasattr(work_order.status, "value") else work_order.status
+    if status_value == "COMPLETED" and work_order.updated_at:
+        timeline_events.append(
+            {
+                "event_type": "completed",
+                "title": "Work Order Completed",
+                "description": f"All {work_order.actual_quantity} units completed",
+                "timestamp": work_order.updated_at.isoformat(),
+                "icon": "mdi-flag-checkered",
+                "color": "success",
+            }
+        )
 
-    return {
-        "work_order_id": work_order_id,
-        "events": timeline_events,
-        "total_events": len(timeline_events)
-    }
+    return {"work_order_id": work_order_id, "events": timeline_events, "total_events": len(timeline_events)}
 
 
 @router.put("/{work_order_id}", response_model=WorkOrderResponse)
@@ -388,7 +399,7 @@ def update_work_order_endpoint(
     work_order_id: str,
     work_order_update: WorkOrderUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update work order
@@ -406,7 +417,7 @@ def update_work_order_status(
     work_order_id: str,
     status_update: dict,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update only the status of a work order.
@@ -418,10 +429,7 @@ def update_work_order_status(
 
     valid_statuses = ["ACTIVE", "ON_HOLD", "COMPLETED", "REJECTED", "CANCELLED"]
     if status_update["status"] not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
 
     updated = update_work_order(db, work_order_id, {"status": status_update["status"]}, current_user)
     if not updated:
@@ -434,7 +442,7 @@ def approve_qc(
     work_order_id: str,
     approval_data: Optional[Dict[str, Any]] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Approve QC for a work order.
@@ -473,21 +481,18 @@ def approve_qc(
             "work_order_id": work_order_id,
             "qc_approved": True,
             "qc_approved_date": work_order.qc_approved_date.isoformat() if work_order.qc_approved_date else None,
-            "qc_approved_by": work_order.qc_approved_by
+            "qc_approved_by": work_order.qc_approved_by,
         }
 
     # Check if work order is in valid state for QC approval (should be COMPLETED or IN_PROGRESS)
-    status_value = work_order.status.value if hasattr(work_order.status, 'value') else work_order.status
-    if status_value in ['SHIPPED', 'CLOSED', 'CANCELLED', 'REJECTED']:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot approve QC for work order in {status_value} status"
-        )
+    status_value = work_order.status.value if hasattr(work_order.status, "value") else work_order.status
+    if status_value in ["SHIPPED", "CLOSED", "CANCELLED", "REJECTED"]:
+        raise HTTPException(status_code=400, detail=f"Cannot approve QC for work order in {status_value} status")
 
     # Get notes from approval data
     notes = None
     if approval_data and isinstance(approval_data, dict):
-        notes = approval_data.get('notes')
+        notes = approval_data.get("notes")
 
     # Apply QC approval
     now = datetime.utcnow()
@@ -505,7 +510,7 @@ def approve_qc(
             transitioned_by=current_user.user_id,
             transitioned_at=now,
             notes=notes or "QC Approved",
-            trigger_source="qc_approval"
+            trigger_source="qc_approval",
         )
         db.add(log_entry)
     except Exception as e:
@@ -521,15 +526,13 @@ def approve_qc(
         "qc_approved": True,
         "qc_approved_date": now.isoformat(),
         "qc_approved_by": current_user.user_id,
-        "message": f"Work order {work_order_id} QC approved. Can now transition to SHIPPED."
+        "message": f"Work order {work_order_id} QC approved. Can now transition to SHIPPED.",
     }
 
 
 @router.delete("/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_work_order_endpoint(
-    work_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Delete work order (supervisor only)
@@ -541,10 +544,7 @@ def delete_work_order_endpoint(
 
 
 # Client work orders endpoint (separate prefix for /api/clients namespace)
-client_work_orders_router = APIRouter(
-    prefix="/api/clients",
-    tags=["Work Orders"]
-)
+client_work_orders_router = APIRouter(prefix="/api/clients", tags=["Work Orders"])
 
 
 @client_work_orders_router.get("/{client_id}/work-orders", response_model=List[WorkOrderResponse])
@@ -553,7 +553,7 @@ def get_client_work_orders(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all work orders for a specific client

@@ -2,6 +2,7 @@
 Comprehensive Tests for Floating Pool CRUD Operations
 Target: Increase floating_pool.py coverage from 28% to 60%+
 """
+
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
@@ -62,22 +63,14 @@ class TestGetFloatingPoolEntries:
         """Test get entries filtered by employee"""
         from backend.crud.floating_pool import get_floating_pool_entries
 
-        result = get_floating_pool_entries(
-            db_session,
-            admin_user,
-            employee_id=1
-        )
+        result = get_floating_pool_entries(db_session, admin_user, employee_id=1)
         assert isinstance(result, list)
 
     def test_get_entries_available_only(self, db_session, admin_user):
         """Test get only available entries"""
         from backend.crud.floating_pool import get_floating_pool_entries
 
-        result = get_floating_pool_entries(
-            db_session,
-            admin_user,
-            available_only=True
-        )
+        result = get_floating_pool_entries(db_session, admin_user, available_only=True)
         assert isinstance(result, list)
 
 
@@ -139,9 +132,7 @@ class TestAssignFloatingPoolToClient:
         admin_user.role = "operator"
 
         with pytest.raises(HTTPException) as exc_info:
-            assign_floating_pool_to_client(
-                db_session, 1, "CLIENT-1", None, None, admin_user
-            )
+            assign_floating_pool_to_client(db_session, 1, "CLIENT-1", None, None, admin_user)
         assert exc_info.value.status_code == 403
 
     def test_assign_employee_not_found(self, db_session, admin_user):
@@ -150,11 +141,9 @@ class TestAssignFloatingPoolToClient:
 
         admin_user.role = "admin"
 
-        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
+        with patch("backend.crud.floating_pool.assignments.verify_client_access"):
             with pytest.raises(HTTPException) as exc_info:
-                assign_floating_pool_to_client(
-                    db_session, 99999, "CLIENT-1", None, None, admin_user
-                )
+                assign_floating_pool_to_client(db_session, 99999, "CLIENT-1", None, None, admin_user)
             assert exc_info.value.status_code == 404
 
 
@@ -205,18 +194,13 @@ class TestDoubleAssignmentPrevention:
         mock_existing.available_from = None
         mock_existing.available_to = None
 
-        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
-            with patch.object(db_session, 'query') as mock_query:
+        with patch("backend.crud.floating_pool.assignments.verify_client_access"):
+            with patch.object(db_session, "query") as mock_query:
                 # First query returns employee, second returns existing assignment
-                mock_query.return_value.filter.return_value.first.side_effect = [
-                    mock_employee,
-                    mock_existing
-                ]
+                mock_query.return_value.filter.return_value.first.side_effect = [mock_employee, mock_existing]
 
                 with pytest.raises(HTTPException) as exc_info:
-                    assign_floating_pool_to_client(
-                        db_session, 12345, "CLIENT-NEW", None, None, admin_user
-                    )
+                    assign_floating_pool_to_client(db_session, 12345, "CLIENT-NEW", None, None, admin_user)
 
                 assert exc_info.value.status_code == 409
                 assert "already assigned" in exc_info.value.detail
@@ -241,12 +225,9 @@ class TestDoubleAssignmentPrevention:
         mock_existing.available_from = datetime(2026, 1, 15)
         mock_existing.available_to = datetime(2026, 1, 25)
 
-        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
-            with patch.object(db_session, 'query') as mock_query:
-                mock_query.return_value.filter.return_value.first.side_effect = [
-                    mock_employee,
-                    mock_existing
-                ]
+        with patch("backend.crud.floating_pool.assignments.verify_client_access"):
+            with patch.object(db_session, "query") as mock_query:
+                mock_query.return_value.filter.return_value.first.side_effect = [mock_employee, mock_existing]
 
                 # Try to assign with overlapping dates
                 with pytest.raises(HTTPException) as exc_info:
@@ -256,7 +237,7 @@ class TestDoubleAssignmentPrevention:
                         "CLIENT-NEW",
                         datetime(2026, 1, 20),  # Overlaps with existing
                         datetime(2026, 1, 30),
-                        admin_user
+                        admin_user,
                     )
 
                 assert exc_info.value.status_code == 409
@@ -275,7 +256,7 @@ class TestDoubleAssignmentPrevention:
         mock_existing.available_from = datetime(2026, 1, 1)
         mock_existing.available_to = datetime(2026, 1, 10)
 
-        with patch.object(db_session, 'query') as mock_query:
+        with patch.object(db_session, "query") as mock_query:
             mock_query.return_value.filter.return_value.first.return_value = mock_existing
 
             # Check availability for non-overlapping dates
@@ -283,7 +264,7 @@ class TestDoubleAssignmentPrevention:
                 db_session,
                 12347,
                 proposed_start=datetime(2026, 1, 15),  # After existing ends
-                proposed_end=datetime(2026, 1, 25)
+                proposed_end=datetime(2026, 1, 25),
             )
 
             assert result["is_available"] == True
@@ -301,14 +282,14 @@ class TestDoubleAssignmentPrevention:
         mock_existing.available_from = datetime(2026, 1, 10)
         mock_existing.available_to = datetime(2026, 1, 20)
 
-        with patch.object(db_session, 'query') as mock_query:
+        with patch.object(db_session, "query") as mock_query:
             mock_query.return_value.filter.return_value.first.return_value = mock_existing
 
             result = is_employee_available_for_assignment(
                 db_session,
                 12348,
                 proposed_start=datetime(2026, 1, 15),  # Overlapping
-                proposed_end=datetime(2026, 1, 25)
+                proposed_end=datetime(2026, 1, 25),
             )
 
             assert result["is_available"] == False
@@ -332,11 +313,7 @@ class TestGetAvailableFloatingPoolEmployees:
         """Test get available employees as of specific date"""
         from backend.crud.floating_pool import get_available_floating_pool_employees
 
-        result = get_available_floating_pool_employees(
-            db_session,
-            admin_user,
-            as_of_date=datetime.utcnow()
-        )
+        result = get_available_floating_pool_employees(db_session, admin_user, as_of_date=datetime.utcnow())
         assert isinstance(result, list)
 
 
@@ -347,12 +324,8 @@ class TestGetFloatingPoolAssignmentsByClient:
         """Test get assignments for client"""
         from backend.crud.floating_pool import get_floating_pool_assignments_by_client
 
-        with patch('backend.crud.floating_pool.assignments.verify_client_access'):
-            result = get_floating_pool_assignments_by_client(
-                db_session,
-                "TEST-CLIENT",
-                admin_user
-            )
+        with patch("backend.crud.floating_pool.assignments.verify_client_access"):
+            result = get_floating_pool_assignments_by_client(db_session, "TEST-CLIENT", admin_user)
             assert isinstance(result, list)
 
 
@@ -372,10 +345,7 @@ class TestIsEmployeeAvailableForAssignment:
         from backend.crud.floating_pool import is_employee_available_for_assignment
 
         result = is_employee_available_for_assignment(
-            db_session,
-            99999,
-            proposed_start=datetime.utcnow(),
-            proposed_end=datetime.utcnow() + timedelta(days=7)
+            db_session, 99999, proposed_start=datetime.utcnow(), proposed_end=datetime.utcnow() + timedelta(days=7)
         )
         assert "is_available" in result
 

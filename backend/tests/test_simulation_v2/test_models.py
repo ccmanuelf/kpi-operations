@@ -31,11 +31,7 @@ class TestOperationInput:
     def test_valid_operation(self):
         """Test creating a valid operation."""
         op = OperationInput(
-            product="TEST_PRODUCT",
-            step=1,
-            operation="Test operation",
-            machine_tool="Test Machine",
-            sam_min=2.5
+            product="TEST_PRODUCT", step=1, operation="Test operation", machine_tool="Test Machine", sam_min=2.5
         )
         assert op.product == "TEST_PRODUCT"
         assert op.step == 1
@@ -52,7 +48,7 @@ class TestOperationInput:
         with pytest.raises(ValidationError) as exc_info:
             OperationInput(
                 product="TEST",
-                step=1
+                step=1,
                 # Missing operation, machine_tool, sam_min
             )
         errors = exc_info.value.errors()
@@ -61,23 +57,13 @@ class TestOperationInput:
     def test_operation_invalid_step(self):
         """Test that step must be positive."""
         with pytest.raises(ValidationError):
-            OperationInput(
-                product="TEST",
-                step=0,  # Must be > 0
-                operation="Test",
-                machine_tool="Machine",
-                sam_min=1.0
-            )
+            OperationInput(product="TEST", step=0, operation="Test", machine_tool="Machine", sam_min=1.0)  # Must be > 0
 
     def test_operation_invalid_sam(self):
         """Test that SAM must be positive."""
         with pytest.raises(ValidationError):
             OperationInput(
-                product="TEST",
-                step=1,
-                operation="Test",
-                machine_tool="Machine",
-                sam_min=-1.0  # Must be > 0
+                product="TEST", step=1, operation="Test", machine_tool="Machine", sam_min=-1.0  # Must be > 0
             )
 
     def test_operation_invalid_percentages(self):
@@ -89,7 +75,7 @@ class TestOperationInput:
                 operation="Test",
                 machine_tool="Machine",
                 sam_min=1.0,
-                grade_pct=150  # Must be <= 100
+                grade_pct=150,  # Must be <= 100
             )
 
 
@@ -98,43 +84,26 @@ class TestScheduleConfig:
 
     def test_valid_single_shift(self):
         """Test valid single shift configuration."""
-        schedule = ScheduleConfig(
-            shifts_enabled=1,
-            shift1_hours=8.0,
-            work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5)
         assert schedule.daily_planned_hours == 8.0
         assert schedule.weekly_base_hours == 40.0
 
     def test_valid_two_shift(self):
         """Test valid two shift configuration."""
-        schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=8.0,
-            work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=2, shift1_hours=8.0, shift2_hours=8.0, work_days=5)
         assert schedule.daily_planned_hours == 16.0
         assert schedule.weekly_base_hours == 80.0
 
     def test_invalid_shifts_enabled(self):
         """Test that shifts_enabled must be 1-3."""
         with pytest.raises(ValidationError):
-            ScheduleConfig(
-                shifts_enabled=0,
-                shift1_hours=8.0,
-                work_days=5
-            )
+            ScheduleConfig(shifts_enabled=0, shift1_hours=8.0, work_days=5)
 
     def test_total_hours_exceed_24(self):
         """Test that total shift hours cannot exceed 24."""
         with pytest.raises(ValidationError):
             ScheduleConfig(
-                shifts_enabled=3,
-                shift1_hours=9.0,
-                shift2_hours=9.0,
-                shift3_hours=9.0,  # Total = 27 > 24
-                work_days=5
+                shifts_enabled=3, shift1_hours=9.0, shift2_hours=9.0, shift3_hours=9.0, work_days=5  # Total = 27 > 24
             )
 
     def test_overtime_configuration(self):
@@ -146,7 +115,7 @@ class TestScheduleConfig:
             ot_enabled=True,
             weekday_ot_hours=2.0,
             weekend_ot_days=1,
-            weekend_ot_hours=8.0
+            weekend_ot_hours=8.0,
         )
         # Base: 8*5 = 40, Weekday OT: 2*5 = 10, Weekend: 8*1 = 8
         assert schedule.weekly_total_hours == 58.0
@@ -157,30 +126,19 @@ class TestDemandInput:
 
     def test_valid_demand_driven(self):
         """Test valid demand-driven demand."""
-        demand = DemandInput(
-            product="TEST",
-            daily_demand=100,
-            weekly_demand=500
-        )
+        demand = DemandInput(product="TEST", daily_demand=100, weekly_demand=500)
         assert demand.product == "TEST"
         assert demand.bundle_size == 1  # Default
 
     def test_valid_mix_driven(self):
         """Test valid mix-driven demand."""
-        demand = DemandInput(
-            product="TEST",
-            mix_share_pct=50.0,
-            bundle_size=10
-        )
+        demand = DemandInput(product="TEST", mix_share_pct=50.0, bundle_size=10)
         assert demand.mix_share_pct == 50.0
 
     def test_invalid_bundle_size(self):
         """Test that bundle_size must be positive."""
         with pytest.raises(ValidationError):
-            DemandInput(
-                product="TEST",
-                bundle_size=0  # Must be >= 1
-            )
+            DemandInput(product="TEST", bundle_size=0)  # Must be >= 1
 
 
 class TestSimulationConfig:
@@ -190,24 +148,10 @@ class TestSimulationConfig:
         """Test that mix-driven mode requires total_demand."""
         with pytest.raises(ValidationError) as exc_info:
             SimulationConfig(
-                operations=[
-                    OperationInput(
-                        product="A",
-                        step=1,
-                        operation="Op",
-                        machine_tool="M",
-                        sam_min=1.0
-                    )
-                ],
-                schedule=ScheduleConfig(
-                    shifts_enabled=1,
-                    shift1_hours=8.0,
-                    work_days=5
-                ),
-                demands=[
-                    DemandInput(product="A", mix_share_pct=100)
-                ],
-                mode=DemandMode.MIX_DRIVEN
+                operations=[OperationInput(product="A", step=1, operation="Op", machine_tool="M", sam_min=1.0)],
+                schedule=ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5),
+                demands=[DemandInput(product="A", mix_share_pct=100)],
+                mode=DemandMode.MIX_DRIVEN,
                 # Missing total_demand
             )
         assert "total_demand" in str(exc_info.value)
@@ -219,10 +163,7 @@ class TestValidationModels:
     def test_validation_issue(self):
         """Test ValidationIssue creation."""
         issue = ValidationIssue(
-            severity=ValidationSeverity.ERROR,
-            category="test",
-            message="Test error message",
-            recommendation="Fix it"
+            severity=ValidationSeverity.ERROR, category="test", message="Test error message", recommendation="Fix it"
         )
         assert issue.severity == ValidationSeverity.ERROR
         assert issue.product is None
@@ -233,13 +174,7 @@ class TestValidationModels:
         assert report.is_valid is True
         assert report.has_errors is False
 
-        report.errors.append(
-            ValidationIssue(
-                severity=ValidationSeverity.ERROR,
-                category="test",
-                message="Error"
-            )
-        )
+        report.errors.append(ValidationIssue(severity=ValidationSeverity.ERROR, category="test", message="Error"))
         assert report.has_errors is True
 
 
@@ -253,7 +188,7 @@ class TestOutputModels:
             weekly_demand_pcs=1000,
             max_weekly_capacity_pcs=1100,
             demand_coverage_pct=110.0,
-            status=CoverageStatus.OK
+            status=CoverageStatus.OK,
         )
         assert row.status == CoverageStatus.OK
 
@@ -268,7 +203,7 @@ class TestOutputModels:
             avg_cycle_time_min=32.5,
             avg_wip_pcs=45,
             bundles_processed_per_day=50,
-            bundle_size_pcs="10"
+            bundle_size_pcs="10",
         )
         assert summary.daily_coverage_pct == 104.2
 
@@ -288,6 +223,6 @@ class TestOutputModels:
             util_pct=60.0,
             queue_wait_time_min=2.5,
             is_bottleneck=False,
-            is_donor=False
+            is_donor=False,
         )
         assert row.util_pct == 60.0

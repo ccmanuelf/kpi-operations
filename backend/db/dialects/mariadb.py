@@ -3,6 +3,7 @@ MariaDB Dialect Adapter
 
 Handles MariaDB-specific SQL syntax and features.
 """
+
 from typing import List, Optional
 
 from backend.db.dialects.base import DialectAdapter
@@ -39,11 +40,7 @@ class MariaDBDialect(DialectAdapter):
         return "SELECT LAST_INSERT_ID()"
 
     def get_upsert_sql(
-        self,
-        table: str,
-        columns: List[str],
-        conflict_columns: List[str],
-        update_columns: Optional[List[str]] = None
+        self, table: str, columns: List[str], conflict_columns: List[str], update_columns: Optional[List[str]] = None
     ) -> str:
         """Return MariaDB upsert SQL using ON DUPLICATE KEY UPDATE.
 
@@ -115,12 +112,7 @@ class MariaDBDialect(DialectAdapter):
         """
         return "%s"
 
-    def get_date_diff_sql(
-        self,
-        date1: str,
-        date2: str,
-        unit: str = "day"
-    ) -> str:
+    def get_date_diff_sql(self, date1: str, date2: str, unit: str = "day") -> str:
         """Return MariaDB date difference SQL.
 
         Uses TIMESTAMPDIFF function.

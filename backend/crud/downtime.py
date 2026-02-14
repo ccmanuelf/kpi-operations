@@ -2,6 +2,7 @@
 CRUD operations for downtime tracking
 PHASE 2
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from typing import Optional, List
@@ -9,29 +10,18 @@ from datetime import date
 from fastapi import HTTPException
 
 from backend.schemas.downtime_entry import DowntimeEntry
-from backend.models.downtime import (
-    DowntimeEventCreate,
-    DowntimeEventUpdate,
-    DowntimeEventResponse
-)
+from backend.models.downtime import DowntimeEventCreate, DowntimeEventUpdate, DowntimeEventResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
 from backend.utils.soft_delete import soft_delete
 
 
-def create_downtime_event(
-    db: Session,
-    downtime: DowntimeEventCreate,
-    current_user: User
-) -> DowntimeEventResponse:
+def create_downtime_event(db: Session, downtime: DowntimeEventCreate, current_user: User) -> DowntimeEventResponse:
     """Create new downtime event"""
     # Verify user has access to this client
     verify_client_access(current_user, downtime.client_id)
 
-    db_downtime = DowntimeEntry(
-        **downtime.dict(),
-        entered_by=current_user.user_id
-    )
+    db_downtime = DowntimeEntry(**downtime.dict(), entered_by=current_user.user_id)
 
     db.add(db_downtime)
     db.commit()
@@ -40,15 +30,9 @@ def create_downtime_event(
     return DowntimeEventResponse.from_orm(db_downtime)
 
 
-def get_downtime_event(
-    db: Session,
-    downtime_id: str,
-    current_user: User
-) -> Optional[DowntimeEntry]:
+def get_downtime_event(db: Session, downtime_id: str, current_user: User) -> Optional[DowntimeEntry]:
     """Get downtime event by ID"""
-    db_downtime = db.query(DowntimeEntry).filter(
-        DowntimeEntry.downtime_entry_id == downtime_id
-    ).first()
+    db_downtime = db.query(DowntimeEntry).filter(DowntimeEntry.downtime_entry_id == downtime_id).first()
 
     if not db_downtime:
         raise HTTPException(status_code=404, detail="Downtime event not found")
@@ -68,7 +52,7 @@ def get_downtime_events(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
-    downtime_reason: Optional[str] = None
+    downtime_reason: Optional[str] = None,
 ) -> List[DowntimeEntry]:
     """Get downtime events with filters"""
     query = db.query(DowntimeEntry)
@@ -93,16 +77,11 @@ def get_downtime_events(
     if downtime_reason:
         query = query.filter(DowntimeEntry.downtime_reason == downtime_reason)
 
-    return query.order_by(
-        DowntimeEntry.shift_date.desc()
-    ).offset(skip).limit(limit).all()
+    return query.order_by(DowntimeEntry.shift_date.desc()).offset(skip).limit(limit).all()
 
 
 def update_downtime_event(
-    db: Session,
-    downtime_id: str,
-    downtime_update: DowntimeEventUpdate,
-    current_user: User
+    db: Session, downtime_id: str, downtime_update: DowntimeEventUpdate, current_user: User
 ) -> Optional[DowntimeEventResponse]:
     """Update downtime event"""
     db_downtime = get_downtime_event(db, downtime_id, current_user)
@@ -113,8 +92,8 @@ def update_downtime_event(
     update_data = downtime_update.dict(exclude_unset=True)
 
     # Verify client_id if being updated
-    if 'client_id' in update_data:
-        verify_client_access(current_user, update_data['client_id'])
+    if "client_id" in update_data:
+        verify_client_access(current_user, update_data["client_id"])
 
     for field, value in update_data.items():
         setattr(db_downtime, field, value)
@@ -125,11 +104,7 @@ def update_downtime_event(
     return DowntimeEventResponse.from_orm(db_downtime)
 
 
-def delete_downtime_event(
-    db: Session,
-    downtime_id: str,
-    current_user: User
-) -> bool:
+def delete_downtime_event(db: Session, downtime_id: str, current_user: User) -> bool:
     """Soft delete downtime event (sets is_active = False)"""
     db_downtime = get_downtime_event(db, downtime_id, current_user)
 

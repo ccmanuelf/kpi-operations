@@ -1,6 +1,7 @@
 """
 User authentication models (Pydantic)
 """
+
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
@@ -10,6 +11,7 @@ from backend.auth.password_policy import validate_password_strength
 
 class UserCreate(BaseModel):
     """User registration model with password policy enforcement (SEC-002)"""
+
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
@@ -17,7 +19,7 @@ class UserCreate(BaseModel):
     role: str = Field(default="operator", pattern="^(admin|poweruser|supervisor|operator|viewer)$")
     client_id_assigned: Optional[str] = None
 
-    @field_validator('password')
+    @field_validator("password")
     @classmethod
     def validate_password_policy(cls, v: str) -> str:
         """
@@ -39,12 +41,14 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     """User login model"""
+
     username: str
     password: str
 
 
 class UserUpdate(BaseModel):
     """User update model (all fields optional)"""
+
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=8, max_length=128)
@@ -56,6 +60,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     """User response model (without password)"""
+
     user_id: str
     username: str
     email: str
@@ -72,6 +77,7 @@ class UserResponse(BaseModel):
 
 class Token(BaseModel):
     """JWT token response"""
+
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
@@ -79,15 +85,17 @@ class Token(BaseModel):
 
 class PasswordResetRequest(BaseModel):
     """Password reset request model"""
+
     email: EmailStr
 
 
 class PasswordResetConfirm(BaseModel):
     """Password reset confirmation model"""
+
     token: str
     new_password: str = Field(..., min_length=8, max_length=128)
 
-    @field_validator('new_password')
+    @field_validator("new_password")
     @classmethod
     def validate_password_policy(cls, v: str) -> str:
         """Validate password against security policy"""
@@ -99,10 +107,11 @@ class PasswordResetConfirm(BaseModel):
 
 class PasswordChange(BaseModel):
     """Password change model (for authenticated users)"""
+
     current_password: str
     new_password: str = Field(..., min_length=8, max_length=128)
 
-    @field_validator('new_password')
+    @field_validator("new_password")
     @classmethod
     def validate_password_policy(cls, v: str) -> str:
         """Validate password against security policy"""

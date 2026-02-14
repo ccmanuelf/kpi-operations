@@ -13,6 +13,7 @@ Covers:
 - Bradford Factor scoring
 - Edge cases and boundary conditions
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date, timedelta
@@ -21,10 +22,8 @@ from unittest.mock import Mock, MagicMock
 
 # ===== Helper Functions for Standalone Calculations =====
 
-def calculate_absenteeism_rate(
-    hours_absent: float,
-    scheduled_hours: float
-) -> float | None:
+
+def calculate_absenteeism_rate(hours_absent: float, scheduled_hours: float) -> float | None:
     """
     Calculate absenteeism rate as percentage.
 
@@ -46,10 +45,7 @@ def calculate_absenteeism_rate(
     return round(rate, 4)
 
 
-def calculate_attendance_rate(
-    days_present: int,
-    total_days: int
-) -> float | None:
+def calculate_attendance_rate(days_present: int, total_days: int) -> float | None:
     """
     Calculate attendance rate as percentage.
 
@@ -73,10 +69,7 @@ def calculate_attendance_rate(
     return round(rate, 4)
 
 
-def calculate_bradford_factor(
-    spell_count: int,
-    total_days_absent: int
-) -> int:
+def calculate_bradford_factor(spell_count: int, total_days_absent: int) -> int:
     """
     Calculate Bradford Factor score.
 
@@ -100,7 +93,7 @@ def calculate_bradford_factor(
     if spell_count < 0 or total_days_absent < 0:
         return 0
 
-    return (spell_count ** 2) * total_days_absent
+    return (spell_count**2) * total_days_absent
 
 
 def count_absence_spells(absence_dates: list[date]) -> int:
@@ -151,6 +144,7 @@ def interpret_bradford_factor(score: int) -> str:
 
 # ===== Test Classes =====
 
+
 @pytest.mark.unit
 class TestAbsenteeismRateCalculation:
     """Test basic absenteeism rate calculation"""
@@ -159,10 +153,7 @@ class TestAbsenteeismRateCalculation:
     def test_basic_absenteeism_calculation(self):
         """Test basic absenteeism with known values"""
         # Given: 2 hours absent, 40 hours scheduled (1 week)
-        result = calculate_absenteeism_rate(
-            hours_absent=2.0,
-            scheduled_hours=40.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=2.0, scheduled_hours=40.0)
 
         # Then: (2 / 40) * 100 = 5%
         assert result == 5.0
@@ -171,10 +162,7 @@ class TestAbsenteeismRateCalculation:
     def test_zero_absenteeism(self):
         """Test perfect attendance (0% absenteeism)"""
         # Given: No absence
-        result = calculate_absenteeism_rate(
-            hours_absent=0.0,
-            scheduled_hours=40.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=0.0, scheduled_hours=40.0)
 
         # Then: Should be 0%
         assert result == 0.0
@@ -183,10 +171,7 @@ class TestAbsenteeismRateCalculation:
     def test_full_absence(self):
         """Test complete absence (100% absenteeism)"""
         # Given: Full week absent
-        result = calculate_absenteeism_rate(
-            hours_absent=40.0,
-            scheduled_hours=40.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=40.0, scheduled_hours=40.0)
 
         # Then: Should be 100%
         assert result == 100.0
@@ -195,10 +180,7 @@ class TestAbsenteeismRateCalculation:
     def test_half_day_absence(self):
         """Test half-day absence"""
         # Given: 4 hours absent from 8-hour day
-        result = calculate_absenteeism_rate(
-            hours_absent=4.0,
-            scheduled_hours=8.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=4.0, scheduled_hours=8.0)
 
         # Then: Should be 50%
         assert result == 50.0
@@ -207,10 +189,7 @@ class TestAbsenteeismRateCalculation:
     def test_partial_hour_absence(self):
         """Test partial hour absence (late arrival)"""
         # Given: 30 minutes late (0.5 hours)
-        result = calculate_absenteeism_rate(
-            hours_absent=0.5,
-            scheduled_hours=8.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=0.5, scheduled_hours=8.0)
 
         # Then: (0.5 / 8) * 100 = 6.25%
         assert result == 6.25
@@ -219,10 +198,7 @@ class TestAbsenteeismRateCalculation:
     def test_monthly_absenteeism(self):
         """Test monthly absenteeism calculation"""
         # Given: 8 hours absent in 160-hour month
-        result = calculate_absenteeism_rate(
-            hours_absent=8.0,
-            scheduled_hours=160.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=8.0, scheduled_hours=160.0)
 
         # Then: (8 / 160) * 100 = 5%
         assert result == 5.0
@@ -231,10 +207,7 @@ class TestAbsenteeismRateCalculation:
     def test_industry_average_comparison(self):
         """Test against industry average (~3-5%)"""
         # Given: Industry average absenteeism
-        result = calculate_absenteeism_rate(
-            hours_absent=6.4,
-            scheduled_hours=160.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=6.4, scheduled_hours=160.0)
 
         # Then: Should be 4% (within industry average)
         assert result == 4.0
@@ -248,10 +221,7 @@ class TestAbsenteeismEdgeCases:
     def test_zero_scheduled_hours(self):
         """Test that zero scheduled hours returns None"""
         # Given: No scheduled time
-        result = calculate_absenteeism_rate(
-            hours_absent=0.0,
-            scheduled_hours=0.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=0.0, scheduled_hours=0.0)
 
         # Then: Should return None (invalid)
         assert result is None
@@ -260,10 +230,7 @@ class TestAbsenteeismEdgeCases:
     def test_negative_scheduled_hours(self):
         """Test that negative scheduled hours returns None"""
         # Given: Invalid negative scheduled time
-        result = calculate_absenteeism_rate(
-            hours_absent=2.0,
-            scheduled_hours=-40.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=2.0, scheduled_hours=-40.0)
 
         # Then: Should return None (invalid)
         assert result is None
@@ -272,10 +239,7 @@ class TestAbsenteeismEdgeCases:
     def test_negative_absent_hours(self):
         """Test that negative absent hours returns None"""
         # Given: Invalid negative absence
-        result = calculate_absenteeism_rate(
-            hours_absent=-2.0,
-            scheduled_hours=40.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=-2.0, scheduled_hours=40.0)
 
         # Then: Should return None (invalid)
         assert result is None
@@ -284,10 +248,7 @@ class TestAbsenteeismEdgeCases:
     def test_over_100_percent_absenteeism(self):
         """Test when absent hours exceed scheduled (data error)"""
         # Given: More absent than scheduled (impossible but handle gracefully)
-        result = calculate_absenteeism_rate(
-            hours_absent=50.0,
-            scheduled_hours=40.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=50.0, scheduled_hours=40.0)
 
         # Then: Should return >100% (indicates data error)
         assert result == 125.0
@@ -296,10 +257,7 @@ class TestAbsenteeismEdgeCases:
     def test_precision_rounding(self):
         """Test decimal precision in absenteeism"""
         # Given: Values producing repeating decimal
-        result = calculate_absenteeism_rate(
-            hours_absent=2.0,
-            scheduled_hours=3.0
-        )
+        result = calculate_absenteeism_rate(hours_absent=2.0, scheduled_hours=3.0)
 
         # Then: Should round to 4 decimal places
         # (2 / 3) * 100 = 66.6667%
@@ -314,10 +272,7 @@ class TestAttendanceRateCalculation:
     def test_perfect_attendance(self):
         """Test perfect attendance (100%)"""
         # Given: Present every day
-        result = calculate_attendance_rate(
-            days_present=20,
-            total_days=20
-        )
+        result = calculate_attendance_rate(days_present=20, total_days=20)
 
         # Then: Should be 100%
         assert result == 100.0
@@ -326,10 +281,7 @@ class TestAttendanceRateCalculation:
     def test_90_percent_attendance(self):
         """Test 90% attendance"""
         # Given: 18 out of 20 days present
-        result = calculate_attendance_rate(
-            days_present=18,
-            total_days=20
-        )
+        result = calculate_attendance_rate(days_present=18, total_days=20)
 
         # Then: Should be 90%
         assert result == 90.0
@@ -338,10 +290,7 @@ class TestAttendanceRateCalculation:
     def test_low_attendance(self):
         """Test low attendance (chronic absentee)"""
         # Given: Only 15 out of 20 days present
-        result = calculate_attendance_rate(
-            days_present=15,
-            total_days=20
-        )
+        result = calculate_attendance_rate(days_present=15, total_days=20)
 
         # Then: Should be 75%
         assert result == 75.0
@@ -350,10 +299,7 @@ class TestAttendanceRateCalculation:
     def test_single_absence(self):
         """Test single day absence"""
         # Given: 1 day absent out of 5
-        result = calculate_attendance_rate(
-            days_present=4,
-            total_days=5
-        )
+        result = calculate_attendance_rate(days_present=4, total_days=5)
 
         # Then: Should be 80%
         assert result == 80.0
@@ -362,10 +308,7 @@ class TestAttendanceRateCalculation:
     def test_zero_attendance(self):
         """Test complete absence"""
         # Given: Never present
-        result = calculate_attendance_rate(
-            days_present=0,
-            total_days=20
-        )
+        result = calculate_attendance_rate(days_present=0, total_days=20)
 
         # Then: Should be 0%
         assert result == 0.0
@@ -374,10 +317,7 @@ class TestAttendanceRateCalculation:
     def test_invalid_zero_days(self):
         """Test with zero total days"""
         # Given: No scheduled days
-        result = calculate_attendance_rate(
-            days_present=0,
-            total_days=0
-        )
+        result = calculate_attendance_rate(days_present=0, total_days=0)
 
         # Then: Should return None
         assert result is None
@@ -386,10 +326,7 @@ class TestAttendanceRateCalculation:
     def test_present_exceeds_total(self):
         """Test when present exceeds total (data error)"""
         # Given: More present than scheduled (error)
-        result = calculate_attendance_rate(
-            days_present=25,
-            total_days=20
-        )
+        result = calculate_attendance_rate(days_present=25, total_days=20)
 
         # Then: Should cap at 100%
         assert result == 100.0
@@ -403,10 +340,7 @@ class TestBradfordFactorCalculation:
     def test_basic_bradford_factor(self):
         """Test basic Bradford Factor calculation"""
         # Given: 3 spells, 5 total days
-        result = calculate_bradford_factor(
-            spell_count=3,
-            total_days_absent=5
-        )
+        result = calculate_bradford_factor(spell_count=3, total_days_absent=5)
 
         # Then: 3^2 * 5 = 9 * 5 = 45
         assert result == 45
@@ -415,10 +349,7 @@ class TestBradfordFactorCalculation:
     def test_single_spell_many_days(self):
         """Test one long absence (low Bradford Factor)"""
         # Given: 1 spell of 10 days (single illness)
-        result = calculate_bradford_factor(
-            spell_count=1,
-            total_days_absent=10
-        )
+        result = calculate_bradford_factor(spell_count=1, total_days_absent=10)
 
         # Then: 1^2 * 10 = 1 * 10 = 10
         assert result == 10
@@ -427,10 +358,7 @@ class TestBradfordFactorCalculation:
     def test_many_spells_few_days(self):
         """Test many short absences (high Bradford Factor)"""
         # Given: 5 spells of 1 day each (pattern of single days off)
-        result = calculate_bradford_factor(
-            spell_count=5,
-            total_days_absent=5
-        )
+        result = calculate_bradford_factor(spell_count=5, total_days_absent=5)
 
         # Then: 5^2 * 5 = 25 * 5 = 125
         assert result == 125
@@ -439,10 +367,7 @@ class TestBradfordFactorCalculation:
     def test_no_absences(self):
         """Test zero absences"""
         # Given: No absences
-        result = calculate_bradford_factor(
-            spell_count=0,
-            total_days_absent=0
-        )
+        result = calculate_bradford_factor(spell_count=0, total_days_absent=0)
 
         # Then: Should be 0
         assert result == 0
@@ -451,10 +376,7 @@ class TestBradfordFactorCalculation:
     def test_high_bradford_critical(self):
         """Test critical Bradford Factor level"""
         # Given: 6 spells, 8 days total
-        result = calculate_bradford_factor(
-            spell_count=6,
-            total_days_absent=8
-        )
+        result = calculate_bradford_factor(spell_count=6, total_days_absent=8)
 
         # Then: 6^2 * 8 = 36 * 8 = 288
         assert result == 288
@@ -514,7 +436,7 @@ class TestAbsenceSpellCounting:
         """Test counting single-day absences as separate spells"""
         # Given: Separate single-day absences
         absences = [
-            date(2024, 1, 5),   # Friday
+            date(2024, 1, 5),  # Friday
             date(2024, 1, 10),  # Wednesday
             date(2024, 1, 15),  # Monday
         ]
@@ -546,7 +468,7 @@ class TestAbsenceSpellCounting:
         """Test mix of single and consecutive absences"""
         # Given: Mixed pattern
         absences = [
-            date(2024, 1, 5),   # Single day (spell 1)
+            date(2024, 1, 5),  # Single day (spell 1)
             date(2024, 1, 10),  # Start of 3-day (spell 2)
             date(2024, 1, 11),
             date(2024, 1, 12),
@@ -610,7 +532,7 @@ class TestAbsenteeismBusinessScenarios:
         """Test identifying chronic absentee (>10% rate)"""
         # Given: High absenteeism
         scheduled_hours = 160.0  # 1 month
-        absent_hours = 20.0      # 2.5 days
+        absent_hours = 20.0  # 2.5 days
 
         # When: Calculate rate
         rate = calculate_absenteeism_rate(absent_hours, scheduled_hours)
@@ -624,18 +546,15 @@ class TestAbsenteeismBusinessScenarios:
         """Test calculating team absenteeism average"""
         # Given: Team of 5 employees
         team_data = [
-            {"hours_absent": 4.0, "scheduled": 160.0},   # 2.5%
-            {"hours_absent": 8.0, "scheduled": 160.0},   # 5%
-            {"hours_absent": 2.0, "scheduled": 160.0},   # 1.25%
-            {"hours_absent": 0.0, "scheduled": 160.0},   # 0%
+            {"hours_absent": 4.0, "scheduled": 160.0},  # 2.5%
+            {"hours_absent": 8.0, "scheduled": 160.0},  # 5%
+            {"hours_absent": 2.0, "scheduled": 160.0},  # 1.25%
+            {"hours_absent": 0.0, "scheduled": 160.0},  # 0%
             {"hours_absent": 16.0, "scheduled": 160.0},  # 10%
         ]
 
         # When: Calculate individual rates
-        rates = [
-            calculate_absenteeism_rate(e["hours_absent"], e["scheduled"])
-            for e in team_data
-        ]
+        rates = [calculate_absenteeism_rate(e["hours_absent"], e["scheduled"]) for e in team_data]
 
         # Then: Calculate team average
         avg_rate = sum(rates) / len(rates)
@@ -651,7 +570,7 @@ class TestAbsenteeismBusinessScenarios:
         emp_b_bradford = calculate_bradford_factor(5, 5)
 
         # Then: Employee B has much higher Bradford Factor
-        assert emp_a_bradford == 5    # 1^2 * 5 = 5
+        assert emp_a_bradford == 5  # 1^2 * 5 = 5
         assert emp_b_bradford == 125  # 5^2 * 5 = 125
 
         # Employee B is 25x higher risk despite same total days
@@ -662,7 +581,7 @@ class TestAbsenteeismBusinessScenarios:
         """Test seasonal variation in absenteeism"""
         # Given: Winter months typically have higher absenteeism
         winter_rate = calculate_absenteeism_rate(12.0, 160.0)  # 7.5%
-        summer_rate = calculate_absenteeism_rate(5.0, 160.0)   # 3.125%
+        summer_rate = calculate_absenteeism_rate(5.0, 160.0)  # 3.125%
 
         # Then: Winter should be higher
         assert winter_rate > summer_rate
@@ -695,8 +614,8 @@ class TestAbsenteeismBusinessScenarios:
         # Given: Monthly rates showing improvement
         month1 = calculate_absenteeism_rate(16.0, 160.0)  # 10%
         month2 = calculate_absenteeism_rate(12.0, 160.0)  # 7.5%
-        month3 = calculate_absenteeism_rate(8.0, 160.0)   # 5%
-        month4 = calculate_absenteeism_rate(4.8, 160.0)   # 3%
+        month3 = calculate_absenteeism_rate(8.0, 160.0)  # 5%
+        month4 = calculate_absenteeism_rate(4.8, 160.0)  # 3%
 
         # Then: Should show progressive improvement
         assert month1 > month2 > month3 > month4

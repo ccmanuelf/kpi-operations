@@ -2,6 +2,7 @@
 Trend Analysis Calculations Module
 Provides moving averages, linear regression, seasonal decomposition, and anomaly detection
 """
+
 from typing import List, Tuple, Optional, Dict, Any
 from decimal import Decimal
 from datetime import date, timedelta
@@ -12,16 +13,14 @@ from dataclasses import dataclass
 @dataclass
 class TrendResult:
     """Container for trend analysis results"""
+
     slope: Decimal  # Linear regression slope (change per day)
     intercept: Decimal  # Y-intercept
     r_squared: Decimal  # R-squared (goodness of fit)
     trend_direction: str  # 'increasing', 'decreasing', 'stable', 'volatile'
 
 
-def calculate_moving_average(
-    values: List[Decimal],
-    window: int
-) -> List[Optional[Decimal]]:
+def calculate_moving_average(values: List[Decimal], window: int) -> List[Optional[Decimal]]:
     """
     Calculate simple moving average
 
@@ -45,17 +44,14 @@ def calculate_moving_average(
         if i < window - 1:
             result.append(None)  # Not enough data yet
         else:
-            window_values = values[i - window + 1:i + 1]
+            window_values = values[i - window + 1 : i + 1]
             avg = sum(window_values) / len(window_values)
             result.append(Decimal(str(round(avg, 4))))
 
     return result
 
 
-def calculate_exponential_moving_average(
-    values: List[Decimal],
-    alpha: Decimal = Decimal("0.2")
-) -> List[Decimal]:
+def calculate_exponential_moving_average(values: List[Decimal], alpha: Decimal = Decimal("0.2")) -> List[Decimal]:
     """
     Calculate exponential moving average (EMA)
 
@@ -85,10 +81,7 @@ def calculate_exponential_moving_average(
     return ema
 
 
-def linear_regression(
-    x_values: List[float],
-    y_values: List[Decimal]
-) -> Tuple[Decimal, Decimal, Decimal]:
+def linear_regression(x_values: List[float], y_values: List[Decimal]) -> Tuple[Decimal, Decimal, Decimal]:
     """
     Calculate linear regression (least squares method)
 
@@ -136,19 +129,10 @@ def linear_regression(
 
     r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
 
-    return (
-        Decimal(str(round(slope, 6))),
-        Decimal(str(round(intercept, 4))),
-        Decimal(str(round(r_squared, 4)))
-    )
+    return (Decimal(str(round(slope, 6))), Decimal(str(round(intercept, 4))), Decimal(str(round(r_squared, 4))))
 
 
-def determine_trend_direction(
-    slope: Decimal,
-    r_squared: Decimal,
-    std_deviation: Decimal,
-    mean_value: Decimal
-) -> str:
+def determine_trend_direction(slope: Decimal, r_squared: Decimal, std_deviation: Decimal, mean_value: Decimal) -> str:
     """
     Determine trend direction based on regression analysis
 
@@ -185,10 +169,7 @@ def determine_trend_direction(
         return "decreasing"
 
 
-def detect_anomalies(
-    values: List[Decimal],
-    threshold_std: Decimal = Decimal("2.0")
-) -> List[int]:
+def detect_anomalies(values: List[Decimal], threshold_std: Decimal = Decimal("2.0")) -> List[int]:
     """
     Detect anomalies using standard deviation method
 
@@ -226,10 +207,7 @@ def detect_anomalies(
     return anomalies
 
 
-def calculate_seasonal_decomposition(
-    values: List[Decimal],
-    period: int = 7
-) -> Dict[str, List[Decimal]]:
+def calculate_seasonal_decomposition(values: List[Decimal], period: int = 7) -> Dict[str, List[Decimal]]:
     """
     Simple seasonal decomposition (additive model)
     Decomposes time series into trend, seasonal, and residual components
@@ -247,11 +225,7 @@ def calculate_seasonal_decomposition(
     """
     if len(values) < period * 2:
         # Not enough data for meaningful decomposition
-        return {
-            'trend': values,
-            'seasonal': [Decimal("0")] * len(values),
-            'residual': [Decimal("0")] * len(values)
-        }
+        return {"trend": values, "seasonal": [Decimal("0")] * len(values), "residual": [Decimal("0")] * len(values)}
 
     n = len(values)
 
@@ -263,7 +237,7 @@ def calculate_seasonal_decomposition(
         if i < half_window or i >= n - half_window:
             trend.append(None)
         else:
-            window_values = values[i - half_window:i + half_window + 1]
+            window_values = values[i - half_window : i + half_window + 1]
             avg = sum(window_values) / len(window_values)
             trend.append(Decimal(str(round(avg, 4))))
 
@@ -312,17 +286,14 @@ def calculate_seasonal_decomposition(
         else:
             filled_trend.append(last_valid)
 
-    return {
-        'trend': filled_trend,
-        'seasonal': seasonal,
-        'residual': residual
-    }
+    return {"trend": filled_trend, "seasonal": seasonal, "residual": residual}
 
 
 # =============================================================================
 # PURE HELPER FUNCTIONS for Analytics Service
 # Phase 1.2: Functions used by AnalyticsService
 # =============================================================================
+
 
 def calculate_trend_direction(values: List[float]) -> Tuple[str, float]:
     """
@@ -358,11 +329,7 @@ def calculate_trend_direction(values: List[float]) -> Tuple[str, float]:
         return ("declining", abs(percentage_change))
 
 
-def get_trend_interpretation(
-    metric: str,
-    direction: str,
-    percentage: float
-) -> str:
+def get_trend_interpretation(metric: str, direction: str, percentage: float) -> str:
     """
     Generate human-readable interpretation of a trend.
 
@@ -386,10 +353,7 @@ def get_trend_interpretation(
         return f"{metric.title()} is declining, down {percentage:.1f}%. Investigation recommended."
 
 
-def analyze_trend(
-    dates: List[date],
-    values: List[Decimal]
-) -> TrendResult:
+def analyze_trend(dates: List[date], values: List[Decimal]) -> TrendResult:
     """
     Comprehensive trend analysis
 
@@ -427,9 +391,4 @@ def analyze_trend(
     # Determine trend direction
     direction = determine_trend_direction(slope, r_squared, std_dev, mean_value)
 
-    return TrendResult(
-        slope=slope,
-        intercept=intercept,
-        r_squared=r_squared,
-        trend_direction=direction
-    )
+    return TrendResult(slope=slope, intercept=intercept, r_squared=r_squared, trend_direction=direction)

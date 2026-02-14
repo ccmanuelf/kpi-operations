@@ -3,6 +3,7 @@ Report Generation API Routes
 Provides endpoints for PDF and Excel report generation with multi-client support
 Also includes email report configuration endpoints
 """
+
 from datetime import date, datetime, timedelta
 from typing import Optional, List
 from io import BytesIO
@@ -24,8 +25,10 @@ from backend.middleware.client_auth import verify_client_access
 # Pydantic models for email configuration
 # ============================================
 
+
 class EmailReportConfig(BaseModel):
     """Email report configuration schema"""
+
     enabled: bool = False
     frequency: str = "daily"  # daily, weekly, monthly
     report_time: str = "06:00"
@@ -41,6 +44,7 @@ class EmailReportConfig(BaseModel):
 
 class EmailReportConfigResponse(EmailReportConfig):
     """Response model with additional fields"""
+
     config_id: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -48,11 +52,13 @@ class EmailReportConfigResponse(EmailReportConfig):
 
 class TestEmailRequest(BaseModel):
     """Request model for test email"""
+
     email: str
 
 
 class ManualReportRequest(BaseModel):
     """Request model for manual report generation"""
+
     client_id: str
     start_date: str
     end_date: str
@@ -84,7 +90,7 @@ async def generate_production_pdf_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate production efficiency PDF report
@@ -110,13 +116,10 @@ async def generate_production_pdf_report(
         pdf_generator = PDFReportGenerator(db)
 
         # Only include production-related KPIs
-        production_kpis = ['efficiency', 'performance', 'availability', 'oee']
+        production_kpis = ["efficiency", "performance", "availability", "oee"]
 
         pdf_buffer = pdf_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end,
-            kpis_to_include=production_kpis
+            client_id=client_id, start_date=start, end_date=end, kpis_to_include=production_kpis
         )
 
         # Generate filename with timestamp
@@ -131,8 +134,8 @@ async def generate_production_pdf_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "production",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat()
-            }
+                "X-Generated-At": datetime.now().isoformat(),
+            },
         )
 
     except HTTPException:
@@ -147,7 +150,7 @@ async def generate_production_excel_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate production efficiency Excel report
@@ -171,11 +174,7 @@ async def generate_production_excel_report(
 
         # Generate Excel
         excel_generator = ExcelReportGenerator(db)
-        excel_buffer = excel_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end
-        )
+        excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
         # Generate filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -189,8 +188,8 @@ async def generate_production_excel_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "production",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat()
-            }
+                "X-Generated-At": datetime.now().isoformat(),
+            },
         )
 
     except HTTPException:
@@ -206,7 +205,7 @@ async def generate_quality_pdf_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate quality metrics PDF report
@@ -232,13 +231,10 @@ async def generate_quality_pdf_report(
         pdf_generator = PDFReportGenerator(db)
 
         # Quality-specific KPIs
-        quality_kpis = ['fpy', 'rty', 'ppm', 'dpmo']
+        quality_kpis = ["fpy", "rty", "ppm", "dpmo"]
 
         pdf_buffer = pdf_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end,
-            kpis_to_include=quality_kpis
+            client_id=client_id, start_date=start, end_date=end, kpis_to_include=quality_kpis
         )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -251,8 +247,8 @@ async def generate_quality_pdf_report(
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "quality",
-                "X-Generated-By": current_user.username
-            }
+                "X-Generated-By": current_user.username,
+            },
         )
 
     except HTTPException:
@@ -267,7 +263,7 @@ async def generate_quality_excel_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Generate quality metrics Excel report with detailed worksheets"""
     try:
@@ -282,11 +278,7 @@ async def generate_quality_excel_report(
             raise HTTPException(status_code=400, detail="Start date must be before end date")
 
         excel_generator = ExcelReportGenerator(db)
-        excel_buffer = excel_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end
-        )
+        excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
@@ -298,8 +290,8 @@ async def generate_quality_excel_report(
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "quality",
-                "X-Generated-By": current_user.username
-            }
+                "X-Generated-By": current_user.username,
+            },
         )
 
     except HTTPException:
@@ -315,7 +307,7 @@ async def generate_attendance_pdf_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate attendance and absenteeism PDF report
@@ -339,13 +331,10 @@ async def generate_attendance_pdf_report(
         pdf_generator = PDFReportGenerator(db)
 
         # Attendance-specific KPIs
-        attendance_kpis = ['absenteeism']
+        attendance_kpis = ["absenteeism"]
 
         pdf_buffer = pdf_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end,
-            kpis_to_include=attendance_kpis
+            client_id=client_id, start_date=start, end_date=end, kpis_to_include=attendance_kpis
         )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -358,8 +347,8 @@ async def generate_attendance_pdf_report(
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "attendance",
-                "X-Generated-By": current_user.username
-            }
+                "X-Generated-By": current_user.username,
+            },
         )
 
     except HTTPException:
@@ -374,7 +363,7 @@ async def generate_attendance_excel_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Generate attendance and absenteeism Excel report"""
     try:
@@ -389,11 +378,7 @@ async def generate_attendance_excel_report(
             raise HTTPException(status_code=400, detail="Start date must be before end date")
 
         excel_generator = ExcelReportGenerator(db)
-        excel_buffer = excel_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end
-        )
+        excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
@@ -405,8 +390,8 @@ async def generate_attendance_excel_report(
             headers={
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "attendance",
-                "X-Generated-By": current_user.username
-            }
+                "X-Generated-By": current_user.username,
+            },
         )
 
     except HTTPException:
@@ -422,7 +407,7 @@ async def generate_comprehensive_pdf_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate comprehensive PDF report with all KPIs
@@ -449,10 +434,7 @@ async def generate_comprehensive_pdf_report(
 
         # Generate with all KPIs (default behavior)
         pdf_buffer = pdf_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end,
-            kpis_to_include=None  # None = all KPIs
+            client_id=client_id, start_date=start, end_date=end, kpis_to_include=None  # None = all KPIs
         )
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -466,8 +448,8 @@ async def generate_comprehensive_pdf_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "comprehensive",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat()
-            }
+                "X-Generated-At": datetime.now().isoformat(),
+            },
         )
 
     except HTTPException:
@@ -482,7 +464,7 @@ async def generate_comprehensive_excel_report(
     start_date: Optional[str] = Query(None, description="Start date (YYYY-MM-DD)"),
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Generate comprehensive Excel report with all KPIs and detailed worksheets
@@ -507,11 +489,7 @@ async def generate_comprehensive_excel_report(
             raise HTTPException(status_code=400, detail="Start date must be before end date")
 
         excel_generator = ExcelReportGenerator(db)
-        excel_buffer = excel_generator.generate_report(
-            client_id=client_id,
-            start_date=start,
-            end_date=end
-        )
+        excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
@@ -524,8 +502,8 @@ async def generate_comprehensive_excel_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "comprehensive",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat()
-            }
+                "X-Generated-At": datetime.now().isoformat(),
+            },
         )
 
     except HTTPException:
@@ -536,9 +514,7 @@ async def generate_comprehensive_excel_report(
 
 # Report Metadata/Info Endpoint
 @router.get("/available")
-async def get_available_reports(
-    current_user: User = Depends(get_current_user)
-):
+async def get_available_reports(current_user: User = Depends(get_current_user)):
     """
     Get list of available report types and their descriptions
     """
@@ -549,46 +525,34 @@ async def get_available_reports(
                 "name": "Production Efficiency Report",
                 "description": "Production metrics, OEE, efficiency, and performance analysis",
                 "formats": ["pdf", "excel"],
-                "endpoints": {
-                    "pdf": "/api/reports/production/pdf",
-                    "excel": "/api/reports/production/excel"
-                }
+                "endpoints": {"pdf": "/api/reports/production/pdf", "excel": "/api/reports/production/excel"},
             },
             {
                 "type": "quality",
                 "name": "Quality Metrics Report",
                 "description": "FPY, RTY, PPM, DPMO, and quality trend analysis",
                 "formats": ["pdf", "excel"],
-                "endpoints": {
-                    "pdf": "/api/reports/quality/pdf",
-                    "excel": "/api/reports/quality/excel"
-                }
+                "endpoints": {"pdf": "/api/reports/quality/pdf", "excel": "/api/reports/quality/excel"},
             },
             {
                 "type": "attendance",
                 "name": "Attendance & Absenteeism Report",
                 "description": "Employee attendance tracking and absenteeism analysis",
                 "formats": ["pdf", "excel"],
-                "endpoints": {
-                    "pdf": "/api/reports/attendance/pdf",
-                    "excel": "/api/reports/attendance/excel"
-                }
+                "endpoints": {"pdf": "/api/reports/attendance/pdf", "excel": "/api/reports/attendance/excel"},
             },
             {
                 "type": "comprehensive",
                 "name": "Comprehensive KPI Report",
                 "description": "All KPIs in a single comprehensive report",
                 "formats": ["pdf", "excel"],
-                "endpoints": {
-                    "pdf": "/api/reports/comprehensive/pdf",
-                    "excel": "/api/reports/comprehensive/excel"
-                }
-            }
+                "endpoints": {"pdf": "/api/reports/comprehensive/pdf", "excel": "/api/reports/comprehensive/excel"},
+            },
         ],
         "query_parameters": {
             "client_id": "Optional client ID for multi-client filtering",
             "start_date": "Report start date (YYYY-MM-DD format, defaults to 30 days ago)",
-            "end_date": "Report end date (YYYY-MM-DD format, defaults to today)"
+            "end_date": "Report end date (YYYY-MM-DD format, defaults to today)",
         },
         "features": [
             "Multi-client data isolation",
@@ -598,8 +562,8 @@ async def get_available_reports(
             "Professional formatting",
             "Automated calculations",
             "Trend analysis",
-            "Executive summaries"
-        ]
+            "Executive summaries",
+        ],
     }
 
 
@@ -607,10 +571,10 @@ async def get_available_reports(
 # Email Report Configuration Endpoints
 # ============================================
 
+
 @router.get("/email-config", response_model=EmailReportConfigResponse)
 async def get_email_report_config(
-    client_id: Optional[str] = Query(None, description="Client ID"),
-    current_user: User = Depends(get_current_user)
+    client_id: Optional[str] = Query(None, description="Client ID"), current_user: User = Depends(get_current_user)
 ):
     """
     Get email report configuration for a client
@@ -638,15 +602,12 @@ async def get_email_report_config(
         include_quality=True,
         include_availability=True,
         include_attendance=True,
-        include_predictions=True
+        include_predictions=True,
     )
 
 
 @router.post("/email-config", response_model=EmailReportConfigResponse)
-async def save_email_report_config(
-    config: EmailReportConfig,
-    current_user: User = Depends(get_current_user)
-):
+async def save_email_report_config(config: EmailReportConfig, current_user: User = Depends(get_current_user)):
     """
     Save email report configuration
 
@@ -660,15 +621,13 @@ async def save_email_report_config(
     # Validate recipients
     if config.enabled and len(config.recipients) == 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one recipient email is required when enabled"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="At least one recipient email is required when enabled"
         )
 
     # Validate frequency
     if config.frequency not in ["daily", "weekly", "monthly"]:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Frequency must be 'daily', 'weekly', or 'monthly'"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Frequency must be 'daily', 'weekly', or 'monthly'"
         )
 
     # Store config
@@ -684,10 +643,7 @@ async def save_email_report_config(
 
 
 @router.put("/email-config", response_model=EmailReportConfigResponse)
-async def update_email_report_config(
-    config: EmailReportConfig,
-    current_user: User = Depends(get_current_user)
-):
+async def update_email_report_config(config: EmailReportConfig, current_user: User = Depends(get_current_user)):
     """
     Update existing email report configuration
 
@@ -697,15 +653,13 @@ async def update_email_report_config(
 
     if config_key not in _email_configs:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Email configuration not found. Use POST to create."
+            status_code=status.HTTP_404_NOT_FOUND, detail="Email configuration not found. Use POST to create."
         )
 
     # Validate if enabling
     if config.enabled and len(config.recipients) == 0:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="At least one recipient email is required when enabled"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="At least one recipient email is required when enabled"
         )
 
     config_dict = config.model_dump()
@@ -718,10 +672,7 @@ async def update_email_report_config(
 
 
 @router.post("/email-config/test")
-async def send_test_email(
-    request: TestEmailRequest,
-    current_user: User = Depends(get_current_user)
-):
+async def send_test_email(request: TestEmailRequest, current_user: User = Depends(get_current_user)):
     """
     Send a test email to verify email configuration
 
@@ -733,15 +684,12 @@ async def send_test_email(
         email_service = EmailService()
         result = email_service.send_test_email(request.email)
 
-        if result.get('success'):
-            return {
-                "success": True,
-                "message": f"Test email sent successfully to {request.email}"
-            }
+        if result.get("success"):
+            return {"success": True, "message": f"Test email sent successfully to {request.email}"}
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=result.get('error', 'Failed to send test email')
+                detail=result.get("error", "Failed to send test email"),
             )
 
     except ImportError:
@@ -749,20 +697,17 @@ async def send_test_email(
         return {
             "success": True,
             "message": f"Test email queued for {request.email} (email service not configured)",
-            "note": "Email service is not fully configured. In production, configure SMTP or SendGrid."
+            "note": "Email service is not fully configured. In production, configure SMTP or SendGrid.",
         }
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send test email: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send test email: {str(e)}"
         )
 
 
 @router.post("/send-manual")
 async def send_manual_report(
-    request: ManualReportRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: ManualReportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Manually trigger a report to be sent via email
@@ -778,23 +723,15 @@ async def send_manual_report(
             start_date = datetime.strptime(request.start_date, "%Y-%m-%d").date()
             end_date = datetime.strptime(request.end_date, "%Y-%m-%d").date()
         except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid date format. Use YYYY-MM-DD"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format. Use YYYY-MM-DD")
 
         if start_date > end_date:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Start date must be before end date"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Start date must be before end date")
 
         # Generate PDF report
         pdf_generator = PDFReportGenerator(db)
         pdf_buffer = pdf_generator.generate_report(
-            client_id=request.client_id,
-            start_date=start_date,
-            end_date=end_date
+            client_id=request.client_id, start_date=start_date, end_date=end_date
         )
 
         # Send email
@@ -813,19 +750,19 @@ async def send_manual_report(
                 client_name=client_name,
                 report_date=datetime.now(),
                 pdf_content=pdf_buffer.getvalue(),
-                additional_message="This is a manually requested KPI report."
+                additional_message="This is a manually requested KPI report.",
             )
 
-            if result.get('success'):
+            if result.get("success"):
                 return {
                     "success": True,
                     "message": f"Report sent to {len(request.recipient_emails)} recipient(s)",
-                    "recipients": request.recipient_emails
+                    "recipients": request.recipient_emails,
                 }
             else:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=result.get('error', 'Failed to send report')
+                    detail=result.get("error", "Failed to send report"),
                 )
 
         except ImportError:
@@ -834,13 +771,12 @@ async def send_manual_report(
                 "success": True,
                 "message": "Report generated successfully (email service not configured)",
                 "note": "Configure SMTP or SendGrid for email delivery",
-                "recipients": request.recipient_emails
+                "recipients": request.recipient_emails,
             }
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate/send report: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate/send report: {str(e)}"
         )

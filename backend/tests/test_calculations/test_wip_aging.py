@@ -13,6 +13,7 @@ Covers:
 - Edge cases (negative dates, zero quantities)
 - Hold resolution tracking
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date, timedelta
@@ -20,6 +21,7 @@ from unittest.mock import Mock, MagicMock, patch
 
 
 # ===== Helper Functions for Standalone Calculations =====
+
 
 def calculate_aging_days(hold_date: date, as_of_date: date = None) -> int:
     """
@@ -59,10 +61,7 @@ def categorize_aging_bucket(aging_days: int) -> str:
         return "over_30"
 
 
-def calculate_average_wip_age(
-    holds: list[dict],
-    as_of_date: date = None
-) -> Decimal:
+def calculate_average_wip_age(holds: list[dict], as_of_date: date = None) -> Decimal:
     """
     Calculate weighted average WIP age.
 
@@ -94,10 +93,7 @@ def calculate_average_wip_age(
     return Decimal(str(total_weighted_days)) / Decimal(str(total_quantity))
 
 
-def calculate_hold_resolution_rate(
-    holds: list[dict],
-    target_days: int = 7
-) -> Decimal:
+def calculate_hold_resolution_rate(holds: list[dict], target_days: int = 7) -> Decimal:
     """
     Calculate percentage of holds resolved within target time.
 
@@ -125,6 +121,7 @@ def calculate_hold_resolution_rate(
 
 
 # ===== Test Classes =====
+
 
 @pytest.mark.unit
 class TestWIPAgingBasicCalculation:
@@ -314,7 +311,7 @@ class TestWIPAverageAging:
         as_of_date = date(2024, 1, 20)
         holds = [
             {"hold_date": date(2024, 1, 10), "quantity": 1000},  # 10 days, large qty
-            {"hold_date": date(2024, 1, 15), "quantity": 100},   # 5 days, small qty
+            {"hold_date": date(2024, 1, 15), "quantity": 100},  # 5 days, small qty
         ]
 
         # When: Calculate weighted average
@@ -361,8 +358,8 @@ class TestHoldResolutionRate:
         """Test 100% on-time resolution"""
         # Given: All holds resolved within 7 days
         holds = [
-            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 5)},   # 4 days
-            {"hold_date": date(2024, 1, 3), "release_date": date(2024, 1, 8)},   # 5 days
+            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 5)},  # 4 days
+            {"hold_date": date(2024, 1, 3), "release_date": date(2024, 1, 8)},  # 5 days
             {"hold_date": date(2024, 1, 5), "release_date": date(2024, 1, 12)},  # 7 days
         ]
 
@@ -393,7 +390,7 @@ class TestHoldResolutionRate:
         """Test partial on-time resolution"""
         # Given: Mix of on-time and late resolutions
         holds = [
-            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 5)},   # 4 days - on time
+            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 5)},  # 4 days - on time
             {"hold_date": date(2024, 1, 3), "release_date": date(2024, 1, 15)},  # 12 days - late
             {"hold_date": date(2024, 1, 5), "release_date": date(2024, 1, 10)},  # 5 days - on time
         ]
@@ -409,9 +406,9 @@ class TestHoldResolutionRate:
         """Test that unreleased holds are excluded from calculation"""
         # Given: Mix of released and unreleased holds
         holds = [
-            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 5)},   # Released on time
-            {"hold_date": date(2024, 1, 3), "release_date": None},               # Not released
-            {"hold_date": date(2024, 1, 5), "release_date": None},               # Not released
+            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 5)},  # Released on time
+            {"hold_date": date(2024, 1, 3), "release_date": None},  # Not released
+            {"hold_date": date(2024, 1, 5), "release_date": None},  # Not released
         ]
 
         # When: Calculate resolution rate
@@ -452,8 +449,8 @@ class TestHoldResolutionRate:
         """Test with custom target days"""
         # Given: Holds with various resolution times
         holds = [
-            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 4)},   # 3 days
-            {"hold_date": date(2024, 1, 3), "release_date": date(2024, 1, 8)},   # 5 days
+            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 4)},  # 3 days
+            {"hold_date": date(2024, 1, 3), "release_date": date(2024, 1, 8)},  # 5 days
             {"hold_date": date(2024, 1, 5), "release_date": date(2024, 1, 12)},  # 7 days
         ]
 
@@ -519,7 +516,7 @@ class TestWIPAgingEdgeCases:
         # Given: One small old hold, one large new hold
         as_of_date = date(2024, 1, 30)
         holds = [
-            {"hold_date": date(2024, 1, 1), "quantity": 10},      # 29 days, small
+            {"hold_date": date(2024, 1, 1), "quantity": 10},  # 29 days, small
             {"hold_date": date(2024, 1, 29), "quantity": 10000},  # 1 day, large
         ]
 
@@ -541,7 +538,7 @@ class TestWIPAgingBusinessScenarios:
         # Given: Quality inspection hold
         hold_date = date(2024, 1, 10)
         inspection_date = date(2024, 1, 15)  # 5 days later
-        release_date = date(2024, 1, 16)     # Released next day
+        release_date = date(2024, 1, 16)  # Released next day
 
         holds = [{"hold_date": hold_date, "release_date": release_date, "quantity": 500}]
 
@@ -561,10 +558,10 @@ class TestWIPAgingBusinessScenarios:
         # Given: Mix of holds
         as_of_date = date(2024, 2, 15)
         holds = [
-            {"hold_date": date(2024, 2, 10), "quantity": 100},   # 5 days - OK
-            {"hold_date": date(2024, 1, 25), "quantity": 200},   # 21 days - Warning
-            {"hold_date": date(2024, 1, 1), "quantity": 50},     # 45 days - Chronic
-            {"hold_date": date(2023, 12, 1), "quantity": 30},    # 76 days - Chronic
+            {"hold_date": date(2024, 2, 10), "quantity": 100},  # 5 days - OK
+            {"hold_date": date(2024, 1, 25), "quantity": 200},  # 21 days - Warning
+            {"hold_date": date(2024, 1, 1), "quantity": 50},  # 45 days - Chronic
+            {"hold_date": date(2023, 12, 1), "quantity": 30},  # 76 days - Chronic
         ]
 
         # When: Identify chronic holds
@@ -583,11 +580,11 @@ class TestWIPAgingBusinessScenarios:
         # Given: Various holds at month end
         as_of_date = date(2024, 1, 31)
         holds = [
-            {"hold_date": date(2024, 1, 28), "quantity": 100},   # 3 days
-            {"hold_date": date(2024, 1, 25), "quantity": 150},   # 6 days
-            {"hold_date": date(2024, 1, 20), "quantity": 200},   # 11 days
-            {"hold_date": date(2024, 1, 10), "quantity": 80},    # 21 days
-            {"hold_date": date(2023, 12, 15), "quantity": 50},   # 47 days
+            {"hold_date": date(2024, 1, 28), "quantity": 100},  # 3 days
+            {"hold_date": date(2024, 1, 25), "quantity": 150},  # 6 days
+            {"hold_date": date(2024, 1, 20), "quantity": 200},  # 11 days
+            {"hold_date": date(2024, 1, 10), "quantity": 80},  # 21 days
+            {"hold_date": date(2023, 12, 15), "quantity": 50},  # 47 days
         ]
 
         # When: Build distribution report
@@ -598,9 +595,9 @@ class TestWIPAgingBusinessScenarios:
             distribution[bucket] += hold["quantity"]
 
         # Then: Validate distribution
-        assert distribution["0-7"] == 250     # 100 + 150
-        assert distribution["8-14"] == 200    # 200
-        assert distribution["15-30"] == 80    # 80
+        assert distribution["0-7"] == 250  # 100 + 150
+        assert distribution["8-14"] == 200  # 200
+        assert distribution["15-30"] == 80  # 80
         assert distribution["over_30"] == 50  # 50
 
     @pytest.mark.unit
@@ -608,12 +605,12 @@ class TestWIPAgingBusinessScenarios:
         """Test resolution time trend analysis"""
         # Given: Holds over multiple months showing improvement
         month1_holds = [
-            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 12)},   # 11 days
-            {"hold_date": date(2024, 1, 5), "release_date": date(2024, 1, 14)},   # 9 days
+            {"hold_date": date(2024, 1, 1), "release_date": date(2024, 1, 12)},  # 11 days
+            {"hold_date": date(2024, 1, 5), "release_date": date(2024, 1, 14)},  # 9 days
         ]
         month2_holds = [
-            {"hold_date": date(2024, 2, 1), "release_date": date(2024, 2, 6)},    # 5 days
-            {"hold_date": date(2024, 2, 5), "release_date": date(2024, 2, 10)},   # 5 days
+            {"hold_date": date(2024, 2, 1), "release_date": date(2024, 2, 6)},  # 5 days
+            {"hold_date": date(2024, 2, 5), "release_date": date(2024, 2, 10)},  # 5 days
         ]
 
         # When: Calculate resolution rates
@@ -621,5 +618,5 @@ class TestWIPAgingBusinessScenarios:
         rate_m2 = calculate_hold_resolution_rate(month2_holds, target_days=7)
 
         # Then: Month 2 should show improvement
-        assert float(rate_m1) == 0.0   # Neither resolved in 7 days
+        assert float(rate_m1) == 0.0  # Neither resolved in 7 days
         assert float(rate_m2) == 100.0  # Both resolved in 7 days

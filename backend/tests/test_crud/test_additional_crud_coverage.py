@@ -4,6 +4,7 @@ Target: Increase CRUD coverage from 29% to 85%+
 Covers: workflow, saved_filter, client_config, part_opportunities,
         defect_type_catalog, employee, work_order, job, defect_detail
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -14,7 +15,7 @@ from sqlalchemy.pool import StaticPool
 import sys
 import os
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
 from backend.database import Base
 from backend.schemas.client import Client, ClientType
@@ -24,21 +25,14 @@ from backend.schemas.user import User, UserRole
 @pytest.fixture(scope="function")
 def test_db():
     """Create fresh in-memory database for each test"""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool
-    )
+    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(bind=engine)
     TestingSession = sessionmaker(bind=engine)
     db = TestingSession()
 
     # Create test client (ClientType is for payment type: HOURLY_RATE, PIECE_RATE, etc.)
     client = Client(
-        client_id="CLIENT001",
-        client_name="Test Client",
-        client_type=ClientType.HOURLY_RATE,
-        is_active=True
+        client_id="CLIENT001", client_name="Test Client", client_type=ClientType.HOURLY_RATE, is_active=True
     )
     db.add(client)
     db.commit()
@@ -78,7 +72,7 @@ class TestWorkflowCRUD:
                 to_status="IN_PROGRESS",
                 user_id=1,
                 notes="Test transition",
-                trigger_source="manual"
+                trigger_source="manual",
             )
             assert result is not None
         except Exception:
@@ -90,12 +84,8 @@ class TestWorkflowCRUD:
         from backend.crud.workflow import get_transition_log_by_id
 
         try:
-            result = get_transition_log_by_id(
-                db=test_db,
-                log_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'log_id')
+            result = get_transition_log_by_id(db=test_db, log_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "log_id")
         except Exception:
             pass
 
@@ -104,11 +94,7 @@ class TestWorkflowCRUD:
         from backend.crud.workflow import get_work_order_transitions
 
         try:
-            result = get_work_order_transitions(
-                db=test_db,
-                work_order_id="WO-TEST-001",
-                current_user=mock_user
-            )
+            result = get_work_order_transitions(db=test_db, work_order_id="WO-TEST-001", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -118,11 +104,7 @@ class TestWorkflowCRUD:
         from backend.crud.workflow import get_client_transitions
 
         try:
-            result = get_client_transitions(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_client_transitions(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -132,11 +114,7 @@ class TestWorkflowCRUD:
         from backend.crud.workflow import get_workflow_configuration
 
         try:
-            result = get_workflow_configuration(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_workflow_configuration(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert result is None or isinstance(result, dict)
         except Exception:
             pass
@@ -146,11 +124,7 @@ class TestWorkflowCRUD:
         from backend.crud.workflow import get_transition_statistics
 
         try:
-            result = get_transition_statistics(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_transition_statistics(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert result is None or isinstance(result, dict)
         except Exception:
             pass
@@ -160,11 +134,7 @@ class TestWorkflowCRUD:
         from backend.crud.workflow import get_status_distribution
 
         try:
-            result = get_status_distribution(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_status_distribution(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert result is None or isinstance(result, dict)
         except Exception:
             pass
@@ -175,10 +145,7 @@ class TestWorkflowCRUD:
 
         try:
             result = bulk_transition_work_orders(
-                db=test_db,
-                work_order_ids=["WO-001", "WO-002"],
-                to_status="IN_PROGRESS",
-                current_user=mock_user
+                db=test_db, work_order_ids=["WO-001", "WO-002"], to_status="IN_PROGRESS", current_user=mock_user
             )
             assert isinstance(result, dict)
         except Exception:
@@ -190,10 +157,7 @@ class TestWorkflowCRUD:
 
         try:
             result = apply_workflow_template(
-                db=test_db,
-                client_id="CLIENT001",
-                template_name="default",
-                current_user=mock_user
+                db=test_db, client_id="CLIENT001", template_name="default", current_user=mock_user
             )
             assert result is not None or result is None
         except Exception:
@@ -213,16 +177,9 @@ class TestSavedFilterCRUD:
 
         try:
             filter_data = SavedFilterCreate(
-                name="Test Filter",
-                filter_type="production",
-                filter_criteria={"status": "active"},
-                is_default=False
+                name="Test Filter", filter_type="production", filter_criteria={"status": "active"}, is_default=False
             )
-            result = create_saved_filter(
-                db=test_db,
-                filter_data=filter_data,
-                current_user=mock_user
-            )
+            result = create_saved_filter(db=test_db, filter_data=filter_data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -232,11 +189,7 @@ class TestSavedFilterCRUD:
         from backend.crud.saved_filter import get_saved_filters
 
         try:
-            result = get_saved_filters(
-                db=test_db,
-                current_user=mock_user,
-                filter_type="production"
-            )
+            result = get_saved_filters(db=test_db, current_user=mock_user, filter_type="production")
             assert isinstance(result, list)
         except Exception:
             pass
@@ -246,13 +199,9 @@ class TestSavedFilterCRUD:
         from backend.crud.saved_filter import get_saved_filter
 
         try:
-            result = get_saved_filter(
-                db=test_db,
-                filter_id=1,
-                current_user=mock_user
-            )
+            result = get_saved_filter(db=test_db, filter_id=1, current_user=mock_user)
             # May return None if not found
-            assert result is None or hasattr(result, 'filter_id')
+            assert result is None or hasattr(result, "filter_id")
         except Exception:
             pass
 
@@ -263,13 +212,8 @@ class TestSavedFilterCRUD:
 
         try:
             update_data = SavedFilterUpdate(name="Updated Filter")
-            result = update_saved_filter(
-                db=test_db,
-                filter_id=1,
-                filter_data=update_data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'name')
+            result = update_saved_filter(db=test_db, filter_id=1, filter_data=update_data, current_user=mock_user)
+            assert result is None or hasattr(result, "name")
         except Exception:
             pass
 
@@ -278,11 +222,7 @@ class TestSavedFilterCRUD:
         from backend.crud.saved_filter import delete_saved_filter
 
         try:
-            result = delete_saved_filter(
-                db=test_db,
-                filter_id=99999,
-                current_user=mock_user
-            )
+            result = delete_saved_filter(db=test_db, filter_id=99999, current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -292,12 +232,8 @@ class TestSavedFilterCRUD:
         from backend.crud.saved_filter import get_default_filter
 
         try:
-            result = get_default_filter(
-                db=test_db,
-                filter_type="production",
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'is_default')
+            result = get_default_filter(db=test_db, filter_type="production", current_user=mock_user)
+            assert result is None or hasattr(result, "is_default")
         except Exception:
             pass
 
@@ -306,12 +242,8 @@ class TestSavedFilterCRUD:
         from backend.crud.saved_filter import set_default_filter
 
         try:
-            result = set_default_filter(
-                db=test_db,
-                filter_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'is_default')
+            result = set_default_filter(db=test_db, filter_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "is_default")
         except Exception:
             pass
 
@@ -327,12 +259,8 @@ class TestClientConfigCRUD:
         from backend.crud.client_config import get_client_config
 
         try:
-            result = get_client_config(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'client_id')
+            result = get_client_config(db=test_db, client_id="CLIENT001", current_user=mock_user)
+            assert result is None or hasattr(result, "client_id")
         except Exception:
             pass
 
@@ -342,17 +270,11 @@ class TestClientConfigCRUD:
         from backend.models.client_config import ClientConfigUpdate
 
         try:
-            config_data = ClientConfigUpdate(
-                target_efficiency=85.0,
-                target_availability=90.0
-            )
+            config_data = ClientConfigUpdate(target_efficiency=85.0, target_availability=90.0)
             result = update_client_config(
-                db=test_db,
-                client_id="CLIENT001",
-                config_data=config_data,
-                current_user=mock_user
+                db=test_db, client_id="CLIENT001", config_data=config_data, current_user=mock_user
             )
-            assert result is None or hasattr(result, 'client_id')
+            assert result is None or hasattr(result, "client_id")
         except Exception:
             pass
 
@@ -361,11 +283,7 @@ class TestClientConfigCRUD:
         from backend.crud.client_config import get_client_config_or_defaults
 
         try:
-            result = get_client_config_or_defaults(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_client_config_or_defaults(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -375,10 +293,7 @@ class TestClientConfigCRUD:
         from backend.crud.client_config import get_all_client_configs
 
         try:
-            result = get_all_client_configs(
-                db=test_db,
-                current_user=mock_user
-            )
+            result = get_all_client_configs(db=test_db, current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -389,16 +304,8 @@ class TestClientConfigCRUD:
         from backend.models.client_config import ClientConfigCreate
 
         try:
-            config_data = ClientConfigCreate(
-                client_id="NEW_CLIENT",
-                target_efficiency=80.0,
-                target_availability=85.0
-            )
-            result = create_client_config(
-                db=test_db,
-                config_data=config_data,
-                current_user=mock_user
-            )
+            config_data = ClientConfigCreate(client_id="NEW_CLIENT", target_efficiency=80.0, target_availability=85.0)
+            result = create_client_config(db=test_db, config_data=config_data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -415,12 +322,7 @@ class TestPartOpportunitiesCRUD:
         from backend.crud.part_opportunities import get_part_opportunities
 
         try:
-            result = get_part_opportunities(
-                db=test_db,
-                current_user=mock_user,
-                skip=0,
-                limit=100
-            )
+            result = get_part_opportunities(db=test_db, current_user=mock_user, skip=0, limit=100)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -430,12 +332,8 @@ class TestPartOpportunitiesCRUD:
         from backend.crud.part_opportunities import get_part_opportunity
 
         try:
-            result = get_part_opportunity(
-                db=test_db,
-                opportunity_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'opportunity_id')
+            result = get_part_opportunity(db=test_db, opportunity_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "opportunity_id")
         except Exception:
             pass
 
@@ -449,13 +347,9 @@ class TestPartOpportunitiesCRUD:
                 client_id="CLIENT001",
                 part_number="PART-001",
                 opportunity_type="COST_REDUCTION",
-                description="Test opportunity"
+                description="Test opportunity",
             )
-            result = create_part_opportunity(
-                db=test_db,
-                opportunity_data=data,
-                current_user=mock_user
-            )
+            result = create_part_opportunity(db=test_db, opportunity_data=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -468,12 +362,9 @@ class TestPartOpportunitiesCRUD:
         try:
             data = PartOpportunityUpdate(description="Updated description")
             result = update_part_opportunity(
-                db=test_db,
-                opportunity_id=1,
-                opportunity_data=data,
-                current_user=mock_user
+                db=test_db, opportunity_id=1, opportunity_data=data, current_user=mock_user
             )
-            assert result is None or hasattr(result, 'opportunity_id')
+            assert result is None or hasattr(result, "opportunity_id")
         except Exception:
             pass
 
@@ -482,11 +373,7 @@ class TestPartOpportunitiesCRUD:
         from backend.crud.part_opportunities import delete_part_opportunity
 
         try:
-            result = delete_part_opportunity(
-                db=test_db,
-                opportunity_id=99999,
-                current_user=mock_user
-            )
+            result = delete_part_opportunity(db=test_db, opportunity_id=99999, current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -503,10 +390,7 @@ class TestDefectTypeCatalogCRUD:
         from backend.crud.defect_type_catalog import get_global_defect_types
 
         try:
-            result = get_global_defect_types(
-                db=test_db,
-                current_user=mock_user
-            )
+            result = get_global_defect_types(db=test_db, current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -516,12 +400,8 @@ class TestDefectTypeCatalogCRUD:
         from backend.crud.defect_type_catalog import get_defect_type
 
         try:
-            result = get_defect_type(
-                db=test_db,
-                defect_type_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'defect_type_id')
+            result = get_defect_type(db=test_db, defect_type_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "defect_type_id")
         except Exception:
             pass
 
@@ -530,11 +410,7 @@ class TestDefectTypeCatalogCRUD:
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
         try:
-            result = get_defect_types_by_client(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_defect_types_by_client(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -546,16 +422,9 @@ class TestDefectTypeCatalogCRUD:
 
         try:
             data = DefectTypeCatalogCreate(
-                client_id="CLIENT001",
-                defect_name="Test Defect",
-                defect_code="TD-001",
-                severity="MINOR"
+                client_id="CLIENT001", defect_name="Test Defect", defect_code="TD-001", severity="MINOR"
             )
-            result = create_defect_type(
-                db=test_db,
-                defect_type_data=data,
-                current_user=mock_user
-            )
+            result = create_defect_type(db=test_db, defect_type_data=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -567,13 +436,8 @@ class TestDefectTypeCatalogCRUD:
 
         try:
             data = DefectTypeCatalogUpdate(defect_name="Updated Defect")
-            result = update_defect_type(
-                db=test_db,
-                defect_type_id=1,
-                defect_type_data=data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'defect_type_id')
+            result = update_defect_type(db=test_db, defect_type_id=1, defect_type_data=data, current_user=mock_user)
+            assert result is None or hasattr(result, "defect_type_id")
         except Exception:
             pass
 
@@ -582,11 +446,7 @@ class TestDefectTypeCatalogCRUD:
         from backend.crud.defect_type_catalog import delete_defect_type
 
         try:
-            result = delete_defect_type(
-                db=test_db,
-                defect_type_id=99999,
-                current_user=mock_user
-            )
+            result = delete_defect_type(db=test_db, defect_type_id=99999, current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -603,12 +463,7 @@ class TestEmployeeCRUD:
         from backend.crud.employee import get_employees
 
         try:
-            result = get_employees(
-                db=test_db,
-                current_user=mock_user,
-                skip=0,
-                limit=100
-            )
+            result = get_employees(db=test_db, current_user=mock_user, skip=0, limit=100)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -618,12 +473,8 @@ class TestEmployeeCRUD:
         from backend.crud.employee import get_employee
 
         try:
-            result = get_employee(
-                db=test_db,
-                employee_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'employee_id')
+            result = get_employee(db=test_db, employee_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "employee_id")
         except Exception:
             pass
 
@@ -632,11 +483,7 @@ class TestEmployeeCRUD:
         from backend.crud.employee import get_employees_by_client
 
         try:
-            result = get_employees_by_client(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_employees_by_client(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -647,16 +494,8 @@ class TestEmployeeCRUD:
         from backend.models.employee import EmployeeCreate
 
         try:
-            data = EmployeeCreate(
-                client_id="CLIENT001",
-                employee_name="Test Employee",
-                department="Production"
-            )
-            result = create_employee(
-                db=test_db,
-                employee_data=data,
-                current_user=mock_user
-            )
+            data = EmployeeCreate(client_id="CLIENT001", employee_name="Test Employee", department="Production")
+            result = create_employee(db=test_db, employee_data=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -668,13 +507,8 @@ class TestEmployeeCRUD:
 
         try:
             data = EmployeeUpdate(employee_name="Updated Name")
-            result = update_employee(
-                db=test_db,
-                employee_id=1,
-                employee_data=data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'employee_id')
+            result = update_employee(db=test_db, employee_id=1, employee_data=data, current_user=mock_user)
+            assert result is None or hasattr(result, "employee_id")
         except Exception:
             pass
 
@@ -683,11 +517,7 @@ class TestEmployeeCRUD:
         from backend.crud.employee import delete_employee
 
         try:
-            result = delete_employee(
-                db=test_db,
-                employee_id=99999,
-                current_user=mock_user
-            )
+            result = delete_employee(db=test_db, employee_id=99999, current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -697,10 +527,7 @@ class TestEmployeeCRUD:
         from backend.crud.employee import get_floating_pool_employees
 
         try:
-            result = get_floating_pool_employees(
-                db=test_db,
-                current_user=mock_user
-            )
+            result = get_floating_pool_employees(db=test_db, current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -710,12 +537,8 @@ class TestEmployeeCRUD:
         from backend.crud.employee import assign_to_floating_pool
 
         try:
-            result = assign_to_floating_pool(
-                db=test_db,
-                employee_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'employee_id')
+            result = assign_to_floating_pool(db=test_db, employee_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "employee_id")
         except Exception:
             pass
 
@@ -731,12 +554,7 @@ class TestWorkOrderCRUD:
         from backend.crud.work_order import get_work_orders
 
         try:
-            result = get_work_orders(
-                db=test_db,
-                current_user=mock_user,
-                skip=0,
-                limit=100
-            )
+            result = get_work_orders(db=test_db, current_user=mock_user, skip=0, limit=100)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -746,12 +564,8 @@ class TestWorkOrderCRUD:
         from backend.crud.work_order import get_work_order
 
         try:
-            result = get_work_order(
-                db=test_db,
-                work_order_id="WO-001",
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'work_order_id')
+            result = get_work_order(db=test_db, work_order_id="WO-001", current_user=mock_user)
+            assert result is None or hasattr(result, "work_order_id")
         except Exception:
             pass
 
@@ -760,11 +574,7 @@ class TestWorkOrderCRUD:
         from backend.crud.work_order import get_work_orders_by_client
 
         try:
-            result = get_work_orders_by_client(
-                db=test_db,
-                client_id="CLIENT001",
-                current_user=mock_user
-            )
+            result = get_work_orders_by_client(db=test_db, client_id="CLIENT001", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -774,11 +584,7 @@ class TestWorkOrderCRUD:
         from backend.crud.work_order import get_work_orders_by_status
 
         try:
-            result = get_work_orders_by_status(
-                db=test_db,
-                status="IN_PROGRESS",
-                current_user=mock_user
-            )
+            result = get_work_orders_by_status(db=test_db, status="IN_PROGRESS", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -794,13 +600,9 @@ class TestWorkOrderCRUD:
                 client_id="CLIENT001",
                 product_id=1,
                 quantity_ordered=100,
-                status="RECEIVED"
+                status="RECEIVED",
             )
-            result = create_work_order(
-                db=test_db,
-                work_order_data=data,
-                current_user=mock_user
-            )
+            result = create_work_order(db=test_db, work_order_data=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -812,13 +614,8 @@ class TestWorkOrderCRUD:
 
         try:
             data = WorkOrderUpdate(status="IN_PROGRESS")
-            result = update_work_order(
-                db=test_db,
-                work_order_id="WO-001",
-                work_order_data=data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'work_order_id')
+            result = update_work_order(db=test_db, work_order_id="WO-001", work_order_data=data, current_user=mock_user)
+            assert result is None or hasattr(result, "work_order_id")
         except Exception:
             pass
 
@@ -827,11 +624,7 @@ class TestWorkOrderCRUD:
         from backend.crud.work_order import delete_work_order
 
         try:
-            result = delete_work_order(
-                db=test_db,
-                work_order_id="WO-NONEXISTENT",
-                current_user=mock_user
-            )
+            result = delete_work_order(db=test_db, work_order_id="WO-NONEXISTENT", current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -848,12 +641,7 @@ class TestJobCRUD:
         from backend.crud.job import get_jobs
 
         try:
-            result = get_jobs(
-                db=test_db,
-                current_user=mock_user,
-                skip=0,
-                limit=100
-            )
+            result = get_jobs(db=test_db, current_user=mock_user, skip=0, limit=100)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -863,12 +651,8 @@ class TestJobCRUD:
         from backend.crud.job import get_job
 
         try:
-            result = get_job(
-                db=test_db,
-                job_id="JOB-001",
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'job_id')
+            result = get_job(db=test_db, job_id="JOB-001", current_user=mock_user)
+            assert result is None or hasattr(result, "job_id")
         except Exception:
             pass
 
@@ -877,11 +661,7 @@ class TestJobCRUD:
         from backend.crud.job import get_jobs_by_work_order
 
         try:
-            result = get_jobs_by_work_order(
-                db=test_db,
-                work_order_id="WO-001",
-                current_user=mock_user
-            )
+            result = get_jobs_by_work_order(db=test_db, work_order_id="WO-001", current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -893,16 +673,9 @@ class TestJobCRUD:
 
         try:
             data = JobCreate(
-                job_id="JOB-TEST-001",
-                work_order_id="WO-001",
-                client_id="CLIENT001",
-                operation_name="Assembly"
+                job_id="JOB-TEST-001", work_order_id="WO-001", client_id="CLIENT001", operation_name="Assembly"
             )
-            result = create_job(
-                db=test_db,
-                job_data=data,
-                current_user=mock_user
-            )
+            result = create_job(db=test_db, job_data=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -914,13 +687,8 @@ class TestJobCRUD:
 
         try:
             data = JobUpdate(operation_name="Updated Operation")
-            result = update_job(
-                db=test_db,
-                job_id="JOB-001",
-                job_data=data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'job_id')
+            result = update_job(db=test_db, job_id="JOB-001", job_data=data, current_user=mock_user)
+            assert result is None or hasattr(result, "job_id")
         except Exception:
             pass
 
@@ -929,11 +697,7 @@ class TestJobCRUD:
         from backend.crud.job import delete_job
 
         try:
-            result = delete_job(
-                db=test_db,
-                job_id="JOB-NONEXISTENT",
-                current_user=mock_user
-            )
+            result = delete_job(db=test_db, job_id="JOB-NONEXISTENT", current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -950,12 +714,7 @@ class TestDefectDetailCRUD:
         from backend.crud.defect_detail import get_defect_details
 
         try:
-            result = get_defect_details(
-                db=test_db,
-                current_user=mock_user,
-                skip=0,
-                limit=100
-            )
+            result = get_defect_details(db=test_db, current_user=mock_user, skip=0, limit=100)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -965,12 +724,8 @@ class TestDefectDetailCRUD:
         from backend.crud.defect_detail import get_defect_detail
 
         try:
-            result = get_defect_detail(
-                db=test_db,
-                defect_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'defect_id')
+            result = get_defect_detail(db=test_db, defect_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "defect_id")
         except Exception:
             pass
 
@@ -979,11 +734,7 @@ class TestDefectDetailCRUD:
         from backend.crud.defect_detail import get_defect_details_by_quality_entry
 
         try:
-            result = get_defect_details_by_quality_entry(
-                db=test_db,
-                quality_entry_id=1,
-                current_user=mock_user
-            )
+            result = get_defect_details_by_quality_entry(db=test_db, quality_entry_id=1, current_user=mock_user)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -993,10 +744,7 @@ class TestDefectDetailCRUD:
         from backend.crud.defect_detail import get_defect_summary_by_type
 
         try:
-            result = get_defect_summary_by_type(
-                db=test_db,
-                current_user=mock_user
-            )
+            result = get_defect_summary_by_type(db=test_db, current_user=mock_user)
             assert result is None or isinstance(result, (list, dict))
         except Exception:
             pass
@@ -1007,17 +755,8 @@ class TestDefectDetailCRUD:
         from backend.models.defect_detail import DefectDetailCreate
 
         try:
-            data = DefectDetailCreate(
-                quality_entry_id=1,
-                defect_type_id=1,
-                defect_count=5,
-                description="Test defect"
-            )
-            result = create_defect_detail(
-                db=test_db,
-                defect_data=data,
-                current_user=mock_user
-            )
+            data = DefectDetailCreate(quality_entry_id=1, defect_type_id=1, defect_count=5, description="Test defect")
+            result = create_defect_detail(db=test_db, defect_data=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -1029,13 +768,8 @@ class TestDefectDetailCRUD:
 
         try:
             data = DefectDetailUpdate(defect_count=10)
-            result = update_defect_detail(
-                db=test_db,
-                defect_id=1,
-                defect_data=data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'defect_id')
+            result = update_defect_detail(db=test_db, defect_id=1, defect_data=data, current_user=mock_user)
+            assert result is None or hasattr(result, "defect_id")
         except Exception:
             pass
 
@@ -1044,11 +778,7 @@ class TestDefectDetailCRUD:
         from backend.crud.defect_detail import delete_defect_detail
 
         try:
-            result = delete_defect_detail(
-                db=test_db,
-                defect_id=99999,
-                current_user=mock_user
-            )
+            result = delete_defect_detail(db=test_db, defect_id=99999, current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass
@@ -1065,12 +795,7 @@ class TestShiftCoverageCRUD:
         from backend.crud.coverage import get_shift_coverages
 
         try:
-            result = get_shift_coverages(
-                db=test_db,
-                current_user=mock_user,
-                skip=0,
-                limit=100
-            )
+            result = get_shift_coverages(db=test_db, current_user=mock_user, skip=0, limit=100)
             assert isinstance(result, list)
         except Exception:
             pass
@@ -1080,12 +805,8 @@ class TestShiftCoverageCRUD:
         from backend.crud.coverage import get_shift_coverage
 
         try:
-            result = get_shift_coverage(
-                db=test_db,
-                coverage_id=1,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'coverage_id')
+            result = get_shift_coverage(db=test_db, coverage_id=1, current_user=mock_user)
+            assert result is None or hasattr(result, "coverage_id")
         except Exception:
             pass
 
@@ -1096,17 +817,9 @@ class TestShiftCoverageCRUD:
 
         try:
             data = ShiftCoverageCreate(
-                client_id="CLIENT001",
-                shift_id=1,
-                coverage_date=date.today(),
-                required_employees=10,
-                actual_employees=8
+                client_id="CLIENT001", shift_id=1, coverage_date=date.today(), required_employees=10, actual_employees=8
             )
-            result = create_shift_coverage(
-                db=test_db,
-                coverage=data,
-                current_user=mock_user
-            )
+            result = create_shift_coverage(db=test_db, coverage=data, current_user=mock_user)
             assert result is not None
         except Exception:
             pass
@@ -1118,13 +831,8 @@ class TestShiftCoverageCRUD:
 
         try:
             data = ShiftCoverageUpdate(actual_employees=9)
-            result = update_shift_coverage(
-                db=test_db,
-                coverage_id=1,
-                coverage_update=data,
-                current_user=mock_user
-            )
-            assert result is None or hasattr(result, 'coverage_id')
+            result = update_shift_coverage(db=test_db, coverage_id=1, coverage_update=data, current_user=mock_user)
+            assert result is None or hasattr(result, "coverage_id")
         except Exception:
             pass
 
@@ -1133,11 +841,7 @@ class TestShiftCoverageCRUD:
         from backend.crud.coverage import delete_shift_coverage
 
         try:
-            result = delete_shift_coverage(
-                db=test_db,
-                coverage_id=99999,
-                current_user=mock_user
-            )
+            result = delete_shift_coverage(db=test_db, coverage_id=99999, current_user=mock_user)
             assert result in [True, False]
         except Exception:
             pass

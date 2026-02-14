@@ -9,6 +9,7 @@ Provides:
 - Floating pool optimization recommendations
 - Shift coverage simulation
 """
+
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Optional, Tuple, Any
 from datetime import date, datetime, timedelta
@@ -22,6 +23,7 @@ from backend.crud.client_config import get_client_config_or_defaults
 
 class SimulationScenarioType(str, Enum):
     """Types of simulation scenarios"""
+
     STAFFING = "staffing"
     PRODUCTION = "production"
     CAPACITY = "capacity"
@@ -32,6 +34,7 @@ class SimulationScenarioType(str, Enum):
 
 class OptimizationGoal(str, Enum):
     """Optimization goals for capacity planning"""
+
     MINIMIZE_COST = "minimize_cost"
     MAXIMIZE_PRODUCTION = "maximize_production"
     BALANCE_WORKLOAD = "balance_workload"
@@ -41,6 +44,7 @@ class OptimizationGoal(str, Enum):
 @dataclass
 class CapacityRequirement:
     """Container for capacity requirement calculation results"""
+
     target_units: int
     required_employees: int
     required_hours: Decimal
@@ -56,6 +60,7 @@ class CapacityRequirement:
 @dataclass
 class SimulationResult:
     """Container for simulation results"""
+
     scenario_name: str
     scenario_type: SimulationScenarioType
     input_parameters: Dict[str, Any]
@@ -69,6 +74,7 @@ class SimulationResult:
 @dataclass
 class ShiftCoverageSimulation:
     """Container for shift coverage simulation"""
+
     shift_id: int
     shift_name: str
     date: date
@@ -83,6 +89,7 @@ class ShiftCoverageSimulation:
 @dataclass
 class FloatingPoolOptimization:
     """Container for floating pool optimization results"""
+
     total_available: int
     total_needed: int
     allocation_suggestions: List[Dict[str, Any]]
@@ -95,6 +102,7 @@ class FloatingPoolOptimization:
 # Capacity Requirement Calculations
 # =============================================================================
 
+
 def calculate_capacity_requirements(
     db: Session,
     client_id: str,
@@ -104,7 +112,7 @@ def calculate_capacity_requirements(
     shift_hours: Decimal = Decimal("8.0"),
     target_efficiency: Decimal = Decimal("85.0"),
     absenteeism_rate: Decimal = Decimal("5.0"),
-    include_buffer: bool = True
+    include_buffer: bool = True,
 ) -> CapacityRequirement:
     """
     Calculate staffing requirements to meet production targets.
@@ -154,9 +162,7 @@ def calculate_capacity_requirements(
     buffer_employees = 0
     if include_buffer:
         buffer_rate = absenteeism_rate / Decimal("100")
-        buffer_employees = int((Decimal(required_employees) * buffer_rate).to_integral_value(
-            rounding=ROUND_HALF_UP
-        ))
+        buffer_employees = int((Decimal(required_employees) * buffer_rate).to_integral_value(rounding=ROUND_HALF_UP))
         # Minimum 1 buffer if any employees needed
         if required_employees > 0 and buffer_employees == 0:
             buffer_employees = 1
@@ -188,7 +194,7 @@ def calculate_capacity_requirements(
         buffer_employees=buffer_employees,
         total_recommended=total_recommended,
         confidence_score=Decimal("85.0"),
-        notes=notes
+        notes=notes,
     )
 
 
@@ -196,7 +202,7 @@ def calculate_production_capacity(
     employees: int,
     shift_hours: Decimal = Decimal("8.0"),
     cycle_time_hours: Decimal = Decimal("0.25"),
-    efficiency_percent: Decimal = Decimal("85.0")
+    efficiency_percent: Decimal = Decimal("85.0"),
 ) -> Dict[str, Any]:
     """
     Calculate production capacity given staffing levels.
@@ -221,14 +227,14 @@ def calculate_production_capacity(
     effective_hours = Decimal(employees) * shift_hours * efficiency_factor
 
     # Calculate units capacity
-    units_capacity = (effective_hours / cycle_time_hours).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
+    units_capacity = (effective_hours / cycle_time_hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     # Calculate hourly rate
-    hourly_rate = (units_capacity / shift_hours).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    ) if shift_hours > 0 else Decimal("0")
+    hourly_rate = (
+        (units_capacity / shift_hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if shift_hours > 0
+        else Decimal("0")
+    )
 
     return {
         "employees": employees,
@@ -237,7 +243,7 @@ def calculate_production_capacity(
         "efficiency_percent": efficiency_percent,
         "units_capacity": int(units_capacity),
         "hourly_rate": hourly_rate,
-        "effective_production_hours": effective_hours
+        "effective_production_hours": effective_hours,
     }
 
 
@@ -245,13 +251,14 @@ def calculate_production_capacity(
 # What-If Simulation Engine
 # =============================================================================
 
+
 def run_staffing_simulation(
     base_employees: int,
     scenarios: List[int],
     shift_hours: Decimal = Decimal("8.0"),
     cycle_time_hours: Decimal = Decimal("0.25"),
     base_efficiency: Decimal = Decimal("85.0"),
-    efficiency_scaling: bool = True
+    efficiency_scaling: bool = True,
 ) -> List[SimulationResult]:
     """
     Simulate production outcomes with different staffing levels.
@@ -274,7 +281,7 @@ def run_staffing_simulation(
         employees=base_employees,
         shift_hours=shift_hours,
         cycle_time_hours=cycle_time_hours,
-        efficiency_percent=base_efficiency
+        efficiency_percent=base_efficiency,
     )
 
     for employee_count in scenarios:
@@ -295,7 +302,7 @@ def run_staffing_simulation(
             employees=employee_count,
             shift_hours=shift_hours,
             cycle_time_hours=cycle_time_hours,
-            efficiency_percent=adjusted_efficiency
+            efficiency_percent=adjusted_efficiency,
         )
 
         # Calculate comparison to baseline
@@ -303,22 +310,27 @@ def run_staffing_simulation(
         if baseline["units_capacity"] > 0:
             production_change = (
                 (Decimal(capacity["units_capacity"]) - Decimal(baseline["units_capacity"]))
-                / Decimal(baseline["units_capacity"]) * Decimal("100")
+                / Decimal(baseline["units_capacity"])
+                * Decimal("100")
             ).quantize(Decimal("0.01"))
 
         employee_change = employee_count - base_employees
         employee_change_pct = Decimal("0")
         if base_employees > 0:
-            employee_change_pct = (
-                Decimal(employee_change) / Decimal(base_employees) * Decimal("100")
-            ).quantize(Decimal("0.01"))
+            employee_change_pct = (Decimal(employee_change) / Decimal(base_employees) * Decimal("100")).quantize(
+                Decimal("0.01")
+            )
 
         # Generate recommendations
         recommendations = []
         if employee_count > base_employees:
-            recommendations.append(f"Adding {employee_count - base_employees} employees increases capacity by {production_change}%")
+            recommendations.append(
+                f"Adding {employee_count - base_employees} employees increases capacity by {production_change}%"
+            )
         elif employee_count < base_employees:
-            recommendations.append(f"Reducing {base_employees - employee_count} employees decreases capacity by {abs(production_change)}%")
+            recommendations.append(
+                f"Reducing {base_employees - employee_count} employees decreases capacity by {abs(production_change)}%"
+            )
 
         if adjusted_efficiency < base_efficiency:
             recommendations.append("Note: Efficiency adjustment applied due to team size change")
@@ -330,26 +342,26 @@ def run_staffing_simulation(
                 "employees": employee_count,
                 "shift_hours": str(shift_hours),
                 "cycle_time_hours": str(cycle_time_hours),
-                "efficiency_percent": str(adjusted_efficiency)
+                "efficiency_percent": str(adjusted_efficiency),
             },
             projected_output={
                 "units_capacity": capacity["units_capacity"],
                 "hourly_rate": str(capacity["hourly_rate"]),
-                "effective_hours": str(capacity["effective_production_hours"])
+                "effective_hours": str(capacity["effective_production_hours"]),
             },
             kpi_impact={
                 "production_change_percent": production_change,
                 "efficiency": adjusted_efficiency,
                 "employee_change": Decimal(employee_change),
-                "employee_change_percent": employee_change_pct
+                "employee_change_percent": employee_change_pct,
             },
             recommendations=recommendations,
             confidence_score=Decimal("90.0"),
             comparison_to_baseline={
                 "baseline_units": Decimal(baseline["units_capacity"]),
                 "scenario_units": Decimal(capacity["units_capacity"]),
-                "difference": Decimal(capacity["units_capacity"]) - Decimal(baseline["units_capacity"])
-            }
+                "difference": Decimal(capacity["units_capacity"]) - Decimal(baseline["units_capacity"]),
+            },
         )
         results.append(result)
 
@@ -361,7 +373,7 @@ def run_efficiency_simulation(
     efficiency_scenarios: List[Decimal],
     shift_hours: Decimal = Decimal("8.0"),
     cycle_time_hours: Decimal = Decimal("0.25"),
-    base_efficiency: Decimal = Decimal("85.0")
+    base_efficiency: Decimal = Decimal("85.0"),
 ) -> List[SimulationResult]:
     """
     Simulate production outcomes with different efficiency levels.
@@ -383,7 +395,7 @@ def run_efficiency_simulation(
         employees=employees,
         shift_hours=shift_hours,
         cycle_time_hours=cycle_time_hours,
-        efficiency_percent=base_efficiency
+        efficiency_percent=base_efficiency,
     )
 
     for efficiency in efficiency_scenarios:
@@ -391,48 +403,47 @@ def run_efficiency_simulation(
             employees=employees,
             shift_hours=shift_hours,
             cycle_time_hours=cycle_time_hours,
-            efficiency_percent=efficiency
+            efficiency_percent=efficiency,
         )
 
         production_change = Decimal("0")
         if baseline["units_capacity"] > 0:
             production_change = (
                 (Decimal(capacity["units_capacity"]) - Decimal(baseline["units_capacity"]))
-                / Decimal(baseline["units_capacity"]) * Decimal("100")
+                / Decimal(baseline["units_capacity"])
+                * Decimal("100")
             ).quantize(Decimal("0.01"))
 
         efficiency_change = efficiency - base_efficiency
 
         recommendations = []
         if efficiency > base_efficiency:
-            recommendations.append(f"Improving efficiency by {efficiency_change}% increases output by {production_change}%")
+            recommendations.append(
+                f"Improving efficiency by {efficiency_change}% increases output by {production_change}%"
+            )
             recommendations.append("Consider: training, process optimization, better tooling")
         elif efficiency < base_efficiency:
-            recommendations.append(f"Efficiency drop of {abs(efficiency_change)}% reduces output by {abs(production_change)}%")
+            recommendations.append(
+                f"Efficiency drop of {abs(efficiency_change)}% reduces output by {abs(production_change)}%"
+            )
             recommendations.append("Investigate: equipment issues, training gaps, process bottlenecks")
 
         result = SimulationResult(
             scenario_name=f"{efficiency}_percent_efficiency",
             scenario_type=SimulationScenarioType.EFFICIENCY,
-            input_parameters={
-                "employees": employees,
-                "efficiency_percent": str(efficiency)
-            },
+            input_parameters={"employees": employees, "efficiency_percent": str(efficiency)},
             projected_output={
                 "units_capacity": capacity["units_capacity"],
-                "hourly_rate": str(capacity["hourly_rate"])
+                "hourly_rate": str(capacity["hourly_rate"]),
             },
-            kpi_impact={
-                "production_change_percent": production_change,
-                "efficiency_change": efficiency_change
-            },
+            kpi_impact={"production_change_percent": production_change, "efficiency_change": efficiency_change},
             recommendations=recommendations,
             confidence_score=Decimal("88.0"),
             comparison_to_baseline={
                 "baseline_units": Decimal(baseline["units_capacity"]),
                 "scenario_units": Decimal(capacity["units_capacity"]),
-                "difference": Decimal(capacity["units_capacity"]) - Decimal(baseline["units_capacity"])
-            }
+                "difference": Decimal(capacity["units_capacity"]) - Decimal(baseline["units_capacity"]),
+            },
         )
         results.append(result)
 
@@ -443,13 +454,14 @@ def run_efficiency_simulation(
 # Shift Coverage Simulation
 # =============================================================================
 
+
 def simulate_shift_coverage(
     regular_employees: int,
     floating_pool_available: int,
     required_employees: int,
     shift_name: str = "Default Shift",
     shift_id: int = 0,
-    target_date: Optional[date] = None
+    target_date: Optional[date] = None,
 ) -> ShiftCoverageSimulation:
     """
     Simulate shift coverage with regular and floating pool employees.
@@ -473,8 +485,9 @@ def simulate_shift_coverage(
 
     coverage_percent = Decimal("100.0")
     if required_employees > 0:
-        coverage_percent = (Decimal(min(total_available, required_employees))
-                          / Decimal(required_employees) * Decimal("100")).quantize(Decimal("0.01"))
+        coverage_percent = (
+            Decimal(min(total_available, required_employees)) / Decimal(required_employees) * Decimal("100")
+        ).quantize(Decimal("0.01"))
 
     recommendations = []
 
@@ -501,13 +514,12 @@ def simulate_shift_coverage(
         available_floating_pool=floating_pool_available,
         coverage_gap=coverage_gap,
         coverage_percent=coverage_percent,
-        recommendations=recommendations
+        recommendations=recommendations,
     )
 
 
 def simulate_multi_shift_coverage(
-    shifts: List[Dict[str, Any]],
-    floating_pool_total: int
+    shifts: List[Dict[str, Any]], floating_pool_total: int
 ) -> Tuple[List[ShiftCoverageSimulation], Dict[str, Any]]:
     """
     Simulate coverage across multiple shifts with floating pool allocation.
@@ -527,11 +539,7 @@ def simulate_multi_shift_coverage(
     allocations = []
 
     # Sort shifts by coverage gap (prioritize most understaffed)
-    sorted_shifts = sorted(
-        shifts,
-        key=lambda s: s.get("required", 0) - s.get("regular_employees", 0),
-        reverse=True
-    )
+    sorted_shifts = sorted(shifts, key=lambda s: s.get("required", 0) - s.get("regular_employees", 0), reverse=True)
 
     for shift in sorted_shifts:
         shift_id = shift.get("shift_id", 0)
@@ -546,11 +554,9 @@ def simulate_multi_shift_coverage(
         remaining_pool -= pool_allocation
 
         if pool_allocation > 0:
-            allocations.append({
-                "shift_id": shift_id,
-                "shift_name": shift_name,
-                "pool_employees_assigned": pool_allocation
-            })
+            allocations.append(
+                {"shift_id": shift_id, "shift_name": shift_name, "pool_employees_assigned": pool_allocation}
+            )
 
         simulation = simulate_shift_coverage(
             regular_employees=regular,
@@ -558,7 +564,7 @@ def simulate_multi_shift_coverage(
             required_employees=required,
             shift_name=shift_name,
             shift_id=shift_id,
-            target_date=target_date
+            target_date=target_date,
         )
         results.append(simulation)
 
@@ -579,7 +585,7 @@ def simulate_multi_shift_coverage(
         "floating_pool_total": floating_pool_total,
         "floating_pool_allocated": floating_pool_total - remaining_pool,
         "floating_pool_remaining": remaining_pool,
-        "allocations": allocations
+        "allocations": allocations,
     }
 
     return results, summary
@@ -589,13 +595,14 @@ def simulate_multi_shift_coverage(
 # Floating Pool Optimization
 # =============================================================================
 
+
 def optimize_floating_pool_allocation(
     db: Session,
     client_id: str,
     target_date: date,
     available_pool_employees: List[Dict[str, Any]],
     shift_requirements: List[Dict[str, Any]],
-    optimization_goal: OptimizationGoal = OptimizationGoal.BALANCE_WORKLOAD
+    optimization_goal: OptimizationGoal = OptimizationGoal.BALANCE_WORKLOAD,
 ) -> FloatingPoolOptimization:
     """
     Optimize floating pool employee allocation across shifts.
@@ -614,10 +621,7 @@ def optimize_floating_pool_allocation(
     total_available = len(available_pool_employees)
 
     # Calculate total need across all shifts
-    total_needed = sum(
-        max(0, req.get("required", 0) - req.get("regular_employees", 0))
-        for req in shift_requirements
-    )
+    total_needed = sum(max(0, req.get("required", 0) - req.get("regular_employees", 0)) for req in shift_requirements)
 
     allocation_suggestions = []
     assigned_count = 0
@@ -625,8 +629,7 @@ def optimize_floating_pool_allocation(
     if optimization_goal == OptimizationGoal.BALANCE_WORKLOAD:
         # Distribute evenly across shifts with gaps
         shifts_with_gaps = [
-            req for req in shift_requirements
-            if req.get("required", 0) > req.get("regular_employees", 0)
+            req for req in shift_requirements if req.get("required", 0) > req.get("regular_employees", 0)
         ]
 
         if shifts_with_gaps and total_available > 0:
@@ -640,23 +643,23 @@ def optimize_floating_pool_allocation(
                 actual_allocation = min(allocation_count, gap, total_available - assigned_count)
 
                 if actual_allocation > 0:
-                    employees_for_shift = available_pool_employees[pool_index:pool_index + actual_allocation]
-                    allocation_suggestions.append({
-                        "shift_id": shift.get("shift_id"),
-                        "shift_name": shift.get("shift_name", ""),
-                        "employees_assigned": actual_allocation,
-                        "employee_ids": [e.get("employee_id") for e in employees_for_shift],
-                        "gap_remaining": max(0, gap - actual_allocation)
-                    })
+                    employees_for_shift = available_pool_employees[pool_index : pool_index + actual_allocation]
+                    allocation_suggestions.append(
+                        {
+                            "shift_id": shift.get("shift_id"),
+                            "shift_name": shift.get("shift_name", ""),
+                            "employees_assigned": actual_allocation,
+                            "employee_ids": [e.get("employee_id") for e in employees_for_shift],
+                            "gap_remaining": max(0, gap - actual_allocation),
+                        }
+                    )
                     pool_index += actual_allocation
                     assigned_count += actual_allocation
 
     elif optimization_goal == OptimizationGoal.MEET_TARGET:
         # Fill gaps in priority order until pool exhausted
         sorted_by_gap = sorted(
-            shift_requirements,
-            key=lambda x: x.get("required", 0) - x.get("regular_employees", 0),
-            reverse=True
+            shift_requirements, key=lambda x: x.get("required", 0) - x.get("regular_employees", 0), reverse=True
         )
 
         pool_index = 0
@@ -664,27 +667,31 @@ def optimize_floating_pool_allocation(
             gap = max(0, shift.get("required", 0) - shift.get("regular_employees", 0))
             if gap > 0 and pool_index < total_available:
                 allocation_count = min(gap, total_available - pool_index)
-                employees_for_shift = available_pool_employees[pool_index:pool_index + allocation_count]
+                employees_for_shift = available_pool_employees[pool_index : pool_index + allocation_count]
 
-                allocation_suggestions.append({
-                    "shift_id": shift.get("shift_id"),
-                    "shift_name": shift.get("shift_name", ""),
-                    "employees_assigned": allocation_count,
-                    "employee_ids": [e.get("employee_id") for e in employees_for_shift],
-                    "gap_remaining": max(0, gap - allocation_count)
-                })
+                allocation_suggestions.append(
+                    {
+                        "shift_id": shift.get("shift_id"),
+                        "shift_name": shift.get("shift_name", ""),
+                        "employees_assigned": allocation_count,
+                        "employee_ids": [e.get("employee_id") for e in employees_for_shift],
+                        "gap_remaining": max(0, gap - allocation_count),
+                    }
+                )
                 pool_index += allocation_count
                 assigned_count += allocation_count
 
     utilization_rate = Decimal("0")
     if total_available > 0:
-        utilization_rate = (Decimal(assigned_count) / Decimal(total_available) * Decimal("100")).quantize(Decimal("0.01"))
+        utilization_rate = (Decimal(assigned_count) / Decimal(total_available) * Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     return FloatingPoolOptimization(
         total_available=total_available,
         total_needed=total_needed,
         allocation_suggestions=allocation_suggestions,
-        utilization_rate=utilization_rate
+        utilization_rate=utilization_rate,
     )
 
 
@@ -692,11 +699,8 @@ def optimize_floating_pool_allocation(
 # Combined Simulation Runner
 # =============================================================================
 
-def run_capacity_simulation(
-    db: Session,
-    client_id: str,
-    simulation_config: Dict[str, Any]
-) -> Dict[str, Any]:
+
+def run_capacity_simulation(db: Session, client_id: str, simulation_config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Run a comprehensive capacity simulation with multiple scenarios.
 
@@ -729,44 +733,37 @@ def run_capacity_simulation(
         target_date=date.today(),
         cycle_time_hours=cycle_time,
         shift_hours=shift_hours,
-        target_efficiency=efficiency
+        target_efficiency=efficiency,
     )
 
     # Calculate current capacity
     current_capacity = calculate_production_capacity(
-        employees=current_employees,
-        shift_hours=shift_hours,
-        cycle_time_hours=cycle_time,
-        efficiency_percent=efficiency
+        employees=current_employees, shift_hours=shift_hours, cycle_time_hours=cycle_time, efficiency_percent=efficiency
     )
 
     # Run staffing simulations
-    staffing_scenarios = simulation_config.get("staffing_scenarios", [
-        current_employees - 2,
-        current_employees - 1,
-        current_employees,
-        current_employees + 1,
-        current_employees + 2
-    ])
+    staffing_scenarios = simulation_config.get(
+        "staffing_scenarios",
+        [current_employees - 2, current_employees - 1, current_employees, current_employees + 1, current_employees + 2],
+    )
     staffing_results = run_staffing_simulation(
         base_employees=current_employees,
         scenarios=[s for s in staffing_scenarios if s > 0],
         shift_hours=shift_hours,
         cycle_time_hours=cycle_time,
-        base_efficiency=efficiency
+        base_efficiency=efficiency,
     )
 
     # Run efficiency simulations
-    efficiency_scenarios = simulation_config.get("efficiency_scenarios", [
-        Decimal("75.0"), Decimal("80.0"), Decimal("85.0"),
-        Decimal("90.0"), Decimal("95.0")
-    ])
+    efficiency_scenarios = simulation_config.get(
+        "efficiency_scenarios", [Decimal("75.0"), Decimal("80.0"), Decimal("85.0"), Decimal("90.0"), Decimal("95.0")]
+    )
     efficiency_results = run_efficiency_simulation(
         employees=current_employees,
         efficiency_scenarios=[Decimal(str(e)) for e in efficiency_scenarios],
         shift_hours=shift_hours,
         cycle_time_hours=cycle_time,
-        base_efficiency=efficiency
+        base_efficiency=efficiency,
     )
 
     # Calculate gap analysis
@@ -795,7 +792,7 @@ def run_capacity_simulation(
             "current_employees": current_employees,
             "shift_hours": str(shift_hours),
             "cycle_time_hours": str(cycle_time),
-            "efficiency_percent": str(efficiency)
+            "efficiency_percent": str(efficiency),
         },
         "capacity_requirements": {
             "target_units": requirements.target_units,
@@ -804,13 +801,13 @@ def run_capacity_simulation(
             "total_recommended": requirements.total_recommended,
             "required_hours": str(requirements.required_hours),
             "required_shifts": requirements.required_shifts,
-            "notes": requirements.notes
+            "notes": requirements.notes,
         },
         "current_capacity": current_capacity,
         "gap_analysis": {
             "capacity_gap_units": capacity_gap,
             "gap_percent": str(gap_percent),
-            "meets_target": capacity_gap <= 0
+            "meets_target": capacity_gap <= 0,
         },
         "staffing_simulations": [
             {
@@ -818,7 +815,7 @@ def run_capacity_simulation(
                 "input": r.input_parameters,
                 "output": r.projected_output,
                 "impact": {k: str(v) for k, v in r.kpi_impact.items()},
-                "recommendations": r.recommendations
+                "recommendations": r.recommendations,
             }
             for r in staffing_results
         ],
@@ -828,9 +825,9 @@ def run_capacity_simulation(
                 "input": r.input_parameters,
                 "output": r.projected_output,
                 "impact": {k: str(v) for k, v in r.kpi_impact.items()},
-                "recommendations": r.recommendations
+                "recommendations": r.recommendations,
             }
             for r in efficiency_results
         ],
-        "recommendations": recommendations
+        "recommendations": recommendations,
     }

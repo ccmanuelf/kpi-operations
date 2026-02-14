@@ -6,6 +6,7 @@ for MRP calculations and component availability checking.
 
 Multi-tenant: All operations enforce client_id isolation.
 """
+
 from typing import List, Optional
 from datetime import date
 from decimal import Decimal
@@ -27,7 +28,7 @@ def create_stock_snapshot(
     item_description: Optional[str] = None,
     unit_of_measure: str = "EA",
     location: Optional[str] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> CapacityStockSnapshot:
     """
     Create a new stock snapshot.
@@ -64,7 +65,7 @@ def create_stock_snapshot(
         available_quantity=Decimal(str(available)),
         unit_of_measure=unit_of_measure,
         location=location,
-        notes=notes
+        notes=notes,
     )
     db.add(snapshot)
     db.commit()
@@ -73,11 +74,7 @@ def create_stock_snapshot(
 
 
 def get_stock_snapshots(
-    db: Session,
-    client_id: str,
-    skip: int = 0,
-    limit: int = 100,
-    snapshot_date: Optional[date] = None
+    db: Session, client_id: str, skip: int = 0, limit: int = 100, snapshot_date: Optional[date] = None
 ) -> List[CapacityStockSnapshot]:
     """
     Get all stock snapshots for a client.
@@ -93,22 +90,18 @@ def get_stock_snapshots(
         List of CapacityStockSnapshot entries
     """
     ensure_client_id(client_id, "stock snapshots query")
-    query = db.query(CapacityStockSnapshot).filter(
-        CapacityStockSnapshot.client_id == client_id
-    )
+    query = db.query(CapacityStockSnapshot).filter(CapacityStockSnapshot.client_id == client_id)
     if snapshot_date:
         query = query.filter(CapacityStockSnapshot.snapshot_date == snapshot_date)
-    return query.order_by(
-        desc(CapacityStockSnapshot.snapshot_date),
-        CapacityStockSnapshot.item_code
-    ).offset(skip).limit(limit).all()
+    return (
+        query.order_by(desc(CapacityStockSnapshot.snapshot_date), CapacityStockSnapshot.item_code)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_stock_snapshot(
-    db: Session,
-    client_id: str,
-    snapshot_id: int
-) -> Optional[CapacityStockSnapshot]:
+def get_stock_snapshot(db: Session, client_id: str, snapshot_id: int) -> Optional[CapacityStockSnapshot]:
     """
     Get a specific stock snapshot by ID.
 
@@ -121,20 +114,14 @@ def get_stock_snapshot(
         CapacityStockSnapshot or None if not found
     """
     ensure_client_id(client_id, "stock snapshot query")
-    return db.query(CapacityStockSnapshot).filter(
-        and_(
-            CapacityStockSnapshot.client_id == client_id,
-            CapacityStockSnapshot.id == snapshot_id
-        )
-    ).first()
+    return (
+        db.query(CapacityStockSnapshot)
+        .filter(and_(CapacityStockSnapshot.client_id == client_id, CapacityStockSnapshot.id == snapshot_id))
+        .first()
+    )
 
 
-def update_stock_snapshot(
-    db: Session,
-    client_id: str,
-    snapshot_id: int,
-    **updates
-) -> Optional[CapacityStockSnapshot]:
+def update_stock_snapshot(db: Session, client_id: str, snapshot_id: int, **updates) -> Optional[CapacityStockSnapshot]:
     """
     Update a stock snapshot.
 
@@ -152,7 +139,7 @@ def update_stock_snapshot(
         return None
 
     # Convert float fields to Decimal
-    decimal_fields = ['on_hand_quantity', 'allocated_quantity', 'on_order_quantity', 'available_quantity']
+    decimal_fields = ["on_hand_quantity", "allocated_quantity", "on_order_quantity", "available_quantity"]
     for key, value in updates.items():
         if hasattr(snapshot, key) and value is not None:
             if key in decimal_fields:
@@ -160,7 +147,7 @@ def update_stock_snapshot(
             setattr(snapshot, key, value)
 
     # Recalculate available if quantities changed
-    if any(field in updates for field in ['on_hand_quantity', 'allocated_quantity', 'on_order_quantity']):
+    if any(field in updates for field in ["on_hand_quantity", "allocated_quantity", "on_order_quantity"]):
         snapshot.available_quantity = Decimal(str(snapshot.calculate_available()))
 
     db.commit()
@@ -168,11 +155,7 @@ def update_stock_snapshot(
     return snapshot
 
 
-def delete_stock_snapshot(
-    db: Session,
-    client_id: str,
-    snapshot_id: int
-) -> bool:
+def delete_stock_snapshot(db: Session, client_id: str, snapshot_id: int) -> bool:
     """
     Delete a stock snapshot.
 
@@ -193,11 +176,7 @@ def delete_stock_snapshot(
     return True
 
 
-def get_latest_stock(
-    db: Session,
-    client_id: str,
-    item_code: str
-) -> Optional[CapacityStockSnapshot]:
+def get_latest_stock(db: Session, client_id: str, item_code: str) -> Optional[CapacityStockSnapshot]:
     """
     Get the most recent stock snapshot for an item.
 
@@ -210,20 +189,15 @@ def get_latest_stock(
         Most recent CapacityStockSnapshot or None if not found
     """
     ensure_client_id(client_id, "latest stock query")
-    return db.query(CapacityStockSnapshot).filter(
-        and_(
-            CapacityStockSnapshot.client_id == client_id,
-            CapacityStockSnapshot.item_code == item_code
-        )
-    ).order_by(desc(CapacityStockSnapshot.snapshot_date)).first()
+    return (
+        db.query(CapacityStockSnapshot)
+        .filter(and_(CapacityStockSnapshot.client_id == client_id, CapacityStockSnapshot.item_code == item_code))
+        .order_by(desc(CapacityStockSnapshot.snapshot_date))
+        .first()
+    )
 
 
-def get_available_stock(
-    db: Session,
-    client_id: str,
-    item_code: str,
-    as_of_date: Optional[date] = None
-) -> float:
+def get_available_stock(db: Session, client_id: str, item_code: str, as_of_date: Optional[date] = None) -> float:
     """
     Get current available stock for an item.
 
@@ -240,13 +214,18 @@ def get_available_stock(
     """
     if as_of_date:
         ensure_client_id(client_id, "available stock query")
-        snapshot = db.query(CapacityStockSnapshot).filter(
-            and_(
-                CapacityStockSnapshot.client_id == client_id,
-                CapacityStockSnapshot.item_code == item_code,
-                CapacityStockSnapshot.snapshot_date <= as_of_date
+        snapshot = (
+            db.query(CapacityStockSnapshot)
+            .filter(
+                and_(
+                    CapacityStockSnapshot.client_id == client_id,
+                    CapacityStockSnapshot.item_code == item_code,
+                    CapacityStockSnapshot.snapshot_date <= as_of_date,
+                )
             )
-        ).order_by(desc(CapacityStockSnapshot.snapshot_date)).first()
+            .order_by(desc(CapacityStockSnapshot.snapshot_date))
+            .first()
+        )
     else:
         snapshot = get_latest_stock(db, client_id, item_code)
     if not snapshot:
@@ -255,9 +234,7 @@ def get_available_stock(
 
 
 def get_shortage_items(
-    db: Session,
-    client_id: str,
-    snapshot_date: Optional[date] = None
+    db: Session, client_id: str, snapshot_date: Optional[date] = None
 ) -> List[CapacityStockSnapshot]:
     """
     Get items with zero or negative available quantity (shortages).
@@ -272,24 +249,17 @@ def get_shortage_items(
     """
     ensure_client_id(client_id, "shortage items query")
 
-    filters = [
-        CapacityStockSnapshot.client_id == client_id,
-        CapacityStockSnapshot.available_quantity <= Decimal("0")
-    ]
+    filters = [CapacityStockSnapshot.client_id == client_id, CapacityStockSnapshot.available_quantity <= Decimal("0")]
 
     if snapshot_date:
         filters.append(CapacityStockSnapshot.snapshot_date == snapshot_date)
 
-    return db.query(CapacityStockSnapshot).filter(
-        and_(*filters)
-    ).order_by(CapacityStockSnapshot.available_quantity).all()
+    return (
+        db.query(CapacityStockSnapshot).filter(and_(*filters)).order_by(CapacityStockSnapshot.available_quantity).all()
+    )
 
 
-def get_stock_by_date(
-    db: Session,
-    client_id: str,
-    snapshot_date: date
-) -> List[CapacityStockSnapshot]:
+def get_stock_by_date(db: Session, client_id: str, snapshot_date: date) -> List[CapacityStockSnapshot]:
     """
     Get all stock snapshots for a specific date.
 
@@ -302,19 +272,18 @@ def get_stock_by_date(
         List of CapacityStockSnapshot entries for the date
     """
     ensure_client_id(client_id, "stock by date query")
-    return db.query(CapacityStockSnapshot).filter(
-        and_(
-            CapacityStockSnapshot.client_id == client_id,
-            CapacityStockSnapshot.snapshot_date == snapshot_date
+    return (
+        db.query(CapacityStockSnapshot)
+        .filter(
+            and_(CapacityStockSnapshot.client_id == client_id, CapacityStockSnapshot.snapshot_date == snapshot_date)
         )
-    ).order_by(CapacityStockSnapshot.item_code).all()
+        .order_by(CapacityStockSnapshot.item_code)
+        .all()
+    )
 
 
 def get_stock_by_location(
-    db: Session,
-    client_id: str,
-    location: str,
-    snapshot_date: Optional[date] = None
+    db: Session, client_id: str, location: str, snapshot_date: Optional[date] = None
 ) -> List[CapacityStockSnapshot]:
     """
     Get stock snapshots by location.
@@ -330,28 +299,20 @@ def get_stock_by_location(
     """
     ensure_client_id(client_id, "stock by location query")
 
-    filters = [
-        CapacityStockSnapshot.client_id == client_id,
-        CapacityStockSnapshot.location == location
-    ]
+    filters = [CapacityStockSnapshot.client_id == client_id, CapacityStockSnapshot.location == location]
 
     if snapshot_date:
         filters.append(CapacityStockSnapshot.snapshot_date == snapshot_date)
 
-    return db.query(CapacityStockSnapshot).filter(
-        and_(*filters)
-    ).order_by(
-        desc(CapacityStockSnapshot.snapshot_date),
-        CapacityStockSnapshot.item_code
-    ).all()
+    return (
+        db.query(CapacityStockSnapshot)
+        .filter(and_(*filters))
+        .order_by(desc(CapacityStockSnapshot.snapshot_date), CapacityStockSnapshot.item_code)
+        .all()
+    )
 
 
-def check_stock_availability(
-    db: Session,
-    client_id: str,
-    item_code: str,
-    required_quantity: float
-) -> dict:
+def check_stock_availability(db: Session, client_id: str, item_code: str, required_quantity: float) -> dict:
     """
     Check if required quantity is available.
 
@@ -368,12 +329,12 @@ def check_stock_availability(
 
     if not snapshot:
         return {
-            'item_code': item_code,
-            'is_available': False,
-            'available_quantity': 0,
-            'required_quantity': required_quantity,
-            'shortage_quantity': required_quantity,
-            'has_snapshot': False
+            "item_code": item_code,
+            "is_available": False,
+            "available_quantity": 0,
+            "required_quantity": required_quantity,
+            "shortage_quantity": required_quantity,
+            "has_snapshot": False,
         }
 
     available = snapshot.calculate_available()
@@ -381,22 +342,18 @@ def check_stock_availability(
     shortage = snapshot.shortage_quantity(required_quantity)
 
     return {
-        'item_code': item_code,
-        'is_available': not is_short,
-        'available_quantity': available,
-        'required_quantity': required_quantity,
-        'shortage_quantity': shortage,
-        'has_snapshot': True,
-        'snapshot_date': snapshot.snapshot_date,
-        'location': snapshot.location
+        "item_code": item_code,
+        "is_available": not is_short,
+        "available_quantity": available,
+        "required_quantity": required_quantity,
+        "shortage_quantity": shortage,
+        "has_snapshot": True,
+        "snapshot_date": snapshot.snapshot_date,
+        "location": snapshot.location,
     }
 
 
-def check_multiple_items_availability(
-    db: Session,
-    client_id: str,
-    requirements: List[dict]
-) -> List[dict]:
+def check_multiple_items_availability(db: Session, client_id: str, requirements: List[dict]) -> List[dict]:
     """
     Check availability for multiple items.
 
@@ -410,22 +367,13 @@ def check_multiple_items_availability(
     """
     results = []
     for req in requirements:
-        result = check_stock_availability(
-            db,
-            client_id,
-            req['item_code'],
-            req['required_quantity']
-        )
+        result = check_stock_availability(db, client_id, req["item_code"], req["required_quantity"])
         results.append(result)
 
     return results
 
 
-def get_low_stock_items(
-    db: Session,
-    client_id: str,
-    threshold_quantity: float = 0
-) -> List[CapacityStockSnapshot]:
+def get_low_stock_items(db: Session, client_id: str, threshold_quantity: float = 0) -> List[CapacityStockSnapshot]:
     """
     Get items with low or zero available stock.
 
@@ -443,35 +391,35 @@ def get_low_stock_items(
     from sqlalchemy import func
 
     # Subquery to get max date per item
-    subquery = db.query(
-        CapacityStockSnapshot.item_code,
-        func.max(CapacityStockSnapshot.snapshot_date).label('max_date')
-    ).filter(
-        CapacityStockSnapshot.client_id == client_id
-    ).group_by(
-        CapacityStockSnapshot.item_code
-    ).subquery()
+    subquery = (
+        db.query(CapacityStockSnapshot.item_code, func.max(CapacityStockSnapshot.snapshot_date).label("max_date"))
+        .filter(CapacityStockSnapshot.client_id == client_id)
+        .group_by(CapacityStockSnapshot.item_code)
+        .subquery()
+    )
 
     # Join to get full records
-    return db.query(CapacityStockSnapshot).filter(
-        and_(
-            CapacityStockSnapshot.client_id == client_id,
-            CapacityStockSnapshot.available_quantity <= Decimal(str(threshold_quantity))
+    return (
+        db.query(CapacityStockSnapshot)
+        .filter(
+            and_(
+                CapacityStockSnapshot.client_id == client_id,
+                CapacityStockSnapshot.available_quantity <= Decimal(str(threshold_quantity)),
+            )
         )
-    ).join(
-        subquery,
-        and_(
-            CapacityStockSnapshot.item_code == subquery.c.item_code,
-            CapacityStockSnapshot.snapshot_date == subquery.c.max_date
+        .join(
+            subquery,
+            and_(
+                CapacityStockSnapshot.item_code == subquery.c.item_code,
+                CapacityStockSnapshot.snapshot_date == subquery.c.max_date,
+            ),
         )
-    ).order_by(CapacityStockSnapshot.available_quantity).all()
+        .order_by(CapacityStockSnapshot.available_quantity)
+        .all()
+    )
 
 
-def bulk_create_stock_snapshots(
-    db: Session,
-    client_id: str,
-    snapshots: List[dict]
-) -> List[CapacityStockSnapshot]:
+def bulk_create_stock_snapshots(db: Session, client_id: str, snapshots: List[dict]) -> List[CapacityStockSnapshot]:
     """
     Bulk create stock snapshots.
 
@@ -488,24 +436,21 @@ def bulk_create_stock_snapshots(
     created = []
     for snap_data in snapshots:
         # Convert float fields to Decimal
-        decimal_fields = ['on_hand_quantity', 'allocated_quantity', 'on_order_quantity']
+        decimal_fields = ["on_hand_quantity", "allocated_quantity", "on_order_quantity"]
         for field in decimal_fields:
             if field in snap_data and snap_data[field] is not None:
                 snap_data[field] = Decimal(str(snap_data[field]))
 
         # Calculate available if not provided
-        if 'available_quantity' not in snap_data:
-            on_hand = float(snap_data.get('on_hand_quantity', 0))
-            allocated = float(snap_data.get('allocated_quantity', 0))
-            on_order = float(snap_data.get('on_order_quantity', 0))
-            snap_data['available_quantity'] = Decimal(str(on_hand - allocated + on_order))
+        if "available_quantity" not in snap_data:
+            on_hand = float(snap_data.get("on_hand_quantity", 0))
+            allocated = float(snap_data.get("allocated_quantity", 0))
+            on_order = float(snap_data.get("on_order_quantity", 0))
+            snap_data["available_quantity"] = Decimal(str(on_hand - allocated + on_order))
         else:
-            snap_data['available_quantity'] = Decimal(str(snap_data['available_quantity']))
+            snap_data["available_quantity"] = Decimal(str(snap_data["available_quantity"]))
 
-        snapshot = CapacityStockSnapshot(
-            client_id=client_id,
-            **snap_data
-        )
+        snapshot = CapacityStockSnapshot(client_id=client_id, **snap_data)
         db.add(snapshot)
         created.append(snapshot)
 

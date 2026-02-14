@@ -2,6 +2,7 @@
 Work Order Pydantic models for request/response validation
 Implements Phase 10: Flexible Workflow Foundation
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
@@ -11,10 +12,11 @@ from enum import Enum
 
 class WorkOrderStatusEnum(str, Enum):
     """Work order status options for validation"""
+
     RECEIVED = "RECEIVED"
     RELEASED = "RELEASED"
     DEMOTED = "DEMOTED"
-    ACTIVE = "ACTIVE"           # Legacy alias for IN_PROGRESS
+    ACTIVE = "ACTIVE"  # Legacy alias for IN_PROGRESS
     IN_PROGRESS = "IN_PROGRESS"
     ON_HOLD = "ON_HOLD"
     COMPLETED = "COMPLETED"
@@ -25,11 +27,14 @@ class WorkOrderStatusEnum(str, Enum):
 
 
 # Valid status pattern for regex validation
-VALID_STATUS_PATTERN = "^(RECEIVED|RELEASED|DEMOTED|ACTIVE|IN_PROGRESS|ON_HOLD|COMPLETED|SHIPPED|CLOSED|REJECTED|CANCELLED)$"
+VALID_STATUS_PATTERN = (
+    "^(RECEIVED|RELEASED|DEMOTED|ACTIVE|IN_PROGRESS|ON_HOLD|COMPLETED|SHIPPED|CLOSED|REJECTED|CANCELLED)$"
+)
 
 
 class WorkOrderCreate(BaseModel):
     """Work order creation model"""
+
     work_order_id: str = Field(..., min_length=1, max_length=50, description="Unique work order ID")
     client_id: str = Field(..., min_length=1, max_length=50, description="Client ID")
     style_model: str = Field(..., min_length=1, max_length=100, description="Style/Model designation")
@@ -57,7 +62,9 @@ class WorkOrderCreate(BaseModel):
 
     # Status with expanded options (Phase 10)
     status: Optional[str] = Field(default="RECEIVED", pattern=VALID_STATUS_PATTERN)
-    previous_status: Optional[str] = Field(None, pattern=VALID_STATUS_PATTERN, description="For ON_HOLD resume tracking")
+    previous_status: Optional[str] = Field(
+        None, pattern=VALID_STATUS_PATTERN, description="For ON_HOLD resume tracking"
+    )
     priority: Optional[str] = Field(None, pattern="^(HIGH|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=not approved, 1=approved")
@@ -75,6 +82,7 @@ class WorkOrderCreate(BaseModel):
 
 class WorkOrderUpdate(BaseModel):
     """Work order update model (all fields optional)"""
+
     style_model: Optional[str] = Field(None, min_length=1, max_length=100)
     planned_quantity: Optional[int] = Field(None, gt=0)
     actual_quantity: Optional[int] = Field(None, ge=0)
@@ -118,6 +126,7 @@ class WorkOrderUpdate(BaseModel):
 
 class WorkOrderResponse(BaseModel):
     """Work order response model"""
+
     work_order_id: str
     client_id: str
     style_model: str
@@ -168,6 +177,7 @@ class WorkOrderResponse(BaseModel):
 
 class WorkOrderWithMetrics(WorkOrderResponse):
     """Work order with calculated OTD and performance metrics"""
+
     is_on_time: Optional[bool] = None
     days_early_late: Optional[int] = None
     completion_percentage: Optional[float] = None

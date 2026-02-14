@@ -2,6 +2,7 @@
 Edge Case Tests: Validation, Constraints, and Auth Errors
 Task #42: Comprehensive testing of boundary conditions and error scenarios
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -20,6 +21,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 # =============================================================================
 # Test Fixtures
 # =============================================================================
+
 
 @pytest.fixture(scope="function")
 def edge_db():
@@ -49,37 +51,22 @@ def edge_setup(edge_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="EDGE-CLIENT-001",
-        client_name="Edge Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="EDGE-CLIENT-001", client_name="Edge Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create admin user
     admin = TestDataFactory.create_user(
-        db,
-        user_id="edge-admin-001",
-        username="edge_admin",
-        role="admin",
-        client_id=None
+        db, user_id="edge-admin-001", username="edge_admin", role="admin", client_id=None
     )
 
     # Create supervisor
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="edge-super-001",
-        username="edge_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="edge-super-001", username="edge_supervisor", role="supervisor", client_id=client.client_id
     )
 
     # Create operator (limited access)
     operator = TestDataFactory.create_user(
-        db,
-        user_id="edge-oper-001",
-        username="edge_operator",
-        role="operator",
-        client_id=client.client_id
+        db, user_id="edge-oper-001", username="edge_operator", role="operator", client_id=client.client_id
     )
 
     # Create product
@@ -88,16 +75,12 @@ def edge_setup(edge_db):
         client_id=client.client_id,
         product_code="EDGE-PROD-001",
         product_name="Edge Test Product",
-        ideal_cycle_time=Decimal("0.10")
+        ideal_cycle_time=Decimal("0.10"),
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="Edge Test Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="Edge Test Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.commit()
@@ -116,6 +99,7 @@ def edge_setup(edge_db):
 # =============================================================================
 # Numeric Boundary Tests
 # =============================================================================
+
 
 class TestNumericBoundaries:
     """Test numeric field boundary conditions."""
@@ -141,7 +125,7 @@ class TestNumericBoundaries:
             units_produced=0,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         quality_rate = calculate_quality_rate(entry)
@@ -167,7 +151,7 @@ class TestNumericBoundaries:
             units_produced=100,
             run_time_hours=Decimal("0"),  # Zero run time
             employees_assigned=5,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -197,7 +181,7 @@ class TestNumericBoundaries:
             units_produced=10000,  # Very high output
             run_time_hours=Decimal("1.0"),  # Very short time
             employees_assigned=1,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -229,7 +213,7 @@ class TestNumericBoundaries:
             employees_assigned=5,
             defect_count=8,
             scrap_count=5,  # Total 13 > 10 units
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         quality_rate = calculate_quality_rate(entry)
@@ -252,7 +236,7 @@ class TestNumericBoundaries:
             client_id=client.client_id,
             product_code="PREC-PROD",
             product_name="Precision Product",
-            ideal_cycle_time=Decimal("0.0001")  # Very small
+            ideal_cycle_time=Decimal("0.0001"),  # Very small
         )
         db.add(product)
         db.commit()
@@ -267,7 +251,7 @@ class TestNumericBoundaries:
             units_produced=1,
             run_time_hours=Decimal("0.0001"),
             employees_assigned=1,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -328,7 +312,7 @@ class TestDateBoundaries:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -342,6 +326,7 @@ class TestDateBoundaries:
 # =============================================================================
 # OEE Edge Cases
 # =============================================================================
+
 
 class TestOEEEdgeCases:
     """Test OEE calculation edge cases."""
@@ -366,7 +351,7 @@ class TestOEEEdgeCases:
             units_produced=0,
             run_time_hours=Decimal("0"),
             employees_assigned=5,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -400,7 +385,7 @@ class TestOEEEdgeCases:
             employees_assigned=5,
             defect_count=0,
             scrap_count=0,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -414,6 +399,7 @@ class TestOEEEdgeCases:
 # =============================================================================
 # Trend Analysis Edge Cases
 # =============================================================================
+
 
 class TestTrendAnalysisEdgeCases:
     """Test trend analysis edge cases."""
@@ -495,6 +481,7 @@ class TestTrendAnalysisEdgeCases:
 # Efficiency Calculation Edge Cases
 # =============================================================================
 
+
 class TestEfficiencyEdgeCases:
     """Test efficiency calculation edge cases."""
 
@@ -519,7 +506,7 @@ class TestEfficiencyEdgeCases:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=0,  # Zero employees
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -562,6 +549,7 @@ class TestEfficiencyEdgeCases:
 # Inference Chain Edge Cases
 # =============================================================================
 
+
 class TestInferenceChainEdgeCases:
     """Test inference chain edge cases."""
 
@@ -586,7 +574,7 @@ class TestInferenceChainEdgeCases:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=0,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
 
         db.add(entry)
@@ -611,7 +599,7 @@ class TestInferenceChainEdgeCases:
             client_id=edge_setup["client"].client_id,
             product_code="NO-ICT-PROD",
             product_name="No Ideal Cycle Time",
-            ideal_cycle_time=None
+            ideal_cycle_time=None,
         )
         db.add(product)
         db.commit()
@@ -625,6 +613,7 @@ class TestInferenceChainEdgeCases:
 # =============================================================================
 # Client Config Edge Cases
 # =============================================================================
+
 
 class TestClientConfigEdgeCases:
     """Test client configuration edge cases."""
@@ -657,6 +646,7 @@ class TestClientConfigEdgeCases:
 # Unique Constraint Edge Cases
 # =============================================================================
 
+
 class TestUniqueConstraints:
     """Test unique constraint violations."""
 
@@ -682,7 +672,7 @@ class TestUniqueConstraints:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
         db.add(entry1)
         db.commit()
@@ -701,7 +691,7 @@ class TestUniqueConstraints:
             units_produced=200,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="edge-super-001"
+            entered_by="edge-super-001",
         )
         db.add(entry2)
 
@@ -724,7 +714,7 @@ class TestUniqueConstraints:
             client_id=client.client_id,
             style_model="STYLE-A",
             planned_quantity=100,
-            status=WorkOrderStatus.ACTIVE
+            status=WorkOrderStatus.ACTIVE,
         )
         db.add(wo1)
         db.commit()
@@ -738,7 +728,7 @@ class TestUniqueConstraints:
             client_id=client.client_id,
             style_model="STYLE-B",
             planned_quantity=200,
-            status=WorkOrderStatus.ACTIVE
+            status=WorkOrderStatus.ACTIVE,
         )
         db.add(wo2)
 

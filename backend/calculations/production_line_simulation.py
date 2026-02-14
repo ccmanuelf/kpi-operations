@@ -10,6 +10,7 @@ Provides:
 - Floating pool impact simulation
 - Shift transition modeling
 """
+
 import simpy
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Optional, Any, Tuple
@@ -22,6 +23,7 @@ import statistics
 
 class WorkStationType(str, Enum):
     """Types of work stations in production line"""
+
     RECEIVING = "receiving"
     INSPECTION = "inspection"
     ASSEMBLY = "assembly"
@@ -32,6 +34,7 @@ class WorkStationType(str, Enum):
 
 class SimulationEvent(str, Enum):
     """Types of simulation events"""
+
     UNIT_START = "unit_start"
     UNIT_COMPLETE = "unit_complete"
     STATION_START = "station_start"
@@ -47,6 +50,7 @@ class SimulationEvent(str, Enum):
 @dataclass
 class WorkStation:
     """Configuration for a work station"""
+
     station_id: int
     name: str
     station_type: WorkStationType
@@ -61,6 +65,7 @@ class WorkStation:
 @dataclass
 class ProductionLineConfig:
     """Configuration for production line simulation"""
+
     line_id: str
     name: str
     stations: List[WorkStation]
@@ -74,6 +79,7 @@ class ProductionLineConfig:
 @dataclass
 class SimulationResult:
     """Result of a production line simulation"""
+
     line_id: str
     simulation_duration_hours: float
     units_started: int
@@ -93,6 +99,7 @@ class SimulationResult:
 @dataclass
 class BottleneckAnalysis:
     """Analysis of production line bottlenecks"""
+
     primary_bottleneck: str
     bottleneck_utilization: float
     queue_times: Dict[str, float]
@@ -103,6 +110,7 @@ class BottleneckAnalysis:
 # =============================================================================
 # SimPy Production Line Simulation
 # =============================================================================
+
 
 class ProductionLineSimulation:
     """
@@ -138,7 +146,9 @@ class ProductionLineSimulation:
             self.station_queues[station.name] = []
 
         # Floating pool workers (shared resource)
-        self.floating_pool = simpy.Resource(self.env, capacity=config.floating_pool_size) if config.floating_pool_size > 0 else None
+        self.floating_pool = (
+            simpy.Resource(self.env, capacity=config.floating_pool_size) if config.floating_pool_size > 0 else None
+        )
 
         # Metrics tracking
         self.units_started = 0
@@ -152,11 +162,7 @@ class ProductionLineSimulation:
 
     def log_event(self, event_type: SimulationEvent, data: Dict[str, Any]):
         """Log a simulation event"""
-        self.events_log.append({
-            "time": self.env.now,
-            "event_type": event_type.value,
-            **data
-        })
+        self.events_log.append({"time": self.env.now, "event_type": event_type.value, **data})
 
     def get_station_config(self, station_name: str) -> WorkStation:
         """Get station configuration by name"""
@@ -190,11 +196,9 @@ class ProductionLineSimulation:
                 wait_time = self.env.now - arrival_time
                 self.station_waits[station.name].append(wait_time)
 
-                self.log_event(SimulationEvent.STATION_START, {
-                    "unit_id": unit_id,
-                    "station": station.name,
-                    "wait_time": wait_time
-                })
+                self.log_event(
+                    SimulationEvent.STATION_START, {"unit_id": unit_id, "station": station.name, "wait_time": wait_time}
+                )
 
                 # Calculate cycle time with variability
                 base_time = station.cycle_time_minutes
@@ -211,16 +215,12 @@ class ProductionLineSimulation:
                 if random.random() > station.quality_rate:
                     rejected = True
                     self.units_rejected += 1
-                    self.log_event(SimulationEvent.QUALITY_REJECT, {
-                        "unit_id": unit_id,
-                        "station": station.name
-                    })
+                    self.log_event(SimulationEvent.QUALITY_REJECT, {"unit_id": unit_id, "station": station.name})
                 else:
-                    self.log_event(SimulationEvent.STATION_COMPLETE, {
-                        "unit_id": unit_id,
-                        "station": station.name,
-                        "cycle_time": cycle_time
-                    })
+                    self.log_event(
+                        SimulationEvent.STATION_COMPLETE,
+                        {"unit_id": unit_id, "station": station.name, "cycle_time": cycle_time},
+                    )
 
         if not rejected:
             self.units_completed += 1
@@ -239,15 +239,11 @@ class ProductionLineSimulation:
 
             if random.random() < station.downtime_probability:
                 # Downtime occurs
-                duration = max(5, random.gauss(
-                    station.downtime_duration_minutes,
-                    station.downtime_duration_minutes * 0.3
-                ))
+                duration = max(
+                    5, random.gauss(station.downtime_duration_minutes, station.downtime_duration_minutes * 0.3)
+                )
 
-                self.log_event(SimulationEvent.DOWNTIME_START, {
-                    "station": station.name,
-                    "duration": duration
-                })
+                self.log_event(SimulationEvent.DOWNTIME_START, {"station": station.name, "duration": duration})
 
                 # Temporarily reduce capacity
                 # In SimPy, we simulate this by using the resource
@@ -256,9 +252,7 @@ class ProductionLineSimulation:
                     yield self.env.timeout(duration)
                     self.total_downtime += duration
 
-                self.log_event(SimulationEvent.DOWNTIME_END, {
-                    "station": station.name
-                })
+                self.log_event(SimulationEvent.DOWNTIME_END, {"station": station.name})
 
     def unit_generator(self, arrival_rate_per_hour: float, max_units: Optional[int] = None):
         """
@@ -283,7 +277,7 @@ class ProductionLineSimulation:
         self,
         duration_hours: float = 8.0,
         arrival_rate_per_hour: Optional[float] = None,
-        max_units: Optional[int] = None
+        max_units: Optional[int] = None,
     ) -> SimulationResult:
         """
         Run the production line simulation.
@@ -301,7 +295,7 @@ class ProductionLineSimulation:
         # Calculate theoretical capacity if no arrival rate specified
         if arrival_rate_per_hour is None:
             # Use bottleneck station to determine arrival rate
-            min_rate = float('inf')
+            min_rate = float("inf")
             for station in self.config.stations:
                 rate = 60 / station.cycle_time_minutes * station.num_workers
                 min_rate = min(min_rate, rate)
@@ -380,7 +374,7 @@ class ProductionLineSimulation:
             total_downtime_minutes=self.total_downtime,
             quality_yield=quality_yield,
             events_log=self.events_log[-100:] if len(self.events_log) > 100 else self.events_log,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
 
@@ -388,12 +382,13 @@ class ProductionLineSimulation:
 # High-Level Simulation Functions
 # =============================================================================
 
+
 def create_default_production_line(
     line_id: str = "LINE-001",
     num_stations: int = 4,
     workers_per_station: int = 2,
     floating_pool_size: int = 0,
-    base_cycle_time: float = 15.0
+    base_cycle_time: float = 15.0,
 ) -> ProductionLineConfig:
     """
     Create a default production line configuration.
@@ -412,7 +407,7 @@ def create_default_production_line(
         WorkStationType.RECEIVING,
         WorkStationType.ASSEMBLY,
         WorkStationType.TESTING,
-        WorkStationType.PACKAGING
+        WorkStationType.PACKAGING,
     ]
 
     stations = []
@@ -422,17 +417,19 @@ def create_default_production_line(
         # Vary cycle times slightly
         cycle_multiplier = 1.0 + (i * 0.1)  # Each station slightly longer
 
-        stations.append(WorkStation(
-            station_id=i + 1,
-            name=f"{station_type.value.title()} {i + 1}",
-            station_type=station_type,
-            cycle_time_minutes=base_cycle_time * cycle_multiplier,
-            cycle_time_variability=0.15,
-            num_workers=workers_per_station,
-            quality_rate=0.98 - (i * 0.01),  # Quality slightly decreases
-            downtime_probability=0.02,
-            downtime_duration_minutes=20
-        ))
+        stations.append(
+            WorkStation(
+                station_id=i + 1,
+                name=f"{station_type.value.title()} {i + 1}",
+                station_type=station_type,
+                cycle_time_minutes=base_cycle_time * cycle_multiplier,
+                cycle_time_variability=0.15,
+                num_workers=workers_per_station,
+                quality_rate=0.98 - (i * 0.01),  # Quality slightly decreases
+                downtime_probability=0.02,
+                downtime_duration_minutes=20,
+            )
+        )
 
     return ProductionLineConfig(
         line_id=line_id,
@@ -442,7 +439,7 @@ def create_default_production_line(
         break_duration_minutes=30,
         breaks_per_shift=2,
         workers_per_station=workers_per_station,
-        floating_pool_size=floating_pool_size
+        floating_pool_size=floating_pool_size,
     )
 
 
@@ -451,7 +448,7 @@ def run_production_simulation(
     duration_hours: float = 8.0,
     arrival_rate_per_hour: Optional[float] = None,
     max_units: Optional[int] = None,
-    random_seed: Optional[int] = 42
+    random_seed: Optional[int] = 42,
 ) -> SimulationResult:
     """
     Run a production line simulation with given configuration.
@@ -468,9 +465,7 @@ def run_production_simulation(
     """
     simulation = ProductionLineSimulation(config, random_seed=random_seed)
     return simulation.run(
-        duration_hours=duration_hours,
-        arrival_rate_per_hour=arrival_rate_per_hour,
-        max_units=max_units
+        duration_hours=duration_hours, arrival_rate_per_hour=arrival_rate_per_hour, max_units=max_units
     )
 
 
@@ -478,7 +473,7 @@ def compare_scenarios(
     base_config: ProductionLineConfig,
     scenarios: List[Dict[str, Any]],
     duration_hours: float = 8.0,
-    random_seed: int = 42
+    random_seed: int = 42,
 ) -> List[Dict[str, Any]]:
     """
     Compare multiple production scenarios.
@@ -495,11 +490,7 @@ def compare_scenarios(
     results = []
 
     # Run base scenario
-    base_result = run_production_simulation(
-        base_config,
-        duration_hours=duration_hours,
-        random_seed=random_seed
-    )
+    base_result = run_production_simulation(base_config, duration_hours=duration_hours, random_seed=random_seed)
 
     base_comparison = {
         "scenario": "baseline",
@@ -509,11 +500,7 @@ def compare_scenarios(
         "quality_yield": base_result.quality_yield,
         "units_completed": base_result.units_completed,
         "bottleneck": base_result.bottleneck_station,
-        "change_from_baseline": {
-            "throughput": 0,
-            "efficiency": 0,
-            "quality": 0
-        }
+        "change_from_baseline": {"throughput": 0, "efficiency": 0, "quality": 0},
     }
     results.append(base_comparison)
 
@@ -528,7 +515,7 @@ def compare_scenarios(
             break_duration_minutes=scenario.get("break_duration_minutes", base_config.break_duration_minutes),
             breaks_per_shift=scenario.get("breaks_per_shift", base_config.breaks_per_shift),
             workers_per_station=scenario.get("workers_per_station", base_config.workers_per_station),
-            floating_pool_size=scenario.get("floating_pool_size", base_config.floating_pool_size)
+            floating_pool_size=scenario.get("floating_pool_size", base_config.floating_pool_size),
         )
 
         # Modify stations if specified
@@ -536,24 +523,24 @@ def compare_scenarios(
             modified_stations = []
             for station in base_config.stations:
                 mods = scenario["station_modifications"].get(station.name, {})
-                modified_stations.append(WorkStation(
-                    station_id=station.station_id,
-                    name=station.name,
-                    station_type=station.station_type,
-                    cycle_time_minutes=mods.get("cycle_time_minutes", station.cycle_time_minutes),
-                    cycle_time_variability=mods.get("cycle_time_variability", station.cycle_time_variability),
-                    num_workers=mods.get("num_workers", station.num_workers),
-                    quality_rate=mods.get("quality_rate", station.quality_rate),
-                    downtime_probability=mods.get("downtime_probability", station.downtime_probability),
-                    downtime_duration_minutes=mods.get("downtime_duration_minutes", station.downtime_duration_minutes)
-                ))
+                modified_stations.append(
+                    WorkStation(
+                        station_id=station.station_id,
+                        name=station.name,
+                        station_type=station.station_type,
+                        cycle_time_minutes=mods.get("cycle_time_minutes", station.cycle_time_minutes),
+                        cycle_time_variability=mods.get("cycle_time_variability", station.cycle_time_variability),
+                        num_workers=mods.get("num_workers", station.num_workers),
+                        quality_rate=mods.get("quality_rate", station.quality_rate),
+                        downtime_probability=mods.get("downtime_probability", station.downtime_probability),
+                        downtime_duration_minutes=mods.get(
+                            "downtime_duration_minutes", station.downtime_duration_minutes
+                        ),
+                    )
+                )
             modified_config.stations = modified_stations
 
-        result = run_production_simulation(
-            modified_config,
-            duration_hours=duration_hours,
-            random_seed=random_seed
-        )
+        result = run_production_simulation(modified_config, duration_hours=duration_hours, random_seed=random_seed)
 
         scenario_comparison = {
             "scenario": scenario.get("name", f"Scenario {i+1}"),
@@ -564,11 +551,18 @@ def compare_scenarios(
             "units_completed": result.units_completed,
             "bottleneck": result.bottleneck_station,
             "change_from_baseline": {
-                "throughput": ((result.throughput_per_hour - base_result.throughput_per_hour) /
-                              base_result.throughput_per_hour * 100) if base_result.throughput_per_hour > 0 else 0,
+                "throughput": (
+                    (
+                        (result.throughput_per_hour - base_result.throughput_per_hour)
+                        / base_result.throughput_per_hour
+                        * 100
+                    )
+                    if base_result.throughput_per_hour > 0
+                    else 0
+                ),
                 "efficiency": result.efficiency - base_result.efficiency,
-                "quality": result.quality_yield - base_result.quality_yield
-            }
+                "quality": result.quality_yield - base_result.quality_yield,
+            },
         }
         results.append(scenario_comparison)
 
@@ -576,9 +570,7 @@ def compare_scenarios(
 
 
 def analyze_bottlenecks(
-    config: ProductionLineConfig,
-    duration_hours: float = 8.0,
-    random_seed: int = 42
+    config: ProductionLineConfig, duration_hours: float = 8.0, random_seed: int = 42
 ) -> BottleneckAnalysis:
     """
     Analyze bottlenecks in the production line.
@@ -630,15 +622,12 @@ def analyze_bottlenecks(
         bottleneck_utilization=bottleneck_util,
         queue_times=queue_times,
         station_wait_times=wait_times,
-        suggestions=suggestions
+        suggestions=suggestions,
     )
 
 
 def simulate_floating_pool_impact(
-    config: ProductionLineConfig,
-    pool_sizes: List[int],
-    duration_hours: float = 8.0,
-    random_seed: int = 42
+    config: ProductionLineConfig, pool_sizes: List[int], duration_hours: float = 8.0, random_seed: int = 42
 ) -> List[Dict[str, Any]]:
     """
     Simulate impact of different floating pool sizes.
@@ -663,22 +652,20 @@ def simulate_floating_pool_impact(
             break_duration_minutes=config.break_duration_minutes,
             breaks_per_shift=config.breaks_per_shift,
             workers_per_station=config.workers_per_station,
-            floating_pool_size=pool_size
+            floating_pool_size=pool_size,
         )
 
-        result = run_production_simulation(
-            modified_config,
-            duration_hours=duration_hours,
-            random_seed=random_seed
-        )
+        result = run_production_simulation(modified_config, duration_hours=duration_hours, random_seed=random_seed)
 
-        results.append({
-            "floating_pool_size": pool_size,
-            "throughput_per_hour": result.throughput_per_hour,
-            "efficiency": result.efficiency,
-            "units_completed": result.units_completed,
-            "bottleneck": result.bottleneck_station,
-            "quality_yield": result.quality_yield
-        })
+        results.append(
+            {
+                "floating_pool_size": pool_size,
+                "throughput_per_hour": result.throughput_per_hour,
+                "efficiency": result.efficiency,
+                "units_completed": result.units_completed,
+                "bottleneck": result.bottleneck_station,
+                "quality_yield": result.quality_yield,
+            }
+        )
 
     return results

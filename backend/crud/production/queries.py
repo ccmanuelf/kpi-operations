@@ -3,6 +3,7 @@ CRUD query operations for Production Entry
 List, filter, and summary queries
 SECURITY: Multi-tenant client filtering enabled
 """
+
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
@@ -22,7 +23,7 @@ def get_production_entries(
     end_date: Optional[date] = None,
     product_id: Optional[int] = None,
     shift_id: Optional[int] = None,
-    client_id: Optional[str] = None
+    client_id: Optional[str] = None,
 ) -> List[ProductionEntry]:
     """
     Get production entries with filtering
@@ -64,18 +65,16 @@ def get_production_entries(
     if shift_id:
         query = query.filter(ProductionEntry.shift_id == shift_id)
 
-    return query.order_by(
-        ProductionEntry.production_date.desc(),
-        ProductionEntry.production_entry_id.desc()
-    ).offset(skip).limit(limit).all()
+    return (
+        query.order_by(ProductionEntry.production_date.desc(), ProductionEntry.production_entry_id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_daily_summary(
-    db: Session,
-    current_user: User,
-    start_date: date,
-    end_date: Optional[date] = None,
-    client_id: Optional[str] = None
+    db: Session, current_user: User, start_date: date, end_date: Optional[date] = None, client_id: Optional[str] = None
 ) -> List[dict]:
     """
     Get daily production summary
@@ -99,7 +98,7 @@ def get_daily_summary(
         func.sum(ProductionEntry.units_produced).label("total_units"),
         func.avg(ProductionEntry.efficiency_percentage).label("avg_efficiency"),
         func.avg(ProductionEntry.performance_percentage).label("avg_performance"),
-        func.count(ProductionEntry.production_entry_id).label("entry_count")
+        func.count(ProductionEntry.production_entry_id).label("entry_count"),
     )
 
     # SECURITY: Apply client filtering
@@ -114,13 +113,8 @@ def get_daily_summary(
 
     # Apply date filtering
     query = query.filter(
-        and_(
-            ProductionEntry.production_date >= start_date,
-            ProductionEntry.production_date <= end_date
-        )
-    ).group_by(
-        ProductionEntry.production_date
-    )
+        and_(ProductionEntry.production_date >= start_date, ProductionEntry.production_date <= end_date)
+    ).group_by(ProductionEntry.production_date)
 
     results = query.all()
 
@@ -130,7 +124,7 @@ def get_daily_summary(
             "total_units": result.total_units,
             "avg_efficiency": float(result.avg_efficiency) if result.avg_efficiency else 0,
             "avg_performance": float(result.avg_performance) if result.avg_performance else 0,
-            "entry_count": result.entry_count
+            "entry_count": result.entry_count,
         }
         for result in results
     ]

@@ -3,6 +3,7 @@ Comprehensive Production Routes Tests
 Tests API endpoints with authenticated clients and real database.
 Target: Increase routes/production.py coverage from 27% to 80%+
 """
+
 import pytest
 import io
 from datetime import date, datetime, timedelta
@@ -65,35 +66,20 @@ def production_setup(production_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="PROD-TEST-CLIENT",
-        client_name="Production Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="PROD-TEST-CLIENT", client_name="Production Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users
     admin = TestDataFactory.create_user(
-        db,
-        user_id="prod-admin-001",
-        username="prod_admin",
-        role="admin",
-        client_id=None
+        db, user_id="prod-admin-001", username="prod_admin", role="admin", client_id=None
     )
 
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="prod-super-001",
-        username="prod_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="prod-super-001", username="prod_supervisor", role="supervisor", client_id=client.client_id
     )
 
     operator = TestDataFactory.create_user(
-        db,
-        user_id="prod-oper-001",
-        username="prod_operator",
-        role="operator",
-        client_id=client.client_id
+        db, user_id="prod-oper-001", username="prod_operator", role="operator", client_id=client.client_id
     )
 
     # Create product
@@ -102,16 +88,12 @@ def production_setup(production_db):
         client_id=client.client_id,
         product_code="PROD-001",
         product_name="Test Product",
-        ideal_cycle_time=Decimal("0.15")
+        ideal_cycle_time=Decimal("0.15"),
     )
 
     # Create shift
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="Morning Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="Morning Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.flush()
@@ -124,7 +106,7 @@ def production_setup(production_db):
         shift_id=shift.shift_id,
         entered_by=supervisor.user_id,
         count=5,
-        base_date=date.today() - timedelta(days=10)
+        base_date=date.today() - timedelta(days=10),
     )
 
     db.commit()
@@ -159,6 +141,7 @@ def authenticated_client(production_setup):
 
     # Import and override dependencies
     from backend.auth.jwt import get_current_user, get_current_active_supervisor
+
     app.dependency_overrides[get_current_user] = get_mock_user
     app.dependency_overrides[get_current_active_supervisor] = get_mock_supervisor
 
@@ -188,7 +171,7 @@ class TestCreateProductionEntry:
                 "run_time_hours": "8.0",
                 "employees_assigned": 5,
                 "defect_count": 2,
-            }
+            },
         )
 
         assert response.status_code == 201
@@ -213,7 +196,7 @@ class TestCreateProductionEntry:
                 "units_produced": 100,
                 "run_time_hours": "8.0",
                 "employees_assigned": 3,
-            }
+            },
         )
 
         assert response.status_code == 404
@@ -237,7 +220,7 @@ class TestCreateProductionEntry:
                 "units_produced": 100,
                 "run_time_hours": "8.0",
                 "employees_assigned": 3,
-            }
+            },
         )
 
         assert response.status_code == 404
@@ -274,9 +257,7 @@ class TestListProductionEntries:
         today = date.today()
         week_ago = today - timedelta(days=7)
 
-        response = client.get(
-            f"/api/production?start_date={week_ago}&end_date={today}"
-        )
+        response = client.get(f"/api/production?start_date={week_ago}&end_date={today}")
 
         assert response.status_code == 200
 
@@ -327,7 +308,7 @@ class TestUpdateProductionEntry:
             json={
                 "units_produced": 999,
                 "notes": "Updated entry",
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -338,10 +319,7 @@ class TestUpdateProductionEntry:
         """Test error when entry doesn't exist."""
         client, _ = authenticated_client
 
-        response = client.put(
-            "/api/production/99999",
-            json={"units_produced": 100}
-        )
+        response = client.put("/api/production/99999", json={"units_produced": 100})
 
         assert response.status_code == 404
 
@@ -443,7 +421,7 @@ class TestBatchImport:
                         "employees_assigned": 5,
                     }
                 ]
-            }
+            },
         )
 
         assert response.status_code == 200
@@ -455,10 +433,7 @@ class TestBatchImport:
         """Test batch import with empty entries."""
         client, _ = authenticated_client
 
-        response = client.post(
-            "/api/production/batch-import",
-            json={"entries": []}
-        )
+        response = client.post("/api/production/batch-import", json={"entries": []})
 
         assert response.status_code == 200
         data = response.json()

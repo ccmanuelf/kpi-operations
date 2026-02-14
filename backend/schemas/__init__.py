@@ -2,6 +2,7 @@
 SQLAlchemy ORM schemas for database tables
 Complete multi-tenant implementation with all 14 tables
 """
+
 # Core multi-tenant foundation
 from .client import Client, ClientType
 from .user import User, UserRole

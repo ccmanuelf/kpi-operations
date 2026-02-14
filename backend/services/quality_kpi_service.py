@@ -5,6 +5,7 @@ Orchestrates PPM, DPMO, FPY, RTY calculations.
 Phase 1.1: Service Orchestration Layer
 Decouples routes from domain calculations for better testability.
 """
+
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ from backend.crud.client_config import get_client_config_or_defaults
 @dataclass
 class PPMResult:
     """Result of PPM calculation with metadata."""
+
     ppm: Decimal
     total_inspected: int
     total_defects: int
@@ -30,6 +32,7 @@ class PPMResult:
 @dataclass
 class DPMOResult:
     """Result of DPMO calculation with metadata."""
+
     dpmo: Decimal
     sigma_level: Decimal
     total_units: int
@@ -42,6 +45,7 @@ class DPMOResult:
 @dataclass
 class FPYResult:
     """Result of FPY (First Pass Yield) calculation."""
+
     fpy_percentage: Decimal
     first_pass_good: int
     total_units: int
@@ -53,6 +57,7 @@ class FPYResult:
 @dataclass
 class RTYResult:
     """Result of RTY (Rolled Throughput Yield) calculation."""
+
     rty_percentage: Decimal
     step_details: List[Dict[str, Any]]
     total_rework: int
@@ -66,6 +71,7 @@ class RTYResult:
 @dataclass
 class QualityKPIResult:
     """Complete quality KPI result."""
+
     ppm: PPMResult
     dpmo: DPMOResult
     fpy: FPYResult
@@ -90,11 +96,7 @@ class QualityKPIService:
         self.db = db
 
     def calculate_ppm(
-        self,
-        start_date: date,
-        end_date: date,
-        work_order_id: Optional[str] = None,
-        client_id: Optional[str] = None
+        self, start_date: date, end_date: date, work_order_id: Optional[str] = None, client_id: Optional[str] = None
     ) -> PPMResult:
         """
         Calculate PPM for a date range.
@@ -113,24 +115,18 @@ class QualityKPIService:
         from backend.calculations.ppm import calculate_ppm_pure
 
         # Fetch aggregated data
-        aggregates = self._fetch_quality_aggregates(
-            start_date, end_date, work_order_id, client_id
-        )
+        aggregates = self._fetch_quality_aggregates(start_date, end_date, work_order_id, client_id)
 
         # Call pure calculation
         ppm = calculate_ppm_pure(
-            total_inspected=aggregates["total_inspected"],
-            total_defects=aggregates["total_defects"]
+            total_inspected=aggregates["total_inspected"], total_defects=aggregates["total_defects"]
         )
 
         return PPMResult(
             ppm=ppm,
             total_inspected=aggregates["total_inspected"],
             total_defects=aggregates["total_defects"],
-            calculation_period={
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            }
+            calculation_period={"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         )
 
     def calculate_dpmo(
@@ -140,7 +136,7 @@ class QualityKPIService:
         work_order_id: Optional[str] = None,
         part_number: Optional[str] = None,
         opportunities_per_unit: Optional[int] = None,
-        client_id: Optional[str] = None
+        client_id: Optional[str] = None,
     ) -> DPMOResult:
         """
         Calculate DPMO for a date range.
@@ -162,7 +158,7 @@ class QualityKPIService:
             calculate_dpmo_pure,
             calculate_sigma_level,
             get_opportunities_for_part,
-            get_client_opportunities_default
+            get_client_opportunities_default,
         )
 
         # Determine opportunities per unit
@@ -170,23 +166,19 @@ class QualityKPIService:
         if opportunities_per_unit is not None:
             effective_opportunities = opportunities_per_unit
         elif part_number:
-            effective_opportunities = get_opportunities_for_part(
-                self.db, part_number, client_id
-            )
+            effective_opportunities = get_opportunities_for_part(self.db, part_number, client_id)
             using_part_specific = True
         else:
             effective_opportunities = get_client_opportunities_default(self.db, client_id)
 
         # Fetch aggregated data
-        aggregates = self._fetch_quality_aggregates(
-            start_date, end_date, work_order_id, client_id
-        )
+        aggregates = self._fetch_quality_aggregates(start_date, end_date, work_order_id, client_id)
 
         # Call pure calculation
         dpmo, total_opportunities = calculate_dpmo_pure(
             total_defects=aggregates["total_defects_count"],
             total_units=aggregates["total_inspected"],
-            opportunities_per_unit=effective_opportunities
+            opportunities_per_unit=effective_opportunities,
         )
 
         sigma_level = calculate_sigma_level(dpmo)
@@ -198,14 +190,11 @@ class QualityKPIService:
             total_defects=aggregates["total_defects_count"],
             total_opportunities=total_opportunities,
             opportunities_per_unit=effective_opportunities,
-            using_part_specific_opportunities=using_part_specific
+            using_part_specific_opportunities=using_part_specific,
         )
 
     def calculate_dpmo_by_part(
-        self,
-        start_date: date,
-        end_date: date,
-        client_id: Optional[str] = None
+        self, start_date: date, end_date: date, client_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Calculate DPMO with part-specific opportunities breakdown.
@@ -217,7 +206,7 @@ class QualityKPIService:
             calculate_dpmo_pure,
             calculate_sigma_level,
             get_opportunities_for_parts,
-            get_client_opportunities_default
+            get_client_opportunities_default,
         )
 
         start_datetime = datetime.combine(start_date, datetime.min.time())
@@ -225,10 +214,7 @@ class QualityKPIService:
 
         # Get quality entries with job info
         query = self.db.query(QualityEntry).filter(
-            and_(
-                QualityEntry.shift_date >= start_datetime,
-                QualityEntry.shift_date <= end_datetime
-            )
+            and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime)
         )
 
         if client_id:
@@ -244,7 +230,7 @@ class QualityKPIService:
                 "total_defects": 0,
                 "total_opportunities": 0,
                 "by_part": [],
-                "using_part_specific_opportunities": False
+                "using_part_specific_opportunities": False,
             }
 
         # Get part numbers from jobs
@@ -277,7 +263,7 @@ class QualityKPIService:
                     "part_number": key,
                     "opportunities_per_unit": opportunities,
                     "units_inspected": 0,
-                    "defects_found": 0
+                    "defects_found": 0,
                 }
 
             part_metrics[key]["units_inspected"] += qe.units_inspected or 0
@@ -300,15 +286,17 @@ class QualityKPIService:
             total_defects += defects
             total_opportunities += part_opps
 
-            by_part.append({
-                "part_number": key,
-                "units_inspected": units,
-                "defects_found": defects,
-                "opportunities_per_unit": opps,
-                "total_opportunities": part_opps,
-                "dpmo": float(part_dpmo),
-                "sigma_level": float(calculate_sigma_level(part_dpmo))
-            })
+            by_part.append(
+                {
+                    "part_number": key,
+                    "units_inspected": units,
+                    "defects_found": defects,
+                    "opportunities_per_unit": opps,
+                    "total_opportunities": part_opps,
+                    "dpmo": float(part_dpmo),
+                    "sigma_level": float(calculate_sigma_level(part_dpmo)),
+                }
+            )
 
         # Overall DPMO
         if total_opportunities > 0:
@@ -325,15 +313,11 @@ class QualityKPIService:
             "total_defects": total_defects,
             "total_opportunities": total_opportunities,
             "by_part": by_part,
-            "using_part_specific_opportunities": len(part_numbers) > 0
+            "using_part_specific_opportunities": len(part_numbers) > 0,
         }
 
     def calculate_fpy(
-        self,
-        start_date: date,
-        end_date: date,
-        inspection_stage: Optional[str] = None,
-        client_id: Optional[str] = None
+        self, start_date: date, end_date: date, inspection_stage: Optional[str] = None, client_id: Optional[str] = None
     ) -> FPYResult:
         """
         Calculate First Pass Yield for a date range.
@@ -352,15 +336,10 @@ class QualityKPIService:
         from backend.calculations.fpy_rty import calculate_fpy_pure
 
         # Fetch aggregated data
-        aggregates = self._fetch_fpy_aggregates(
-            start_date, end_date, inspection_stage, client_id
-        )
+        aggregates = self._fetch_fpy_aggregates(start_date, end_date, inspection_stage, client_id)
 
         # Call pure calculation
-        fpy = calculate_fpy_pure(
-            total_passed=aggregates["total_passed"],
-            total_inspected=aggregates["total_inspected"]
-        )
+        fpy = calculate_fpy_pure(total_passed=aggregates["total_passed"], total_inspected=aggregates["total_inspected"])
 
         return FPYResult(
             fpy_percentage=fpy,
@@ -368,7 +347,7 @@ class QualityKPIService:
             total_units=aggregates["total_inspected"],
             units_reworked=aggregates["total_rework"],
             units_requiring_repair=aggregates["total_repair"],
-            units_scrapped=aggregates["total_scrap"]
+            units_scrapped=aggregates["total_scrap"],
         )
 
     def calculate_rty(
@@ -376,7 +355,7 @@ class QualityKPIService:
         start_date: date,
         end_date: date,
         process_steps: Optional[List[str]] = None,
-        client_id: Optional[str] = None
+        client_id: Optional[str] = None,
     ) -> RTYResult:
         """
         Calculate Rolled Throughput Yield across process steps.
@@ -395,7 +374,7 @@ class QualityKPIService:
         from backend.calculations.fpy_rty import calculate_rty_pure, get_rty_interpretation
 
         if not process_steps:
-            process_steps = ['Incoming', 'In-Process', 'Final']
+            process_steps = ["Incoming", "In-Process", "Final"]
 
         # Calculate FPY for each step
         step_details = []
@@ -406,14 +385,9 @@ class QualityKPIService:
         total_inspected = 0
 
         for step in process_steps:
-            aggregates = self._fetch_fpy_aggregates(
-                start_date, end_date, step, client_id
-            )
+            aggregates = self._fetch_fpy_aggregates(start_date, end_date, step, client_id)
 
-            fpy = calculate_fpy_pure(
-                aggregates["total_passed"],
-                aggregates["total_inspected"]
-            )
+            fpy = calculate_fpy_pure(aggregates["total_passed"], aggregates["total_inspected"])
 
             step_fpys.append(fpy)
             total_rework += aggregates["total_rework"]
@@ -421,15 +395,17 @@ class QualityKPIService:
             total_scrap += aggregates["total_scrap"]
             total_inspected += aggregates["total_inspected"]
 
-            step_details.append({
-                "step": step,
-                "fpy_percentage": float(fpy),
-                "first_pass_good": aggregates["total_passed"],
-                "total_inspected": aggregates["total_inspected"],
-                "units_reworked": aggregates["total_rework"],
-                "units_requiring_repair": aggregates["total_repair"],
-                "units_scrapped": aggregates["total_scrap"]
-            })
+            step_details.append(
+                {
+                    "step": step,
+                    "fpy_percentage": float(fpy),
+                    "first_pass_good": aggregates["total_passed"],
+                    "total_inspected": aggregates["total_inspected"],
+                    "units_reworked": aggregates["total_rework"],
+                    "units_requiring_repair": aggregates["total_repair"],
+                    "units_scrapped": aggregates["total_scrap"],
+                }
+            )
 
         # Calculate RTY
         rty = calculate_rty_pure(step_fpys)
@@ -449,14 +425,10 @@ class QualityKPIService:
             total_scrap=total_scrap,
             rework_impact_percentage=rework_impact,
             repair_impact_percentage=repair_impact,
-            interpretation=get_rty_interpretation(rty, repair_impact)
+            interpretation=get_rty_interpretation(rty, repair_impact),
         )
 
-    def calculate_work_order_job_rty(
-        self,
-        work_order_id: str,
-        client_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def calculate_work_order_job_rty(self, work_order_id: str, client_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Calculate RTY across all jobs within a work order.
 
@@ -467,12 +439,7 @@ class QualityKPIService:
 
         return calculate_work_order_job_rty(self.db, work_order_id, client_id)
 
-    def get_quality_summary(
-        self,
-        start_date: date,
-        end_date: date,
-        client_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def get_quality_summary(self, start_date: date, end_date: date, client_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get comprehensive quality summary for a date range.
 
@@ -484,31 +451,28 @@ class QualityKPIService:
         rty = self.calculate_rty(start_date, end_date, client_id=client_id)
 
         return {
-            "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            },
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "ppm": {
                 "value": float(ppm.ppm),
                 "total_inspected": ppm.total_inspected,
-                "total_defects": ppm.total_defects
+                "total_defects": ppm.total_defects,
             },
             "dpmo": {
                 "value": float(dpmo.dpmo),
                 "sigma_level": float(dpmo.sigma_level),
-                "opportunities_per_unit": dpmo.opportunities_per_unit
+                "opportunities_per_unit": dpmo.opportunities_per_unit,
             },
             "fpy": {
                 "value": float(fpy.fpy_percentage),
                 "first_pass_good": fpy.first_pass_good,
-                "total_units": fpy.total_units
+                "total_units": fpy.total_units,
             },
             "rty": {
                 "value": float(rty.rty_percentage),
                 "step_count": len(rty.step_details),
-                "interpretation": rty.interpretation
+                "interpretation": rty.interpretation,
             },
-            "calculated_at": datetime.utcnow().isoformat()
+            "calculated_at": datetime.utcnow().isoformat(),
         }
 
     # ========================================================================
@@ -516,26 +480,17 @@ class QualityKPIService:
     # ========================================================================
 
     def _fetch_quality_aggregates(
-        self,
-        start_date: date,
-        end_date: date,
-        work_order_id: Optional[str] = None,
-        client_id: Optional[str] = None
+        self, start_date: date, end_date: date, work_order_id: Optional[str] = None, client_id: Optional[str] = None
     ) -> Dict[str, int]:
         """Fetch aggregated quality data for calculations."""
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
         query = self.db.query(
-            func.sum(QualityEntry.units_inspected).label('total_inspected'),
-            func.sum(QualityEntry.units_defective).label('total_defects'),
-            func.sum(QualityEntry.total_defects_count).label('total_defects_count')
-        ).filter(
-            and_(
-                QualityEntry.shift_date >= start_datetime,
-                QualityEntry.shift_date <= end_datetime
-            )
-        )
+            func.sum(QualityEntry.units_inspected).label("total_inspected"),
+            func.sum(QualityEntry.units_defective).label("total_defects"),
+            func.sum(QualityEntry.total_defects_count).label("total_defects_count"),
+        ).filter(and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime))
 
         if work_order_id:
             query = query.filter(QualityEntry.work_order_id == work_order_id)
@@ -548,32 +503,23 @@ class QualityKPIService:
         return {
             "total_inspected": result.total_inspected or 0,
             "total_defects": result.total_defects or 0,
-            "total_defects_count": result.total_defects_count or result.total_defects or 0
+            "total_defects_count": result.total_defects_count or result.total_defects or 0,
         }
 
     def _fetch_fpy_aggregates(
-        self,
-        start_date: date,
-        end_date: date,
-        inspection_stage: Optional[str] = None,
-        client_id: Optional[str] = None
+        self, start_date: date, end_date: date, inspection_stage: Optional[str] = None, client_id: Optional[str] = None
     ) -> Dict[str, int]:
         """Fetch aggregated FPY data for calculations."""
         start_datetime = datetime.combine(start_date, datetime.min.time())
         end_datetime = datetime.combine(end_date, datetime.max.time())
 
         query = self.db.query(
-            func.sum(QualityEntry.units_inspected).label('total_inspected'),
-            func.sum(QualityEntry.units_passed).label('total_passed'),
-            func.sum(QualityEntry.units_reworked).label('total_rework'),
-            func.sum(QualityEntry.units_requiring_repair).label('total_repair'),
-            func.sum(QualityEntry.units_scrapped).label('total_scrap')
-        ).filter(
-            and_(
-                QualityEntry.shift_date >= start_datetime,
-                QualityEntry.shift_date <= end_datetime
-            )
-        )
+            func.sum(QualityEntry.units_inspected).label("total_inspected"),
+            func.sum(QualityEntry.units_passed).label("total_passed"),
+            func.sum(QualityEntry.units_reworked).label("total_rework"),
+            func.sum(QualityEntry.units_requiring_repair).label("total_repair"),
+            func.sum(QualityEntry.units_scrapped).label("total_scrap"),
+        ).filter(and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime))
 
         if inspection_stage:
             query = query.filter(QualityEntry.inspection_stage == inspection_stage)
@@ -588,5 +534,5 @@ class QualityKPIService:
             "total_passed": result.total_passed or 0,
             "total_rework": result.total_rework or 0,
             "total_repair": result.total_repair or 0,
-            "total_scrap": result.total_scrap or 0
+            "total_scrap": result.total_scrap or 0,
         }

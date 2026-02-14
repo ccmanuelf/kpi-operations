@@ -6,6 +6,7 @@ Includes inference engine for missing ideal_cycle_time
 
 Phase 1.2: Added pure calculation functions for service layer separation
 """
+
 from decimal import Decimal
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
@@ -19,10 +20,9 @@ from backend.calculations.efficiency import infer_ideal_cycle_time
 # Phase 1.2: These functions can be unit tested without database
 # =============================================================================
 
+
 def calculate_performance_pure(
-    units_produced: int,
-    run_time_hours: Decimal,
-    ideal_cycle_time: Decimal
+    units_produced: int, run_time_hours: Decimal, ideal_cycle_time: Decimal
 ) -> Tuple[Decimal, Decimal]:
     """
     Pure performance calculation - no database access.
@@ -50,9 +50,7 @@ def calculate_performance_pure(
     actual_rate = Decimal(str(units_produced)) / run_time_hours
 
     # Calculate performance percentage
-    performance = (
-        ideal_cycle_time * Decimal(str(units_produced))
-    ) / run_time_hours * 100
+    performance = (ideal_cycle_time * Decimal(str(units_produced))) / run_time_hours * 100
 
     # Cap at 150% (reasonable max performance)
     performance = min(performance, Decimal("150"))
@@ -60,11 +58,7 @@ def calculate_performance_pure(
     return (performance.quantize(Decimal("0.01")), actual_rate.quantize(Decimal("0.01")))
 
 
-def calculate_quality_rate_pure(
-    units_produced: int,
-    defect_count: int,
-    scrap_count: int
-) -> Tuple[Decimal, int]:
+def calculate_quality_rate_pure(units_produced: int, defect_count: int, scrap_count: int) -> Tuple[Decimal, int]:
     """
     Pure quality rate calculation - no database access.
 
@@ -93,11 +87,7 @@ def calculate_quality_rate_pure(
     return (max(Decimal("0"), quality_rate.quantize(Decimal("0.01"))), good_units)
 
 
-def calculate_oee_pure(
-    availability: Decimal,
-    performance: Decimal,
-    quality: Decimal
-) -> Decimal:
+def calculate_oee_pure(availability: Decimal, performance: Decimal, quality: Decimal) -> Decimal:
     """
     Pure OEE calculation - no database access.
 
@@ -120,9 +110,7 @@ def calculate_oee_pure(
 
 
 def calculate_performance(
-    db: Session,
-    entry: ProductionEntry,
-    product: Optional[Product] = None
+    db: Session, entry: ProductionEntry, product: Optional[Product] = None
 ) -> Tuple[Decimal, Decimal, bool]:
     """
     Calculate performance percentage for a production entry
@@ -137,18 +125,14 @@ def calculate_performance(
     """
     # Get product if not provided
     if product is None:
-        product = db.query(Product).filter(
-            Product.product_id == entry.product_id
-        ).first()
+        product = db.query(Product).filter(Product.product_id == entry.product_id).first()
 
     # Get ideal cycle time (with inference if needed)
     if product and product.ideal_cycle_time is not None:
         ideal_cycle_time = Decimal(str(product.ideal_cycle_time))
         was_inferred = False
     else:
-        ideal_cycle_time, was_inferred = infer_ideal_cycle_time(
-            db, entry.product_id, entry.production_entry_id
-        )
+        ideal_cycle_time, was_inferred = infer_ideal_cycle_time(db, entry.product_id, entry.production_entry_id)
 
     # Calculate performance
     # Formula: (ideal_cycle_time × units_produced) / run_time_hours × 100
@@ -156,9 +140,7 @@ def calculate_performance(
     if entry.run_time_hours == 0:
         return (Decimal("0"), ideal_cycle_time, was_inferred)
 
-    performance = (
-        ideal_cycle_time * entry.units_produced
-    ) / Decimal(str(entry.run_time_hours)) * 100
+    performance = (ideal_cycle_time * entry.units_produced) / Decimal(str(entry.run_time_hours)) * 100
 
     # Cap at 150% (reasonable max performance)
     performance = min(performance, Decimal("150"))
@@ -166,10 +148,7 @@ def calculate_performance(
     return (performance.quantize(Decimal("0.01")), ideal_cycle_time, was_inferred)
 
 
-def update_performance_for_entry(
-    db: Session,
-    entry_id: str
-) -> Optional[ProductionEntry]:
+def update_performance_for_entry(db: Session, entry_id: str) -> Optional[ProductionEntry]:
     """
     Update performance for a specific production entry
 
@@ -180,16 +159,12 @@ def update_performance_for_entry(
     Returns:
         Updated production entry or None if not found
     """
-    entry = db.query(ProductionEntry).filter(
-        ProductionEntry.production_entry_id == entry_id
-    ).first()
+    entry = db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == entry_id).first()
 
     if not entry:
         return None
 
-    product = db.query(Product).filter(
-        Product.product_id == entry.product_id
-    ).first()
+    product = db.query(Product).filter(Product.product_id == entry.product_id).first()
 
     performance, _, _ = calculate_performance(db, entry, product)
 
@@ -221,11 +196,7 @@ def calculate_quality_rate(entry: ProductionEntry) -> Decimal:
     return max(Decimal("0"), quality_rate.quantize(Decimal("0.01")))
 
 
-def calculate_oee(
-    db: Session,
-    entry: ProductionEntry,
-    product: Optional[Product] = None
-) -> Tuple[Decimal, dict]:
+def calculate_oee(db: Session, entry: ProductionEntry, product: Optional[Product] = None) -> Tuple[Decimal, dict]:
     """
     Calculate Overall Equipment Effectiveness (OEE)
     Formula: Availability × Performance × Quality
@@ -256,7 +227,7 @@ def calculate_oee(
         "availability": availability,
         "performance": performance,
         "quality": quality,
-        "oee": oee.quantize(Decimal("0.01"))
+        "oee": oee.quantize(Decimal("0.01")),
     }
 
     return (oee.quantize(Decimal("0.01")), components)

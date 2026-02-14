@@ -2,6 +2,7 @@
 Comprehensive Tests for Soft Delete Utility Module
 Target: Increase utils/soft_delete.py coverage to 85%+
 """
+
 import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, patch, PropertyMock
@@ -131,11 +132,7 @@ class TestSoftDeleteWithTimestamp:
         mock_entity.deleted_at = None
         mock_entity.deleted_by = None
 
-        result = soft_delete_with_timestamp(
-            mock_db, mock_entity,
-            deleted_by_value=123,
-            commit=False
-        )
+        result = soft_delete_with_timestamp(mock_db, mock_entity, deleted_by_value=123, commit=False)
 
         assert result is True
         assert mock_entity.deleted_by == 123
@@ -145,7 +142,7 @@ class TestSoftDeleteWithTimestamp:
         from utils.soft_delete import soft_delete_with_timestamp
 
         mock_db = MagicMock(spec=Session)
-        mock_entity = MagicMock(spec=['is_active'])
+        mock_entity = MagicMock(spec=["is_active"])
         mock_entity.is_active = True
 
         result = soft_delete_with_timestamp(mock_db, mock_entity, commit=False)
@@ -186,7 +183,7 @@ class TestSoftDeleteWithTimestamp:
         from utils.soft_delete import soft_delete_with_timestamp
 
         mock_db = MagicMock(spec=Session)
-        mock_entity = MagicMock(spec=['deleted_at'])  # No is_active
+        mock_entity = MagicMock(spec=["deleted_at"])  # No is_active
 
         result = soft_delete_with_timestamp(mock_db, mock_entity, commit=False)
 
@@ -408,7 +405,7 @@ class TestSoftDeleteMixin:
         mixin_instance.deleted_by = None
 
         # Call the actual mixin method by patching
-        with patch('utils.soft_delete.soft_delete_with_timestamp') as mock_func:
+        with patch("utils.soft_delete.soft_delete_with_timestamp") as mock_func:
             mock_func.return_value = True
             SoftDeleteMixin.soft_delete(mixin_instance, mock_db, deleted_by_user=123)
             mock_func.assert_called_once()
@@ -422,7 +419,7 @@ class TestSoftDeleteMixin:
         mixin_instance = MagicMock(spec=SoftDeleteMixin)
         mixin_instance.is_active = False
 
-        with patch('utils.soft_delete.restore_soft_deleted') as mock_func:
+        with patch("utils.soft_delete.restore_soft_deleted") as mock_func:
             mock_func.return_value = True
             SoftDeleteMixin.restore(mixin_instance, mock_db)
             mock_func.assert_called_once()
@@ -528,10 +525,7 @@ class TestCreateSoftDeleteFunction:
 
         permission_check = lambda user: user.role == "admin"
 
-        delete_fn = create_soft_delete_function(
-            mock_model, "id",
-            permission_check=permission_check
-        )
+        delete_fn = create_soft_delete_function(mock_model, "id", permission_check=permission_check)
         result = delete_fn(mock_db, 123, current_user=mock_user)
 
         assert result is True
@@ -549,10 +543,7 @@ class TestCreateSoftDeleteFunction:
 
         permission_check = lambda user: user.role == "admin"
 
-        delete_fn = create_soft_delete_function(
-            mock_model, "id",
-            permission_check=permission_check
-        )
+        delete_fn = create_soft_delete_function(mock_model, "id", permission_check=permission_check)
         result = delete_fn(mock_db, 123, current_user=mock_user)
 
         assert result is False
@@ -568,10 +559,7 @@ class TestCreateSoftDeleteFunction:
         mock_db = MagicMock(spec=Session)
         mock_db.query.return_value.filter.return_value.first.return_value = mock_entity
 
-        delete_fn = create_soft_delete_function(
-            mock_model, "id",
-            is_active_field="active"
-        )
+        delete_fn = create_soft_delete_function(mock_model, "id", is_active_field="active")
         result = delete_fn(mock_db, 123)
 
         assert result is True

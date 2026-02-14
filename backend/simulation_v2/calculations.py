@@ -43,7 +43,7 @@ def calculate_all_blocks(
     metrics: SimulationMetrics,
     validation_report: ValidationReport,
     duration_seconds: float,
-    defaults_applied: List[Dict[str, Any]] | None = None
+    defaults_applied: List[Dict[str, Any]] | None = None,
 ) -> SimulationResults:
     """
     Calculate all 8 output blocks from simulation metrics.
@@ -67,17 +67,11 @@ def calculate_all_blocks(
     # Build block data
     weekly_demand_capacity = _calculate_block1_weekly_capacity(config, metrics)
     daily_summary = _calculate_block2_daily_summary(config, metrics)
-    station_performance = _calculate_block3_station_performance(
-        config, metrics, horizon_minutes
-    )
-    free_capacity = _calculate_block4_free_capacity(
-        config, metrics, station_performance
-    )
+    station_performance = _calculate_block3_station_performance(config, metrics, horizon_minutes)
+    free_capacity = _calculate_block4_free_capacity(config, metrics, station_performance)
     bundle_metrics = _calculate_block5_bundle_metrics(config, metrics)
     per_product_summary = _calculate_block6_per_product(config, metrics)
-    rebalancing_suggestions = _calculate_block7_rebalancing(
-        station_performance, config
-    )
+    rebalancing_suggestions = _calculate_block7_rebalancing(station_performance, config)
     assumption_log = _calculate_block8_assumption_log(config, defaults_applied)
 
     return SimulationResults(
@@ -90,13 +84,12 @@ def calculate_all_blocks(
         rebalancing_suggestions=rebalancing_suggestions,
         assumption_log=assumption_log,
         validation_report=validation_report,
-        simulation_duration_seconds=duration_seconds
+        simulation_duration_seconds=duration_seconds,
     )
 
 
 def _calculate_block1_weekly_capacity(
-    config: SimulationConfig,
-    metrics: SimulationMetrics
+    config: SimulationConfig, metrics: SimulationMetrics
 ) -> List[WeeklyDemandCapacityRow]:
     """
     Block 1: Weekly Demand vs Capacity comparison.
@@ -140,21 +133,20 @@ def _calculate_block1_weekly_capacity(
         else:
             status = CoverageStatus.SHORTFALL
 
-        rows.append(WeeklyDemandCapacityRow(
-            product=product,
-            weekly_demand_pcs=int(weekly_demand),
-            max_weekly_capacity_pcs=weekly_capacity,
-            demand_coverage_pct=round(coverage_pct, 1),
-            status=status
-        ))
+        rows.append(
+            WeeklyDemandCapacityRow(
+                product=product,
+                weekly_demand_pcs=int(weekly_demand),
+                max_weekly_capacity_pcs=weekly_capacity,
+                demand_coverage_pct=round(coverage_pct, 1),
+                status=status,
+            )
+        )
 
     return rows
 
 
-def _calculate_block2_daily_summary(
-    config: SimulationConfig,
-    metrics: SimulationMetrics
-) -> DailySummary:
+def _calculate_block2_daily_summary(config: SimulationConfig, metrics: SimulationMetrics) -> DailySummary:
     """
     Block 2: Daily aggregate summary.
 
@@ -176,28 +168,16 @@ def _calculate_block2_daily_summary(
             total_daily_demand += config.total_demand * demand.mix_share_pct / 100
 
     # Calculate coverage
-    coverage_pct = (
-        (daily_throughput / total_daily_demand * 100)
-        if total_daily_demand > 0 else 0
-    )
+    coverage_pct = (daily_throughput / total_daily_demand * 100) if total_daily_demand > 0 else 0
 
     # Cycle time statistics
-    avg_cycle_time = (
-        statistics.mean(metrics.cycle_times)
-        if metrics.cycle_times else 0
-    )
+    avg_cycle_time = statistics.mean(metrics.cycle_times) if metrics.cycle_times else 0
 
     # WIP statistics
-    avg_wip = (
-        statistics.mean(metrics.wip_samples)
-        if metrics.wip_samples else 0
-    )
+    avg_wip = statistics.mean(metrics.wip_samples) if metrics.wip_samples else 0
 
     # Determine bundle size string
-    bundle_sizes = set(
-        d.bundle_size for d in config.demands
-        if d.product in metrics.throughput_by_product
-    )
+    bundle_sizes = set(d.bundle_size for d in config.demands if d.product in metrics.throughput_by_product)
     if len(bundle_sizes) == 0:
         bundle_size_str = "1"
     elif len(bundle_sizes) == 1:
@@ -214,14 +194,12 @@ def _calculate_block2_daily_summary(
         avg_cycle_time_min=round(avg_cycle_time, 1),
         avg_wip_pcs=round(avg_wip, 0),
         bundles_processed_per_day=int(metrics.bundles_completed / config.horizon_days),
-        bundle_size_pcs=bundle_size_str
+        bundle_size_pcs=bundle_size_str,
     )
 
 
 def _calculate_block3_station_performance(
-    config: SimulationConfig,
-    metrics: SimulationMetrics,
-    horizon_minutes: float
+    config: SimulationConfig, metrics: SimulationMetrics, horizon_minutes: float
 ) -> List[StationPerformanceRow]:
     """
     Block 3: Per-station/operation performance metrics.
@@ -254,47 +232,42 @@ def _calculate_block3_station_performance(
         queue_waits = metrics.station_queue_waits.get(machine_tool, [])
 
         # Calculate utilization
-        util_pct = (
-            (busy_time / available_minutes * 100)
-            if available_minutes > 0 else 0
-        )
+        util_pct = (busy_time / available_minutes * 100) if available_minutes > 0 else 0
 
         # Average processing time per piece
         avg_process_time = (busy_time / pieces) if pieces > 0 else op.sam_min
 
         # Average queue wait time
-        avg_queue_wait = (
-            statistics.mean(queue_waits) if queue_waits else 0
-        )
+        avg_queue_wait = statistics.mean(queue_waits) if queue_waits else 0
 
         # Bottleneck/Donor flags
         is_bottleneck = util_pct >= BOTTLENECK_UTILIZATION_THRESHOLD
         is_donor = util_pct <= DONOR_UTILIZATION_THRESHOLD and op.operators > 1
 
-        rows.append(StationPerformanceRow(
-            product=op.product,
-            step=op.step,
-            operation=op.operation,
-            machine_tool=machine_tool,
-            sequence=op.sequence,
-            grouping=op.grouping,
-            operators=op.operators,
-            total_pieces_processed=pieces,
-            total_busy_time_min=round(busy_time, 1),
-            avg_processing_time_min=round(avg_process_time, 2),
-            util_pct=round(util_pct, 1),
-            queue_wait_time_min=round(avg_queue_wait, 1),
-            is_bottleneck=is_bottleneck,
-            is_donor=is_donor
-        ))
+        rows.append(
+            StationPerformanceRow(
+                product=op.product,
+                step=op.step,
+                operation=op.operation,
+                machine_tool=machine_tool,
+                sequence=op.sequence,
+                grouping=op.grouping,
+                operators=op.operators,
+                total_pieces_processed=pieces,
+                total_busy_time_min=round(busy_time, 1),
+                avg_processing_time_min=round(avg_process_time, 2),
+                util_pct=round(util_pct, 1),
+                queue_wait_time_min=round(avg_queue_wait, 1),
+                is_bottleneck=is_bottleneck,
+                is_donor=is_donor,
+            )
+        )
 
     return rows
 
 
 def _calculate_block4_free_capacity(
-    config: SimulationConfig,
-    metrics: SimulationMetrics,
-    station_performance: List[StationPerformanceRow]
+    config: SimulationConfig, metrics: SimulationMetrics, station_performance: List[StationPerformanceRow]
 ) -> FreeCapacityAnalysis:
     """
     Block 4: Free capacity analysis.
@@ -303,10 +276,7 @@ def _calculate_block4_free_capacity(
     calculates equivalent free resources.
     """
     # Find bottleneck utilization (highest utilization station)
-    bottleneck_util = max(
-        (s.util_pct for s in station_performance),
-        default=0
-    )
+    bottleneck_util = max((s.util_pct for s in station_performance), default=0)
 
     # Daily figures
     total_throughput = sum(metrics.throughput_by_product.values())
@@ -329,10 +299,7 @@ def _calculate_block4_free_capacity(
         daily_max_capacity = int(daily_throughput) if daily_throughput > 0 else 0
 
     # Demand usage percentage
-    demand_usage_pct = (
-        (total_daily_demand / daily_max_capacity * 100)
-        if daily_max_capacity > 0 else 100
-    )
+    demand_usage_pct = (total_daily_demand / daily_max_capacity * 100) if daily_max_capacity > 0 else 100
 
     # Free capacity calculations
     free_pct = max(0, 100 - demand_usage_pct)
@@ -344,8 +311,7 @@ def _calculate_block4_free_capacity(
 
     # Equivalent free operators (based on shift 1 hours as reference)
     equivalent_free_operators = (
-        free_bottleneck_hours / config.schedule.shift1_hours
-        if config.schedule.shift1_hours > 0 else 0
+        free_bottleneck_hours / config.schedule.shift1_hours if config.schedule.shift1_hours > 0 else 0
     )
 
     return FreeCapacityAnalysis(
@@ -354,14 +320,11 @@ def _calculate_block4_free_capacity(
         demand_usage_pct=round(demand_usage_pct, 1),
         free_line_hours_per_day=round(free_line_hours, 2),
         free_operator_hours_at_bottleneck_per_day=round(free_bottleneck_hours, 2),
-        equivalent_free_operators_full_shift=round(equivalent_free_operators, 2)
+        equivalent_free_operators_full_shift=round(equivalent_free_operators, 2),
     )
 
 
-def _calculate_block5_bundle_metrics(
-    config: SimulationConfig,
-    metrics: SimulationMetrics
-) -> List[BundleMetricsRow]:
+def _calculate_block5_bundle_metrics(config: SimulationConfig, metrics: SimulationMetrics) -> List[BundleMetricsRow]:
     """
     Block 5: Bundle behavior metrics.
 
@@ -389,45 +352,32 @@ def _calculate_block5_bundle_metrics(
             daily_demand = 0
 
         # Bundles per day
-        bundles_per_day = (
-            int(daily_demand / demand.bundle_size)
-            if demand.bundle_size > 0 else 0
-        )
+        bundles_per_day = int(daily_demand / demand.bundle_size) if demand.bundle_size > 0 else 0
 
         # Bundle cycle time from product-specific data
         product_cycle_times = metrics.cycle_times_by_product.get(product, [])
-        avg_bundle_cycle_time = (
-            statistics.mean(product_cycle_times)
-            if product_cycle_times else None
-        )
+        avg_bundle_cycle_time = statistics.mean(product_cycle_times) if product_cycle_times else None
 
         # Bundle system occupancy from samples
         bundle_samples = metrics.bundles_in_system_samples.get(product, [])
-        avg_bundles_in_system = (
-            statistics.mean(bundle_samples)
-            if bundle_samples else None
-        )
-        max_bundles_in_system = (
-            max(bundle_samples)
-            if bundle_samples else None
-        )
+        avg_bundles_in_system = statistics.mean(bundle_samples) if bundle_samples else None
+        max_bundles_in_system = max(bundle_samples) if bundle_samples else None
 
-        rows.append(BundleMetricsRow(
-            product=product,
-            bundle_size_pcs=demand.bundle_size,
-            bundles_arriving_per_day=bundles_per_day,
-            avg_bundles_in_system=round(avg_bundles_in_system, 1) if avg_bundles_in_system else None,
-            max_bundles_in_system=max_bundles_in_system,
-            avg_bundle_cycle_time_min=round(avg_bundle_cycle_time, 1) if avg_bundle_cycle_time else None
-        ))
+        rows.append(
+            BundleMetricsRow(
+                product=product,
+                bundle_size_pcs=demand.bundle_size,
+                bundles_arriving_per_day=bundles_per_day,
+                avg_bundles_in_system=round(avg_bundles_in_system, 1) if avg_bundles_in_system else None,
+                max_bundles_in_system=max_bundles_in_system,
+                avg_bundle_cycle_time_min=round(avg_bundle_cycle_time, 1) if avg_bundle_cycle_time else None,
+            )
+        )
 
     return rows
 
 
-def _calculate_block6_per_product(
-    config: SimulationConfig,
-    metrics: SimulationMetrics
-) -> List[PerProductSummaryRow]:
+def _calculate_block6_per_product(config: SimulationConfig, metrics: SimulationMetrics) -> List[PerProductSummaryRow]:
     """
     Block 6: Per-product summary.
 
@@ -466,33 +416,28 @@ def _calculate_block6_per_product(
         weekly_throughput = int(daily_throughput * config.schedule.work_days)
 
         # Calculate coverage percentages
-        daily_coverage = (
-            (daily_throughput / daily_demand * 100)
-            if daily_demand > 0 else 0
-        )
-        weekly_coverage = (
-            (weekly_throughput / weekly_demand * 100)
-            if weekly_demand > 0 else 0
-        )
+        daily_coverage = (daily_throughput / daily_demand * 100) if daily_demand > 0 else 0
+        weekly_coverage = (weekly_throughput / weekly_demand * 100) if weekly_demand > 0 else 0
 
-        rows.append(PerProductSummaryRow(
-            product=product,
-            bundle_size_pcs=demand.bundle_size,
-            mix_share_pct=demand.mix_share_pct,
-            daily_demand_pcs=int(daily_demand),
-            daily_throughput_pcs=daily_throughput,
-            daily_coverage_pct=round(daily_coverage, 1),
-            weekly_demand_pcs=int(weekly_demand),
-            weekly_throughput_pcs=weekly_throughput,
-            weekly_coverage_pct=round(weekly_coverage, 1)
-        ))
+        rows.append(
+            PerProductSummaryRow(
+                product=product,
+                bundle_size_pcs=demand.bundle_size,
+                mix_share_pct=demand.mix_share_pct,
+                daily_demand_pcs=int(daily_demand),
+                daily_throughput_pcs=daily_throughput,
+                daily_coverage_pct=round(daily_coverage, 1),
+                weekly_demand_pcs=int(weekly_demand),
+                weekly_throughput_pcs=weekly_throughput,
+                weekly_coverage_pct=round(weekly_coverage, 1),
+            )
+        )
 
     return rows
 
 
 def _calculate_block7_rebalancing(
-    station_performance: List[StationPerformanceRow],
-    config: SimulationConfig
+    station_performance: List[StationPerformanceRow], config: SimulationConfig
 ) -> List[RebalancingSuggestionRow]:
     """
     Block 7: Rebalancing suggestions.
@@ -519,19 +464,21 @@ def _calculate_block7_rebalancing(
         # Utilization scales inversely with capacity
         new_util = bottleneck.util_pct * bottleneck.operators / new_operators
 
-        suggestions.append(RebalancingSuggestionRow(
-            product="ALL",  # Cross-product suggestion
-            step=bottleneck.step,
-            operation=bottleneck.operation,
-            machine_tool=bottleneck.machine_tool,
-            grouping=bottleneck.grouping,
-            operators_before=bottleneck.operators,
-            operators_after=new_operators,
-            util_before_pct=bottleneck.util_pct,
-            util_after_pct=round(new_util, 1),
-            role=RebalanceRole.BOTTLENECK,
-            comment="Add 1 operator to reduce bottleneck"
-        ))
+        suggestions.append(
+            RebalancingSuggestionRow(
+                product="ALL",  # Cross-product suggestion
+                step=bottleneck.step,
+                operation=bottleneck.operation,
+                machine_tool=bottleneck.machine_tool,
+                grouping=bottleneck.grouping,
+                operators_before=bottleneck.operators,
+                operators_after=new_operators,
+                util_before_pct=bottleneck.util_pct,
+                util_after_pct=round(new_util, 1),
+                role=RebalanceRole.BOTTLENECK,
+                comment="Add 1 operator to reduce bottleneck",
+            )
+        )
 
         # If we have a matching donor, suggest moving operator from donor
         if i < len(donors):
@@ -540,27 +487,26 @@ def _calculate_block7_rebalancing(
                 new_donor_operators = donor.operators - 1
                 new_donor_util = donor.util_pct * donor.operators / new_donor_operators
 
-                suggestions.append(RebalancingSuggestionRow(
-                    product="ALL",
-                    step=donor.step,
-                    operation=donor.operation,
-                    machine_tool=donor.machine_tool,
-                    grouping=donor.grouping,
-                    operators_before=donor.operators,
-                    operators_after=new_donor_operators,
-                    util_before_pct=donor.util_pct,
-                    util_after_pct=round(new_donor_util, 1),
-                    role=RebalanceRole.DONOR,
-                    comment=f"Move 1 operator to Step {bottleneck.step} ({bottleneck.operation})"
-                ))
+                suggestions.append(
+                    RebalancingSuggestionRow(
+                        product="ALL",
+                        step=donor.step,
+                        operation=donor.operation,
+                        machine_tool=donor.machine_tool,
+                        grouping=donor.grouping,
+                        operators_before=donor.operators,
+                        operators_after=new_donor_operators,
+                        util_before_pct=donor.util_pct,
+                        util_after_pct=round(new_donor_util, 1),
+                        role=RebalanceRole.DONOR,
+                        comment=f"Move 1 operator to Step {bottleneck.step} ({bottleneck.operation})",
+                    )
+                )
 
     return suggestions
 
 
-def _calculate_block8_assumption_log(
-    config: SimulationConfig,
-    defaults_applied: List[Dict[str, Any]]
-) -> AssumptionLog:
+def _calculate_block8_assumption_log(config: SimulationConfig, defaults_applied: List[Dict[str, Any]]) -> AssumptionLog:
     """
     Block 8: Complete assumption and configuration log.
 
@@ -591,7 +537,7 @@ def _calculate_block8_assumption_log(
                 "bundle_size": d.bundle_size,
                 "daily_demand": d.daily_demand,
                 "weekly_demand": d.weekly_demand,
-                "mix_share_pct": d.mix_share_pct
+                "mix_share_pct": d.mix_share_pct,
             }
             for d in config.demands
         ],
@@ -605,10 +551,9 @@ def _calculate_block8_assumption_log(
                 else f"{len(config.breakdowns)} breakdown rules configured"
             ),
             "details": [
-                {"machine_tool": b.machine_tool, "breakdown_pct": b.breakdown_pct}
-                for b in (config.breakdowns or [])
-            ]
+                {"machine_tool": b.machine_tool, "breakdown_pct": b.breakdown_pct} for b in (config.breakdowns or [])
+            ],
         },
         formula_implementations=FORMULA_DESCRIPTIONS,
-        limitations_and_caveats=SIMULATION_LIMITATIONS
+        limitations_and_caveats=SIMULATION_LIMITATIONS,
     )

@@ -8,6 +8,7 @@ Tests verify:
 3. Rate limit exceeded returns 429 status
 4. Rate limits reset after time window
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch, MagicMock
@@ -22,9 +23,9 @@ class TestRateLimitMiddleware:
         response = test_client.get("/")
 
         # Check headers are present
-        assert "X-RateLimit-Limit" in response.headers or \
-               "X-RateLimit-Policy" in response.headers, \
-               "Rate limit headers should be present in response"
+        assert (
+            "X-RateLimit-Limit" in response.headers or "X-RateLimit-Policy" in response.headers
+        ), "Rate limit headers should be present in response"
 
     def test_rate_limit_headers_values(self, test_client):
         """Test rate limit header values are correct"""
@@ -53,23 +54,23 @@ class TestAuthEndpointRateLimiting:
 
     def test_login_rate_limit_header(self, test_client):
         """Test login endpoint has rate limit applied"""
-        response = test_client.post("/api/auth/login", json={
-            "username": "nonexistent",
-            "password": "password"
-        })
+        response = test_client.post("/api/auth/login", json={"username": "nonexistent", "password": "password"})
 
         # Even failed login should have rate limit headers
         assert response.status_code in [401, 429]
 
     def test_register_rate_limit_header(self, test_client):
         """Test register endpoint has rate limit applied"""
-        response = test_client.post("/api/auth/register", json={
-            "username": "test_rate_user",
-            "email": "rate@test.com",
-            "password": "TestPass123!",
-            "full_name": "Rate Test User",
-            "role": "operator"
-        })
+        response = test_client.post(
+            "/api/auth/register",
+            json={
+                "username": "test_rate_user",
+                "email": "rate@test.com",
+                "password": "TestPass123!",
+                "full_name": "Rate Test User",
+                "role": "operator",
+            },
+        )
 
         # Response should be 201 (created), 400 (exists), or 422 (validation)
         assert response.status_code in [201, 400, 422, 429]
@@ -94,7 +95,7 @@ class TestRateLimitConfig:
 
         assert limiter is not None
         # Verify limiter has expected attributes
-        assert hasattr(limiter, 'limit')
+        assert hasattr(limiter, "limit")
 
     def test_rate_limit_decorators_available(self):
         """Test rate limit decorators are available for import"""
@@ -103,7 +104,7 @@ class TestRateLimitConfig:
             general_rate_limit,
             sensitive_rate_limit,
             upload_rate_limit,
-            report_rate_limit
+            report_rate_limit,
         )
 
         # Verify decorators are callable
@@ -162,7 +163,7 @@ class TestRateLimitMiddlewareIntegration:
         from backend.main import app
 
         # Check that limiter is in app state
-        assert hasattr(app.state, 'limiter')
+        assert hasattr(app.state, "limiter")
         assert app.state.limiter is not None
 
     def test_multiple_requests_within_limit(self, test_client):
@@ -170,8 +171,7 @@ class TestRateLimitMiddlewareIntegration:
         # Make several requests - should all succeed
         for i in range(5):
             response = test_client.get("/")
-            assert response.status_code == 200, \
-                f"Request {i+1} should succeed within rate limit"
+            assert response.status_code == 200, f"Request {i+1} should succeed within rate limit"
 
 
 class TestRateLimitExceeded:
@@ -205,7 +205,7 @@ class TestConfigureRateLimiting:
         result = configure_rate_limiting(app)
 
         assert result is app
-        assert hasattr(app.state, 'limiter')
+        assert hasattr(app.state, "limiter")
 
     def test_configure_rate_limiting_adds_exception_handler(self):
         """Test exception handler is added for RateLimitExceeded"""

@@ -4,6 +4,7 @@ Provider State Manager
 Manages database provider state and migration locking with file-based
 persistence for cross-process coordination.
 """
+
 import os
 import json
 import fcntl
@@ -32,6 +33,7 @@ class MigrationState:
         current_step: Human-readable current step description
         error_message: Error message if migration failed
     """
+
     status: str = "idle"
     source_provider: Optional[str] = None
     target_provider: Optional[str] = None
@@ -54,6 +56,7 @@ class ProviderState:
         last_migration: Timestamp of last successful migration
         migration_history: List of past migrations
     """
+
     current_provider: str = "sqlite"
     database_url: str = ""
     last_migration: Optional[str] = None
@@ -130,7 +133,7 @@ class ProviderStateManager:
             bool: True if lock acquired, False if already locked.
         """
         try:
-            self._lock_fd = open(self.lock_file, 'w')
+            self._lock_fd = open(self.lock_file, "w")
             fcntl.flock(self._lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
             self._lock_fd.write(f"locked_at: {datetime.utcnow().isoformat()}\n")
             self._lock_fd.flush()
@@ -173,7 +176,7 @@ class ProviderStateManager:
         if not self.lock_file.exists():
             return False
         try:
-            with open(self.lock_file, 'r') as f:
+            with open(self.lock_file, "r") as f:
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
                 fcntl.flock(f.fileno(), fcntl.LOCK_UN)
                 return False  # Lock was available
@@ -208,8 +211,7 @@ class ProviderStateManager:
         current.pop("migration", None)
         self._save_state(current)
 
-    def add_migration_history(self, source: str, target: str,
-                             success: bool, error: Optional[str] = None) -> None:
+    def add_migration_history(self, source: str, target: str, success: bool, error: Optional[str] = None) -> None:
         """Add entry to migration history.
 
         Args:
@@ -220,13 +222,15 @@ class ProviderStateManager:
         """
         state = self._load_state()
         history = state.get("migration_history", [])
-        history.append({
-            "timestamp": datetime.utcnow().isoformat(),
-            "source": source,
-            "target": target,
-            "success": success,
-            "error": error,
-        })
+        history.append(
+            {
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": source,
+                "target": target,
+                "success": success,
+                "error": error,
+            }
+        )
         state["migration_history"] = history[-10:]  # Keep last 10
         self._save_state(state)
 

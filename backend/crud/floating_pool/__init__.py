@@ -35,17 +35,17 @@ from backend.crud.floating_pool.queries import (
 
 __all__ = [
     # Core
-    'create_floating_pool_entry',
-    'get_floating_pool_entry',
-    'update_floating_pool_entry',
-    'delete_floating_pool_entry',
+    "create_floating_pool_entry",
+    "get_floating_pool_entry",
+    "update_floating_pool_entry",
+    "delete_floating_pool_entry",
     # Assignments
-    'assign_floating_pool_to_client',
-    'unassign_floating_pool_from_client',
-    'is_employee_available_for_assignment',
+    "assign_floating_pool_to_client",
+    "unassign_floating_pool_from_client",
+    "is_employee_available_for_assignment",
     # Queries
-    'get_floating_pool_entries',
-    'get_available_floating_pool_employees',
-    'get_floating_pool_assignments_by_client',
-    'get_floating_pool_summary',
+    "get_floating_pool_entries",
+    "get_available_floating_pool_employees",
+    "get_floating_pool_assignments_by_client",
+    "get_floating_pool_summary",
 ]

@@ -2,6 +2,7 @@
 Analytics Pydantic schemas for request/response validation
 Comprehensive analytics API models with OpenAPI documentation
 """
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -13,6 +14,7 @@ from enum import Enum
 
 class TimeRange(str, Enum):
     """Time range options for analytics queries"""
+
     SEVEN_DAYS = "7d"
     THIRTY_DAYS = "30d"
     NINETY_DAYS = "90d"
@@ -21,6 +23,7 @@ class TimeRange(str, Enum):
 
 class TrendDirection(str, Enum):
     """Trend direction indicators"""
+
     INCREASING = "increasing"
     DECREASING = "decreasing"
     STABLE = "stable"
@@ -50,6 +53,7 @@ class KPIType(str, Enum):
     - ATTENDANCE: Attendance rate (inverse of absenteeism)
     - DEFECT_RATE: Overall defect rate
     """
+
     # Production KPIs
     EFFICIENCY = "efficiency"
     PERFORMANCE = "performance"
@@ -72,8 +76,10 @@ class KPIType(str, Enum):
 
 # ===== TREND ANALYSIS SCHEMAS =====
 
+
 class TrendDataPoint(BaseModel):
     """Single data point in trend analysis"""
+
     date: datetime.date = Field(..., description="Date of the data point")
     value: float = Field(..., description="KPI value")
     moving_average_7: Optional[float] = Field(None, description="7-day moving average")
@@ -81,18 +87,14 @@ class TrendDataPoint(BaseModel):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "value": 85.5,
-                "moving_average_7": 84.2,
-                "moving_average_30": 83.8
-            }
+            "example": {"date": "2024-01-15", "value": 85.5, "moving_average_7": 84.2, "moving_average_30": 83.8}
         }
     )
 
 
 class TrendAnalysisResponse(BaseModel):
     """Response for KPI trend analysis endpoint"""
+
     client_id: str = Field(..., description="Client ID")
     kpi_type: KPIType = Field(..., description="Type of KPI analyzed")
     time_range: str = Field(..., description="Time range analyzed (e.g., '30d')")
@@ -124,7 +126,7 @@ class TrendAnalysisResponse(BaseModel):
                 "min_value": 78.5,
                 "max_value": 92.3,
                 "anomalies_detected": 2,
-                "anomaly_dates": ["2024-01-15", "2024-01-22"]
+                "anomaly_dates": ["2024-01-15", "2024-01-22"],
             }
         }
     )
@@ -132,8 +134,10 @@ class TrendAnalysisResponse(BaseModel):
 
 # ===== PREDICTION SCHEMAS =====
 
+
 class PredictionDataPoint(BaseModel):
     """Single prediction data point"""
+
     date: datetime.date = Field(..., description="Predicted date")
     predicted_value: float = Field(..., description="Predicted KPI value")
     lower_bound: float = Field(..., description="95% confidence interval lower bound")
@@ -147,7 +151,7 @@ class PredictionDataPoint(BaseModel):
                 "predicted_value": 86.5,
                 "lower_bound": 82.1,
                 "upper_bound": 90.9,
-                "confidence": 85.0
+                "confidence": 85.0,
             }
         }
     )
@@ -155,6 +159,7 @@ class PredictionDataPoint(BaseModel):
 
 class PredictionResponse(BaseModel):
     """Response for KPI prediction/forecasting endpoint"""
+
     client_id: str = Field(..., description="Client ID")
     kpi_type: KPIType = Field(..., description="Type of KPI predicted")
     prediction_method: str = Field(..., description="Forecasting method used (exponential_smoothing, arima, linear)")
@@ -182,7 +187,7 @@ class PredictionResponse(BaseModel):
                 "model_accuracy": 92.5,
                 "historical_average": 84.5,
                 "predicted_average": 86.2,
-                "trend_continuation": True
+                "trend_continuation": True,
             }
         }
     )
@@ -190,8 +195,10 @@ class PredictionResponse(BaseModel):
 
 # ===== COMPARISON SCHEMAS =====
 
+
 class ClientComparisonData(BaseModel):
     """Comparison data for a single client"""
+
     client_id: str = Field(..., description="Client ID")
     client_name: str = Field(..., description="Client name")
     average_value: float = Field(..., description="Average KPI value")
@@ -209,7 +216,7 @@ class ClientComparisonData(BaseModel):
                 "percentile_rank": 82,
                 "above_benchmark": True,
                 "performance_rating": "Excellent",
-                "total_data_points": 30
+                "total_data_points": 30,
             }
         }
     )
@@ -217,6 +224,7 @@ class ClientComparisonData(BaseModel):
 
 class ComparisonResponse(BaseModel):
     """Response for client-to-client benchmarking endpoint"""
+
     kpi_type: KPIType = Field(..., description="Type of KPI compared")
     time_range: str = Field(..., description="Time range for comparison")
     start_date: datetime.date = Field(..., description="Comparison start date")
@@ -240,7 +248,7 @@ class ComparisonResponse(BaseModel):
                 "industry_benchmark": 85.0,
                 "best_performer": "CLIENT-A",
                 "worst_performer": "CLIENT-D",
-                "performance_spread": 15.3
+                "performance_spread": 15.3,
             }
         }
     )
@@ -248,8 +256,10 @@ class ComparisonResponse(BaseModel):
 
 # ===== HEATMAP SCHEMAS =====
 
+
 class HeatmapCell(BaseModel):
     """Single cell in performance heatmap"""
+
     date: datetime.date = Field(..., description="Date")
     shift_id: str = Field(..., description="Shift identifier")
     shift_name: str = Field(..., description="Shift name (e.g., 'Day Shift')")
@@ -265,7 +275,7 @@ class HeatmapCell(BaseModel):
                 "shift_name": "Day Shift",
                 "value": 87.5,
                 "performance_level": "Excellent",
-                "color_code": "#22c55e"
+                "color_code": "#22c55e",
             }
         }
     )
@@ -273,6 +283,7 @@ class HeatmapCell(BaseModel):
 
 class HeatmapResponse(BaseModel):
     """Response for performance heatmap endpoint"""
+
     client_id: str = Field(..., description="Client ID")
     kpi_type: KPIType = Field(..., description="Type of KPI visualized")
     time_range: str = Field(..., description="Time range displayed")
@@ -299,8 +310,8 @@ class HeatmapResponse(BaseModel):
                     "Good": "#84cc16",
                     "Fair": "#eab308",
                     "Poor": "#ef4444",
-                    "No Data": "#94a3b8"
-                }
+                    "No Data": "#94a3b8",
+                },
             }
         }
     )
@@ -308,8 +319,10 @@ class HeatmapResponse(BaseModel):
 
 # ===== PARETO ANALYSIS SCHEMAS =====
 
+
 class ParetoItem(BaseModel):
     """Single item in Pareto analysis"""
+
     defect_type: str = Field(..., description="Defect type/category")
     count: int = Field(..., description="Defect count")
     percentage: float = Field(..., description="Percentage of total")
@@ -323,7 +336,7 @@ class ParetoItem(BaseModel):
                 "count": 145,
                 "percentage": 45.2,
                 "cumulative_percentage": 45.2,
-                "is_vital_few": True
+                "is_vital_few": True,
             }
         }
     )
@@ -331,6 +344,7 @@ class ParetoItem(BaseModel):
 
 class ParetoResponse(BaseModel):
     """Response for defect Pareto analysis endpoint"""
+
     client_id: str = Field(..., description="Client ID")
     time_range: str = Field(..., description="Time range analyzed")
     start_date: datetime.date = Field(..., description="Analysis start date")
@@ -352,7 +366,7 @@ class ParetoResponse(BaseModel):
                 "total_defects": 320,
                 "vital_few_count": 3,
                 "vital_few_percentage": 82.5,
-                "pareto_threshold": 80.0
+                "pareto_threshold": 80.0,
             }
         }
     )
@@ -360,8 +374,10 @@ class ParetoResponse(BaseModel):
 
 # ===== PHASE 5: ENHANCED PREDICTION SCHEMAS =====
 
+
 class KPIBenchmark(BaseModel):
     """Industry benchmark data for a KPI"""
+
     target: float = Field(..., description="Target value")
     excellent: float = Field(..., description="Excellent threshold")
     good: float = Field(..., description="Good threshold")
@@ -377,7 +393,7 @@ class KPIBenchmark(BaseModel):
                 "good": 85.0,
                 "fair": 75.0,
                 "unit": "%",
-                "description": "Production efficiency - actual vs. expected output"
+                "description": "Production efficiency - actual vs. expected output",
             }
         }
     )
@@ -385,6 +401,7 @@ class KPIBenchmark(BaseModel):
 
 class KPIHealthAssessment(BaseModel):
     """Health assessment for a KPI based on current and predicted values"""
+
     health_score: float = Field(..., ge=0, le=100, description="Overall health score (0-100)")
     trend: str = Field(..., description="Trend direction (improving, declining, stable)")
     current_vs_target: float = Field(..., description="Difference from target value")
@@ -396,7 +413,7 @@ class KPIHealthAssessment(BaseModel):
                 "health_score": 82.5,
                 "trend": "improving",
                 "current_vs_target": -2.5,
-                "recommendations": ["Monitor for continued improvement"]
+                "recommendations": ["Monitor for continued improvement"],
             }
         }
     )
@@ -404,6 +421,7 @@ class KPIHealthAssessment(BaseModel):
 
 class EnhancedPredictionDataPoint(BaseModel):
     """Enhanced prediction data point with additional analytics"""
+
     date: datetime.date = Field(..., description="Predicted date")
     predicted_value: float = Field(..., description="Predicted KPI value")
     lower_bound: float = Field(..., description="95% confidence interval lower bound")
@@ -421,7 +439,7 @@ class EnhancedPredictionDataPoint(BaseModel):
                 "upper_bound": 90.9,
                 "confidence": 85.0,
                 "day_of_week": "Thursday",
-                "is_weekend": False
+                "is_weekend": False,
             }
         }
     )
@@ -429,19 +447,12 @@ class EnhancedPredictionDataPoint(BaseModel):
 
 class KPIHistoryPoint(BaseModel):
     """Historical KPI data point"""
+
     date: datetime.date = Field(..., description="Date of measurement")
     value: float = Field(..., description="KPI value")
     is_anomaly: bool = Field(default=False, description="Whether this is an anomaly")
 
-    model_config = ConfigDict(
-        json_schema_extra={
-            "example": {
-                "date": "2024-01-15",
-                "value": 85.5,
-                "is_anomaly": False
-            }
-        }
-    )
+    model_config = ConfigDict(json_schema_extra={"example": {"date": "2024-01-15", "value": 85.5, "is_anomaly": False}})
 
 
 class ComprehensivePredictionResponse(BaseModel):
@@ -455,6 +466,7 @@ class ComprehensivePredictionResponse(BaseModel):
     - Industry benchmarks
     - Method and accuracy details
     """
+
     client_id: str = Field(..., description="Client ID")
     kpi_type: str = Field(..., description="Type of KPI predicted")
     kpi_display_name: str = Field(..., description="Human-readable KPI name")
@@ -487,7 +499,9 @@ class ComprehensivePredictionResponse(BaseModel):
     expected_change_percent: float = Field(..., description="Expected % change from current")
 
     # Metadata
-    generated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow, description="Response generation timestamp")
+    generated_at: datetime.datetime = Field(
+        default_factory=datetime.datetime.utcnow, description="Response generation timestamp"
+    )
     data_quality_score: float = Field(default=100.0, description="Quality score of input data (0-100)")
 
     model_config = ConfigDict(
@@ -511,7 +525,7 @@ class ComprehensivePredictionResponse(BaseModel):
                     "health_score": 85.0,
                     "trend": "improving",
                     "current_vs_target": 1.0,
-                    "recommendations": []
+                    "recommendations": [],
                 },
                 "benchmark": {
                     "target": 85.0,
@@ -519,12 +533,12 @@ class ComprehensivePredictionResponse(BaseModel):
                     "good": 85.0,
                     "fair": 75.0,
                     "unit": "%",
-                    "description": "Production efficiency"
+                    "description": "Production efficiency",
                 },
                 "trend_continuation": True,
                 "expected_change_percent": 1.4,
                 "generated_at": "2024-01-30T12:00:00Z",
-                "data_quality_score": 98.5
+                "data_quality_score": 98.5,
             }
         }
     )
@@ -532,6 +546,7 @@ class ComprehensivePredictionResponse(BaseModel):
 
 class AllKPIPredictionsResponse(BaseModel):
     """Response containing predictions for all 10 KPIs"""
+
     client_id: str = Field(..., description="Client ID")
     forecast_days: int = Field(..., description="Number of days forecasted")
     generated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
@@ -565,10 +580,7 @@ class AllKPIPredictionsResponse(BaseModel):
                 "kpis_improving": 6,
                 "kpis_declining": 2,
                 "kpis_stable": 2,
-                "priority_actions": [
-                    "Review PPM trending upward",
-                    "Monitor absenteeism rate"
-                ]
+                "priority_actions": ["Review PPM trending upward", "Monitor absenteeism rate"],
             }
         }
     )

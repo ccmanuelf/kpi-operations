@@ -5,6 +5,7 @@ Phase 3: Domain Events Infrastructure
 Provides immutable event base class for all domain events.
 Events are value objects that capture significant state changes.
 """
+
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional, Dict, Any
@@ -23,6 +24,7 @@ class DomainEvent(BaseModel):
     - Timestamp for ordering
     - Optional context (client, user)
     """
+
     event_id: str = Field(default_factory=lambda: str(uuid4()))
     event_type: str = ""
     occurred_at: datetime = Field(default_factory=datetime.utcnow)

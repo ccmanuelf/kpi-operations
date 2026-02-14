@@ -3,6 +3,7 @@ Test Data Seeding Utilities
 Provides functions to seed test databases with realistic, interconnected data.
 Supports different test scenarios: minimal, comprehensive, multi-tenant.
 """
+
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Any, Optional
@@ -27,19 +28,12 @@ def seed_minimal_data(db: Session) -> Dict[str, Any]:
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="TEST-MIN",
-        client_name="Minimal Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="TEST-MIN", client_name="Minimal Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create user (assigned to client)
     user = TestDataFactory.create_user(
-        db,
-        username="min_user",
-        role="supervisor",
-        client_id=client.client_id,
-        password="TestPass123!"
+        db, username="min_user", role="supervisor", client_id=client.client_id, password="TestPass123!"
     )
 
     # Create product (scoped to client)
@@ -48,16 +42,12 @@ def seed_minimal_data(db: Session) -> Dict[str, Any]:
         client_id=client.client_id,
         product_code="PROD-MIN-001",
         product_name="Minimal Test Product",
-        ideal_cycle_time=Decimal("0.15")
+        ideal_cycle_time=Decimal("0.15"),
     )
 
     # Create shift (scoped to client)
     shift = TestDataFactory.create_shift(
-        db,
-        client_id=client.client_id,
-        shift_name="Day Shift",
-        start_time="06:00:00",
-        end_time="14:00:00"
+        db, client_id=client.client_id, shift_name="Day Shift", start_time="06:00:00", end_time="14:00:00"
     )
 
     db.commit()
@@ -70,10 +60,7 @@ def seed_minimal_data(db: Session) -> Dict[str, Any]:
     }
 
 
-def seed_comprehensive_data(
-    db: Session,
-    days_of_data: int = 30
-) -> Dict[str, Any]:
+def seed_comprehensive_data(db: Session, days_of_data: int = 30) -> Dict[str, Any]:
     """
     Seed comprehensive data for integration tests.
     Creates full data hierarchy with production, quality, attendance, etc.
@@ -92,22 +79,15 @@ def seed_comprehensive_data(
     # ========================================================================
 
     client = TestDataFactory.create_client(
-        db,
-        client_id="TEST-COMP",
-        client_name="Comprehensive Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="TEST-COMP", client_name="Comprehensive Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users with different roles
-    admin = TestDataFactory.create_user(
-        db, username="comp_admin", role="admin", client_id=None
-    )
+    admin = TestDataFactory.create_user(db, username="comp_admin", role="admin", client_id=None)
     supervisor = TestDataFactory.create_user(
         db, username="comp_supervisor", role="supervisor", client_id=client.client_id
     )
-    operator = TestDataFactory.create_user(
-        db, username="comp_operator", role="operator", client_id=client.client_id
-    )
+    operator = TestDataFactory.create_user(db, username="comp_operator", role="operator", client_id=client.client_id)
 
     # Create employees (assigned to client)
     employees = []
@@ -117,7 +97,7 @@ def seed_comprehensive_data(
             client_id=client.client_id,
             employee_name=f"Employee {i+1}",
             employee_code=f"EMP-{i+1:03d}",
-            is_floating_pool=(i >= 8)  # Last 2 are floating pool
+            is_floating_pool=(i >= 8),  # Last 2 are floating pool
         )
         employees.append(emp)
 
@@ -137,7 +117,7 @@ def seed_comprehensive_data(
             client_id=client.client_id,
             product_code=f"PROD-{code}-001",
             product_name=name,
-            ideal_cycle_time=cycle_time
+            ideal_cycle_time=cycle_time,
         )
         products.append(prod)
 
@@ -149,11 +129,7 @@ def seed_comprehensive_data(
     ]
     for name, start, end in shift_data:
         shift = TestDataFactory.create_shift(
-            db,
-            client_id=client.client_id,
-            shift_name=f"{name} Shift",
-            start_time=start,
-            end_time=end
+            db, client_id=client.client_id, shift_name=f"{name} Shift", start_time=start, end_time=end
         )
         shifts.append(shift)
 
@@ -188,16 +164,13 @@ def seed_comprehensive_data(
                 client_id=client.client_id,
                 job_id=f"JOB-{i+1:03d}-{j+1}",
                 part_number=f"PART-{i+1:03d}-{j+1}",
-                quantity_required=wo.planned_quantity // 2
+                quantity_required=wo.planned_quantity // 2,
             )
             jobs.append(job)
 
             # Create part opportunities
             TestDataFactory.create_part_opportunities(
-                db,
-                part_number=job.part_number,
-                client_id=client.client_id,
-                opportunities_per_unit=10
+                db, part_number=job.part_number, client_id=client.client_id, opportunities_per_unit=10
             )
 
     db.flush()
@@ -217,7 +190,7 @@ def seed_comprehensive_data(
         entered_by=supervisor.user_id,
         count=days_of_data,
         base_date=base_date,
-        work_order_ids=work_order_id_list  # Link to work orders
+        work_order_ids=work_order_id_list,  # Link to work orders
     )
 
     # ========================================================================
@@ -231,7 +204,7 @@ def seed_comprehensive_data(
         inspector_id=supervisor.user_id,
         count=days_of_data // 3,
         base_date=base_date,
-        defect_rate=0.005
+        defect_rate=0.005,
     )
 
     # Add defect details
@@ -257,7 +230,7 @@ def seed_comprehensive_data(
             shift_id=shifts[0].shift_id,
             count=days_of_data,
             base_date=base_date,
-            attendance_rate=0.95
+            attendance_rate=0.95,
         )
         attendance_entries.extend(entries)
 
@@ -285,8 +258,7 @@ def seed_comprehensive_data(
     downtime_reasons = ["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "SETUP_CHANGEOVER"]
     for i in range(5):
         start_time = datetime.combine(
-            base_date + timedelta(days=i * 5),
-            datetime.strptime("10:00:00", "%H:%M:%S").time()
+            base_date + timedelta(days=i * 5), datetime.strptime("10:00:00", "%H:%M:%S").time()
         )
         end_time = start_time + timedelta(minutes=30 + i * 10)
 
@@ -383,40 +355,23 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
 
         # Create client
         client = TestDataFactory.create_client(
-            db,
-            client_id=client_id,
-            client_name=f"Test Client {client_suffix}",
-            client_type=ClientType.HOURLY_RATE
+            db, client_id=client_id, client_name=f"Test Client {client_suffix}", client_type=ClientType.HOURLY_RATE
         )
         clients_created[client_suffix] = client
 
     # Create per-client products and shifts
     product = TestDataFactory.create_product(
-        db,
-        client_id="CLIENT-A",
-        product_code="PROD-SHARED-001",
-        product_name="Shared Product"
+        db, client_id="CLIENT-A", product_code="PROD-SHARED-001", product_name="Shared Product"
     )
 
-    shift = TestDataFactory.create_shift(
-        db,
-        client_id="CLIENT-A",
-        shift_name="Shared Shift"
-    )
+    shift = TestDataFactory.create_shift(db, client_id="CLIENT-A", shift_name="Shared Shift")
 
     # Also create for CLIENT-B
     TestDataFactory.create_product(
-        db,
-        client_id="CLIENT-B",
-        product_code="PROD-SHARED-001",
-        product_name="Shared Product"
+        db, client_id="CLIENT-B", product_code="PROD-SHARED-001", product_name="Shared Product"
     )
 
-    TestDataFactory.create_shift(
-        db,
-        client_id="CLIENT-B",
-        shift_name="Shared Shift"
-    )
+    TestDataFactory.create_shift(db, client_id="CLIENT-B", shift_name="Shared Shift")
 
     db.flush()
 
@@ -426,36 +381,24 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
 
         # Create supervisor for this client
         supervisor = TestDataFactory.create_user(
-            db,
-            username=f"supervisor_{client_suffix.lower()}",
-            role="supervisor",
-            client_id=client_id
+            db, username=f"supervisor_{client_suffix.lower()}", role="supervisor", client_id=client_id
         )
 
         # Create operator for this client
         operator = TestDataFactory.create_user(
-            db,
-            username=f"operator_{client_suffix.lower()}",
-            role="operator",
-            client_id=client_id
+            db, username=f"operator_{client_suffix.lower()}", role="operator", client_id=client_id
         )
 
         db.flush()
 
         # Create work order
         work_order = TestDataFactory.create_work_order(
-            db,
-            client_id=client_id,
-            work_order_id=f"WO-{client_suffix}-001",
-            style_model=f"STYLE-{client_suffix}"
+            db, client_id=client_id, work_order_id=f"WO-{client_suffix}-001", style_model=f"STYLE-{client_suffix}"
         )
 
         # Create employee
         employee = TestDataFactory.create_employee(
-            db,
-            client_id=client_id,
-            employee_name=f"Employee {client_suffix}",
-            employee_code=f"EMP-{client_suffix}-001"
+            db, client_id=client_id, employee_name=f"Employee {client_suffix}", employee_code=f"EMP-{client_suffix}-001"
         )
 
         db.flush()
@@ -467,15 +410,12 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
             product_id=product.product_id,
             shift_id=shift.shift_id,
             entered_by=supervisor.user_id,
-            units_produced=1000 if client_suffix == "A" else 2000
+            units_produced=1000 if client_suffix == "A" else 2000,
         )
 
         # Create quality entry
         quality = TestDataFactory.create_quality_entry(
-            db,
-            work_order_id=work_order.work_order_id,
-            client_id=client_id,
-            inspector_id=supervisor.user_id
+            db, work_order_id=work_order.work_order_id, client_id=client_id, inspector_id=supervisor.user_id
         )
 
         result["clients"][client_suffix] = {
@@ -494,21 +434,11 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
     result["shift"] = shift
 
     # Create admin user (no client restriction)
-    admin = TestDataFactory.create_user(
-        db,
-        username="admin_multi",
-        role="admin",
-        client_id=None
-    )
+    admin = TestDataFactory.create_user(db, username="admin_multi", role="admin", client_id=None)
     result["users"]["admin"] = admin
 
     # Create leader with access to both clients
-    leader = TestDataFactory.create_user(
-        db,
-        username="leader_multi",
-        role="leader",
-        client_id="CLIENT-A,CLIENT-B"
-    )
+    leader = TestDataFactory.create_user(db, username="leader_multi", role="leader", client_id="CLIENT-A,CLIENT-B")
     result["users"]["leader"] = leader
 
     db.commit()
@@ -525,11 +455,25 @@ def cleanup_test_data(db: Session):
         db: Database session
     """
     from backend.schemas import (
-        WorkflowTransitionLog, FilterHistory, SavedFilter,
-        DefectDetail, QualityEntry, DowntimeEntry, HoldEntry,
-        AttendanceEntry, CoverageEntry, ProductionEntry,
-        Job, PartOpportunities, WorkOrder,
-        FloatingPool, Employee, Product, Shift, User, Client
+        WorkflowTransitionLog,
+        FilterHistory,
+        SavedFilter,
+        DefectDetail,
+        QualityEntry,
+        DowntimeEntry,
+        HoldEntry,
+        AttendanceEntry,
+        CoverageEntry,
+        ProductionEntry,
+        Job,
+        PartOpportunities,
+        WorkOrder,
+        FloatingPool,
+        Employee,
+        Product,
+        Shift,
+        User,
+        Client,
     )
 
     # Delete in FK-safe order (children first)

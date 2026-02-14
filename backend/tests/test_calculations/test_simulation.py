@@ -3,6 +3,7 @@ Tests for the Simulation & Capacity Planning Core Engine
 Tests cover: capacity calculations, staffing simulations, efficiency simulations,
 shift coverage, and floating pool optimization.
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date, timedelta
@@ -22,7 +23,7 @@ from backend.calculations.simulation import (
     CapacityRequirement,
     SimulationResult,
     ShiftCoverageSimulation,
-    FloatingPoolOptimization
+    FloatingPoolOptimization,
 )
 
 
@@ -35,7 +36,7 @@ class TestProductionCapacity:
             employees=10,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("85.0")
+            efficiency_percent=Decimal("85.0"),
         )
 
         assert "units_capacity" in result
@@ -50,14 +51,14 @@ class TestProductionCapacity:
             employees=10,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("100.0")
+            efficiency_percent=Decimal("100.0"),
         )
 
         result_20 = calculate_production_capacity(
             employees=20,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("100.0")
+            efficiency_percent=Decimal("100.0"),
         )
 
         # Double employees should double output
@@ -69,14 +70,14 @@ class TestProductionCapacity:
             employees=10,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("100.0")
+            efficiency_percent=Decimal("100.0"),
         )
 
         result_50 = calculate_production_capacity(
             employees=10,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("50.0")
+            efficiency_percent=Decimal("50.0"),
         )
 
         # 50% efficiency should halve output
@@ -89,16 +90,13 @@ class TestProductionCapacity:
                 employees=10,
                 shift_hours=Decimal("8.0"),
                 cycle_time_hours=Decimal("0.0"),
-                efficiency_percent=Decimal("85.0")
+                efficiency_percent=Decimal("85.0"),
             )
 
     def test_zero_employees_returns_zero_capacity(self):
         """Test that zero employees returns zero capacity"""
         result = calculate_production_capacity(
-            employees=0,
-            shift_hours=Decimal("8.0"),
-            cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("85.0")
+            employees=0, shift_hours=Decimal("8.0"), cycle_time_hours=Decimal("0.5"), efficiency_percent=Decimal("85.0")
         )
 
         assert result["units_capacity"] == 0
@@ -109,14 +107,14 @@ class TestProductionCapacity:
             employees=10,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("100.0")
+            efficiency_percent=Decimal("100.0"),
         )
 
         result_12h = calculate_production_capacity(
             employees=10,
             shift_hours=Decimal("12.0"),
             cycle_time_hours=Decimal("0.5"),
-            efficiency_percent=Decimal("100.0")
+            efficiency_percent=Decimal("100.0"),
         )
 
         # 12h shift should produce 1.5x more than 8h shift
@@ -137,7 +135,7 @@ class TestStaffingSimulation:
             scenarios=scenarios,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            base_efficiency=Decimal("85.0")
+            base_efficiency=Decimal("85.0"),
         )
 
         assert len(result) == 3
@@ -156,7 +154,7 @@ class TestStaffingSimulation:
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
             base_efficiency=Decimal("85.0"),
-            efficiency_scaling=False
+            efficiency_scaling=False,
         )
 
         outputs = sorted(result, key=lambda x: x.input_parameters["employees"])
@@ -174,7 +172,7 @@ class TestStaffingSimulation:
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
             base_efficiency=Decimal("85.0"),
-            efficiency_scaling=True
+            efficiency_scaling=True,
         )
 
         # Should have recommendations about efficiency adjustment
@@ -194,7 +192,7 @@ class TestStaffingSimulation:
             scenarios=scenarios,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            base_efficiency=Decimal("85.0")
+            base_efficiency=Decimal("85.0"),
         )
 
         for sim_result in result:
@@ -213,7 +211,7 @@ class TestEfficiencySimulation:
             efficiency_scenarios=efficiency_scenarios,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            base_efficiency=Decimal("85.0")
+            base_efficiency=Decimal("85.0"),
         )
 
         assert len(result) == 3
@@ -229,7 +227,7 @@ class TestEfficiencySimulation:
             employees=20,
             efficiency_scenarios=efficiency_scenarios,
             shift_hours=Decimal("8.0"),
-            cycle_time_hours=Decimal("0.5")
+            cycle_time_hours=Decimal("0.5"),
         )
 
         outputs = sorted(result, key=lambda x: Decimal(x.input_parameters["efficiency_percent"]))
@@ -247,7 +245,7 @@ class TestEfficiencySimulation:
             efficiency_scenarios=efficiency_scenarios,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.5"),
-            base_efficiency=Decimal("85.0")
+            base_efficiency=Decimal("85.0"),
         )
 
         assert len(result) == 1
@@ -262,11 +260,7 @@ class TestShiftCoverage:
     def test_basic_shift_coverage(self):
         """Test basic shift coverage simulation"""
         result = simulate_shift_coverage(
-            regular_employees=15,
-            floating_pool_available=5,
-            required_employees=20,
-            shift_name="Morning",
-            shift_id=1
+            regular_employees=15, floating_pool_available=5, required_employees=20, shift_name="Morning", shift_id=1
         )
 
         assert isinstance(result, ShiftCoverageSimulation)
@@ -276,33 +270,21 @@ class TestShiftCoverage:
 
     def test_shift_fully_covered(self):
         """Test shift is fully covered when enough employees"""
-        result = simulate_shift_coverage(
-            regular_employees=20,
-            floating_pool_available=5,
-            required_employees=20
-        )
+        result = simulate_shift_coverage(regular_employees=20, floating_pool_available=5, required_employees=20)
 
         assert result.coverage_gap == 0
         assert result.coverage_percent == Decimal("100.0")
 
     def test_shift_understaffed(self):
         """Test shift understaffed detection"""
-        result = simulate_shift_coverage(
-            regular_employees=10,
-            floating_pool_available=5,
-            required_employees=20
-        )
+        result = simulate_shift_coverage(regular_employees=10, floating_pool_available=5, required_employees=20)
 
         assert result.coverage_gap == 5  # 20 - (10 + 5) = 5
         assert result.coverage_percent < Decimal("100.0")
 
     def test_floating_pool_fills_gap(self):
         """Test that floating pool fills coverage gap"""
-        result = simulate_shift_coverage(
-            regular_employees=15,
-            floating_pool_available=10,
-            required_employees=20
-        )
+        result = simulate_shift_coverage(regular_employees=15, floating_pool_available=10, required_employees=20)
 
         # Total available = 25, required = 20, gap = 0
         assert result.coverage_gap == 0
@@ -310,11 +292,7 @@ class TestShiftCoverage:
 
     def test_overstaffed_recommendations(self):
         """Test recommendations when overstaffed"""
-        result = simulate_shift_coverage(
-            regular_employees=25,
-            floating_pool_available=5,
-            required_employees=20
-        )
+        result = simulate_shift_coverage(regular_employees=25, floating_pool_available=5, required_employees=20)
 
         assert result.coverage_gap == 0
         # Should have overstaffing recommendation
@@ -322,11 +300,7 @@ class TestShiftCoverage:
 
     def test_coverage_warning_below_threshold(self):
         """Test warning when coverage is below 90%"""
-        result = simulate_shift_coverage(
-            regular_employees=10,
-            floating_pool_available=5,
-            required_employees=20
-        )
+        result = simulate_shift_coverage(regular_employees=10, floating_pool_available=5, required_employees=20)
 
         # Coverage = 15/20 = 75%
         assert result.coverage_percent < Decimal("90.0")
@@ -341,13 +315,10 @@ class TestMultiShiftCoverage:
         shifts = [
             {"shift_id": 1, "shift_name": "Morning", "regular_employees": 15, "required": 20},
             {"shift_id": 2, "shift_name": "Afternoon", "regular_employees": 16, "required": 18},
-            {"shift_id": 3, "shift_name": "Night", "regular_employees": 12, "required": 15}
+            {"shift_id": 3, "shift_name": "Night", "regular_employees": 12, "required": 15},
         ]
 
-        results, summary = simulate_multi_shift_coverage(
-            shifts=shifts,
-            floating_pool_total=10
-        )
+        results, summary = simulate_multi_shift_coverage(shifts=shifts, floating_pool_total=10)
 
         assert len(results) == 3
         assert "total_shifts" in summary
@@ -361,10 +332,7 @@ class TestMultiShiftCoverage:
             {"shift_id": 2, "shift_name": "High Gap", "regular_employees": 10, "required": 20},  # gap=10
         ]
 
-        results, summary = simulate_multi_shift_coverage(
-            shifts=shifts,
-            floating_pool_total=5
-        )
+        results, summary = simulate_multi_shift_coverage(shifts=shifts, floating_pool_total=5)
 
         # High gap shift should receive more allocation
         allocations = summary["allocations"]
@@ -379,10 +347,7 @@ class TestMultiShiftCoverage:
             {"shift_id": 2, "shift_name": "S2", "regular_employees": 10, "required": 20},
         ]
 
-        results, summary = simulate_multi_shift_coverage(
-            shifts=shifts,
-            floating_pool_total=5
-        )
+        results, summary = simulate_multi_shift_coverage(shifts=shifts, floating_pool_total=5)
 
         assert summary["floating_pool_allocated"] <= 5
         assert summary["floating_pool_remaining"] >= 0
@@ -406,7 +371,7 @@ class TestCapacityRequirementsWithMock:
             shift_hours=Decimal("8.0"),
             target_efficiency=Decimal("85.0"),
             absenteeism_rate=Decimal("5.0"),
-            include_buffer=False
+            include_buffer=False,
         )
 
         assert isinstance(result, CapacityRequirement)
@@ -427,7 +392,7 @@ class TestCapacityRequirementsWithMock:
             cycle_time_hours=Decimal("0.5"),
             shift_hours=Decimal("8.0"),
             target_efficiency=Decimal("85.0"),
-            include_buffer=False
+            include_buffer=False,
         )
 
         result_with_buffer = calculate_capacity_requirements(
@@ -438,7 +403,7 @@ class TestCapacityRequirementsWithMock:
             cycle_time_hours=Decimal("0.5"),
             shift_hours=Decimal("8.0"),
             target_efficiency=Decimal("85.0"),
-            include_buffer=True
+            include_buffer=True,
         )
 
         # Buffer should add employees
@@ -459,7 +424,7 @@ class TestCapacityRequirementsWithMock:
             cycle_time_hours=Decimal("0.5"),
             shift_hours=Decimal("8.0"),
             absenteeism_rate=Decimal("2.0"),
-            include_buffer=True
+            include_buffer=True,
         )
 
         result_high_absence = calculate_capacity_requirements(
@@ -470,7 +435,7 @@ class TestCapacityRequirementsWithMock:
             cycle_time_hours=Decimal("0.5"),
             shift_hours=Decimal("8.0"),
             absenteeism_rate=Decimal("15.0"),
-            include_buffer=True
+            include_buffer=True,
         )
 
         assert result_high_absence.buffer_employees >= result_low_absence.buffer_employees
@@ -487,7 +452,7 @@ class TestCapacityRequirementsWithMock:
             target_units=0,
             target_date=date.today() + timedelta(days=10),
             cycle_time_hours=Decimal("0.5"),
-            shift_hours=Decimal("8.0")
+            shift_hours=Decimal("8.0"),
         )
 
         assert result.required_employees == 0 or result.target_units == 0
@@ -500,14 +465,12 @@ class TestFloatingPoolOptimizationWithMock:
         """Test basic floating pool optimization with balance workload goal"""
         mock_db = MagicMock()
 
-        available_employees = [
-            {"employee_id": f"E{i}"} for i in range(10)
-        ]
+        available_employees = [{"employee_id": f"E{i}"} for i in range(10)]
 
         shift_requirements = [
             {"shift_id": 1, "shift_name": "Morning", "required": 20, "regular_employees": 15},
             {"shift_id": 2, "shift_name": "Afternoon", "required": 18, "regular_employees": 16},
-            {"shift_id": 3, "shift_name": "Night", "required": 15, "regular_employees": 12}
+            {"shift_id": 3, "shift_name": "Night", "required": 15, "regular_employees": 12},
         ]
 
         result = optimize_floating_pool_allocation(
@@ -516,7 +479,7 @@ class TestFloatingPoolOptimizationWithMock:
             target_date=date.today(),
             available_pool_employees=available_employees,
             shift_requirements=shift_requirements,
-            optimization_goal=OptimizationGoal.BALANCE_WORKLOAD
+            optimization_goal=OptimizationGoal.BALANCE_WORKLOAD,
         )
 
         assert isinstance(result, FloatingPoolOptimization)
@@ -540,7 +503,7 @@ class TestFloatingPoolOptimizationWithMock:
             target_date=date.today(),
             available_pool_employees=available_employees,
             shift_requirements=shift_requirements,
-            optimization_goal=OptimizationGoal.MEET_TARGET
+            optimization_goal=OptimizationGoal.MEET_TARGET,
         )
 
         # Should prioritize highest gap
@@ -554,7 +517,7 @@ class TestFloatingPoolOptimizationWithMock:
 
         shift_requirements = [
             {"shift_id": 1, "shift_name": "S1", "required": 30, "regular_employees": 10},
-            {"shift_id": 2, "shift_name": "S2", "required": 30, "regular_employees": 10}
+            {"shift_id": 2, "shift_name": "S2", "required": 30, "regular_employees": 10},
         ]
 
         result = optimize_floating_pool_allocation(
@@ -563,7 +526,7 @@ class TestFloatingPoolOptimizationWithMock:
             target_date=date.today(),
             available_pool_employees=available_employees,
             shift_requirements=shift_requirements,
-            optimization_goal=OptimizationGoal.BALANCE_WORKLOAD
+            optimization_goal=OptimizationGoal.BALANCE_WORKLOAD,
         )
 
         total_allocated = sum(a["employees_assigned"] for a in result.allocation_suggestions)
@@ -577,7 +540,7 @@ class TestFloatingPoolOptimizationWithMock:
 
         shift_requirements = [
             {"shift_id": 1, "shift_name": "S1", "required": 10, "regular_employees": 15},
-            {"shift_id": 2, "shift_name": "S2", "required": 10, "regular_employees": 12}
+            {"shift_id": 2, "shift_name": "S2", "required": 10, "regular_employees": 12},
         ]
 
         result = optimize_floating_pool_allocation(
@@ -586,7 +549,7 @@ class TestFloatingPoolOptimizationWithMock:
             target_date=date.today(),
             available_pool_employees=available_employees,
             shift_requirements=shift_requirements,
-            optimization_goal=OptimizationGoal.BALANCE_WORKLOAD
+            optimization_goal=OptimizationGoal.BALANCE_WORKLOAD,
         )
 
         # No allocation needed
@@ -609,14 +572,10 @@ class TestRunCapacitySimulationWithMock:
             "cycle_time_hours": "0.5",
             "efficiency": "85.0",
             "staffing_scenarios": [18, 20, 22],
-            "efficiency_scenarios": [80.0, 85.0, 90.0]
+            "efficiency_scenarios": [80.0, 85.0, 90.0],
         }
 
-        result = run_capacity_simulation(
-            db=mock_db,
-            client_id="test_client",
-            simulation_config=simulation_config
-        )
+        result = run_capacity_simulation(db=mock_db, client_id="test_client", simulation_config=simulation_config)
 
         assert "simulation_date" in result
         assert "capacity_requirements" in result
@@ -655,7 +614,7 @@ class TestDataclassesAndEnums:
             required_shifts=2,
             estimated_efficiency=Decimal("85.0"),
             buffer_employees=1,
-            total_recommended=11
+            total_recommended=11,
         )
 
         assert req.target_units == 1000
@@ -673,7 +632,7 @@ class TestEdgeCases:
             employees=1000,
             shift_hours=Decimal("24.0"),
             cycle_time_hours=Decimal("0.001"),
-            efficiency_percent=Decimal("99.9")
+            efficiency_percent=Decimal("99.9"),
         )
 
         assert result is not None
@@ -685,7 +644,7 @@ class TestEdgeCases:
             employees=7,
             shift_hours=Decimal("8.0"),
             cycle_time_hours=Decimal("0.33"),
-            efficiency_percent=Decimal("87.5")
+            efficiency_percent=Decimal("87.5"),
         )
 
         assert isinstance(result["hourly_rate"], Decimal)
@@ -694,10 +653,7 @@ class TestEdgeCases:
     def test_empty_scenarios(self):
         """Test handling of empty scenario lists"""
         result = run_staffing_simulation(
-            base_employees=20,
-            scenarios=[],
-            shift_hours=Decimal("8.0"),
-            cycle_time_hours=Decimal("0.5")
+            base_employees=20, scenarios=[], shift_hours=Decimal("8.0"), cycle_time_hours=Decimal("0.5")
         )
 
         assert result == []
@@ -708,7 +664,7 @@ class TestEdgeCases:
             employees=20,
             efficiency_scenarios=[Decimal("85.0")],
             shift_hours=Decimal("8.0"),
-            cycle_time_hours=Decimal("0.5")
+            cycle_time_hours=Decimal("0.5"),
         )
 
         assert len(result) == 1

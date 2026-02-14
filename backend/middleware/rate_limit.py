@@ -10,6 +10,7 @@ Configuration:
 Environment Variables:
 - DISABLE_RATE_LIMIT: Set to "1" or "true" to disable rate limiting (for E2E tests)
 """
+
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -30,7 +31,7 @@ limiter = Limiter(
     default_limits=["100/minute"],
     storage_uri="memory://",
     strategy="fixed-window",
-    enabled=not RATE_LIMIT_DISABLED
+    enabled=not RATE_LIMIT_DISABLED,
 )
 
 
@@ -103,7 +104,7 @@ def get_rate_limit_key(request: Request) -> str:
     client_ip = get_remote_address(request)
 
     # Try to get user from request state (set by auth dependency)
-    user_id = getattr(request.state, 'user_id', None)
+    user_id = getattr(request.state, "user_id", None)
 
     if user_id:
         return f"{client_ip}:{user_id}"
@@ -114,8 +115,10 @@ def get_rate_limit_key(request: Request) -> str:
 # No-op decorator for when rate limiting is disabled
 def _noop_decorator():
     """No-op decorator that does nothing (for disabled rate limiting)"""
+
     def decorator(func):
         return func
+
     return decorator
 
 
@@ -198,5 +201,5 @@ __all__ = [
     "sensitive_rate_limit",
     "upload_rate_limit",
     "report_rate_limit",
-    "get_rate_limit_key"
+    "get_rate_limit_key",
 ]

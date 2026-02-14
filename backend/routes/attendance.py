@@ -3,6 +3,7 @@ Attendance Tracking API Routes
 PHASE 3: Employee attendance and absenteeism KPIs
 All endpoints enforce multi-tenant client filtering
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import case
@@ -17,14 +18,14 @@ from backend.models.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
-    AbsenteeismCalculationResponse
+    AbsenteeismCalculationResponse,
 )
 from backend.crud.attendance import (
     create_attendance_record,
     get_attendance_record,
     get_attendance_records,
     update_attendance_record,
-    delete_attendance_record
+    delete_attendance_record,
 )
 from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
@@ -32,17 +33,12 @@ from backend.schemas.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
 
-router = APIRouter(
-    prefix="/api/attendance",
-    tags=["Attendance Tracking"]
-)
+router = APIRouter(prefix="/api/attendance", tags=["Attendance Tracking"])
 
 
 @router.post("", response_model=AttendanceRecordResponse, status_code=status.HTTP_201_CREATED)
 def create_attendance(
-    attendance: AttendanceRecordCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    attendance: AttendanceRecordCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new attendance record
@@ -50,15 +46,24 @@ def create_attendance(
     """
     try:
         result = create_attendance_record(db, attendance, current_user)
-        log_operation(logger, "CREATE", "attendance",
-                     resource_id=str(result.attendance_entry_id),
-                     user_id=current_user.user_id,
-                     client_id=getattr(attendance, 'client_id', None))
+        log_operation(
+            logger,
+            "CREATE",
+            "attendance",
+            resource_id=str(result.attendance_entry_id),
+            user_id=current_user.user_id,
+            client_id=getattr(attendance, "client_id", None),
+        )
         return result
     except Exception as e:
-        log_error(logger, "CREATE", "attendance", e,
-                 user_id=current_user.user_id,
-                 client_id=getattr(attendance, 'client_id', None))
+        log_error(
+            logger,
+            "CREATE",
+            "attendance",
+            e,
+            user_id=current_user.user_id,
+            client_id=getattr(attendance, "client_id", None),
+        )
         raise
 
 
@@ -73,16 +78,23 @@ def list_attendance(
     is_absent: Optional[int] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List attendance records with filters
     SECURITY: Returns only attendance for user's authorized clients
     """
     return get_attendance_records(
-        db, current_user=current_user, skip=skip, limit=limit, start_date=start_date,
-        end_date=end_date, employee_id=employee_id,
-        shift_id=shift_id, is_absent=is_absent, client_id=client_id
+        db,
+        current_user=current_user,
+        skip=skip,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+        employee_id=employee_id,
+        shift_id=shift_id,
+        is_absent=is_absent,
+        client_id=client_id,
     )
 
 
@@ -94,7 +106,7 @@ def get_attendance_by_employee(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all attendance records for a specific employee
@@ -107,7 +119,7 @@ def get_attendance_by_employee(
         start_date=start_date,
         end_date=end_date,
         skip=skip,
-        limit=limit
+        limit=limit,
     )
 
 
@@ -118,19 +130,14 @@ def get_attendance_by_date_range(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get attendance records within a date range
     SECURITY: Returns only attendance for user's authorized clients
     """
     return get_attendance_records(
-        db,
-        current_user=current_user,
-        start_date=start_date,
-        end_date=end_date,
-        skip=skip,
-        limit=limit
+        db, current_user=current_user, start_date=start_date, end_date=end_date, skip=skip, limit=limit
     )
 
 
@@ -141,7 +148,7 @@ def get_attendance_statistics(
     shift_id: Optional[int] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get attendance statistics and summary for a date range
@@ -152,21 +159,18 @@ def get_attendance_statistics(
 
     # Convert is_absent to status for backward compatibility
     status_case = case(
-        (AttendanceEntry.is_absent == 1, 'Absent'),
-        (AttendanceEntry.is_late == 1, 'Late'),
-        else_='Present'
+        (AttendanceEntry.is_absent == 1, "Absent"), (AttendanceEntry.is_late == 1, "Late"), else_="Present"
     )
 
     query = db.query(
-        status_case.label('status'),
-        func.count(AttendanceEntry.attendance_entry_id).label('count'),
-        func.sum(AttendanceEntry.actual_hours).label('total_hours')
+        status_case.label("status"),
+        func.count(AttendanceEntry.attendance_entry_id).label("count"),
+        func.sum(AttendanceEntry.actual_hours).label("total_hours"),
     )
 
     # Apply date filters (shift_date is DateTime, need to cast to Date for comparison)
     query = query.filter(
-        cast(AttendanceEntry.shift_date, Date) >= start_date,
-        cast(AttendanceEntry.shift_date, Date) <= end_date
+        cast(AttendanceEntry.shift_date, Date) >= start_date, cast(AttendanceEntry.shift_date, Date) <= end_date
     )
 
     # Optional shift filter
@@ -190,23 +194,15 @@ def get_attendance_statistics(
         "end_date": end_date,
         "shift_id": shift_id,
         "statistics": [
-            {
-                "status": row.status,
-                "count": row.count,
-                "total_hours": float(row.total_hours) if row.total_hours else 0
-            }
+            {"status": row.status, "count": row.count, "total_hours": float(row.total_hours) if row.total_hours else 0}
             for row in results
         ],
-        "calculation_timestamp": datetime.utcnow()
+        "calculation_timestamp": datetime.utcnow(),
     }
 
 
 @router.get("/{attendance_id}", response_model=AttendanceRecordResponse)
-def get_attendance(
-    attendance_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_attendance(attendance_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get attendance record by ID
     SECURITY: Verifies user has access to this attendance record
@@ -225,7 +221,7 @@ def update_attendance(
     attendance_id: int,
     attendance_update: AttendanceRecordUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update attendance record
@@ -235,24 +231,18 @@ def update_attendance(
         updated = update_attendance_record(db, attendance_id, attendance_update, current_user)
         if not updated:
             raise HTTPException(status_code=404, detail="Attendance record not found")
-        log_operation(logger, "UPDATE", "attendance",
-                     resource_id=str(attendance_id),
-                     user_id=current_user.user_id)
+        log_operation(logger, "UPDATE", "attendance", resource_id=str(attendance_id), user_id=current_user.user_id)
         return updated
     except HTTPException:
         raise
     except Exception as e:
-        log_error(logger, "UPDATE", "attendance", e,
-                 resource_id=str(attendance_id),
-                 user_id=current_user.user_id)
+        log_error(logger, "UPDATE", "attendance", e, resource_id=str(attendance_id), user_id=current_user.user_id)
         raise
 
 
 @router.delete("/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_attendance(
-    attendance_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    attendance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Delete attendance record (supervisor only)
@@ -262,21 +252,18 @@ def delete_attendance(
         success = delete_attendance_record(db, attendance_id, current_user)
         if not success:
             raise HTTPException(status_code=404, detail="Attendance record not found")
-        log_operation(logger, "DELETE", "attendance",
-                     resource_id=str(attendance_id),
-                     user_id=current_user.user_id)
+        log_operation(logger, "DELETE", "attendance", resource_id=str(attendance_id), user_id=current_user.user_id)
     except HTTPException:
         raise
     except Exception as e:
-        log_error(logger, "DELETE", "attendance", e,
-                 resource_id=str(attendance_id),
-                 user_id=current_user.user_id)
+        log_error(logger, "DELETE", "attendance", e, resource_id=str(attendance_id), user_id=current_user.user_id)
         raise
 
 
 # ============================================================================
 # KPI CALCULATION ENDPOINTS
 # ============================================================================
+
 
 @router.get("/kpi/absenteeism")
 def calculate_absenteeism_kpi(
@@ -285,7 +272,7 @@ def calculate_absenteeism_kpi(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate absenteeism KPI for a shift and date range with client filtering
@@ -310,22 +297,27 @@ def calculate_absenteeism_kpi(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Date filter conditions
     date_filter = [
         AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     ]
 
     # Build base query with client filter - using ATTENDANCE_ENTRY table
     # Calculate absent hours from absence_hours column or scheduled - actual
     query = db.query(
-        func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
-        func.sum(func.coalesce(AttendanceEntry.absence_hours, AttendanceEntry.scheduled_hours - func.coalesce(AttendanceEntry.actual_hours, 0))).label('absent'),
-        func.count(func.distinct(AttendanceEntry.employee_id)).label('emp_count'),
-        func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label('absence_count')
+        func.sum(AttendanceEntry.scheduled_hours).label("scheduled"),
+        func.sum(
+            func.coalesce(
+                AttendanceEntry.absence_hours,
+                AttendanceEntry.scheduled_hours - func.coalesce(AttendanceEntry.actual_hours, 0),
+            )
+        ).label("absent"),
+        func.count(func.distinct(AttendanceEntry.employee_id)).label("emp_count"),
+        func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label("absence_count"),
     ).filter(*date_filter)
 
     # Apply optional filters
@@ -344,6 +336,7 @@ def calculate_absenteeism_kpi(
     # Get shift_id for response if not provided
     if shift_id is None:
         from backend.schemas.shift import Shift
+
         shift_query = db.query(Shift)
         if effective_client_id:
             shift_query = shift_query.filter(Shift.client_id == effective_client_id)
@@ -356,6 +349,7 @@ def calculate_absenteeism_kpi(
 
     # 1. Absence by reason/type - use raw SQL to avoid enum issues
     from sqlalchemy import text
+
     reason_sql = """
         SELECT
             COALESCE(absence_type, 'Unspecified') as reason,
@@ -371,7 +365,7 @@ def calculate_absenteeism_kpi(
 
     reason_params = {
         "start_date": datetime.combine(start_date, datetime.min.time()),
-        "end_date": datetime.combine(end_date, datetime.max.time())
+        "end_date": datetime.combine(end_date, datetime.max.time()),
     }
     if effective_client_id:
         reason_params["client_id"] = effective_client_id
@@ -383,18 +377,18 @@ def calculate_absenteeism_kpi(
         {
             "reason": r.reason or "Unspecified",
             "count": r.count,
-            "percentage": round((r.count / total_absences_for_pct) * 100, 1)
+            "percentage": round((r.count / total_absences_for_pct) * 100, 1),
         }
         for r in reason_results
     ]
 
     # 2. Absenteeism by department (using client_id as proxy)
     dept_query = db.query(
-        AttendanceEntry.client_id.label('department'),
-        func.count(func.distinct(AttendanceEntry.employee_id)).label('workforce'),
-        func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label('absences'),
-        func.sum(AttendanceEntry.scheduled_hours).label('scheduled_hrs'),
-        func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label('absent_hrs')
+        AttendanceEntry.client_id.label("department"),
+        func.count(func.distinct(AttendanceEntry.employee_id)).label("workforce"),
+        func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label("absences"),
+        func.sum(AttendanceEntry.scheduled_hours).label("scheduled_hrs"),
+        func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label("absent_hrs"),
     ).filter(*date_filter)
 
     if effective_client_id:
@@ -407,7 +401,7 @@ def calculate_absenteeism_kpi(
             "department": d.department,
             "workforce": d.workforce,
             "absences": d.absences,
-            "rate": round((float(d.absent_hrs or 0) / float(d.scheduled_hrs or 1)) * 100, 1)
+            "rate": round((float(d.absent_hrs or 0) / float(d.scheduled_hrs or 1)) * 100, 1),
         }
         for d in dept_results
     ]
@@ -415,28 +409,28 @@ def calculate_absenteeism_kpi(
     # 3. High absence employees (more than 2 absences in period)
     high_absence_query = db.query(
         AttendanceEntry.employee_id,
-        AttendanceEntry.client_id.label('department'),
-        func.count().label('absence_count'),
-        func.max(AttendanceEntry.shift_date).label('last_absence')
-    ).filter(
-        *date_filter,
-        AttendanceEntry.is_absent == 1
-    )
+        AttendanceEntry.client_id.label("department"),
+        func.count().label("absence_count"),
+        func.max(AttendanceEntry.shift_date).label("last_absence"),
+    ).filter(*date_filter, AttendanceEntry.is_absent == 1)
 
     if effective_client_id:
         high_absence_query = high_absence_query.filter(AttendanceEntry.client_id == effective_client_id)
 
-    high_absence_results = high_absence_query.group_by(
-        AttendanceEntry.employee_id,
-        AttendanceEntry.client_id
-    ).having(func.count() >= 2).order_by(desc('absence_count')).limit(10).all()
+    high_absence_results = (
+        high_absence_query.group_by(AttendanceEntry.employee_id, AttendanceEntry.client_id)
+        .having(func.count() >= 2)
+        .order_by(desc("absence_count"))
+        .limit(10)
+        .all()
+    )
 
     high_absence_employees = [
         {
             "employee_id": e.employee_id,
             "department": e.department,
             "absence_count": e.absence_count,
-            "last_absence": e.last_absence.strftime('%Y-%m-%d') if e.last_absence else None
+            "last_absence": e.last_absence.strftime("%Y-%m-%d") if e.last_absence else None,
         }
         for e in high_absence_results
     ]
@@ -455,7 +449,7 @@ def calculate_absenteeism_kpi(
         "calculation_timestamp": datetime.utcnow().isoformat(),
         "by_reason": by_reason,
         "by_department": by_department,
-        "high_absence_employees": high_absence_employees
+        "high_absence_employees": high_absence_employees,
     }
 
 
@@ -465,7 +459,7 @@ def get_absenteeism_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get daily absenteeism trend data for charting
@@ -484,40 +478,34 @@ def get_absenteeism_trend(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Query daily absenteeism rates
     # Calculate absent hours: only count when is_absent=1
     # Note: `case` is imported at module level
     query = db.query(
-        func.date(AttendanceEntry.shift_date).label('date'),
-        func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
-        func.sum(
-            case(
-                (AttendanceEntry.is_absent == 1, AttendanceEntry.scheduled_hours),
-                else_=0
-            )
-        ).label('absent')
+        func.date(AttendanceEntry.shift_date).label("date"),
+        func.sum(AttendanceEntry.scheduled_hours).label("scheduled"),
+        func.sum(case((AttendanceEntry.is_absent == 1, AttendanceEntry.scheduled_hours), else_=0)).label("absent"),
     ).filter(
         AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
         query = query.filter(AttendanceEntry.client_id == effective_client_id)
 
-    results = query.group_by(func.date(AttendanceEntry.shift_date)).order_by('date').all()
+    results = query.group_by(func.date(AttendanceEntry.shift_date)).order_by("date").all()
 
     trend_data = []
     for r in results:
         scheduled = float(r.scheduled or 0)
         absent = float(r.absent or 0)
         rate = (absent / scheduled * 100) if scheduled > 0 else 0
-        trend_data.append({
-            "date": r.date.isoformat() if hasattr(r.date, 'isoformat') else str(r.date),
-            "value": round(rate, 2)
-        })
+        trend_data.append(
+            {"date": r.date.isoformat() if hasattr(r.date, "isoformat") else str(r.date), "value": round(rate, 2)}
+        )
 
     return trend_data
 
@@ -528,7 +516,7 @@ def get_bradford_factor(
     start_date: date,
     end_date: date,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Calculate Bradford Factor for employee
@@ -556,5 +544,5 @@ def get_bradford_factor(
         "interpretation": interpretation,
         "start_date": start_date,
         "end_date": end_date,
-        "calculation_timestamp": datetime.utcnow()
+        "calculation_timestamp": datetime.utcnow(),
     }

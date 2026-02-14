@@ -2,7 +2,9 @@
 Pytest Configuration and Fixtures
 Shared test fixtures for all test modules
 """
+
 import warnings
+
 # python-multipart 0.0.22 warns about `import multipart` (used by starlette),
 # but starlette hasn't migrated yet. Suppress to avoid pytest -W error breakage.
 warnings.filterwarnings("ignore", message="Please use `import python_multipart`", category=PendingDeprecationWarning)
@@ -17,7 +19,7 @@ import sys
 import os
 
 # Add project root to path (parent of backend)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from backend.database import Base, get_db
 
@@ -25,12 +27,15 @@ from backend.database import Base, get_db
 # This is critical for foreign key relationships to work
 from backend.schemas import (
     # Core foundation (must be first - no FK dependencies)
-    Client, ClientType,
-    User, UserRole,
+    Client,
+    ClientType,
+    User,
+    UserRole,
     Employee,
     FloatingPool,
     # Work order management
-    WorkOrder, WorkOrderStatus,
+    WorkOrder,
+    WorkOrderStatus,
     Job,
     PartOpportunities,
     # Phase 1: Production tracking
@@ -38,14 +43,17 @@ from backend.schemas import (
     Shift,
     ProductionEntry,
     # Phase 2: WIP & Downtime
-    HoldEntry, HoldStatus,
+    HoldEntry,
+    HoldStatus,
     DowntimeEntry,
     # Phase 3: Attendance
-    AttendanceEntry, AbsenceType,
+    AttendanceEntry,
+    AbsenceType,
     CoverageEntry,
     # Phase 4: Quality
     QualityEntry,
-    DefectDetail, DefectType,
+    DefectDetail,
+    DefectType,
 )
 
 # Import log for batch imports
@@ -67,6 +75,7 @@ def disable_rate_limit():
     """Disable rate limiter for all tests to prevent rate limit errors"""
     try:
         from backend.middleware.rate_limit import limiter
+
         # Set very high limits for tests
         original_enabled = limiter.enabled
         limiter.enabled = False
@@ -96,22 +105,14 @@ def get_test_engine():
         # This prevents 'index ix_CLIENT_client_id already exists' errors
         Base.metadata.drop_all(bind=_test_engine)
         Base.metadata.create_all(bind=_test_engine)
-        _TestingSessionLocal = sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=_test_engine
-        )
+        _TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
     return _test_engine
 
 
 def get_test_db():
     """Dependency override for get_db"""
     engine = get_test_engine()
-    TestingSessionLocal = sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=engine
-    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = TestingSessionLocal()
     try:
         yield db
@@ -137,11 +138,7 @@ def db_engine():
 @pytest.fixture(scope="function")
 def db_session(db_engine):
     """Create database session for tests"""
-    TestingSessionLocal = sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=db_engine
-    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
     session = TestingSessionLocal()
     try:
         yield session
@@ -159,7 +156,7 @@ def admin_user():
         email="admin@test.com",
         role=UserRole.ADMIN,
         client_id_assigned=None,  # Admin can access all clients
-        is_active=True
+        is_active=True,
     )
 
 
@@ -172,7 +169,7 @@ def operator_user_client_a():
         email="operator_a@test.com",
         role=UserRole.OPERATOR,
         client_id_assigned="CLIENT-A",
-        is_active=True
+        is_active=True,
     )
 
 
@@ -185,7 +182,7 @@ def operator_user_client_b():
         email="operator_b@test.com",
         role=UserRole.OPERATOR,
         client_id_assigned="CLIENT-B",
-        is_active=True
+        is_active=True,
     )
 
 
@@ -198,7 +195,7 @@ def leader_user_multi_client():
         email="leader@test.com",
         role=UserRole.LEADER,
         client_id_assigned="CLIENT-A,CLIENT-B",
-        is_active=True
+        is_active=True,
     )
 
 
@@ -337,12 +334,7 @@ class TestDataFactory:
     """Factory for generating test data"""
 
     @staticmethod
-    def create_production_entries(
-        db: Session,
-        count: int,
-        client_id: str = "CLIENT-A",
-        base_date: date = None
-    ):
+    def create_production_entries(db: Session, count: int, client_id: str = "CLIENT-A", base_date: date = None):
         """Create multiple production entries"""
         if base_date is None:
             base_date = date(2024, 1, 1)
@@ -370,10 +362,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_quality_inspections(
-        db: Session,
-        count: int,
-        client_id: str = "CLIENT-A",
-        defect_rate: float = 0.005  # 0.5% default
+        db: Session, count: int, client_id: str = "CLIENT-A", defect_rate: float = 0.005  # 0.5% default
     ):
         """Create multiple quality inspections"""
         inspections = []
@@ -406,20 +395,19 @@ class TestDataFactory:
 def test_data_factory():
     """Provide test data factory - uses enhanced fixtures"""
     from backend.tests.fixtures.factories import TestDataFactory as EnhancedFactory
+
     return EnhancedFactory
 
 
 # Assertion Helpers
 def assert_decimal_equal(actual: Decimal, expected: float, tolerance: float = 0.01):
     """Assert decimal values are equal within tolerance"""
-    assert abs(float(actual) - expected) <= tolerance, \
-        f"Expected {expected} ± {tolerance}, got {float(actual)}"
+    assert abs(float(actual) - expected) <= tolerance, f"Expected {expected} ± {tolerance}, got {float(actual)}"
 
 
 def assert_percentage_equal(actual: float, expected: float, tolerance: float = 0.1):
     """Assert percentage values are equal within tolerance"""
-    assert abs(actual - expected) <= tolerance, \
-        f"Expected {expected}% ± {tolerance}%, got {actual}%"
+    assert abs(actual - expected) <= tolerance, f"Expected {expected}% ± {tolerance}%, got {actual}%"
 
 
 # FastAPI Test Client Fixtures
@@ -455,7 +443,7 @@ def test_user_data():
         "email": "test@example.com",
         "password": "Test123!",
         "full_name": "Test User",
-        "role": "supervisor"  # Valid roles: admin, supervisor, operator, viewer
+        "role": "supervisor",  # Valid roles: admin, supervisor, operator, viewer
     }
 
 
@@ -466,10 +454,9 @@ def auth_headers(test_client, test_user_data):
     Creates a test user if needed and returns auth headers.
     """
     # Try to login first
-    response = test_client.post("/api/auth/login", json={
-        "username": test_user_data["username"],
-        "password": test_user_data["password"]
-    })
+    response = test_client.post(
+        "/api/auth/login", json={"username": test_user_data["username"], "password": test_user_data["password"]}
+    )
 
     if response.status_code == 200:
         token = response.json().get("access_token")
@@ -481,10 +468,9 @@ def auth_headers(test_client, test_user_data):
 
     if register_response.status_code in [200, 201]:
         # Now login
-        login_response = test_client.post("/api/auth/login", json={
-            "username": test_user_data["username"],
-            "password": test_user_data["password"]
-        })
+        login_response = test_client.post(
+            "/api/auth/login", json={"username": test_user_data["username"], "password": test_user_data["password"]}
+        )
 
         if login_response.status_code == 200:
             token = login_response.json().get("access_token")
@@ -504,14 +490,13 @@ def admin_auth_headers(test_client):
         "email": "admin_test@example.com",
         "password": "AdminPass123!",
         "full_name": "Admin Test User",
-        "role": "admin"
+        "role": "admin",
     }
 
     # Try to login first
-    response = test_client.post("/api/auth/login", json={
-        "username": admin_data["username"],
-        "password": admin_data["password"]
-    })
+    response = test_client.post(
+        "/api/auth/login", json={"username": admin_data["username"], "password": admin_data["password"]}
+    )
 
     if response.status_code == 200:
         token = response.json().get("access_token")
@@ -522,10 +507,9 @@ def admin_auth_headers(test_client):
     register_response = test_client.post("/api/auth/register", json=admin_data)
 
     if register_response.status_code in [200, 201]:
-        login_response = test_client.post("/api/auth/login", json={
-            "username": admin_data["username"],
-            "password": admin_data["password"]
-        })
+        login_response = test_client.post(
+            "/api/auth/login", json={"username": admin_data["username"], "password": admin_data["password"]}
+        )
 
         if login_response.status_code == 200:
             token = login_response.json().get("access_token")
@@ -542,47 +526,49 @@ def authenticated_client(test_client, auth_headers):
     Create an authenticated test client that automatically includes auth headers.
     This provides a cleaner API for tests that need authentication.
     """
+
     class AuthenticatedTestClient:
         """Wrapper around TestClient that adds auth headers to all requests"""
+
         def __init__(self, client, headers):
             self._client = client
             self._headers = headers
-        
+
         def get(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.get(url, headers=headers, **kwargs)
-        
+
         def post(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.post(url, headers=headers, **kwargs)
-        
+
         def put(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.put(url, headers=headers, **kwargs)
-        
+
         def patch(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.patch(url, headers=headers, **kwargs)
-        
+
         def delete(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.delete(url, headers=headers, **kwargs)
-        
+
         def head(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.head(url, headers=headers, **kwargs)
-        
+
         def options(self, url, **kwargs):
             headers = kwargs.pop("headers", {})
             headers.update(self._headers)
             return self._client.options(url, headers=headers, **kwargs)
-    
+
     return AuthenticatedTestClient(test_client, auth_headers)
 
 
@@ -624,11 +610,7 @@ def transactional_db():
     )
     Base.metadata.create_all(bind=engine)
 
-    TestingSessionLocal = sessionmaker(
-        autocommit=False,
-        autoflush=False,
-        bind=engine
-    )
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSessionLocal()
 
     # Reset factory counters for clean IDs
@@ -686,6 +668,7 @@ def factory(transactional_db):
 # Role-Based Authenticated Client Fixtures
 # ============================================================================
 
+
 @pytest.fixture(scope="function")
 def admin_authenticated_client(test_client, transactional_db):
     """
@@ -694,21 +677,16 @@ def admin_authenticated_client(test_client, transactional_db):
     """
     # Override get_db to use transactional_db
     from backend.main import app
+
     app.dependency_overrides[get_db] = lambda: transactional_db
 
     # Create client and admin user
     client = TestDataFactory.create_client(
-        transactional_db,
-        client_id="ADMIN-TEST-CLIENT",
-        client_name="Admin Test Client"
+        transactional_db, client_id="ADMIN-TEST-CLIENT", client_name="Admin Test Client"
     )
     transactional_db.commit()
 
-    auth_client = get_admin_client(
-        test_client,
-        transactional_db,
-        username="admin_test_user"
-    )
+    auth_client = get_admin_client(test_client, transactional_db, username="admin_test_user")
 
     yield auth_client, transactional_db, client
 
@@ -722,21 +700,17 @@ def supervisor_authenticated_client(test_client, transactional_db):
     Supervisors have elevated access within their assigned client.
     """
     from backend.main import app
+
     app.dependency_overrides[get_db] = lambda: transactional_db
 
     # Create client
     client = TestDataFactory.create_client(
-        transactional_db,
-        client_id="SUPERVISOR-TEST-CLIENT",
-        client_name="Supervisor Test Client"
+        transactional_db, client_id="SUPERVISOR-TEST-CLIENT", client_name="Supervisor Test Client"
     )
     transactional_db.commit()
 
     auth_client = get_supervisor_client(
-        test_client,
-        transactional_db,
-        client_id=client.client_id,
-        username="supervisor_test_user"
+        test_client, transactional_db, client_id=client.client_id, username="supervisor_test_user"
     )
 
     yield auth_client, transactional_db, client
@@ -751,21 +725,17 @@ def operator_authenticated_client(test_client, transactional_db):
     Operators have basic access to their assigned client only.
     """
     from backend.main import app
+
     app.dependency_overrides[get_db] = lambda: transactional_db
 
     # Create client
     client = TestDataFactory.create_client(
-        transactional_db,
-        client_id="OPERATOR-TEST-CLIENT",
-        client_name="Operator Test Client"
+        transactional_db, client_id="OPERATOR-TEST-CLIENT", client_name="Operator Test Client"
     )
     transactional_db.commit()
 
     auth_client = get_operator_client(
-        test_client,
-        transactional_db,
-        client_id=client.client_id,
-        username="operator_test_user"
+        test_client, transactional_db, client_id=client.client_id, username="operator_test_user"
     )
 
     yield auth_client, transactional_db, client
@@ -780,6 +750,7 @@ def multi_tenant_authenticated_clients(test_client, transactional_db):
     Returns dict with clients for different tenants.
     """
     from backend.main import app
+
     app.dependency_overrides[get_db] = lambda: transactional_db
 
     # Seed multi-tenant data
@@ -801,6 +772,7 @@ def multi_tenant_authenticated_clients(test_client, transactional_db):
 # Production Route Testing Fixtures
 # ============================================================================
 
+
 @pytest.fixture(scope="function")
 def production_test_setup(test_client, transactional_db):
     """
@@ -808,13 +780,12 @@ def production_test_setup(test_client, transactional_db):
     Creates all necessary entities: client, user, product, shift.
     """
     from backend.main import app
+
     app.dependency_overrides[get_db] = lambda: transactional_db
 
     # Create client
     client = TestDataFactory.create_client(
-        transactional_db,
-        client_id="PROD-TEST-CLIENT",
-        client_name="Production Test Client"
+        transactional_db, client_id="PROD-TEST-CLIENT", client_name="Production Test Client"
     )
 
     # Create supervisor user
@@ -823,7 +794,7 @@ def production_test_setup(test_client, transactional_db):
         username="prod_supervisor",
         role="supervisor",
         client_id=client.client_id,
-        password="TestPass123!"
+        password="TestPass123!",
     )
 
     # Create product
@@ -832,7 +803,7 @@ def production_test_setup(test_client, transactional_db):
         client_id=client.client_id,
         product_code="PROD-TEST-001",
         product_name="Test Production Product",
-        ideal_cycle_time=Decimal("0.15")
+        ideal_cycle_time=Decimal("0.15"),
     )
 
     # Create shift
@@ -841,17 +812,14 @@ def production_test_setup(test_client, transactional_db):
         client_id=client.client_id,
         shift_name="Test Day Shift",
         start_time="06:00:00",
-        end_time="14:00:00"
+        end_time="14:00:00",
     )
 
     transactional_db.commit()
 
     # Create authenticated client
     auth_client = get_supervisor_client(
-        test_client,
-        transactional_db,
-        client_id=client.client_id,
-        username="prod_route_supervisor"
+        test_client, transactional_db, client_id=client.client_id, username="prod_route_supervisor"
     )
 
     yield {
@@ -870,6 +838,7 @@ def production_test_setup(test_client, transactional_db):
 # Quality Route Testing Fixtures
 # ============================================================================
 
+
 @pytest.fixture(scope="function")
 def quality_test_setup(test_client, transactional_db):
     """
@@ -877,13 +846,12 @@ def quality_test_setup(test_client, transactional_db):
     Creates client, user, work order, and related entities.
     """
     from backend.main import app
+
     app.dependency_overrides[get_db] = lambda: transactional_db
 
     # Create client
     client = TestDataFactory.create_client(
-        transactional_db,
-        client_id="QUAL-TEST-CLIENT",
-        client_name="Quality Test Client"
+        transactional_db, client_id="QUAL-TEST-CLIENT", client_name="Quality Test Client"
     )
 
     # Create supervisor user
@@ -892,32 +860,24 @@ def quality_test_setup(test_client, transactional_db):
         username="qual_supervisor",
         role="supervisor",
         client_id=client.client_id,
-        password="TestPass123!"
+        password="TestPass123!",
     )
 
     # Create product
-    product = TestDataFactory.create_product(
-        transactional_db,
-        client_id=client.client_id
-    )
+    product = TestDataFactory.create_product(transactional_db, client_id=client.client_id)
 
     transactional_db.flush()
 
     # Create work order
     work_order = TestDataFactory.create_work_order(
-        transactional_db,
-        client_id=client.client_id,
-        product_id=product.product_id
+        transactional_db, client_id=client.client_id, product_id=product.product_id
     )
 
     transactional_db.commit()
 
     # Create authenticated client
     auth_client = get_supervisor_client(
-        test_client,
-        transactional_db,
-        client_id=client.client_id,
-        username="qual_route_supervisor"
+        test_client, transactional_db, client_id=client.client_id, username="qual_route_supervisor"
     )
 
     yield {

@@ -2,6 +2,7 @@
 Alert Calculation Engine
 Generates intelligent alerts based on predictions, thresholds, and patterns
 """
+
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
 from datetime import datetime, timedelta
@@ -14,6 +15,7 @@ from backend.calculations.predictions import auto_forecast, ForecastResult
 @dataclass
 class AlertGenerationResult:
     """Result of alert generation check"""
+
     should_alert: bool
     severity: str  # info, warning, critical, urgent
     title: str
@@ -36,7 +38,7 @@ def check_threshold_breach(
     target: Decimal,
     warning_threshold: Optional[Decimal],
     critical_threshold: Optional[Decimal],
-    higher_is_better: bool = True
+    higher_is_better: bool = True,
 ) -> Optional[str]:
     """
     Check if a value breaches thresholds
@@ -72,7 +74,7 @@ def generate_efficiency_alert(
     warning_threshold: Decimal = Decimal("80"),
     critical_threshold: Decimal = Decimal("70"),
     historical_values: Optional[List[Decimal]] = None,
-    client_name: Optional[str] = None
+    client_name: Optional[str] = None,
 ) -> Optional[AlertGenerationResult]:
     """
     Generate efficiency alert based on current value and trend
@@ -86,15 +88,14 @@ def generate_efficiency_alert(
         client_name: Client name for context
     """
     severity = check_threshold_breach(
-        current_efficiency, target, warning_threshold, critical_threshold,
-        higher_is_better=True
+        current_efficiency, target, warning_threshold, critical_threshold, higher_is_better=True
     )
 
     if not severity:
         # Check for declining trend even if above threshold
         if historical_values and len(historical_values) >= 5:
             recent = historical_values[-5:]
-            if all(recent[i] > recent[i+1] for i in range(len(recent)-1)):
+            if all(recent[i] > recent[i + 1] for i in range(len(recent) - 1)):
                 # 5 consecutive declining values
                 severity = "warning"
                 return AlertGenerationResult(
@@ -105,7 +106,7 @@ def generate_efficiency_alert(
                     recommendation="Investigate production bottlenecks and operator performance",
                     current_value=current_efficiency,
                     threshold_value=target,
-                    metadata={"trend": "declining", "periods": 5}
+                    metadata={"trend": "declining", "periods": 5},
                 )
         return None
 
@@ -114,7 +115,9 @@ def generate_efficiency_alert(
     if severity == "urgent":
         title = f"URGENT: Critical Efficiency Drop{context}"
         message = f"Efficiency at {current_efficiency}% - significantly below target of {target}%"
-        recommendation = "Immediate intervention required. Check for equipment failures, staffing issues, or material problems."
+        recommendation = (
+            "Immediate intervention required. Check for equipment failures, staffing issues, or material problems."
+        )
     elif severity == "critical":
         title = f"Critical: Low Efficiency{context}"
         message = f"Efficiency at {current_efficiency}% is below critical threshold of {critical_threshold}%"
@@ -132,7 +135,7 @@ def generate_efficiency_alert(
         recommendation=recommendation,
         current_value=current_efficiency,
         threshold_value=target,
-        metadata={"warning": warning_threshold, "critical": critical_threshold}
+        metadata={"warning": warning_threshold, "critical": critical_threshold},
     )
 
 
@@ -142,7 +145,7 @@ def generate_otd_risk_alert(
     due_date: datetime,
     current_completion_percent: Decimal,
     planned_completion_percent: Decimal,
-    days_remaining: int
+    days_remaining: int,
 ) -> Optional[AlertGenerationResult]:
     """
     Generate OTD risk alert based on completion progress vs plan
@@ -215,8 +218,8 @@ def generate_otd_risk_alert(
             "days_remaining": days_remaining,
             "due_date": due_date.isoformat(),
             "work_order_id": work_order_id,
-            "client_name": client_name
-        }
+            "client_name": client_name,
+        },
     )
 
 
@@ -227,7 +230,7 @@ def generate_quality_alert(
     warning_threshold: Optional[Decimal] = None,
     critical_threshold: Optional[Decimal] = None,
     historical_values: Optional[List[Decimal]] = None,
-    product_line: Optional[str] = None
+    product_line: Optional[str] = None,
 ) -> Optional[AlertGenerationResult]:
     """
     Generate quality KPI alert
@@ -242,7 +245,7 @@ def generate_quality_alert(
         product_line: Product line for context
     """
     # Determine direction (higher is better for FPY/RTY, lower is better for DPMO/PPM)
-    higher_is_better = kpi_type.lower() in ['fpy', 'rty']
+    higher_is_better = kpi_type.lower() in ["fpy", "rty"]
 
     # Set default thresholds if not provided
     if higher_is_better:
@@ -253,8 +256,7 @@ def generate_quality_alert(
         critical_threshold = critical_threshold or (target * Decimal("2.0"))
 
     severity = check_threshold_breach(
-        current_value, target, warning_threshold, critical_threshold,
-        higher_is_better=higher_is_better
+        current_value, target, warning_threshold, critical_threshold, higher_is_better=higher_is_better
     )
 
     # Check for trend even if no threshold breach
@@ -278,13 +280,13 @@ def generate_quality_alert(
         return None
 
     kpi_name = {
-        'fpy': 'First Pass Yield',
-        'rty': 'Rolled Throughput Yield',
-        'dpmo': 'Defects Per Million Opportunities',
-        'ppm': 'Parts Per Million'
+        "fpy": "First Pass Yield",
+        "rty": "Rolled Throughput Yield",
+        "dpmo": "Defects Per Million Opportunities",
+        "ppm": "Parts Per Million",
     }.get(kpi_type.lower(), kpi_type.upper())
 
-    unit = '%' if kpi_type.lower() in ['fpy', 'rty'] else ''
+    unit = "%" if kpi_type.lower() in ["fpy", "rty"] else ""
     context = f" - {product_line}" if product_line else ""
 
     if severity == "urgent":
@@ -297,7 +299,9 @@ def generate_quality_alert(
         recommendation = "Implement immediate quality control measures. Review recent process changes."
     elif severity == "warning":
         title = f"Warning: {kpi_name} Approaching Limit{context}"
-        message = f"{kpi_name} at {current_value}{unit} is {'below warning' if higher_is_better else 'above warning'} level"
+        message = (
+            f"{kpi_name} at {current_value}{unit} is {'below warning' if higher_is_better else 'above warning'} level"
+        )
         recommendation = "Increase inspection frequency. Identify potential quality issues."
     else:  # info
         title = f"Info: {kpi_name} Trending {'Down' if higher_is_better else 'Up'}{context}"
@@ -317,8 +321,8 @@ def generate_quality_alert(
             "trend": trend_direction,
             "warning": float(warning_threshold) if warning_threshold else None,
             "critical": float(critical_threshold) if critical_threshold else None,
-            "product_line": product_line
-        }
+            "product_line": product_line,
+        },
     )
 
 
@@ -328,7 +332,7 @@ def generate_capacity_alert(
     optimal_max: Decimal = Decimal("95"),
     predicted_idle_days: Optional[int] = None,
     overtime_hours_needed: Optional[Decimal] = None,
-    bottleneck_station: Optional[str] = None
+    bottleneck_station: Optional[str] = None,
 ) -> Optional[AlertGenerationResult]:
     """
     Generate capacity planning alert based on load percentage
@@ -378,7 +382,9 @@ def generate_capacity_alert(
         severity = "critical"
         title = "Capacity Alert: Overloaded"
         message = f"Load at {load_percent}% - CANNOT meet demand with current capacity"
-        recommendation = "Immediate action required: authorize overtime, hire temporary workers, or negotiate delivery dates."
+        recommendation = (
+            "Immediate action required: authorize overtime, hire temporary workers, or negotiate delivery dates."
+        )
         status = "overloaded"
 
     # Enhance message with details
@@ -406,8 +412,8 @@ def generate_capacity_alert(
             "load_percent": float(load_percent),
             "idle_days": predicted_idle_days,
             "overtime_hours": float(overtime_hours_needed) if overtime_hours_needed else None,
-            "bottleneck": bottleneck_station
-        }
+            "bottleneck": bottleneck_station,
+        },
     )
 
 
@@ -418,7 +424,7 @@ def generate_prediction_based_alert(
     warning_threshold: Optional[Decimal] = None,
     critical_threshold: Optional[Decimal] = None,
     forecast_periods: int = 7,
-    higher_is_better: bool = True
+    higher_is_better: bool = True,
 ) -> Optional[AlertGenerationResult]:
     """
     Generate alert based on predicted future values
@@ -446,13 +452,10 @@ def generate_prediction_based_alert(
     worst_period = None
 
     for i, pred in enumerate(forecast.predictions):
-        severity = check_threshold_breach(
-            pred, target, warning_threshold, critical_threshold, higher_is_better
-        )
+        severity = check_threshold_breach(pred, target, warning_threshold, critical_threshold, higher_is_better)
         if severity:
             if worst_prediction is None or (
-                (higher_is_better and pred < worst_prediction) or
-                (not higher_is_better and pred > worst_prediction)
+                (higher_is_better and pred < worst_prediction) or (not higher_is_better and pred > worst_prediction)
             ):
                 worst_prediction = pred
                 worst_period = i + 1
@@ -461,9 +464,7 @@ def generate_prediction_based_alert(
         return None
 
     # Determine alert severity based on how soon and how bad
-    severity = check_threshold_breach(
-        worst_prediction, target, warning_threshold, critical_threshold, higher_is_better
-    )
+    severity = check_threshold_breach(worst_prediction, target, warning_threshold, critical_threshold, higher_is_better)
 
     if worst_period <= 3:
         # Issue predicted within 3 days - escalate
@@ -472,9 +473,13 @@ def generate_prediction_based_alert(
         elif severity == "critical":
             severity = "urgent"
 
-    confidence = forecast.confidence_scores[worst_period - 1] if worst_period <= len(forecast.confidence_scores) else Decimal("50")
+    confidence = (
+        forecast.confidence_scores[worst_period - 1]
+        if worst_period <= len(forecast.confidence_scores)
+        else Decimal("50")
+    )
 
-    kpi_display = kpi_key.upper().replace('_', ' ')
+    kpi_display = kpi_key.upper().replace("_", " ")
 
     return AlertGenerationResult(
         should_alert=True,
@@ -495,8 +500,8 @@ def generate_prediction_based_alert(
             "forecast_method": forecast.method,
             "forecast_accuracy": float(forecast.accuracy_score),
             "all_predictions": [float(p) for p in forecast.predictions],
-            "worst_period_days": worst_period
-        }
+            "worst_period_days": worst_period,
+        },
     )
 
 
@@ -506,7 +511,7 @@ def generate_attendance_alert(
     warning_threshold: Decimal = Decimal("8"),
     critical_threshold: Decimal = Decimal("12"),
     floating_pool_available: int = 0,
-    coverage_needed: int = 0
+    coverage_needed: int = 0,
 ) -> Optional[AlertGenerationResult]:
     """
     Generate attendance/absenteeism alert
@@ -520,8 +525,11 @@ def generate_attendance_alert(
         coverage_needed: Workers needed for coverage
     """
     severity = check_threshold_breach(
-        absenteeism_rate, target_rate, warning_threshold, critical_threshold,
-        higher_is_better=False  # Lower absenteeism is better
+        absenteeism_rate,
+        target_rate,
+        warning_threshold,
+        critical_threshold,
+        higher_is_better=False,  # Lower absenteeism is better
     )
 
     if not severity:
@@ -532,7 +540,9 @@ def generate_attendance_alert(
     if severity == "urgent" or (severity == "critical" and coverage_gap > 5):
         title = "URGENT: Critical Absenteeism Level"
         message = f"Absenteeism at {absenteeism_rate}% - production capacity severely impacted"
-        recommendation = "Activate all floating pool resources. Consider temporary workers or overtime for present staff."
+        recommendation = (
+            "Activate all floating pool resources. Consider temporary workers or overtime for present staff."
+        )
     elif severity == "critical":
         title = "Critical: High Absenteeism"
         message = f"Absenteeism at {absenteeism_rate}% exceeds critical threshold of {critical_threshold}%"
@@ -558,15 +568,13 @@ def generate_attendance_alert(
         metadata={
             "floating_pool_available": floating_pool_available,
             "coverage_needed": coverage_needed,
-            "coverage_gap": coverage_gap
-        }
+            "coverage_gap": coverage_gap,
+        },
     )
 
 
 def generate_hold_alert(
-    pending_holds_count: int,
-    oldest_hold_hours: Optional[int] = None,
-    total_units_on_hold: int = 0
+    pending_holds_count: int, oldest_hold_hours: Optional[int] = None, total_units_on_hold: int = 0
 ) -> Optional[AlertGenerationResult]:
     """
     Generate alert for pending hold approvals
@@ -612,6 +620,6 @@ def generate_hold_alert(
         metadata={
             "pending_count": pending_holds_count,
             "oldest_hours": oldest_hold_hours,
-            "units_on_hold": total_units_on_hold
-        }
+            "units_on_hold": total_units_on_hold,
+        },
     )

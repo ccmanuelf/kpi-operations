@@ -18,6 +18,7 @@ Provides endpoints for:
 - Floating pool optimization
 - Comprehensive capacity simulation
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -37,7 +38,7 @@ from backend.calculations.simulation import (
     simulate_multi_shift_coverage,
     optimize_floating_pool_allocation,
     run_capacity_simulation,
-    OptimizationGoal as CalcOptimizationGoal
+    OptimizationGoal as CalcOptimizationGoal,
 )
 
 from backend.schemas.simulation import (
@@ -60,13 +61,11 @@ from backend.schemas.simulation import (
     GapAnalysis,
     SimulationResultResponse,
     SimulationSummary,
-    OptimizationGoal
+    OptimizationGoal,
 )
 
 router = APIRouter(
-    prefix="/api/simulation",
-    tags=["simulation"],
-    deprecated=True  # Marks all endpoints as deprecated in OpenAPI docs
+    prefix="/api/simulation", tags=["simulation"], deprecated=True  # Marks all endpoints as deprecated in OpenAPI docs
 )
 
 
@@ -74,10 +73,9 @@ router = APIRouter(
 # Simulation Overview
 # =============================================================================
 
+
 @router.get("/", response_model=SimulationSummary)
-async def get_simulation_overview(
-    current_user: User = Depends(get_current_user)
-) -> SimulationSummary:
+async def get_simulation_overview(current_user: User = Depends(get_current_user)) -> SimulationSummary:
     """
     Get simulation capabilities overview.
 
@@ -96,7 +94,7 @@ async def get_simulation_overview(
             "shift_coverage",
             "multi_shift_coverage",
             "floating_pool_optimization",
-            "comprehensive_simulation"
+            "comprehensive_simulation",
         ],
         description=(
             "[DEPRECATED] Simulation and capacity planning module for production forecasting "
@@ -109,8 +107,8 @@ async def get_simulation_overview(
             "Analyze shift coverage gaps and floating pool allocation",
             "Run what-if scenarios for efficiency improvements",
             "Optimize floating pool employee distribution",
-            "[RECOMMENDED] Use /api/v2/simulation/run for enhanced discrete-event simulation"
-        ]
+            "[RECOMMENDED] Use /api/v2/simulation/run for enhanced discrete-event simulation",
+        ],
     )
 
 
@@ -118,11 +116,10 @@ async def get_simulation_overview(
 # Capacity Requirements
 # =============================================================================
 
+
 @router.post("/capacity-requirements", response_model=CapacityRequirementResponse)
 async def calculate_capacity_requirements_endpoint(
-    request: CapacityRequirementRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: CapacityRequirementRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> CapacityRequirementResponse:
     """
     Calculate staffing requirements to meet production targets.
@@ -148,7 +145,7 @@ async def calculate_capacity_requirements_endpoint(
             shift_hours=Decimal(str(request.shift_hours)),
             target_efficiency=Decimal(str(request.target_efficiency)),
             absenteeism_rate=Decimal(str(request.absenteeism_rate)),
-            include_buffer=request.include_buffer
+            include_buffer=request.include_buffer,
         )
 
         return CapacityRequirementResponse(
@@ -161,7 +158,7 @@ async def calculate_capacity_requirements_endpoint(
             total_recommended=result.total_recommended,
             cost_estimate=float(result.cost_estimate) if result.cost_estimate else None,
             confidence_score=float(result.confidence_score),
-            notes=result.notes
+            notes=result.notes,
         )
 
     except ValueError as e:
@@ -174,10 +171,10 @@ async def calculate_capacity_requirements_endpoint(
 # Production Capacity
 # =============================================================================
 
+
 @router.post("/production-capacity", response_model=ProductionCapacityResponse)
 async def calculate_production_capacity_endpoint(
-    request: ProductionCapacityRequest,
-    current_user: User = Depends(get_current_user)
+    request: ProductionCapacityRequest, current_user: User = Depends(get_current_user)
 ) -> ProductionCapacityResponse:
     """
     Calculate production capacity given staffing levels.
@@ -195,7 +192,7 @@ async def calculate_production_capacity_endpoint(
             employees=request.employees,
             shift_hours=Decimal(str(request.shift_hours)),
             cycle_time_hours=Decimal(str(request.cycle_time_hours)),
-            efficiency_percent=Decimal(str(request.efficiency_percent))
+            efficiency_percent=Decimal(str(request.efficiency_percent)),
         )
 
         return ProductionCapacityResponse(
@@ -205,7 +202,7 @@ async def calculate_production_capacity_endpoint(
             efficiency_percent=float(result["efficiency_percent"]),
             units_capacity=result["units_capacity"],
             hourly_rate=float(result["hourly_rate"]),
-            effective_production_hours=float(result["effective_production_hours"])
+            effective_production_hours=float(result["effective_production_hours"]),
         )
 
     except ValueError as e:
@@ -218,10 +215,10 @@ async def calculate_production_capacity_endpoint(
 # Staffing Simulation
 # =============================================================================
 
+
 @router.post("/staffing", response_model=List[SimulationResultResponse])
 async def run_staffing_simulation_endpoint(
-    request: StaffingSimulationRequest,
-    current_user: User = Depends(get_current_user)
+    request: StaffingSimulationRequest, current_user: User = Depends(get_current_user)
 ) -> List[SimulationResultResponse]:
     """
     Simulate production outcomes with different staffing levels.
@@ -244,7 +241,7 @@ async def run_staffing_simulation_endpoint(
             shift_hours=Decimal(str(request.shift_hours)),
             cycle_time_hours=Decimal(str(request.cycle_time_hours)),
             base_efficiency=Decimal(str(request.base_efficiency)),
-            efficiency_scaling=request.efficiency_scaling
+            efficiency_scaling=request.efficiency_scaling,
         )
 
         return [
@@ -256,8 +253,9 @@ async def run_staffing_simulation_endpoint(
                 kpi_impact={k: float(v) for k, v in r.kpi_impact.items()},
                 recommendations=r.recommendations,
                 confidence_score=float(r.confidence_score),
-                comparison_to_baseline={k: float(v) for k, v in r.comparison_to_baseline.items()}
-                if r.comparison_to_baseline else None
+                comparison_to_baseline=(
+                    {k: float(v) for k, v in r.comparison_to_baseline.items()} if r.comparison_to_baseline else None
+                ),
             )
             for r in results
         ]
@@ -272,10 +270,10 @@ async def run_staffing_simulation_endpoint(
 # Efficiency Simulation
 # =============================================================================
 
+
 @router.post("/efficiency", response_model=List[SimulationResultResponse])
 async def run_efficiency_simulation_endpoint(
-    request: EfficiencySimulationRequest,
-    current_user: User = Depends(get_current_user)
+    request: EfficiencySimulationRequest, current_user: User = Depends(get_current_user)
 ) -> List[SimulationResultResponse]:
     """
     Simulate production outcomes with different efficiency levels.
@@ -295,7 +293,7 @@ async def run_efficiency_simulation_endpoint(
             efficiency_scenarios=efficiency_scenarios,
             shift_hours=Decimal(str(request.shift_hours)),
             cycle_time_hours=Decimal(str(request.cycle_time_hours)),
-            base_efficiency=Decimal(str(request.base_efficiency))
+            base_efficiency=Decimal(str(request.base_efficiency)),
         )
 
         return [
@@ -307,8 +305,9 @@ async def run_efficiency_simulation_endpoint(
                 kpi_impact={k: float(v) for k, v in r.kpi_impact.items()},
                 recommendations=r.recommendations,
                 confidence_score=float(r.confidence_score),
-                comparison_to_baseline={k: float(v) for k, v in r.comparison_to_baseline.items()}
-                if r.comparison_to_baseline else None
+                comparison_to_baseline=(
+                    {k: float(v) for k, v in r.comparison_to_baseline.items()} if r.comparison_to_baseline else None
+                ),
             )
             for r in results
         ]
@@ -323,10 +322,10 @@ async def run_efficiency_simulation_endpoint(
 # Shift Coverage Simulation
 # =============================================================================
 
+
 @router.post("/shift-coverage", response_model=ShiftCoverageSimulationResponse)
 async def simulate_shift_coverage_endpoint(
-    request: ShiftCoverageSimulationRequest,
-    current_user: User = Depends(get_current_user)
+    request: ShiftCoverageSimulationRequest, current_user: User = Depends(get_current_user)
 ) -> ShiftCoverageSimulationResponse:
     """
     Simulate shift coverage with regular and floating pool employees.
@@ -346,7 +345,7 @@ async def simulate_shift_coverage_endpoint(
             required_employees=request.required_employees,
             shift_name=request.shift_name,
             shift_id=request.shift_id,
-            target_date=target_date_val
+            target_date=target_date_val,
         )
 
         return ShiftCoverageSimulationResponse(
@@ -358,7 +357,7 @@ async def simulate_shift_coverage_endpoint(
             available_floating_pool=result.available_floating_pool,
             coverage_gap=result.coverage_gap,
             coverage_percent=float(result.coverage_percent),
-            recommendations=result.recommendations
+            recommendations=result.recommendations,
         )
 
     except Exception as e:
@@ -367,8 +366,7 @@ async def simulate_shift_coverage_endpoint(
 
 @router.post("/multi-shift-coverage", response_model=MultiShiftCoverageResponse)
 async def simulate_multi_shift_coverage_endpoint(
-    request: MultiShiftCoverageRequest,
-    current_user: User = Depends(get_current_user)
+    request: MultiShiftCoverageRequest, current_user: User = Depends(get_current_user)
 ) -> MultiShiftCoverageResponse:
     """
     Simulate coverage across multiple shifts with floating pool allocation.
@@ -387,14 +385,13 @@ async def simulate_multi_shift_coverage_endpoint(
                 "shift_name": s.shift_name,
                 "regular_employees": s.regular_employees,
                 "required": s.required,
-                "target_date": s.target_date or date.today()
+                "target_date": s.target_date or date.today(),
             }
             for s in request.shifts
         ]
 
         shift_results, summary = simulate_multi_shift_coverage(
-            shifts=shifts,
-            floating_pool_total=request.floating_pool_total
+            shifts=shifts, floating_pool_total=request.floating_pool_total
         )
 
         shift_responses = [
@@ -407,7 +404,7 @@ async def simulate_multi_shift_coverage_endpoint(
                 available_floating_pool=r.available_floating_pool,
                 coverage_gap=r.coverage_gap,
                 coverage_percent=float(r.coverage_percent),
-                recommendations=r.recommendations
+                recommendations=r.recommendations,
             )
             for r in shift_results
         ]
@@ -421,13 +418,10 @@ async def simulate_multi_shift_coverage_endpoint(
             floating_pool_total=summary["floating_pool_total"],
             floating_pool_allocated=summary["floating_pool_allocated"],
             floating_pool_remaining=summary["floating_pool_remaining"],
-            allocations=summary["allocations"]
+            allocations=summary["allocations"],
         )
 
-        return MultiShiftCoverageResponse(
-            shift_simulations=shift_responses,
-            summary=summary_response
-        )
+        return MultiShiftCoverageResponse(shift_simulations=shift_responses, summary=summary_response)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error simulating multi-shift coverage: {str(e)}")
@@ -437,11 +431,12 @@ async def simulate_multi_shift_coverage_endpoint(
 # Floating Pool Optimization
 # =============================================================================
 
+
 @router.post("/floating-pool-optimization", response_model=FloatingPoolOptimizationResponse)
 async def optimize_floating_pool_endpoint(
     request: FloatingPoolOptimizationRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> FloatingPoolOptimizationResponse:
     """
     Optimize floating pool employee allocation across shifts.
@@ -468,7 +463,7 @@ async def optimize_floating_pool_endpoint(
                 "shift_id": s.shift_id,
                 "shift_name": s.shift_name,
                 "regular_employees": s.regular_employees,
-                "required": s.required
+                "required": s.required,
             }
             for s in request.shift_requirements
         ]
@@ -482,7 +477,7 @@ async def optimize_floating_pool_endpoint(
             target_date=target_date_val,
             available_pool_employees=pool_employees,
             shift_requirements=shift_requirements,
-            optimization_goal=calc_goal
+            optimization_goal=calc_goal,
         )
 
         allocation_suggestions = [
@@ -491,7 +486,7 @@ async def optimize_floating_pool_endpoint(
                 shift_name=s["shift_name"],
                 employees_assigned=s["employees_assigned"],
                 employee_ids=s["employee_ids"],
-                gap_remaining=s["gap_remaining"]
+                gap_remaining=s["gap_remaining"],
             )
             for s in result.allocation_suggestions
         ]
@@ -502,7 +497,7 @@ async def optimize_floating_pool_endpoint(
             allocation_suggestions=allocation_suggestions,
             utilization_rate=float(result.utilization_rate),
             cost_savings=float(result.cost_savings) if result.cost_savings else None,
-            efficiency_gain=float(result.efficiency_gain) if result.efficiency_gain else None
+            efficiency_gain=float(result.efficiency_gain) if result.efficiency_gain else None,
         )
 
     except Exception as e:
@@ -513,11 +508,12 @@ async def optimize_floating_pool_endpoint(
 # Comprehensive Simulation
 # =============================================================================
 
+
 @router.post("/comprehensive")
 async def run_comprehensive_simulation(
     request: ComprehensiveSimulationRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Run a comprehensive capacity simulation with multiple scenarios.
@@ -542,7 +538,7 @@ async def run_comprehensive_simulation(
             "current_employees": request.current_employees,
             "shift_hours": request.shift_hours,
             "cycle_time_hours": request.cycle_time_hours,
-            "efficiency": request.efficiency
+            "efficiency": request.efficiency,
         }
 
         if request.staffing_scenarios:
@@ -551,11 +547,7 @@ async def run_comprehensive_simulation(
         if request.efficiency_scenarios:
             config["efficiency_scenarios"] = request.efficiency_scenarios
 
-        result = run_capacity_simulation(
-            db=db,
-            client_id=current_user.client_id_assigned,
-            simulation_config=config
-        )
+        result = run_capacity_simulation(db=db, client_id=current_user.client_id_assigned, simulation_config=config)
 
         return result
 
@@ -567,6 +559,7 @@ async def run_comprehensive_simulation(
 # Quick Calculations
 # =============================================================================
 
+
 @router.get("/quick/capacity")
 async def quick_capacity_calculation(
     employees: int = Query(..., ge=1, description="Number of employees"),
@@ -574,7 +567,7 @@ async def quick_capacity_calculation(
     shift_hours: float = Query(default=8.0, gt=0, le=24),
     cycle_time_hours: float = Query(default=0.25, gt=0),
     efficiency: float = Query(default=85.0, ge=0, le=100),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Quick capacity gap calculation via query parameters.
@@ -593,7 +586,7 @@ async def quick_capacity_calculation(
         employees=employees,
         shift_hours=Decimal(str(shift_hours)),
         cycle_time_hours=Decimal(str(cycle_time_hours)),
-        efficiency_percent=Decimal(str(efficiency))
+        efficiency_percent=Decimal(str(efficiency)),
     )
 
     gap = target_units - capacity["units_capacity"]
@@ -606,8 +599,9 @@ async def quick_capacity_calculation(
         "gap": gap,
         "meets_target": meets_target,
         "hourly_rate": float(capacity["hourly_rate"]),
-        "utilization_needed": min(100, (target_units / max(1, capacity["units_capacity"])) * 100)
-        if capacity["units_capacity"] > 0 else 0
+        "utilization_needed": (
+            min(100, (target_units / max(1, capacity["units_capacity"])) * 100) if capacity["units_capacity"] > 0 else 0
+        ),
     }
 
 
@@ -618,7 +612,7 @@ async def quick_staffing_calculation(
     cycle_time_hours: float = Query(default=0.25, gt=0),
     efficiency: float = Query(default=85.0, ge=0, le=100),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Quick staffing requirement calculation via query parameters.
@@ -639,7 +633,7 @@ async def quick_staffing_calculation(
         target_date=date.today(),
         cycle_time_hours=Decimal(str(cycle_time_hours)),
         shift_hours=Decimal(str(shift_hours)),
-        target_efficiency=Decimal(str(efficiency))
+        target_efficiency=Decimal(str(efficiency)),
     )
 
     return {
@@ -648,7 +642,7 @@ async def quick_staffing_calculation(
         "buffer_employees": result.buffer_employees,
         "total_recommended": result.total_recommended,
         "required_hours": float(result.required_hours),
-        "estimated_efficiency": float(result.estimated_efficiency)
+        "estimated_efficiency": float(result.estimated_efficiency),
     }
 
 
@@ -664,14 +658,12 @@ from backend.calculations.production_line_simulation import (
     compare_scenarios,
     analyze_bottlenecks,
     simulate_floating_pool_impact,
-    create_default_production_line
+    create_default_production_line,
 )
 
 
 @router.get("/production-line/guide")
-async def get_production_line_simulation_guide(
-    current_user: User = Depends(get_current_user)
-) -> dict:
+async def get_production_line_simulation_guide(current_user: User = Depends(get_current_user)) -> dict:
     """
     Get a guide for using the production line simulation.
 
@@ -685,7 +677,7 @@ async def get_production_line_simulation_guide(
             "2. Customize the configuration for your specific use case",
             "3. Run simulation with /production-line/run endpoint",
             "4. Analyze bottlenecks with /production-line/bottlenecks",
-            "5. Compare scenarios with /production-line/compare"
+            "5. Compare scenarios with /production-line/compare",
         ],
         "configuration_options": {
             "line_config": {
@@ -695,7 +687,7 @@ async def get_production_line_simulation_guide(
                 "break_duration_minutes": "Duration of breaks (default: 30)",
                 "breaks_per_shift": "Number of breaks per shift (default: 2)",
                 "workers_per_station": "Default workers per station",
-                "floating_pool_size": "Number of floating pool workers"
+                "floating_pool_size": "Number of floating pool workers",
             },
             "station_config": {
                 "station_id": "Unique station identifier",
@@ -706,40 +698,40 @@ async def get_production_line_simulation_guide(
                 "num_workers": "Workers assigned to this station",
                 "quality_rate": "Pass rate (0.98 = 98% pass)",
                 "downtime_probability": "Hourly downtime probability (0.02 = 2%)",
-                "downtime_duration_minutes": "Average downtime duration"
-            }
+                "downtime_duration_minutes": "Average downtime duration",
+            },
         },
         "example_scenarios": [
             {
                 "name": "Add Workers to Bottleneck",
                 "description": "Increase workers at the slowest station",
-                "config_change": {"workers_per_station": 3}
+                "config_change": {"workers_per_station": 3},
             },
             {
                 "name": "Reduce Cycle Time",
                 "description": "Improve process to reduce cycle time by 20%",
-                "station_modifications": {"Assembly 2": {"cycle_time_minutes": 12}}
+                "station_modifications": {"Assembly 2": {"cycle_time_minutes": 12}},
             },
             {
                 "name": "Add Floating Pool",
                 "description": "Add flexible workers to cover gaps",
-                "config_change": {"floating_pool_size": 2}
-            }
+                "config_change": {"floating_pool_size": 2},
+            },
         ],
         "best_practices": [
             "Start with the default configuration and adjust based on your actual data",
             "Run simulations for at least 8 hours (one shift) for meaningful results",
             "Use random_seed for reproducible results when comparing scenarios",
             "Focus on bottleneck stations first - they limit overall throughput",
-            "Consider quality rates and downtime, not just cycle times"
+            "Consider quality rates and downtime, not just cycle times",
         ],
         "metrics_explained": {
             "throughput_per_hour": "Units completed per hour",
             "efficiency": "Actual vs theoretical output percentage",
             "utilization": "Time station is busy vs available",
             "bottleneck": "Station with highest utilization limiting throughput",
-            "quality_yield": "Percentage of units passing all quality checks"
-        }
+            "quality_yield": "Percentage of units passing all quality checks",
+        },
     }
 
 
@@ -749,7 +741,7 @@ async def get_default_production_line_config(
     workers_per_station: int = Query(default=2, ge=1, le=10, description="Workers per station"),
     floating_pool_size: int = Query(default=0, ge=0, le=10, description="Floating pool size"),
     base_cycle_time: float = Query(default=15.0, gt=0, le=120, description="Base cycle time in minutes"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Generate a default production line configuration.
@@ -761,7 +753,7 @@ async def get_default_production_line_config(
         num_stations=num_stations,
         workers_per_station=workers_per_station,
         floating_pool_size=floating_pool_size,
-        base_cycle_time=base_cycle_time
+        base_cycle_time=base_cycle_time,
     )
 
     return {
@@ -782,10 +774,10 @@ async def get_default_production_line_config(
                 "num_workers": s.num_workers,
                 "quality_rate": s.quality_rate,
                 "downtime_probability": s.downtime_probability,
-                "downtime_duration_minutes": s.downtime_duration_minutes
+                "downtime_duration_minutes": s.downtime_duration_minutes,
             }
             for s in config.stations
-        ]
+        ],
     }
 
 
@@ -793,10 +785,12 @@ async def get_default_production_line_config(
 async def run_production_line_simulation(
     config: dict,
     duration_hours: float = Query(default=8.0, gt=0, le=24, description="Simulation duration in hours"),
-    arrival_rate_per_hour: Optional[float] = Query(default=None, gt=0, description="Unit arrival rate (auto-calculated if not specified)"),
+    arrival_rate_per_hour: Optional[float] = Query(
+        default=None, gt=0, description="Unit arrival rate (auto-calculated if not specified)"
+    ),
     max_units: Optional[int] = Query(default=None, gt=0, description="Maximum units to simulate"),
     random_seed: int = Query(default=42, description="Random seed for reproducibility"),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Run a production line simulation with custom configuration.
@@ -823,7 +817,7 @@ async def run_production_line_simulation(
                 num_workers=s.get("num_workers", 1),
                 quality_rate=s.get("quality_rate", 0.98),
                 downtime_probability=s.get("downtime_probability", 0.02),
-                downtime_duration_minutes=s.get("downtime_duration_minutes", 30)
+                downtime_duration_minutes=s.get("downtime_duration_minutes", 30),
             )
             for s in config["stations"]
         ]
@@ -836,7 +830,7 @@ async def run_production_line_simulation(
             break_duration_minutes=config.get("break_duration_minutes", 30),
             breaks_per_shift=config.get("breaks_per_shift", 2),
             workers_per_station=config.get("workers_per_station", 1),
-            floating_pool_size=config.get("floating_pool_size", 0)
+            floating_pool_size=config.get("floating_pool_size", 0),
         )
 
         result = run_production_simulation(
@@ -844,7 +838,7 @@ async def run_production_line_simulation(
             duration_hours=duration_hours,
             arrival_rate_per_hour=arrival_rate_per_hour,
             max_units=max_units,
-            random_seed=random_seed
+            random_seed=random_seed,
         )
 
         return {
@@ -857,17 +851,15 @@ async def run_production_line_simulation(
                 "throughput_per_hour": round(result.throughput_per_hour, 2),
                 "efficiency": round(result.efficiency, 2),
                 "quality_yield": round(result.quality_yield, 2),
-                "total_downtime_minutes": round(result.total_downtime_minutes, 2)
+                "total_downtime_minutes": round(result.total_downtime_minutes, 2),
             },
             "bottleneck_analysis": {
                 "bottleneck_station": result.bottleneck_station,
-                "avg_cycle_time_minutes": round(result.avg_cycle_time_minutes, 2)
+                "avg_cycle_time_minutes": round(result.avg_cycle_time_minutes, 2),
             },
-            "station_utilization": {
-                k: round(v, 2) for k, v in result.utilization_by_station.items()
-            },
+            "station_utilization": {k: round(v, 2) for k, v in result.utilization_by_station.items()},
             "recommendations": result.recommendations,
-            "events_sample": result.events_log[:20] if result.events_log else []
+            "events_sample": result.events_log[:20] if result.events_log else [],
         }
 
     except Exception as e:
@@ -880,7 +872,7 @@ async def compare_production_scenarios(
     scenarios: List[dict],
     duration_hours: float = Query(default=8.0, gt=0, le=24),
     random_seed: int = Query(default=42),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Compare multiple production scenarios against a baseline.
@@ -906,7 +898,7 @@ async def compare_production_scenarios(
                 num_workers=s.get("num_workers", 1),
                 quality_rate=s.get("quality_rate", 0.98),
                 downtime_probability=s.get("downtime_probability", 0.02),
-                downtime_duration_minutes=s.get("downtime_duration_minutes", 30)
+                downtime_duration_minutes=s.get("downtime_duration_minutes", 30),
             )
             for s in base_config["stations"]
         ]
@@ -919,14 +911,11 @@ async def compare_production_scenarios(
             break_duration_minutes=base_config.get("break_duration_minutes", 30),
             breaks_per_shift=base_config.get("breaks_per_shift", 2),
             workers_per_station=base_config.get("workers_per_station", 1),
-            floating_pool_size=base_config.get("floating_pool_size", 0)
+            floating_pool_size=base_config.get("floating_pool_size", 0),
         )
 
         results = compare_scenarios(
-            base_config=line_config,
-            scenarios=scenarios,
-            duration_hours=duration_hours,
-            random_seed=random_seed
+            base_config=line_config, scenarios=scenarios, duration_hours=duration_hours, random_seed=random_seed
         )
 
         return {
@@ -937,8 +926,8 @@ async def compare_production_scenarios(
             "summary": {
                 "best_throughput": max(r["throughput_per_hour"] for r in results) if results else 0,
                 "best_scenario": max(results, key=lambda r: r["throughput_per_hour"])["scenario"] if results else None,
-                "highest_efficiency": max(r["efficiency"] for r in results) if results else 0
-            }
+                "highest_efficiency": max(r["efficiency"] for r in results) if results else 0,
+            },
         }
 
     except Exception as e:
@@ -950,7 +939,7 @@ async def analyze_production_bottlenecks(
     config: dict,
     duration_hours: float = Query(default=8.0, gt=0, le=24),
     random_seed: int = Query(default=42),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Analyze bottlenecks in the production line.
@@ -968,7 +957,7 @@ async def analyze_production_bottlenecks(
                 num_workers=s.get("num_workers", 1),
                 quality_rate=s.get("quality_rate", 0.98),
                 downtime_probability=s.get("downtime_probability", 0.02),
-                downtime_duration_minutes=s.get("downtime_duration_minutes", 30)
+                downtime_duration_minutes=s.get("downtime_duration_minutes", 30),
             )
             for s in config["stations"]
         ]
@@ -981,21 +970,17 @@ async def analyze_production_bottlenecks(
             break_duration_minutes=config.get("break_duration_minutes", 30),
             breaks_per_shift=config.get("breaks_per_shift", 2),
             workers_per_station=config.get("workers_per_station", 1),
-            floating_pool_size=config.get("floating_pool_size", 0)
+            floating_pool_size=config.get("floating_pool_size", 0),
         )
 
-        analysis = analyze_bottlenecks(
-            config=line_config,
-            duration_hours=duration_hours,
-            random_seed=random_seed
-        )
+        analysis = analyze_bottlenecks(config=line_config, duration_hours=duration_hours, random_seed=random_seed)
 
         return {
             "primary_bottleneck": analysis.primary_bottleneck,
             "bottleneck_utilization": round(analysis.bottleneck_utilization, 2),
             "queue_times": {k: round(v, 2) for k, v in analysis.queue_times.items()},
             "station_wait_times": {k: round(v, 2) for k, v in analysis.station_wait_times.items()},
-            "suggestions": analysis.suggestions
+            "suggestions": analysis.suggestions,
         }
 
     except Exception as e:
@@ -1008,7 +993,7 @@ async def analyze_floating_pool_impact(
     pool_sizes: List[int] = Query(default=[0, 1, 2, 3, 5], description="Pool sizes to simulate"),
     duration_hours: float = Query(default=8.0, gt=0, le=24),
     random_seed: int = Query(default=42),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> dict:
     """
     Analyze the impact of different floating pool sizes on production.
@@ -1026,7 +1011,7 @@ async def analyze_floating_pool_impact(
                 num_workers=s.get("num_workers", 1),
                 quality_rate=s.get("quality_rate", 0.98),
                 downtime_probability=s.get("downtime_probability", 0.02),
-                downtime_duration_minutes=s.get("downtime_duration_minutes", 30)
+                downtime_duration_minutes=s.get("downtime_duration_minutes", 30),
             )
             for s in config["stations"]
         ]
@@ -1039,14 +1024,11 @@ async def analyze_floating_pool_impact(
             break_duration_minutes=config.get("break_duration_minutes", 30),
             breaks_per_shift=config.get("breaks_per_shift", 2),
             workers_per_station=config.get("workers_per_station", 1),
-            floating_pool_size=0  # Will be varied
+            floating_pool_size=0,  # Will be varied
         )
 
         results = simulate_floating_pool_impact(
-            config=line_config,
-            pool_sizes=pool_sizes,
-            duration_hours=duration_hours,
-            random_seed=random_seed
+            config=line_config, pool_sizes=pool_sizes, duration_hours=duration_hours, random_seed=random_seed
         )
 
         # Calculate optimal pool size
@@ -1058,8 +1040,8 @@ async def analyze_floating_pool_impact(
             "optimal_throughput": optimal["throughput_per_hour"] if optimal else 0,
             "recommendations": [
                 f"Optimal floating pool size is {optimal['floating_pool_size']} workers" if optimal else "No data",
-                f"This provides throughput of {optimal['throughput_per_hour']:.1f} units/hour" if optimal else ""
-            ]
+                f"This provides throughput of {optimal['throughput_per_hour']:.1f} units/hour" if optimal else "",
+            ],
         }
 
     except Exception as e:

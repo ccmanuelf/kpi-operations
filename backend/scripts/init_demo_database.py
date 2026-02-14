@@ -59,13 +59,19 @@ from backend.schemas.kpi_threshold import KPIThreshold
 from backend.schemas.capacity import (
     CapacityCalendar,
     CapacityProductionLine,
-    CapacityOrder, OrderPriority, OrderStatus,
+    CapacityOrder,
+    OrderPriority,
+    OrderStatus,
     CapacityProductionStandard,
-    CapacityBOMHeader, CapacityBOMDetail,
+    CapacityBOMHeader,
+    CapacityBOMDetail,
     CapacityStockSnapshot,
-    CapacityComponentCheck, ComponentStatus,
+    CapacityComponentCheck,
+    ComponentStatus,
     CapacityAnalysis,
-    CapacitySchedule, CapacityScheduleDetail, ScheduleStatus,
+    CapacitySchedule,
+    CapacityScheduleDetail,
+    ScheduleStatus,
     CapacityScenario,
     CapacityKPICommitment,
 )
@@ -82,9 +88,30 @@ MASTER_PRODUCTS = [
         "cycle_h": Decimal("0.15"),
         "sam": {"CUT": 0.6, "SEW": 7.5, "FIN": 0.9, "PRESS": 0.5, "QC": 0.5},
         "bom": [
-            {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "qty": Decimal("0.5"), "uom": "M", "waste": Decimal("5"), "type": "FABRIC"},
-            {"code": "THREAD-POLY", "desc": "Polyester Thread", "qty": Decimal("60"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
-            {"code": "LABEL-CARE", "desc": "Care Label", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("0"), "type": "ACCESSORY"},
+            {
+                "code": "FABRIC-JERSEY",
+                "desc": "Jersey Fabric",
+                "qty": Decimal("0.5"),
+                "uom": "M",
+                "waste": Decimal("5"),
+                "type": "FABRIC",
+            },
+            {
+                "code": "THREAD-POLY",
+                "desc": "Polyester Thread",
+                "qty": Decimal("60"),
+                "uom": "M",
+                "waste": Decimal("2"),
+                "type": "TRIM",
+            },
+            {
+                "code": "LABEL-CARE",
+                "desc": "Care Label",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("0"),
+                "type": "ACCESSORY",
+            },
         ],
     },
     {
@@ -93,10 +120,38 @@ MASTER_PRODUCTS = [
         "cycle_h": Decimal("0.25"),
         "sam": {"CUT": 0.8, "SEW": 12.5, "FIN": 1.7, "PRESS": 0.7, "QC": 0.8},
         "bom": [
-            {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "qty": Decimal("0.7"), "uom": "M", "waste": Decimal("6"), "type": "FABRIC"},
-            {"code": "THREAD-POLY", "desc": "Polyester Thread", "qty": Decimal("80"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
-            {"code": "BUTTON-POLO", "desc": "Polo Buttons", "qty": Decimal("3"), "uom": "EA", "waste": Decimal("1"), "type": "ACCESSORY"},
-            {"code": "LABEL-CARE", "desc": "Care Label", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("0"), "type": "ACCESSORY"},
+            {
+                "code": "FABRIC-PIQUE",
+                "desc": "Pique Fabric",
+                "qty": Decimal("0.7"),
+                "uom": "M",
+                "waste": Decimal("6"),
+                "type": "FABRIC",
+            },
+            {
+                "code": "THREAD-POLY",
+                "desc": "Polyester Thread",
+                "qty": Decimal("80"),
+                "uom": "M",
+                "waste": Decimal("2"),
+                "type": "TRIM",
+            },
+            {
+                "code": "BUTTON-POLO",
+                "desc": "Polo Buttons",
+                "qty": Decimal("3"),
+                "uom": "EA",
+                "waste": Decimal("1"),
+                "type": "ACCESSORY",
+            },
+            {
+                "code": "LABEL-CARE",
+                "desc": "Care Label",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("0"),
+                "type": "ACCESSORY",
+            },
         ],
     },
     {
@@ -105,10 +160,38 @@ MASTER_PRODUCTS = [
         "cycle_h": Decimal("0.50"),
         "sam": {"CUT": 1.5, "SEW": 25.0, "FIN": 3.5, "PRESS": 1.5, "QC": 1.0},
         "bom": [
-            {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": Decimal("1.5"), "uom": "M", "waste": Decimal("8"), "type": "FABRIC"},
-            {"code": "THREAD-HEAVY", "desc": "Heavy-Duty Thread", "qty": Decimal("120"), "uom": "M", "waste": Decimal("3"), "type": "TRIM"},
-            {"code": "ZIPPER-MAIN", "desc": "Main Zipper", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("1"), "type": "ACCESSORY"},
-            {"code": "LABEL-CARE", "desc": "Care Label", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("0"), "type": "ACCESSORY"},
+            {
+                "code": "FABRIC-TWILL",
+                "desc": "Twill Fabric",
+                "qty": Decimal("1.5"),
+                "uom": "M",
+                "waste": Decimal("8"),
+                "type": "FABRIC",
+            },
+            {
+                "code": "THREAD-HEAVY",
+                "desc": "Heavy-Duty Thread",
+                "qty": Decimal("120"),
+                "uom": "M",
+                "waste": Decimal("3"),
+                "type": "TRIM",
+            },
+            {
+                "code": "ZIPPER-MAIN",
+                "desc": "Main Zipper",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("1"),
+                "type": "ACCESSORY",
+            },
+            {
+                "code": "LABEL-CARE",
+                "desc": "Care Label",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("0"),
+                "type": "ACCESSORY",
+            },
         ],
     },
     {
@@ -117,11 +200,46 @@ MASTER_PRODUCTS = [
         "cycle_h": Decimal("0.35"),
         "sam": {"CUT": 1.0, "SEW": 17.5, "FIN": 2.5, "PRESS": 1.0, "QC": 0.7},
         "bom": [
-            {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": Decimal("1.2"), "uom": "M", "waste": Decimal("7"), "type": "FABRIC"},
-            {"code": "THREAD-HEAVY", "desc": "Heavy-Duty Thread", "qty": Decimal("100"), "uom": "M", "waste": Decimal("3"), "type": "TRIM"},
-            {"code": "ZIPPER-FLY", "desc": "Fly Zipper", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("1"), "type": "ACCESSORY"},
-            {"code": "BUTTON-METAL", "desc": "Metal Button", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("1"), "type": "ACCESSORY"},
-            {"code": "LABEL-CARE", "desc": "Care Label", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("0"), "type": "ACCESSORY"},
+            {
+                "code": "FABRIC-TWILL",
+                "desc": "Twill Fabric",
+                "qty": Decimal("1.2"),
+                "uom": "M",
+                "waste": Decimal("7"),
+                "type": "FABRIC",
+            },
+            {
+                "code": "THREAD-HEAVY",
+                "desc": "Heavy-Duty Thread",
+                "qty": Decimal("100"),
+                "uom": "M",
+                "waste": Decimal("3"),
+                "type": "TRIM",
+            },
+            {
+                "code": "ZIPPER-FLY",
+                "desc": "Fly Zipper",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("1"),
+                "type": "ACCESSORY",
+            },
+            {
+                "code": "BUTTON-METAL",
+                "desc": "Metal Button",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("1"),
+                "type": "ACCESSORY",
+            },
+            {
+                "code": "LABEL-CARE",
+                "desc": "Care Label",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("0"),
+                "type": "ACCESSORY",
+            },
         ],
     },
     {
@@ -130,10 +248,38 @@ MASTER_PRODUCTS = [
         "cycle_h": Decimal("0.45"),
         "sam": {"CUT": 1.2, "SEW": 22.0, "FIN": 3.8, "PRESS": 1.5, "QC": 1.0},
         "bom": [
-            {"code": "FABRIC-CREPE", "desc": "Crepe Fabric", "qty": Decimal("1.8"), "uom": "M", "waste": Decimal("10"), "type": "FABRIC"},
-            {"code": "THREAD-FINE", "desc": "Fine Thread", "qty": Decimal("110"), "uom": "M", "waste": Decimal("2"), "type": "TRIM"},
-            {"code": "ZIPPER-INVIS", "desc": "Invisible Zipper", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("1"), "type": "ACCESSORY"},
-            {"code": "LABEL-CARE", "desc": "Care Label", "qty": Decimal("1"), "uom": "EA", "waste": Decimal("0"), "type": "ACCESSORY"},
+            {
+                "code": "FABRIC-CREPE",
+                "desc": "Crepe Fabric",
+                "qty": Decimal("1.8"),
+                "uom": "M",
+                "waste": Decimal("10"),
+                "type": "FABRIC",
+            },
+            {
+                "code": "THREAD-FINE",
+                "desc": "Fine Thread",
+                "qty": Decimal("110"),
+                "uom": "M",
+                "waste": Decimal("2"),
+                "type": "TRIM",
+            },
+            {
+                "code": "ZIPPER-INVIS",
+                "desc": "Invisible Zipper",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("1"),
+                "type": "ACCESSORY",
+            },
+            {
+                "code": "LABEL-CARE",
+                "desc": "Care Label",
+                "qty": Decimal("1"),
+                "uom": "EA",
+                "waste": Decimal("0"),
+                "type": "ACCESSORY",
+            },
         ],
     },
 ]
@@ -163,6 +309,7 @@ def init_database():
     Base.metadata.create_all(bind=engine)
 
     from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+
     created_tables = create_capacity_tables()
     if created_tables:
         print(f"  + Created {len(created_tables)} capacity planning tables")
@@ -188,10 +335,7 @@ def init_database():
         clients = {}
         for client_id, client_name, client_type in clients_data:
             client = TestDataFactory.create_client(
-                db,
-                client_id=client_id,
-                client_name=client_name,
-                client_type=client_type
+                db, client_id=client_id, client_name=client_name, client_type=client_type
             )
             clients[client_id] = client
 
@@ -217,6 +361,7 @@ def init_database():
 
         # Users
         from passlib.context import CryptContext
+
         pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
         users_data = [
@@ -269,7 +414,7 @@ def init_database():
                     client_id=client_id,
                     employee_name=f"Employee {client_id[:4]}-{i+1:02d}",
                     employee_code=f"EMP-{client_id[:4]}-{i+1:03d}",
-                    is_floating_pool=(i >= 6)
+                    is_floating_pool=(i >= 6),
                 )
                 client_employees.append(emp)
             all_employees[client_id] = client_employees
@@ -290,8 +435,8 @@ def init_database():
             ("Night Shift", "22:00:00", "06:00:00"),
         ]
 
-        all_products = {}   # client_id -> list of Product
-        all_shifts = {}     # client_id -> list of Shift
+        all_products = {}  # client_id -> list of Product
+        all_shifts = {}  # client_id -> list of Shift
 
         for client_id in clients.keys():
             client_products = []
@@ -321,7 +466,9 @@ def init_database():
         db.flush()
         total_products = sum(len(v) for v in all_products.values())
         total_shifts = sum(len(v) for v in all_shifts.values())
-        print(f"  Created {total_products} products and {total_shifts} shifts ({len(clients)} clients x {len(MASTER_PRODUCTS)} products, {len(shifts_data)} shifts each)")
+        print(
+            f"  Created {total_products} products and {total_shifts} shifts ({len(clients)} clients x {len(MASTER_PRODUCTS)} products, {len(shifts_data)} shifts each)"
+        )
 
         # ==============================================================
         # Step 4: Capacity Planning - Core Tables
@@ -331,7 +478,7 @@ def init_database():
 
         today = date.today()
         # Track entities we'll need in Step 5 for computed tables
-        all_cap_lines = {}   # client_id -> list of CapacityProductionLine
+        all_cap_lines = {}  # client_id -> list of CapacityProductionLine
         all_cap_orders = {}  # client_id -> list of CapacityOrder
         capacity_counts = {}
 
@@ -357,12 +504,54 @@ def init_database():
 
             # 4b. Production Lines (6 lines - matching reference: Sewing x2, Cutting, Finishing, Pressing, QC)
             lines_data = [
-                {"code": f"{client_id[:4]}_CUT_01", "name": "Cutting Line 1", "dept": "CUTTING", "capacity": 120, "ops": 8, "eff": 0.90},
-                {"code": f"{client_id[:4]}_SEW_01", "name": "Sewing Line 1", "dept": "SEWING", "capacity": 45, "ops": 25, "eff": 0.85},
-                {"code": f"{client_id[:4]}_SEW_02", "name": "Sewing Line 2", "dept": "SEWING", "capacity": 42, "ops": 20, "eff": 0.82},
-                {"code": f"{client_id[:4]}_FIN_01", "name": "Finishing Line 1", "dept": "FINISHING", "capacity": 55, "ops": 12, "eff": 0.88},
-                {"code": f"{client_id[:4]}_PRESS_01", "name": "Pressing Line 1", "dept": "PRESSING", "capacity": 60, "ops": 8, "eff": 0.92},
-                {"code": f"{client_id[:4]}_QC_01", "name": "QC / Inspection Line", "dept": "QC", "capacity": 50, "ops": 10, "eff": 0.95},
+                {
+                    "code": f"{client_id[:4]}_CUT_01",
+                    "name": "Cutting Line 1",
+                    "dept": "CUTTING",
+                    "capacity": 120,
+                    "ops": 8,
+                    "eff": 0.90,
+                },
+                {
+                    "code": f"{client_id[:4]}_SEW_01",
+                    "name": "Sewing Line 1",
+                    "dept": "SEWING",
+                    "capacity": 45,
+                    "ops": 25,
+                    "eff": 0.85,
+                },
+                {
+                    "code": f"{client_id[:4]}_SEW_02",
+                    "name": "Sewing Line 2",
+                    "dept": "SEWING",
+                    "capacity": 42,
+                    "ops": 20,
+                    "eff": 0.82,
+                },
+                {
+                    "code": f"{client_id[:4]}_FIN_01",
+                    "name": "Finishing Line 1",
+                    "dept": "FINISHING",
+                    "capacity": 55,
+                    "ops": 12,
+                    "eff": 0.88,
+                },
+                {
+                    "code": f"{client_id[:4]}_PRESS_01",
+                    "name": "Pressing Line 1",
+                    "dept": "PRESSING",
+                    "capacity": 60,
+                    "ops": 8,
+                    "eff": 0.92,
+                },
+                {
+                    "code": f"{client_id[:4]}_QC_01",
+                    "name": "QC / Inspection Line",
+                    "dept": "QC",
+                    "capacity": 50,
+                    "ops": 10,
+                    "eff": 0.95,
+                },
             ]
             line_entries = []
             for ld in lines_data:
@@ -394,7 +583,9 @@ def init_database():
                     style_description=mp["name"],
                     order_quantity=order_quantities[idx],
                     required_date=today + timedelta(days=21 + idx * 7),
-                    priority=OrderPriority.HIGH if idx == 0 else (OrderPriority.URGENT if idx == 2 else OrderPriority.NORMAL),
+                    priority=(
+                        OrderPriority.HIGH if idx == 0 else (OrderPriority.URGENT if idx == 2 else OrderPriority.NORMAL)
+                    ),
                     status=OrderStatus.IN_PROGRESS if idx < 2 else OrderStatus.CONFIRMED,
                     notes=f"Capacity order for {mp['name']}",
                 )
@@ -507,9 +698,18 @@ def init_database():
         # ==============================================================
         # Step 5: Capacity Planning - Computed Tables (6 previously empty)
         # ==============================================================
-        print("\n[5/10] Creating Capacity Planning computed data (component check, analysis, schedule, scenarios, KPI commitments)...")
+        print(
+            "\n[5/10] Creating Capacity Planning computed data (component check, analysis, schedule, scenarios, KPI commitments)..."
+        )
 
-        computed_counts = {"component_check": 0, "analysis": 0, "schedule": 0, "schedule_detail": 0, "scenario": 0, "kpi_commitment": 0}
+        computed_counts = {
+            "component_check": 0,
+            "analysis": 0,
+            "schedule": 0,
+            "schedule_detail": 0,
+            "scenario": 0,
+            "kpi_commitment": 0,
+        }
 
         for client_id in clients.keys():
             cap_orders = all_cap_orders[client_id]
@@ -545,7 +745,13 @@ def init_database():
             dept_demand_minutes = {"CUTTING": 0, "SEWING": 0, "FINISHING": 0, "PRESSING": 0, "QC": 0}
             for order in cap_orders:
                 mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_code)
-                for dept_key, sam_key in [("CUTTING", "CUT"), ("SEWING", "SEW"), ("FINISHING", "FIN"), ("PRESSING", "PRESS"), ("QC", "QC")]:
+                for dept_key, sam_key in [
+                    ("CUTTING", "CUT"),
+                    ("SEWING", "SEW"),
+                    ("FINISHING", "FIN"),
+                    ("PRESSING", "PRESS"),
+                    ("QC", "QC"),
+                ]:
                     dept_demand_minutes[dept_key] += mp["sam"][sam_key] * order.order_quantity
 
             # Weekly demand distribution: W1=20%, W2=30%, W3=30%, W4=20% (ramp pattern)
@@ -554,10 +760,7 @@ def init_database():
             for week_idx in range(4):
                 week_start = today + timedelta(days=week_idx * 7)
                 # Count working days in this specific week
-                week_working_days = sum(
-                    1 for d in range(7)
-                    if (week_start + timedelta(days=d)).weekday() < 5
-                )
+                week_working_days = sum(1 for d in range(7) if (week_start + timedelta(days=d)).weekday() < 5)
                 demand_fraction = weekly_demand_pct[week_idx]
 
                 for line in cap_lines:
@@ -618,10 +821,10 @@ def init_database():
             # Distribute orders across 4 weeks with priority-based scheduling
             week_order_plan = [
                 # (week_idx, order_indices) - spread orders across weeks
-                (0, [0, 2]),    # W1: High priority orders first (TSHIRT, JACKET)
-                (1, [0, 2]),    # W2: Continue high priority
-                (2, [1, 4]),    # W3: Medium priority (POLO, DRESS)
-                (3, [1, 3]),    # W4: Remaining (POLO completion, PANTS)
+                (0, [0, 2]),  # W1: High priority orders first (TSHIRT, JACKET)
+                (1, [0, 2]),  # W2: Continue high priority
+                (2, [1, 4]),  # W3: Medium priority (POLO, DRESS)
+                (3, [1, 3]),  # W4: Remaining (POLO completion, PANTS)
             ]
             for week_idx, order_indices in week_order_plan:
                 week_start = today + timedelta(days=week_idx * 7)
@@ -635,7 +838,9 @@ def init_database():
 
                     # Schedule across sewing line (primary) with 5 working days
                     sew_lines = dept_lines.get("SEWING", [cap_lines[1]])
-                    primary_line = sew_lines[0] if oi % 2 == 0 else (sew_lines[1] if len(sew_lines) > 1 else sew_lines[0])
+                    primary_line = (
+                        sew_lines[0] if oi % 2 == 0 else (sew_lines[1] if len(sew_lines) > 1 else sew_lines[0])
+                    )
 
                     daily_qty = week_qty // 5
                     remainder = week_qty % 5
@@ -1115,16 +1320,16 @@ def init_database():
         widget_configs = [
             ("admin", "kpi_summary", "KPI Summary", 1, True, '{"refreshInterval": 300}'),
             ("admin", "production_chart", "Production Chart", 2, True, '{"chartType": "bar"}'),
-            ("admin", "quality_metrics", "Quality Metrics", 3, True, '{}'),
-            ("admin", "alerts_panel", "Alerts Panel", 4, True, '{}'),
-            ("admin", "efficiency_gauge", "Efficiency Gauge", 5, True, '{}'),
+            ("admin", "quality_metrics", "Quality Metrics", 3, True, "{}"),
+            ("admin", "alerts_panel", "Alerts Panel", 4, True, "{}"),
+            ("admin", "efficiency_gauge", "Efficiency Gauge", 5, True, "{}"),
             ("supervisor", "production_chart", "Production Chart", 1, True, '{"chartType": "line"}'),
-            ("supervisor", "quality_metrics", "Quality Metrics", 2, True, '{}'),
-            ("supervisor", "attendance_summary", "Attendance Summary", 3, True, '{}'),
-            ("supervisor", "alerts_panel", "Alerts Panel", 4, True, '{}'),
-            ("operator", "my_production", "My Production", 1, True, '{}'),
-            ("operator", "shift_summary", "Shift Summary", 2, True, '{}'),
-            ("operator", "quality_entry", "Quality Entry", 3, True, '{}'),
+            ("supervisor", "quality_metrics", "Quality Metrics", 2, True, "{}"),
+            ("supervisor", "attendance_summary", "Attendance Summary", 3, True, "{}"),
+            ("supervisor", "alerts_panel", "Alerts Panel", 4, True, "{}"),
+            ("operator", "my_production", "My Production", 1, True, "{}"),
+            ("operator", "shift_summary", "Shift Summary", 2, True, "{}"),
+            ("operator", "quality_entry", "Quality Entry", 3, True, "{}"),
         ]
 
         for role, widget_key, widget_name, order, visible, config in widget_configs:
@@ -1280,6 +1485,7 @@ def init_database():
         db.rollback()
         print(f"\nError: {str(e)}")
         import traceback
+
         traceback.print_exc()
         raise
     finally:

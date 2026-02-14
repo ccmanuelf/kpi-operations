@@ -2,6 +2,7 @@
 Comprehensive Tests for All Routes
 Target: Increase overall route coverage to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -26,7 +27,7 @@ class TestProductionRoutesComprehensive:
             "product_id": 1,
             "shift_id": 1,
             "start_date": (date.today() - timedelta(days=7)).isoformat(),
-            "end_date": date.today().isoformat()
+            "end_date": date.today().isoformat(),
         }
         response = authenticated_client.get("/api/production", params=params)
         assert response.status_code in [200, 403]
@@ -44,7 +45,7 @@ class TestProductionRoutesComprehensive:
             "production_date": date.today().isoformat(),
             "units_produced": 100,
             "run_time_hours": 8.0,
-            "employees_assigned": 5
+            "employees_assigned": 5,
         }
         response = authenticated_client.post("/api/production", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
@@ -74,11 +75,7 @@ class TestQualityRoutesComprehensive:
 
     def test_list_quality_with_filters(self, authenticated_client):
         """Test listing quality with filters"""
-        params = {
-            "skip": 0,
-            "limit": 10,
-            "product_id": 1
-        }
+        params = {"skip": 0, "limit": 10, "product_id": 1}
         response = authenticated_client.get("/api/quality", params=params)
         assert response.status_code in [200, 403]
 
@@ -94,7 +91,7 @@ class TestQualityRoutesComprehensive:
             "inspection_date": date.today().isoformat(),
             "units_inspected": 1000,
             "units_passed": 995,
-            "units_defective": 5
+            "units_defective": 5,
         }
         response = authenticated_client.post("/api/quality", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
@@ -132,7 +129,7 @@ class TestAttendanceRoutesComprehensive:
             "skip": 0,
             "limit": 10,
             "start_date": (date.today() - timedelta(days=7)).isoformat(),
-            "end_date": date.today().isoformat()
+            "end_date": date.today().isoformat(),
         }
         response = authenticated_client.get("/api/attendance", params=params)
         assert response.status_code in [200, 403]
@@ -144,7 +141,7 @@ class TestAttendanceRoutesComprehensive:
             "attendance_date": date.today().isoformat(),
             "status": "PRESENT",
             "scheduled_hours": 8.0,
-            "actual_hours": 8.0
+            "actual_hours": 8.0,
         }
         response = authenticated_client.post("/api/attendance", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
@@ -163,12 +160,7 @@ class TestDowntimeRoutesComprehensive:
 
     def test_list_downtime_with_filters(self, authenticated_client):
         """Test listing downtime with filters"""
-        params = {
-            "skip": 0,
-            "limit": 10,
-            "product_id": 1,
-            "shift_id": 1
-        }
+        params = {"skip": 0, "limit": 10, "product_id": 1, "shift_id": 1}
         response = authenticated_client.get("/api/downtime", params=params)
         assert response.status_code in [200, 403]
 
@@ -183,7 +175,7 @@ class TestDowntimeRoutesComprehensive:
             "machine_id": "MACHINE-001",
             "start_time": datetime.now().isoformat(),
             "downtime_reason": "MAINTENANCE",
-            "downtime_duration_minutes": 30
+            "downtime_duration_minutes": 30,
         }
         response = authenticated_client.post("/api/downtime", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
@@ -202,11 +194,7 @@ class TestHoldsRoutesComprehensive:
 
     def test_list_holds_with_filters(self, authenticated_client):
         """Test listing holds with filters"""
-        params = {
-            "skip": 0,
-            "limit": 10,
-            "released": False
-        }
+        params = {"skip": 0, "limit": 10, "released": False}
         response = authenticated_client.get("/api/holds", params=params)
         assert response.status_code in [200, 403]
 
@@ -217,11 +205,7 @@ class TestHoldsRoutesComprehensive:
 
     def test_create_hold(self, authenticated_client):
         """Test creating hold"""
-        data = {
-            "hold_date": date.today().isoformat(),
-            "quantity_held": 100,
-            "hold_reason": "QUALITY_ISSUE"
-        }
+        data = {"hold_date": date.today().isoformat(), "quantity_held": 100, "hold_reason": "QUALITY_ISSUE"}
         response = authenticated_client.post("/api/holds", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
 
@@ -259,7 +243,7 @@ class TestWorkOrderRoutesComprehensive:
             "work_order_id": f"WO-TEST-{datetime.now().timestamp()}",
             "product_id": 1,
             "planned_quantity": 1000,
-            "due_date": (date.today() + timedelta(days=7)).isoformat()
+            "due_date": (date.today() + timedelta(days=7)).isoformat(),
         }
         response = authenticated_client.post("/api/work-orders", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
@@ -379,11 +363,7 @@ class TestCoverageRoutesComprehensive:
 
     def test_create_coverage_entry(self, authenticated_client):
         """Test creating coverage entry"""
-        data = {
-            "coverage_date": date.today().isoformat(),
-            "required_employees": 10,
-            "available_employees": 8
-        }
+        data = {"coverage_date": date.today().isoformat(), "required_employees": 10, "available_employees": 8}
         response = authenticated_client.post("/api/coverage", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]
 
@@ -505,10 +485,6 @@ class TestFiltersRoutesComprehensive:
 
     def test_create_saved_filter(self, authenticated_client):
         """Test creating saved filter"""
-        data = {
-            "filter_name": "Test Filter",
-            "filter_type": "production",
-            "filter_config": {"product_id": 1}
-        }
+        data = {"filter_name": "Test Filter", "filter_type": "production", "filter_config": {"product_id": 1}}
         response = authenticated_client.post("/api/filters", json=data)
         assert response.status_code in [200, 201, 403, 404, 422]

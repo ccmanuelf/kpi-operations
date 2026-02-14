@@ -2,6 +2,7 @@
 Floating Pool Management API Routes
 All floating pool CRUD and assignment endpoints
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -11,7 +12,7 @@ from backend.database import get_db
 from backend.calculations.simulation import (
     optimize_floating_pool_allocation,
     simulate_shift_coverage,
-    run_staffing_simulation
+    run_staffing_simulation,
 )
 from backend.models.floating_pool import (
     FloatingPoolCreate,
@@ -20,7 +21,7 @@ from backend.models.floating_pool import (
     FloatingPoolAssignmentRequest,
     FloatingPoolUnassignmentRequest,
     FloatingPoolAvailability,
-    FloatingPoolSummary
+    FloatingPoolSummary,
 )
 from backend.crud.floating_pool import (
     create_floating_pool_entry,
@@ -33,23 +34,18 @@ from backend.crud.floating_pool import (
     get_available_floating_pool_employees,
     get_floating_pool_assignments_by_client,
     is_employee_available_for_assignment,
-    get_floating_pool_summary
+    get_floating_pool_summary,
 )
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/floating-pool",
-    tags=["Floating Pool"]
-)
+router = APIRouter(prefix="/api/floating-pool", tags=["Floating Pool"])
 
 
 @router.post("", response_model=FloatingPoolResponse, status_code=status.HTTP_201_CREATED)
 def create_floating_pool_entry_endpoint(
-    pool_entry: FloatingPoolCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    pool_entry: FloatingPoolCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new floating pool entry
@@ -66,7 +62,7 @@ def list_floating_pool_entries(
     employee_id: Optional[int] = None,
     available_only: bool = False,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List floating pool entries with filters
@@ -76,9 +72,7 @@ def list_floating_pool_entries(
 
 @router.get("/available/list")
 def get_available_floating_pool_list(
-    as_of_date: Optional[datetime] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    as_of_date: Optional[datetime] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all currently available floating pool employees
@@ -92,7 +86,7 @@ def check_employee_availability(
     proposed_start: Optional[datetime] = None,
     proposed_end: Optional[datetime] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Check if an employee is available for a new assignment.
@@ -108,16 +102,11 @@ def check_employee_availability(
             "message": str
         }
     """
-    return is_employee_available_for_assignment(
-        db, employee_id, proposed_start, proposed_end
-    )
+    return is_employee_available_for_assignment(db, employee_id, proposed_start, proposed_end)
 
 
 @router.get("/summary")
-def get_floating_pool_summary_endpoint(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_floating_pool_summary_endpoint(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Get summary statistics for floating pool.
     Useful for dashboard widgets.
@@ -135,9 +124,7 @@ def get_floating_pool_summary_endpoint(
 
 @router.get("/{pool_id}", response_model=FloatingPoolResponse)
 def get_floating_pool_entry_endpoint(
-    pool_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    pool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get floating pool entry by ID
@@ -153,7 +140,7 @@ def update_floating_pool_entry_endpoint(
     pool_id: int,
     pool_update: FloatingPoolUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update floating pool entry
@@ -168,9 +155,7 @@ def update_floating_pool_entry_endpoint(
 
 @router.delete("/{pool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_floating_pool_entry_endpoint(
-    pool_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    pool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Delete floating pool entry
@@ -185,7 +170,7 @@ def delete_floating_pool_entry_endpoint(
 def assign_floating_pool_employee_to_client(
     assignment: FloatingPoolAssignmentRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Assign floating pool employee to a client
@@ -198,7 +183,7 @@ def assign_floating_pool_employee_to_client(
         assignment.available_from,
         assignment.available_to,
         current_user,
-        assignment.notes
+        assignment.notes,
     )
 
 
@@ -206,7 +191,7 @@ def assign_floating_pool_employee_to_client(
 def unassign_floating_pool_employee_from_client(
     unassignment: FloatingPoolUnassignmentRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Unassign floating pool employee from client
@@ -216,10 +201,7 @@ def unassign_floating_pool_employee_from_client(
 
 
 # Client floating pool endpoint (separate prefix for /api/clients namespace)
-client_floating_pool_router = APIRouter(
-    prefix="/api/clients",
-    tags=["Floating Pool"]
-)
+client_floating_pool_router = APIRouter(prefix="/api/clients", tags=["Floating Pool"])
 
 
 @client_floating_pool_router.get("/{client_id}/floating-pool", response_model=List[FloatingPoolResponse])
@@ -228,7 +210,7 @@ def get_client_floating_pool_assignments(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all floating pool assignments for a specific client
@@ -241,11 +223,10 @@ def get_client_floating_pool_assignments(
 # Simulation-Based Floating Pool Optimization Endpoints
 # ============================================================================
 
+
 @router.get("/simulation/insights")
 def get_floating_pool_simulation_insights(
-    target_date: Optional[date] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    target_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get simulation-based insights for floating pool optimization.
@@ -259,16 +240,16 @@ def get_floating_pool_simulation_insights(
     """
     # Get current floating pool summary
     summary = get_floating_pool_summary(db, current_user)
-    total_pool = summary.get('total_floating_pool_employees', 0)
-    available = summary.get('currently_available', 0)
-    assigned = summary.get('currently_assigned', 0)
+    total_pool = summary.get("total_floating_pool_employees", 0)
+    available = summary.get("currently_available", 0)
+    assigned = summary.get("currently_assigned", 0)
 
     # Run staffing simulation scenarios
     scenarios = [
         {"name": "Current", "employees_change": 0},
         {"name": "-2 employees", "employees_change": -2},
         {"name": "+2 employees", "employees_change": 2},
-        {"name": "+5 employees", "employees_change": 5}
+        {"name": "+5 employees", "employees_change": 5},
     ]
 
     # Base simulation parameters (would normally come from client config)
@@ -285,50 +266,60 @@ def get_floating_pool_simulation_insights(
             scenarios=scenarios,
             shift_hours=shift_hours,
             cycle_time_hours=cycle_time_hours,
-            base_efficiency=base_efficiency
+            base_efficiency=base_efficiency,
         )
-        simulation_results = result.get('scenario_results', [])
+        simulation_results = result.get("scenario_results", [])
     except Exception as e:
-        simulation_results = [{
-            "scenario": "Current",
-            "employees": base_employees,
-            "units_per_shift": base_employees * shift_hours / cycle_time_hours * (base_efficiency / 100),
-            "efficiency": base_efficiency
-        }]
+        simulation_results = [
+            {
+                "scenario": "Current",
+                "employees": base_employees,
+                "units_per_shift": base_employees * shift_hours / cycle_time_hours * (base_efficiency / 100),
+                "efficiency": base_efficiency,
+            }
+        ]
 
     # Generate recommendations based on utilization
     recommendations = []
     utilization = (assigned / total_pool * 100) if total_pool > 0 else 0
 
     if utilization > 90:
-        recommendations.append({
-            "priority": "high",
-            "type": "capacity",
-            "message": "Floating pool utilization is very high (>90%). Consider expanding pool size to maintain flexibility.",
-            "action": "Consider hiring 2-3 additional floating pool employees"
-        })
+        recommendations.append(
+            {
+                "priority": "high",
+                "type": "capacity",
+                "message": "Floating pool utilization is very high (>90%). Consider expanding pool size to maintain flexibility.",
+                "action": "Consider hiring 2-3 additional floating pool employees",
+            }
+        )
     elif utilization > 75:
-        recommendations.append({
-            "priority": "medium",
-            "type": "capacity",
-            "message": "Floating pool utilization is high (>75%). Monitor closely for potential shortfalls.",
-            "action": "Review upcoming production schedules for coverage needs"
-        })
+        recommendations.append(
+            {
+                "priority": "medium",
+                "type": "capacity",
+                "message": "Floating pool utilization is high (>75%). Monitor closely for potential shortfalls.",
+                "action": "Review upcoming production schedules for coverage needs",
+            }
+        )
     elif utilization < 25 and total_pool > 5:
-        recommendations.append({
-            "priority": "low",
-            "type": "efficiency",
-            "message": "Floating pool utilization is low (<25%). Pool may be oversized.",
-            "action": "Consider cross-training for additional skills or reassigning permanently"
-        })
+        recommendations.append(
+            {
+                "priority": "low",
+                "type": "efficiency",
+                "message": "Floating pool utilization is low (<25%). Pool may be oversized.",
+                "action": "Consider cross-training for additional skills or reassigning permanently",
+            }
+        )
 
     if available > 5:
-        recommendations.append({
-            "priority": "info",
-            "type": "optimization",
-            "message": f"{available} employees currently unassigned. Review shift coverage needs.",
-            "action": "Check production line bottlenecks that could benefit from additional staffing"
-        })
+        recommendations.append(
+            {
+                "priority": "info",
+                "type": "optimization",
+                "message": f"{available} employees currently unassigned. Review shift coverage needs.",
+                "action": "Check production line bottlenecks that could benefit from additional staffing",
+            }
+        )
 
     return {
         "current_status": {
@@ -336,7 +327,7 @@ def get_floating_pool_simulation_insights(
             "currently_available": available,
             "currently_assigned": assigned,
             "utilization_percent": round(utilization, 1),
-            "target_date": target_date or date.today()
+            "target_date": target_date or date.today(),
         },
         "staffing_scenarios": simulation_results,
         "recommendations": recommendations,
@@ -344,8 +335,8 @@ def get_floating_pool_simulation_insights(
             "base_employees": base_employees,
             "shift_hours": shift_hours,
             "cycle_time_hours": cycle_time_hours,
-            "base_efficiency": base_efficiency
-        }
+            "base_efficiency": base_efficiency,
+        },
     }
 
 
@@ -355,7 +346,7 @@ def optimize_floating_pool_allocation_endpoint(
     optimization_goal: str = "maximize_coverage",
     target_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Optimize floating pool allocation across shifts/lines.
@@ -371,7 +362,7 @@ def optimize_floating_pool_allocation_endpoint(
     """
     # Get available floating pool employees
     summary = get_floating_pool_summary(db, current_user)
-    available_pool = summary.get('currently_available', 0)
+    available_pool = summary.get("currently_available", 0)
 
     # Use simulation engine for optimization
     try:
@@ -379,41 +370,49 @@ def optimize_floating_pool_allocation_endpoint(
             available_pool_employees=available_pool,
             shift_requirements=shift_requirements,
             optimization_goal=optimization_goal,
-            target_date=target_date or date.today()
+            target_date=target_date or date.today(),
         )
         return result
     except Exception as e:
         # Fallback simple allocation
-        total_shortage = sum(max(0, sr.get('required', 0) - sr.get('current', 0)) for sr in shift_requirements)
+        total_shortage = sum(max(0, sr.get("required", 0) - sr.get("current", 0)) for sr in shift_requirements)
         allocations = []
         remaining_pool = available_pool
 
         for sr in shift_requirements:
-            shortage = max(0, sr.get('required', 0) - sr.get('current', 0))
+            shortage = max(0, sr.get("required", 0) - sr.get("current", 0))
             if shortage > 0 and remaining_pool > 0:
                 alloc = min(shortage, remaining_pool)
                 remaining_pool -= alloc
-                allocations.append({
-                    "shift_id": sr.get('shift_id'),
-                    "shift_name": sr.get('shift_name'),
-                    "required": sr.get('required'),
-                    "current": sr.get('current'),
-                    "shortage": shortage,
-                    "allocated_from_pool": alloc,
-                    "final_coverage": sr.get('current', 0) + alloc,
-                    "coverage_percent": round(((sr.get('current', 0) + alloc) / sr.get('required', 1)) * 100, 1)
-                })
+                allocations.append(
+                    {
+                        "shift_id": sr.get("shift_id"),
+                        "shift_name": sr.get("shift_name"),
+                        "required": sr.get("required"),
+                        "current": sr.get("current"),
+                        "shortage": shortage,
+                        "allocated_from_pool": alloc,
+                        "final_coverage": sr.get("current", 0) + alloc,
+                        "coverage_percent": round(((sr.get("current", 0) + alloc) / sr.get("required", 1)) * 100, 1),
+                    }
+                )
             else:
-                allocations.append({
-                    "shift_id": sr.get('shift_id'),
-                    "shift_name": sr.get('shift_name'),
-                    "required": sr.get('required'),
-                    "current": sr.get('current'),
-                    "shortage": shortage,
-                    "allocated_from_pool": 0,
-                    "final_coverage": sr.get('current', 0),
-                    "coverage_percent": round((sr.get('current', 0) / sr.get('required', 1)) * 100, 1) if sr.get('required', 0) > 0 else 100
-                })
+                allocations.append(
+                    {
+                        "shift_id": sr.get("shift_id"),
+                        "shift_name": sr.get("shift_name"),
+                        "required": sr.get("required"),
+                        "current": sr.get("current"),
+                        "shortage": shortage,
+                        "allocated_from_pool": 0,
+                        "final_coverage": sr.get("current", 0),
+                        "coverage_percent": (
+                            round((sr.get("current", 0) / sr.get("required", 1)) * 100, 1)
+                            if sr.get("required", 0) > 0
+                            else 100
+                        ),
+                    }
+                )
 
         return {
             "optimization_goal": optimization_goal,
@@ -423,7 +422,7 @@ def optimize_floating_pool_allocation_endpoint(
             "allocated": available_pool - remaining_pool,
             "remaining_unallocated": remaining_pool,
             "allocations": allocations,
-            "coverage_achieved": total_shortage <= available_pool
+            "coverage_achieved": total_shortage <= available_pool,
         }
 
 
@@ -436,7 +435,7 @@ def simulate_shift_coverage_endpoint(
     required_employees: int,
     target_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Simulate coverage for a specific shift with floating pool.
@@ -450,7 +449,7 @@ def simulate_shift_coverage_endpoint(
             regular_employees=regular_employees,
             floating_pool_available=floating_pool_available,
             required_employees=required_employees,
-            target_date=target_date or date.today()
+            target_date=target_date or date.today(),
         )
         return result
     except Exception as e:
@@ -469,7 +468,9 @@ def simulate_shift_coverage_endpoint(
             "shortage": shortage,
             "floating_pool_allocated": pool_needed,
             "final_coverage": final_coverage,
-            "coverage_percent": round((final_coverage / required_employees) * 100, 1) if required_employees > 0 else 100,
+            "coverage_percent": (
+                round((final_coverage / required_employees) * 100, 1) if required_employees > 0 else 100
+            ),
             "is_fully_covered": final_coverage >= required_employees,
-            "remaining_shortage": max(0, required_employees - final_coverage)
+            "remaining_shortage": max(0, required_employees - final_coverage),
         }

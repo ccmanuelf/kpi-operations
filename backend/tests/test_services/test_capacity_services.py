@@ -11,6 +11,7 @@ Services tested:
 6. KPIIntegrationService - KPI commitments and variance
 7. CapacityPlanningService - Main orchestration service
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -24,17 +25,22 @@ from backend.schemas.client import Client, ClientType
 from backend.schemas.capacity.calendar import CapacityCalendar
 from backend.schemas.capacity.production_lines import CapacityProductionLine
 from backend.schemas.capacity.orders import (
-    CapacityOrder, OrderPriority, OrderStatus,
+    CapacityOrder,
+    OrderPriority,
+    OrderStatus,
 )
 from backend.schemas.capacity.standards import CapacityProductionStandard
 from backend.schemas.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
 from backend.schemas.capacity.stock import CapacityStockSnapshot
 from backend.schemas.capacity.component_check import (
-    CapacityComponentCheck, ComponentStatus,
+    CapacityComponentCheck,
+    ComponentStatus,
 )
 from backend.schemas.capacity.analysis import CapacityAnalysis
 from backend.schemas.capacity.schedule import (
-    CapacitySchedule, CapacityScheduleDetail, ScheduleStatus,
+    CapacitySchedule,
+    CapacityScheduleDetail,
+    ScheduleStatus,
 )
 from backend.schemas.capacity.scenario import CapacityScenario
 from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
@@ -42,17 +48,27 @@ from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
 from backend.services.capacity.bom_service import BOMService, BOMExplosionResult
 from backend.services.capacity.mrp_service import MRPService, MRPRunResult
 from backend.services.capacity.analysis_service import (
-    CapacityAnalysisService, CapacityAnalysisResult, LineCapacityResult,
+    CapacityAnalysisService,
+    CapacityAnalysisResult,
+    LineCapacityResult,
 )
 from backend.services.capacity.scheduling_service import (
-    SchedulingService, GeneratedSchedule, ScheduleSummary,
+    SchedulingService,
+    GeneratedSchedule,
+    ScheduleSummary,
 )
 from backend.services.capacity.scenario_service import (
-    ScenarioService, ScenarioType, ScenarioResult, ScenarioComparison,
+    ScenarioService,
+    ScenarioType,
+    ScenarioResult,
+    ScenarioComparison,
     SCENARIO_DEFAULTS,
 )
 from backend.services.capacity.kpi_integration_service import (
-    KPIIntegrationService, KPIActual, KPIVariance, STANDARD_KPIS,
+    KPIIntegrationService,
+    KPIActual,
+    KPIVariance,
+    STANDARD_KPIS,
 )
 from backend.services.capacity.capacity_service import CapacityPlanningService
 
@@ -72,6 +88,7 @@ PERIOD_END = TODAY + timedelta(days=29)
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="function")
 def cap_db():
     """Create a fresh in-memory database for each test."""
@@ -81,9 +98,7 @@ def cap_db():
         poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
-    TestingSession = sessionmaker(
-        autocommit=False, autoflush=False, bind=engine
-    )
+    TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSession()
     TestDataFactory.reset_counters()
     try:
@@ -280,6 +295,7 @@ def _seed_full_capacity_data(db):
 # 1. BOMService Tests
 # ===========================================================================
 
+
 class TestBOMService:
     """Tests for BOM explosion service."""
 
@@ -434,6 +450,7 @@ class TestBOMService:
 # 2. MRPService Tests
 # ===========================================================================
 
+
 class TestMRPService:
     """Tests for MRP / component checking service."""
 
@@ -483,15 +500,17 @@ class TestMRPService:
         cap_db.add(stock)
         # Add sufficient stock for other components
         for code in ["TRIM-001", "BTN-001"]:
-            cap_db.add(CapacityStockSnapshot(
-                client_id=CLIENT_ID,
-                snapshot_date=TODAY,
-                item_code=code,
-                on_hand_quantity=99999,
-                allocated_quantity=0,
-                on_order_quantity=0,
-                available_quantity=99999,
-            ))
+            cap_db.add(
+                CapacityStockSnapshot(
+                    client_id=CLIENT_ID,
+                    snapshot_date=TODAY,
+                    item_code=code,
+                    on_hand_quantity=99999,
+                    allocated_quantity=0,
+                    on_order_quantity=0,
+                    available_quantity=99999,
+                )
+            )
 
         # Create large order
         order = CapacityOrder(
@@ -524,15 +543,17 @@ class TestMRPService:
 
         # Seed very high stock
         for code in ["FABRIC-001", "TRIM-001", "BTN-001"]:
-            cap_db.add(CapacityStockSnapshot(
-                client_id=CLIENT_ID,
-                snapshot_date=TODAY,
-                item_code=code,
-                on_hand_quantity=999999,
-                allocated_quantity=0,
-                on_order_quantity=0,
-                available_quantity=999999,
-            ))
+            cap_db.add(
+                CapacityStockSnapshot(
+                    client_id=CLIENT_ID,
+                    snapshot_date=TODAY,
+                    item_code=code,
+                    on_hand_quantity=999999,
+                    allocated_quantity=0,
+                    on_order_quantity=0,
+                    available_quantity=999999,
+                )
+            )
 
         order = CapacityOrder(
             client_id=CLIENT_ID,
@@ -571,6 +592,7 @@ class TestMRPService:
 # ===========================================================================
 # 3. CapacityAnalysisService Tests
 # ===========================================================================
+
 
 class TestCapacityAnalysisService:
     """Tests for the 12-step capacity analysis service."""
@@ -624,9 +646,7 @@ class TestCapacityAnalysisService:
         svc = CapacityAnalysisService(cap_db)
         svc.analyze_capacity(CLIENT_ID, PERIOD_START, PERIOD_END)
 
-        stored = cap_db.query(CapacityAnalysis).filter(
-            CapacityAnalysis.client_id == CLIENT_ID
-        ).all()
+        stored = cap_db.query(CapacityAnalysis).filter(CapacityAnalysis.client_id == CLIENT_ID).all()
         assert len(stored) == 3  # one per line
 
     def test_analyze_capacity_zero_demand(self, cap_db):
@@ -732,9 +752,7 @@ class TestCapacityAnalysisService:
         first_line_id = data["lines"][0].id
 
         svc = CapacityAnalysisService(cap_db)
-        result = svc.analyze_capacity(
-            CLIENT_ID, PERIOD_START, PERIOD_END, line_ids=[first_line_id]
-        )
+        result = svc.analyze_capacity(CLIENT_ID, PERIOD_START, PERIOD_END, line_ids=[first_line_id])
 
         assert result.lines_analyzed == 1
         assert result.lines[0].line_id == first_line_id
@@ -743,6 +761,7 @@ class TestCapacityAnalysisService:
 # ===========================================================================
 # 4. SchedulingService Tests
 # ===========================================================================
+
 
 class TestSchedulingService:
     """Tests for the scheduling service."""
@@ -756,9 +775,7 @@ class TestSchedulingService:
         cap_db.commit()
 
         svc = SchedulingService(cap_db)
-        result = svc.generate_schedule(
-            CLIENT_ID, "Empty Schedule", PERIOD_START, PERIOD_END
-        )
+        result = svc.generate_schedule(CLIENT_ID, "Empty Schedule", PERIOD_START, PERIOD_END)
 
         assert isinstance(result, GeneratedSchedule)
         assert result.total_scheduled_quantity == 0
@@ -770,9 +787,7 @@ class TestSchedulingService:
         cap_db.commit()
 
         svc = SchedulingService(cap_db)
-        result = svc.generate_schedule(
-            CLIENT_ID, "No Lines", PERIOD_START, PERIOD_END
-        )
+        result = svc.generate_schedule(CLIENT_ID, "No Lines", PERIOD_START, PERIOD_END)
 
         # All orders unscheduled because no lines
         assert result.total_scheduled_quantity == 0
@@ -782,9 +797,7 @@ class TestSchedulingService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
-        result = svc.generate_schedule(
-            CLIENT_ID, "Full Schedule", PERIOD_START, PERIOD_END
-        )
+        result = svc.generate_schedule(CLIENT_ID, "Full Schedule", PERIOD_START, PERIOD_END)
 
         assert result.schedule_name == "Full Schedule"
         assert result.total_scheduled_quantity > 0
@@ -796,12 +809,18 @@ class TestSchedulingService:
         svc = SchedulingService(cap_db)
         # By required_date (default)
         result_date = svc.generate_schedule(
-            CLIENT_ID, "By Date", PERIOD_START, PERIOD_END,
+            CLIENT_ID,
+            "By Date",
+            PERIOD_START,
+            PERIOD_END,
             prioritize_by="required_date",
         )
         # By priority
         result_prio = svc.generate_schedule(
-            CLIENT_ID, "By Priority", PERIOD_START, PERIOD_END,
+            CLIENT_ID,
+            "By Priority",
+            PERIOD_START,
+            PERIOD_END,
             prioritize_by="priority",
         )
 
@@ -843,9 +862,7 @@ class TestSchedulingService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
-        schedule = svc.create_schedule(
-            CLIENT_ID, "To Commit", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = svc.create_schedule(CLIENT_ID, "To Commit", PERIOD_START, PERIOD_END, items=[])
 
         committed = svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
 
@@ -865,9 +882,7 @@ class TestSchedulingService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
-        schedule = svc.create_schedule(
-            CLIENT_ID, "Double Commit", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = svc.create_schedule(CLIENT_ID, "Double Commit", PERIOD_START, PERIOD_END, items=[])
         svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
 
         with pytest.raises(SchedulingError, match="not in DRAFT"):
@@ -877,9 +892,7 @@ class TestSchedulingService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
-        schedule = svc.create_schedule(
-            CLIENT_ID, "Activate", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = svc.create_schedule(CLIENT_ID, "Activate", PERIOD_START, PERIOD_END, items=[])
         svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
         activated = svc.activate_schedule(CLIENT_ID, schedule.id)
 
@@ -889,9 +902,7 @@ class TestSchedulingService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = SchedulingService(cap_db)
-        schedule = svc.create_schedule(
-            CLIENT_ID, "Draft", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = svc.create_schedule(CLIENT_ID, "Draft", PERIOD_START, PERIOD_END, items=[])
 
         with pytest.raises(SchedulingError, match="COMMITTED"):
             svc.activate_schedule(CLIENT_ID, schedule.id)
@@ -903,7 +914,10 @@ class TestSchedulingService:
 
         svc = SchedulingService(cap_db)
         schedule = svc.create_schedule(
-            CLIENT_ID, "Summary Test", PERIOD_START, PERIOD_END,
+            CLIENT_ID,
+            "Summary Test",
+            PERIOD_START,
+            PERIOD_END,
             items=[
                 {
                     "order_id": orders[0].id,
@@ -959,6 +973,7 @@ class TestSchedulingService:
 # 5. ScenarioService Tests
 # ===========================================================================
 
+
 class TestScenarioService:
     """Tests for the what-if scenario service (8 scenario types)."""
 
@@ -1002,9 +1017,7 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Overtime +20%", ScenarioType.OVERTIME
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Overtime +20%", ScenarioType.OVERTIME)
 
         assert scenario.id is not None
         assert scenario.scenario_name == "Overtime +20%"
@@ -1017,29 +1030,32 @@ class TestScenarioService:
 
         svc = ScenarioService(cap_db)
         scenario = svc.create_scenario(
-            CLIENT_ID, "Custom OT", ScenarioType.OVERTIME,
+            CLIENT_ID,
+            "Custom OT",
+            ScenarioType.OVERTIME,
             parameters={"overtime_percent": 50},
         )
 
         assert scenario.parameters_json["overtime_percent"] == 50
 
-    @pytest.mark.parametrize("scenario_type", [
-        ScenarioType.OVERTIME,
-        ScenarioType.SETUP_REDUCTION,
-        ScenarioType.SUBCONTRACT,
-        ScenarioType.NEW_LINE,
-        ScenarioType.THREE_SHIFT,
-        ScenarioType.LEAD_TIME_DELAY,
-        ScenarioType.ABSENTEEISM_SPIKE,
-        ScenarioType.MULTI_CONSTRAINT,
-    ])
+    @pytest.mark.parametrize(
+        "scenario_type",
+        [
+            ScenarioType.OVERTIME,
+            ScenarioType.SETUP_REDUCTION,
+            ScenarioType.SUBCONTRACT,
+            ScenarioType.NEW_LINE,
+            ScenarioType.THREE_SHIFT,
+            ScenarioType.LEAD_TIME_DELAY,
+            ScenarioType.ABSENTEEISM_SPIKE,
+            ScenarioType.MULTI_CONSTRAINT,
+        ],
+    )
     def test_create_each_scenario_type(self, cap_db, scenario_type):
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, f"Test {scenario_type.value}", scenario_type
-        )
+        scenario = svc.create_scenario(CLIENT_ID, f"Test {scenario_type.value}", scenario_type)
 
         assert scenario.id is not None
         assert scenario.scenario_type == scenario_type.value
@@ -1048,9 +1064,7 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_preconfigured_scenario(
-            CLIENT_ID, ScenarioType.NEW_LINE
-        )
+        scenario = svc.create_preconfigured_scenario(CLIENT_ID, ScenarioType.NEW_LINE)
 
         assert scenario.scenario_type == "NEW_LINE"
         assert scenario.parameters_json["new_line_code"] == "SEWING_NEW"
@@ -1059,12 +1073,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "OT Analysis", ScenarioType.OVERTIME
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "OT Analysis", ScenarioType.OVERTIME)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         assert isinstance(result, ScenarioResult)
         assert result.scenario_id == scenario.id
@@ -1077,12 +1087,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Setup Red", ScenarioType.SETUP_REDUCTION
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Setup Red", ScenarioType.SETUP_REDUCTION)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # Setup reduction should increase capacity
         orig = result.original_metrics["total_capacity_hours"]
@@ -1093,12 +1099,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Absent", ScenarioType.ABSENTEEISM_SPIKE
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Absent", ScenarioType.ABSENTEEISM_SPIKE)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # Absenteeism should reduce capacity
         orig = result.original_metrics["total_capacity_hours"]
@@ -1109,12 +1111,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Delay", ScenarioType.LEAD_TIME_DELAY
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Delay", ScenarioType.LEAD_TIME_DELAY)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # Lead time delay should not change capacity hours but affects demand/utilization
         assert "warnings" in result.modified_metrics
@@ -1124,12 +1122,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "New Line", ScenarioType.NEW_LINE
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "New Line", ScenarioType.NEW_LINE)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # New line adds capacity and a virtual line
         mod_lines = result.modified_metrics.get("lines", [])
@@ -1148,9 +1142,7 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Stored", ScenarioType.OVERTIME
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Stored", ScenarioType.OVERTIME)
         svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # Refresh from DB
@@ -1165,9 +1157,7 @@ class TestScenarioService:
         s1 = svc.create_scenario(CLIENT_ID, "S1", ScenarioType.OVERTIME)
         s2 = svc.create_scenario(CLIENT_ID, "S2", ScenarioType.SETUP_REDUCTION)
 
-        comparisons = svc.compare_scenarios(
-            CLIENT_ID, [s1.id, s2.id], PERIOD_START, PERIOD_END
-        )
+        comparisons = svc.compare_scenarios(CLIENT_ID, [s1.id, s2.id], PERIOD_START, PERIOD_END)
 
         assert len(comparisons) == 2
         assert isinstance(comparisons[0], ScenarioComparison)
@@ -1211,12 +1201,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Multi", ScenarioType.MULTI_CONSTRAINT
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Multi", ScenarioType.MULTI_CONSTRAINT)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # Multi-constraint combines overtime, setup reduction, efficiency, absenteeism
         assert result.impact_summary is not None
@@ -1226,12 +1212,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "3-Shift", ScenarioType.THREE_SHIFT
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "3-Shift", ScenarioType.THREE_SHIFT)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         assert result.modified_metrics["total_capacity_hours"] > result.original_metrics["total_capacity_hours"]
 
@@ -1239,12 +1221,8 @@ class TestScenarioService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = ScenarioService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Subcontract", ScenarioType.SUBCONTRACT
-        )
-        result = svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Subcontract", ScenarioType.SUBCONTRACT)
+        result = svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         # Subcontracting reduces demand (not capacity)
         # Total capacity remains same, but demand may differ
@@ -1254,6 +1232,7 @@ class TestScenarioService:
 # ===========================================================================
 # 6. KPIIntegrationService Tests
 # ===========================================================================
+
 
 class TestKPIIntegrationService:
     """Tests for KPI integration service."""
@@ -1272,13 +1251,12 @@ class TestKPIIntegrationService:
 
         # Create schedule
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "KPI Sched", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "KPI Sched", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
         result = svc.store_kpi_commitments(
-            CLIENT_ID, schedule.id,
+            CLIENT_ID,
+            schedule.id,
             {
                 "efficiency": Decimal("85.0"),
                 "quality": Decimal("98.5"),
@@ -1302,14 +1280,10 @@ class TestKPIIntegrationService:
         data = _seed_full_capacity_data(cap_db)
 
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "KPI Get", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "KPI Get", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
-        svc.store_kpi_commitments(
-            CLIENT_ID, schedule.id, {"efficiency": Decimal("85.0")}
-        )
+        svc.store_kpi_commitments(CLIENT_ID, schedule.id, {"efficiency": Decimal("85.0")})
 
         commitments = svc.get_kpi_commitments(CLIENT_ID, schedule.id)
         assert len(commitments) == 1
@@ -1320,9 +1294,7 @@ class TestKPIIntegrationService:
         data = _seed_full_capacity_data(cap_db)
 
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "Empty KPI", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "Empty KPI", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
         commitments = svc.get_kpi_commitments(CLIENT_ID, schedule.id)
@@ -1332,9 +1304,7 @@ class TestKPIIntegrationService:
         data = _seed_full_capacity_data(cap_db)
 
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "No Commit", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "No Commit", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
         variances = svc.calculate_variance(CLIENT_ID, schedule.id)
@@ -1371,14 +1341,10 @@ class TestKPIIntegrationService:
         data = _seed_full_capacity_data(cap_db)
 
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "History", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "History", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
-        svc.store_kpi_commitments(
-            CLIENT_ID, schedule.id, {"efficiency": Decimal("85.0")}
-        )
+        svc.store_kpi_commitments(CLIENT_ID, schedule.id, {"efficiency": Decimal("85.0")})
 
         history = svc.get_kpi_history(CLIENT_ID, "efficiency")
         assert len(history) == 1
@@ -1388,13 +1354,12 @@ class TestKPIIntegrationService:
         data = _seed_full_capacity_data(cap_db)
 
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "List KPI", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "List KPI", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
         stored = svc.store_kpi_commitments_list(
-            CLIENT_ID, schedule.id,
+            CLIENT_ID,
+            schedule.id,
             {"efficiency": Decimal("85.0"), "quality": Decimal("98.0")},
         )
 
@@ -1406,9 +1371,7 @@ class TestKPIIntegrationService:
         data = _seed_full_capacity_data(cap_db)
 
         sched_svc = SchedulingService(cap_db)
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "Alert", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "Alert", PERIOD_START, PERIOD_END, items=[])
 
         svc = KPIIntegrationService(cap_db)
         alerts = svc.check_variance_alerts(CLIENT_ID, schedule.id)
@@ -1425,6 +1388,7 @@ class TestKPIIntegrationService:
 # ===========================================================================
 # 7. CapacityPlanningService Tests (Orchestration)
 # ===========================================================================
+
 
 class TestCapacityPlanningService:
     """Tests for the main orchestration service."""
@@ -1479,22 +1443,20 @@ class TestCapacityPlanningService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = CapacityPlanningService(cap_db)
-        result = svc.generate_schedule(
-            CLIENT_ID, "Orch Schedule", PERIOD_START, PERIOD_END
-        )
+        result = svc.generate_schedule(CLIENT_ID, "Orch Schedule", PERIOD_START, PERIOD_END)
         assert isinstance(result, GeneratedSchedule)
 
     def test_create_and_commit_schedule(self, cap_db):
         data = _seed_full_capacity_data(cap_db)
 
         svc = CapacityPlanningService(cap_db)
-        schedule = svc.create_schedule(
-            CLIENT_ID, "Orch Create", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = svc.create_schedule(CLIENT_ID, "Orch Create", PERIOD_START, PERIOD_END, items=[])
         assert schedule.status == ScheduleStatus.DRAFT
 
         committed = svc.commit_schedule(
-            CLIENT_ID, schedule.id, committed_by=1,
+            CLIENT_ID,
+            schedule.id,
+            committed_by=1,
             kpi_commitments={"efficiency": 85.0, "quality": 98.0},
         )
         assert committed.status == ScheduleStatus.COMMITTED
@@ -1508,9 +1470,7 @@ class TestCapacityPlanningService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = CapacityPlanningService(cap_db)
-        scenario = svc.create_scenario(
-            CLIENT_ID, "Orch Scenario", "OVERTIME"
-        )
+        scenario = svc.create_scenario(CLIENT_ID, "Orch Scenario", "OVERTIME")
         assert isinstance(scenario, CapacityScenario)
 
     def test_analyze_scenario_delegates(self, cap_db):
@@ -1518,9 +1478,7 @@ class TestCapacityPlanningService:
 
         svc = CapacityPlanningService(cap_db)
         scenario = svc.create_scenario(CLIENT_ID, "Orch Anal", "OVERTIME")
-        result = svc.analyze_scenario(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        result = svc.analyze_scenario(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
         assert isinstance(result, ScenarioResult)
 
     def test_list_scenarios_delegates(self, cap_db):
@@ -1544,9 +1502,7 @@ class TestCapacityPlanningService:
         data = _seed_full_capacity_data(cap_db)
 
         svc = CapacityPlanningService(cap_db)
-        schedule = svc.create_schedule(
-            CLIENT_ID, "Sum Test", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = svc.create_schedule(CLIENT_ID, "Sum Test", PERIOD_START, PERIOD_END, items=[])
 
         summary = svc.get_schedule_summary(CLIENT_ID, schedule.id)
         assert isinstance(summary, ScheduleSummary)
@@ -1570,6 +1526,7 @@ class TestCapacityPlanningService:
 # ===========================================================================
 # ORM Model Helper Method Tests
 # ===========================================================================
+
 
 class TestORMModelHelpers:
     """Test helper methods defined on ORM model classes."""
@@ -1626,22 +1583,16 @@ class TestORMModelHelpers:
         assert detail.required_quantity(100) == pytest.approx(220.0)
 
     def test_stock_calculate_available(self):
-        stock = CapacityStockSnapshot(
-            on_hand_quantity=1000, allocated_quantity=200, on_order_quantity=50
-        )
+        stock = CapacityStockSnapshot(on_hand_quantity=1000, allocated_quantity=200, on_order_quantity=50)
         assert stock.calculate_available() == 850.0
 
     def test_stock_is_short(self):
-        stock = CapacityStockSnapshot(
-            on_hand_quantity=100, allocated_quantity=0, on_order_quantity=0
-        )
+        stock = CapacityStockSnapshot(on_hand_quantity=100, allocated_quantity=0, on_order_quantity=0)
         assert stock.is_short(200) is True
         assert stock.is_short(50) is False
 
     def test_stock_shortage_quantity(self):
-        stock = CapacityStockSnapshot(
-            on_hand_quantity=100, allocated_quantity=0, on_order_quantity=0
-        )
+        stock = CapacityStockSnapshot(on_hand_quantity=100, allocated_quantity=0, on_order_quantity=0)
         assert stock.shortage_quantity(150) == 50.0
         assert stock.shortage_quantity(50) == 0
 
@@ -1726,7 +1677,8 @@ class TestORMModelHelpers:
 
     def test_kpi_commitment_is_on_target(self):
         c = CapacityKPICommitment(
-            committed_value=85.0, actual_value=86.0,
+            committed_value=85.0,
+            actual_value=86.0,
             variance_percent=1.18,
         )
         assert c.is_on_target(tolerance_percent=5.0) is True
@@ -1757,6 +1709,7 @@ class TestORMModelHelpers:
 # Cross-Service Integration Tests
 # ===========================================================================
 
+
 class TestCrossServiceIntegration:
     """Integration tests that exercise multiple services together."""
 
@@ -1786,12 +1739,8 @@ class TestCrossServiceIntegration:
         baseline = analysis_svc.analyze_capacity(CLIENT_ID, PERIOD_START, PERIOD_END)
         assert baseline.total_capacity_hours > 0
 
-        scenario = scenario_svc.create_scenario(
-            CLIENT_ID, "OT After Analysis", ScenarioType.OVERTIME
-        )
-        result = scenario_svc.apply_scenario_parameters(
-            CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END
-        )
+        scenario = scenario_svc.create_scenario(CLIENT_ID, "OT After Analysis", ScenarioType.OVERTIME)
+        result = scenario_svc.apply_scenario_parameters(CLIENT_ID, scenario.id, PERIOD_START, PERIOD_END)
 
         assert result.modified_metrics["total_capacity_hours"] >= result.original_metrics["total_capacity_hours"]
 
@@ -1802,13 +1751,12 @@ class TestCrossServiceIntegration:
         sched_svc = SchedulingService(cap_db)
         kpi_svc = KPIIntegrationService(cap_db)
 
-        schedule = sched_svc.create_schedule(
-            CLIENT_ID, "KPI Track", PERIOD_START, PERIOD_END, items=[]
-        )
+        schedule = sched_svc.create_schedule(CLIENT_ID, "KPI Track", PERIOD_START, PERIOD_END, items=[])
         sched_svc.commit_schedule(CLIENT_ID, schedule.id, committed_by=1)
 
         kpi_svc.store_kpi_commitments(
-            CLIENT_ID, schedule.id,
+            CLIENT_ID,
+            schedule.id,
             {
                 "efficiency": Decimal("85.0"),
                 "quality": Decimal("98.5"),
@@ -1831,9 +1779,7 @@ class TestCrossServiceIntegration:
         s2 = svc.create_scenario(CLIENT_ID, "S2-Setup", ScenarioType.SETUP_REDUCTION)
         s3 = svc.create_scenario(CLIENT_ID, "S3-3Shift", ScenarioType.THREE_SHIFT)
 
-        comparisons = svc.compare_scenarios(
-            CLIENT_ID, [s1.id, s2.id, s3.id], PERIOD_START, PERIOD_END
-        )
+        comparisons = svc.compare_scenarios(CLIENT_ID, [s1.id, s2.id, s3.id], PERIOD_START, PERIOD_END)
 
         assert len(comparisons) == 3
         # All should show capacity increase >= 0

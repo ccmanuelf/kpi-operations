@@ -8,6 +8,7 @@ RTY = FPY1 × FPY2 × FPY3 × ... × FPYn (for all process steps)
 Phase 6.6 Enhancement: RTY can be calculated at JOB (line item) level within work orders
 Phase 1.2: Added pure calculation functions for service layer separation
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import date
@@ -25,10 +26,8 @@ from backend.schemas.job import Job
 # Phase 1.2: These functions can be unit tested without database
 # =============================================================================
 
-def calculate_fpy_pure(
-    total_passed: int,
-    total_inspected: int
-) -> Decimal:
+
+def calculate_fpy_pure(total_passed: int, total_inspected: int) -> Decimal:
     """
     Pure FPY (First Pass Yield) calculation - no database access.
 
@@ -87,10 +86,7 @@ def calculate_rty_pure(step_fpys: List[Decimal]) -> Decimal:
     return rty_percentage.quantize(Decimal("0.01"))
 
 
-def calculate_job_yield_pure(
-    completed_quantity: int,
-    quantity_scrapped: int
-) -> Decimal:
+def calculate_job_yield_pure(completed_quantity: int, quantity_scrapped: int) -> Decimal:
     """
     Pure job yield calculation - no database access.
 
@@ -117,11 +113,7 @@ def calculate_job_yield_pure(
     return yield_pct.quantize(Decimal("0.01"))
 
 
-def calculate_recovery_rate_pure(
-    units_reworked: int,
-    units_repaired: int,
-    units_scrapped: int
-) -> Decimal:
+def calculate_recovery_rate_pure(units_reworked: int, units_repaired: int, units_scrapped: int) -> Decimal:
     """
     Pure recovery rate calculation - no database access.
 
@@ -150,11 +142,7 @@ def calculate_recovery_rate_pure(
 
 
 def calculate_fpy(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date,
-    inspection_stage: Optional[str] = None
+    db: Session, product_id: int, start_date: date, end_date: date, inspection_stage: Optional[str] = None
 ) -> tuple[Decimal, int, int]:
     """
     Calculate First Pass Yield for a specific inspection stage
@@ -176,10 +164,7 @@ def calculate_fpy(
     # Note: QualityEntry doesn't have product_id - use work_order/job based filtering
     # For now, get all quality entries in date range
     query = db.query(QualityEntry).filter(
-        and_(
-            QualityEntry.shift_date >= start_datetime,
-            QualityEntry.shift_date <= end_datetime
-        )
+        and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime)
     )
 
     if inspection_stage:
@@ -210,11 +195,7 @@ def calculate_fpy(
 
 
 def calculate_fpy_with_repair_breakdown(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date,
-    inspection_stage: Optional[str] = None
+    db: Session, product_id: int, start_date: date, end_date: date, inspection_stage: Optional[str] = None
 ) -> dict:
     """
     Calculate FPY with detailed repair vs rework breakdown
@@ -232,10 +213,7 @@ def calculate_fpy_with_repair_breakdown(
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
     query = db.query(QualityEntry).filter(
-        and_(
-            QualityEntry.shift_date >= start_datetime,
-            QualityEntry.shift_date <= end_datetime
-        )
+        and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime)
     )
 
     if inspection_stage:
@@ -255,7 +233,7 @@ def calculate_fpy_with_repair_breakdown(
             "repair_rate": Decimal("0"),
             "scrap_rate": Decimal("0"),
             "recovered_units": 0,  # Rework + Repair (recovered vs scrapped)
-            "recovery_rate": Decimal("0")
+            "recovery_rate": Decimal("0"),
         }
 
     total_inspected = sum(i.units_inspected or 0 for i in inspections)
@@ -276,8 +254,7 @@ def calculate_fpy_with_repair_breakdown(
     # Recovered units = rework + repair (items that were saved vs scrapped)
     recovered_units = total_rework + total_repair
     if (total_rework + total_repair + total_scrap) > 0:
-        recovery_rate = (Decimal(str(recovered_units)) /
-                        Decimal(str(total_rework + total_repair + total_scrap))) * 100
+        recovery_rate = (Decimal(str(recovered_units)) / Decimal(str(total_rework + total_repair + total_scrap))) * 100
     else:
         recovery_rate = Decimal("100")  # If nothing failed, 100% recovery
 
@@ -292,16 +269,12 @@ def calculate_fpy_with_repair_breakdown(
         "repair_rate": repair_rate,
         "scrap_rate": scrap_rate,
         "recovered_units": recovered_units,
-        "recovery_rate": recovery_rate
+        "recovery_rate": recovery_rate,
     }
 
 
 def calculate_rty(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date,
-    process_steps: Optional[List[str]] = None
+    db: Session, product_id: int, start_date: date, end_date: date, process_steps: Optional[List[str]] = None
 ) -> tuple[Decimal, List[dict]]:
     """
     Calculate Rolled Throughput Yield across all process steps
@@ -315,15 +288,13 @@ def calculate_rty(
 
     if not process_steps:
         # Default apparel manufacturing stages
-        process_steps = ['Incoming', 'In-Process', 'Final']
+        process_steps = ["Incoming", "In-Process", "Final"]
 
     step_yields = []
     rty = Decimal("1.0")  # Start at 100% (1.0)
 
     for step in process_steps:
-        fpy, good, total = calculate_fpy(
-            db, product_id, start_date, end_date, inspection_stage=step
-        )
+        fpy, good, total = calculate_fpy(db, product_id, start_date, end_date, inspection_stage=step)
 
         # Convert percentage to decimal for multiplication
         fpy_decimal = fpy / 100
@@ -331,12 +302,7 @@ def calculate_rty(
         # Multiply for RTY
         rty = rty * fpy_decimal
 
-        step_yields.append({
-            "step": step,
-            "fpy_percentage": fpy,
-            "first_pass_good": good,
-            "total_units": total
-        })
+        step_yields.append({"step": step, "fpy_percentage": fpy, "first_pass_good": good, "total_units": total})
 
     # Convert RTY back to percentage
     rty_percentage = rty * 100
@@ -345,11 +311,7 @@ def calculate_rty(
 
 
 def calculate_rty_with_repair_impact(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date,
-    process_steps: Optional[List[str]] = None
+    db: Session, product_id: int, start_date: date, end_date: date, process_steps: Optional[List[str]] = None
 ) -> dict:
     """
     Calculate RTY with repair impact analysis
@@ -362,7 +324,7 @@ def calculate_rty_with_repair_impact(
     Returns: Dict with RTY and repair impact metrics
     """
     if not process_steps:
-        process_steps = ['Incoming', 'In-Process', 'Final']
+        process_steps = ["Incoming", "In-Process", "Final"]
 
     step_details = []
     rty = Decimal("1.0")
@@ -372,9 +334,7 @@ def calculate_rty_with_repair_impact(
     total_inspected_across_stages = 0
 
     for step in process_steps:
-        breakdown = calculate_fpy_with_repair_breakdown(
-            db, product_id, start_date, end_date, inspection_stage=step
-        )
+        breakdown = calculate_fpy_with_repair_breakdown(db, product_id, start_date, end_date, inspection_stage=step)
 
         # Convert FPY percentage to decimal for multiplication
         fpy_decimal = breakdown["fpy_percentage"] / 100
@@ -386,17 +346,19 @@ def calculate_rty_with_repair_impact(
         total_scrap_across_stages += breakdown["units_scrapped"]
         total_inspected_across_stages += breakdown["total_inspected"]
 
-        step_details.append({
-            "step": step,
-            "fpy_percentage": breakdown["fpy_percentage"],
-            "first_pass_good": breakdown["first_pass_good"],
-            "total_inspected": breakdown["total_inspected"],
-            "units_reworked": breakdown["units_reworked"],
-            "units_requiring_repair": breakdown["units_requiring_repair"],
-            "units_scrapped": breakdown["units_scrapped"],
-            "rework_rate": breakdown["rework_rate"],
-            "repair_rate": breakdown["repair_rate"]
-        })
+        step_details.append(
+            {
+                "step": step,
+                "fpy_percentage": breakdown["fpy_percentage"],
+                "first_pass_good": breakdown["first_pass_good"],
+                "total_inspected": breakdown["total_inspected"],
+                "units_reworked": breakdown["units_reworked"],
+                "units_requiring_repair": breakdown["units_requiring_repair"],
+                "units_scrapped": breakdown["units_scrapped"],
+                "rework_rate": breakdown["rework_rate"],
+                "repair_rate": breakdown["repair_rate"],
+            }
+        )
 
     # Convert RTY back to percentage
     rty_percentage = rty * 100
@@ -404,10 +366,8 @@ def calculate_rty_with_repair_impact(
     # Calculate overall repair impact on throughput
     # Repair Impact = Total resources lost to repair / Total inspected
     if total_inspected_across_stages > 0:
-        repair_impact = (Decimal(str(total_repair_across_stages)) /
-                        Decimal(str(total_inspected_across_stages))) * 100
-        rework_impact = (Decimal(str(total_rework_across_stages)) /
-                        Decimal(str(total_inspected_across_stages))) * 100
+        repair_impact = (Decimal(str(total_repair_across_stages)) / Decimal(str(total_inspected_across_stages))) * 100
+        rework_impact = (Decimal(str(total_rework_across_stages)) / Decimal(str(total_inspected_across_stages))) * 100
     else:
         repair_impact = rework_impact = Decimal("0")
 
@@ -420,7 +380,7 @@ def calculate_rty_with_repair_impact(
         "rework_impact_percentage": rework_impact,
         "repair_impact_percentage": repair_impact,
         "throughput_loss_percentage": repair_impact + rework_impact,
-        "interpretation": get_rty_interpretation(rty_percentage, repair_impact)
+        "interpretation": get_rty_interpretation(rty_percentage, repair_impact),
     }
 
 
@@ -440,12 +400,7 @@ def get_rty_interpretation(rty: Decimal, repair_impact: Decimal) -> str:
         return "Needs Improvement: Below target, investigate root causes"
 
 
-def calculate_process_yield(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date
-) -> dict:
+def calculate_process_yield(db: Session, product_id: int, start_date: date, end_date: date) -> dict:
     """
     Calculate overall process yield including scrap rate
 
@@ -458,25 +413,28 @@ def calculate_process_yield(
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
     # Get production data
-    production = db.query(ProductionEntry).filter(
-        and_(
-            ProductionEntry.product_id == product_id,
-            ProductionEntry.production_date >= start_datetime,
-            ProductionEntry.production_date <= end_datetime
+    production = (
+        db.query(ProductionEntry)
+        .filter(
+            and_(
+                ProductionEntry.product_id == product_id,
+                ProductionEntry.production_date >= start_datetime,
+                ProductionEntry.production_date <= end_datetime,
+            )
         )
-    ).all()
+        .all()
+    )
 
     total_produced = sum(p.units_produced or 0 for p in production)
     total_scrap = sum(p.scrap_count or 0 for p in production)
     total_defects = sum(p.defect_count or 0 for p in production)
 
     # Get quality entry data
-    inspections = db.query(QualityEntry).filter(
-        and_(
-            QualityEntry.shift_date >= start_datetime,
-            QualityEntry.shift_date <= end_datetime
-        )
-    ).all()
+    inspections = (
+        db.query(QualityEntry)
+        .filter(and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime))
+        .all()
+    )
 
     inspection_scrap = sum(i.units_scrapped or 0 for i in inspections)
     total_scrap += inspection_scrap
@@ -497,16 +455,11 @@ def calculate_process_yield(
         "total_produced": total_produced,
         "good_units": good_units,
         "total_scrap": total_scrap,
-        "total_defects": total_defects
+        "total_defects": total_defects,
     }
 
 
-def calculate_defect_escape_rate(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date
-) -> Decimal:
+def calculate_defect_escape_rate(db: Session, product_id: int, start_date: date, end_date: date) -> Decimal:
     """
     Calculate Defect Escape Rate
 
@@ -521,21 +474,17 @@ def calculate_defect_escape_rate(
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
     # Get all quality entries
-    all_inspections = db.query(QualityEntry).filter(
-        and_(
-            QualityEntry.shift_date >= start_datetime,
-            QualityEntry.shift_date <= end_datetime
-        )
-    ).all()
+    all_inspections = (
+        db.query(QualityEntry)
+        .filter(and_(QualityEntry.shift_date >= start_datetime, QualityEntry.shift_date <= end_datetime))
+        .all()
+    )
 
     if not all_inspections:
         return Decimal("0")
 
     # Defects found at final inspection
-    final_defects = sum(
-        i.units_defective or 0 for i in all_inspections
-        if i.inspection_stage == 'Final'
-    )
+    final_defects = sum(i.units_defective or 0 for i in all_inspections if i.inspection_stage == "Final")
 
     # Total defects found
     total_defects = sum(i.units_defective or 0 for i in all_inspections)
@@ -548,12 +497,7 @@ def calculate_defect_escape_rate(
     return escape_rate
 
 
-def calculate_quality_score(
-    db: Session,
-    product_id: int,
-    start_date: date,
-    end_date: date
-) -> dict:
+def calculate_quality_score(db: Session, product_id: int, start_date: date, end_date: date) -> dict:
     """
     Calculate comprehensive quality score (0-100)
 
@@ -578,10 +522,7 @@ def calculate_quality_score(
 
     # Weighted quality score
     quality_score = (
-        fpy * Decimal("0.40") +
-        rty * Decimal("0.30") +
-        scrap_score * Decimal("0.20") +
-        escape_score * Decimal("0.10")
+        fpy * Decimal("0.40") + rty * Decimal("0.30") + scrap_score * Decimal("0.20") + escape_score * Decimal("0.10")
     )
 
     # Determine grade
@@ -611,12 +552,7 @@ def calculate_quality_score(
         "quality_score": quality_score,
         "grade": grade,
         "interpretation": interpretation,
-        "components": {
-            "fpy": fpy,
-            "rty": rty,
-            "scrap_rate": process_data["scrap_rate"],
-            "escape_rate": escape_rate
-        }
+        "components": {"fpy": fpy, "rty": rty, "scrap_rate": process_data["scrap_rate"], "escape_rate": escape_rate},
     }
 
 
@@ -624,10 +560,8 @@ def calculate_quality_score(
 # PHASE 6.6: JOB-Level RTY Calculations
 # ============================================================================
 
-def calculate_job_yield(
-    db: Session,
-    job_id: str
-) -> dict:
+
+def calculate_job_yield(db: Session, job_id: str) -> dict:
     """
     Calculate yield metrics for a specific job (line item).
 
@@ -651,7 +585,7 @@ def calculate_job_yield(
             "completed_quantity": 0,
             "quantity_scrapped": 0,
             "good_quantity": 0,
-            "error": "Job not found"
+            "error": "Job not found",
         }
 
     completed = job.completed_quantity or 0
@@ -671,15 +605,11 @@ def calculate_job_yield(
         "yield_percentage": yield_pct,
         "completed_quantity": completed,
         "quantity_scrapped": scrapped,
-        "good_quantity": good
+        "good_quantity": good,
     }
 
 
-def calculate_work_order_job_rty(
-    db: Session,
-    work_order_id: str,
-    client_id: Optional[str] = None
-) -> dict:
+def calculate_work_order_job_rty(db: Session, work_order_id: str, client_id: Optional[str] = None) -> dict:
     """
     Calculate RTY across all jobs (line items) within a work order.
 
@@ -714,7 +644,7 @@ def calculate_work_order_job_rty(
             "jobs": [],
             "total_scrapped": 0,
             "bottleneck_job": None,
-            "error": "No jobs found for work order"
+            "error": "No jobs found for work order",
         }
 
     # Calculate yield for each job
@@ -743,25 +673,27 @@ def calculate_work_order_job_rty(
             lowest_yield_job = {
                 "job_id": job.job_id,
                 "operation_name": job.operation_name,
-                "yield_percentage": float(yield_pct)
+                "yield_percentage": float(yield_pct),
             }
 
         # Multiply for RTY (only if job has completed work)
         if completed > 0:
             rty_decimal = rty_decimal * yield_decimal
 
-        job_yields.append({
-            "job_id": job.job_id,
-            "operation_name": job.operation_name,
-            "sequence_number": job.sequence_number,
-            "part_number": job.part_number,
-            "planned_quantity": job.planned_quantity,
-            "completed_quantity": completed,
-            "quantity_scrapped": scrapped,
-            "good_quantity": good,
-            "yield_percentage": float(yield_pct),
-            "is_completed": bool(job.is_completed)
-        })
+        job_yields.append(
+            {
+                "job_id": job.job_id,
+                "operation_name": job.operation_name,
+                "sequence_number": job.sequence_number,
+                "part_number": job.part_number,
+                "planned_quantity": job.planned_quantity,
+                "completed_quantity": completed,
+                "quantity_scrapped": scrapped,
+                "good_quantity": good,
+                "yield_percentage": float(yield_pct),
+                "is_completed": bool(job.is_completed),
+            }
+        )
 
     # Convert RTY back to percentage
     rty_percentage = rty_decimal * 100
@@ -773,16 +705,11 @@ def calculate_work_order_job_rty(
         "jobs": job_yields,
         "total_scrapped": total_scrapped,
         "bottleneck_job": lowest_yield_job,
-        "interpretation": get_job_rty_interpretation(rty_percentage)
+        "interpretation": get_job_rty_interpretation(rty_percentage),
     }
 
 
-def calculate_job_rty_summary(
-    db: Session,
-    start_date: date,
-    end_date: date,
-    client_id: Optional[str] = None
-) -> dict:
+def calculate_job_rty_summary(db: Session, start_date: date, end_date: date, client_id: Optional[str] = None) -> dict:
     """
     Calculate RTY summary across all jobs within a date range.
 
@@ -805,11 +732,7 @@ def calculate_job_rty_summary(
 
     # Get completed jobs in date range
     query = db.query(Job).filter(
-        and_(
-            Job.completed_date >= start_datetime,
-            Job.completed_date <= end_datetime,
-            Job.is_completed == 1
-        )
+        and_(Job.completed_date >= start_datetime, Job.completed_date <= end_datetime, Job.is_completed == 1)
     )
 
     if client_id:
@@ -819,17 +742,14 @@ def calculate_job_rty_summary(
 
     if not jobs:
         return {
-            "period": {
-                "start_date": start_date.isoformat(),
-                "end_date": end_date.isoformat()
-            },
+            "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
             "total_jobs_completed": 0,
             "total_units_completed": 0,
             "total_units_scrapped": 0,
             "average_job_yield": Decimal("0"),
             "overall_yield": Decimal("0"),
             "jobs_below_target": 0,
-            "top_scrap_operations": []
+            "top_scrap_operations": [],
         }
 
     # Aggregate metrics
@@ -872,16 +792,10 @@ def calculate_job_rty_summary(
 
     # Top scrap operations
     top_scrap = sorted(operation_scrap.items(), key=lambda x: x[1], reverse=True)[:5]
-    top_scrap_ops = [
-        {"operation": op, "units_scrapped": scrapped}
-        for op, scrapped in top_scrap
-    ]
+    top_scrap_ops = [{"operation": op, "units_scrapped": scrapped} for op, scrapped in top_scrap]
 
     return {
-        "period": {
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        },
+        "period": {"start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         "total_jobs_completed": len(jobs),
         "total_units_completed": total_completed,
         "total_units_scrapped": total_scrapped,
@@ -891,7 +805,7 @@ def calculate_job_rty_summary(
         "jobs_below_target": jobs_below_target,
         "jobs_meeting_target": len(jobs) - jobs_below_target,
         "top_scrap_operations": top_scrap_ops,
-        "interpretation": get_job_rty_interpretation(avg_yield)
+        "interpretation": get_job_rty_interpretation(avg_yield),
     }
 
 

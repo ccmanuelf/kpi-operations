@@ -3,6 +3,7 @@ Comprehensive Saved Filter CRUD Tests
 Tests CRUD operations with real database transactions.
 Target: Increase crud/saved_filter.py coverage from 20% to 85%+
 """
+
 import pytest
 import json
 from datetime import datetime
@@ -14,8 +15,12 @@ from fastapi import HTTPException
 from backend.database import Base
 from backend.schemas import ClientType
 from backend.models.filters import (
-    FilterType, SavedFilterCreate, SavedFilterUpdate, FilterConfig,
-    DateRangeConfig, DateRangeType
+    FilterType,
+    SavedFilterCreate,
+    SavedFilterUpdate,
+    FilterConfig,
+    DateRangeConfig,
+    DateRangeType,
 )
 from backend.crud import saved_filter as saved_filter_crud
 from backend.tests.fixtures.factories import TestDataFactory
@@ -49,27 +54,16 @@ def filter_setup(filter_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="FILTER-TEST",
-        client_name="Filter Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="FILTER-TEST", client_name="Filter Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create users
     user1 = TestDataFactory.create_user(
-        db,
-        user_id="filter-user-001",
-        username="filter_user1",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="filter-user-001", username="filter_user1", role="supervisor", client_id=client.client_id
     )
 
     user2 = TestDataFactory.create_user(
-        db,
-        user_id="filter-user-002",
-        username="filter_user2",
-        role="supervisor",
-        client_id=client.client_id
+        db, user_id="filter-user-002", username="filter_user2", role="supervisor", client_id=client.client_id
     )
 
     db.commit()
@@ -92,13 +86,13 @@ class TestCreateSavedFilter:
 
         filter_config = FilterConfig(
             date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=7),
-            status_filter=["RECEIVED", "IN_PROGRESS"]
+            status_filter=["RECEIVED", "IN_PROGRESS"],
         )
         filter_data = SavedFilterCreate(
             filter_name="My Production Filter",
             filter_type=FilterType.PRODUCTION,
             filter_config=filter_config,
-            is_default=False
+            is_default=False,
         )
 
         result = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
@@ -118,7 +112,7 @@ class TestCreateSavedFilter:
             filter_name="Default Filter",
             filter_type=FilterType.DASHBOARD,
             filter_config=FilterConfig(),
-            is_default=True
+            is_default=True,
         )
 
         result = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
@@ -134,7 +128,7 @@ class TestCreateSavedFilter:
             filter_name="Duplicate Filter",
             filter_type=FilterType.PRODUCTION,
             filter_config=FilterConfig(),
-            is_default=False
+            is_default=False,
         )
 
         # Create first filter
@@ -171,7 +165,7 @@ class TestGetSavedFilters:
                 filter_name=f"Filter {i}",
                 filter_type=FilterType.PRODUCTION,
                 filter_config=FilterConfig(),
-                is_default=False
+                is_default=False,
             )
             saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
@@ -192,16 +186,11 @@ class TestGetSavedFilters:
         ]
         for ftype, name in filter_types:
             filter_data = SavedFilterCreate(
-                filter_name=name,
-                filter_type=ftype,
-                filter_config=FilterConfig(),
-                is_default=False
+                filter_name=name, filter_type=ftype, filter_config=FilterConfig(), is_default=False
             )
             saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
-        results = saved_filter_crud.get_saved_filters(
-            db, user.user_id, filter_type="production"
-        )
+        results = saved_filter_crud.get_saved_filters(db, user.user_id, filter_type="production")
 
         assert len(results) == 2
 
@@ -216,7 +205,7 @@ class TestGetSavedFilters:
             filter_name="User1 Filter",
             filter_type=FilterType.PRODUCTION,
             filter_config=FilterConfig(),
-            is_default=False
+            is_default=False,
         )
         saved_filter_crud.create_saved_filter(db, user1.user_id, filter_data)
 
@@ -239,7 +228,7 @@ class TestGetSavedFilter:
             filter_name="Specific Filter",
             filter_type=FilterType.QUALITY,
             filter_config=FilterConfig(kpi_min_efficiency=50.0),
-            is_default=False
+            is_default=False,
         )
         created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
@@ -269,7 +258,7 @@ class TestGetSavedFilter:
             filter_name="User1 Private",
             filter_type=FilterType.PRODUCTION,
             filter_config=FilterConfig(),
-            is_default=False
+            is_default=False,
         )
         created = saved_filter_crud.create_saved_filter(db, user1.user_id, filter_data)
 
@@ -293,15 +282,13 @@ class TestUpdateSavedFilter:
             filter_name="Original Name",
             filter_type=FilterType.PRODUCTION,
             filter_config=FilterConfig(),
-            is_default=False
+            is_default=False,
         )
         created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
         # Update
         update_data = SavedFilterUpdate(filter_name="Updated Name")
-        result = saved_filter_crud.update_saved_filter(
-            db, created.filter_id, user.user_id, update_data
-        )
+        result = saved_filter_crud.update_saved_filter(db, created.filter_id, user.user_id, update_data)
 
         assert result.filter_name == "Updated Name"
 
@@ -316,7 +303,7 @@ class TestUpdateSavedFilter:
                 filter_name=f"Filter {i}",
                 filter_type=FilterType.PRODUCTION,
                 filter_config=FilterConfig(),
-                is_default=(i == 0)  # First one is default
+                is_default=(i == 0),  # First one is default
             )
             saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
@@ -326,9 +313,7 @@ class TestUpdateSavedFilter:
 
         # Set second filter as default
         update_data = SavedFilterUpdate(is_default=True)
-        saved_filter_crud.update_saved_filter(
-            db, second_filter.filter_id, user.user_id, update_data
-        )
+        saved_filter_crud.update_saved_filter(db, second_filter.filter_id, user.user_id, update_data)
 
         # Verify new default
         default = saved_filter_crud.get_default_filter(db, user.user_id, "production")
@@ -341,16 +326,10 @@ class TestUpdateSavedFilter:
 
         # Create two filters
         filter1 = SavedFilterCreate(
-            filter_name="Filter A",
-            filter_type=FilterType.PRODUCTION,
-            filter_config=FilterConfig(),
-            is_default=False
+            filter_name="Filter A", filter_type=FilterType.PRODUCTION, filter_config=FilterConfig(), is_default=False
         )
         filter2 = SavedFilterCreate(
-            filter_name="Filter B",
-            filter_type=FilterType.PRODUCTION,
-            filter_config=FilterConfig(),
-            is_default=False
+            filter_name="Filter B", filter_type=FilterType.PRODUCTION, filter_config=FilterConfig(), is_default=False
         )
         saved_filter_crud.create_saved_filter(db, user.user_id, filter1)
         created2 = saved_filter_crud.create_saved_filter(db, user.user_id, filter2)
@@ -359,9 +338,7 @@ class TestUpdateSavedFilter:
         update_data = SavedFilterUpdate(filter_name="Filter A")
 
         with pytest.raises(HTTPException) as exc_info:
-            saved_filter_crud.update_saved_filter(
-                db, created2.filter_id, user.user_id, update_data
-            )
+            saved_filter_crud.update_saved_filter(db, created2.filter_id, user.user_id, update_data)
 
         assert exc_info.value.status_code == 400
 
@@ -376,17 +353,12 @@ class TestDeleteSavedFilter:
 
         # Create filter
         filter_data = SavedFilterCreate(
-            filter_name="To Delete",
-            filter_type=FilterType.PRODUCTION,
-            filter_config=FilterConfig(),
-            is_default=False
+            filter_name="To Delete", filter_type=FilterType.PRODUCTION, filter_config=FilterConfig(), is_default=False
         )
         created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
         # Delete
-        result = saved_filter_crud.delete_saved_filter(
-            db, created.filter_id, user.user_id
-        )
+        result = saved_filter_crud.delete_saved_filter(db, created.filter_id, user.user_id)
 
         assert result is True
 
@@ -406,10 +378,7 @@ class TestApplyFilter:
 
         # Create filter
         filter_data = SavedFilterCreate(
-            filter_name="Usage Test",
-            filter_type=FilterType.PRODUCTION,
-            filter_config=FilterConfig(),
-            is_default=False
+            filter_name="Usage Test", filter_type=FilterType.PRODUCTION, filter_config=FilterConfig(), is_default=False
         )
         created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
@@ -436,7 +405,7 @@ class TestGetDefaultFilter:
             filter_name="Default Production",
             filter_type=FilterType.PRODUCTION,
             filter_config=FilterConfig(),
-            is_default=True
+            is_default=True,
         )
         saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
@@ -465,17 +434,12 @@ class TestSetDefaultFilter:
 
         # Create non-default filter
         filter_data = SavedFilterCreate(
-            filter_name="Make Default",
-            filter_type=FilterType.QUALITY,
-            filter_config=FilterConfig(),
-            is_default=False
+            filter_name="Make Default", filter_type=FilterType.QUALITY, filter_config=FilterConfig(), is_default=False
         )
         created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
         # Set as default
-        result = saved_filter_crud.set_default_filter(
-            db, created.filter_id, user.user_id
-        )
+        result = saved_filter_crud.set_default_filter(db, created.filter_id, user.user_id)
 
         assert result.is_default is True
 
@@ -490,17 +454,12 @@ class TestUnsetDefaultFilter:
 
         # Create default filter
         filter_data = SavedFilterCreate(
-            filter_name="Was Default",
-            filter_type=FilterType.PRODUCTION,
-            filter_config=FilterConfig(),
-            is_default=True
+            filter_name="Was Default", filter_type=FilterType.PRODUCTION, filter_config=FilterConfig(), is_default=True
         )
         created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
         # Unset default
-        result = saved_filter_crud.unset_default_filter(
-            db, created.filter_id, user.user_id
-        )
+        result = saved_filter_crud.unset_default_filter(db, created.filter_id, user.user_id)
 
         assert result.is_default is False
 
@@ -513,13 +472,9 @@ class TestFilterHistory:
         db = filter_setup["db"]
         user = filter_setup["user1"]
 
-        filter_config = FilterConfig(
-            date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=1)
-        )
+        filter_config = FilterConfig(date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=1))
 
-        result = saved_filter_crud.add_to_filter_history(
-            db, user.user_id, filter_config
-        )
+        result = saved_filter_crud.add_to_filter_history(db, user.user_id, filter_config)
 
         assert result is not None
         assert result.user_id == user.user_id
@@ -531,9 +486,7 @@ class TestFilterHistory:
 
         # Add some history
         for i in range(3):
-            filter_config = FilterConfig(
-                date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=i+1)
-            )
+            filter_config = FilterConfig(date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=i + 1))
             saved_filter_crud.add_to_filter_history(db, user.user_id, filter_config)
 
         results = saved_filter_crud.get_filter_history(db, user.user_id)
@@ -572,14 +525,9 @@ class TestFilterStatistics:
         # Create filters
         for i, ftype in enumerate([FilterType.PRODUCTION, FilterType.QUALITY]):
             filter_data = SavedFilterCreate(
-                filter_name=f"Filter {i}",
-                filter_type=ftype,
-                filter_config=FilterConfig(),
-                is_default=False
+                filter_name=f"Filter {i}", filter_type=ftype, filter_config=FilterConfig(), is_default=False
             )
-            created = saved_filter_crud.create_saved_filter(
-                db, user.user_id, filter_data
-            )
+            created = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
             # Apply to increase usage
             saved_filter_crud.apply_filter(db, created.filter_id, user.user_id)
 
@@ -602,19 +550,13 @@ class TestDuplicateFilter:
         filter_data = SavedFilterCreate(
             filter_name="Original",
             filter_type=FilterType.PRODUCTION,
-            filter_config=FilterConfig(
-                date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=7)
-            ),
-            is_default=True
+            filter_config=FilterConfig(date_range=DateRangeConfig(type=DateRangeType.RELATIVE, relative_days=7)),
+            is_default=True,
         )
-        original = saved_filter_crud.create_saved_filter(
-            db, user.user_id, filter_data
-        )
+        original = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
         # Duplicate
-        duplicate = saved_filter_crud.duplicate_filter(
-            db, original.filter_id, user.user_id
-        )
+        duplicate = saved_filter_crud.duplicate_filter(db, original.filter_id, user.user_id)
 
         assert duplicate.filter_name == "Copy of Original"
         assert duplicate.filter_type == original.filter_type
@@ -628,18 +570,11 @@ class TestDuplicateFilter:
 
         # Create original
         filter_data = SavedFilterCreate(
-            filter_name="Original",
-            filter_type=FilterType.QUALITY,
-            filter_config=FilterConfig(),
-            is_default=False
+            filter_name="Original", filter_type=FilterType.QUALITY, filter_config=FilterConfig(), is_default=False
         )
-        original = saved_filter_crud.create_saved_filter(
-            db, user.user_id, filter_data
-        )
+        original = saved_filter_crud.create_saved_filter(db, user.user_id, filter_data)
 
         # Duplicate with custom name
-        duplicate = saved_filter_crud.duplicate_filter(
-            db, original.filter_id, user.user_id, new_name="Custom Name"
-        )
+        duplicate = saved_filter_crud.duplicate_filter(db, original.filter_id, user.user_id, new_name="Custom Name")
 
         assert duplicate.filter_name == "Custom Name"

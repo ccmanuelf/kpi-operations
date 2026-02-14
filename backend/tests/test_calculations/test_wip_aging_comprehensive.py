@@ -2,6 +2,7 @@
 Comprehensive Tests for WIP Aging Calculations
 Target: Increase wip_aging.py coverage from 36% to 60%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -14,6 +15,7 @@ class TestWIPAgingBasic:
     def test_import_wip_aging(self):
         """Test module imports correctly"""
         from backend.calculations import wip_aging
+
         assert wip_aging is not None
 
     def test_calculate_wip_aging_no_data(self, db_session):
@@ -22,10 +24,7 @@ class TestWIPAgingBasic:
 
         try:
             result = calculate_wip_aging(
-                db_session,
-                "NONEXISTENT-CLIENT",
-                date.today() - timedelta(days=30),
-                date.today()
+                db_session, "NONEXISTENT-CLIENT", date.today() - timedelta(days=30), date.today()
             )
             assert isinstance(result, dict)
         except Exception:
@@ -44,7 +43,7 @@ class TestWIPAgingBuckets:
             (8, 14, "8-14 days"),
             (15, 30, "15-30 days"),
             (31, 60, "31-60 days"),
-            (61, float('inf'), "60+ days")
+            (61, float("inf"), "60+ days"),
         ]
 
         assert len(aging_buckets) == 5
@@ -53,6 +52,7 @@ class TestWIPAgingBuckets:
 
     def test_categorize_aging_0_7(self):
         """Test categorization of 0-7 days aging"""
+
         def get_bucket(days):
             if days <= 7:
                 return "0-7 days"
@@ -71,6 +71,7 @@ class TestWIPAgingBuckets:
 
     def test_categorize_aging_8_14(self):
         """Test categorization of 8-14 days aging"""
+
         def get_bucket(days):
             if days <= 7:
                 return "0-7 days"
@@ -89,6 +90,7 @@ class TestWIPAgingBuckets:
 
     def test_categorize_aging_chronic(self):
         """Test categorization of chronic (60+) aging"""
+
         def get_bucket(days):
             if days <= 7:
                 return "0-7 days"
@@ -123,7 +125,7 @@ class TestWIPAgingMetrics:
         wip_items = [
             {"aging_days": 5, "value": Decimal("1000")},
             {"aging_days": 15, "value": Decimal("2000")},
-            {"aging_days": 45, "value": Decimal("3000")}
+            {"aging_days": 45, "value": Decimal("3000")},
         ]
 
         total_value = sum(item["value"] for item in wip_items)
@@ -134,14 +136,11 @@ class TestWIPAgingMetrics:
         wip_items = [
             {"aging_days": 5, "value": Decimal("1000")},
             {"aging_days": 15, "value": Decimal("2000")},
-            {"aging_days": 45, "value": Decimal("3000")}
+            {"aging_days": 45, "value": Decimal("3000")},
         ]
 
         total_value = sum(item["value"] for item in wip_items)
-        weighted_sum = sum(
-            item["aging_days"] * float(item["value"])
-            for item in wip_items
-        )
+        weighted_sum = sum(item["aging_days"] * float(item["value"]) for item in wip_items)
 
         # Weighted avg = (5*1000 + 15*2000 + 45*3000) / 6000 = 170000 / 6000 = 28.33...
         weighted_avg = weighted_sum / float(total_value) if total_value else 0
@@ -175,6 +174,7 @@ class TestWIPAgingWithHolds:
 
     def test_adjusted_aging_impacts_bucket(self):
         """Test adjusted aging changes bucket classification"""
+
         def get_bucket(days):
             if days <= 7:
                 return "0-7 days"
@@ -208,7 +208,7 @@ class TestWIPAgingReport:
             {"bucket": "8-14 days", "count": 5, "value": Decimal("3000")},
             {"bucket": "15-30 days", "count": 3, "value": Decimal("2500")},
             {"bucket": "31-60 days", "count": 2, "value": Decimal("4000")},
-            {"bucket": "60+ days", "count": 1, "value": Decimal("2000")}
+            {"bucket": "60+ days", "count": 1, "value": Decimal("2000")},
         ]
 
         total_count = sum(item["count"] for item in items)
@@ -223,14 +223,11 @@ class TestWIPAgingReport:
             {"wo_id": "WO-001", "aging_days": 5},
             {"wo_id": "WO-002", "aging_days": 45},
             {"wo_id": "WO-003", "aging_days": 65},
-            {"wo_id": "WO-004", "aging_days": 90}
+            {"wo_id": "WO-004", "aging_days": 90},
         ]
 
         chronic_threshold = 60
-        chronic_items = [
-            item for item in items
-            if item["aging_days"] > chronic_threshold
-        ]
+        chronic_items = [item for item in items if item["aging_days"] > chronic_threshold]
 
         assert len(chronic_items) == 2
         assert chronic_items[0]["wo_id"] == "WO-003"
@@ -245,12 +242,7 @@ class TestWIPAgingByClient:
         from backend.calculations.wip_aging import calculate_wip_aging
 
         try:
-            result = calculate_wip_aging(
-                db_session,
-                "TEST-CLIENT",
-                date.today() - timedelta(days=90),
-                date.today()
-            )
+            result = calculate_wip_aging(db_session, "TEST-CLIENT", date.today() - timedelta(days=90), date.today())
             assert isinstance(result, dict)
         except Exception:
             pass
@@ -264,10 +256,7 @@ class TestWIPAgingTrend:
         # Decreasing average aging over weeks
         weekly_avg = [35, 32, 28, 25, 22]
 
-        is_improving = all(
-            weekly_avg[i] > weekly_avg[i + 1]
-            for i in range(len(weekly_avg) - 1)
-        )
+        is_improving = all(weekly_avg[i] > weekly_avg[i + 1] for i in range(len(weekly_avg) - 1))
 
         assert is_improving == True
 
@@ -276,10 +265,7 @@ class TestWIPAgingTrend:
         # Increasing average aging over weeks
         weekly_avg = [20, 23, 28, 32, 40]
 
-        is_degrading = all(
-            weekly_avg[i] < weekly_avg[i + 1]
-            for i in range(len(weekly_avg) - 1)
-        )
+        is_degrading = all(weekly_avg[i] < weekly_avg[i + 1] for i in range(len(weekly_avg) - 1))
 
         assert is_degrading == True
 
@@ -326,10 +312,7 @@ def wip_setup(wip_db):
 
     # Create client
     client = TestDataFactory.create_client(
-        db,
-        client_id="WIP-TEST-CLIENT",
-        client_name="WIP Test Client",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="WIP-TEST-CLIENT", client_name="WIP Test Client", client_type=ClientType.HOURLY_RATE
     )
 
     # Create product
@@ -338,7 +321,7 @@ def wip_setup(wip_db):
         client_id=client.client_id,
         product_code="WIP-PROD-001",
         product_name="WIP Test Product",
-        ideal_cycle_time=Decimal("0.10")
+        ideal_cycle_time=Decimal("0.10"),
     )
 
     db.commit()
@@ -381,11 +364,7 @@ class TestGetClientWipThresholds:
 
         # Create admin user to set config
         admin = TestDataFactory.create_user(
-            db,
-            user_id="wip-admin-001",
-            username="wip_admin",
-            role="admin",
-            client_id=None
+            db, user_id="wip-admin-001", username="wip_admin", role="admin", client_id=None
         )
         db.commit()
 
@@ -418,11 +397,7 @@ class TestCalculateWipAging:
         db = wip_setup["db"]
         client = wip_setup["client"]
 
-        result = calculate_wip_aging(
-            db,
-            client_id=client.client_id,
-            as_of_date=date.today()
-        )
+        result = calculate_wip_aging(db, client_id=client.client_id, as_of_date=date.today())
 
         assert isinstance(result, dict)
         assert result["total_held_quantity"] == 0
@@ -437,10 +412,7 @@ class TestCalculateWipAging:
 
         # Create a work order and hold entry
         work_order = WorkOrder(
-            work_order_id="WO-WIP-001",
-            client_id=client.client_id,
-            style_model="TEST-STYLE",
-            planned_quantity=100
+            work_order_id="WO-WIP-001", client_id=client.client_id, style_model="TEST-STYLE", planned_quantity=100
         )
         db.add(work_order)
         db.flush()
@@ -451,16 +423,12 @@ class TestCalculateWipAging:
             work_order_id=work_order.work_order_id,
             hold_date=datetime.now() - timedelta(days=5),
             hold_status=HoldStatus.ON_HOLD,
-            hold_reason_category="QUALITY"
+            hold_reason_category="QUALITY",
         )
         db.add(hold)
         db.commit()
 
-        result = calculate_wip_aging(
-            db,
-            client_id=client.client_id,
-            as_of_date=date.today()
-        )
+        result = calculate_wip_aging(db, client_id=client.client_id, as_of_date=date.today())
 
         assert result["total_hold_events"] >= 1
         assert "aging_buckets" in result
@@ -479,7 +447,7 @@ class TestCalculateWipAging:
                 work_order_id=f"WO-BUCKET-{days_ago}",
                 client_id=client.client_id,
                 style_model="TEST-STYLE",
-                planned_quantity=100
+                planned_quantity=100,
             )
             db.add(work_order)
             db.flush()
@@ -490,17 +458,13 @@ class TestCalculateWipAging:
                 work_order_id=work_order.work_order_id,
                 hold_date=datetime.now() - timedelta(days=days_ago),
                 hold_status=HoldStatus.ON_HOLD,
-                hold_reason_category="QUALITY"
+                hold_reason_category="QUALITY",
             )
             db.add(hold)
 
         db.commit()
 
-        result = calculate_wip_aging(
-            db,
-            client_id=client.client_id,
-            as_of_date=date.today()
-        )
+        result = calculate_wip_aging(db, client_id=client.client_id, as_of_date=date.today())
 
         assert result["total_hold_events"] >= 4
         # Check bucket structure
@@ -518,10 +482,7 @@ class TestCalculateHoldResolutionRate:
         client = wip_setup["client"]
 
         result = calculate_hold_resolution_rate(
-            db,
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today(),
-            client_id=client.client_id
+            db, start_date=date.today() - timedelta(days=30), end_date=date.today(), client_id=client.client_id
         )
 
         assert result["total_resolved"] == 0
@@ -537,10 +498,7 @@ class TestCalculateHoldResolutionRate:
         # Create resolved holds
         for i in range(3):
             work_order = WorkOrder(
-                work_order_id=f"WO-RES-{i}",
-                client_id=client.client_id,
-                style_model="TEST-STYLE",
-                planned_quantity=100
+                work_order_id=f"WO-RES-{i}", client_id=client.client_id, style_model="TEST-STYLE", planned_quantity=100
             )
             db.add(work_order)
             db.flush()
@@ -555,17 +513,14 @@ class TestCalculateHoldResolutionRate:
                 hold_date=hold_date,
                 resume_date=resume_date,
                 hold_status=HoldStatus.RESUMED,
-                hold_reason_category="QUALITY"
+                hold_reason_category="QUALITY",
             )
             db.add(hold)
 
         db.commit()
 
         result = calculate_hold_resolution_rate(
-            db,
-            start_date=date.today() - timedelta(days=30),
-            end_date=date.today(),
-            client_id=client.client_id
+            db, start_date=date.today() - timedelta(days=30), end_date=date.today(), client_id=client.client_id
         )
 
         assert result["total_resolved"] >= 0
@@ -583,11 +538,7 @@ class TestIdentifyChronicHolds:
         db = wip_setup["db"]
         client = wip_setup["client"]
 
-        result = identify_chronic_holds(
-            db,
-            threshold_days=14,
-            client_id=client.client_id
-        )
+        result = identify_chronic_holds(db, threshold_days=14, client_id=client.client_id)
 
         assert isinstance(result, list)
         assert len(result) == 0
@@ -601,10 +552,7 @@ class TestIdentifyChronicHolds:
 
         # Create a chronic hold (old hold)
         work_order = WorkOrder(
-            work_order_id="WO-CHRONIC-001",
-            client_id=client.client_id,
-            style_model="TEST-STYLE",
-            planned_quantity=100
+            work_order_id="WO-CHRONIC-001", client_id=client.client_id, style_model="TEST-STYLE", planned_quantity=100
         )
         db.add(work_order)
         db.flush()
@@ -615,16 +563,12 @@ class TestIdentifyChronicHolds:
             work_order_id=work_order.work_order_id,
             hold_date=datetime.now() - timedelta(days=60),  # Very old
             hold_status=HoldStatus.ON_HOLD,
-            hold_reason_category="QUALITY"
+            hold_reason_category="QUALITY",
         )
         db.add(hold)
         db.commit()
 
-        result = identify_chronic_holds(
-            db,
-            threshold_days=30,
-            client_id=client.client_id
-        )
+        result = identify_chronic_holds(db, threshold_days=30, client_id=client.client_id)
 
         assert len(result) >= 1
         assert result[0]["aging_days"] >= 30
@@ -653,10 +597,7 @@ class TestGetTotalHoldDurationHours:
 
         # Create work order
         work_order = WorkOrder(
-            work_order_id="WO-DUR-001",
-            client_id=client.client_id,
-            style_model="TEST-STYLE",
-            planned_quantity=100
+            work_order_id="WO-DUR-001", client_id=client.client_id, style_model="TEST-STYLE", planned_quantity=100
         )
         db.add(work_order)
         db.flush()
@@ -668,7 +609,7 @@ class TestGetTotalHoldDurationHours:
             work_order_id=work_order.work_order_id,
             hold_date=datetime.now() - timedelta(hours=2),
             hold_status=HoldStatus.ON_HOLD,
-            hold_reason_category="QUALITY"
+            hold_reason_category="QUALITY",
         )
         db.add(hold)
         db.commit()
@@ -688,10 +629,7 @@ class TestGetTotalHoldDurationHours:
 
         # Create work order
         work_order = WorkOrder(
-            work_order_id="WO-DUR-002",
-            client_id=client.client_id,
-            style_model="TEST-STYLE",
-            planned_quantity=100
+            work_order_id="WO-DUR-002", client_id=client.client_id, style_model="TEST-STYLE", planned_quantity=100
         )
         db.add(work_order)
         db.flush()
@@ -705,7 +643,7 @@ class TestGetTotalHoldDurationHours:
             resume_date=datetime.now() - timedelta(hours=2),
             hold_status=HoldStatus.RESUMED,
             hold_reason_category="QUALITY",
-            total_hold_duration_hours=Decimal("3.0")
+            total_hold_duration_hours=Decimal("3.0"),
         )
         db.add(hold)
         db.commit()
@@ -726,11 +664,7 @@ class TestCalculateWipAgeAdjusted:
 
         created_at = datetime.now() - timedelta(hours=48)
 
-        result = calculate_wip_age_adjusted(
-            db,
-            work_order_number="TEST-WO",
-            work_order_created_at=created_at
-        )
+        result = calculate_wip_age_adjusted(db, work_order_number="TEST-WO", work_order_created_at=created_at)
 
         assert "raw_age_hours" in result
         assert "adjusted_age_hours" in result
@@ -751,7 +685,7 @@ class TestCalculateWipAgeAdjusted:
             client_id=client.client_id,
             style_model="TEST-STYLE",
             planned_quantity=100,
-            created_at=datetime.now() - timedelta(hours=48)
+            created_at=datetime.now() - timedelta(hours=48),
         )
         db.add(work_order)
         db.flush()
@@ -765,15 +699,13 @@ class TestCalculateWipAgeAdjusted:
             resume_date=datetime.now() - timedelta(hours=5),
             hold_status=HoldStatus.RESUMED,
             hold_reason_category="QUALITY",
-            total_hold_duration_hours=Decimal("5.0")
+            total_hold_duration_hours=Decimal("5.0"),
         )
         db.add(hold)
         db.commit()
 
         result = calculate_wip_age_adjusted(
-            db,
-            work_order_number="WO-ADJ-001",
-            work_order_created_at=work_order.created_at
+            db, work_order_number="WO-ADJ-001", work_order_created_at=work_order.created_at
         )
 
         assert result["hold_count"] >= 1
@@ -807,7 +739,7 @@ class TestCalculateWorkOrderWipAge:
             client_id=client.client_id,
             style_model="TEST-STYLE",
             planned_quantity=100,
-            created_at=datetime.now() - timedelta(hours=24)
+            created_at=datetime.now() - timedelta(hours=24),
         )
         db.add(work_order)
         db.commit()
@@ -829,11 +761,7 @@ class TestCalculateWipAgingWithHoldAdjustment:
         db = wip_setup["db"]
         client = wip_setup["client"]
 
-        result = calculate_wip_aging_with_hold_adjustment(
-            db,
-            client_id=client.client_id,
-            as_of_date=date.today()
-        )
+        result = calculate_wip_aging_with_hold_adjustment(db, client_id=client.client_id, as_of_date=date.today())
 
         assert isinstance(result, dict)
         assert "total_held_quantity" in result
@@ -849,10 +777,7 @@ class TestCalculateWipAgingWithHoldAdjustment:
 
         # Create a hold
         work_order = WorkOrder(
-            work_order_id="WO-HADJ-001",
-            client_id=client.client_id,
-            style_model="TEST-STYLE",
-            planned_quantity=100
+            work_order_id="WO-HADJ-001", client_id=client.client_id, style_model="TEST-STYLE", planned_quantity=100
         )
         db.add(work_order)
         db.flush()
@@ -863,16 +788,12 @@ class TestCalculateWipAgingWithHoldAdjustment:
             work_order_id=work_order.work_order_id,
             hold_date=datetime.now() - timedelta(days=10),
             hold_status=HoldStatus.ON_HOLD,
-            hold_reason_category="QUALITY"
+            hold_reason_category="QUALITY",
         )
         db.add(hold)
         db.commit()
 
-        result = calculate_wip_aging_with_hold_adjustment(
-            db,
-            client_id=client.client_id,
-            as_of_date=date.today()
-        )
+        result = calculate_wip_aging_with_hold_adjustment(db, client_id=client.client_id, as_of_date=date.today())
 
         # Check for P2-001 adjusted fields
         assert "average_aging_days" in result

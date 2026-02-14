@@ -10,6 +10,7 @@ TRUE-OTD% = (COMPLETE Orders Delivered On Time / Total COMPLETE Orders) * 100
 Date Inference Chain (per specification):
 planned_ship_date → required_date → (planned_start + cycle_time × qty)
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta
@@ -25,9 +26,11 @@ from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 # OTD Date Inference Chain (Audit Requirement)
 # =============================================================================
 
+
 @dataclass
 class InferredDate:
     """Result of date inference with metadata for ESTIMATED flag"""
+
     date: Optional[datetime]
     is_inferred: bool
     inference_source: str  # "planned_ship_date", "required_date", "calculated", "none"
@@ -53,16 +56,13 @@ def infer_planned_delivery_date(work_order: WorkOrder) -> InferredDate:
             date=work_order.planned_ship_date,
             is_inferred=False,
             inference_source="planned_ship_date",
-            confidence_score=1.0
+            confidence_score=1.0,
         )
 
     # Level 2: Fall back to required_date (medium confidence)
     if work_order.required_date is not None:
         return InferredDate(
-            date=work_order.required_date,
-            is_inferred=True,
-            inference_source="required_date",
-            confidence_score=0.8
+            date=work_order.required_date, is_inferred=True, inference_source="required_date", confidence_score=0.8
         )
 
     # Level 3: Calculate from planned_start + (cycle_time × quantity)
@@ -78,35 +78,21 @@ def infer_planned_delivery_date(work_order: WorkOrder) -> InferredDate:
 
             calculated_date = work_order.planned_start_date + timedelta(days=total_days)
             return InferredDate(
-                date=calculated_date,
-                is_inferred=True,
-                inference_source="calculated",
-                confidence_score=0.5
+                date=calculated_date, is_inferred=True, inference_source="calculated", confidence_score=0.5
             )
         else:
             # No cycle time - use planned_start + default lead time (7 days)
             calculated_date = work_order.planned_start_date + timedelta(days=7)
             return InferredDate(
-                date=calculated_date,
-                is_inferred=True,
-                inference_source="calculated",
-                confidence_score=0.3
+                date=calculated_date, is_inferred=True, inference_source="calculated", confidence_score=0.3
             )
 
     # No date can be inferred
-    return InferredDate(
-        date=None,
-        is_inferred=False,
-        inference_source="none",
-        confidence_score=0.0
-    )
+    return InferredDate(date=None, is_inferred=False, inference_source="none", confidence_score=0.0)
 
 
 def calculate_otd(
-    db: Session,
-    start_date: date,
-    end_date: date,
-    product_id: Optional[int] = None
+    db: Session, start_date: date, end_date: date, product_id: Optional[int] = None
 ) -> tuple[Decimal, int, int]:
     """
     Calculate On-Time Delivery percentage
@@ -121,10 +107,7 @@ def calculate_otd(
     """
 
     query = db.query(ProductionEntry).filter(
-        and_(
-            ProductionEntry.production_date >= start_date,
-            ProductionEntry.production_date <= end_date
-        )
+        and_(ProductionEntry.production_date >= start_date, ProductionEntry.production_date <= end_date)
     )
 
     if product_id:
@@ -148,10 +131,7 @@ def calculate_otd(
     return (otd_percentage, on_time_count, total_count)
 
 
-def calculate_lead_time(
-    db: Session,
-    work_order_id: str
-) -> Optional[int]:
+def calculate_lead_time(db: Session, work_order_id: str) -> Optional[int]:
     """
     Calculate actual lead time for a work order
 
@@ -160,9 +140,12 @@ def calculate_lead_time(
     In MVP, we calculate from first to last production entry
     """
 
-    entries = db.query(ProductionEntry).filter(
-        ProductionEntry.work_order_id == work_order_id
-    ).order_by(ProductionEntry.production_date).all()
+    entries = (
+        db.query(ProductionEntry)
+        .filter(ProductionEntry.work_order_id == work_order_id)
+        .order_by(ProductionEntry.production_date)
+        .all()
+    )
 
     if not entries or len(entries) < 1:
         return None
@@ -175,19 +158,16 @@ def calculate_lead_time(
     return lead_time_days
 
 
-def calculate_cycle_time(
-    db: Session,
-    work_order_id: str
-) -> Optional[Decimal]:
+def calculate_cycle_time(db: Session, work_order_id: str) -> Optional[Decimal]:
     """
     Calculate total cycle time (production hours) for work order
     """
 
-    total_hours = db.query(
-        func.sum(ProductionEntry.run_time_hours)
-    ).filter(
-        ProductionEntry.work_order_id == work_order_id
-    ).scalar()
+    total_hours = (
+        db.query(func.sum(ProductionEntry.run_time_hours))
+        .filter(ProductionEntry.work_order_id == work_order_id)
+        .scalar()
+    )
 
     if total_hours:
         return Decimal(str(total_hours))
@@ -196,10 +176,7 @@ def calculate_cycle_time(
 
 
 def calculate_delivery_variance(
-    db: Session,
-    start_date: date,
-    end_date: date,
-    product_id: Optional[int] = None
+    db: Session, start_date: date, end_date: date, product_id: Optional[int] = None
 ) -> dict:
     """
     Calculate variance between planned and actual delivery
@@ -217,14 +194,11 @@ def calculate_delivery_variance(
         "late_deliveries": 0,
         "average_variance_days": Decimal("0"),
         "worst_variance_days": 0,
-        "best_variance_days": 0
+        "best_variance_days": 0,
     }
 
 
-def identify_late_orders(
-    db: Session,
-    as_of_date: date = None
-) -> list[dict]:
+def identify_late_orders(db: Session, as_of_date: date = None) -> list[dict]:
     """
     Identify work orders that are potentially late
 
@@ -235,15 +209,20 @@ def identify_late_orders(
         as_of_date = date.today()
 
     from datetime import timedelta
+
     threshold_date = as_of_date - timedelta(days=7)
 
-    late_entries = db.query(ProductionEntry).filter(
-        and_(
-            ProductionEntry.production_date <= threshold_date,
-            ProductionEntry.confirmed_by.is_(None),
-            ProductionEntry.work_order_id.isnot(None)
+    late_entries = (
+        db.query(ProductionEntry)
+        .filter(
+            and_(
+                ProductionEntry.production_date <= threshold_date,
+                ProductionEntry.confirmed_by.is_(None),
+                ProductionEntry.work_order_id.isnot(None),
+            )
         )
-    ).all()
+        .all()
+    )
 
     # Group by work order
     work_orders = {}
@@ -252,14 +231,14 @@ def identify_late_orders(
         if wo not in work_orders:
             # Handle both date and datetime types for production_date
             prod_date = entry.production_date
-            if hasattr(prod_date, 'date'):
+            if hasattr(prod_date, "date"):
                 prod_date = prod_date.date()
             work_orders[wo] = {
                 "work_order": wo,
                 "product_id": entry.product_id,
                 "start_date": entry.production_date,
                 "days_pending": (as_of_date - prod_date).days,
-                "total_units": 0
+                "total_units": 0,
             }
         work_orders[wo]["total_units"] += entry.units_produced
 
@@ -274,12 +253,8 @@ def identify_late_orders(
 # P3-001: TRUE-OTD vs Standard OTD Calculation
 # =============================================================================
 
-def calculate_true_otd(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date
-) -> Dict:
+
+def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: date) -> Dict:
     """
     Calculate TRUE-OTD: Only counts COMPLETE orders (status='COMPLETED')
     P3-001: TRUE-OTD Implementation
@@ -309,15 +284,19 @@ def calculate_true_otd(
 
     # TRUE-OTD: Only COMPLETED orders with actual delivery date
     # ENHANCED: Removed planned_ship_date requirement - use inference chain
-    complete_orders = db.query(WorkOrder).filter(
-        and_(
-            WorkOrder.client_id == client_id,
-            WorkOrder.status == WorkOrderStatus.COMPLETED,
-            WorkOrder.actual_delivery_date.isnot(None),
-            WorkOrder.actual_delivery_date >= start_datetime,
-            WorkOrder.actual_delivery_date <= end_datetime
+    complete_orders = (
+        db.query(WorkOrder)
+        .filter(
+            and_(
+                WorkOrder.client_id == client_id,
+                WorkOrder.status == WorkOrderStatus.COMPLETED,
+                WorkOrder.actual_delivery_date.isnot(None),
+                WorkOrder.actual_delivery_date >= start_datetime,
+                WorkOrder.actual_delivery_date <= end_datetime,
+            )
         )
-    ).all()
+        .all()
+    )
 
     # Calculate TRUE-OTD metrics with inference chain
     true_otd_on_time = 0
@@ -354,14 +333,18 @@ def calculate_true_otd(
 
     # Standard OTD: All orders with delivery dates (any status)
     # ENHANCED: Removed planned_ship_date requirement - use inference chain
-    standard_orders = db.query(WorkOrder).filter(
-        and_(
-            WorkOrder.client_id == client_id,
-            WorkOrder.actual_delivery_date.isnot(None),
-            WorkOrder.actual_delivery_date >= start_datetime,
-            WorkOrder.actual_delivery_date <= end_datetime
+    standard_orders = (
+        db.query(WorkOrder)
+        .filter(
+            and_(
+                WorkOrder.client_id == client_id,
+                WorkOrder.actual_delivery_date.isnot(None),
+                WorkOrder.actual_delivery_date >= start_datetime,
+                WorkOrder.actual_delivery_date <= end_datetime,
+            )
         )
-    ).all()
+        .all()
+    )
 
     standard_on_time = 0
     standard_inferred_count = 0
@@ -399,7 +382,7 @@ def calculate_true_otd(
             "percentage": true_otd_pct.quantize(Decimal("0.01")),
             "description": "COMPLETE orders only",
             "inferred_dates_count": true_otd_inferred_count,
-            "skipped_no_date": true_otd_skipped
+            "skipped_no_date": true_otd_skipped,
         },
         "standard_otd": {
             "on_time": standard_on_time,
@@ -407,30 +390,26 @@ def calculate_true_otd(
             "percentage": standard_pct.quantize(Decimal("0.01")),
             "description": "All orders with delivery dates",
             "inferred_dates_count": standard_inferred_count,
-            "skipped_no_date": standard_skipped
+            "skipped_no_date": standard_skipped,
         },
         "variance": {
             "percentage_diff": (true_otd_pct - standard_pct).quantize(Decimal("0.01")),
-            "count_diff": true_otd_total - standard_total
+            "count_diff": true_otd_total - standard_total,
         },
         "inference": {
             "is_estimated": total_inferred > 0,
             "inferred_dates_total": total_inferred,
             "inference_rate_percentage": round(inference_rate, 2),
-            "confidence_note": "Dates inferred via: planned_ship_date → required_date → calculated" if total_inferred > 0 else None
+            "confidence_note": (
+                "Dates inferred via: planned_ship_date → required_date → calculated" if total_inferred > 0 else None
+            ),
         },
-        "date_range": {
-            "start": start_date.isoformat(),
-            "end": end_date.isoformat()
-        },
-        "client_id": client_id
+        "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
+        "client_id": client_id,
     }
 
 
-def calculate_otd_by_work_order(
-    db: Session,
-    work_order_id: str
-) -> Optional[Dict]:
+def calculate_otd_by_work_order(db: Session, work_order_id: str) -> Optional[Dict]:
     """
     Calculate OTD status for a single work order
     P3-001: Work order level OTD
@@ -446,9 +425,7 @@ def calculate_otd_by_work_order(
     Returns:
         Dict with OTD metrics or None if not found
     """
-    work_order = db.query(WorkOrder).filter(
-        WorkOrder.work_order_id == work_order_id
-    ).first()
+    work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == work_order_id).first()
 
     if not work_order:
         return None
@@ -461,7 +438,9 @@ def calculate_otd_by_work_order(
         "status": work_order.status.value if work_order.status else None,
         "planned_ship_date": work_order.planned_ship_date.isoformat() if work_order.planned_ship_date else None,
         "required_date": work_order.required_date.isoformat() if work_order.required_date else None,
-        "actual_delivery_date": work_order.actual_delivery_date.isoformat() if work_order.actual_delivery_date else None,
+        "actual_delivery_date": (
+            work_order.actual_delivery_date.isoformat() if work_order.actual_delivery_date else None
+        ),
         "is_on_time": None,
         "days_variance": None,
         "qualifies_for_true_otd": False,
@@ -470,8 +449,8 @@ def calculate_otd_by_work_order(
             "effective_planned_date": inferred.date.isoformat() if inferred.date else None,
             "is_estimated": inferred.is_inferred,
             "inference_source": inferred.inference_source,
-            "confidence_score": inferred.confidence_score
-        }
+            "confidence_score": inferred.confidence_score,
+        },
     }
 
     # Check if this work order qualifies for TRUE-OTD
@@ -487,11 +466,7 @@ def calculate_otd_by_work_order(
 
 
 def calculate_otd_trend(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date,
-    interval: str = "weekly"
+    db: Session, client_id: str, start_date: date, end_date: date, interval: str = "weekly"
 ) -> Dict:
     """
     Calculate OTD trend over time with both TRUE-OTD and Standard OTD
@@ -530,14 +505,16 @@ def calculate_otd_trend(
     trend_data = []
     for period_start, period_end in periods:
         metrics = calculate_true_otd(db, client_id, period_start, period_end)
-        trend_data.append({
-            "period_start": period_start.isoformat(),
-            "period_end": period_end.isoformat(),
-            "true_otd_percentage": metrics["true_otd"]["percentage"],
-            "true_otd_count": metrics["true_otd"]["total"],
-            "standard_otd_percentage": metrics["standard_otd"]["percentage"],
-            "standard_otd_count": metrics["standard_otd"]["total"]
-        })
+        trend_data.append(
+            {
+                "period_start": period_start.isoformat(),
+                "period_end": period_end.isoformat(),
+                "true_otd_percentage": metrics["true_otd"]["percentage"],
+                "true_otd_count": metrics["true_otd"]["total"],
+                "standard_otd_percentage": metrics["standard_otd"]["percentage"],
+                "standard_otd_count": metrics["standard_otd"]["total"],
+            }
+        )
 
     # Calculate overall averages
     if trend_data:
@@ -553,22 +530,14 @@ def calculate_otd_trend(
             "average_true_otd": avg_true_otd.quantize(Decimal("0.01")),
             "average_standard_otd": avg_standard_otd.quantize(Decimal("0.01")),
             "periods_analyzed": len(trend_data),
-            "interval": interval
+            "interval": interval,
         },
         "client_id": client_id,
-        "date_range": {
-            "start": start_date.isoformat(),
-            "end": end_date.isoformat()
-        }
+        "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
     }
 
 
-def calculate_otd_by_product(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date
-) -> Dict:
+def calculate_otd_by_product(db: Session, client_id: str, start_date: date, end_date: date) -> Dict:
     """
     Calculate OTD metrics grouped by product/style
     P3-001: Product-level OTD analysis
@@ -591,14 +560,18 @@ def calculate_otd_by_product(
 
     # Get all orders in range
     # ENHANCED: Removed planned_ship_date requirement - use inference chain
-    orders = db.query(WorkOrder).filter(
-        and_(
-            WorkOrder.client_id == client_id,
-            WorkOrder.actual_delivery_date.isnot(None),
-            WorkOrder.actual_delivery_date >= start_datetime,
-            WorkOrder.actual_delivery_date <= end_datetime
+    orders = (
+        db.query(WorkOrder)
+        .filter(
+            and_(
+                WorkOrder.client_id == client_id,
+                WorkOrder.actual_delivery_date.isnot(None),
+                WorkOrder.actual_delivery_date >= start_datetime,
+                WorkOrder.actual_delivery_date <= end_datetime,
+            )
         )
-    ).all()
+        .all()
+    )
 
     # Group by style_model with inference tracking
     product_metrics = {}
@@ -624,7 +597,7 @@ def calculate_otd_by_product(
                 "true_otd_total": 0,
                 "standard_on_time": 0,
                 "standard_total": 0,
-                "inferred_count": 0
+                "inferred_count": 0,
             }
 
         if inferred.is_inferred:
@@ -652,20 +625,22 @@ def calculate_otd_by_product(
         if metrics["standard_total"] > 0:
             standard_pct = (Decimal(str(metrics["standard_on_time"])) / Decimal(str(metrics["standard_total"]))) * 100
 
-        results.append({
-            "style_model": style,
-            "true_otd": {
-                "on_time": metrics["true_otd_on_time"],
-                "total": metrics["true_otd_total"],
-                "percentage": true_pct.quantize(Decimal("0.01"))
-            },
-            "standard_otd": {
-                "on_time": metrics["standard_on_time"],
-                "total": metrics["standard_total"],
-                "percentage": standard_pct.quantize(Decimal("0.01"))
-            },
-            "inferred_dates_count": metrics["inferred_count"]
-        })
+        results.append(
+            {
+                "style_model": style,
+                "true_otd": {
+                    "on_time": metrics["true_otd_on_time"],
+                    "total": metrics["true_otd_total"],
+                    "percentage": true_pct.quantize(Decimal("0.01")),
+                },
+                "standard_otd": {
+                    "on_time": metrics["standard_on_time"],
+                    "total": metrics["standard_total"],
+                    "percentage": standard_pct.quantize(Decimal("0.01")),
+                },
+                "inferred_dates_count": metrics["inferred_count"],
+            }
+        )
 
     # Sort by TRUE-OTD percentage (lowest first to highlight issues)
     results.sort(key=lambda x: x["true_otd"]["percentage"])
@@ -681,11 +656,8 @@ def calculate_otd_by_product(
             "is_estimated": total_inferred > 0,
             "inferred_dates_total": total_inferred,
             "skipped_no_date": total_skipped,
-            "inference_rate_percentage": round(inference_rate, 2)
+            "inference_rate_percentage": round(inference_rate, 2),
         },
         "client_id": client_id,
-        "date_range": {
-            "start": start_date.isoformat(),
-            "end": end_date.isoformat()
-        }
+        "date_range": {"start": start_date.isoformat(), "end": end_date.isoformat()},
     }

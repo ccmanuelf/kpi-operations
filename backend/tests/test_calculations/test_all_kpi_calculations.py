@@ -3,6 +3,7 @@ Comprehensive KPI Calculation Tests
 Tests all 10 KPIs with known inputs and expected outputs
 Validates formulas match CSV specifications
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date

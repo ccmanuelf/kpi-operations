@@ -2,6 +2,7 @@
 Inference Engine - 5-Level Fallback System
 CRITICAL COMPONENT: Handles missing standards with confidence scoring
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from typing import Tuple, Optional
@@ -25,7 +26,7 @@ class InferenceEngine:
         product_id: int,
         shift_id: Optional[int] = None,
         client_id: Optional[int] = None,
-        style_id: Optional[str] = None
+        style_id: Optional[str] = None,
     ) -> Tuple[Decimal, float, str, bool]:
         """
         Infer ideal cycle time using 5-level fallback
@@ -40,101 +41,71 @@ class InferenceEngine:
         # LEVEL 1: Client/Style standard
         product = db.query(Product).filter(Product.product_id == product_id).first()
         if product and product.ideal_cycle_time:
-            return (
-                Decimal(str(product.ideal_cycle_time)),
-                1.0,
-                "client_style_standard",
-                False
-            )
+            return (Decimal(str(product.ideal_cycle_time)), 1.0, "client_style_standard", False)
 
         # LEVEL 2: Shift/Line standard
         if shift_id:
-            shift_avg = db.query(
-                func.avg(ProductionEntry.run_time_hours / ProductionEntry.units_produced)
-            ).filter(
-                and_(
-                    ProductionEntry.product_id == product_id,
-                    ProductionEntry.shift_id == shift_id,
-                    ProductionEntry.units_produced > 0
+            shift_avg = (
+                db.query(func.avg(ProductionEntry.run_time_hours / ProductionEntry.units_produced))
+                .filter(
+                    and_(
+                        ProductionEntry.product_id == product_id,
+                        ProductionEntry.shift_id == shift_id,
+                        ProductionEntry.units_produced > 0,
+                    )
                 )
-            ).scalar()
+                .scalar()
+            )
 
             if shift_avg and shift_avg > 0:
-                return (
-                    Decimal(str(shift_avg)),
-                    0.9,
-                    "shift_line_standard",
-                    True
-                )
+                return (Decimal(str(shift_avg)), 0.9, "shift_line_standard", True)
 
         # LEVEL 3: Industry default (apparel manufacturing)
         industry_defaults = {
-            "T-Shirt": Decimal("0.15"),     # 15 minutes per unit
-            "Polo": Decimal("0.20"),         # 20 minutes per unit
+            "T-Shirt": Decimal("0.15"),  # 15 minutes per unit
+            "Polo": Decimal("0.20"),  # 20 minutes per unit
             "Dress Shirt": Decimal("0.25"),  # 25 minutes per unit
-            "Pants": Decimal("0.30"),        # 30 minutes per unit
-            "Jacket": Decimal("0.50"),       # 50 minutes per unit
+            "Pants": Decimal("0.30"),  # 30 minutes per unit
+            "Jacket": Decimal("0.50"),  # 50 minutes per unit
         }
 
         if product and product.product_name:
             for key, default_time in industry_defaults.items():
                 if key.lower() in product.product_name.lower():
-                    return (
-                        default_time,
-                        0.7,
-                        "industry_default",
-                        True
-                    )
+                    return (default_time, 0.7, "industry_default", True)
 
         # LEVEL 4: Historical 30-day average
         thirty_days_ago = date.today() - timedelta(days=30)
-        historical_avg = db.query(
-            func.avg(ProductionEntry.run_time_hours / ProductionEntry.units_produced)
-        ).filter(
-            and_(
-                ProductionEntry.product_id == product_id,
-                ProductionEntry.production_date >= thirty_days_ago,
-                ProductionEntry.units_produced > 0
+        historical_avg = (
+            db.query(func.avg(ProductionEntry.run_time_hours / ProductionEntry.units_produced))
+            .filter(
+                and_(
+                    ProductionEntry.product_id == product_id,
+                    ProductionEntry.production_date >= thirty_days_ago,
+                    ProductionEntry.units_produced > 0,
+                )
             )
-        ).scalar()
-
-        if historical_avg and historical_avg > 0:
-            return (
-                Decimal(str(historical_avg)),
-                0.6,
-                "historical_30day_avg",
-                True
-            )
-
-        # LEVEL 5: Global product average (lowest confidence)
-        global_avg = db.query(
-            func.avg(ProductionEntry.run_time_hours / ProductionEntry.units_produced)
-        ).filter(
-            ProductionEntry.units_produced > 0
-        ).scalar()
-
-        if global_avg and global_avg > 0:
-            return (
-                Decimal(str(global_avg)),
-                0.5,
-                "global_product_avg",
-                True
-            )
-
-        # FALLBACK: Default to 0.20 hours (12 minutes) with very low confidence
-        return (
-            Decimal("0.20"),
-            0.3,
-            "system_fallback",
-            True
+            .scalar()
         )
 
+        if historical_avg and historical_avg > 0:
+            return (Decimal(str(historical_avg)), 0.6, "historical_30day_avg", True)
+
+        # LEVEL 5: Global product average (lowest confidence)
+        global_avg = (
+            db.query(func.avg(ProductionEntry.run_time_hours / ProductionEntry.units_produced))
+            .filter(ProductionEntry.units_produced > 0)
+            .scalar()
+        )
+
+        if global_avg and global_avg > 0:
+            return (Decimal(str(global_avg)), 0.5, "global_product_avg", True)
+
+        # FALLBACK: Default to 0.20 hours (12 minutes) with very low confidence
+        return (Decimal("0.20"), 0.3, "system_fallback", True)
+
     @staticmethod
-    def infer_target_oee(
-        db: Session,
-        product_id: int,
-        shift_id: Optional[int] = None
-    ) -> Tuple[Decimal, float, str]:
+    def infer_target_oee(db: Session, product_id: int, shift_id: Optional[int] = None) -> Tuple[Decimal, float, str]:
         """
         Infer target OEE percentage
 
@@ -147,45 +118,33 @@ class InferenceEngine:
 
         # Check if product has specific target
         product = db.query(Product).filter(Product.product_id == product_id).first()
-        if product and hasattr(product, 'target_oee') and product.target_oee:
-            return (
-                Decimal(str(product.target_oee)),
-                1.0,
-                "product_standard"
-            )
+        if product and hasattr(product, "target_oee") and product.target_oee:
+            return (Decimal(str(product.target_oee)), 1.0, "product_standard")
 
         # Historical 30-day average OEE
         thirty_days_ago = date.today() - timedelta(days=30)
-        historical_oee = db.query(
-            func.avg(ProductionEntry.efficiency_percentage * ProductionEntry.performance_percentage / 100)
-        ).filter(
-            and_(
-                ProductionEntry.product_id == product_id,
-                ProductionEntry.production_date >= thirty_days_ago,
-                ProductionEntry.efficiency_percentage.isnot(None),
-                ProductionEntry.performance_percentage.isnot(None)
+        historical_oee = (
+            db.query(func.avg(ProductionEntry.efficiency_percentage * ProductionEntry.performance_percentage / 100))
+            .filter(
+                and_(
+                    ProductionEntry.product_id == product_id,
+                    ProductionEntry.production_date >= thirty_days_ago,
+                    ProductionEntry.efficiency_percentage.isnot(None),
+                    ProductionEntry.performance_percentage.isnot(None),
+                )
             )
-        ).scalar()
+            .scalar()
+        )
 
         if historical_oee and historical_oee > 0:
-            return (
-                Decimal(str(historical_oee)),
-                0.8,
-                "historical_avg"
-            )
+            return (Decimal(str(historical_oee)), 0.8, "historical_avg")
 
         # Industry standard: 75% (Good manufacturing)
-        return (
-            Decimal("75.00"),
-            0.6,
-            "industry_standard"
-        )
+        return (Decimal("75.00"), 0.6, "industry_standard")
 
     @staticmethod
     def infer_target_ppm(
-        db: Session,
-        product_id: int,
-        defect_category: Optional[str] = None
+        db: Session, product_id: int, defect_category: Optional[str] = None
     ) -> Tuple[Decimal, float, str]:
         """
         Infer target PPM (Parts Per Million) defect rate
@@ -199,25 +158,14 @@ class InferenceEngine:
 
         # Check product-specific target
         product = db.query(Product).filter(Product.product_id == product_id).first()
-        if product and hasattr(product, 'target_ppm') and product.target_ppm:
-            return (
-                Decimal(str(product.target_ppm)),
-                1.0,
-                "product_standard"
-            )
+        if product and hasattr(product, "target_ppm") and product.target_ppm:
+            return (Decimal(str(product.target_ppm)), 1.0, "product_standard")
 
         # Apparel industry standard: ~2,500 PPM (between 4σ and 5σ)
-        return (
-            Decimal("2500.00"),
-            0.7,
-            "industry_standard"
-        )
+        return (Decimal("2500.00"), 0.7, "industry_standard")
 
     @staticmethod
-    def infer_target_absenteeism(
-        db: Session,
-        shift_id: int
-    ) -> Tuple[Decimal, float, str]:
+    def infer_target_absenteeism(db: Session, shift_id: int) -> Tuple[Decimal, float, str]:
         """
         Infer target absenteeism rate
 
@@ -235,18 +183,10 @@ class InferenceEngine:
         # For now, return industry standard
 
         # Manufacturing industry standard: 5%
-        return (
-            Decimal("5.00"),
-            0.7,
-            "industry_standard"
-        )
+        return (Decimal("5.00"), 0.7, "industry_standard")
 
     @staticmethod
-    def calculate_confidence_score(
-        source_level: str,
-        data_points: int = 0,
-        recency_days: int = 0
-    ) -> float:
+    def calculate_confidence_score(source_level: str, data_points: int = 0, recency_days: int = 0) -> float:
         """
         Calculate overall confidence score based on multiple factors
 
@@ -263,7 +203,7 @@ class InferenceEngine:
             "industry_default": 0.7,
             "historical_30day_avg": 0.6,
             "global_product_avg": 0.5,
-            "system_fallback": 0.3
+            "system_fallback": 0.3,
         }.get(source_level, 0.5)
 
         # Adjust for data points (cap at 0.1 bonus)
@@ -281,10 +221,7 @@ class InferenceEngine:
         return min(1.0, base_confidence)
 
     @staticmethod
-    def flag_low_confidence(
-        confidence: float,
-        threshold: float = 0.7
-    ) -> dict:
+    def flag_low_confidence(confidence: float, threshold: float = 0.7) -> dict:
         """
         Flag estimates with low confidence
 
@@ -295,12 +232,7 @@ class InferenceEngine:
                 "warning": "LOW_CONFIDENCE_ESTIMATE",
                 "confidence": confidence,
                 "recommendation": "Consider updating product standards or collecting more historical data",
-                "needs_review": True
+                "needs_review": True,
             }
 
-        return {
-            "warning": None,
-            "confidence": confidence,
-            "recommendation": None,
-            "needs_review": False
-        }
+        return {"warning": None, "confidence": confidence, "recommendation": None, "needs_review": False}

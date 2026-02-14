@@ -3,17 +3,21 @@ Real-database tests for Attendance CRUD operations.
 Uses transactional_db fixture (in-memory SQLite with automatic rollback).
 No mocks for database operations.
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func
 
 from backend.schemas import (
-    Client, ClientType,
-    User, UserRole,
+    Client,
+    ClientType,
+    User,
+    UserRole,
     Employee,
     Shift,
-    AttendanceEntry, AbsenceType,
+    AttendanceEntry,
+    AbsenceType,
 )
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -21,6 +25,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _seed_attendance_prereqs(db, client_id="ATT-TEST-C1"):
     """Create client, employee, shift needed for attendance entries."""
@@ -50,9 +55,13 @@ class TestAttendanceCRUD:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
         assert from_db is not None
         assert from_db.client_id == client.client_id
         assert from_db.employee_id == employee.employee_id
@@ -73,9 +82,13 @@ class TestAttendanceCRUD:
             )
         db.flush()
 
-        results = db.query(AttendanceEntry).filter(
-            AttendanceEntry.employee_id == employee.employee_id,
-        ).all()
+        results = (
+            db.query(AttendanceEntry)
+            .filter(
+                AttendanceEntry.employee_id == employee.employee_id,
+            )
+            .all()
+        )
         assert len(results) == 5
 
     def test_get_attendance_by_date_range(self, transactional_db):
@@ -97,11 +110,15 @@ class TestAttendanceCRUD:
         start_dt = datetime.combine(base + timedelta(days=3), datetime.min.time())
         end_dt = datetime.combine(base + timedelta(days=7), datetime.min.time())
 
-        results = db.query(AttendanceEntry).filter(
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.shift_date >= start_dt,
-            AttendanceEntry.shift_date <= end_dt,
-        ).all()
+        results = (
+            db.query(AttendanceEntry)
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.shift_date >= start_dt,
+                AttendanceEntry.shift_date <= end_dt,
+            )
+            .all()
+        )
 
         assert len(results) == 5
 
@@ -127,9 +144,13 @@ class TestAttendanceCRUD:
         entry.absence_type = AbsenceType.UNSCHEDULED_ABSENCE
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
         assert from_db.is_absent == 1
         assert float(from_db.actual_hours) == 0.0
         assert from_db.absence_type == AbsenceType.UNSCHEDULED_ABSENCE
@@ -151,9 +172,13 @@ class TestAttendanceCRUD:
         db.delete(entry)
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry_id,
+            )
+            .first()
+        )
         assert from_db is None
 
     def test_calculate_hours_worked(self, transactional_db):
@@ -171,9 +196,13 @@ class TestAttendanceCRUD:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
 
         overtime = float(from_db.actual_hours) - float(from_db.scheduled_hours)
         assert overtime == 0.5
@@ -203,9 +232,13 @@ class TestAttendanceCRUD:
             )
             db.flush()
 
-            from_db = db.query(AttendanceEntry).filter_by(
-                attendance_entry_id=entry.attendance_entry_id,
-            ).first()
+            from_db = (
+                db.query(AttendanceEntry)
+                .filter_by(
+                    attendance_entry_id=entry.attendance_entry_id,
+                )
+                .first()
+            )
             assert from_db.absence_type == at
 
     def test_overtime_calculation(self, transactional_db):
@@ -223,9 +256,13 @@ class TestAttendanceCRUD:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
 
         overtime = max(0, float(from_db.actual_hours) - float(from_db.scheduled_hours))
         assert overtime == 2.0
@@ -256,22 +293,34 @@ class TestAttendanceCRUD:
             )
         db.flush()
 
-        total = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.shift_id == shift.shift_id,
-        ).scalar()
+        total = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.shift_id == shift.shift_id,
+            )
+            .scalar()
+        )
 
-        present = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.shift_id == shift.shift_id,
-            AttendanceEntry.is_absent == 0,
-        ).scalar()
+        present = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.shift_id == shift.shift_id,
+                AttendanceEntry.is_absent == 0,
+            )
+            .scalar()
+        )
 
-        absent = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.shift_id == shift.shift_id,
-            AttendanceEntry.is_absent == 1,
-        ).scalar()
+        absent = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.shift_id == shift.shift_id,
+                AttendanceEntry.is_absent == 1,
+            )
+            .scalar()
+        )
 
         assert total == 5
         assert present == 4
@@ -302,14 +351,22 @@ class TestAttendanceCRUD:
             )
         db.flush()
 
-        total_employees = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-        ).scalar()
+        total_employees = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+            )
+            .scalar()
+        )
 
-        absent_count = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.is_absent == 1,
-        ).scalar()
+        absent_count = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.is_absent == 1,
+            )
+            .scalar()
+        )
 
         absenteeism_rate = (absent_count / total_employees) * 100
         assert absenteeism_rate == 5.0
@@ -330,11 +387,15 @@ class TestAttendanceCRUD:
         db.flush()
 
         # Check if entry already exists
-        existing = db.query(AttendanceEntry).filter(
-            AttendanceEntry.employee_id == employee.employee_id,
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.shift_date == datetime.combine(today, datetime.min.time()),
-        ).first()
+        existing = (
+            db.query(AttendanceEntry)
+            .filter(
+                AttendanceEntry.employee_id == employee.employee_id,
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.shift_date == datetime.combine(today, datetime.min.time()),
+            )
+            .first()
+        )
         assert existing is not None  # Entry exists, should not create duplicate
 
 
@@ -362,9 +423,13 @@ class TestAttendanceEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
 
         hours = (from_db.departure_time - from_db.arrival_time).total_seconds() / 3600
         assert hours == 8.0
@@ -385,9 +450,13 @@ class TestAttendanceEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
 
         is_partial = float(from_db.actual_hours) < float(from_db.scheduled_hours)
         assert is_partial is True
@@ -407,9 +476,13 @@ class TestAttendanceEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
 
         is_future = from_db.shift_date.date() > date.today()
         assert is_future is True
@@ -436,9 +509,13 @@ class TestAttendanceEdgeCases:
             )
         db.flush()
 
-        count = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-        ).scalar()
+        count = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+            )
+            .scalar()
+        )
         assert count == 50
 
     def test_attendance_with_break_time_deduction(self, transactional_db):
@@ -460,9 +537,13 @@ class TestAttendanceEdgeCases:
         )
         db.flush()
 
-        from_db = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id=entry.attendance_entry_id,
-        ).first()
+        from_db = (
+            db.query(AttendanceEntry)
+            .filter_by(
+                attendance_entry_id=entry.attendance_entry_id,
+            )
+            .first()
+        )
         assert float(from_db.actual_hours) == 8.0
 
     def test_multi_tenant_attendance_isolation(self, transactional_db):
@@ -489,12 +570,8 @@ class TestAttendanceEdgeCases:
             )
         db.flush()
 
-        a_count = db.query(AttendanceEntry).filter(
-            AttendanceEntry.client_id == "CLIENT-A"
-        ).count()
-        b_count = db.query(AttendanceEntry).filter(
-            AttendanceEntry.client_id == "CLIENT-B"
-        ).count()
+        a_count = db.query(AttendanceEntry).filter(AttendanceEntry.client_id == "CLIENT-A").count()
+        b_count = db.query(AttendanceEntry).filter(AttendanceEntry.client_id == "CLIENT-B").count()
 
         assert a_count == 4
         assert b_count == 2

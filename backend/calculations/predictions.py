@@ -2,6 +2,7 @@
 Prediction and Forecasting Module
 Implements exponential smoothing, ARIMA forecasting, and trend extrapolation
 """
+
 from typing import List, Tuple, Optional, Dict
 from decimal import Decimal
 from datetime import date, timedelta
@@ -12,6 +13,7 @@ from dataclasses import dataclass
 @dataclass
 class ForecastResult:
     """Container for forecast results"""
+
     predictions: List[Decimal]  # Predicted values
     lower_bounds: List[Decimal]  # Lower confidence interval (95%)
     upper_bounds: List[Decimal]  # Upper confidence interval (95%)
@@ -21,9 +23,7 @@ class ForecastResult:
 
 
 def simple_exponential_smoothing(
-    values: List[Decimal],
-    alpha: Decimal = Decimal("0.3"),
-    forecast_periods: int = 7
+    values: List[Decimal], alpha: Decimal = Decimal("0.3"), forecast_periods: int = 7
 ) -> ForecastResult:
     """
     Simple exponential smoothing for time series forecasting
@@ -73,8 +73,7 @@ def simple_exponential_smoothing(
     base_confidence = Decimal("85.0")
     confidence_decay = Decimal("2.0")  # Lose 2% per period
     confidence_scores = [
-        max(Decimal("50.0"), base_confidence - (confidence_decay * i))
-        for i in range(forecast_periods)
+        max(Decimal("50.0"), base_confidence - (confidence_decay * i)) for i in range(forecast_periods)
     ]
 
     # Calculate accuracy score (based on historical fit)
@@ -88,15 +87,12 @@ def simple_exponential_smoothing(
         upper_bounds=[Decimal(str(round(ub, 4))) for ub in upper_bounds],
         confidence_scores=[Decimal(str(round(c, 2))) for c in confidence_scores],
         method="simple_exponential_smoothing",
-        accuracy_score=Decimal(str(round(accuracy_score, 2)))
+        accuracy_score=Decimal(str(round(accuracy_score, 2))),
     )
 
 
 def double_exponential_smoothing(
-    values: List[Decimal],
-    alpha: Decimal = Decimal("0.3"),
-    beta: Decimal = Decimal("0.1"),
-    forecast_periods: int = 7
+    values: List[Decimal], alpha: Decimal = Decimal("0.3"), beta: Decimal = Decimal("0.1"), forecast_periods: int = 7
 ) -> ForecastResult:
     """
     Double exponential smoothing (Holt's method) for trending data
@@ -116,7 +112,7 @@ def double_exponential_smoothing(
 
     # Initialize level and trend
     level = values[0]
-    trend = (values[1] - values[0])
+    trend = values[1] - values[0]
 
     smoothed = [level]
     trends = [trend]
@@ -152,8 +148,7 @@ def double_exponential_smoothing(
     base_confidence = Decimal("82.0")
     confidence_decay = Decimal("2.5")
     confidence_scores = [
-        max(Decimal("45.0"), base_confidence - (confidence_decay * i))
-        for i in range(forecast_periods)
+        max(Decimal("45.0"), base_confidence - (confidence_decay * i)) for i in range(forecast_periods)
     ]
 
     # Accuracy
@@ -167,14 +162,11 @@ def double_exponential_smoothing(
         upper_bounds=[Decimal(str(round(ub, 4))) for ub in upper_bounds],
         confidence_scores=[Decimal(str(round(c, 2))) for c in confidence_scores],
         method="double_exponential_smoothing",
-        accuracy_score=Decimal(str(round(accuracy_score, 2)))
+        accuracy_score=Decimal(str(round(accuracy_score, 2))),
     )
 
 
-def linear_trend_extrapolation(
-    values: List[Decimal],
-    forecast_periods: int = 7
-) -> ForecastResult:
+def linear_trend_extrapolation(values: List[Decimal], forecast_periods: int = 7) -> ForecastResult:
     """
     Linear trend extrapolation using least squares regression
 
@@ -227,13 +219,12 @@ def linear_trend_extrapolation(
         upper_bounds.append(predictions[h] + margin)
 
     # Confidence scores
-    r_squared = 1 - (sum(r ** 2 for r in residuals) / sum((y - y_mean) ** 2 for y in y_values))
+    r_squared = 1 - (sum(r**2 for r in residuals) / sum((y - y_mean) ** 2 for y in y_values))
     base_confidence = Decimal(str(max(50, r_squared * 100)))
     confidence_decay = Decimal("3.0")
 
     confidence_scores = [
-        max(Decimal("40.0"), base_confidence - (confidence_decay * i))
-        for i in range(forecast_periods)
+        max(Decimal("40.0"), base_confidence - (confidence_decay * i)) for i in range(forecast_periods)
     ]
 
     # Accuracy
@@ -245,14 +236,11 @@ def linear_trend_extrapolation(
         upper_bounds=[Decimal(str(round(ub, 4))) for ub in upper_bounds],
         confidence_scores=[Decimal(str(round(c, 2))) for c in confidence_scores],
         method="linear_trend_extrapolation",
-        accuracy_score=Decimal(str(round(accuracy_score, 2)))
+        accuracy_score=Decimal(str(round(accuracy_score, 2))),
     )
 
 
-def auto_forecast(
-    values: List[Decimal],
-    forecast_periods: int = 7
-) -> ForecastResult:
+def auto_forecast(values: List[Decimal], forecast_periods: int = 7) -> ForecastResult:
     """
     Automatically select best forecasting method based on data characteristics
 
@@ -285,7 +273,7 @@ def auto_forecast(
     if denominator != 0:
         slope = numerator / denominator
         residuals = [y[i] - (slope * x[i] + (y_mean - slope * x_mean)) for i in range(n)]
-        r_squared = 1 - (sum(r ** 2 for r in residuals) / sum((yi - y_mean) ** 2 for yi in y))
+        r_squared = 1 - (sum(r**2 for r in residuals) / sum((yi - y_mean) ** 2 for yi in y))
     else:
         slope = 0
         r_squared = 0
@@ -309,11 +297,8 @@ def auto_forecast(
 # Phase 1.2: Functions used by AnalyticsService
 # =============================================================================
 
-def predict_metric_value(
-    values: List[float],
-    dates: List[date],
-    days_ahead: int
-) -> Tuple[float, str]:
+
+def predict_metric_value(values: List[float], dates: List[date], days_ahead: int) -> Tuple[float, str]:
     """
     Predict a metric value for a future date.
 
@@ -337,10 +322,7 @@ def predict_metric_value(
     return (predicted, result.method)
 
 
-def calculate_confidence_interval(
-    values: List[float],
-    predicted: float
-) -> Dict[str, float]:
+def calculate_confidence_interval(values: List[float], predicted: float) -> Dict[str, float]:
     """
     Calculate confidence interval for a prediction.
 
@@ -359,16 +341,10 @@ def calculate_confidence_interval(
     # 95% confidence interval approximation
     margin = std_dev * 2
 
-    return {
-        "lower": predicted - margin,
-        "upper": predicted + margin
-    }
+    return {"lower": predicted - margin, "upper": predicted + margin}
 
 
-def calculate_forecast_accuracy(
-    actual: List[Decimal],
-    predicted: List[Decimal]
-) -> Dict[str, Decimal]:
+def calculate_forecast_accuracy(actual: List[Decimal], predicted: List[Decimal]) -> Dict[str, Decimal]:
     """
     Calculate various forecast accuracy metrics
 
@@ -383,11 +359,7 @@ def calculate_forecast_accuracy(
         raise ValueError("Actual and predicted must have same length")
 
     if len(actual) == 0:
-        return {
-            'mae': Decimal("0"),
-            'rmse': Decimal("0"),
-            'mape': Decimal("0")
-        }
+        return {"mae": Decimal("0"), "rmse": Decimal("0"), "mape": Decimal("0")}
 
     n = len(actual)
 
@@ -409,7 +381,7 @@ def calculate_forecast_accuracy(
     mape = (mape_sum / valid_count * 100) if valid_count > 0 else Decimal("0")
 
     return {
-        'mae': Decimal(str(round(mae, 4))),
-        'rmse': Decimal(str(round(rmse, 4))),
-        'mape': Decimal(str(round(mape, 2)))
+        "mae": Decimal(str(round(mae, 4))),
+        "rmse": Decimal(str(round(rmse, 4))),
+        "mape": Decimal(str(round(mape, 2))),
     }

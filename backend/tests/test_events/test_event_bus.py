@@ -11,6 +11,7 @@ Covers:
 Run with:
     cd backend && python -m pytest tests/test_events/test_event_bus.py -v
 """
+
 import asyncio
 import uuid
 from datetime import datetime, date
@@ -51,6 +52,7 @@ from backend.events.domain_events import (
 # ---------------------------------------------------------------------------
 # Test handler implementations (used across multiple test classes)
 # ---------------------------------------------------------------------------
+
 
 class RecordingHandler(EventHandler):
     """Handler that records every event it processes."""
@@ -109,6 +111,7 @@ class OrderTrackingHandler(EventHandler):
 # Fixture: reset the EventBus singleton between every test
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def reset_event_bus():
     """Reset EventBus singleton state so each test starts clean."""
@@ -127,6 +130,7 @@ def reset_event_bus():
 # Helper: create a minimal valid DomainEvent (aggregate_id is required)
 # ---------------------------------------------------------------------------
 
+
 def _make_event(**overrides) -> DomainEvent:
     defaults = {
         "aggregate_id": "agg-1",
@@ -140,6 +144,7 @@ def _make_event(**overrides) -> DomainEvent:
 # ========================================================================
 # 1. DomainEvent base class
 # ========================================================================
+
 
 class TestDomainEvent:
     """Tests for the DomainEvent Pydantic base model."""
@@ -216,6 +221,7 @@ class TestDomainEvent:
 # 2. EventHandler base class
 # ========================================================================
 
+
 class TestEventHandler:
     """Tests for the abstract EventHandler base class."""
 
@@ -250,6 +256,7 @@ class TestEventHandler:
 # ========================================================================
 # 3. EventBus -- subscription management
 # ========================================================================
+
 
 class TestEventBusSubscription:
     """Tests for EventBus.subscribe / unsubscribe."""
@@ -325,6 +332,7 @@ class TestEventBusSubscription:
 # 4. EventBus -- publish (immediate dispatch)
 # ========================================================================
 
+
 class TestEventBusPublish:
     """Tests for EventBus.publish (synchronous immediate dispatch)."""
 
@@ -396,6 +404,7 @@ class TestEventBusPublish:
 # ========================================================================
 # 5. EventBus -- collect / flush / discard
 # ========================================================================
+
 
 class TestEventBusCollectFlush:
     """Tests for the collect/flush/discard transactional pattern."""
@@ -511,6 +520,7 @@ class TestEventBusCollectFlush:
 # 6. EventBus -- error isolation
 # ========================================================================
 
+
 class TestEventBusErrorIsolation:
     """One handler's error must not prevent other handlers from running."""
 
@@ -559,6 +569,7 @@ class TestEventBusErrorIsolation:
 # 7. EventBus -- wildcard handlers
 # ========================================================================
 
+
 class TestEventBusWildcard:
     """Wildcard ('*') handlers should receive every published event."""
 
@@ -594,6 +605,7 @@ class TestEventBusWildcard:
 # 8. HandlerRegistration dataclass
 # ========================================================================
 
+
 class TestHandlerRegistration:
     """Tests for the HandlerRegistration data class."""
 
@@ -615,6 +627,7 @@ class TestHandlerRegistration:
 # 9. EventBus -- singleton behaviour
 # ========================================================================
 
+
 class TestEventBusSingleton:
     """EventBus uses the singleton pattern via __new__."""
 
@@ -625,6 +638,7 @@ class TestEventBusSingleton:
 
     def test_get_event_bus_returns_same_instance(self):
         from backend.events.bus import get_event_bus, event_bus as global_bus
+
         assert get_event_bus() is global_bus
         assert EventBus() is global_bus
 
@@ -632,6 +646,7 @@ class TestEventBusSingleton:
 # ========================================================================
 # 10. Domain event definitions -- representative sample
 # ========================================================================
+
 
 class TestDomainEventDefinitions:
     """
@@ -813,57 +828,95 @@ class TestDomainEventDefinitions:
 # ========================================================================
 
 _ALL_EVENT_CLASSES = [
-    (WorkOrderStatusChanged, "work_order.status_changed", "WorkOrder",
-     {"to_status": "X"}),
-    (WorkOrderCreated, "work_order.created", "WorkOrder",
-     {"work_order_number": "WO-1"}),
+    (WorkOrderStatusChanged, "work_order.status_changed", "WorkOrder", {"to_status": "X"}),
+    (WorkOrderCreated, "work_order.created", "WorkOrder", {"work_order_number": "WO-1"}),
     (WorkOrderClosed, "work_order.closed", "WorkOrder", {}),
-    (ProductionEntryCreated, "production.entry_created", "ProductionEntry",
-     {"product_id": 1, "shift_id": 1, "production_date": date(2026, 1, 1),
-      "units_produced": 10}),
+    (
+        ProductionEntryCreated,
+        "production.entry_created",
+        "ProductionEntry",
+        {"product_id": 1, "shift_id": 1, "production_date": date(2026, 1, 1), "units_produced": 10},
+    ),
     (ProductionEntryUpdated, "production.entry_updated", "ProductionEntry", {}),
-    (QualityInspectionRecorded, "quality.inspection_recorded",
-     "QualityInspection", {}),
-    (QualityDefectReported, "quality.defect_reported", "DefectEntry",
-     {"defect_type": "scratch"}),
-    (HoldCreated, "hold.created", "HoldEntry",
-     {"work_order_id": "wo-1"}),
-    (HoldResumed, "hold.resumed", "HoldEntry",
-     {"work_order_id": "wo-1"}),
-    (HoldApprovalRequired, "hold.approval_required", "HoldEntry",
-     {"work_order_id": "wo-1", "requested_by": 1}),
-    (KPIThresholdViolated, "kpi.threshold_violated", "KPIMetric",
-     {"metric_name": "OTD", "current_value": Decimal("1"),
-      "threshold_value": Decimal("2"), "threshold_type": "min"}),
-    (KPITargetAchieved, "kpi.target_achieved", "KPIMetric",
-     {"metric_name": "OTD", "current_value": Decimal("1"),
-      "target_value": Decimal("2")}),
-    (EmployeeAssignedToFloatingPool, "employee.assigned_to_floating_pool",
-     "Employee", {"employee_name": "John", "employee_code": "E001"}),
-    (EmployeeAssignedToClient, "employee.assigned_to_client",
-     "FloatingPoolAssignment",
-     {"employee_id": 1, "employee_name": "John", "assigned_client_id": "C1"}),
-    (OrderScheduled, "capacity.order_scheduled", "CapacitySchedule",
-     {"order_id": "O1", "line_id": "L1", "scheduled_date": date(2026, 1, 1)}),
-    (ComponentShortageDetected, "capacity.component_shortage", "ComponentCheck",
-     {"order_id": "O1", "component_item_code": "C1",
-      "shortage_quantity": Decimal("1"), "required_quantity": Decimal("10"),
-      "available_quantity": Decimal("9")}),
-    (CapacityOverloadDetected, "capacity.overload_detected", "CapacityAnalysis",
-     {"line_id": "L1", "analysis_date": date(2026, 1, 1),
-      "utilization_percent": Decimal("110"), "available_hours": Decimal("8"),
-      "required_hours": Decimal("9")}),
-    (ScheduleCommitted, "capacity.schedule_committed", "CapacitySchedule",
-     {"schedule_id": 1}),
-    (KPIVarianceAlert, "capacity.kpi_variance", "KPICommitment",
-     {"kpi_key": "k1", "committed_value": Decimal("1"),
-      "actual_value": Decimal("2"), "variance_percent": Decimal("100")}),
-    (BOMExploded, "capacity.bom_exploded", "BOM",
-     {"parent_item_code": "P1", "quantity_requested": Decimal("10")}),
-    (CapacityScenarioCreated, "capacity.scenario_created", "CapacityScenario",
-     {"scenario_id": 1, "scenario_name": "S1"}),
-    (CapacityScenarioCompared, "capacity.scenario_compared", "CapacityScenario",
-     {}),
+    (QualityInspectionRecorded, "quality.inspection_recorded", "QualityInspection", {}),
+    (QualityDefectReported, "quality.defect_reported", "DefectEntry", {"defect_type": "scratch"}),
+    (HoldCreated, "hold.created", "HoldEntry", {"work_order_id": "wo-1"}),
+    (HoldResumed, "hold.resumed", "HoldEntry", {"work_order_id": "wo-1"}),
+    (HoldApprovalRequired, "hold.approval_required", "HoldEntry", {"work_order_id": "wo-1", "requested_by": 1}),
+    (
+        KPIThresholdViolated,
+        "kpi.threshold_violated",
+        "KPIMetric",
+        {"metric_name": "OTD", "current_value": Decimal("1"), "threshold_value": Decimal("2"), "threshold_type": "min"},
+    ),
+    (
+        KPITargetAchieved,
+        "kpi.target_achieved",
+        "KPIMetric",
+        {"metric_name": "OTD", "current_value": Decimal("1"), "target_value": Decimal("2")},
+    ),
+    (
+        EmployeeAssignedToFloatingPool,
+        "employee.assigned_to_floating_pool",
+        "Employee",
+        {"employee_name": "John", "employee_code": "E001"},
+    ),
+    (
+        EmployeeAssignedToClient,
+        "employee.assigned_to_client",
+        "FloatingPoolAssignment",
+        {"employee_id": 1, "employee_name": "John", "assigned_client_id": "C1"},
+    ),
+    (
+        OrderScheduled,
+        "capacity.order_scheduled",
+        "CapacitySchedule",
+        {"order_id": "O1", "line_id": "L1", "scheduled_date": date(2026, 1, 1)},
+    ),
+    (
+        ComponentShortageDetected,
+        "capacity.component_shortage",
+        "ComponentCheck",
+        {
+            "order_id": "O1",
+            "component_item_code": "C1",
+            "shortage_quantity": Decimal("1"),
+            "required_quantity": Decimal("10"),
+            "available_quantity": Decimal("9"),
+        },
+    ),
+    (
+        CapacityOverloadDetected,
+        "capacity.overload_detected",
+        "CapacityAnalysis",
+        {
+            "line_id": "L1",
+            "analysis_date": date(2026, 1, 1),
+            "utilization_percent": Decimal("110"),
+            "available_hours": Decimal("8"),
+            "required_hours": Decimal("9"),
+        },
+    ),
+    (ScheduleCommitted, "capacity.schedule_committed", "CapacitySchedule", {"schedule_id": 1}),
+    (
+        KPIVarianceAlert,
+        "capacity.kpi_variance",
+        "KPICommitment",
+        {
+            "kpi_key": "k1",
+            "committed_value": Decimal("1"),
+            "actual_value": Decimal("2"),
+            "variance_percent": Decimal("100"),
+        },
+    ),
+    (BOMExploded, "capacity.bom_exploded", "BOM", {"parent_item_code": "P1", "quantity_requested": Decimal("10")}),
+    (
+        CapacityScenarioCreated,
+        "capacity.scenario_created",
+        "CapacityScenario",
+        {"scenario_id": 1, "scenario_name": "S1"},
+    ),
+    (CapacityScenarioCompared, "capacity.scenario_compared", "CapacityScenario", {}),
 ]
 
 
@@ -875,9 +928,7 @@ class TestAllDomainEventSubclasses:
         _ALL_EVENT_CLASSES,
         ids=[c[0].__name__ for c in _ALL_EVENT_CLASSES],
     )
-    def test_inherits_from_domain_event(
-        self, cls, expected_event_type, expected_aggregate_type, extra_fields
-    ):
+    def test_inherits_from_domain_event(self, cls, expected_event_type, expected_aggregate_type, extra_fields):
         assert issubclass(cls, DomainEvent)
 
     @pytest.mark.parametrize(
@@ -885,9 +936,7 @@ class TestAllDomainEventSubclasses:
         _ALL_EVENT_CLASSES,
         ids=[c[0].__name__ for c in _ALL_EVENT_CLASSES],
     )
-    def test_default_event_type(
-        self, cls, expected_event_type, expected_aggregate_type, extra_fields
-    ):
+    def test_default_event_type(self, cls, expected_event_type, expected_aggregate_type, extra_fields):
         event = cls(aggregate_id="test-id", **extra_fields)
         assert event.event_type == expected_event_type
 
@@ -896,9 +945,7 @@ class TestAllDomainEventSubclasses:
         _ALL_EVENT_CLASSES,
         ids=[c[0].__name__ for c in _ALL_EVENT_CLASSES],
     )
-    def test_default_aggregate_type(
-        self, cls, expected_event_type, expected_aggregate_type, extra_fields
-    ):
+    def test_default_aggregate_type(self, cls, expected_event_type, expected_aggregate_type, extra_fields):
         event = cls(aggregate_id="test-id", **extra_fields)
         assert event.aggregate_type == expected_aggregate_type
 
@@ -907,9 +954,7 @@ class TestAllDomainEventSubclasses:
         _ALL_EVENT_CLASSES,
         ids=[c[0].__name__ for c in _ALL_EVENT_CLASSES],
     )
-    def test_to_dict_returns_dict(
-        self, cls, expected_event_type, expected_aggregate_type, extra_fields
-    ):
+    def test_to_dict_returns_dict(self, cls, expected_event_type, expected_aggregate_type, extra_fields):
         event = cls(aggregate_id="test-id", **extra_fields)
         d = event.to_dict()
         assert isinstance(d, dict)
@@ -921,9 +966,7 @@ class TestAllDomainEventSubclasses:
         _ALL_EVENT_CLASSES,
         ids=[c[0].__name__ for c in _ALL_EVENT_CLASSES],
     )
-    def test_immutability(
-        self, cls, expected_event_type, expected_aggregate_type, extra_fields
-    ):
+    def test_immutability(self, cls, expected_event_type, expected_aggregate_type, extra_fields):
         event = cls(aggregate_id="test-id", **extra_fields)
         with pytest.raises(ValidationError):
             event.aggregate_id = "mutated"

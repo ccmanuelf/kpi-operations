@@ -3,6 +3,7 @@ CRUD operations for Employee Client Assignment
 Manage employee assignments to clients
 SECURITY: Multi-tenant client filtering enabled
 """
+
 from typing import List
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -13,11 +14,7 @@ from backend.middleware.client_auth import verify_client_access
 
 
 def get_employees_by_client(
-    db: Session,
-    client_id: str,
-    current_user: User,
-    skip: int = 0,
-    limit: int = 100
+    db: Session, client_id: str, current_user: User, skip: int = 0, limit: int = 100
 ) -> List[Employee]:
     """
     Get all employees assigned to a specific client
@@ -39,19 +36,17 @@ def get_employees_by_client(
     # SECURITY: Verify user has access to this client
     verify_client_access(current_user, client_id)
 
-    return db.query(Employee).filter(
-        Employee.client_id_assigned.like(f"%{client_id}%")
-    ).order_by(
-        Employee.employee_name
-    ).offset(skip).limit(limit).all()
+    return (
+        db.query(Employee)
+        .filter(Employee.client_id_assigned.like(f"%{client_id}%"))
+        .order_by(Employee.employee_name)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def assign_employee_to_client(
-    db: Session,
-    employee_id: int,
-    client_id: str,
-    current_user: User
-) -> Employee:
+def assign_employee_to_client(db: Session, employee_id: int, client_id: str, current_user: User) -> Employee:
     """
     Assign employee to a client
     SECURITY: Supervisors and admins only, verifies client access
@@ -70,25 +65,20 @@ def assign_employee_to_client(
         HTTPException 404: If employee not found
     """
     # SECURITY: Only supervisors and admins can assign employees
-    if current_user.role not in ['admin', 'supervisor']:
-        raise HTTPException(
-            status_code=403,
-            detail="Only supervisors and admins can assign employees to clients"
-        )
+    if current_user.role not in ["admin", "supervisor"]:
+        raise HTTPException(status_code=403, detail="Only supervisors and admins can assign employees to clients")
 
     # SECURITY: Verify user has access to this client
     verify_client_access(current_user, client_id)
 
-    db_employee = db.query(Employee).filter(
-        Employee.employee_id == employee_id
-    ).first()
+    db_employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
 
     if not db_employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
     # Add client to assignment list (comma-separated)
     current_assignments = db_employee.client_id_assigned or ""
-    if client_id not in current_assignments.split(','):
+    if client_id not in current_assignments.split(","):
         if current_assignments:
             db_employee.client_id_assigned = f"{current_assignments},{client_id}"
         else:

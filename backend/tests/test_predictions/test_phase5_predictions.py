@@ -9,6 +9,7 @@ Tests cover:
 - Health assessments
 - Benchmarks
 """
+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
@@ -21,7 +22,7 @@ from backend.generators.sample_data_phase5 import (
     calculate_kpi_health_score,
     KPIHistoryGenerator,
     KPITypePhase5,
-    KPI_CONFIGS
+    KPI_CONFIGS,
 )
 from backend.calculations.predictions import (
     auto_forecast,
@@ -29,7 +30,7 @@ from backend.calculations.predictions import (
     double_exponential_smoothing,
     linear_trend_extrapolation,
     calculate_forecast_accuracy,
-    ForecastResult
+    ForecastResult,
 )
 
 
@@ -43,11 +44,7 @@ class TestKPIHistoryGenerator:
 
     def test_generate_efficiency_data(self):
         """Test efficiency KPI data generation"""
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=30,
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=30, seed=42)
 
         assert len(history) == 30
         assert all("date" in d for d in history)
@@ -58,11 +55,7 @@ class TestKPIHistoryGenerator:
     def test_generate_all_kpi_types(self):
         """Test generation for all 10 KPI types"""
         for kpi_type in KPITypePhase5:
-            history = generate_kpi_history(
-                kpi_type=kpi_type.value,
-                days=10,
-                seed=42
-            )
+            history = generate_kpi_history(kpi_type=kpi_type.value, days=10, seed=42)
             assert len(history) == 10
             assert all(d["kpi_type"] == kpi_type.value for d in history)
 
@@ -70,23 +63,16 @@ class TestKPIHistoryGenerator:
         """Test generated values are within configured bounds"""
         for kpi_type in KPITypePhase5:
             config = KPI_CONFIGS[kpi_type]
-            history = generate_kpi_history(
-                kpi_type=kpi_type.value,
-                days=100,
-                seed=42
-            )
+            history = generate_kpi_history(kpi_type=kpi_type.value, days=100, seed=42)
 
             for record in history:
-                assert config.min_value <= record["value"] <= config.max_value, \
-                    f"{kpi_type.value}: {record['value']} not in [{config.min_value}, {config.max_value}]"
+                assert (
+                    config.min_value <= record["value"] <= config.max_value
+                ), f"{kpi_type.value}: {record['value']} not in [{config.min_value}, {config.max_value}]"
 
     def test_date_ordering(self):
         """Test dates are in chronological order"""
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=30,
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=30, seed=42)
 
         dates = [d["date"] for d in history]
         assert dates == sorted(dates)
@@ -94,33 +80,19 @@ class TestKPIHistoryGenerator:
     def test_end_date_parameter(self):
         """Test custom end date is respected"""
         custom_end = date(2024, 6, 15)
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=10,
-            end_date=custom_end,
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=10, end_date=custom_end, seed=42)
 
         assert history[-1]["date"] == custom_end
 
     def test_client_id_assignment(self):
         """Test client_id is assigned when provided"""
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=5,
-            client_id="TEST-CLIENT-001",
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=5, client_id="TEST-CLIENT-001", seed=42)
 
         assert all(d["client_id"] == "TEST-CLIENT-001" for d in history)
 
     def test_anomaly_detection(self):
         """Test anomaly flags are generated"""
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=100,
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=100, seed=42)
 
         # With seed=42 and 100 days, we should have some anomalies
         anomaly_count = sum(1 for d in history if d["is_anomaly"])
@@ -205,22 +177,14 @@ class TestHealthScoreCalculation:
 
     def test_excellent_health_score(self):
         """Test excellent performance gets high health score"""
-        result = calculate_kpi_health_score(
-            current_value=95.0,
-            predicted_value=96.0,
-            kpi_type="efficiency"
-        )
+        result = calculate_kpi_health_score(current_value=95.0, predicted_value=96.0, kpi_type="efficiency")
 
         assert result["health_score"] >= 90
         assert result["trend"] == "improving"
 
     def test_poor_health_score(self):
         """Test poor performance gets low health score"""
-        result = calculate_kpi_health_score(
-            current_value=50.0,
-            predicted_value=48.0,
-            kpi_type="efficiency"
-        )
+        result = calculate_kpi_health_score(current_value=50.0, predicted_value=48.0, kpi_type="efficiency")
 
         assert result["health_score"] < 60
         assert len(result["recommendations"]) > 0
@@ -228,38 +192,22 @@ class TestHealthScoreCalculation:
     def test_inverse_kpi_health_score(self):
         """Test inverse KPIs (lower is better) calculate correctly"""
         # Good PPM (low is good)
-        result = calculate_kpi_health_score(
-            current_value=500.0,
-            predicted_value=450.0,
-            kpi_type="ppm"
-        )
+        result = calculate_kpi_health_score(current_value=500.0, predicted_value=450.0, kpi_type="ppm")
         assert result["health_score"] > 80
 
         # Bad PPM (high is bad)
-        result = calculate_kpi_health_score(
-            current_value=10000.0,
-            predicted_value=11000.0,
-            kpi_type="ppm"
-        )
+        result = calculate_kpi_health_score(current_value=10000.0, predicted_value=11000.0, kpi_type="ppm")
         assert result["health_score"] < 60
 
     def test_stable_trend_detection(self):
         """Test stable trend is detected when values are close"""
-        result = calculate_kpi_health_score(
-            current_value=85.0,
-            predicted_value=85.2,
-            kpi_type="efficiency"
-        )
+        result = calculate_kpi_health_score(current_value=85.0, predicted_value=85.2, kpi_type="efficiency")
 
         assert result["trend"] == "stable"
 
     def test_declining_trend_detection(self):
         """Test declining trend is detected"""
-        result = calculate_kpi_health_score(
-            current_value=85.0,
-            predicted_value=80.0,
-            kpi_type="efficiency"
-        )
+        result = calculate_kpi_health_score(current_value=85.0, predicted_value=80.0, kpi_type="efficiency")
 
         assert result["trend"] == "declining"
 
@@ -306,7 +254,7 @@ class TestPredictionAlgorithms:
         assert result.method in [
             "simple_exponential_smoothing",
             "double_exponential_smoothing",
-            "linear_trend_extrapolation"
+            "linear_trend_extrapolation",
         ]
 
     def test_confidence_intervals(self, sample_values):
@@ -349,11 +297,7 @@ class TestPredictionIntegration:
     def test_generate_and_forecast(self):
         """Test generating history and creating forecast"""
         # Generate history
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=30,
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=30, seed=42)
 
         # Extract values for forecast
         values = [Decimal(str(d["value"])) for d in history]
@@ -376,11 +320,7 @@ class TestPredictionIntegration:
 
     def test_health_from_generated_data(self):
         """Test health calculation from generated data"""
-        history = generate_kpi_history(
-            kpi_type="efficiency",
-            days=30,
-            seed=42
-        )
+        history = generate_kpi_history(kpi_type="efficiency", days=30, seed=42)
 
         current_value = history[-1]["value"]
         values = [Decimal(str(d["value"])) for d in history]
@@ -388,9 +328,7 @@ class TestPredictionIntegration:
         predicted_avg = sum(float(p) for p in forecast.predictions) / 7
 
         health = calculate_kpi_health_score(
-            current_value=current_value,
-            predicted_value=predicted_avg,
-            kpi_type="efficiency"
+            current_value=current_value, predicted_value=predicted_avg, kpi_type="efficiency"
         )
 
         assert 0 <= health["health_score"] <= 100

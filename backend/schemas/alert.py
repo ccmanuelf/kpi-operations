@@ -2,6 +2,7 @@
 Alert Pydantic models for API request/response
 Intelligent alerting system for proactive KPI management
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 from datetime import datetime
@@ -11,39 +12,43 @@ from enum import Enum
 
 class AlertSeverity(str, Enum):
     """Alert severity levels"""
-    INFO = "info"           # Informational, no action needed
-    LOW = "low"             # Low priority, for monitoring
-    WARNING = "warning"     # Trending toward issue, monitor
-    MEDIUM = "medium"       # Medium priority, needs attention soon
-    CRITICAL = "critical"   # Requires immediate attention
-    URGENT = "urgent"       # Immediate action required
+
+    INFO = "info"  # Informational, no action needed
+    LOW = "low"  # Low priority, for monitoring
+    WARNING = "warning"  # Trending toward issue, monitor
+    MEDIUM = "medium"  # Medium priority, needs attention soon
+    CRITICAL = "critical"  # Requires immediate attention
+    URGENT = "urgent"  # Immediate action required
 
 
 class AlertCategory(str, Enum):
     """Categories of alerts"""
-    OTD = "otd"                    # On-Time Delivery alerts
-    DELIVERY = "delivery"         # Delivery-related alerts
-    QUALITY = "quality"           # FPY, RTY, DPMO alerts
-    EFFICIENCY = "efficiency"     # Production efficiency alerts
-    CAPACITY = "capacity"         # Load%, bottleneck alerts
-    ATTENDANCE = "attendance"     # Absenteeism, coverage alerts
-    DOWNTIME = "downtime"         # Equipment/unplanned downtime
-    MAINTENANCE = "maintenance"   # Equipment maintenance alerts
-    AVAILABILITY = "availability" # Resource availability alerts
-    HOLD = "hold"                 # Holds pending approval
-    TREND = "trend"               # KPI trending alerts
+
+    OTD = "otd"  # On-Time Delivery alerts
+    DELIVERY = "delivery"  # Delivery-related alerts
+    QUALITY = "quality"  # FPY, RTY, DPMO alerts
+    EFFICIENCY = "efficiency"  # Production efficiency alerts
+    CAPACITY = "capacity"  # Load%, bottleneck alerts
+    ATTENDANCE = "attendance"  # Absenteeism, coverage alerts
+    DOWNTIME = "downtime"  # Equipment/unplanned downtime
+    MAINTENANCE = "maintenance"  # Equipment maintenance alerts
+    AVAILABILITY = "availability"  # Resource availability alerts
+    HOLD = "hold"  # Holds pending approval
+    TREND = "trend"  # KPI trending alerts
 
 
 class AlertStatus(str, Enum):
     """Alert lifecycle status"""
-    ACTIVE = "active"             # Currently active
+
+    ACTIVE = "active"  # Currently active
     ACKNOWLEDGED = "acknowledged"  # Seen but not resolved
-    RESOLVED = "resolved"         # Issue addressed
-    DISMISSED = "dismissed"       # False positive or no longer relevant
+    RESOLVED = "resolved"  # Issue addressed
+    DISMISSED = "dismissed"  # False positive or no longer relevant
 
 
 class AlertBase(BaseModel):
     """Base alert model"""
+
     category: AlertCategory
     severity: AlertSeverity
     title: str = Field(..., max_length=200, description="Short alert title")
@@ -53,6 +58,7 @@ class AlertBase(BaseModel):
 
 class AlertCreate(AlertBase):
     """Create new alert"""
+
     client_id: Optional[str] = Field(None, description="Client ID (NULL for global)")
     kpi_key: Optional[str] = Field(None, description="Related KPI (efficiency, quality, etc.)")
     work_order_id: Optional[str] = Field(None, description="Related work order if applicable")
@@ -65,6 +71,7 @@ class AlertCreate(AlertBase):
 
 class AlertResponse(AlertBase):
     """Alert response model"""
+
     alert_id: str
     client_id: Optional[str] = None
     client_name: Optional[str] = None
@@ -89,22 +96,26 @@ class AlertResponse(AlertBase):
 
 class AlertUpdate(BaseModel):
     """Update alert status"""
+
     status: Optional[AlertStatus] = None
     resolution_notes: Optional[str] = None
 
 
 class AlertAcknowledge(BaseModel):
     """Acknowledge alert"""
+
     notes: Optional[str] = None
 
 
 class AlertResolve(BaseModel):
     """Resolve alert"""
+
     resolution_notes: str = Field(..., description="How the issue was resolved")
 
 
 class AlertSummary(BaseModel):
     """Summary of alerts by category and severity"""
+
     total_active: int = 0
     by_severity: dict = Field(default_factory=dict)
     by_category: dict = Field(default_factory=dict)
@@ -114,6 +125,7 @@ class AlertSummary(BaseModel):
 
 class AlertFilter(BaseModel):
     """Filter parameters for listing alerts"""
+
     client_id: Optional[str] = None
     category: Optional[AlertCategory] = None
     severity: Optional[AlertSeverity] = None
@@ -125,6 +137,7 @@ class AlertFilter(BaseModel):
 
 class AlertDashboard(BaseModel):
     """Dashboard view of alerts"""
+
     summary: AlertSummary
     urgent_alerts: List[AlertResponse] = []
     critical_alerts: List[AlertResponse] = []
@@ -133,8 +146,10 @@ class AlertDashboard(BaseModel):
 
 # Specific alert types for different scenarios
 
+
 class OTDRiskAlert(BaseModel):
     """OTD-specific alert details"""
+
     work_order_id: str
     client_name: str
     due_date: datetime
@@ -147,6 +162,7 @@ class OTDRiskAlert(BaseModel):
 
 class QualityTrendAlert(BaseModel):
     """Quality trend alert details"""
+
     kpi_type: Literal["fpy", "rty", "dpmo", "ppm"]
     current_value: Decimal
     trend_direction: Literal["improving", "stable", "declining"]
@@ -157,6 +173,7 @@ class QualityTrendAlert(BaseModel):
 
 class CapacityAlert(BaseModel):
     """Capacity planning alert details"""
+
     load_percent: Decimal
     status: Literal["underutilized", "optimal", "overloaded"]
     recommended_action: str
@@ -167,6 +184,7 @@ class CapacityAlert(BaseModel):
 
 class AlertConfigBase(BaseModel):
     """Alert configuration for a client or global"""
+
     alert_type: AlertCategory
     enabled: bool = True
     warning_threshold: Optional[Decimal] = None
@@ -178,11 +196,13 @@ class AlertConfigBase(BaseModel):
 
 class AlertConfigCreate(AlertConfigBase):
     """Create alert configuration"""
+
     client_id: Optional[str] = None
 
 
 class AlertConfigResponse(AlertConfigBase):
     """Alert configuration response"""
+
     config_id: str
     client_id: Optional[str] = None
     created_at: datetime

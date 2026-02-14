@@ -55,14 +55,14 @@ DEFAULT_HORIZON_DAYS = 1
 # =============================================================================
 
 BOTTLENECK_UTILIZATION_THRESHOLD = 95.0  # >= this is a bottleneck
-DONOR_UTILIZATION_THRESHOLD = 70.0       # <= this is a potential donor (if operators > 1)
+DONOR_UTILIZATION_THRESHOLD = 70.0  # <= this is a potential donor (if operators > 1)
 
 # =============================================================================
 # STATUS DETERMINATION THRESHOLDS (Block 1)
 # =============================================================================
 
-COVERAGE_OK_THRESHOLD = 110.0      # >= this is "OK" (surplus capacity)
-COVERAGE_TIGHT_THRESHOLD = 90.0    # >= this and < OK is "Tight"
+COVERAGE_OK_THRESHOLD = 110.0  # >= this is "OK" (surplus capacity)
+COVERAGE_TIGHT_THRESHOLD = 90.0  # >= this and < OK is "Tight"
 # < TIGHT is "Shortfall"
 
 # =============================================================================
@@ -78,8 +78,8 @@ LARGE_BUNDLE_TRANSITION_SECONDS = 5.0
 # =============================================================================
 
 TRIANGULAR_VARIABILITY_MIN = -0.10  # -10%
-TRIANGULAR_VARIABILITY_MAX = 0.10   # +10%
-TRIANGULAR_VARIABILITY_MODE = 0.0   # Centered at 0
+TRIANGULAR_VARIABILITY_MAX = 0.10  # +10%
+TRIANGULAR_VARIABILITY_MODE = 0.0  # Centered at 0
 
 # =============================================================================
 # PROCESSING TIME FORMULA CONSTANTS

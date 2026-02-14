@@ -51,6 +51,7 @@ router = APIRouter(
 # Permission Helpers
 # =============================================================================
 
+
 def _check_simulation_permission(user: User) -> None:
     """
     Verify user has permission to run simulations.
@@ -64,7 +65,7 @@ def _check_simulation_permission(user: User) -> None:
     if user_role not in allowed_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Simulation access requires Leader, PowerUser, Supervisor, or Admin role"
+            detail="Simulation access requires Leader, PowerUser, Supervisor, or Admin role",
         )
 
 
@@ -94,12 +95,9 @@ def _track_defaults(config: SimulationConfig) -> list:
             applied.append(f"fpd_pct: {DEFAULT_FPD_PCT}")
 
         if applied:
-            defaults.append({
-                "product": op.product,
-                "step": op.step,
-                "operation": op.operation,
-                "defaults_used": applied
-            })
+            defaults.append(
+                {"product": op.product, "step": op.step, "operation": op.operation, "defaults_used": applied}
+            )
 
     return defaults
 
@@ -107,6 +105,7 @@ def _track_defaults(config: SimulationConfig) -> list:
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.get("/")
 async def simulation_info():
@@ -126,34 +125,33 @@ async def simulation_info():
             "Bundle-based workflow with configurable batch sizes",
             "Bottleneck detection and rebalancing suggestions",
             "8 comprehensive output blocks for analysis",
-            "Client-side Excel export support"
+            "Client-side Excel export support",
         ],
         "limitations": [
             "No persistent storage of scenarios (ephemeral only)",
             "No database integration",
             "Single replication per run (no Monte Carlo)",
-            "Equipment breakdown model is simplified"
+            "Equipment breakdown model is simplified",
         ],
         "constraints": {
             "max_products": MAX_PRODUCTS,
             "max_operations_per_product": MAX_OPERATIONS_PER_PRODUCT,
             "max_total_operations": MAX_TOTAL_OPERATIONS,
-            "max_horizon_days": MAX_HORIZON_DAYS
+            "max_horizon_days": MAX_HORIZON_DAYS,
         },
         "default_values": {
             "grade_pct": DEFAULT_GRADE_PCT,
             "fpd_pct": DEFAULT_FPD_PCT,
             "rework_pct": DEFAULT_REWORK_PCT,
             "operators": DEFAULT_OPERATORS,
-            "variability": DEFAULT_VARIABILITY
-        }
+            "variability": DEFAULT_VARIABILITY,
+        },
     }
 
 
 @router.post("/validate", response_model=ValidationReport)
 async def validate_configuration(
-    request: SimulationRequest,
-    current_user: User = Depends(get_current_user)
+    request: SimulationRequest, current_user: User = Depends(get_current_user)
 ) -> ValidationReport:
     """
     Validate simulation configuration without running simulation.
@@ -184,8 +182,7 @@ async def validate_configuration(
 
 @router.post("/run", response_model=SimulationResponse)
 async def run_simulation_endpoint(
-    request: SimulationRequest,
-    current_user: User = Depends(get_current_user)
+    request: SimulationRequest, current_user: User = Depends(get_current_user)
 ) -> SimulationResponse:
     """
     Run complete simulation and return results.
@@ -223,14 +220,13 @@ async def run_simulation_endpoint(
 
     if validation_report.has_errors:
         logger.warning(
-            f"Simulation blocked due to validation errors: "
-            f"{[e.message for e in validation_report.errors]}"
+            f"Simulation blocked due to validation errors: " f"{[e.message for e in validation_report.errors]}"
         )
         return SimulationResponse(
             success=False,
             results=None,
             validation_report=validation_report,
-            message="Validation failed. Please correct errors and retry."
+            message="Validation failed. Please correct errors and retry.",
         )
 
     try:
@@ -252,26 +248,21 @@ async def run_simulation_endpoint(
             metrics=metrics,
             validation_report=validation_report,
             duration_seconds=duration,
-            defaults_applied=defaults_applied
+            defaults_applied=defaults_applied,
         )
 
-        logger.info(
-            f"Simulation completed successfully for user {current_user.username}"
-        )
+        logger.info(f"Simulation completed successfully for user {current_user.username}")
 
         return SimulationResponse(
             success=True,
             results=results,
             validation_report=validation_report,
-            message=f"Simulation completed in {duration:.2f} seconds"
+            message=f"Simulation completed in {duration:.2f} seconds",
         )
 
     except Exception as e:
         logger.exception(f"Simulation failed with error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Simulation failed: {str(e)}"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Simulation failed: {str(e)}")
 
 
 @router.get("/schema")

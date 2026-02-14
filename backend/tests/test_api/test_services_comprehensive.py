@@ -2,6 +2,7 @@
 Comprehensive Tests for Services Module
 Target: Increase services/ coverage to 85%+
 """
+
 import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, patch, PropertyMock
@@ -16,11 +17,14 @@ class TestEmailServiceInit:
 
     def test_email_service_init_with_sendgrid(self):
         """Test EmailService initializes with SendGrid when available"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', True), \
-             patch('services.email_service.settings') as mock_settings:
-            mock_settings.SENDGRID_API_KEY = 'test_api_key'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", True),
+            patch("services.email_service.settings") as mock_settings,
+        ):
+            mock_settings.SENDGRID_API_KEY = "test_api_key"
 
             from services.email_service import EmailService
+
             service = EmailService()
 
             # use_sendgrid is truthy when sendgrid is available and key exists
@@ -28,32 +32,38 @@ class TestEmailServiceInit:
 
     def test_email_service_init_without_sendgrid(self):
         """Test EmailService initializes with SMTP when SendGrid unavailable"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = 'test@test.com'
-            mock_settings.SMTP_PASSWORD = 'password'
+            mock_settings.SMTP_USER = "test@test.com"
+            mock_settings.SMTP_PASSWORD = "password"
 
             from services.email_service import EmailService
+
             service = EmailService()
 
             assert not service.use_sendgrid  # Falsy check
-            assert service.smtp_host == 'smtp.test.com'
+            assert service.smtp_host == "smtp.test.com"
             assert service.smtp_port == 587
 
     def test_email_service_init_smtp_defaults(self):
         """Test EmailService uses SMTP defaults"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings:
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+        ):
             # Remove SMTP settings to use defaults
             del mock_settings.SMTP_HOST
             del mock_settings.SMTP_PORT
 
             from services.email_service import EmailService
+
             service = EmailService()
 
-            assert service.smtp_host == 'smtp.gmail.com'
+            assert service.smtp_host == "smtp.gmail.com"
             assert service.smtp_port == 587
 
 
@@ -62,68 +72,77 @@ class TestSendKPIReport:
 
     def test_send_kpi_report_via_sendgrid(self):
         """Test sending KPI report via SendGrid"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', True), \
-             patch('services.email_service.settings') as mock_settings:
-            mock_settings.SENDGRID_API_KEY = 'test_api_key'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", True),
+            patch("services.email_service.settings") as mock_settings,
+        ):
+            mock_settings.SENDGRID_API_KEY = "test_api_key"
 
             from services.email_service import EmailService
+
             service = EmailService()
-            service._send_via_sendgrid = MagicMock(return_value={'success': True})
+            service._send_via_sendgrid = MagicMock(return_value={"success": True})
 
             result = service.send_kpi_report(
-                to_emails=['test@test.com'],
-                client_name='Test Client',
+                to_emails=["test@test.com"],
+                client_name="Test Client",
                 report_date=datetime.now(),
-                pdf_content=b'PDF content'
+                pdf_content=b"PDF content",
             )
 
             assert service._send_via_sendgrid.called
 
     def test_send_kpi_report_via_smtp(self):
         """Test sending KPI report via SMTP"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = ''
-            mock_settings.SMTP_PASSWORD = ''
+            mock_settings.SMTP_USER = ""
+            mock_settings.SMTP_PASSWORD = ""
 
             from services.email_service import EmailService
+
             service = EmailService()
-            service._send_via_smtp = MagicMock(return_value={'success': True})
+            service._send_via_smtp = MagicMock(return_value={"success": True})
 
             result = service.send_kpi_report(
-                to_emails=['test@test.com'],
-                client_name='Test Client',
+                to_emails=["test@test.com"],
+                client_name="Test Client",
                 report_date=datetime.now(),
-                pdf_content=b'PDF content'
+                pdf_content=b"PDF content",
             )
 
             assert service._send_via_smtp.called
 
     def test_send_kpi_report_custom_subject(self):
         """Test sending KPI report with custom subject"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = ''
-            mock_settings.SMTP_PASSWORD = ''
+            mock_settings.SMTP_USER = ""
+            mock_settings.SMTP_PASSWORD = ""
 
             from services.email_service import EmailService
+
             service = EmailService()
-            service._send_via_smtp = MagicMock(return_value={'success': True})
+            service._send_via_smtp = MagicMock(return_value={"success": True})
 
             result = service.send_kpi_report(
-                to_emails=['test@test.com'],
-                client_name='Test Client',
+                to_emails=["test@test.com"],
+                client_name="Test Client",
                 report_date=datetime.now(),
-                pdf_content=b'PDF content',
-                subject='Custom Subject'
+                pdf_content=b"PDF content",
+                subject="Custom Subject",
             )
 
             call_args = service._send_via_smtp.call_args
-            assert call_args[1]['subject'] == 'Custom Subject'
+            assert call_args[1]["subject"] == "Custom Subject"
 
 
 class TestSendViaSendGrid:
@@ -134,58 +153,62 @@ class TestSendViaSendGrid:
         # Skip test if SendGrid is not installed
         try:
             from services.email_service import SENDGRID_AVAILABLE
+
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
         from services.email_service import EmailService
+
         service = EmailService()
         service.use_sendgrid = True
 
         # Mock the _send_via_sendgrid method directly to test behavior
-        with patch.object(service, '_send_via_sendgrid') as mock_send:
-            mock_send.return_value = {'success': True, 'status_code': 202}
+        with patch.object(service, "_send_via_sendgrid") as mock_send:
+            mock_send.return_value = {"success": True, "status_code": 202}
 
             result = service._send_via_sendgrid(
-                to_emails=['test@test.com'],
-                subject='Test Subject',
-                html_content='<html>Test</html>',
-                pdf_content=b'PDF content',
-                pdf_filename='report.pdf'
+                to_emails=["test@test.com"],
+                subject="Test Subject",
+                html_content="<html>Test</html>",
+                pdf_content=b"PDF content",
+                pdf_filename="report.pdf",
             )
 
-            assert result['success'] is True
-            assert result['status_code'] == 202
+            assert result["success"] is True
+            assert result["status_code"] == 202
 
     def test_send_via_sendgrid_failure(self):
         """Test SendGrid send failure"""
         # Skip test if SendGrid is not installed
         try:
             from services.email_service import SENDGRID_AVAILABLE
+
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
         from services.email_service import EmailService
+
         service = EmailService()
         service.use_sendgrid = True
 
         # Mock the _send_via_sendgrid method to simulate failure
-        with patch.object(service, '_send_via_sendgrid') as mock_send:
-            mock_send.return_value = {'success': False, 'error': 'API error'}
+        with patch.object(service, "_send_via_sendgrid") as mock_send:
+            mock_send.return_value = {"success": False, "error": "API error"}
 
             result = service._send_via_sendgrid(
-                to_emails=['test@test.com'],
-                subject='Test Subject',
-                html_content='<html>Test</html>',
-                pdf_content=b'PDF content',
-                pdf_filename='report.pdf'
+                to_emails=["test@test.com"],
+                subject="Test Subject",
+                html_content="<html>Test</html>",
+                pdf_content=b"PDF content",
+                pdf_filename="report.pdf",
             )
 
-            assert result['success'] is False
-            assert 'API error' in result['error']
+            assert result["success"] is False
+            assert "API error" in result["error"]
 
 
 class TestSendViaSMTP:
@@ -193,53 +216,59 @@ class TestSendViaSMTP:
 
     def test_send_via_smtp_success(self):
         """Test successful SMTP send"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings, \
-             patch('services.email_service.smtplib.SMTP') as mock_smtp:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = 'user@test.com'
-            mock_settings.SMTP_PASSWORD = 'password'
-            mock_settings.REPORT_FROM_EMAIL = 'reports@test.com'
+            mock_settings.SMTP_USER = "user@test.com"
+            mock_settings.SMTP_PASSWORD = "password"
+            mock_settings.REPORT_FROM_EMAIL = "reports@test.com"
 
             from services.email_service import EmailService
+
             service = EmailService()
 
             result = service._send_via_smtp(
-                to_emails=['test@test.com'],
-                subject='Test Subject',
-                html_content='<html>Test</html>',
-                pdf_content=b'PDF content',
-                pdf_filename='report.pdf'
+                to_emails=["test@test.com"],
+                subject="Test Subject",
+                html_content="<html>Test</html>",
+                pdf_content=b"PDF content",
+                pdf_filename="report.pdf",
             )
 
-            assert result['success'] is True
+            assert result["success"] is True
 
     def test_send_via_smtp_failure(self):
         """Test SMTP send failure"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings, \
-             patch('services.email_service.smtplib.SMTP') as mock_smtp:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = ''
-            mock_settings.SMTP_PASSWORD = ''
+            mock_settings.SMTP_USER = ""
+            mock_settings.SMTP_PASSWORD = ""
 
             mock_smtp.return_value.__enter__.side_effect = Exception("SMTP error")
 
             from services.email_service import EmailService
+
             service = EmailService()
 
             result = service._send_via_smtp(
-                to_emails=['test@test.com'],
-                subject='Test Subject',
-                html_content='<html>Test</html>',
-                pdf_content=b'PDF content',
-                pdf_filename='report.pdf'
+                to_emails=["test@test.com"],
+                subject="Test Subject",
+                html_content="<html>Test</html>",
+                pdf_content=b"PDF content",
+                pdf_filename="report.pdf",
             )
 
-            assert result['success'] is False
-            assert 'SMTP error' in result['error']
+            assert result["success"] is False
+            assert "SMTP error" in result["error"]
 
 
 class TestGenerateEmailTemplate:
@@ -247,34 +276,31 @@ class TestGenerateEmailTemplate:
 
     def test_generate_email_template_basic(self):
         """Test email template generation"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings'):
+        with patch("services.email_service.SENDGRID_AVAILABLE", False), patch("services.email_service.settings"):
             from services.email_service import EmailService
+
             service = EmailService()
 
-            result = service._generate_email_template(
-                client_name='Test Client',
-                report_date=datetime(2024, 1, 15)
-            )
+            result = service._generate_email_template(client_name="Test Client", report_date=datetime(2024, 1, 15))
 
-            assert 'Test Client' in result
-            assert 'January 15, 2024' in result
-            assert 'Daily KPI Report' in result
+            assert "Test Client" in result
+            assert "January 15, 2024" in result
+            assert "Daily KPI Report" in result
 
     def test_generate_email_template_with_message(self):
         """Test email template with additional message"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings'):
+        with patch("services.email_service.SENDGRID_AVAILABLE", False), patch("services.email_service.settings"):
             from services.email_service import EmailService
+
             service = EmailService()
 
             result = service._generate_email_template(
-                client_name='Test Client',
+                client_name="Test Client",
                 report_date=datetime(2024, 1, 15),
-                additional_message='This is a custom message.'
+                additional_message="This is a custom message.",
             )
 
-            assert 'This is a custom message.' in result
+            assert "This is a custom message." in result
 
 
 class TestSendTestEmail:
@@ -285,82 +311,92 @@ class TestSendTestEmail:
         # Skip test if SendGrid is not installed
         try:
             from services.email_service import SENDGRID_AVAILABLE
+
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
         from services.email_service import EmailService
+
         service = EmailService()
         service.use_sendgrid = True
 
         # Mock the send_test_email method to return success
-        with patch.object(service, 'send_test_email') as mock_send:
-            mock_send.return_value = {'success': True, 'status_code': 202}
+        with patch.object(service, "send_test_email") as mock_send:
+            mock_send.return_value = {"success": True, "status_code": 202}
 
-            result = service.send_test_email('test@test.com')
+            result = service.send_test_email("test@test.com")
 
-            assert result['success'] is True
-            assert result['status_code'] == 202
+            assert result["success"] is True
+            assert result["status_code"] == 202
 
     def test_send_test_email_via_sendgrid_failure(self):
         """Test test email failure via SendGrid"""
         # Skip test if SendGrid is not installed
         try:
             from services.email_service import SENDGRID_AVAILABLE
+
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
         from services.email_service import EmailService
+
         service = EmailService()
         service.use_sendgrid = True
 
         # Mock the send_test_email method to return failure
-        with patch.object(service, 'send_test_email') as mock_send:
-            mock_send.return_value = {'success': False, 'error': 'API error'}
+        with patch.object(service, "send_test_email") as mock_send:
+            mock_send.return_value = {"success": False, "error": "API error"}
 
-            result = service.send_test_email('test@test.com')
+            result = service.send_test_email("test@test.com")
 
-            assert result['success'] is False
+            assert result["success"] is False
 
     def test_send_test_email_via_smtp(self):
         """Test sending test email via SMTP"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings, \
-             patch('services.email_service.smtplib.SMTP') as mock_smtp:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = 'user@test.com'
-            mock_settings.SMTP_PASSWORD = 'password'
-            mock_settings.REPORT_FROM_EMAIL = 'reports@test.com'
+            mock_settings.SMTP_USER = "user@test.com"
+            mock_settings.SMTP_PASSWORD = "password"
+            mock_settings.REPORT_FROM_EMAIL = "reports@test.com"
 
             from services.email_service import EmailService
+
             service = EmailService()
 
-            result = service.send_test_email('test@test.com')
+            result = service.send_test_email("test@test.com")
 
-            assert result['success'] is True
+            assert result["success"] is True
 
     def test_send_test_email_via_smtp_failure(self):
         """Test test email failure via SMTP"""
-        with patch('services.email_service.SENDGRID_AVAILABLE', False), \
-             patch('services.email_service.settings') as mock_settings, \
-             patch('services.email_service.smtplib.SMTP') as mock_smtp:
-            mock_settings.SMTP_HOST = 'smtp.test.com'
+        with (
+            patch("services.email_service.SENDGRID_AVAILABLE", False),
+            patch("services.email_service.settings") as mock_settings,
+            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+        ):
+            mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
-            mock_settings.SMTP_USER = ''
-            mock_settings.SMTP_PASSWORD = ''
+            mock_settings.SMTP_USER = ""
+            mock_settings.SMTP_PASSWORD = ""
 
             mock_smtp.return_value.__enter__.side_effect = Exception("SMTP error")
 
             from services.email_service import EmailService
+
             service = EmailService()
 
-            result = service.send_test_email('test@test.com')
+            result = service.send_test_email("test@test.com")
 
-            assert result['success'] is False
+            assert result["success"] is False
 
 
 # =============================================================================
@@ -391,7 +427,7 @@ class TestQRServiceGenerateImage:
 
         assert isinstance(result, bytes)
         # PNG files start with specific bytes
-        assert result[:4] == b'\x89PNG'
+        assert result[:4] == b"\x89PNG"
 
     def test_generate_qr_image_custom_size(self):
         """Test QR code generation with custom size"""
@@ -498,7 +534,7 @@ class TestQRServiceAutoFillFields:
             "style_model": "Model-A",
             "status": "active",
             "ideal_cycle_time": 0.5,
-            "priority": "high"
+            "priority": "high",
         }
 
         result = QRService.get_auto_fill_fields("work_order", entity_data)
@@ -516,7 +552,7 @@ class TestQRServiceAutoFillFields:
             "product_id": 1,
             "product_code": "PROD-001",
             "product_name": "Test Product",
-            "ideal_cycle_time": 0.25
+            "ideal_cycle_time": 0.25,
         }
 
         result = QRService.get_auto_fill_fields("product", entity_data)
@@ -537,7 +573,7 @@ class TestQRServiceAutoFillFields:
             "operation_code": "OP-001",
             "part_number": "PART-001",
             "assigned_employee_id": 100,
-            "assigned_shift_id": 1
+            "assigned_shift_id": 1,
         }
 
         result = QRService.get_auto_fill_fields("job", entity_data)
@@ -559,7 +595,7 @@ class TestQRServiceAutoFillFields:
             "department": "Production",
             "position": "Operator",
             "client_id_assigned": "CLIENT-001",
-            "is_floating_pool": 1
+            "is_floating_pool": 1,
         }
 
         result = QRService.get_auto_fill_fields("employee", entity_data)
@@ -573,11 +609,7 @@ class TestQRServiceAutoFillFields:
         """Test that None values are removed from auto-fill"""
         from services.qr_service import QRService
 
-        entity_data = {
-            "product_id": 1,
-            "product_code": None,
-            "product_name": "Test Product"
-        }
+        entity_data = {"product_id": 1, "product_code": None, "product_name": "Test Product"}
 
         result = QRService.get_auto_fill_fields("product", entity_data)
 

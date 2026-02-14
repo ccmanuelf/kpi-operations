@@ -42,20 +42,20 @@ from backend.crud.workflow.analytics import (
 
 __all__ = [
     # Transition log
-    'create_transition_log',
-    'get_transition_log_by_id',
-    'get_work_order_transitions',
-    'get_client_transitions',
+    "create_transition_log",
+    "get_transition_log_by_id",
+    "get_work_order_transitions",
+    "get_client_transitions",
     # Configuration
-    'get_workflow_configuration',
-    'update_workflow_configuration',
-    'apply_workflow_template',
+    "get_workflow_configuration",
+    "update_workflow_configuration",
+    "apply_workflow_template",
     # Operations
-    'transition_work_order',
-    'validate_transition',
-    'get_allowed_transitions_for_work_order',
-    'bulk_transition_work_orders',
+    "transition_work_order",
+    "validate_transition",
+    "get_allowed_transitions_for_work_order",
+    "bulk_transition_work_orders",
     # Analytics
-    'get_transition_statistics',
-    'get_status_distribution',
+    "get_transition_statistics",
+    "get_status_distribution",
 ]

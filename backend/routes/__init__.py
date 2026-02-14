@@ -8,6 +8,7 @@ Phase 7 Update: Added preferences router for dashboard customization
 Phase 8 Update: Added filters router for saved filter configurations
 Phase 9 Update: Extracted all inline routes from main.py into modular route files
 """
+
 # Existing routers
 from .attendance import router as attendance_router
 from .coverage import router as coverage_router
@@ -101,5 +102,5 @@ __all__ = [
     "database_config_router",
     "cache_router",
     # Capacity Planning
-    "capacity_router"
+    "capacity_router",
 ]

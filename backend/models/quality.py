@@ -2,6 +2,7 @@
 Quality metrics models (Pydantic)
 PHASE 4: Detailed quality tracking
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
@@ -10,6 +11,7 @@ from decimal import Decimal
 
 class QualityInspectionCreate(BaseModel):
     """Create quality inspection record - aligned with QUALITY_ENTRY schema"""
+
     # Multi-tenant isolation - REQUIRED
     client_id: str = Field(..., min_length=1, max_length=50)
 
@@ -50,28 +52,29 @@ class QualityInspectionCreate(BaseModel):
         """Create from legacy CSV format with field mapping"""
         # Map legacy fields to new schema
         return cls(
-            client_id=data.get('client_id', ''),
-            work_order_id=data.get('work_order_number') or data.get('work_order_id', ''),
-            job_id=data.get('job_id'),
-            shift_date=data.get('shift_date') or data.get('inspection_date'),
-            inspection_date=data.get('inspection_date'),
-            units_inspected=data.get('units_inspected', 0),
-            units_passed=data.get('units_passed') or (data.get('units_inspected', 0) - data.get('defects_found', 0)),
-            units_defective=data.get('units_defective') or data.get('defects_found', 0),
-            total_defects_count=data.get('total_defects_count') or data.get('defects_found', 0),
-            inspection_stage=data.get('inspection_stage'),
-            process_step=data.get('process_step'),
-            operation_checked=data.get('operation_checked'),
-            units_scrapped=data.get('units_scrapped') or data.get('scrap_units', 0),
-            units_reworked=data.get('units_reworked') or data.get('rework_units', 0),
-            units_requiring_repair=data.get('units_requiring_repair', 0),
-            inspection_method=data.get('inspection_method'),
-            notes=data.get('notes')
+            client_id=data.get("client_id", ""),
+            work_order_id=data.get("work_order_number") or data.get("work_order_id", ""),
+            job_id=data.get("job_id"),
+            shift_date=data.get("shift_date") or data.get("inspection_date"),
+            inspection_date=data.get("inspection_date"),
+            units_inspected=data.get("units_inspected", 0),
+            units_passed=data.get("units_passed") or (data.get("units_inspected", 0) - data.get("defects_found", 0)),
+            units_defective=data.get("units_defective") or data.get("defects_found", 0),
+            total_defects_count=data.get("total_defects_count") or data.get("defects_found", 0),
+            inspection_stage=data.get("inspection_stage"),
+            process_step=data.get("process_step"),
+            operation_checked=data.get("operation_checked"),
+            units_scrapped=data.get("units_scrapped") or data.get("scrap_units", 0),
+            units_reworked=data.get("units_reworked") or data.get("rework_units", 0),
+            units_requiring_repair=data.get("units_requiring_repair", 0),
+            inspection_method=data.get("inspection_method"),
+            notes=data.get("notes"),
         )
 
 
 class QualityInspectionUpdate(BaseModel):
     """Update quality inspection"""
+
     units_inspected: Optional[int] = Field(None, gt=0)
     defects_found: Optional[int] = Field(None, ge=0)
     defect_type: Optional[str] = Field(None, max_length=100)
@@ -85,6 +88,7 @@ class QualityInspectionUpdate(BaseModel):
 
 class QualityInspectionResponse(BaseModel):
     """Quality inspection response - matches QUALITY_ENTRY schema"""
+
     quality_entry_id: str
     client_id: str
     work_order_id: str
@@ -117,14 +121,23 @@ class QualityInspectionResponse(BaseModel):
 
 class InferenceMetadata(BaseModel):
     """Inference metadata for KPI calculations - exposes ESTIMATED flag per audit requirement"""
-    is_estimated: bool = Field(default=False, description="True if any values were inferred rather than from explicit standards")
-    confidence_score: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Confidence score (0.0-1.0) for inferred values")
-    inference_source: Optional[str] = Field(default=None, description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback")
+
+    is_estimated: bool = Field(
+        default=False, description="True if any values were inferred rather than from explicit standards"
+    )
+    confidence_score: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0, description="Confidence score (0.0-1.0) for inferred values"
+    )
+    inference_source: Optional[str] = Field(
+        default=None,
+        description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback",
+    )
     inference_warning: Optional[str] = Field(default=None, description="Warning message for low confidence estimates")
 
 
 class PPMCalculationResponse(BaseModel):
     """PPM (Parts Per Million) calculation with defect rate percentage"""
+
     product_id: int
     shift_id: int
     start_date: date
@@ -140,6 +153,7 @@ class PPMCalculationResponse(BaseModel):
 
 class DPMOCalculationResponse(BaseModel):
     """DPMO (Defects Per Million Opportunities) calculation"""
+
     product_id: int
     shift_id: int
     start_date: date
@@ -156,6 +170,7 @@ class DPMOCalculationResponse(BaseModel):
 
 class FPYRTYCalculationResponse(BaseModel):
     """FPY (First Pass Yield), RTY (Rolled Throughput Yield), and Final Yield calculation"""
+
     product_id: int
     start_date: date
     end_date: date

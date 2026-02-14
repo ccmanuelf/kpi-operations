@@ -2,6 +2,7 @@
 Integration Tests for CRUD Modules
 These tests validate CRUD operations using proper conftest fixtures
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -22,8 +23,8 @@ class TestClientCRUDIntegration:
 
     def test_client_create_fields(self):
         """Test client required fields"""
-        required_fields = ['client_id', 'name']
-        optional_fields = ['description', 'is_active']
+        required_fields = ["client_id", "name"]
+        optional_fields = ["description", "is_active"]
 
         for field in required_fields:
             assert isinstance(field, str)
@@ -40,21 +41,14 @@ class TestAttendanceCRUDIntegration:
 
     def test_attendance_entry_fields(self):
         """Test attendance entry expected fields"""
-        expected_fields = [
-            'employee_id',
-            'attendance_date',
-            'shift_id',
-            'status',
-            'hours_worked',
-            'hours_absent'
-        ]
+        expected_fields = ["employee_id", "attendance_date", "shift_id", "status", "hours_worked", "hours_absent"]
 
         for field in expected_fields:
             assert isinstance(field, str)
 
     def test_attendance_status_values(self):
         """Test valid attendance status values"""
-        valid_statuses = ['present', 'absent', 'late', 'excused', 'vacation', 'sick']
+        valid_statuses = ["present", "absent", "late", "excused", "vacation", "sick"]
 
         for status in valid_statuses:
             assert isinstance(status, str)
@@ -135,7 +129,7 @@ class TestDowntimeCRUDIntegration:
 
     def test_downtime_categories(self):
         """Test downtime category values"""
-        categories = ['planned', 'unplanned', 'maintenance', 'changeover', 'breakdown']
+        categories = ["planned", "unplanned", "maintenance", "changeover", "breakdown"]
 
         for category in categories:
             assert isinstance(category, str)
@@ -149,7 +143,7 @@ class TestEmployeeCRUDIntegration:
 
     def test_employee_status_values(self):
         """Test employee status values"""
-        valid_statuses = ['active', 'inactive', 'on_leave', 'terminated']
+        valid_statuses = ["active", "inactive", "on_leave", "terminated"]
 
         for status in valid_statuses:
             assert isinstance(status, str)
@@ -168,14 +162,14 @@ class TestWorkOrderCRUDIntegration:
 
     def test_work_order_status_values(self):
         """Test work order status values"""
-        valid_statuses = ['pending', 'in_progress', 'completed', 'on_hold', 'cancelled']
+        valid_statuses = ["pending", "in_progress", "completed", "on_hold", "cancelled"]
 
         for status in valid_statuses:
             assert isinstance(status, str)
 
     def test_work_order_priority_values(self):
         """Test work order priority values"""
-        valid_priorities = ['low', 'normal', 'high', 'critical']
+        valid_priorities = ["low", "normal", "high", "critical"]
 
         for priority in valid_priorities:
             assert isinstance(priority, str)
@@ -201,7 +195,7 @@ class TestHoldCRUDIntegration:
 
     def test_hold_status_values(self):
         """Test hold status values"""
-        valid_statuses = ['active', 'released', 'expired']
+        valid_statuses = ["active", "released", "expired"]
 
         for status in valid_statuses:
             assert isinstance(status, str)
@@ -231,7 +225,7 @@ class TestCoverageCRUDIntegration:
 
     def test_coverage_types(self):
         """Test coverage types"""
-        coverage_types = ['vacation_cover', 'sick_cover', 'temporary', 'cross_training']
+        coverage_types = ["vacation_cover", "sick_cover", "temporary", "cross_training"]
 
         for coverage_type in coverage_types:
             assert isinstance(coverage_type, str)
@@ -252,7 +246,7 @@ class TestJobCRUDIntegration:
 
     def test_job_status_values(self):
         """Test job status values"""
-        valid_statuses = ['pending', 'in_progress', 'completed', 'blocked']
+        valid_statuses = ["pending", "in_progress", "completed", "blocked"]
 
         for status in valid_statuses:
             assert isinstance(status, str)
@@ -266,15 +260,10 @@ class TestPreferencesCRUDIntegration:
 
     def test_preference_defaults(self):
         """Test preference default values"""
-        default_preferences = {
-            'theme': 'light',
-            'language': 'en',
-            'timezone': 'UTC',
-            'dashboard_layout': 'default'
-        }
+        default_preferences = {"theme": "light", "language": "en", "timezone": "UTC", "dashboard_layout": "default"}
 
-        assert default_preferences['theme'] in ['light', 'dark']
-        assert default_preferences['language'] == 'en'
+        assert default_preferences["theme"] in ["light", "dark"]
+        assert default_preferences["language"] == "en"
 
 
 # =============================================================================
@@ -285,7 +274,7 @@ class TestSavedFilterCRUDIntegration:
 
     def test_filter_types(self):
         """Test saved filter types"""
-        filter_types = ['date_range', 'client', 'product', 'shift', 'status']
+        filter_types = ["date_range", "client", "product", "shift", "status"]
 
         for filter_type in filter_types:
             assert isinstance(filter_type, str)
@@ -299,7 +288,7 @@ class TestDefectTypeCRUDIntegration:
 
     def test_defect_severity_levels(self):
         """Test defect severity levels"""
-        severity_levels = ['minor', 'major', 'critical']
+        severity_levels = ["minor", "major", "critical"]
 
         for level in severity_levels:
             assert isinstance(level, str)
@@ -341,14 +330,14 @@ class TestAnalyticsCRUDIntegration:
 
     def test_aggregation_periods(self):
         """Test valid aggregation periods"""
-        periods = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly']
+        periods = ["daily", "weekly", "monthly", "quarterly", "yearly"]
 
         for period in periods:
             assert isinstance(period, str)
 
     def test_analytics_metrics(self):
         """Test analytics metric names"""
-        metrics = ['efficiency', 'availability', 'performance', 'quality', 'oee']
+        metrics = ["efficiency", "availability", "performance", "quality", "oee"]
 
         for metric in metrics:
             assert isinstance(metric, str)

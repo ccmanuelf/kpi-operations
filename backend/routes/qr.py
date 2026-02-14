@@ -2,6 +2,7 @@
 QR Code API Routes
 Provides QR code generation and lookup endpoints for work orders, products, jobs, and employees
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -12,13 +13,7 @@ from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.models.qr import (
-    QRCodeData,
-    QREntityType,
-    QRGenerateRequest,
-    QRLookupResponse,
-    QRCodeResponse
-)
+from backend.models.qr import QRCodeData, QREntityType, QRGenerateRequest, QRLookupResponse, QRCodeResponse
 from backend.services.qr_service import QRService, QRServiceError
 
 # Import ORM schemas for database queries
@@ -40,13 +35,13 @@ def _entity_to_dict(entity) -> dict:
     for column in entity.__table__.columns:
         value = getattr(entity, column.name)
         # Convert Decimal to float for JSON serialization
-        if hasattr(value, 'is_integer'):  # Decimal check
+        if hasattr(value, "is_integer"):  # Decimal check
             value = float(value)
         # Convert datetime to ISO string
-        if hasattr(value, 'isoformat'):
+        if hasattr(value, "isoformat"):
             value = value.isoformat()
         # Convert enum to string
-        if hasattr(value, 'value'):
+        if hasattr(value, "value"):
             value = value.value
         result[column.name] = value
     return result
@@ -85,13 +80,13 @@ def _entity_to_dict(entity) -> dict:
         200: {"description": "Entity found and returned with auto-fill fields"},
         400: {"description": "Invalid QR data format"},
         403: {"description": "Access denied to this entity"},
-        404: {"description": "Entity not found"}
-    }
+        404: {"description": "Entity not found"},
+    },
 )
 async def qr_lookup(
     data: str = Query(..., description="URL-encoded JSON string from QR code scan"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> QRLookupResponse:
     """
     GET /api/qr/lookup - Decode QR data and return entity with auto-fill fields
@@ -101,10 +96,7 @@ async def qr_lookup(
         decoded_data = unquote(data)
         qr_data = QRService.decode_qr_string(decoded_data)
     except QRServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     entity_type = qr_data.type
     entity_id = qr_data.id
@@ -115,24 +107,18 @@ async def qr_lookup(
     if entity_type == QREntityType.WORK_ORDER or entity_type == "work_order":
         entity = db.query(WorkOrder).filter(WorkOrder.work_order_id == entity_id).first()
         if not entity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Work order '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{entity_id}' not found")
         # Enforce client access control
         verify_client_access(current_user, entity.client_id)
         entity_data = _entity_to_dict(entity)
 
     elif entity_type == QREntityType.PRODUCT or entity_type == "product":
         # Products can be looked up by product_id (int) or product_code (str)
-        entity = db.query(Product).filter(
-            (Product.product_id == entity_id) | (Product.product_code == entity_id)
-        ).first()
+        entity = (
+            db.query(Product).filter((Product.product_id == entity_id) | (Product.product_code == entity_id)).first()
+        )
         if not entity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product '{entity_id}' not found")
         # Enforce client access control (products are now multi-tenant)
         verify_client_access(current_user, entity.client_id)
         entity_data = _entity_to_dict(entity)
@@ -140,10 +126,7 @@ async def qr_lookup(
     elif entity_type == QREntityType.JOB or entity_type == "job":
         entity = db.query(Job).filter(Job.job_id == entity_id).first()
         if not entity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Job '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{entity_id}' not found")
         # Enforce client access control via client_id_fk
         verify_client_access(current_user, entity.client_id_fk)
         entity_data = _entity_to_dict(entity)
@@ -157,17 +140,11 @@ async def qr_lookup(
             entity = db.query(Employee).filter(Employee.employee_code == entity_id).first()
 
         if not entity:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Employee '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee '{entity_id}' not found")
         entity_data = _entity_to_dict(entity)
 
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported entity type: {entity_type}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported entity type: {entity_type}")
 
     # Get auto-fill fields for the entity
     auto_fill_fields = QRService.get_auto_fill_fields(entity_type, entity_data)
@@ -176,7 +153,7 @@ async def qr_lookup(
         entity_type=entity_type if isinstance(entity_type, str) else entity_type.value,
         entity_id=entity_id,
         entity_data=entity_data,
-        auto_fill_fields=auto_fill_fields
+        auto_fill_fields=auto_fill_fields,
     )
 
 
@@ -193,14 +170,14 @@ async def qr_lookup(
     responses={
         200: {"description": "QR code PNG image", "content": {"image/png": {}}},
         403: {"description": "Access denied to this work order"},
-        404: {"description": "Work order not found"}
-    }
+        404: {"description": "Work order not found"},
+    },
 )
 async def get_work_order_qr_image(
     work_order_id: str,
     size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """
     GET /api/qr/work-order/{work_order_id}/image - Get QR code PNG for work order
@@ -208,10 +185,7 @@ async def get_work_order_qr_image(
     # Look up work order
     work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == work_order_id).first()
     if not work_order:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Work order '{work_order_id}' not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{work_order_id}' not found")
 
     # Enforce client access control
     verify_client_access(current_user, work_order.client_id)
@@ -224,15 +198,10 @@ async def get_work_order_qr_image(
         return Response(
             content=image_bytes,
             media_type="image/png",
-            headers={
-                "Content-Disposition": f"inline; filename=qr_work_order_{work_order_id}.png"
-            }
+            headers={"Content-Disposition": f"inline; filename=qr_work_order_{work_order_id}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get(
@@ -247,14 +216,14 @@ async def get_work_order_qr_image(
     """,
     responses={
         200: {"description": "QR code PNG image", "content": {"image/png": {}}},
-        404: {"description": "Product not found"}
-    }
+        404: {"description": "Product not found"},
+    },
 )
 async def get_product_qr_image(
     product_id: str,
     size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """
     GET /api/qr/product/{product_id}/image - Get QR code PNG for product
@@ -268,10 +237,7 @@ async def get_product_qr_image(
         product = db.query(Product).filter(Product.product_code == product_id).first()
 
     if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product '{product_id}' not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product '{product_id}' not found")
 
     # Enforce client access control (products are now multi-tenant)
     verify_client_access(current_user, product.client_id)
@@ -287,15 +253,10 @@ async def get_product_qr_image(
         return Response(
             content=image_bytes,
             media_type="image/png",
-            headers={
-                "Content-Disposition": f"inline; filename=qr_product_{qr_identifier}.png"
-            }
+            headers={"Content-Disposition": f"inline; filename=qr_product_{qr_identifier}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get(
@@ -311,14 +272,14 @@ async def get_product_qr_image(
     responses={
         200: {"description": "QR code PNG image", "content": {"image/png": {}}},
         403: {"description": "Access denied to this job"},
-        404: {"description": "Job not found"}
-    }
+        404: {"description": "Job not found"},
+    },
 )
 async def get_job_qr_image(
     job_id: str,
     size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """
     GET /api/qr/job/{job_id}/image - Get QR code PNG for job
@@ -326,10 +287,7 @@ async def get_job_qr_image(
     # Look up job
     job = db.query(Job).filter(Job.job_id == job_id).first()
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Job '{job_id}' not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{job_id}' not found")
 
     # Enforce client access control
     verify_client_access(current_user, job.client_id_fk)
@@ -342,15 +300,10 @@ async def get_job_qr_image(
         return Response(
             content=image_bytes,
             media_type="image/png",
-            headers={
-                "Content-Disposition": f"inline; filename=qr_job_{job_id}.png"
-            }
+            headers={"Content-Disposition": f"inline; filename=qr_job_{job_id}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get(
@@ -365,14 +318,14 @@ async def get_job_qr_image(
     """,
     responses={
         200: {"description": "QR code PNG image", "content": {"image/png": {}}},
-        404: {"description": "Employee not found"}
-    }
+        404: {"description": "Employee not found"},
+    },
 )
 async def get_employee_qr_image(
     employee_id: str,
     size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ) -> Response:
     """
     GET /api/qr/employee/{employee_id}/image - Get QR code PNG for employee
@@ -386,10 +339,7 @@ async def get_employee_qr_image(
         employee = db.query(Employee).filter(Employee.employee_code == employee_id).first()
 
     if not employee:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Employee '{employee_id}' not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee '{employee_id}' not found")
 
     # Use employee_code as the identifier in the QR code for consistency
     qr_identifier = employee.employee_code
@@ -402,15 +352,10 @@ async def get_employee_qr_image(
         return Response(
             content=image_bytes,
             media_type="image/png",
-            headers={
-                "Content-Disposition": f"inline; filename=qr_employee_{qr_identifier}.png"
-            }
+            headers={"Content-Disposition": f"inline; filename=qr_employee_{qr_identifier}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.post(
@@ -437,13 +382,11 @@ async def get_employee_qr_image(
         200: {"description": "QR code generated successfully"},
         400: {"description": "Invalid entity type or ID"},
         403: {"description": "Access denied to this entity"},
-        404: {"description": "Entity not found"}
-    }
+        404: {"description": "Entity not found"},
+    },
 )
 async def generate_qr_code(
-    request: QRGenerateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: QRGenerateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> QRCodeResponse:
     """
     POST /api/qr/generate - Generate QR code for any entity type
@@ -455,10 +398,7 @@ async def generate_qr_code(
     if entity_type == QREntityType.WORK_ORDER or entity_type == "work_order":
         work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == entity_id).first()
         if not work_order:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Work order '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{entity_id}' not found")
         verify_client_access(current_user, work_order.client_id)
 
     elif entity_type == QREntityType.PRODUCT or entity_type == "product":
@@ -469,20 +409,14 @@ async def generate_qr_code(
         except ValueError:
             product = db.query(Product).filter(Product.product_code == entity_id).first()
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product '{entity_id}' not found")
         # Enforce client access control (products are now multi-tenant)
         verify_client_access(current_user, product.client_id)
 
     elif entity_type == QREntityType.JOB or entity_type == "job":
         job = db.query(Job).filter(Job.job_id == entity_id).first()
         if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Job '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{entity_id}' not found")
         verify_client_access(current_user, job.client_id_fk)
 
     elif entity_type == QREntityType.EMPLOYEE or entity_type == "employee":
@@ -493,16 +427,10 @@ async def generate_qr_code(
         except ValueError:
             employee = db.query(Employee).filter(Employee.employee_code == entity_id).first()
         if not employee:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Employee '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee '{entity_id}' not found")
 
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported entity type: {entity_type}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported entity type: {entity_type}")
 
     # Generate QR data string
     type_value = entity_type if isinstance(entity_type, str) else entity_type.value
@@ -512,7 +440,7 @@ async def generate_qr_code(
         entity_type=type_value,
         entity_id=entity_id,
         qr_data_string=qr_data_string,
-        message="QR code generated successfully"
+        message="QR code generated successfully",
     )
 
 
@@ -530,13 +458,11 @@ async def generate_qr_code(
         200: {"description": "QR code PNG image", "content": {"image/png": {}}},
         400: {"description": "Invalid entity type or ID"},
         403: {"description": "Access denied to this entity"},
-        404: {"description": "Entity not found"}
-    }
+        404: {"description": "Entity not found"},
+    },
 )
 async def generate_qr_code_image(
-    request: QRGenerateRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    request: QRGenerateRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> Response:
     """
     POST /api/qr/generate/image - Generate and return QR code PNG for any entity
@@ -549,10 +475,7 @@ async def generate_qr_code_image(
     if entity_type == QREntityType.WORK_ORDER or entity_type == "work_order":
         work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == entity_id).first()
         if not work_order:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Work order '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{entity_id}' not found")
         verify_client_access(current_user, work_order.client_id)
 
     elif entity_type == QREntityType.PRODUCT or entity_type == "product":
@@ -563,20 +486,14 @@ async def generate_qr_code_image(
         except ValueError:
             product = db.query(Product).filter(Product.product_code == entity_id).first()
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Product '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Product '{entity_id}' not found")
         # Enforce client access control (products are now multi-tenant)
         verify_client_access(current_user, product.client_id)
 
     elif entity_type == QREntityType.JOB or entity_type == "job":
         job = db.query(Job).filter(Job.job_id == entity_id).first()
         if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Job '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{entity_id}' not found")
         verify_client_access(current_user, job.client_id_fk)
 
     elif entity_type == QREntityType.EMPLOYEE or entity_type == "employee":
@@ -587,16 +504,10 @@ async def generate_qr_code_image(
         except ValueError:
             employee = db.query(Employee).filter(Employee.employee_code == entity_id).first()
         if not employee:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Employee '{entity_id}' not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Employee '{entity_id}' not found")
 
     else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported entity type: {entity_type}"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unsupported entity type: {entity_type}")
 
     # Generate QR code image
     try:
@@ -607,12 +518,7 @@ async def generate_qr_code_image(
         return Response(
             content=image_bytes,
             media_type="image/png",
-            headers={
-                "Content-Disposition": f"inline; filename=qr_{type_value}_{entity_id}.png"
-            }
+            headers={"Content-Disposition": f"inline; filename=qr_{type_value}_{entity_id}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

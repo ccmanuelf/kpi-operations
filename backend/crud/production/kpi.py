@@ -3,6 +3,7 @@ CRUD KPI-related operations for Production Entry
 Detailed entry with KPI breakdown
 SECURITY: Multi-tenant client filtering enabled
 """
+
 from typing import Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -17,9 +18,7 @@ from backend.middleware.client_auth import verify_client_access
 
 
 def get_production_entry_with_details(
-    db: Session,
-    entry_id: int,
-    current_user: User
+    db: Session, entry_id: int, current_user: User
 ) -> Optional[ProductionEntryWithKPIs]:
     """
     Get production entry with full details and KPI breakdown
@@ -37,15 +36,13 @@ def get_production_entry_with_details(
         HTTPException 404: If entry not found
         ClientAccessError: If user doesn't have access to entry's client
     """
-    entry = db.query(ProductionEntry).filter(
-        ProductionEntry.production_entry_id == entry_id
-    ).first()
+    entry = db.query(ProductionEntry).filter(ProductionEntry.production_entry_id == entry_id).first()
 
     if not entry:
         raise HTTPException(status_code=404, detail="Production entry not found")
 
     # SECURITY: Verify user has access to this entry's client
-    if hasattr(entry, 'client_id') and entry.client_id:
+    if hasattr(entry, "client_id") and entry.client_id:
         verify_client_access(current_user, entry.client_id)
 
     # Get related data
@@ -54,6 +51,7 @@ def get_production_entry_with_details(
 
     # Calculate KPIs using service layer
     from backend.services.production_kpi_service import ProductionKPIService
+
     service = ProductionKPIService(db)
     kpi_result = service.calculate_entry_kpis(entry, product, shift)
 
@@ -95,5 +93,5 @@ def get_production_entry_with_details(
         inferred_cycle_time=inferred,
         total_available_hours=Decimal(str(total_hours)),
         quality_rate=quality,
-        oee=oee
+        oee=oee,
     )

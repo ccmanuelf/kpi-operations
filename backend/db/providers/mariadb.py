@@ -4,6 +4,7 @@ MariaDB Database Provider
 Provides MariaDB-specific engine configuration with QueuePool
 and production-ready connection management.
 """
+
 from typing import Dict, Any, List
 
 from sqlalchemy import create_engine, Engine, text
@@ -51,16 +52,16 @@ class MariaDBProvider(DatabaseProvider):
             Engine: Configured SQLAlchemy engine.
         """
         # Extract standard options
-        echo = kwargs.pop('echo', False)
+        echo = kwargs.pop("echo", False)
 
         # Get pool configuration
         pool_config = self.get_pool_config()
 
         # Override with any provided kwargs
-        pool_size = kwargs.pop('pool_size', pool_config['pool_size'])
-        max_overflow = kwargs.pop('max_overflow', pool_config['max_overflow'])
-        pool_timeout = kwargs.pop('pool_timeout', pool_config['pool_timeout'])
-        pool_recycle = kwargs.pop('pool_recycle', pool_config['pool_recycle'])
+        pool_size = kwargs.pop("pool_size", pool_config["pool_size"])
+        max_overflow = kwargs.pop("max_overflow", pool_config["max_overflow"])
+        pool_timeout = kwargs.pop("pool_timeout", pool_config["pool_timeout"])
+        pool_recycle = kwargs.pop("pool_recycle", pool_config["pool_recycle"])
 
         engine = create_engine(
             url,
@@ -71,7 +72,7 @@ class MariaDBProvider(DatabaseProvider):
             pool_timeout=pool_timeout,
             pool_recycle=pool_recycle,
             pool_pre_ping=True,  # Always enable for production
-            **kwargs
+            **kwargs,
         )
 
         logger.info(

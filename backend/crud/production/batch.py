@@ -3,6 +3,7 @@ CRUD batch operations for Production Entry
 Bulk create and import operations
 SECURITY: Multi-tenant client filtering enabled
 """
+
 from typing import List
 from sqlalchemy.orm import Session
 
@@ -13,9 +14,7 @@ from backend.crud.production.core import create_production_entry
 
 
 def batch_create_entries(
-    db: Session,
-    entries: List[ProductionEntryCreate],
-    current_user: User
+    db: Session, entries: List[ProductionEntryCreate], current_user: User
 ) -> List[ProductionEntry]:
     """
     Batch create production entries (for CSV upload)

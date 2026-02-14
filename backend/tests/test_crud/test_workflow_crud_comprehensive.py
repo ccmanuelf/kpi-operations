@@ -3,6 +3,7 @@ Comprehensive Workflow CRUD Tests
 Uses real database transactions instead of mocking.
 Target: Increase workflow.py coverage from 24% to 85%+
 """
+
 import pytest
 from datetime import datetime
 from sqlalchemy import create_engine
@@ -12,10 +13,7 @@ from fastapi import HTTPException
 
 from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas import (
-    Client, ClientType, User, WorkOrder, WorkOrderStatus,
-    WorkflowTransitionLog
-)
+from backend.schemas import Client, ClientType, User, WorkOrder, WorkOrderStatus, WorkflowTransitionLog
 from backend.schemas.client_config import ClientConfig
 
 
@@ -49,56 +47,32 @@ def workflow_setup(workflow_db):
     db = workflow_db
 
     # Create client
-    client = TestDataFactory.create_client(
-        db,
-        client_id="WF-CLIENT",
-        client_name="Workflow Test Client"
-    )
+    client = TestDataFactory.create_client(db, client_id="WF-CLIENT", client_name="Workflow Test Client")
 
     # Create admin user
     admin_user = TestDataFactory.create_user(
-        db,
-        username="wf_admin",
-        role="admin",
-        client_id=None  # Admin has access to all clients
+        db, username="wf_admin", role="admin", client_id=None  # Admin has access to all clients
     )
 
     # Create supervisor user (assigned to client)
     supervisor_user = TestDataFactory.create_user(
-        db,
-        username="wf_supervisor",
-        role="supervisor",
-        client_id=client.client_id
+        db, username="wf_supervisor", role="supervisor", client_id=client.client_id
     )
 
     # Create operator user (limited access)
-    operator_user = TestDataFactory.create_user(
-        db,
-        username="wf_operator",
-        role="operator",
-        client_id=client.client_id
-    )
+    operator_user = TestDataFactory.create_user(db, username="wf_operator", role="operator", client_id=client.client_id)
 
     # Create work orders with different statuses
     wo_received = TestDataFactory.create_work_order(
-        db,
-        client_id=client.client_id,
-        work_order_id="WO-RECEIVED-001",
-        status=WorkOrderStatus.RECEIVED
+        db, client_id=client.client_id, work_order_id="WO-RECEIVED-001", status=WorkOrderStatus.RECEIVED
     )
 
     wo_in_progress = TestDataFactory.create_work_order(
-        db,
-        client_id=client.client_id,
-        work_order_id="WO-PROGRESS-001",
-        status=WorkOrderStatus.IN_PROGRESS
+        db, client_id=client.client_id, work_order_id="WO-PROGRESS-001", status=WorkOrderStatus.IN_PROGRESS
     )
 
     wo_completed = TestDataFactory.create_work_order(
-        db,
-        client_id=client.client_id,
-        work_order_id="WO-COMPLETED-001",
-        status=WorkOrderStatus.COMPLETED
+        db, client_id=client.client_id, work_order_id="WO-COMPLETED-001", status=WorkOrderStatus.COMPLETED
     )
 
     db.commit()
@@ -113,7 +87,7 @@ def workflow_setup(workflow_db):
             "received": wo_received,
             "in_progress": wo_in_progress,
             "completed": wo_completed,
-        }
+        },
     }
 
 
@@ -137,7 +111,7 @@ class TestTransitionLogCRUD:
             notes="Test transition log",
             trigger_source="manual",
             elapsed_from_received_hours=2,
-            elapsed_from_previous_hours=1
+            elapsed_from_previous_hours=1,
         )
 
         assert result is not None
@@ -162,7 +136,7 @@ class TestTransitionLogCRUD:
             work_order_id=setup["work_orders"]["received"].work_order_id,
             client_id=setup["client"].client_id,
             from_status=None,  # Initial transition
-            to_status="RECEIVED"
+            to_status="RECEIVED",
         )
 
         assert result is not None
@@ -182,15 +156,11 @@ class TestTransitionLogCRUD:
             work_order_id=setup["work_orders"]["received"].work_order_id,
             client_id=setup["client"].client_id,
             from_status="RECEIVED",
-            to_status="IN_PROGRESS"
+            to_status="IN_PROGRESS",
         )
 
         # Retrieve it
-        result = get_transition_log_by_id(
-            db=db,
-            transition_id=created.transition_id,
-            current_user=setup["supervisor"]
-        )
+        result = get_transition_log_by_id(db=db, transition_id=created.transition_id, current_user=setup["supervisor"])
 
         assert result is not None
         assert result.transition_id == created.transition_id
@@ -204,9 +174,7 @@ class TestTransitionLogCRUD:
         db = setup["db"]
 
         result = get_transition_log_by_id(
-            db=db,
-            transition_id=99999,  # Non-existent ID
-            current_user=setup["supervisor"]
+            db=db, transition_id=99999, current_user=setup["supervisor"]  # Non-existent ID
         )
 
         assert result is None
@@ -225,7 +193,7 @@ class TestTransitionLogCRUD:
             work_order_id=wo.work_order_id,
             client_id=setup["client"].client_id,
             from_status=None,
-            to_status="RECEIVED"
+            to_status="RECEIVED",
         )
 
         create_transition_log(
@@ -233,14 +201,10 @@ class TestTransitionLogCRUD:
             work_order_id=wo.work_order_id,
             client_id=setup["client"].client_id,
             from_status="RECEIVED",
-            to_status="RELEASED"
+            to_status="RELEASED",
         )
 
-        result = get_work_order_transitions(
-            db=db,
-            work_order_id=wo.work_order_id,
-            current_user=setup["supervisor"]
-        )
+        result = get_work_order_transitions(db=db, work_order_id=wo.work_order_id, current_user=setup["supervisor"])
 
         assert isinstance(result, list)
         assert len(result) >= 2
@@ -253,11 +217,7 @@ class TestTransitionLogCRUD:
         db = setup["db"]
 
         with pytest.raises(HTTPException) as exc_info:
-            get_work_order_transitions(
-                db=db,
-                work_order_id="WO-NONEXISTENT",
-                current_user=setup["supervisor"]
-            )
+            get_work_order_transitions(db=db, work_order_id="WO-NONEXISTENT", current_user=setup["supervisor"])
 
         assert exc_info.value.status_code == 404
         assert "Work order not found" in str(exc_info.value.detail)
@@ -276,7 +236,7 @@ class TestTransitionLogCRUD:
             client_id=setup["client"].client_id,
             from_status="RECEIVED",
             to_status="RELEASED",
-            trigger_source="manual"
+            trigger_source="manual",
         )
 
         create_transition_log(
@@ -285,32 +245,24 @@ class TestTransitionLogCRUD:
             client_id=setup["client"].client_id,
             from_status="RELEASED",
             to_status="IN_PROGRESS",
-            trigger_source="automated"
+            trigger_source="automated",
         )
 
         # Get all transitions
         all_results = get_client_transitions(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"]
+            db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"]
         )
         assert len(all_results) >= 2
 
         # Filter by trigger_source
         manual_results = get_client_transitions(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"],
-            trigger_source="manual"
+            db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"], trigger_source="manual"
         )
         assert all(t.trigger_source == "manual" for t in manual_results)
 
         # Filter by to_status
         released_results = get_client_transitions(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"],
-            to_status="RELEASED"
+            db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"], to_status="RELEASED"
         )
         assert all(t.to_status == "RELEASED" for t in released_results)
 
@@ -328,25 +280,17 @@ class TestTransitionLogCRUD:
                 work_order_id=setup["work_orders"]["received"].work_order_id,
                 client_id=setup["client"].client_id,
                 from_status=f"STATUS_{i}",
-                to_status=f"STATUS_{i+1}"
+                to_status=f"STATUS_{i+1}",
             )
 
         # Test pagination
         page1 = get_client_transitions(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"],
-            skip=0,
-            limit=2
+            db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"], skip=0, limit=2
         )
         assert len(page1) == 2
 
         page2 = get_client_transitions(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"],
-            skip=2,
-            limit=2
+            db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"], skip=2, limit=2
         )
         assert len(page2) == 2
 
@@ -362,9 +306,7 @@ class TestWorkflowConfigurationCRUD:
         db = setup["db"]
 
         result = get_workflow_configuration(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"]
+            db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"]
         )
 
         assert result is not None
@@ -379,14 +321,11 @@ class TestWorkflowConfigurationCRUD:
 
         config_update = {
             "workflow_statuses": ["RECEIVED", "RELEASED", "IN_PROGRESS", "COMPLETED"],
-            "workflow_closure_trigger": "SHIPPED"
+            "workflow_closure_trigger": "SHIPPED",
         }
 
         result = update_workflow_configuration(
-            db=db,
-            client_id=setup["client"].client_id,
-            config_update=config_update,
-            current_user=setup["admin"]
+            db=db, client_id=setup["client"].client_id, config_update=config_update, current_user=setup["admin"]
         )
 
         assert result is not None
@@ -399,16 +338,14 @@ class TestWorkflowConfigurationCRUD:
         setup = workflow_setup
         db = setup["db"]
 
-        config_update = {
-            "workflow_statuses": ["RECEIVED", "COMPLETED"]
-        }
+        config_update = {"workflow_statuses": ["RECEIVED", "COMPLETED"]}
 
         with pytest.raises(HTTPException) as exc_info:
             update_workflow_configuration(
                 db=db,
                 client_id=setup["client"].client_id,
                 config_update=config_update,
-                current_user=setup["supervisor"]  # Not admin
+                current_user=setup["supervisor"],  # Not admin
             )
 
         assert exc_info.value.status_code == 403
@@ -424,10 +361,7 @@ class TestWorkflowConfigurationCRUD:
         # This may return a result or raise if template doesn't exist
         try:
             result = apply_workflow_template(
-                db=db,
-                client_id=setup["client"].client_id,
-                template_id="default",
-                current_user=setup["admin"]
+                db=db, client_id=setup["client"].client_id, template_id="default", current_user=setup["admin"]
             )
             assert result is not None or result is None
         except HTTPException as e:
@@ -446,7 +380,7 @@ class TestWorkflowConfigurationCRUD:
                 db=db,
                 client_id=setup["client"].client_id,
                 template_id="default",
-                current_user=setup["operator"]  # Not admin
+                current_user=setup["operator"],  # Not admin
             )
 
         assert exc_info.value.status_code == 403
@@ -468,7 +402,7 @@ class TestTransitionOperations:
                 work_order_id=setup["work_orders"]["received"].work_order_id,
                 to_status="RELEASED",
                 current_user=setup["supervisor"],
-                notes="Releasing for production"
+                notes="Releasing for production",
             )
 
             assert result["success"] is True
@@ -487,10 +421,7 @@ class TestTransitionOperations:
 
         with pytest.raises(HTTPException) as exc_info:
             transition_work_order(
-                db=db,
-                work_order_id="WO-NONEXISTENT",
-                to_status="IN_PROGRESS",
-                current_user=setup["supervisor"]
+                db=db, work_order_id="WO-NONEXISTENT", to_status="IN_PROGRESS", current_user=setup["supervisor"]
             )
 
         assert exc_info.value.status_code == 404
@@ -506,7 +437,7 @@ class TestTransitionOperations:
             db=db,
             work_order_id=setup["work_orders"]["received"].work_order_id,
             to_status="RELEASED",
-            current_user=setup["supervisor"]
+            current_user=setup["supervisor"],
         )
 
         assert "is_valid" in result
@@ -524,10 +455,7 @@ class TestTransitionOperations:
 
         with pytest.raises(HTTPException) as exc_info:
             validate_transition(
-                db=db,
-                work_order_id="WO-NONEXISTENT",
-                to_status="IN_PROGRESS",
-                current_user=setup["supervisor"]
+                db=db, work_order_id="WO-NONEXISTENT", to_status="IN_PROGRESS", current_user=setup["supervisor"]
             )
 
         assert exc_info.value.status_code == 404
@@ -540,9 +468,7 @@ class TestTransitionOperations:
         db = setup["db"]
 
         result = get_allowed_transitions_for_work_order(
-            db=db,
-            work_order_id=setup["work_orders"]["received"].work_order_id,
-            current_user=setup["supervisor"]
+            db=db, work_order_id=setup["work_orders"]["received"].work_order_id, current_user=setup["supervisor"]
         )
 
         assert "work_order_id" in result
@@ -560,9 +486,7 @@ class TestTransitionOperations:
 
         with pytest.raises(HTTPException) as exc_info:
             get_allowed_transitions_for_work_order(
-                db=db,
-                work_order_id="WO-NONEXISTENT",
-                current_user=setup["supervisor"]
+                db=db, work_order_id="WO-NONEXISTENT", current_user=setup["supervisor"]
             )
 
         assert exc_info.value.status_code == 404
@@ -576,16 +500,10 @@ class TestTransitionOperations:
 
         # Create additional work orders for bulk operation
         wo1 = TestDataFactory.create_work_order(
-            db,
-            client_id=setup["client"].client_id,
-            work_order_id="WO-BULK-001",
-            status=WorkOrderStatus.RECEIVED
+            db, client_id=setup["client"].client_id, work_order_id="WO-BULK-001", status=WorkOrderStatus.RECEIVED
         )
         wo2 = TestDataFactory.create_work_order(
-            db,
-            client_id=setup["client"].client_id,
-            work_order_id="WO-BULK-002",
-            status=WorkOrderStatus.RECEIVED
+            db, client_id=setup["client"].client_id, work_order_id="WO-BULK-002", status=WorkOrderStatus.RECEIVED
         )
         db.commit()
 
@@ -595,7 +513,7 @@ class TestTransitionOperations:
             to_status="RELEASED",
             client_id=setup["client"].client_id,
             current_user=setup["supervisor"],
-            notes="Bulk release"
+            notes="Bulk release",
         )
 
         assert isinstance(result, dict)
@@ -610,13 +528,10 @@ class TestTransitionOperations:
 
         result = bulk_transition_work_orders(
             db=db,
-            work_order_ids=[
-                setup["work_orders"]["received"].work_order_id,
-                "WO-NONEXISTENT-999"  # Invalid ID
-            ],
+            work_order_ids=[setup["work_orders"]["received"].work_order_id, "WO-NONEXISTENT-999"],  # Invalid ID
             to_status="RELEASED",
             client_id=setup["client"].client_id,
-            current_user=setup["supervisor"]
+            current_user=setup["supervisor"],
         )
 
         assert isinstance(result, dict)
@@ -641,14 +556,10 @@ class TestWorkflowStatistics:
                 from_status="RECEIVED",
                 to_status="RELEASED",
                 trigger_source="manual",
-                elapsed_from_previous_hours=i + 1
+                elapsed_from_previous_hours=i + 1,
             )
 
-        result = get_transition_statistics(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"]
-        )
+        result = get_transition_statistics(db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"])
 
         assert "client_id" in result
         assert "total_transitions" in result
@@ -664,11 +575,7 @@ class TestWorkflowStatistics:
         setup = workflow_setup
         db = setup["db"]
 
-        result = get_status_distribution(
-            db=db,
-            client_id=setup["client"].client_id,
-            current_user=setup["supervisor"]
-        )
+        result = get_status_distribution(db=db, client_id=setup["client"].client_id, current_user=setup["supervisor"])
 
         assert "client_id" in result
         assert "total_work_orders" in result
@@ -689,26 +596,15 @@ class TestWorkflowStatistics:
         db = setup["db"]
 
         # Create a new empty client
-        empty_client = TestDataFactory.create_client(
-            db,
-            client_id="EMPTY-CLIENT",
-            client_name="Empty Client"
-        )
+        empty_client = TestDataFactory.create_client(db, client_id="EMPTY-CLIENT", client_name="Empty Client")
 
         # Create a user for this client
         empty_user = TestDataFactory.create_user(
-            db,
-            username="empty_supervisor",
-            role="supervisor",
-            client_id=empty_client.client_id
+            db, username="empty_supervisor", role="supervisor", client_id=empty_client.client_id
         )
         db.commit()
 
-        result = get_status_distribution(
-            db=db,
-            client_id=empty_client.client_id,
-            current_user=empty_user
-        )
+        result = get_status_distribution(db=db, client_id=empty_client.client_id, current_user=empty_user)
 
         assert result["total_work_orders"] == 0
         assert result["by_status"] == []
@@ -761,7 +657,7 @@ class TestClientIsolation:
             work_order_id=setup["wo_a"].work_order_id,
             client_id="CLIENT-A",
             from_status="RECEIVED",
-            to_status="RELEASED"
+            to_status="RELEASED",
         )
 
         create_transition_log(
@@ -769,15 +665,11 @@ class TestClientIsolation:
             work_order_id=setup["wo_b"].work_order_id,
             client_id="CLIENT-B",
             from_status="RECEIVED",
-            to_status="RELEASED"
+            to_status="RELEASED",
         )
 
         # User A should only see Client A transitions
-        results_a = get_client_transitions(
-            db=db,
-            client_id="CLIENT-A",
-            current_user=setup["user_a"]
-        )
+        results_a = get_client_transitions(db=db, client_id="CLIENT-A", current_user=setup["user_a"])
 
         for result in results_a:
             assert result.client_id == "CLIENT-A"
@@ -791,11 +683,7 @@ class TestClientIsolation:
 
         # User B trying to access Client A's work order should fail
         with pytest.raises(HTTPException) as exc_info:
-            get_work_order_transitions(
-                db=db,
-                work_order_id=setup["wo_a"].work_order_id,
-                current_user=setup["user_b"]
-            )
+            get_work_order_transitions(db=db, work_order_id=setup["wo_a"].work_order_id, current_user=setup["user_b"])
 
         assert exc_info.value.status_code == 403
 
@@ -807,18 +695,10 @@ class TestClientIsolation:
         db = setup["db"]
 
         # Admin should be able to access both clients
-        results_a = get_client_transitions(
-            db=db,
-            client_id="CLIENT-A",
-            current_user=setup["admin"]
-        )
+        results_a = get_client_transitions(db=db, client_id="CLIENT-A", current_user=setup["admin"])
         assert isinstance(results_a, list)
 
-        results_b = get_client_transitions(
-            db=db,
-            client_id="CLIENT-B",
-            current_user=setup["admin"]
-        )
+        results_b = get_client_transitions(db=db, client_id="CLIENT-B", current_user=setup["admin"])
         assert isinstance(results_b, list)
 
 
@@ -842,7 +722,7 @@ class TestEdgeCases:
             notes="Detailed notes for the transition",
             trigger_source="api",
             elapsed_from_received_hours=48,
-            elapsed_from_previous_hours=24
+            elapsed_from_previous_hours=24,
         )
 
         assert result.notes == "Detailed notes for the transition"
@@ -857,19 +737,11 @@ class TestEdgeCases:
         db = setup["db"]
 
         # Create a new client with no transitions
-        new_client = TestDataFactory.create_client(
-            db, client_id="NEW-CLIENT", client_name="New Client"
-        )
-        new_user = TestDataFactory.create_user(
-            db, username="new_user", role="supervisor", client_id="NEW-CLIENT"
-        )
+        new_client = TestDataFactory.create_client(db, client_id="NEW-CLIENT", client_name="New Client")
+        new_user = TestDataFactory.create_user(db, username="new_user", role="supervisor", client_id="NEW-CLIENT")
         db.commit()
 
-        result = get_client_transitions(
-            db=db,
-            client_id="NEW-CLIENT",
-            current_user=new_user
-        )
+        result = get_client_transitions(db=db, client_id="NEW-CLIENT", current_user=new_user)
 
         assert result == []
 
@@ -881,19 +753,11 @@ class TestEdgeCases:
         db = setup["db"]
 
         # Create a new client with no transitions
-        new_client = TestDataFactory.create_client(
-            db, client_id="STATS-CLIENT", client_name="Stats Client"
-        )
-        new_user = TestDataFactory.create_user(
-            db, username="stats_user", role="supervisor", client_id="STATS-CLIENT"
-        )
+        new_client = TestDataFactory.create_client(db, client_id="STATS-CLIENT", client_name="Stats Client")
+        new_user = TestDataFactory.create_user(db, username="stats_user", role="supervisor", client_id="STATS-CLIENT")
         db.commit()
 
-        result = get_transition_statistics(
-            db=db,
-            client_id="STATS-CLIENT",
-            current_user=new_user
-        )
+        result = get_transition_statistics(db=db, client_id="STATS-CLIENT", current_user=new_user)
 
         assert result["total_transitions"] == 0
         assert result["by_transition"] == []
@@ -907,20 +771,13 @@ class TestEdgeCases:
         db = setup["db"]
 
         # Create a new client without any config
-        new_client = TestDataFactory.create_client(
-            db, client_id="CONFIG-CLIENT", client_name="Config Client"
-        )
+        new_client = TestDataFactory.create_client(db, client_id="CONFIG-CLIENT", client_name="Config Client")
         db.commit()
 
-        config_update = {
-            "workflow_statuses": ["RECEIVED", "IN_PROGRESS", "COMPLETED"]
-        }
+        config_update = {"workflow_statuses": ["RECEIVED", "IN_PROGRESS", "COMPLETED"]}
 
         result = update_workflow_configuration(
-            db=db,
-            client_id="CONFIG-CLIENT",
-            config_update=config_update,
-            current_user=setup["admin"]
+            db=db, client_id="CONFIG-CLIENT", config_update=config_update, current_user=setup["admin"]
         )
 
         assert result is not None

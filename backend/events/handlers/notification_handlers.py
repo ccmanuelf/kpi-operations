@@ -6,6 +6,7 @@ Handles notification-related events:
 - Hold creation notifications
 - KPI threshold alerts
 """
+
 import logging
 from backend.events.base import DomainEvent, EventHandler
 from backend.events.domain_events import (

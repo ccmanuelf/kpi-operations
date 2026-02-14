@@ -2,6 +2,7 @@
 Part Opportunities API Routes
 All part opportunities CRUD endpoints (KPI #5: DPMO Calculation)
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -13,7 +14,7 @@ from backend.models.part_opportunities import (
     PartOpportunityUpdate,
     PartOpportunityResponse,
     BulkImportRequest,
-    BulkImportResponse
+    BulkImportResponse,
 )
 from backend.crud.part_opportunities import (
     create_part_opportunity,
@@ -22,23 +23,18 @@ from backend.crud.part_opportunities import (
     get_part_opportunities_by_category,
     update_part_opportunity,
     delete_part_opportunity,
-    bulk_import_opportunities
+    bulk_import_opportunities,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/part-opportunities",
-    tags=["Part Opportunities"]
-)
+router = APIRouter(prefix="/api/part-opportunities", tags=["Part Opportunities"])
 
 
 @router.post("", response_model=PartOpportunityResponse, status_code=status.HTTP_201_CREATED)
 def create_part_opportunity_endpoint(
-    part: PartOpportunityCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    part: PartOpportunityCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new part opportunity record
@@ -50,10 +46,7 @@ def create_part_opportunity_endpoint(
 
 @router.get("", response_model=List[PartOpportunityResponse])
 def list_part_opportunities(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     List part opportunities
@@ -64,9 +57,7 @@ def list_part_opportunities(
 
 @router.get("/category/{category}", response_model=List[PartOpportunityResponse])
 def get_part_opportunities_by_category_endpoint(
-    category: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    category: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all part opportunities for a specific category
@@ -77,9 +68,7 @@ def get_part_opportunities_by_category_endpoint(
 
 @router.get("/{part_number}", response_model=PartOpportunityResponse)
 def get_part_opportunity_endpoint(
-    part_number: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    part_number: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get part opportunity by part number
@@ -96,7 +85,7 @@ def update_part_opportunity_endpoint(
     part_number: str,
     part_update: PartOpportunityUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update part opportunity
@@ -111,9 +100,7 @@ def update_part_opportunity_endpoint(
 
 @router.delete("/{part_number}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_part_opportunity_endpoint(
-    part_number: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_supervisor)
+    part_number: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ):
     """
     Delete part opportunity (supervisor only)
@@ -126,9 +113,7 @@ def delete_part_opportunity_endpoint(
 
 @router.post("/bulk-import", response_model=BulkImportResponse)
 def bulk_import_part_opportunities(
-    import_request: BulkImportRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    import_request: BulkImportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Bulk import part opportunities (for CSV imports)
@@ -141,5 +126,5 @@ def bulk_import_part_opportunities(
         success_count=result["success_count"],
         failure_count=result["failure_count"],
         errors=result["errors"],
-        total_processed=result["success_count"] + result["failure_count"]
+        total_processed=result["success_count"] + result["failure_count"],
     )

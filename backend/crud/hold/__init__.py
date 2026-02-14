@@ -39,17 +39,17 @@ from backend.crud.hold.aging import (
 
 __all__ = [
     # Core
-    'create_wip_hold',
-    'get_wip_hold',
-    'update_wip_hold',
-    'delete_wip_hold',
+    "create_wip_hold",
+    "get_wip_hold",
+    "update_wip_hold",
+    "delete_wip_hold",
     # Queries
-    'get_wip_holds',
-    'get_holds_by_work_order',
+    "get_wip_holds",
+    "get_holds_by_work_order",
     # Duration
-    'resume_hold',
-    'get_total_hold_duration',
-    'release_hold',
+    "resume_hold",
+    "get_total_hold_duration",
+    "release_hold",
     # Aging
-    'bulk_update_aging',
+    "bulk_update_aging",
 ]

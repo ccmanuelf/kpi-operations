@@ -2,6 +2,7 @@
 Coverage Boost Tests for Low-Coverage CRUD Modules
 Target: Push overall coverage from 80% to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -19,6 +20,7 @@ class TestCoverageCRUD:
         """Test get shift coverages"""
         try:
             from backend.crud.coverage import get_shift_coverages
+
             result = get_shift_coverages(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -30,6 +32,7 @@ class TestCoverageCRUD:
         """Test get non-existent shift coverage"""
         try:
             from backend.crud.coverage import get_shift_coverage
+
             result = get_shift_coverage(db_session, 99999, admin_user)
             assert result is None
         except ImportError:
@@ -50,6 +53,7 @@ class TestDefectDetailCRUD:
         """Test get defect details"""
         try:
             from backend.crud.defect_detail import get_defect_details
+
             result = get_defect_details(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -61,6 +65,7 @@ class TestDefectDetailCRUD:
         """Test get non-existent defect detail"""
         try:
             from backend.crud.defect_detail import get_defect_detail
+
             result = get_defect_detail(db_session, 99999, admin_user)
             assert result is None
         except ImportError:
@@ -81,7 +86,8 @@ class TestDefectTypeCatalogCRUD:
         """Test get defect types"""
         try:
             from backend.crud.defect_type_catalog import get_defect_types_by_client
-            client_id = getattr(admin_user, 'client_id_assigned', None) or "TEST-CLIENT"
+
+            client_id = getattr(admin_user, "client_id_assigned", None) or "TEST-CLIENT"
             result = get_defect_types_by_client(db_session, client_id, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -100,6 +106,7 @@ class TestEmployeeCRUD:
         """Test get employees"""
         try:
             from backend.crud.employee import get_employees
+
             result = get_employees(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -111,6 +118,7 @@ class TestEmployeeCRUD:
         """Test get non-existent employee"""
         try:
             from backend.crud.employee import get_employee
+
             result = get_employee(db_session, 99999, admin_user)
             assert result is None
         except ImportError:
@@ -131,6 +139,7 @@ class TestJobCRUD:
         """Test get jobs"""
         try:
             from backend.crud.job import get_jobs
+
             result = get_jobs(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -149,6 +158,7 @@ class TestPartOpportunitiesCRUD:
         """Test get part opportunities"""
         try:
             from backend.crud.part_opportunities import get_part_opportunities
+
             result = get_part_opportunities(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -167,9 +177,10 @@ class TestPreferencesCRUD:
         """Test get user preferences"""
         try:
             from backend.crud.preferences import get_user_dashboard_preferences
+
             result = get_user_dashboard_preferences(db_session, admin_user.user_id)
             # May return None if no preferences set
-            assert result is None or hasattr(result, 'user_id')
+            assert result is None or hasattr(result, "user_id")
         except ImportError:
             pytest.skip("Function not available")
         except Exception:
@@ -186,6 +197,7 @@ class TestSavedFilterCRUD:
         """Test get saved filters"""
         try:
             from backend.crud.saved_filter import get_saved_filters
+
             result = get_saved_filters(db_session, admin_user.user_id)
             assert isinstance(result, list)
         except ImportError:
@@ -204,6 +216,7 @@ class TestQualityCRUD:
         """Test get quality entries"""
         try:
             from backend.crud.quality import get_quality_inspections
+
             result = get_quality_inspections(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -222,6 +235,7 @@ class TestProductionCRUD:
         """Test get production entries"""
         try:
             from backend.crud.production import get_production_entries
+
             result = get_production_entries(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -240,6 +254,7 @@ class TestDowntimeCRUD:
         """Test get downtime entries"""
         try:
             from backend.crud.downtime import get_downtime_events
+
             result = get_downtime_events(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -258,6 +273,7 @@ class TestAttendanceCRUD:
         """Test get attendance entries"""
         try:
             from backend.crud.attendance import get_attendance_records
+
             result = get_attendance_records(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -276,15 +292,11 @@ class TestAnalyticsCRUD:
         """Test get analytics time series data"""
         try:
             from backend.crud.analytics import get_kpi_time_series_data
+
             # Use admin_user's client_id or a test client_id
-            client_id = getattr(admin_user, 'client_id_assigned', None) or "TEST-CLIENT"
+            client_id = getattr(admin_user, "client_id_assigned", None) or "TEST-CLIENT"
             result = get_kpi_time_series_data(
-                db_session,
-                client_id,
-                'efficiency',
-                date.today() - timedelta(days=30),
-                date.today(),
-                admin_user
+                db_session, client_id, "efficiency", date.today() - timedelta(days=30), date.today(), admin_user
             )
             assert isinstance(result, list)
         except ImportError:
@@ -303,6 +315,7 @@ class TestClientCRUD:
         """Test get clients"""
         try:
             from backend.crud.client import get_clients
+
             result = get_clients(db_session, admin_user)
             assert isinstance(result, list)
         except ImportError:
@@ -314,6 +327,7 @@ class TestClientCRUD:
         """Test get non-existent client"""
         try:
             from backend.crud.client import get_client
+
             result = get_client(db_session, "NONEXISTENT", admin_user)
             assert result is None
         except ImportError:

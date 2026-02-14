@@ -2,6 +2,7 @@
 Employee Management API Routes
 All employee CRUD endpoints
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -13,7 +14,7 @@ from backend.models.employee import (
     EmployeeResponse,
     EmployeeWithClients,
     EmployeeAssignmentRequest,
-    FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest
+    FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest,
 )
 from backend.crud.employee import (
     create_employee,
@@ -25,23 +26,18 @@ from backend.crud.employee import (
     get_floating_pool_employees,
     assign_to_floating_pool,
     remove_from_floating_pool,
-    assign_employee_to_client
+    assign_employee_to_client,
 )
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/employees",
-    tags=["Employees"]
-)
+router = APIRouter(prefix="/api/employees", tags=["Employees"])
 
 
 @router.post("", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
 def create_employee_endpoint(
-    employee: EmployeeCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    employee: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Create new employee
@@ -58,7 +54,7 @@ def list_employees(
     client_id: Optional[str] = None,
     is_floating_pool: Optional[bool] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     List employees with filters
@@ -68,10 +64,7 @@ def list_employees(
 
 @router.get("/floating-pool/list", response_model=List[EmployeeResponse])
 def get_floating_pool_employees_endpoint(
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get all floating pool employees
@@ -81,9 +74,7 @@ def get_floating_pool_employees_endpoint(
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)
 def get_employee_endpoint(
-    employee_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get employee by ID
@@ -99,7 +90,7 @@ def update_employee_endpoint(
     employee_id: int,
     employee_update: EmployeeUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update employee
@@ -114,9 +105,7 @@ def update_employee_endpoint(
 
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee_endpoint(
-    employee_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Delete employee (admin only)
@@ -129,9 +118,7 @@ def delete_employee_endpoint(
 
 @router.post("/{employee_id}/floating-pool/assign", response_model=EmployeeResponse)
 def assign_employee_to_floating_pool(
-    employee_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Assign employee to floating pool
@@ -142,9 +129,7 @@ def assign_employee_to_floating_pool(
 
 @router.post("/{employee_id}/floating-pool/remove", response_model=EmployeeResponse)
 def remove_employee_from_floating_pool(
-    employee_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Remove employee from floating pool
@@ -158,7 +143,7 @@ def assign_employee_to_client_endpoint(
     employee_id: int,
     assignment: EmployeeAssignmentRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Assign employee to a client
@@ -168,10 +153,7 @@ def assign_employee_to_client_endpoint(
 
 
 # Client employees endpoint (separate prefix for /api/clients namespace)
-client_employees_router = APIRouter(
-    prefix="/api/clients",
-    tags=["Employees"]
-)
+client_employees_router = APIRouter(prefix="/api/clients", tags=["Employees"])
 
 
 @client_employees_router.get("/{client_id}/employees", response_model=List[EmployeeResponse])
@@ -180,7 +162,7 @@ def get_client_employees(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get all employees assigned to a specific client

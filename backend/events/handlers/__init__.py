@@ -7,6 +7,7 @@ Contains event handlers for different domains:
 - notification_handlers: Notification and alert handlers
 - analytics_handlers: Analytics and metrics handlers
 """
+
 from typing import List
 
 from backend.events.base import EventHandler

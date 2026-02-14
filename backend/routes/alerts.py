@@ -2,6 +2,7 @@
 Alert Routes - API endpoints for intelligent alerting system
 Provides proactive alerts based on predictions, thresholds, and patterns
 """
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -13,15 +14,32 @@ from backend.database import get_db
 from backend.models.alert import Alert, AlertConfig, AlertHistory
 from backend.schemas.kpi_threshold import KPIThreshold
 from backend.schemas.alert import (
-    AlertCreate, AlertResponse, AlertUpdate, AlertAcknowledge, AlertResolve,
-    AlertSummary, AlertFilter, AlertDashboard, AlertCategory, AlertSeverity,
-    AlertStatus, AlertConfigCreate, AlertConfigResponse,
-    OTDRiskAlert, QualityTrendAlert, CapacityAlert
+    AlertCreate,
+    AlertResponse,
+    AlertUpdate,
+    AlertAcknowledge,
+    AlertResolve,
+    AlertSummary,
+    AlertFilter,
+    AlertDashboard,
+    AlertCategory,
+    AlertSeverity,
+    AlertStatus,
+    AlertConfigCreate,
+    AlertConfigResponse,
+    OTDRiskAlert,
+    QualityTrendAlert,
+    CapacityAlert,
 )
 from backend.calculations.alerts import (
-    generate_alert_id, generate_efficiency_alert, generate_otd_risk_alert,
-    generate_quality_alert, generate_capacity_alert, generate_prediction_based_alert,
-    generate_attendance_alert, generate_hold_alert
+    generate_alert_id,
+    generate_efficiency_alert,
+    generate_otd_risk_alert,
+    generate_quality_alert,
+    generate_capacity_alert,
+    generate_prediction_based_alert,
+    generate_attendance_alert,
+    generate_hold_alert,
 )
 from backend.auth.jwt import get_current_user
 
@@ -29,6 +47,7 @@ router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
 
 # ==================== Alert CRUD Operations ====================
+
 
 @router.get("/", response_model=List[AlertResponse])
 async def list_alerts(
@@ -39,7 +58,7 @@ async def list_alerts(
     kpi_key: Optional[str] = Query(None, description="Filter by KPI"),
     days: int = Query(7, ge=1, le=90, description="Days to look back"),
     limit: int = Query(50, ge=1, le=200, description="Maximum results"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     List alerts with optional filters
@@ -70,15 +89,14 @@ async def list_alerts(
 
 @router.get("/dashboard", response_model=AlertDashboard)
 async def get_alert_dashboard(
-    client_id: Optional[str] = Query(None, description="Filter by client"),
-    db: Session = Depends(get_db)
+    client_id: Optional[str] = Query(None, description="Filter by client"), db: Session = Depends(get_db)
 ):
     """
     Get comprehensive alert dashboard
 
     Returns summary statistics, urgent alerts, and recent activity.
     """
-    base_query = db.query(Alert).filter(Alert.status == 'active')
+    base_query = db.query(Alert).filter(Alert.status == "active")
 
     if client_id:
         base_query = base_query.filter(Alert.client_id == client_id)
@@ -98,23 +116,21 @@ async def get_alert_dashboard(
         by_category[alert.category] = by_category.get(alert.category, 0) + 1
 
         # Collect urgent and critical
-        if alert.severity == 'urgent':
+        if alert.severity == "urgent":
             urgent_alerts.append(AlertResponse.model_validate(alert))
-        elif alert.severity == 'critical':
+        elif alert.severity == "critical":
             critical_alerts.append(AlertResponse.model_validate(alert))
 
     summary = AlertSummary(
         total_active=len(all_active),
         by_severity=by_severity,
         by_category=by_category,
-        critical_count=by_severity.get('critical', 0),
-        urgent_count=by_severity.get('urgent', 0)
+        critical_count=by_severity.get("critical", 0),
+        urgent_count=by_severity.get("urgent", 0),
     )
 
     # Get recent alerts (last 24 hours, any status)
-    recent_query = db.query(Alert).filter(
-        Alert.created_at >= datetime.now() - timedelta(hours=24)
-    )
+    recent_query = db.query(Alert).filter(Alert.created_at >= datetime.now() - timedelta(hours=24))
     if client_id:
         recent_query = recent_query.filter(Alert.client_id == client_id)
 
@@ -124,21 +140,20 @@ async def get_alert_dashboard(
         summary=summary,
         urgent_alerts=urgent_alerts[:5],
         critical_alerts=critical_alerts[:10],
-        recent_alerts=[AlertResponse.model_validate(a) for a in recent]
+        recent_alerts=[AlertResponse.model_validate(a) for a in recent],
     )
 
 
 @router.get("/summary", response_model=AlertSummary)
 async def get_alert_summary(
-    client_id: Optional[str] = Query(None, description="Filter by client"),
-    db: Session = Depends(get_db)
+    client_id: Optional[str] = Query(None, description="Filter by client"), db: Session = Depends(get_db)
 ):
     """
     Get quick summary of active alerts
 
     Lightweight endpoint for status bars and quick checks.
     """
-    query = db.query(Alert).filter(Alert.status == 'active')
+    query = db.query(Alert).filter(Alert.status == "active")
 
     if client_id:
         query = query.filter(Alert.client_id == client_id)
@@ -156,16 +171,13 @@ async def get_alert_summary(
         total_active=len(alerts),
         by_severity=by_severity,
         by_category=by_category,
-        critical_count=by_severity.get('critical', 0),
-        urgent_count=by_severity.get('urgent', 0)
+        critical_count=by_severity.get("critical", 0),
+        urgent_count=by_severity.get("urgent", 0),
     )
 
 
 @router.get("/{alert_id}", response_model=AlertResponse)
-async def get_alert(
-    alert_id: str,
-    db: Session = Depends(get_db)
-):
+async def get_alert(alert_id: str, db: Session = Depends(get_db)):
     """Get specific alert by ID"""
     alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
     if not alert:
@@ -174,10 +186,7 @@ async def get_alert(
 
 
 @router.post("/", response_model=AlertResponse, status_code=status.HTTP_201_CREATED)
-async def create_alert(
-    alert_data: AlertCreate,
-    db: Session = Depends(get_db)
-):
+async def create_alert(alert_data: AlertCreate, db: Session = Depends(get_db)):
     """
     Create new alert manually
 
@@ -187,7 +196,7 @@ async def create_alert(
         alert_id=generate_alert_id(),
         category=alert_data.category.value,
         severity=alert_data.severity.value,
-        status='active',
+        status="active",
         title=alert_data.title,
         message=alert_data.message,
         recommendation=alert_data.recommendation,
@@ -198,7 +207,7 @@ async def create_alert(
         threshold_value=float(alert_data.threshold_value) if alert_data.threshold_value else None,
         predicted_value=float(alert_data.predicted_value) if alert_data.predicted_value else None,
         confidence=float(alert_data.confidence) if alert_data.confidence else None,
-        alert_metadata=alert_data.metadata
+        alert_metadata=alert_data.metadata,
     )
 
     db.add(alert)
@@ -213,7 +222,7 @@ async def acknowledge_alert(
     alert_id: str,
     ack_data: AlertAcknowledge,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Acknowledge an alert
@@ -224,12 +233,12 @@ async def acknowledge_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    if alert.status != 'active':
+    if alert.status != "active":
         raise HTTPException(status_code=400, detail="Only active alerts can be acknowledged")
 
-    alert.status = 'acknowledged'
+    alert.status = "acknowledged"
     alert.acknowledged_at = datetime.now()
-    alert.acknowledged_by = current_user.get('user_id')
+    alert.acknowledged_by = current_user.get("user_id")
 
     db.commit()
     db.refresh(alert)
@@ -242,7 +251,7 @@ async def resolve_alert(
     alert_id: str,
     resolve_data: AlertResolve,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Resolve an alert
@@ -253,12 +262,12 @@ async def resolve_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    if alert.status == 'resolved':
+    if alert.status == "resolved":
         raise HTTPException(status_code=400, detail="Alert already resolved")
 
-    alert.status = 'resolved'
+    alert.status = "resolved"
     alert.resolved_at = datetime.now()
-    alert.resolved_by = current_user.get('user_id')
+    alert.resolved_by = current_user.get("user_id")
     alert.resolution_notes = resolve_data.resolution_notes
 
     # Track prediction accuracy if this was a prediction-based alert
@@ -269,7 +278,7 @@ async def resolve_alert(
             predicted_value=alert.predicted_value,
             actual_value=alert.current_value,
             prediction_date=alert.created_at,
-            actual_date=datetime.now()
+            actual_date=datetime.now(),
         )
         db.add(history)
 
@@ -280,11 +289,7 @@ async def resolve_alert(
 
 
 @router.post("/{alert_id}/dismiss", response_model=AlertResponse)
-async def dismiss_alert(
-    alert_id: str,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+async def dismiss_alert(alert_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Dismiss an alert
 
@@ -294,9 +299,9 @@ async def dismiss_alert(
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    alert.status = 'dismissed'
+    alert.status = "dismissed"
     alert.resolved_at = datetime.now()
-    alert.resolved_by = current_user.get('user_id')
+    alert.resolved_by = current_user.get("user_id")
 
     db.commit()
     db.refresh(alert)
@@ -306,10 +311,10 @@ async def dismiss_alert(
 
 # ==================== Alert Generation Endpoints ====================
 
+
 @router.post("/generate/check-all")
 async def generate_all_alerts(
-    client_id: Optional[str] = Query(None, description="Check for specific client"),
-    db: Session = Depends(get_db)
+    client_id: Optional[str] = Query(None, description="Check for specific client"), db: Session = Depends(get_db)
 ):
     """
     Run all alert checks and generate new alerts
@@ -360,25 +365,19 @@ async def generate_all_alerts(
         "status": "completed",
         "alerts_generated": len(generated_alerts),
         "alerts": [AlertResponse.model_validate(a) for a in generated_alerts],
-        "errors": errors if errors else None
+        "errors": errors if errors else None,
     }
 
 
 @router.post("/generate/otd-risk", response_model=List[AlertResponse])
-async def check_otd_risk_alerts(
-    client_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
+async def check_otd_risk_alerts(client_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """Check for OTD risk alerts on pending work orders"""
     alerts = _check_otd_alerts(db, client_id)
     return [AlertResponse.model_validate(a) for a in alerts]
 
 
 @router.post("/generate/quality", response_model=List[AlertResponse])
-async def check_quality_alerts(
-    client_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
+async def check_quality_alerts(client_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """Check for quality KPI alerts"""
     thresholds = {t.kpi_key: t for t in db.query(KPIThreshold).all()}
     alerts = _check_quality_alerts(db, client_id, thresholds)
@@ -392,7 +391,7 @@ async def check_capacity_alerts(
     overtime_hours_needed: Optional[Decimal] = Query(None),
     bottleneck_station: Optional[str] = Query(None),
     client_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Check for capacity planning alerts
@@ -403,7 +402,7 @@ async def check_capacity_alerts(
         load_percent=load_percent,
         predicted_idle_days=predicted_idle_days,
         overtime_hours_needed=overtime_hours_needed,
-        bottleneck_station=bottleneck_station
+        bottleneck_station=bottleneck_station,
     )
 
     if not result:
@@ -412,16 +411,16 @@ async def check_capacity_alerts(
     # Create the alert
     alert = Alert(
         alert_id=generate_alert_id(),
-        category='capacity',
+        category="capacity",
         severity=result.severity,
-        status='active',
+        status="active",
         title=result.title,
         message=result.message,
         recommendation=result.recommendation,
         client_id=client_id,
-        kpi_key='load_percent',
+        kpi_key="load_percent",
         current_value=float(load_percent),
-        alert_metadata=result.metadata
+        alert_metadata=result.metadata,
     )
 
     db.add(alert)
@@ -433,26 +432,19 @@ async def check_capacity_alerts(
 
 # ==================== Alert Configuration ====================
 
+
 @router.get("/config/", response_model=List[AlertConfigResponse])
-async def list_alert_configs(
-    client_id: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
-):
+async def list_alert_configs(client_id: Optional[str] = Query(None), db: Session = Depends(get_db)):
     """List alert configurations"""
     query = db.query(AlertConfig)
     if client_id:
-        query = query.filter(
-            (AlertConfig.client_id == client_id) | (AlertConfig.client_id.is_(None))
-        )
+        query = query.filter((AlertConfig.client_id == client_id) | (AlertConfig.client_id.is_(None)))
     configs = query.all()
     return [AlertConfigResponse.model_validate(c) for c in configs]
 
 
 @router.post("/config/", response_model=AlertConfigResponse)
-async def create_alert_config(
-    config_data: AlertConfigCreate,
-    db: Session = Depends(get_db)
-):
+async def create_alert_config(config_data: AlertConfigCreate, db: Session = Depends(get_db)):
     """Create alert configuration"""
     config = AlertConfig(
         config_id=f"ACF-{uuid.uuid4().hex[:8].upper()}",
@@ -463,7 +455,7 @@ async def create_alert_config(
         critical_threshold=float(config_data.critical_threshold) if config_data.critical_threshold else None,
         notification_email=config_data.notification_email,
         notification_sms=config_data.notification_sms,
-        check_frequency_minutes=config_data.check_frequency_minutes
+        check_frequency_minutes=config_data.check_frequency_minutes,
     )
 
     db.add(config)
@@ -475,11 +467,10 @@ async def create_alert_config(
 
 # ==================== Alert History & Accuracy ====================
 
+
 @router.get("/history/accuracy")
 async def get_prediction_accuracy(
-    days: int = Query(30, ge=7, le=365),
-    category: Optional[AlertCategory] = Query(None),
-    db: Session = Depends(get_db)
+    days: int = Query(30, ge=7, le=365), category: Optional[AlertCategory] = Query(None), db: Session = Depends(get_db)
 ):
     """
     Get historical accuracy of prediction-based alerts
@@ -488,10 +479,7 @@ async def get_prediction_accuracy(
     """
     from_date = datetime.now() - timedelta(days=days)
 
-    query = db.query(AlertHistory).filter(
-        AlertHistory.created_at >= from_date,
-        AlertHistory.actual_value.isnot(None)
-    )
+    query = db.query(AlertHistory).filter(AlertHistory.created_at >= from_date, AlertHistory.actual_value.isnot(None))
 
     if category:
         query = query.join(Alert).filter(Alert.category == category.value)
@@ -503,7 +491,7 @@ async def get_prediction_accuracy(
             "period_days": days,
             "total_predictions": 0,
             "accuracy_metrics": None,
-            "message": "No prediction history available for this period"
+            "message": "No prediction history available for this period",
         }
 
     # Calculate accuracy metrics
@@ -520,11 +508,12 @@ async def get_prediction_accuracy(
         "accurate_predictions": accurate_count,
         "accuracy_rate_percent": round(accuracy_rate, 2),
         "average_error_percent": round(avg_error, 2),
-        "category": category.value if category else "all"
+        "category": category.value if category else "all",
     }
 
 
 # ==================== Helper Functions ====================
+
 
 def _check_efficiency_alerts(db: Session, client_id: Optional[str], thresholds: dict) -> List[Alert]:
     """Check efficiency KPI and generate alerts"""
@@ -541,8 +530,7 @@ def _check_otd_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
 
     # Query pending work orders (ACTIVE status)
     query = db.query(WorkOrder).filter(
-        WorkOrder.status == WorkOrderStatus.ACTIVE,
-        WorkOrder.planned_ship_date.isnot(None)
+        WorkOrder.status == WorkOrderStatus.ACTIVE, WorkOrder.planned_ship_date.isnot(None)
     )
 
     if client_id:
@@ -586,33 +574,33 @@ def _check_otd_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
             due_date=due_date,
             current_completion_percent=current_completion,
             planned_completion_percent=planned_completion,
-            days_remaining=days_remaining
+            days_remaining=days_remaining,
         )
 
         if result and result.should_alert:
             # Check for existing active alert for this work order
-            existing = db.query(Alert).filter(
-                Alert.work_order_id == wo.work_order_id,
-                Alert.category == 'otd',
-                Alert.status == 'active'
-            ).first()
+            existing = (
+                db.query(Alert)
+                .filter(Alert.work_order_id == wo.work_order_id, Alert.category == "otd", Alert.status == "active")
+                .first()
+            )
 
             if not existing:
                 alert = Alert(
                     alert_id=generate_alert_id(),
-                    category='otd',
+                    category="otd",
                     severity=result.severity,
-                    status='active',
+                    status="active",
                     title=result.title,
                     message=result.message,
                     recommendation=result.recommendation,
                     client_id=wo.client_id,
-                    kpi_key='otd',
+                    kpi_key="otd",
                     work_order_id=wo.work_order_id,
                     current_value=float(current_completion),
                     threshold_value=float(planned_completion),
                     confidence=float(result.confidence) if result.confidence else None,
-                    alert_metadata=result.metadata
+                    alert_metadata=result.metadata,
                 )
                 db.add(alert)
                 alerts.append(alert)
@@ -647,25 +635,22 @@ def _check_hold_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
 
     # Find oldest pending hold
     oldest_hold = min(pending_holds, key=lambda h: h.created_at)
-    oldest_hours = int((datetime.now() - oldest_hold.created_at).total_seconds() / 3600) if oldest_hold.created_at else None
+    oldest_hours = (
+        int((datetime.now() - oldest_hold.created_at).total_seconds() / 3600) if oldest_hold.created_at else None
+    )
 
     # Count total holds (HoldEntry doesn't have quantity field, count records)
     total_units = len(pending_holds)
 
     result = generate_hold_alert(
-        pending_holds_count=len(pending_holds),
-        oldest_hold_hours=oldest_hours,
-        total_units_on_hold=total_units
+        pending_holds_count=len(pending_holds), oldest_hold_hours=oldest_hours, total_units_on_hold=total_units
     )
 
     if not result or not result.should_alert:
         return []
 
     # Check for existing active hold alert
-    existing = db.query(Alert).filter(
-        Alert.category == 'hold',
-        Alert.status == 'active'
-    ).first()
+    existing = db.query(Alert).filter(Alert.category == "hold", Alert.status == "active").first()
 
     if existing:
         # Update existing alert instead of creating new
@@ -678,15 +663,15 @@ def _check_hold_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
 
     alert = Alert(
         alert_id=generate_alert_id(),
-        category='hold',
+        category="hold",
         severity=result.severity,
-        status='active',
+        status="active",
         title=result.title,
         message=result.message,
         recommendation=result.recommendation,
         client_id=client_id,
-        kpi_key='hold_approval',
-        alert_metadata=result.metadata
+        kpi_key="hold_approval",
+        alert_metadata=result.metadata,
     )
 
     db.add(alert)

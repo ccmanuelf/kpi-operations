@@ -2,6 +2,7 @@
 Import Log ORM schema (SQLAlchemy)
 Tracks CSV and batch import operations for auditing
 """
+
 from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -9,6 +10,7 @@ from backend.database import Base
 
 class ImportLog(Base):
     """Import Log table for tracking all import operations"""
+
     __tablename__ = "import_log"
     __table_args__ = {"extend_existing": True}
 

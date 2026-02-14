@@ -52,21 +52,12 @@ class TestOperationSequenceValidation:
     def test_duplicate_steps_error(self, simple_schedule, simple_demand):
         """Test that duplicate step numbers cause an error."""
         operations = [
-            OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
-            OperationInput(
-                product="A", step=1, operation="Op2",  # Duplicate step
-                machine_tool="M2", sam_min=1.0
-            ),
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
+            OperationInput(product="A", step=1, operation="Op2", machine_tool="M2", sam_min=1.0),  # Duplicate step
         ]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=simple_demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=simple_demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         # Update demand to match operations
@@ -80,23 +71,16 @@ class TestOperationSequenceValidation:
     def test_gap_in_steps_error(self, simple_schedule):
         """Test that gaps in step sequence cause an error."""
         operations = [
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
             OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
-            OperationInput(
-                product="A", step=3, operation="Op3",  # Gap - step 2 missing
-                machine_tool="M2", sam_min=1.0
+                product="A", step=3, operation="Op3", machine_tool="M2", sam_min=1.0  # Gap - step 2 missing
             ),
         ]
 
         demand = [DemandInput(product="A", daily_demand=100)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)
@@ -111,10 +95,7 @@ class TestProductConsistencyValidation:
     def test_demand_without_operations_error(self, simple_schedule):
         """Test that demand for non-existent product causes error."""
         operations = [
-            OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
         ]
 
         demand = [
@@ -123,10 +104,7 @@ class TestProductConsistencyValidation:
         ]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)
@@ -137,23 +115,14 @@ class TestProductConsistencyValidation:
     def test_operations_without_demand_warning(self, simple_schedule):
         """Test that operations without demand cause warning."""
         operations = [
-            OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
-            OperationInput(
-                product="B", step=1, operation="Op1",  # No demand for B
-                machine_tool="M2", sam_min=1.0
-            ),
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
+            OperationInput(product="B", step=1, operation="Op1", machine_tool="M2", sam_min=1.0),  # No demand for B
         ]
 
         demand = [DemandInput(product="A", daily_demand=100)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)
@@ -169,14 +138,8 @@ class TestDemandValidation:
     def test_mix_driven_percentages_not_100_error(self, simple_schedule):
         """Test that mix percentages not summing to 100 causes error."""
         operations = [
-            OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
-            OperationInput(
-                product="B", step=1, operation="Op1",
-                machine_tool="M2", sam_min=1.0
-            ),
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
+            OperationInput(product="B", step=1, operation="Op1", machine_tool="M2", sam_min=1.0),
         ]
 
         demand = [
@@ -189,7 +152,7 @@ class TestDemandValidation:
             schedule=simple_schedule,
             demands=demand,
             mode=DemandMode.MIX_DRIVEN,
-            total_demand=500
+            total_demand=500,
         )
 
         report = validate_simulation_config(config)
@@ -200,21 +163,13 @@ class TestDemandValidation:
     def test_demand_driven_no_demand_warning(self, simple_schedule):
         """Test that products without demand in demand-driven mode get warning."""
         operations = [
-            OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
         ]
 
-        demand = [
-            DemandInput(product="A")  # No daily or weekly demand
-        ]
+        demand = [DemandInput(product="A")]  # No daily or weekly demand
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)
@@ -229,24 +184,20 @@ class TestMachineToolValidation:
     def test_similar_tool_names_warning(self, simple_schedule):
         """Test that similar tool names generate warning."""
         operations = [
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="Overlock 4-thread", sam_min=1.0),
             OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="Overlock 4-thread", sam_min=1.0
-            ),
-            OperationInput(
-                product="A", step=2, operation="Op2",
+                product="A",
+                step=2,
+                operation="Op2",
                 machine_tool="Overlock 4 thread",  # Very similar, likely typo
-                sam_min=1.0
+                sam_min=1.0,
             ),
         ]
 
         demand = [DemandInput(product="A", daily_demand=100)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)
@@ -260,12 +211,7 @@ class TestBreakdownValidation:
 
     def test_breakdown_for_nonexistent_machine_warning(self, simple_config):
         """Test that breakdown for unused machine generates warning."""
-        simple_config.breakdowns = [
-            BreakdownInput(
-                machine_tool="Nonexistent Machine",
-                breakdown_pct=5.0
-            )
-        ]
+        simple_config.breakdowns = [BreakdownInput(machine_tool="Nonexistent Machine", breakdown_pct=5.0)]
 
         report = validate_simulation_config(simple_config)
 
@@ -278,26 +224,17 @@ class TestScheduleValidation:
     def test_unused_shift_info(self):
         """Test that unused shifts generate info message."""
         schedule = ScheduleConfig(
-            shifts_enabled=2,
-            shift1_hours=8.0,
-            shift2_hours=0.0,  # Enabled but 0 hours
-            work_days=5
+            shifts_enabled=2, shift1_hours=8.0, shift2_hours=0.0, work_days=5  # Enabled but 0 hours
         )
 
         operations = [
-            OperationInput(
-                product="A", step=1, operation="Op1",
-                machine_tool="M1", sam_min=1.0
-            ),
+            OperationInput(product="A", step=1, operation="Op1", machine_tool="M1", sam_min=1.0),
         ]
 
         demand = [DemandInput(product="A", daily_demand=100)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demand,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=schedule, demands=demand, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)
@@ -315,21 +252,12 @@ class TestConfigurationLimits:
         demands = []
         for i in range(6):
             operations.append(
-                OperationInput(
-                    product=f"PRODUCT_{i}",
-                    step=1,
-                    operation="Op1",
-                    machine_tool="M1",
-                    sam_min=1.0
-                )
+                OperationInput(product=f"PRODUCT_{i}", step=1, operation="Op1", machine_tool="M1", sam_min=1.0)
             )
             demands.append(DemandInput(product=f"PRODUCT_{i}", daily_demand=100))
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=simple_schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=simple_schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN
         )
 
         report = validate_simulation_config(config)

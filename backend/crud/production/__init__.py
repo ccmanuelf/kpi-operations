@@ -38,16 +38,16 @@ from backend.crud.production.kpi import (
 
 __all__ = [
     # Core
-    'create_production_entry',
-    'get_production_entry',
-    'update_production_entry',
-    'delete_production_entry',
-    '_calculate_entry_kpis',
+    "create_production_entry",
+    "get_production_entry",
+    "update_production_entry",
+    "delete_production_entry",
+    "_calculate_entry_kpis",
     # Queries
-    'get_production_entries',
-    'get_daily_summary',
+    "get_production_entries",
+    "get_daily_summary",
     # Batch
-    'batch_create_entries',
+    "batch_create_entries",
     # KPI
-    'get_production_entry_with_details',
+    "get_production_entry_with_details",
 ]

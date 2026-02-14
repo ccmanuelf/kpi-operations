@@ -3,13 +3,13 @@
 
 # Core Framework
 fastapi==0.129.0
-uvicorn[standard]==0.39.0
+uvicorn[standard]==0.40.0
 pydantic==2.12.5
 pydantic-settings==2.12.0
 
 # Database
 sqlalchemy==2.0.46
-pymysql==1.1.0
+pymysql==1.1.2
 cryptography==46.0.5
 alembic==1.18.4
 
@@ -19,7 +19,7 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.22
 
 # CORS & Security
-python-dotenv==1.0.1
+python-dotenv==1.2.1
 slowapi==0.1.9
 
 # CSV / Excel Processing
@@ -29,11 +29,11 @@ openpyxl==3.1.5
 reportlab==4.4.10
 
 # Email & Reports
-sendgrid==6.11.0
+sendgrid==6.12.5
 APScheduler==3.11.2
 
 # System Monitoring
-psutil==7.2.1
+psutil==7.2.2
 
 # QR Code Generation
 qrcode[pil]==8.2

@@ -3,6 +3,7 @@ CRUD operations for Filter History
 Track recently applied filters for a user
 SECURITY: All operations enforce user ownership
 """
+
 from typing import List
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -12,11 +13,7 @@ from backend.schemas.saved_filter import FilterHistory
 from backend.models.filters import FilterConfig
 
 
-def _cleanup_old_history(
-    db: Session,
-    user_id: str,
-    max_entries: int = 50
-) -> None:
+def _cleanup_old_history(db: Session, user_id: str, max_entries: int = 50) -> None:
     """
     Internal: Remove oldest history entries beyond max_entries
 
@@ -26,36 +23,28 @@ def _cleanup_old_history(
         max_entries: Maximum entries to keep
     """
     # Get IDs of entries to keep (fetch as list to avoid SQLAlchemy subquery coercion warning)
-    keep_ids_query = db.query(FilterHistory.history_id).filter(
-        FilterHistory.user_id == user_id
-    ).order_by(
-        FilterHistory.applied_at.desc()
-    ).limit(max_entries)
+    keep_ids_query = (
+        db.query(FilterHistory.history_id)
+        .filter(FilterHistory.user_id == user_id)
+        .order_by(FilterHistory.applied_at.desc())
+        .limit(max_entries)
+    )
 
     keep_ids = [row.history_id for row in keep_ids_query.all()]
 
     # Delete entries not in keep list
     if keep_ids:
         db.query(FilterHistory).filter(
-            and_(
-                FilterHistory.user_id == user_id,
-                ~FilterHistory.history_id.in_(keep_ids)
-            )
-        ).delete(synchronize_session='fetch')
+            and_(FilterHistory.user_id == user_id, ~FilterHistory.history_id.in_(keep_ids))
+        ).delete(synchronize_session="fetch")
     else:
         # If no entries to keep, delete all for user
-        db.query(FilterHistory).filter(
-            FilterHistory.user_id == user_id
-        ).delete(synchronize_session='fetch')
+        db.query(FilterHistory).filter(FilterHistory.user_id == user_id).delete(synchronize_session="fetch")
 
     db.commit()
 
 
-def get_filter_history(
-    db: Session,
-    user_id: str,
-    limit: int = 10
-) -> List[FilterHistory]:
+def get_filter_history(db: Session, user_id: str, limit: int = 10) -> List[FilterHistory]:
     """
     Get recent filter history for a user
 
@@ -69,18 +58,16 @@ def get_filter_history(
     Returns:
         List of FilterHistory objects, most recent first
     """
-    return db.query(FilterHistory).filter(
-        FilterHistory.user_id == user_id
-    ).order_by(
-        FilterHistory.applied_at.desc()
-    ).limit(limit).all()
+    return (
+        db.query(FilterHistory)
+        .filter(FilterHistory.user_id == user_id)
+        .order_by(FilterHistory.applied_at.desc())
+        .limit(limit)
+        .all()
+    )
 
 
-def add_to_filter_history(
-    db: Session,
-    user_id: str,
-    filter_config: FilterConfig
-) -> FilterHistory:
+def add_to_filter_history(db: Session, user_id: str, filter_config: FilterConfig) -> FilterHistory:
     """
     Add a filter configuration to history
 
@@ -98,9 +85,7 @@ def add_to_filter_history(
     """
     # Create history entry
     history_entry = FilterHistory(
-        user_id=user_id,
-        filter_config=filter_config.to_json_string(),
-        applied_at=datetime.utcnow()
+        user_id=user_id, filter_config=filter_config.to_json_string(), applied_at=datetime.utcnow()
     )
 
     db.add(history_entry)
@@ -113,10 +98,7 @@ def add_to_filter_history(
     return history_entry
 
 
-def clear_filter_history(
-    db: Session,
-    user_id: str
-) -> int:
+def clear_filter_history(db: Session, user_id: str) -> int:
     """
     Clear all filter history for a user
 
@@ -129,9 +111,7 @@ def clear_filter_history(
     Returns:
         Number of entries deleted
     """
-    result = db.query(FilterHistory).filter(
-        FilterHistory.user_id == user_id
-    ).delete()
+    result = db.query(FilterHistory).filter(FilterHistory.user_id == user_id).delete()
 
     db.commit()
 

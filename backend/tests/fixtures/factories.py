@@ -3,6 +3,7 @@ Test Data Factory
 Provides factory functions for creating test data with proper FK relationships.
 Uses real database transactions instead of mocks.
 """
+
 import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -11,24 +12,31 @@ from sqlalchemy.orm import Session
 
 # Import all schemas
 from backend.schemas import (
-    Client, ClientType,
-    User, UserRole,
+    Client,
+    ClientType,
+    User,
+    UserRole,
     Employee,
     FloatingPool,
-    WorkOrder, WorkOrderStatus,
+    WorkOrder,
+    WorkOrderStatus,
     Job,
     PartOpportunities,
     Product,
     Shift,
     ProductionEntry,
-    HoldEntry, HoldStatus,
+    HoldEntry,
+    HoldStatus,
     DowntimeEntry,
-    AttendanceEntry, AbsenceType,
+    AttendanceEntry,
+    AbsenceType,
     CoverageEntry,
     QualityEntry,
-    DefectDetail, DefectType,
+    DefectDetail,
+    DefectType,
     DefectTypeCatalog,
-    SavedFilter, FilterHistory,
+    SavedFilter,
+    FilterHistory,
     WorkflowTransitionLog,
 )
 from backend.auth.jwt import get_password_hash
@@ -71,7 +79,7 @@ class TestDataFactory:
         client_name: Optional[str] = None,
         client_type: ClientType = ClientType.HOURLY_RATE,
         is_active: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Client:
         """Create a test client with minimal required fields"""
         if client_id is None:
@@ -101,7 +109,7 @@ class TestDataFactory:
         role: str = "operator",
         client_id: Optional[str] = None,
         is_active: bool = True,
-        **kwargs
+        **kwargs,
     ) -> User:
         """Create a test user with hashed password"""
         if username is None:
@@ -134,7 +142,7 @@ class TestDataFactory:
         employee_code: Optional[str] = None,
         is_floating_pool: bool = False,
         is_active: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Employee:
         """Create a test employee"""
         if employee_code is None:
@@ -164,7 +172,7 @@ class TestDataFactory:
         employee_id: int,
         client_id: Optional[str] = None,
         current_assignment: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> FloatingPool:
         """Create a floating pool availability entry"""
         assignment = FloatingPool(
@@ -190,7 +198,7 @@ class TestDataFactory:
         product_code: Optional[str] = None,
         product_name: Optional[str] = None,
         ideal_cycle_time: Optional[Decimal] = Decimal("0.15"),
-        **kwargs
+        **kwargs,
     ) -> Product:
         """Create a test product scoped to a client"""
         if product_code is None:
@@ -218,13 +226,14 @@ class TestDataFactory:
         shift_name: Optional[str] = None,
         start_time: str = "06:00:00",
         end_time: str = "14:00:00",
-        **kwargs
+        **kwargs,
     ) -> Shift:
         """Create a test shift scoped to a client"""
         if shift_name is None:
             shift_name = f"Shift {TestDataFactory._next_int('shift')}"
 
         from datetime import time
+
         start = time.fromisoformat(start_time)
         end = time.fromisoformat(end_time)
 
@@ -251,7 +260,7 @@ class TestDataFactory:
         style_model: Optional[str] = None,
         status: WorkOrderStatus = WorkOrderStatus.RECEIVED,
         planned_quantity: int = 1000,
-        **kwargs
+        **kwargs,
     ) -> WorkOrder:
         """Create a test work order"""
         if work_order_id is None:
@@ -283,7 +292,7 @@ class TestDataFactory:
         job_id: Optional[str] = None,
         part_number: Optional[str] = None,
         quantity_required: int = 100,
-        **kwargs
+        **kwargs,
     ) -> Job:
         """Create a test job under a work order"""
         if job_id is None:
@@ -308,11 +317,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_part_opportunities(
-        db: Session,
-        part_number: str,
-        client_id: str,
-        opportunities_per_unit: int = 10,
-        **kwargs
+        db: Session, part_number: str, client_id: str, opportunities_per_unit: int = 10, **kwargs
     ) -> PartOpportunities:
         """Create part opportunities (defect opportunities per unit)"""
         part_opp = PartOpportunities(
@@ -338,7 +343,7 @@ class TestDataFactory:
         entered_by: str,
         production_date: Optional[date] = None,
         units_produced: int = 1000,
-        **kwargs
+        **kwargs,
     ) -> ProductionEntry:
         """Create a production entry with real data"""
         if production_date is None:
@@ -385,10 +390,11 @@ class TestDataFactory:
         created_by: str,
         hold_reason: str = "QUALITY_ISSUE",
         hold_status: HoldStatus = HoldStatus.PENDING_HOLD_APPROVAL,
-        **kwargs
+        **kwargs,
     ) -> HoldEntry:
         """Create a hold entry"""
         from backend.schemas.hold_entry import HoldReason
+
         hold_id = TestDataFactory._next_id("HOLD")
 
         hold = HoldEntry(
@@ -417,7 +423,7 @@ class TestDataFactory:
         downtime_reason: str = "EQUIPMENT_FAILURE",
         shift_date: Optional[datetime] = None,
         duration_minutes: int = 60,
-        **kwargs
+        **kwargs,
     ) -> DowntimeEntry:
         """Create a downtime entry"""
         entry_id = TestDataFactory._next_id("DT")
@@ -447,12 +453,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_attendance_entry(
-        db: Session,
-        employee_id: int,
-        client_id: str,
-        shift_id: int,
-        shift_date: Optional[date] = None,
-        **kwargs
+        db: Session, employee_id: int, client_id: str, shift_id: int, shift_date: Optional[date] = None, **kwargs
     ) -> AttendanceEntry:
         """Create an attendance entry"""
         if shift_date is None:
@@ -462,6 +463,7 @@ class TestDataFactory:
 
         # Convert date to datetime for shift_date field
         from datetime import datetime
+
         shift_datetime = datetime.combine(shift_date, datetime.min.time())
 
         entry = AttendanceEntry(
@@ -484,11 +486,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_coverage_entry(
-        db: Session,
-        shift_id: int,
-        client_id: str,
-        coverage_date: Optional[date] = None,
-        **kwargs
+        db: Session, shift_id: int, client_id: str, coverage_date: Optional[date] = None, **kwargs
     ) -> CoverageEntry:
         """Create a shift coverage entry"""
         if coverage_date is None:
@@ -521,7 +519,7 @@ class TestDataFactory:
         inspector_id: str,
         inspection_date: Optional[date] = None,
         units_inspected: int = 1000,
-        **kwargs
+        **kwargs,
     ) -> QualityEntry:
         """Create a quality entry"""
         if inspection_date is None:
@@ -557,7 +555,7 @@ class TestDataFactory:
         quality_entry_id: str,
         defect_type: DefectType = DefectType.STITCHING,
         defect_count: int = 1,
-        **kwargs
+        **kwargs,
     ) -> DefectDetail:
         """Create a defect detail record"""
         detail_id = TestDataFactory._next_id("DD")
@@ -577,11 +575,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_defect_type_catalog(
-        db: Session,
-        client_id: str,
-        defect_code: Optional[str] = None,
-        defect_name: Optional[str] = None,
-        **kwargs
+        db: Session, client_id: str, defect_code: Optional[str] = None, defect_name: Optional[str] = None, **kwargs
     ) -> DefectTypeCatalog:
         """Create a defect type catalog entry"""
         if defect_code is None:
@@ -612,7 +606,7 @@ class TestDataFactory:
         filter_name: Optional[str] = None,
         filter_type: str = "production",
         filter_criteria: Optional[dict] = None,
-        **kwargs
+        **kwargs,
     ) -> SavedFilter:
         """Create a saved filter"""
         if filter_name is None:
@@ -621,6 +615,7 @@ class TestDataFactory:
             filter_criteria = {"status": "active", "date_range": "last_7_days"}
 
         import json
+
         saved_filter = SavedFilter(
             user_id=user_id,
             filter_name=filter_name,
@@ -645,7 +640,7 @@ class TestDataFactory:
         to_status: str,
         transitioned_by: str,
         client_id: str,
-        **kwargs
+        **kwargs,
     ) -> WorkflowTransitionLog:
         """Create a workflow transition log"""
         log_id = TestDataFactory._next_id("TRANS")
@@ -671,11 +666,7 @@ class TestDataFactory:
 
     @classmethod
     def create_production_entries(
-        cls,
-        db: Session,
-        count: int = 10,
-        client_id: str = "CLIENT-A",
-        base_date: Optional[date] = None
+        cls, db: Session, count: int = 10, client_id: str = "CLIENT-A", base_date: Optional[date] = None
     ) -> List[ProductionEntry]:
         """
         Backwards-compatible method for creating production entries.
@@ -683,24 +674,28 @@ class TestDataFactory:
         """
         # Ensure we have a client
         from backend.schemas import Client, ClientType
+
         client = db.query(Client).filter(Client.client_id == client_id).first()
         if not client:
             client = cls.create_client(db, client_id=client_id)
 
         # Create or get product for this client
         from backend.schemas import Product
+
         product = db.query(Product).filter(Product.client_id == client_id).first()
         if not product:
             product = cls.create_product(db, client_id=client_id)
 
         # Create or get shift for this client
         from backend.schemas import Shift
+
         shift = db.query(Shift).filter(Shift.client_id == client_id).first()
         if not shift:
             shift = cls.create_shift(db, client_id=client_id)
 
         # Create or get user
         from backend.schemas import User
+
         user = db.query(User).filter(User.client_id_assigned == client_id).first()
         if not user:
             user = cls.create_user(db, client_id=client_id, role="supervisor")
@@ -714,7 +709,7 @@ class TestDataFactory:
             shift_id=shift.shift_id,
             entered_by=user.user_id,
             count=count,
-            base_date=base_date
+            base_date=base_date,
         )
 
     @classmethod
@@ -727,7 +722,7 @@ class TestDataFactory:
         entered_by: str,
         count: int = 10,
         base_date: Optional[date] = None,
-        work_order_ids: Optional[List[str]] = None
+        work_order_ids: Optional[List[str]] = None,
     ) -> List[ProductionEntry]:
         """Create multiple production entries over consecutive days"""
         if base_date is None:
@@ -756,11 +751,7 @@ class TestDataFactory:
 
     @classmethod
     def create_quality_inspections(
-        cls,
-        db: Session,
-        count: int = 10,
-        client_id: str = "CLIENT-A",
-        defect_rate: float = 0.005
+        cls, db: Session, count: int = 10, client_id: str = "CLIENT-A", defect_rate: float = 0.005
     ) -> List[QualityEntry]:
         """
         Backwards-compatible method for creating quality inspections.
@@ -769,18 +760,21 @@ class TestDataFactory:
         """
         # Ensure we have a client
         from backend.schemas import Client, ClientType
+
         client = db.query(Client).filter(Client.client_id == client_id).first()
         if not client:
             client = cls.create_client(db, client_id=client_id)
 
         # Create or get user
         from backend.schemas import User
+
         user = db.query(User).filter(User.client_id_assigned == client_id).first()
         if not user:
             user = cls.create_user(db, client_id=client_id, role="supervisor")
 
         # Create or get work order
         from backend.schemas import WorkOrder
+
         work_order = db.query(WorkOrder).filter(WorkOrder.client_id == client_id).first()
         if not work_order:
             work_order = cls.create_work_order(db, client_id=client_id)
@@ -817,7 +811,7 @@ class TestDataFactory:
         inspector_id: str,
         count: int = 10,
         base_date: Optional[date] = None,
-        defect_rate: float = 0.005
+        defect_rate: float = 0.005,
     ) -> List[QualityEntry]:
         """Create multiple quality entries with realistic defect rates"""
         if base_date is None:
@@ -850,10 +844,11 @@ class TestDataFactory:
         shift_id: int,
         count: int = 30,
         base_date: Optional[date] = None,
-        attendance_rate: float = 0.95
+        attendance_rate: float = 0.95,
     ) -> List[AttendanceEntry]:
         """Create multiple attendance entries with realistic attendance patterns"""
         import random
+
         if base_date is None:
             base_date = date.today() - timedelta(days=count)
 

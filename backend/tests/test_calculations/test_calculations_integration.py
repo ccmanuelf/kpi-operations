@@ -2,6 +2,7 @@
 Integration Tests for Calculation Modules
 These tests exercise actual code paths for increased coverage
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -56,10 +57,7 @@ class TestEfficiencyIntegration:
         from calculations.efficiency import InferredEmployees
 
         inferred = InferredEmployees(
-            count=5,
-            is_inferred=True,
-            inference_source="historical_shift_avg",
-            confidence_score=0.5
+            count=5, is_inferred=True, inference_source="historical_shift_avg", confidence_score=0.5
         )
 
         assert inferred.count == 5
@@ -171,14 +169,7 @@ class TestQualityMetricsIntegration:
     def test_sigma_level_calculation(self):
         """Test sigma level estimation from DPMO"""
         # Approximate sigma levels
-        dpmo_to_sigma = {
-            3.4: 6.0,  # Six Sigma
-            233: 5.0,
-            6210: 4.0,
-            66807: 3.0,
-            308538: 2.0,
-            690000: 1.0
-        }
+        dpmo_to_sigma = {3.4: 6.0, 233: 5.0, 6210: 4.0, 66807: 3.0, 308538: 2.0, 690000: 1.0}  # Six Sigma
 
         # Test that DPMO of 6210 corresponds to approximately 4 sigma
         dpmo = 6210
@@ -265,10 +256,7 @@ class TestOTDIntegration:
         from calculations.otd import InferredDate
 
         inferred = InferredDate(
-            date=date(2024, 2, 15),
-            is_inferred=True,
-            inference_source="required_date+lead_time",
-            confidence_score=0.7
+            date=date(2024, 2, 15), is_inferred=True, inference_source="required_date+lead_time", confidence_score=0.7
         )
 
         assert inferred.date == date(2024, 2, 15)
@@ -300,7 +288,7 @@ class TestAbsenteeismIntegration:
         spells = 3  # Three separate absence instances
         total_days = 5  # Total 5 days absent
 
-        bradford = spells ** 2 * total_days
+        bradford = spells**2 * total_days
 
         assert bradford == 45  # 9 x 5
 
@@ -310,7 +298,7 @@ class TestAbsenteeismIntegration:
         spells = 1
         total_days = 10
 
-        bradford = spells ** 2 * total_days
+        bradford = spells**2 * total_days
 
         assert bradford == 10  # 1 x 10
 
@@ -320,7 +308,7 @@ class TestAbsenteeismIntegration:
         spells = 10  # Ten separate one-day absences
         total_days = 10
 
-        bradford = spells ** 2 * total_days
+        bradford = spells**2 * total_days
 
         assert bradford == 1000  # 100 x 10
 
@@ -342,6 +330,7 @@ class TestWIPAgingIntegration:
 
     def test_aging_bucket_classification(self):
         """Test WIP aging bucket classification"""
+
         def get_aging_bucket(days):
             if days <= 7:
                 return "0-7 days"
@@ -382,7 +371,7 @@ class TestTrendAnalysisIntegration:
 
         moving_averages = []
         for i in range(len(data) - window + 1):
-            avg = sum(data[i:i+window]) / window
+            avg = sum(data[i : i + window]) / window
             moving_averages.append(round(avg, 2))
 
         assert moving_averages == [105.0, 110.0, 113.33]
@@ -405,10 +394,10 @@ class TestTrendAnalysisIntegration:
         sum_x = sum(range(n))
         sum_y = sum(data)
         sum_xy = sum(i * y for i, y in enumerate(data))
-        sum_x2 = sum(i ** 2 for i in range(n))
+        sum_x2 = sum(i**2 for i in range(n))
 
         # slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x^2)
-        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x ** 2)
+        slope = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x**2)
 
         assert slope == 5.0  # Each period increases by 5
 

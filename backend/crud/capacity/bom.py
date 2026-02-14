@@ -6,6 +6,7 @@ details (components) for MRP explosion and component availability.
 
 Multi-tenant: All operations enforce client_id isolation.
 """
+
 from typing import List, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -19,6 +20,7 @@ from backend.utils.tenant_guard import ensure_client_id
 # BOM Header Operations
 # ============================================================================
 
+
 def create_bom_header(
     db: Session,
     client_id: str,
@@ -27,7 +29,7 @@ def create_bom_header(
     style_code: Optional[str] = None,
     revision: str = "1.0",
     is_active: bool = True,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> CapacityBOMHeader:
     """
     Create a new BOM header.
@@ -54,7 +56,7 @@ def create_bom_header(
         style_code=style_code,
         revision=revision,
         is_active=is_active,
-        notes=notes
+        notes=notes,
     )
     db.add(header)
     db.commit()
@@ -63,11 +65,7 @@ def create_bom_header(
 
 
 def get_bom_headers(
-    db: Session,
-    client_id: str,
-    skip: int = 0,
-    limit: int = 100,
-    include_inactive: bool = False
+    db: Session, client_id: str, skip: int = 0, limit: int = 100, include_inactive: bool = False
 ) -> List[CapacityBOMHeader]:
     """
     Get all BOM headers for a client.
@@ -84,9 +82,7 @@ def get_bom_headers(
     """
     ensure_client_id(client_id, "BOM headers query")
 
-    query = db.query(CapacityBOMHeader).filter(
-        CapacityBOMHeader.client_id == client_id
-    )
+    query = db.query(CapacityBOMHeader).filter(CapacityBOMHeader.client_id == client_id)
 
     if not include_inactive:
         query = query.filter(CapacityBOMHeader.is_active == True)
@@ -94,11 +90,7 @@ def get_bom_headers(
     return query.order_by(CapacityBOMHeader.parent_item_code).offset(skip).limit(limit).all()
 
 
-def get_bom_header(
-    db: Session,
-    client_id: str,
-    header_id: int
-) -> Optional[CapacityBOMHeader]:
+def get_bom_header(db: Session, client_id: str, header_id: int) -> Optional[CapacityBOMHeader]:
     """
     Get a specific BOM header by ID.
 
@@ -111,19 +103,15 @@ def get_bom_header(
         CapacityBOMHeader or None if not found
     """
     ensure_client_id(client_id, "BOM header query")
-    return db.query(CapacityBOMHeader).filter(
-        and_(
-            CapacityBOMHeader.client_id == client_id,
-            CapacityBOMHeader.id == header_id
-        )
-    ).first()
+    return (
+        db.query(CapacityBOMHeader)
+        .filter(and_(CapacityBOMHeader.client_id == client_id, CapacityBOMHeader.id == header_id))
+        .first()
+    )
 
 
 def get_bom_header_by_item(
-    db: Session,
-    client_id: str,
-    parent_item_code: str,
-    active_only: bool = True
+    db: Session, client_id: str, parent_item_code: str, active_only: bool = True
 ) -> Optional[CapacityBOMHeader]:
     """
     Get BOM header by parent item code.
@@ -139,25 +127,15 @@ def get_bom_header_by_item(
     """
     ensure_client_id(client_id, "BOM header query")
 
-    filters = [
-        CapacityBOMHeader.client_id == client_id,
-        CapacityBOMHeader.parent_item_code == parent_item_code
-    ]
+    filters = [CapacityBOMHeader.client_id == client_id, CapacityBOMHeader.parent_item_code == parent_item_code]
 
     if active_only:
         filters.append(CapacityBOMHeader.is_active == True)
 
-    return db.query(CapacityBOMHeader).filter(
-        and_(*filters)
-    ).first()
+    return db.query(CapacityBOMHeader).filter(and_(*filters)).first()
 
 
-def update_bom_header(
-    db: Session,
-    client_id: str,
-    header_id: int,
-    **updates
-) -> Optional[CapacityBOMHeader]:
+def update_bom_header(db: Session, client_id: str, header_id: int, **updates) -> Optional[CapacityBOMHeader]:
     """
     Update a BOM header.
 
@@ -183,12 +161,7 @@ def update_bom_header(
     return header
 
 
-def delete_bom_header(
-    db: Session,
-    client_id: str,
-    header_id: int,
-    soft_delete: bool = True
-) -> bool:
+def delete_bom_header(db: Session, client_id: str, header_id: int, soft_delete: bool = True) -> bool:
     """
     Delete a BOM header (and cascade delete details if hard delete).
 
@@ -216,11 +189,7 @@ def delete_bom_header(
     return True
 
 
-def get_bom_for_style(
-    db: Session,
-    client_id: str,
-    style_code: str
-) -> Optional[CapacityBOMHeader]:
+def get_bom_for_style(db: Session, client_id: str, style_code: str) -> Optional[CapacityBOMHeader]:
     """
     Get active BOM for a style.
 
@@ -233,18 +202,23 @@ def get_bom_for_style(
         CapacityBOMHeader or None if not found
     """
     ensure_client_id(client_id, "BOM for style query")
-    return db.query(CapacityBOMHeader).filter(
-        and_(
-            CapacityBOMHeader.client_id == client_id,
-            CapacityBOMHeader.style_code == style_code,
-            CapacityBOMHeader.is_active == True
+    return (
+        db.query(CapacityBOMHeader)
+        .filter(
+            and_(
+                CapacityBOMHeader.client_id == client_id,
+                CapacityBOMHeader.style_code == style_code,
+                CapacityBOMHeader.is_active == True,
+            )
         )
-    ).first()
+        .first()
+    )
 
 
 # ============================================================================
 # BOM Detail Operations
 # ============================================================================
+
 
 def create_bom_detail(
     db: Session,
@@ -256,7 +230,7 @@ def create_bom_detail(
     unit_of_measure: str = "EA",
     waste_percentage: float = 0,
     component_type: Optional[str] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> Optional[CapacityBOMDetail]:
     """
     Create a new BOM detail.
@@ -292,7 +266,7 @@ def create_bom_detail(
         unit_of_measure=unit_of_measure,
         waste_percentage=Decimal(str(waste_percentage)),
         component_type=component_type,
-        notes=notes
+        notes=notes,
     )
     db.add(detail)
     db.commit()
@@ -300,11 +274,7 @@ def create_bom_detail(
     return detail
 
 
-def get_bom_details(
-    db: Session,
-    client_id: str,
-    header_id: int
-) -> List[CapacityBOMDetail]:
+def get_bom_details(db: Session, client_id: str, header_id: int) -> List[CapacityBOMDetail]:
     """
     Get all details for a BOM header.
 
@@ -317,19 +287,15 @@ def get_bom_details(
         List of CapacityBOMDetail entries
     """
     ensure_client_id(client_id, "BOM details query")
-    return db.query(CapacityBOMDetail).filter(
-        and_(
-            CapacityBOMDetail.client_id == client_id,
-            CapacityBOMDetail.header_id == header_id
-        )
-    ).order_by(CapacityBOMDetail.component_item_code).all()
+    return (
+        db.query(CapacityBOMDetail)
+        .filter(and_(CapacityBOMDetail.client_id == client_id, CapacityBOMDetail.header_id == header_id))
+        .order_by(CapacityBOMDetail.component_item_code)
+        .all()
+    )
 
 
-def get_bom_detail(
-    db: Session,
-    client_id: str,
-    detail_id: int
-) -> Optional[CapacityBOMDetail]:
+def get_bom_detail(db: Session, client_id: str, detail_id: int) -> Optional[CapacityBOMDetail]:
     """
     Get a specific BOM detail by ID.
 
@@ -342,20 +308,14 @@ def get_bom_detail(
         CapacityBOMDetail or None if not found
     """
     ensure_client_id(client_id, "BOM detail query")
-    return db.query(CapacityBOMDetail).filter(
-        and_(
-            CapacityBOMDetail.client_id == client_id,
-            CapacityBOMDetail.id == detail_id
-        )
-    ).first()
+    return (
+        db.query(CapacityBOMDetail)
+        .filter(and_(CapacityBOMDetail.client_id == client_id, CapacityBOMDetail.id == detail_id))
+        .first()
+    )
 
 
-def update_bom_detail(
-    db: Session,
-    client_id: str,
-    detail_id: int,
-    **updates
-) -> Optional[CapacityBOMDetail]:
+def update_bom_detail(db: Session, client_id: str, detail_id: int, **updates) -> Optional[CapacityBOMDetail]:
     """
     Update a BOM detail.
 
@@ -373,7 +333,7 @@ def update_bom_detail(
         return None
 
     # Convert float fields to Decimal
-    decimal_fields = ['quantity_per', 'waste_percentage']
+    decimal_fields = ["quantity_per", "waste_percentage"]
     for key, value in updates.items():
         if hasattr(detail, key) and value is not None:
             if key in decimal_fields:
@@ -385,11 +345,7 @@ def update_bom_detail(
     return detail
 
 
-def delete_bom_detail(
-    db: Session,
-    client_id: str,
-    detail_id: int
-) -> bool:
+def delete_bom_detail(db: Session, client_id: str, detail_id: int) -> bool:
     """
     Delete a BOM detail.
 
@@ -410,11 +366,7 @@ def delete_bom_detail(
     return True
 
 
-def get_details_by_component(
-    db: Session,
-    client_id: str,
-    component_item_code: str
-) -> List[CapacityBOMDetail]:
+def get_details_by_component(db: Session, client_id: str, component_item_code: str) -> List[CapacityBOMDetail]:
     """
     Get all BOM details where a component is used.
 
@@ -427,20 +379,16 @@ def get_details_by_component(
         List of CapacityBOMDetail entries using the component
     """
     ensure_client_id(client_id, "BOM details by component query")
-    return db.query(CapacityBOMDetail).filter(
-        and_(
-            CapacityBOMDetail.client_id == client_id,
-            CapacityBOMDetail.component_item_code == component_item_code
+    return (
+        db.query(CapacityBOMDetail)
+        .filter(
+            and_(CapacityBOMDetail.client_id == client_id, CapacityBOMDetail.component_item_code == component_item_code)
         )
-    ).all()
+        .all()
+    )
 
 
-def get_details_by_type(
-    db: Session,
-    client_id: str,
-    header_id: int,
-    component_type: str
-) -> List[CapacityBOMDetail]:
+def get_details_by_type(db: Session, client_id: str, header_id: int, component_type: str) -> List[CapacityBOMDetail]:
     """
     Get BOM details by component type.
 
@@ -454,21 +402,20 @@ def get_details_by_type(
         List of CapacityBOMDetail entries of the specified type
     """
     ensure_client_id(client_id, "BOM details by type query")
-    return db.query(CapacityBOMDetail).filter(
-        and_(
-            CapacityBOMDetail.client_id == client_id,
-            CapacityBOMDetail.header_id == header_id,
-            CapacityBOMDetail.component_type == component_type
+    return (
+        db.query(CapacityBOMDetail)
+        .filter(
+            and_(
+                CapacityBOMDetail.client_id == client_id,
+                CapacityBOMDetail.header_id == header_id,
+                CapacityBOMDetail.component_type == component_type,
+            )
         )
-    ).all()
+        .all()
+    )
 
 
-def calculate_required_components(
-    db: Session,
-    client_id: str,
-    header_id: int,
-    parent_quantity: int
-) -> List[dict]:
+def calculate_required_components(db: Session, client_id: str, header_id: int, parent_quantity: int) -> List[dict]:
     """
     Calculate required component quantities for a given parent quantity.
 
@@ -485,24 +432,23 @@ def calculate_required_components(
 
     requirements = []
     for detail in details:
-        requirements.append({
-            'component_item_code': detail.component_item_code,
-            'component_description': detail.component_description,
-            'component_type': detail.component_type,
-            'unit_of_measure': detail.unit_of_measure,
-            'quantity_per': float(detail.quantity_per),
-            'waste_percentage': float(detail.waste_percentage),
-            'required_quantity': detail.required_quantity(parent_quantity)
-        })
+        requirements.append(
+            {
+                "component_item_code": detail.component_item_code,
+                "component_description": detail.component_description,
+                "component_type": detail.component_type,
+                "unit_of_measure": detail.unit_of_measure,
+                "quantity_per": float(detail.quantity_per),
+                "waste_percentage": float(detail.waste_percentage),
+                "required_quantity": detail.required_quantity(parent_quantity),
+            }
+        )
 
     return requirements
 
 
 def bulk_create_bom_details(
-    db: Session,
-    client_id: str,
-    header_id: int,
-    details: List[dict]
+    db: Session, client_id: str, header_id: int, details: List[dict]
 ) -> List[CapacityBOMDetail]:
     """
     Bulk create BOM details for a header.
@@ -526,16 +472,12 @@ def bulk_create_bom_details(
     created = []
     for detail_data in details:
         # Convert float fields to Decimal
-        decimal_fields = ['quantity_per', 'waste_percentage']
+        decimal_fields = ["quantity_per", "waste_percentage"]
         for field in decimal_fields:
             if field in detail_data and detail_data[field] is not None:
                 detail_data[field] = Decimal(str(detail_data[field]))
 
-        detail = CapacityBOMDetail(
-            header_id=header_id,
-            client_id=client_id,
-            **detail_data
-        )
+        detail = CapacityBOMDetail(header_id=header_id, client_id=client_id, **detail_data)
         db.add(detail)
         created.append(detail)
 

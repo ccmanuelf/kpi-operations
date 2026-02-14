@@ -2,6 +2,7 @@
 Edge Case Tests: Authentication and Authorization
 Task #42: Comprehensive testing of auth boundary conditions and error scenarios
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -21,6 +22,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 # =============================================================================
 # Test Fixtures
 # =============================================================================
+
 
 @pytest.fixture(scope="function")
 def auth_db():
@@ -50,52 +52,30 @@ def auth_setup(auth_db):
 
     # Create multiple clients for isolation testing
     client_a = TestDataFactory.create_client(
-        db,
-        client_id="CLIENT-A",
-        client_name="Client A",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="CLIENT-A", client_name="Client A", client_type=ClientType.HOURLY_RATE
     )
     client_b = TestDataFactory.create_client(
-        db,
-        client_id="CLIENT-B",
-        client_name="Client B",
-        client_type=ClientType.PIECE_RATE
+        db, client_id="CLIENT-B", client_name="Client B", client_type=ClientType.PIECE_RATE
     )
 
     # Admin - full access
     admin = TestDataFactory.create_user(
-        db,
-        user_id="auth-admin-001",
-        username="auth_admin",
-        role="admin",
-        client_id=None
+        db, user_id="auth-admin-001", username="auth_admin", role="admin", client_id=None
     )
 
     # Supervisor for Client A only
     supervisor_a = TestDataFactory.create_user(
-        db,
-        user_id="auth-super-a",
-        username="supervisor_a",
-        role="supervisor",
-        client_id=client_a.client_id
+        db, user_id="auth-super-a", username="supervisor_a", role="supervisor", client_id=client_a.client_id
     )
 
     # Operator for Client A only
     operator_a = TestDataFactory.create_user(
-        db,
-        user_id="auth-oper-a",
-        username="operator_a",
-        role="operator",
-        client_id=client_a.client_id
+        db, user_id="auth-oper-a", username="operator_a", role="operator", client_id=client_a.client_id
     )
 
     # Inactive user
     inactive = TestDataFactory.create_user(
-        db,
-        user_id="auth-inactive",
-        username="inactive_user",
-        role="operator",
-        client_id=client_a.client_id
+        db, user_id="auth-inactive", username="inactive_user", role="operator", client_id=client_a.client_id
     )
     inactive.is_active = False
 
@@ -115,6 +95,7 @@ def auth_setup(auth_db):
 # =============================================================================
 # Role-Based Access Control Tests
 # =============================================================================
+
 
 class TestRoleBasedAccess:
     """Test role-based access control edge cases."""
@@ -198,6 +179,7 @@ class TestUserClientFilter:
 # User State Edge Cases
 # =============================================================================
 
+
 class TestUserStateEdgeCases:
     """Test user state edge cases."""
 
@@ -209,9 +191,7 @@ class TestUserStateEdgeCases:
         inactive = auth_setup["inactive"]
 
         # Create a valid token for the inactive user
-        token = create_access_token(
-            data={"sub": inactive.username, "role": inactive.role}
-        )
+        token = create_access_token(data={"sub": inactive.username, "role": inactive.role})
 
         # Should raise 403 for inactive user
         with pytest.raises(HTTPException) as exc_info:
@@ -231,7 +211,7 @@ class TestUserStateEdgeCases:
             user_id="no-client-user",
             username="no_client_user",
             role="operator",
-            client_id=None  # No client assigned
+            client_id=None,  # No client assigned
         )
         db.commit()
 
@@ -247,6 +227,7 @@ class TestUserStateEdgeCases:
 # =============================================================================
 # Multi-Tenant Isolation Tests
 # =============================================================================
+
 
 class TestMultiTenantIsolation:
     """Test multi-tenant data isolation."""
@@ -265,28 +246,28 @@ class TestMultiTenantIsolation:
             client_id=client_a.client_id,
             product_code="ISO-PROD-001",
             product_name="Isolation Test Product",
-            ideal_cycle_time=Decimal("0.10")
+            ideal_cycle_time=Decimal("0.10"),
         )
         product_b = TestDataFactory.create_product(
             db,
             client_id=client_b.client_id,
             product_code="ISO-PROD-001",
             product_name="Isolation Test Product",
-            ideal_cycle_time=Decimal("0.10")
+            ideal_cycle_time=Decimal("0.10"),
         )
         shift = TestDataFactory.create_shift(
             db,
             client_id=client_a.client_id,
             shift_name="Isolation Test Shift",
             start_time="06:00:00",
-            end_time="14:00:00"
+            end_time="14:00:00",
         )
         shift_b = TestDataFactory.create_shift(
             db,
             client_id=client_b.client_id,
             shift_name="Isolation Test Shift",
             start_time="06:00:00",
-            end_time="14:00:00"
+            end_time="14:00:00",
         )
         db.commit()
 
@@ -301,7 +282,7 @@ class TestMultiTenantIsolation:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="auth-super-a"
+            entered_by="auth-super-a",
         )
         entry_b = ProductionEntry(
             production_entry_id="ISO-B-001",
@@ -313,16 +294,14 @@ class TestMultiTenantIsolation:
             units_produced=200,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="auth-super-a"
+            entered_by="auth-super-a",
         )
 
         db.add_all([entry_a, entry_b])
         db.commit()
 
         # Query only Client A entries
-        client_a_entries = db.query(ProductionEntry).filter(
-            ProductionEntry.client_id == client_a.client_id
-        ).all()
+        client_a_entries = db.query(ProductionEntry).filter(ProductionEntry.client_id == client_a.client_id).all()
 
         assert len(client_a_entries) == 1
         assert client_a_entries[0].production_entry_id == "ISO-A-001"
@@ -341,23 +320,21 @@ class TestMultiTenantIsolation:
             client_id=client_a.client_id,
             style_model="STYLE-A",
             planned_quantity=100,
-            status=WorkOrderStatus.ACTIVE
+            status=WorkOrderStatus.ACTIVE,
         )
         wo_b = WorkOrder(
             work_order_id="WO-ISO-B-001",
             client_id=client_b.client_id,
             style_model="STYLE-B",
             planned_quantity=200,
-            status=WorkOrderStatus.ACTIVE
+            status=WorkOrderStatus.ACTIVE,
         )
 
         db.add_all([wo_a, wo_b])
         db.commit()
 
         # Query only Client A work orders
-        client_a_orders = db.query(WorkOrder).filter(
-            WorkOrder.client_id == client_a.client_id
-        ).all()
+        client_a_orders = db.query(WorkOrder).filter(WorkOrder.client_id == client_a.client_id).all()
 
         assert len(client_a_orders) == 1
         assert client_a_orders[0].work_order_id == "WO-ISO-A-001"
@@ -366,6 +343,7 @@ class TestMultiTenantIsolation:
 # =============================================================================
 # Permission Boundary Tests
 # =============================================================================
+
 
 class TestPermissionBoundaries:
     """Test permission boundary conditions."""
@@ -396,6 +374,7 @@ class TestPermissionBoundaries:
 # JWT Token Edge Cases
 # =============================================================================
 
+
 class TestJWTEdgeCases:
     """Test JWT token edge cases."""
 
@@ -404,7 +383,7 @@ class TestJWTEdgeCases:
         from backend.auth.jwt import decode_access_token
 
         # Create a token without 'sub' claim - should raise HTTPException
-        with patch('backend.auth.jwt.jwt.decode') as mock_decode:
+        with patch("backend.auth.jwt.jwt.decode") as mock_decode:
             mock_decode.return_value = {"exp": datetime.utcnow() + timedelta(hours=1)}  # No 'sub'
 
             with pytest.raises(HTTPException) as exc_info:
@@ -419,7 +398,7 @@ class TestJWTEdgeCases:
         from jose import JWTError
 
         # Patch jwt.decode to raise JWTError for expired token
-        with patch('backend.auth.jwt.jwt.decode') as mock_decode:
+        with patch("backend.auth.jwt.jwt.decode") as mock_decode:
             mock_decode.side_effect = JWTError("Token expired")
 
             with pytest.raises(HTTPException) as exc_info:
@@ -432,7 +411,7 @@ class TestJWTEdgeCases:
         from backend.auth.jwt import decode_access_token
         from jose import JWTError
 
-        with patch('backend.auth.jwt.jwt.decode') as mock_decode:
+        with patch("backend.auth.jwt.jwt.decode") as mock_decode:
             mock_decode.side_effect = JWTError("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
@@ -444,6 +423,7 @@ class TestJWTEdgeCases:
 # =============================================================================
 # Client ID Edge Cases
 # =============================================================================
+
 
 class TestClientIDEdgeCases:
     """Test client ID validation edge cases."""
@@ -488,6 +468,7 @@ class TestClientIDEdgeCases:
 # Cross-Client Access Tests
 # =============================================================================
 
+
 class TestCrossClientAccess:
     """Test prevention of cross-client data access."""
 
@@ -505,14 +486,14 @@ class TestCrossClientAccess:
             client_id=client_b.client_id,
             product_code="CROSS-PROD-001",
             product_name="Cross Client Product",
-            ideal_cycle_time=Decimal("0.10")
+            ideal_cycle_time=Decimal("0.10"),
         )
         shift = TestDataFactory.create_shift(
             db,
             client_id=client_b.client_id,
             shift_name="Cross Client Shift",
             start_time="06:00:00",
-            end_time="14:00:00"
+            end_time="14:00:00",
         )
         db.commit()
 
@@ -528,7 +509,7 @@ class TestCrossClientAccess:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by=supervisor_a.user_id
+            entered_by=supervisor_a.user_id,
         )
 
         # DB allows it (no FK constraint on user->client)
@@ -555,28 +536,20 @@ class TestCrossClientAccess:
             client_id=client_a.client_id,
             product_code="FILTER-PROD-001",
             product_name="Filter Test Product",
-            ideal_cycle_time=Decimal("0.10")
+            ideal_cycle_time=Decimal("0.10"),
         )
         product_b = TestDataFactory.create_product(
             db,
             client_id=client_b.client_id,
             product_code="FILTER-PROD-001",
             product_name="Filter Test Product",
-            ideal_cycle_time=Decimal("0.10")
+            ideal_cycle_time=Decimal("0.10"),
         )
         shift_a = TestDataFactory.create_shift(
-            db,
-            client_id=client_a.client_id,
-            shift_name="Filter Test Shift",
-            start_time="06:00:00",
-            end_time="14:00:00"
+            db, client_id=client_a.client_id, shift_name="Filter Test Shift", start_time="06:00:00", end_time="14:00:00"
         )
         shift_b = TestDataFactory.create_shift(
-            db,
-            client_id=client_b.client_id,
-            shift_name="Filter Test Shift",
-            start_time="06:00:00",
-            end_time="14:00:00"
+            db, client_id=client_b.client_id, shift_name="Filter Test Shift", start_time="06:00:00", end_time="14:00:00"
         )
         db.commit()
 
@@ -591,7 +564,7 @@ class TestCrossClientAccess:
             units_produced=100,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="auth-super-a"
+            entered_by="auth-super-a",
         )
         entry_b = ProductionEntry(
             production_entry_id="FILTER-B-001",
@@ -603,7 +576,7 @@ class TestCrossClientAccess:
             units_produced=200,
             run_time_hours=Decimal("8.0"),
             employees_assigned=5,
-            entered_by="auth-super-a"
+            entered_by="auth-super-a",
         )
 
         db.add_all([entry_a, entry_b])
@@ -614,9 +587,7 @@ class TestCrossClientAccess:
 
         if client_filter:
             # Query with filter
-            filtered_entries = db.query(ProductionEntry).filter(
-                ProductionEntry.client_id.in_(client_filter)
-            ).all()
+            filtered_entries = db.query(ProductionEntry).filter(ProductionEntry.client_id.in_(client_filter)).all()
 
             # Should only see Client A entries
             assert all(e.client_id == client_a.client_id for e in filtered_entries)

@@ -20,6 +20,7 @@ KPI Types Supported:
 9. Absenteeism - Absenteeism rate percentage
 10. OTD - On-Time Delivery percentage
 """
+
 from typing import List, Dict, Optional, Tuple
 from datetime import date, timedelta
 from decimal import Decimal
@@ -31,6 +32,7 @@ from enum import Enum
 
 class KPITypePhase5(str, Enum):
     """All 10 KPI types for Phase 5 analytics"""
+
     EFFICIENCY = "efficiency"
     PERFORMANCE = "performance"
     AVAILABILITY = "availability"
@@ -46,6 +48,7 @@ class KPITypePhase5(str, Enum):
 @dataclass
 class KPIConfig:
     """Configuration for KPI data generation"""
+
     base_value: float
     min_value: float
     max_value: float
@@ -58,44 +61,94 @@ class KPIConfig:
 # KPI-specific configuration for realistic data generation
 KPI_CONFIGS: Dict[str, KPIConfig] = {
     KPITypePhase5.EFFICIENCY: KPIConfig(
-        base_value=82.0, min_value=65.0, max_value=98.0,
-        trend_bias=0.02, volatility=2.5, weekly_amplitude=2.0, is_inverse=False
+        base_value=82.0,
+        min_value=65.0,
+        max_value=98.0,
+        trend_bias=0.02,
+        volatility=2.5,
+        weekly_amplitude=2.0,
+        is_inverse=False,
     ),
     KPITypePhase5.PERFORMANCE: KPIConfig(
-        base_value=88.0, min_value=70.0, max_value=99.0,
-        trend_bias=0.015, volatility=2.0, weekly_amplitude=1.5, is_inverse=False
+        base_value=88.0,
+        min_value=70.0,
+        max_value=99.0,
+        trend_bias=0.015,
+        volatility=2.0,
+        weekly_amplitude=1.5,
+        is_inverse=False,
     ),
     KPITypePhase5.AVAILABILITY: KPIConfig(
-        base_value=91.0, min_value=75.0, max_value=99.5,
-        trend_bias=0.01, volatility=1.8, weekly_amplitude=1.2, is_inverse=False
+        base_value=91.0,
+        min_value=75.0,
+        max_value=99.5,
+        trend_bias=0.01,
+        volatility=1.8,
+        weekly_amplitude=1.2,
+        is_inverse=False,
     ),
     KPITypePhase5.OEE: KPIConfig(
-        base_value=65.0, min_value=45.0, max_value=95.0,
-        trend_bias=0.025, volatility=3.0, weekly_amplitude=2.5, is_inverse=False
+        base_value=65.0,
+        min_value=45.0,
+        max_value=95.0,
+        trend_bias=0.025,
+        volatility=3.0,
+        weekly_amplitude=2.5,
+        is_inverse=False,
     ),
     KPITypePhase5.PPM: KPIConfig(
-        base_value=4500.0, min_value=500.0, max_value=15000.0,
-        trend_bias=-15.0, volatility=300.0, weekly_amplitude=200.0, is_inverse=True
+        base_value=4500.0,
+        min_value=500.0,
+        max_value=15000.0,
+        trend_bias=-15.0,
+        volatility=300.0,
+        weekly_amplitude=200.0,
+        is_inverse=True,
     ),
     KPITypePhase5.DPMO: KPIConfig(
-        base_value=450.0, min_value=50.0, max_value=2000.0,
-        trend_bias=-2.0, volatility=40.0, weekly_amplitude=25.0, is_inverse=True
+        base_value=450.0,
+        min_value=50.0,
+        max_value=2000.0,
+        trend_bias=-2.0,
+        volatility=40.0,
+        weekly_amplitude=25.0,
+        is_inverse=True,
     ),
     KPITypePhase5.FPY: KPIConfig(
-        base_value=96.5, min_value=85.0, max_value=99.8,
-        trend_bias=0.008, volatility=0.8, weekly_amplitude=0.5, is_inverse=False
+        base_value=96.5,
+        min_value=85.0,
+        max_value=99.8,
+        trend_bias=0.008,
+        volatility=0.8,
+        weekly_amplitude=0.5,
+        is_inverse=False,
     ),
     KPITypePhase5.RTY: KPIConfig(
-        base_value=92.0, min_value=80.0, max_value=99.5,
-        trend_bias=0.012, volatility=1.2, weekly_amplitude=0.8, is_inverse=False
+        base_value=92.0,
+        min_value=80.0,
+        max_value=99.5,
+        trend_bias=0.012,
+        volatility=1.2,
+        weekly_amplitude=0.8,
+        is_inverse=False,
     ),
     KPITypePhase5.ABSENTEEISM: KPIConfig(
-        base_value=5.2, min_value=1.0, max_value=15.0,
-        trend_bias=-0.008, volatility=0.8, weekly_amplitude=0.5, is_inverse=True
+        base_value=5.2,
+        min_value=1.0,
+        max_value=15.0,
+        trend_bias=-0.008,
+        volatility=0.8,
+        weekly_amplitude=0.5,
+        is_inverse=True,
     ),
     KPITypePhase5.OTD: KPIConfig(
-        base_value=94.0, min_value=75.0, max_value=99.9,
-        trend_bias=0.02, volatility=1.5, weekly_amplitude=1.0, is_inverse=False
+        base_value=94.0,
+        min_value=75.0,
+        max_value=99.9,
+        trend_bias=0.02,
+        volatility=1.5,
+        weekly_amplitude=1.0,
+        is_inverse=False,
     ),
 }
 
@@ -123,7 +176,7 @@ class KPIHistoryGenerator:
         days: int = 90,
         end_date: Optional[date] = None,
         client_id: Optional[str] = None,
-        trend_override: Optional[str] = None
+        trend_override: Optional[str] = None,
     ) -> List[Dict]:
         """
         Generate historical KPI data with realistic patterns
@@ -197,15 +250,17 @@ class KPIHistoryGenerator:
             else:
                 value = round(value, 2)
 
-            data.append({
-                "date": day_date,
-                "value": value,
-                "kpi_type": kpi_type,
-                "client_id": client_id,
-                "is_anomaly": is_anomaly,
-                "day_of_week": day_date.strftime("%A"),
-                "week_number": day_date.isocalendar()[1]
-            })
+            data.append(
+                {
+                    "date": day_date,
+                    "value": value,
+                    "kpi_type": kpi_type,
+                    "client_id": client_id,
+                    "is_anomaly": is_anomaly,
+                    "day_of_week": day_date.strftime("%A"),
+                    "week_number": day_date.isocalendar()[1],
+                }
+            )
 
         return data
 
@@ -231,7 +286,7 @@ def generate_kpi_history(
     days: int = 90,
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
-    seed: Optional[int] = None
+    seed: Optional[int] = None,
 ) -> List[Dict]:
     """
     Convenience function to generate historical KPI data with realistic patterns
@@ -252,19 +307,11 @@ def generate_kpi_history(
         30
     """
     generator = KPIHistoryGenerator(seed=seed)
-    return generator.generate_single_kpi(
-        kpi_type=kpi_type,
-        days=days,
-        end_date=end_date,
-        client_id=client_id
-    )
+    return generator.generate_single_kpi(kpi_type=kpi_type, days=days, end_date=end_date, client_id=client_id)
 
 
 def generate_all_kpi_histories(
-    days: int = 90,
-    end_date: Optional[date] = None,
-    client_id: Optional[str] = None,
-    seed: Optional[int] = None
+    days: int = 90, end_date: Optional[date] = None, client_id: Optional[str] = None, seed: Optional[int] = None
 ) -> Dict[str, List[Dict]]:
     """
     Generate historical data for all 10 KPIs
@@ -288,10 +335,7 @@ def generate_all_kpi_histories(
 
     for kpi_type in KPITypePhase5:
         all_data[kpi_type.value] = generator.generate_single_kpi(
-            kpi_type=kpi_type.value,
-            days=days,
-            end_date=end_date,
-            client_id=client_id
+            kpi_type=kpi_type.value, days=days, end_date=end_date, client_id=client_id
         )
 
     return all_data
@@ -328,36 +372,34 @@ def seed_demo_predictions(db, client_ids: Optional[List[str]] = None, days: int 
         client_ids = [row[0] for row in result.fetchall()]
 
         if not client_ids:
-            client_ids = ['DEMO-CLIENT-001']
+            client_ids = ["DEMO-CLIENT-001"]
 
     generator = KPIHistoryGenerator(seed=42)  # Fixed seed for reproducibility
     total_records = 0
 
     for client_id in client_ids:
         for kpi_type in KPITypePhase5:
-            history = generator.generate_single_kpi(
-                kpi_type=kpi_type.value,
-                days=days,
-                client_id=client_id
-            )
+            history = generator.generate_single_kpi(kpi_type=kpi_type.value, days=days, client_id=client_id)
 
             for record in history:
                 try:
                     db.execute(
-                        text("""
+                        text(
+                            """
                             INSERT INTO kpi_history
                             (client_id, kpi_type, record_date, value, is_anomaly, metadata)
                             VALUES (:client_id, :kpi_type, :record_date, :value, :is_anomaly, :metadata)
                             ON CONFLICT DO NOTHING
-                        """),
+                        """
+                        ),
                         {
-                            'client_id': client_id,
-                            'kpi_type': kpi_type.value,
-                            'record_date': record['date'],
-                            'value': record['value'],
-                            'is_anomaly': 1 if record['is_anomaly'] else 0,
-                            'metadata': f'{{"day_of_week": "{record["day_of_week"]}", "week": {record["week_number"]}}}'
-                        }
+                            "client_id": client_id,
+                            "kpi_type": kpi_type.value,
+                            "record_date": record["date"],
+                            "value": record["value"],
+                            "is_anomaly": 1 if record["is_anomaly"] else 0,
+                            "metadata": f'{{"day_of_week": "{record["day_of_week"]}", "week": {record["week_number"]}}}',
+                        },
                     )
                     total_records += 1
                 except Exception as e:
@@ -367,10 +409,10 @@ def seed_demo_predictions(db, client_ids: Optional[List[str]] = None, days: int 
     db.commit()
 
     return {
-        'total_records': total_records,
-        'clients': len(client_ids),
-        'kpis': len(KPITypePhase5),
-        'days_per_kpi': days
+        "total_records": total_records,
+        "clients": len(client_ids),
+        "kpis": len(KPITypePhase5),
+        "days_per_kpi": days,
     }
 
 
@@ -388,7 +430,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 85.0,
             "fair": 75.0,
             "unit": "%",
-            "description": "Production efficiency - actual vs. expected output"
+            "description": "Production efficiency - actual vs. expected output",
         },
         KPITypePhase5.PERFORMANCE.value: {
             "target": 90.0,
@@ -396,7 +438,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 90.0,
             "fair": 80.0,
             "unit": "%",
-            "description": "Production performance against standard cycle time"
+            "description": "Production performance against standard cycle time",
         },
         KPITypePhase5.AVAILABILITY.value: {
             "target": 92.0,
@@ -404,7 +446,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 92.0,
             "fair": 85.0,
             "unit": "%",
-            "description": "Equipment availability - uptime vs. scheduled time"
+            "description": "Equipment availability - uptime vs. scheduled time",
         },
         KPITypePhase5.OEE.value: {
             "target": 70.0,
@@ -412,7 +454,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 70.0,
             "fair": 55.0,
             "unit": "%",
-            "description": "Overall Equipment Effectiveness (Availability x Performance x Quality)"
+            "description": "Overall Equipment Effectiveness (Availability x Performance x Quality)",
         },
         KPITypePhase5.PPM.value: {
             "target": 3000.0,
@@ -420,7 +462,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 3000.0,
             "fair": 6000.0,
             "unit": "PPM",
-            "description": "Parts Per Million defective"
+            "description": "Parts Per Million defective",
         },
         KPITypePhase5.DPMO.value: {
             "target": 300.0,
@@ -428,7 +470,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 300.0,
             "fair": 700.0,
             "unit": "DPMO",
-            "description": "Defects Per Million Opportunities"
+            "description": "Defects Per Million Opportunities",
         },
         KPITypePhase5.FPY.value: {
             "target": 97.0,
@@ -436,7 +478,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 97.0,
             "fair": 93.0,
             "unit": "%",
-            "description": "First Pass Yield - passed first inspection"
+            "description": "First Pass Yield - passed first inspection",
         },
         KPITypePhase5.RTY.value: {
             "target": 93.0,
@@ -444,7 +486,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 93.0,
             "fair": 88.0,
             "unit": "%",
-            "description": "Rolled Throughput Yield - cumulative yield"
+            "description": "Rolled Throughput Yield - cumulative yield",
         },
         KPITypePhase5.ABSENTEEISM.value: {
             "target": 4.0,
@@ -452,7 +494,7 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 4.0,
             "fair": 7.0,
             "unit": "%",
-            "description": "Workforce absenteeism rate"
+            "description": "Workforce absenteeism rate",
         },
         KPITypePhase5.OTD.value: {
             "target": 95.0,
@@ -460,16 +502,12 @@ def get_kpi_benchmarks() -> Dict[str, Dict]:
             "good": 95.0,
             "fair": 90.0,
             "unit": "%",
-            "description": "On-Time Delivery rate"
+            "description": "On-Time Delivery rate",
         },
     }
 
 
-def calculate_kpi_health_score(
-    current_value: float,
-    predicted_value: float,
-    kpi_type: str
-) -> Dict:
+def calculate_kpi_health_score(current_value: float, predicted_value: float, kpi_type: str) -> Dict:
     """
     Calculate health score and recommendations based on current and predicted values
 
@@ -536,6 +574,8 @@ def calculate_kpi_health_score(
     return {
         "health_score": round(health_score, 1),
         "trend": trend,
-        "current_vs_target": round(current_value - target, 2) if not config.is_inverse else round(target - current_value, 2),
-        "recommendations": recommendations
+        "current_vs_target": (
+            round(current_value - target, 2) if not config.is_inverse else round(target - current_value, 2)
+        ),
+        "recommendations": recommendations,
     }

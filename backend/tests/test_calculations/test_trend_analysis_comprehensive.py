@@ -2,6 +2,7 @@
 Comprehensive Trend Analysis Calculation Tests
 Target: Increase calculations/trend_analysis.py coverage to 85%+
 """
+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
@@ -196,30 +197,21 @@ class TestDetermineTrendDirection:
     def test_trend_increasing(self):
         """Test detection of increasing trend."""
         result = determine_trend_direction(
-            slope=Decimal("0.5"),
-            r_squared=Decimal("0.8"),
-            std_deviation=Decimal("2"),
-            mean_value=Decimal("100")
+            slope=Decimal("0.5"), r_squared=Decimal("0.8"), std_deviation=Decimal("2"), mean_value=Decimal("100")
         )
         assert result == "increasing"
 
     def test_trend_decreasing(self):
         """Test detection of decreasing trend."""
         result = determine_trend_direction(
-            slope=Decimal("-0.5"),
-            r_squared=Decimal("0.8"),
-            std_deviation=Decimal("2"),
-            mean_value=Decimal("100")
+            slope=Decimal("-0.5"), r_squared=Decimal("0.8"), std_deviation=Decimal("2"), mean_value=Decimal("100")
         )
         assert result == "decreasing"
 
     def test_trend_stable(self):
         """Test detection of stable trend."""
         result = determine_trend_direction(
-            slope=Decimal("0.05"),
-            r_squared=Decimal("0.8"),
-            std_deviation=Decimal("2"),
-            mean_value=Decimal("100")
+            slope=Decimal("0.05"), r_squared=Decimal("0.8"), std_deviation=Decimal("2"), mean_value=Decimal("100")
         )
         assert result == "stable"
 
@@ -229,7 +221,7 @@ class TestDetermineTrendDirection:
             slope=Decimal("0.5"),
             r_squared=Decimal("0.8"),
             std_deviation=Decimal("25"),  # 25% of mean
-            mean_value=Decimal("100")
+            mean_value=Decimal("100"),
         )
         assert result == "volatile"
 
@@ -239,17 +231,14 @@ class TestDetermineTrendDirection:
             slope=Decimal("0.5"),
             r_squared=Decimal("0.2"),  # Low R-squared
             std_deviation=Decimal("2"),
-            mean_value=Decimal("100")
+            mean_value=Decimal("100"),
         )
         assert result == "volatile"
 
     def test_trend_zero_mean(self):
         """Test with zero mean value."""
         result = determine_trend_direction(
-            slope=Decimal("0.5"),
-            r_squared=Decimal("0.8"),
-            std_deviation=Decimal("2"),
-            mean_value=Decimal("0")
+            slope=Decimal("0.5"), r_squared=Decimal("0.8"), std_deviation=Decimal("2"), mean_value=Decimal("0")
         )
         # Should not divide by zero
         assert result in ["increasing", "decreasing", "stable", "volatile"]
@@ -260,21 +249,14 @@ class TestDetectAnomalies:
 
     def test_detect_anomalies_basic(self):
         """Test basic anomaly detection."""
-        values = [
-            Decimal("85"), Decimal("86"), Decimal("84"),
-            Decimal("120"),  # Anomaly
-            Decimal("85"), Decimal("87")
-        ]
+        values = [Decimal("85"), Decimal("86"), Decimal("84"), Decimal("120"), Decimal("85"), Decimal("87")]  # Anomaly
         anomalies = detect_anomalies(values, threshold_std=Decimal("2.0"))
 
         assert 3 in anomalies  # Index of 120
 
     def test_detect_anomalies_no_anomalies(self):
         """Test with no anomalies."""
-        values = [
-            Decimal("85"), Decimal("86"), Decimal("84"),
-            Decimal("85"), Decimal("87")
-        ]
+        values = [Decimal("85"), Decimal("86"), Decimal("84"), Decimal("85"), Decimal("87")]
         anomalies = detect_anomalies(values, threshold_std=Decimal("2.0"))
 
         assert len(anomalies) == 0
@@ -283,8 +265,14 @@ class TestDetectAnomalies:
         """Test with extreme anomalies."""
         # Create data with clear outliers
         values = [
-            Decimal("50"), Decimal("50"), Decimal("50"), Decimal("50"),
-            Decimal("50"), Decimal("50"), Decimal("50"), Decimal("200"),  # Extreme outlier
+            Decimal("50"),
+            Decimal("50"),
+            Decimal("50"),
+            Decimal("50"),
+            Decimal("50"),
+            Decimal("50"),
+            Decimal("50"),
+            Decimal("200"),  # Extreme outlier
         ]
         anomalies = detect_anomalies(values, threshold_std=Decimal("1.5"))
 
@@ -322,10 +310,20 @@ class TestSeasonalDecomposition:
         """Test basic seasonal decomposition."""
         # Create weekly pattern
         values = [
-            Decimal("100"), Decimal("110"), Decimal("120"), Decimal("130"),
-            Decimal("140"), Decimal("150"), Decimal("160"),  # Week 1
-            Decimal("105"), Decimal("115"), Decimal("125"), Decimal("135"),
-            Decimal("145"), Decimal("155"), Decimal("165"),  # Week 2
+            Decimal("100"),
+            Decimal("110"),
+            Decimal("120"),
+            Decimal("130"),
+            Decimal("140"),
+            Decimal("150"),
+            Decimal("160"),  # Week 1
+            Decimal("105"),
+            Decimal("115"),
+            Decimal("125"),
+            Decimal("135"),
+            Decimal("145"),
+            Decimal("155"),
+            Decimal("165"),  # Week 2
         ]
         result = calculate_seasonal_decomposition(values, period=7)
 
@@ -382,9 +380,18 @@ class TestAnalyzeTrend:
         """Test analysis of stable trend (with slight variation)."""
         dates = [date(2024, 1, 1) + timedelta(days=i) for i in range(10)]
         # Small random variations but overall stable (slope near zero)
-        values = [Decimal("85.0"), Decimal("85.1"), Decimal("84.9"), Decimal("85.0"),
-                  Decimal("85.1"), Decimal("84.9"), Decimal("85.0"), Decimal("85.1"),
-                  Decimal("84.9"), Decimal("85.0")]
+        values = [
+            Decimal("85.0"),
+            Decimal("85.1"),
+            Decimal("84.9"),
+            Decimal("85.0"),
+            Decimal("85.1"),
+            Decimal("84.9"),
+            Decimal("85.0"),
+            Decimal("85.1"),
+            Decimal("84.9"),
+            Decimal("85.0"),
+        ]
 
         result = analyze_trend(dates, values)
 
@@ -418,10 +425,7 @@ class TestTrendResultDataclass:
     def test_trend_result_creation(self):
         """Test creating TrendResult instance."""
         result = TrendResult(
-            slope=Decimal("0.5"),
-            intercept=Decimal("80"),
-            r_squared=Decimal("0.95"),
-            trend_direction="increasing"
+            slope=Decimal("0.5"), intercept=Decimal("80"), r_squared=Decimal("0.95"), trend_direction="increasing"
         )
 
         assert result.slope == Decimal("0.5")

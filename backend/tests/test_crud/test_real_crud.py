@@ -2,6 +2,7 @@
 Tests for actual CRUD module functions with mocked database sessions.
 Target: Cover crud/ directory to reach 85% overall coverage.
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -61,98 +62,113 @@ class TestCRUDModuleImports:
     def test_import_production_crud(self):
         """Test production CRUD imports"""
         from crud import production
-        assert hasattr(production, 'create_production_entry')
-        assert hasattr(production, 'get_production_entry')
-        assert hasattr(production, 'get_production_entries')
-        assert hasattr(production, 'update_production_entry')
-        assert hasattr(production, 'delete_production_entry')
+
+        assert hasattr(production, "create_production_entry")
+        assert hasattr(production, "get_production_entry")
+        assert hasattr(production, "get_production_entries")
+        assert hasattr(production, "update_production_entry")
+        assert hasattr(production, "delete_production_entry")
 
     def test_import_client_crud(self):
         """Test client CRUD imports"""
         from crud import client
-        assert hasattr(client, 'create_client')
-        assert hasattr(client, 'get_client')
-        assert hasattr(client, 'get_clients')
-        assert hasattr(client, 'update_client')
-        assert hasattr(client, 'delete_client')
+
+        assert hasattr(client, "create_client")
+        assert hasattr(client, "get_client")
+        assert hasattr(client, "get_clients")
+        assert hasattr(client, "update_client")
+        assert hasattr(client, "delete_client")
 
     def test_import_employee_crud(self):
         """Test employee CRUD imports"""
         from crud import employee
-        assert hasattr(employee, 'create_employee')
-        assert hasattr(employee, 'get_employee')
+
+        assert hasattr(employee, "create_employee")
+        assert hasattr(employee, "get_employee")
 
     def test_import_quality_crud(self):
         """Test quality CRUD imports"""
         from crud import quality
-        assert hasattr(quality, 'create_quality_inspection')
-        assert hasattr(quality, 'get_quality_inspections')
+
+        assert hasattr(quality, "create_quality_inspection")
+        assert hasattr(quality, "get_quality_inspections")
 
     def test_import_downtime_crud(self):
         """Test downtime CRUD imports"""
         from crud import downtime
-        assert hasattr(downtime, 'create_downtime_event')
-        assert hasattr(downtime, 'get_downtime_events')
+
+        assert hasattr(downtime, "create_downtime_event")
+        assert hasattr(downtime, "get_downtime_events")
 
     def test_import_hold_crud(self):
         """Test hold CRUD imports"""
         from crud import hold
-        assert hasattr(hold, 'create_wip_hold')
-        assert hasattr(hold, 'get_wip_holds')
+
+        assert hasattr(hold, "create_wip_hold")
+        assert hasattr(hold, "get_wip_holds")
 
     def test_import_work_order_crud(self):
         """Test work order CRUD imports"""
         from crud import work_order
-        assert hasattr(work_order, 'create_work_order')
-        assert hasattr(work_order, 'get_work_orders')
+
+        assert hasattr(work_order, "create_work_order")
+        assert hasattr(work_order, "get_work_orders")
 
     def test_import_attendance_crud(self):
         """Test attendance CRUD imports"""
         from crud import attendance
-        assert hasattr(attendance, 'create_attendance_record')
-        assert hasattr(attendance, 'get_attendance_records')
+
+        assert hasattr(attendance, "create_attendance_record")
+        assert hasattr(attendance, "get_attendance_records")
 
     def test_import_coverage_crud(self):
         """Test coverage CRUD imports"""
         from crud import coverage
-        assert hasattr(coverage, 'create_shift_coverage')
-        assert hasattr(coverage, 'get_shift_coverages')
+
+        assert hasattr(coverage, "create_shift_coverage")
+        assert hasattr(coverage, "get_shift_coverages")
 
     def test_import_analytics_crud(self):
         """Test analytics CRUD imports"""
         from crud import analytics
-        assert hasattr(analytics, 'get_kpi_time_series_data')
-        assert hasattr(analytics, 'get_shift_heatmap_data')
+
+        assert hasattr(analytics, "get_kpi_time_series_data")
+        assert hasattr(analytics, "get_shift_heatmap_data")
 
     def test_import_saved_filter_crud(self):
         """Test saved filter CRUD imports"""
         from crud import saved_filter
-        assert hasattr(saved_filter, 'create_saved_filter')
-        assert hasattr(saved_filter, 'get_saved_filters')
+
+        assert hasattr(saved_filter, "create_saved_filter")
+        assert hasattr(saved_filter, "get_saved_filters")
 
     def test_import_preferences_crud(self):
         """Test preferences CRUD imports"""
         from crud import preferences
-        assert hasattr(preferences, 'get_user_dashboard_preferences')
-        assert hasattr(preferences, 'save_user_dashboard_preferences')
+
+        assert hasattr(preferences, "get_user_dashboard_preferences")
+        assert hasattr(preferences, "save_user_dashboard_preferences")
 
     def test_import_job_crud(self):
         """Test job CRUD imports"""
         from crud import job
-        assert hasattr(job, 'create_job')
-        assert hasattr(job, 'get_jobs')
+
+        assert hasattr(job, "create_job")
+        assert hasattr(job, "get_jobs")
 
     def test_import_defect_type_crud(self):
         """Test defect type CRUD imports"""
         from crud import defect_type_catalog
-        assert hasattr(defect_type_catalog, 'get_defect_types_by_client')
-        assert hasattr(defect_type_catalog, 'create_defect_type')
+
+        assert hasattr(defect_type_catalog, "get_defect_types_by_client")
+        assert hasattr(defect_type_catalog, "create_defect_type")
 
     def test_import_floating_pool_crud(self):
         """Test floating pool CRUD imports"""
         from crud import floating_pool
-        assert hasattr(floating_pool, 'create_floating_pool_entry')
-        assert hasattr(floating_pool, 'get_floating_pool_entries')
+
+        assert hasattr(floating_pool, "create_floating_pool_entry")
+        assert hasattr(floating_pool, "get_floating_pool_entries")
 
 
 # =============================================================================

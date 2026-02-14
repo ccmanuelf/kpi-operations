@@ -5,6 +5,7 @@ Phase B.2: Backend Services for Capacity Planning
 Provides Mini-MRP functionality for component availability checking.
 Explodes BOMs, aggregates requirements, compares to stock, identifies shortages.
 """
+
 from decimal import Decimal
 from typing import List, Dict, Optional
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ from backend.events.domain_events import ComponentShortageDetected
 @dataclass
 class ComponentCheckResult:
     """Result of component check for a single component."""
+
     component_item_code: str
     component_description: Optional[str]
     required_quantity: Decimal
@@ -35,6 +37,7 @@ class ComponentCheckResult:
 @dataclass
 class MRPRunResult:
     """Complete MRP run result."""
+
     run_date: date
     total_components_checked: int
     components_ok: int
@@ -69,11 +72,7 @@ class MRPService:
         self.db = db
         self.bom_service = BOMService(db)
 
-    def run_component_check(
-        self,
-        client_id: str,
-        order_ids: Optional[List[int]] = None
-    ) -> MRPRunResult:
+    def run_component_check(self, client_id: str, order_ids: Optional[List[int]] = None) -> MRPRunResult:
         """
         Run component check (Mini-MRP) for orders.
 
@@ -96,9 +95,7 @@ class MRPService:
         run_date = date.today()
 
         # Get orders to process
-        query = self.db.query(CapacityOrder).filter(
-            CapacityOrder.client_id == client_id
-        )
+        query = self.db.query(CapacityOrder).filter(CapacityOrder.client_id == client_id)
         if order_ids:
             query = query.filter(CapacityOrder.id.in_(order_ids))
 
@@ -111,7 +108,7 @@ class MRPService:
                 components_ok=0,
                 components_short=0,
                 components=[],
-                orders_affected=0
+                orders_affected=0,
             )
 
         # Explode BOMs for all orders
@@ -121,10 +118,7 @@ class MRPService:
         for order in orders:
             try:
                 result = self.bom_service.explode_bom(
-                    client_id,
-                    order.style_code,
-                    Decimal(str(order.order_quantity)),
-                    emit_event=False
+                    client_id, order.style_code, Decimal(str(order.order_quantity)), emit_event=False
                 )
                 explosion_results.append(result)
 
@@ -152,9 +146,7 @@ class MRPService:
             if shortage_qty > 0:
                 status = ComponentStatus.SHORTAGE
                 # Find affected orders
-                affected = self._find_affected_orders(
-                    item_code, explosion_results, order_by_style
-                )
+                affected = self._find_affected_orders(item_code, explosion_results, order_by_style)
                 orders_affected.update(affected)
 
                 # Emit event for each affected order
@@ -167,7 +159,7 @@ class MRPService:
                         shortage_quantity=shortage_qty,
                         required_quantity=required_qty,
                         available_quantity=available_qty,
-                        affected_orders_count=len(affected)
+                        affected_orders_count=len(affected),
                     )
                     event_bus.collect(event)
             elif available_qty < required_qty * Decimal("1.1"):
@@ -178,20 +170,21 @@ class MRPService:
                 status = ComponentStatus.OK
                 affected = []
 
-            components_checked.append(ComponentCheckResult(
-                component_item_code=item_code,
-                component_description=None,
-                required_quantity=required_qty,
-                available_quantity=available_qty,
-                shortage_quantity=shortage_qty,
-                status=status,
-                affected_orders=affected
-            ))
+            components_checked.append(
+                ComponentCheckResult(
+                    component_item_code=item_code,
+                    component_description=None,
+                    required_quantity=required_qty,
+                    available_quantity=available_qty,
+                    shortage_quantity=shortage_qty,
+                    status=status,
+                    affected_orders=affected,
+                )
+            )
 
             # Store result in database
             self._store_check_result(
-                client_id, run_date, item_code, required_qty,
-                available_qty, shortage_qty, status, orders
+                client_id, run_date, item_code, required_qty, available_qty, shortage_qty, status, orders
             )
 
         components_ok = sum(1 for c in components_checked if c.status == ComponentStatus.OK)
@@ -203,7 +196,7 @@ class MRPService:
             components_ok=components_ok,
             components_short=components_short,
             components=components_checked,
-            orders_affected=len(orders_affected)
+            orders_affected=len(orders_affected),
         )
 
     def get_component_check_history(
@@ -211,7 +204,7 @@ class MRPService:
         client_id: str,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        status_filter: Optional[ComponentStatus] = None
+        status_filter: Optional[ComponentStatus] = None,
     ) -> List[CapacityComponentCheck]:
         """
         Get historical component check results.
@@ -225,9 +218,7 @@ class MRPService:
         Returns:
             List of CapacityComponentCheck records
         """
-        query = self.db.query(CapacityComponentCheck).filter(
-            CapacityComponentCheck.client_id == client_id
-        )
+        query = self.db.query(CapacityComponentCheck).filter(CapacityComponentCheck.client_id == client_id)
 
         if start_date:
             query = query.filter(CapacityComponentCheck.run_date >= start_date)
@@ -238,11 +229,7 @@ class MRPService:
 
         return query.order_by(CapacityComponentCheck.run_date.desc()).all()
 
-    def get_shortages_by_order(
-        self,
-        client_id: str,
-        order_number: str
-    ) -> List[ComponentCheckResult]:
+    def get_shortages_by_order(self, client_id: str, order_number: str) -> List[ComponentCheckResult]:
         """
         Get component shortages for a specific order.
 
@@ -253,11 +240,15 @@ class MRPService:
         Returns:
             List of ComponentCheckResult for components with shortages
         """
-        checks = self.db.query(CapacityComponentCheck).filter(
-            CapacityComponentCheck.client_id == client_id,
-            CapacityComponentCheck.order_number == order_number,
-            CapacityComponentCheck.status == ComponentStatus.SHORTAGE
-        ).all()
+        checks = (
+            self.db.query(CapacityComponentCheck)
+            .filter(
+                CapacityComponentCheck.client_id == client_id,
+                CapacityComponentCheck.order_number == order_number,
+                CapacityComponentCheck.status == ComponentStatus.SHORTAGE,
+            )
+            .all()
+        )
 
         return [
             ComponentCheckResult(
@@ -267,7 +258,7 @@ class MRPService:
                 available_quantity=Decimal(str(c.available_quantity)),
                 shortage_quantity=Decimal(str(c.shortage_quantity)),
                 status=c.status,
-                affected_orders=[c.order_number]
+                affected_orders=[c.order_number],
             )
             for c in checks
         ]
@@ -283,31 +274,30 @@ class MRPService:
             Dict of item_code -> available_quantity
         """
         # Subquery to get max snapshot date per item
-        subq = self.db.query(
-            CapacityStockSnapshot.item_code,
-            func.max(CapacityStockSnapshot.snapshot_date).label('max_date')
-        ).filter(
-            CapacityStockSnapshot.client_id == client_id
-        ).group_by(CapacityStockSnapshot.item_code).subquery()
+        subq = (
+            self.db.query(
+                CapacityStockSnapshot.item_code, func.max(CapacityStockSnapshot.snapshot_date).label("max_date")
+            )
+            .filter(CapacityStockSnapshot.client_id == client_id)
+            .group_by(CapacityStockSnapshot.item_code)
+            .subquery()
+        )
 
-        snapshots = self.db.query(CapacityStockSnapshot).join(
-            subq,
-            (CapacityStockSnapshot.item_code == subq.c.item_code) &
-            (CapacityStockSnapshot.snapshot_date == subq.c.max_date)
-        ).filter(
-            CapacityStockSnapshot.client_id == client_id
-        ).all()
+        snapshots = (
+            self.db.query(CapacityStockSnapshot)
+            .join(
+                subq,
+                (CapacityStockSnapshot.item_code == subq.c.item_code)
+                & (CapacityStockSnapshot.snapshot_date == subq.c.max_date),
+            )
+            .filter(CapacityStockSnapshot.client_id == client_id)
+            .all()
+        )
 
-        return {
-            s.item_code: Decimal(str(s.available_quantity or 0))
-            for s in snapshots
-        }
+        return {s.item_code: Decimal(str(s.available_quantity or 0)) for s in snapshots}
 
     def _find_affected_orders(
-        self,
-        item_code: str,
-        explosion_results: List[BOMExplosionResult],
-        order_by_style: Dict[str, List[str]]
+        self, item_code: str, explosion_results: List[BOMExplosionResult], order_by_style: Dict[str, List[str]]
     ) -> List[str]:
         """
         Find orders affected by a component shortage.
@@ -328,9 +318,15 @@ class MRPService:
         return list(set(affected))
 
     def _store_check_result(
-        self, client_id: str, run_date: date, item_code: str,
-        required: Decimal, available: Decimal, shortage: Decimal,
-        status: ComponentStatus, orders: List[CapacityOrder]
+        self,
+        client_id: str,
+        run_date: date,
+        item_code: str,
+        required: Decimal,
+        available: Decimal,
+        shortage: Decimal,
+        status: ComponentStatus,
+        orders: List[CapacityOrder],
     ) -> None:
         """
         Store component check result in database.
@@ -355,7 +351,7 @@ class MRPService:
                 required_quantity=required,
                 available_quantity=available,
                 shortage_quantity=shortage,
-                status=status
+                status=status,
             )
             self.db.add(check)
 

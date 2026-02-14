@@ -3,6 +3,7 @@ CRUD operations for DEFECT_DETAIL (Defect Tracking)
 Create, Read, Update, Delete with multi-tenant client filtering
 SECURITY: All operations enforce client-based access control
 """
+
 from typing import List, Optional
 from datetime import datetime, date
 from sqlalchemy.orm import Session
@@ -15,11 +16,7 @@ from backend.middleware.client_auth import verify_client_access, build_client_fi
 from backend.utils.soft_delete import soft_delete
 
 
-def create_defect_detail(
-    db: Session,
-    defect_data: dict,
-    current_user: User
-) -> DefectDetail:
+def create_defect_detail(db: Session, defect_data: dict, current_user: User) -> DefectDetail:
     """
     Create new defect detail record
     SECURITY: Verifies user has access to the specified client
@@ -36,7 +33,7 @@ def create_defect_detail(
         ClientAccessError: If user doesn't have access to defect_data['client_id_fk']
     """
     # Verify client access
-    verify_client_access(current_user, defect_data.get('client_id_fk'))
+    verify_client_access(current_user, defect_data.get("client_id_fk"))
 
     db_defect = DefectDetail(**defect_data)
     db.add(db_defect)
@@ -45,11 +42,7 @@ def create_defect_detail(
     return db_defect
 
 
-def get_defect_detail(
-    db: Session,
-    defect_detail_id: str,
-    current_user: User
-) -> Optional[DefectDetail]:
+def get_defect_detail(db: Session, defect_detail_id: str, current_user: User) -> Optional[DefectDetail]:
     """
     Get defect detail by ID with client filtering
     SECURITY: Returns None if user doesn't have access to defect's client
@@ -73,11 +66,7 @@ def get_defect_detail(
 
 
 def get_defect_details(
-    db: Session,
-    current_user: User,
-    quality_entry_id: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100
+    db: Session, current_user: User, quality_entry_id: Optional[str] = None, skip: int = 0, limit: int = 100
 ) -> List[DefectDetail]:
     """
     List defect details with client filtering
@@ -107,11 +96,7 @@ def get_defect_details(
     return query.offset(skip).limit(limit).all()
 
 
-def get_defect_details_by_quality_entry(
-    db: Session,
-    quality_entry_id: str,
-    current_user: User
-) -> List[DefectDetail]:
+def get_defect_details_by_quality_entry(db: Session, quality_entry_id: str, current_user: User) -> List[DefectDetail]:
     """
     Get all defect details for a specific quality entry with client filtering
     SECURITY: Returns only defects for user's authorized clients
@@ -135,10 +120,7 @@ def get_defect_details_by_quality_entry(
 
 
 def update_defect_detail(
-    db: Session,
-    defect_detail_id: str,
-    defect_update: dict,
-    current_user: User
+    db: Session, defect_detail_id: str, defect_update: dict, current_user: User
 ) -> Optional[DefectDetail]:
     """
     Update defect detail with client access verification
@@ -159,7 +141,7 @@ def update_defect_detail(
 
     # Update fields
     for key, value in defect_update.items():
-        if hasattr(defect, key) and key != 'defect_detail_id':  # Prevent ID changes
+        if hasattr(defect, key) and key != "defect_detail_id":  # Prevent ID changes
             setattr(defect, key, value)
 
     db.commit()
@@ -167,11 +149,7 @@ def update_defect_detail(
     return defect
 
 
-def delete_defect_detail(
-    db: Session,
-    defect_detail_id: str,
-    current_user: User
-) -> bool:
+def delete_defect_detail(db: Session, defect_detail_id: str, current_user: User) -> bool:
     """
     Soft delete defect detail (sets is_active = False)
     SECURITY: Only deletes if user has access to the defect's client
@@ -193,10 +171,7 @@ def delete_defect_detail(
 
 
 def get_defect_summary_by_type(
-    db: Session,
-    current_user: User,
-    start_date: Optional[date] = None,
-    end_date: Optional[date] = None
+    db: Session, current_user: User, start_date: Optional[date] = None, end_date: Optional[date] = None
 ) -> List[dict]:
     """
     Get defect summary grouped by type with client filtering
@@ -213,8 +188,8 @@ def get_defect_summary_by_type(
     """
     query = db.query(
         DefectDetail.defect_type,
-        func.count(DefectDetail.defect_detail_id).label('total_count'),
-        func.sum(DefectDetail.defect_count).label('defect_count')
+        func.count(DefectDetail.defect_detail_id).label("total_count"),
+        func.sum(DefectDetail.defect_count).label("defect_count"),
     )
 
     # Apply client filtering
@@ -232,10 +207,6 @@ def get_defect_summary_by_type(
     results = query.group_by(DefectDetail.defect_type).all()
 
     return [
-        {
-            'defect_type': row.defect_type,
-            'total_count': row.total_count,
-            'defect_count': row.defect_count or 0
-        }
+        {"defect_type": row.defect_type, "total_count": row.total_count, "defect_count": row.defect_count or 0}
         for row in results
     ]

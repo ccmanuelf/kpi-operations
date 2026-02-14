@@ -3,6 +3,7 @@ Comprehensive Employee CRUD Tests
 Tests CRUD operations with real database transactions.
 Target: Increase crud/employee.py coverage to 85%+
 """
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -43,42 +44,22 @@ def employee_setup(employee_db):
 
     # Create clients
     client_a = TestDataFactory.create_client(
-        db,
-        client_id="EMP-CLIENT-A",
-        client_name="Employee Test Client A",
-        client_type=ClientType.HOURLY_RATE
+        db, client_id="EMP-CLIENT-A", client_name="Employee Test Client A", client_type=ClientType.HOURLY_RATE
     )
 
     client_b = TestDataFactory.create_client(
-        db,
-        client_id="EMP-CLIENT-B",
-        client_name="Employee Test Client B",
-        client_type=ClientType.PIECE_RATE
+        db, client_id="EMP-CLIENT-B", client_name="Employee Test Client B", client_type=ClientType.PIECE_RATE
     )
 
     # Create users with different roles
-    admin = TestDataFactory.create_user(
-        db,
-        user_id="emp-admin-001",
-        username="emp_admin",
-        role="admin",
-        client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="emp-admin-001", username="emp_admin", role="admin", client_id=None)
 
     supervisor = TestDataFactory.create_user(
-        db,
-        user_id="emp-super-001",
-        username="emp_supervisor",
-        role="supervisor",
-        client_id=client_a.client_id
+        db, user_id="emp-super-001", username="emp_supervisor", role="supervisor", client_id=client_a.client_id
     )
 
     operator = TestDataFactory.create_user(
-        db,
-        user_id="emp-oper-001",
-        username="emp_operator",
-        role="operator",
-        client_id=client_a.client_id
+        db, user_id="emp-oper-001", username="emp_operator", role="operator", client_id=client_a.client_id
     )
 
     db.flush()
@@ -91,7 +72,7 @@ def employee_setup(employee_db):
             client_id=client_a.client_id,
             employee_name=f"Test Employee {i+1}",
             employee_code=f"EMP-TEST-{i+1:03d}",
-            is_floating_pool=(i >= 3)  # Last 2 are floating pool
+            is_floating_pool=(i >= 3),  # Last 2 are floating pool
         )
         employees.append(emp)
 
@@ -121,7 +102,7 @@ class TestCreateEmployee:
             "employee_code": "EMP-NEW-001",
             "employee_name": "New Employee",
             "client_id_assigned": client.client_id,
-            "is_floating_pool": 0
+            "is_floating_pool": 0,
         }
 
         result = employee_crud.create_employee(db, employee_data, admin)
@@ -233,9 +214,7 @@ class TestGetEmployees:
         admin = employee_setup["admin"]
         client = employee_setup["client_a"]
 
-        results = employee_crud.get_employees(
-            db, admin, client_id=client.client_id
-        )
+        results = employee_crud.get_employees(db, admin, client_id=client.client_id)
 
         assert len(results) >= 1
 
@@ -244,9 +223,7 @@ class TestGetEmployees:
         db = employee_setup["db"]
         admin = employee_setup["admin"]
 
-        results = employee_crud.get_employees(
-            db, admin, is_floating_pool=True
-        )
+        results = employee_crud.get_employees(db, admin, is_floating_pool=True)
 
         # We created 2 floating pool employees
         assert len(results) == 2
@@ -256,9 +233,7 @@ class TestGetEmployees:
         db = employee_setup["db"]
         admin = employee_setup["admin"]
 
-        results = employee_crud.get_employees(
-            db, admin, is_floating_pool=False
-        )
+        results = employee_crud.get_employees(db, admin, is_floating_pool=False)
 
         # We created 3 non-floating employees
         assert len(results) == 3
@@ -277,9 +252,7 @@ class TestUpdateEmployee:
             "employee_name": "Updated Name",
         }
 
-        result = employee_crud.update_employee(
-            db, emp.employee_id, update_data, admin
-        )
+        result = employee_crud.update_employee(db, emp.employee_id, update_data, admin)
 
         assert result.employee_name == "Updated Name"
 
@@ -293,9 +266,7 @@ class TestUpdateEmployee:
             "employee_name": "Supervisor Update",
         }
 
-        result = employee_crud.update_employee(
-            db, emp.employee_id, update_data, supervisor
-        )
+        result = employee_crud.update_employee(db, emp.employee_id, update_data, supervisor)
 
         assert result.employee_name == "Supervisor Update"
 
@@ -308,9 +279,7 @@ class TestUpdateEmployee:
         update_data = {"employee_name": "Hack"}
 
         with pytest.raises(HTTPException) as exc_info:
-            employee_crud.update_employee(
-                db, emp.employee_id, update_data, operator
-            )
+            employee_crud.update_employee(db, emp.employee_id, update_data, operator)
 
         assert exc_info.value.status_code == 403
 
@@ -370,9 +339,7 @@ class TestGetEmployeesByClient:
         admin = employee_setup["admin"]
         client = employee_setup["client_a"]
 
-        results = employee_crud.get_employees_by_client(
-            db, client.client_id, admin
-        )
+        results = employee_crud.get_employees_by_client(db, client.client_id, admin)
 
         assert len(results) >= 1
 
@@ -383,9 +350,7 @@ class TestGetEmployeesByClient:
         client_b = employee_setup["client_b"]
 
         with pytest.raises(HTTPException) as exc_info:
-            employee_crud.get_employees_by_client(
-                db, client_b.client_id, supervisor
-            )
+            employee_crud.get_employees_by_client(db, client_b.client_id, supervisor)
 
         assert exc_info.value.status_code == 403
 
@@ -416,9 +381,7 @@ class TestAssignToFloatingPool:
 
         assert emp.is_floating_pool == 0
 
-        result = employee_crud.assign_to_floating_pool(
-            db, emp.employee_id, admin
-        )
+        result = employee_crud.assign_to_floating_pool(db, emp.employee_id, admin)
 
         assert result.is_floating_pool == 1
 
@@ -429,9 +392,7 @@ class TestAssignToFloatingPool:
         emp = employee_setup["employees"][0]
 
         with pytest.raises(HTTPException) as exc_info:
-            employee_crud.assign_to_floating_pool(
-                db, emp.employee_id, operator
-            )
+            employee_crud.assign_to_floating_pool(db, emp.employee_id, operator)
 
         assert exc_info.value.status_code == 403
 
@@ -457,9 +418,7 @@ class TestRemoveFromFloatingPool:
 
         assert emp.is_floating_pool == 1
 
-        result = employee_crud.remove_from_floating_pool(
-            db, emp.employee_id, admin
-        )
+        result = employee_crud.remove_from_floating_pool(db, emp.employee_id, admin)
 
         assert result.is_floating_pool == 0
 
@@ -470,9 +429,7 @@ class TestRemoveFromFloatingPool:
         emp = employee_setup["employees"][3]
 
         with pytest.raises(HTTPException) as exc_info:
-            employee_crud.remove_from_floating_pool(
-                db, emp.employee_id, operator
-            )
+            employee_crud.remove_from_floating_pool(db, emp.employee_id, operator)
 
         assert exc_info.value.status_code == 403
 
@@ -497,9 +454,7 @@ class TestAssignEmployeeToClient:
         emp = employee_setup["employees"][0]
         client_b = employee_setup["client_b"]
 
-        result = employee_crud.assign_employee_to_client(
-            db, emp.employee_id, client_b.client_id, admin
-        )
+        result = employee_crud.assign_employee_to_client(db, emp.employee_id, client_b.client_id, admin)
 
         # Should contain client_b in assignments
         assert client_b.client_id in result.client_id_assigned
@@ -512,9 +467,7 @@ class TestAssignEmployeeToClient:
         client_b = employee_setup["client_b"]
 
         with pytest.raises(HTTPException) as exc_info:
-            employee_crud.assign_employee_to_client(
-                db, emp.employee_id, client_b.client_id, operator
-            )
+            employee_crud.assign_employee_to_client(db, emp.employee_id, client_b.client_id, operator)
 
         assert exc_info.value.status_code == 403
 
@@ -525,9 +478,7 @@ class TestAssignEmployeeToClient:
         client = employee_setup["client_a"]
 
         with pytest.raises(HTTPException) as exc_info:
-            employee_crud.assign_employee_to_client(
-                db, 99999, client.client_id, admin
-            )
+            employee_crud.assign_employee_to_client(db, 99999, client.client_id, admin)
 
         assert exc_info.value.status_code == 404
 
@@ -539,14 +490,10 @@ class TestAssignEmployeeToClient:
         client = employee_setup["client_a"]
 
         # Assign twice
-        employee_crud.assign_employee_to_client(
-            db, emp.employee_id, client.client_id, admin
-        )
-        result = employee_crud.assign_employee_to_client(
-            db, emp.employee_id, client.client_id, admin
-        )
+        employee_crud.assign_employee_to_client(db, emp.employee_id, client.client_id, admin)
+        result = employee_crud.assign_employee_to_client(db, emp.employee_id, client.client_id, admin)
 
         # Should not duplicate client in assignment
-        assignments = result.client_id_assigned.split(',')
+        assignments = result.client_id_assigned.split(",")
         count = sum(1 for a in assignments if a == client.client_id)
         assert count == 1

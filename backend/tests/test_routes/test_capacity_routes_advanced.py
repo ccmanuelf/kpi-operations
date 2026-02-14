@@ -5,6 +5,7 @@ Analysis, Schedules, Scenarios, KPI, and Workbook.
 
 Uses real in-memory SQLite database with TestDataFactory.
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -26,6 +27,7 @@ from backend.tests.fixtures.factories import TestDataFactory
 # Fixtures
 # =============================================================================
 
+
 def create_test_app(db_session):
     app = FastAPI()
     app.include_router(capacity_router)
@@ -43,7 +45,7 @@ def create_test_app(db_session):
         email="admin@test.com",
         role=UserRole.ADMIN,
         client_id_assigned=None,
-        is_active=True
+        is_active=True,
     )
 
     app.dependency_overrides[get_db] = override_get_db
@@ -81,6 +83,7 @@ def cap_client(cap_db):
 def cap_client_with_data(cap_db):
     """Client fixture with a pre-seeded client entity in the DB."""
     from backend.schemas.client import Client
+
     client = Client(
         client_id="TEST-CAP-001",
         client_name="Test Capacity Client",
@@ -100,6 +103,7 @@ CLIENT_ID = "TEST-CAP-001"
 def _seed_client(db):
     """Ensure the test client exists in DB."""
     from backend.schemas.client import Client
+
     existing = db.query(Client).filter(Client.client_id == CLIENT_ID).first()
     if not existing:
         client = Client(
@@ -115,6 +119,7 @@ def _seed_client(db):
 # =============================================================================
 # BOM TESTS (9 endpoints)
 # =============================================================================
+
 
 class TestBOMEndpoints:
     """Tests for /api/capacity/bom/* endpoints."""
@@ -211,7 +216,9 @@ class TestBOMEndpoints:
 
     def test_list_bom_details_empty(self, cap_client_with_data):
         client, db = cap_client_with_data
-        create_resp = client.post("/api/capacity/bom", json={"parent_item_code": "P-DET"}, params={"client_id": CLIENT_ID})
+        create_resp = client.post(
+            "/api/capacity/bom", json={"parent_item_code": "P-DET"}, params={"client_id": CLIENT_ID}
+        )
         header_id = create_resp.json()["id"]
 
         resp = client.get(f"/api/capacity/bom/{header_id}/details", params={"client_id": CLIENT_ID})
@@ -220,7 +227,9 @@ class TestBOMEndpoints:
 
     def test_create_bom_detail(self, cap_client_with_data):
         client, db = cap_client_with_data
-        create_resp = client.post("/api/capacity/bom", json={"parent_item_code": "P-D2"}, params={"client_id": CLIENT_ID})
+        create_resp = client.post(
+            "/api/capacity/bom", json={"parent_item_code": "P-D2"}, params={"client_id": CLIENT_ID}
+        )
         header_id = create_resp.json()["id"]
 
         detail_body = {
@@ -290,6 +299,7 @@ class TestBOMEndpoints:
 # =============================================================================
 # STOCK TESTS (8 endpoints)
 # =============================================================================
+
 
 class TestStockEndpoints:
     """Tests for /api/capacity/stock/* endpoints."""
@@ -462,6 +472,7 @@ class TestStockEndpoints:
 # COMPONENT CHECK TESTS (2 endpoints)
 # =============================================================================
 
+
 class TestComponentCheckEndpoints:
     """Tests for /api/capacity/component-check/* endpoints."""
 
@@ -535,6 +546,7 @@ class TestComponentCheckEndpoints:
 # ANALYSIS TESTS (2 endpoints)
 # =============================================================================
 
+
 class TestAnalysisEndpoints:
     """Tests for /api/capacity/analysis/* endpoints."""
 
@@ -593,6 +605,7 @@ class TestAnalysisEndpoints:
 # =============================================================================
 # SCHEDULES TESTS (5 endpoints)
 # =============================================================================
+
 
 class TestScheduleEndpoints:
     """Tests for /api/capacity/schedules/* endpoints."""
@@ -754,6 +767,7 @@ class TestScheduleEndpoints:
 # SCENARIOS TESTS (6 endpoints)
 # =============================================================================
 
+
 class TestScenarioEndpoints:
     """Tests for /api/capacity/scenarios/* endpoints."""
 
@@ -839,7 +853,10 @@ class TestScenarioEndpoints:
 
         resp = client.post(
             f"/api/capacity/scenarios/{sc_id}/run",
-            json={"period_start": date.today().isoformat(), "period_end": (date.today() + timedelta(days=30)).isoformat()},
+            json={
+                "period_start": date.today().isoformat(),
+                "period_end": (date.today() + timedelta(days=30)).isoformat(),
+            },
             params={"client_id": CLIENT_ID},
         )
         assert resp.status_code in [200, 400, 500, 501]
@@ -918,6 +935,7 @@ class TestScenarioEndpoints:
 # KPI TESTS (2 endpoints)
 # =============================================================================
 
+
 class TestKPIEndpoints:
     """Tests for /api/capacity/kpi/* endpoints."""
 
@@ -988,6 +1006,7 @@ class TestKPIEndpoints:
 # WORKBOOK TESTS (2 endpoints)
 # =============================================================================
 
+
 class TestWorkbookEndpoints:
     """Tests for /api/capacity/workbook/* endpoints."""
 
@@ -1000,10 +1019,18 @@ class TestWorkbookEndpoints:
 
         # Verify all 13 sheet keys exist
         expected_keys = [
-            "master_calendar", "production_lines", "orders",
-            "production_standards", "bom", "stock_snapshot",
-            "component_check", "capacity_analysis", "production_schedule",
-            "what_if_scenarios", "dashboard_inputs", "kpi_tracking",
+            "master_calendar",
+            "production_lines",
+            "orders",
+            "production_standards",
+            "bom",
+            "stock_snapshot",
+            "component_check",
+            "capacity_analysis",
+            "production_schedule",
+            "what_if_scenarios",
+            "dashboard_inputs",
+            "kpi_tracking",
             "instructions",
         ]
         for key in expected_keys:
@@ -1016,10 +1043,19 @@ class TestWorkbookEndpoints:
         data = resp.json()
 
         # List sheets
-        for key in ["master_calendar", "production_lines", "orders",
-                     "production_standards", "bom", "stock_snapshot",
-                     "component_check", "capacity_analysis",
-                     "production_schedule", "what_if_scenarios", "kpi_tracking"]:
+        for key in [
+            "master_calendar",
+            "production_lines",
+            "orders",
+            "production_standards",
+            "bom",
+            "stock_snapshot",
+            "component_check",
+            "capacity_analysis",
+            "production_schedule",
+            "what_if_scenarios",
+            "kpi_tracking",
+        ]:
             assert isinstance(data[key], list), f"{key} should be a list"
 
         # Dict sheets
@@ -1062,10 +1098,17 @@ class TestWorkbookEndpoints:
         """Verify all valid snake_case worksheet names are accepted."""
         client, db = cap_client_with_data
         valid_names = [
-            "master_calendar", "production_lines", "orders",
-            "production_standards", "bom", "stock_snapshot",
-            "component_check", "capacity_analysis", "production_schedule",
-            "what_if_scenarios", "kpi_tracking",
+            "master_calendar",
+            "production_lines",
+            "orders",
+            "production_standards",
+            "bom",
+            "stock_snapshot",
+            "component_check",
+            "capacity_analysis",
+            "production_schedule",
+            "what_if_scenarios",
+            "kpi_tracking",
         ]
         for name in valid_names:
             resp = client.put(
@@ -1080,9 +1123,15 @@ class TestWorkbookEndpoints:
         valid_worksheets list (it is a config dict, not a saveable list sheet)."""
         client, db = cap_client_with_data
         camel_names = [
-            "masterCalendar", "productionLines", "productionStandards",
-            "stockSnapshot", "componentCheck", "capacityAnalysis",
-            "productionSchedule", "whatIfScenarios", "kpiTracking",
+            "masterCalendar",
+            "productionLines",
+            "productionStandards",
+            "stockSnapshot",
+            "componentCheck",
+            "capacityAnalysis",
+            "productionSchedule",
+            "whatIfScenarios",
+            "kpiTracking",
         ]
         for name in camel_names:
             resp = client.put(
@@ -1103,10 +1152,7 @@ class TestWorkbookEndpoints:
     def test_save_worksheet_with_multiple_rows(self, cap_client_with_data):
         """Save worksheet with multiple rows."""
         client, db = cap_client_with_data
-        rows = [
-            {"line_code": f"LINE-{i}", "line_name": f"Line {i}"}
-            for i in range(5)
-        ]
+        rows = [{"line_code": f"LINE-{i}", "line_name": f"Line {i}"} for i in range(5)]
         resp = client.put(
             f"/api/capacity/workbook/{CLIENT_ID}/production_lines",
             json=rows,
@@ -1148,6 +1194,7 @@ class TestWorkbookEndpoints:
 # =============================================================================
 # CROSS-CUTTING / INTEGRATION TESTS
 # =============================================================================
+
 
 class TestCapacityCrossCutting:
     """Cross-cutting tests that span multiple endpoint groups."""
@@ -1300,9 +1347,12 @@ class TestCapacityCrossCutting:
         assert resp.status_code == 200
         di = resp.json()["dashboard_inputs"]
         expected_keys = [
-            "planning_horizon_days", "default_efficiency",
-            "bottleneck_threshold", "shortage_alert_days",
-            "auto_schedule_enabled", "target_utilization",
+            "planning_horizon_days",
+            "default_efficiency",
+            "bottleneck_threshold",
+            "shortage_alert_days",
+            "auto_schedule_enabled",
+            "target_utilization",
         ]
         for key in expected_keys:
             assert key in di, f"Missing dashboard input key: {key}"

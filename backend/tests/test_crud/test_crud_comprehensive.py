@@ -2,6 +2,7 @@
 Comprehensive CRUD Tests
 Target: Increase CRUD module coverage to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -31,7 +32,7 @@ class TestProductionCRUD:
             "shift_id": 1,
             "production_date": date.today(),
             "units_produced": 1000,
-            "employees_assigned": 5
+            "employees_assigned": 5,
         }
 
         # Simulate adding
@@ -111,7 +112,7 @@ class TestClientCRUD:
             "client_id": "CLIENT-001",
             "client_name": "Test Client",
             "client_type": "Manufacturing",
-            "is_active": True
+            "is_active": True,
         }
 
         mock_db.add = MagicMock()
@@ -135,10 +136,7 @@ class TestClientCRUD:
 
     def test_get_active_clients(self, mock_db):
         """Test getting active clients only"""
-        mock_clients = [
-            MagicMock(is_active=True),
-            MagicMock(is_active=True)
-        ]
+        mock_clients = [MagicMock(is_active=True), MagicMock(is_active=True)]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_clients
 
         result = mock_db.query().filter().all()
@@ -173,7 +171,7 @@ class TestEmployeeCRUD:
             "employee_id": "EMP-001",
             "employee_name": "John Doe",
             "client_id": "CLIENT-001",
-            "is_active": True
+            "is_active": True,
         }
 
         mock_db.add = MagicMock()
@@ -186,10 +184,7 @@ class TestEmployeeCRUD:
 
     def test_get_employees_by_client(self, mock_db):
         """Test getting employees by client"""
-        mock_employees = [
-            MagicMock(client_id="CLIENT-001"),
-            MagicMock(client_id="CLIENT-001")
-        ]
+        mock_employees = [MagicMock(client_id="CLIENT-001"), MagicMock(client_id="CLIENT-001")]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_employees
 
         result = mock_db.query().filter().all()
@@ -197,10 +192,7 @@ class TestEmployeeCRUD:
 
     def test_get_floating_pool_employees(self, mock_db):
         """Test getting floating pool employees"""
-        mock_employees = [
-            MagicMock(is_floating_pool=True),
-            MagicMock(is_floating_pool=True)
-        ]
+        mock_employees = [MagicMock(is_floating_pool=True), MagicMock(is_floating_pool=True)]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_employees
 
         result = mock_db.query().filter().all()
@@ -236,7 +228,7 @@ class TestQualityCRUD:
             "inspection_date": date.today(),
             "units_inspected": 1000,
             "units_passed": 995,
-            "units_defective": 5
+            "units_defective": 5,
         }
 
         mock_db.add = MagicMock()
@@ -282,7 +274,7 @@ class TestDowntimeCRUD:
             "machine_id": "MACHINE-001",
             "start_time": datetime.now() - timedelta(hours=1),
             "end_time": datetime.now(),
-            "downtime_reason": "MAINTENANCE"
+            "downtime_reason": "MAINTENANCE",
         }
 
         mock_db.add = MagicMock()
@@ -306,7 +298,7 @@ class TestDowntimeCRUD:
         mock_events = [
             MagicMock(downtime_duration_minutes=30),
             MagicMock(downtime_duration_minutes=45),
-            MagicMock(downtime_duration_minutes=15)
+            MagicMock(downtime_duration_minutes=15),
         ]
 
         total = sum(e.downtime_duration_minutes for e in mock_events)
@@ -329,7 +321,7 @@ class TestHoldCRUD:
             "client_id": "CLIENT-001",
             "hold_date": date.today(),
             "quantity_held": 100,
-            "hold_reason": "QUALITY_ISSUE"
+            "hold_reason": "QUALITY_ISSUE",
         }
 
         mock_db.add = MagicMock()
@@ -384,7 +376,7 @@ class TestWorkOrderCRUD:
             "client_id": "CLIENT-001",
             "product_id": 1,
             "planned_quantity": 1000,
-            "status": "ACTIVE"
+            "status": "ACTIVE",
         }
 
         mock_db.add = MagicMock()
@@ -429,12 +421,7 @@ class TestJobCRUD:
 
     def test_create_job(self, mock_db):
         """Test creating a job"""
-        job_data = {
-            "job_id": "JOB-001",
-            "work_order_id": "WO-001",
-            "operation_name": "Assembly",
-            "sequence_number": 1
-        }
+        job_data = {"job_id": "JOB-001", "work_order_id": "WO-001", "operation_name": "Assembly", "sequence_number": 1}
 
         mock_db.add = MagicMock()
         mock_db.commit = MagicMock()
@@ -471,7 +458,7 @@ class TestAttendanceCRUD:
             "attendance_date": date.today(),
             "status": "PRESENT",
             "scheduled_hours": 8.0,
-            "actual_hours": 8.0
+            "actual_hours": 8.0,
         }
 
         mock_db.add = MagicMock()
@@ -495,7 +482,7 @@ class TestAttendanceCRUD:
         mock_records = [
             MagicMock(scheduled_hours=8.0, actual_hours=8.0),
             MagicMock(scheduled_hours=8.0, actual_hours=0.0),
-            MagicMock(scheduled_hours=8.0, actual_hours=4.0)
+            MagicMock(scheduled_hours=8.0, actual_hours=4.0),
         ]
 
         absent_hours = sum(r.scheduled_hours - r.actual_hours for r in mock_records)
@@ -518,7 +505,7 @@ class TestCoverageCRUD:
             "client_id": "CLIENT-001",
             "coverage_date": date.today(),
             "required_employees": 10,
-            "available_employees": 8
+            "available_employees": 8,
         }
 
         mock_db.add = MagicMock()
@@ -564,7 +551,7 @@ class TestFloatingPoolCRUD:
         """Test getting available floating pool employees"""
         mock_employees = [
             MagicMock(is_floating_pool=True, is_assigned=False),
-            MagicMock(is_floating_pool=True, is_assigned=False)
+            MagicMock(is_floating_pool=True, is_assigned=False),
         ]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_employees
 
@@ -584,12 +571,7 @@ class TestDefectDetailCRUD:
 
     def test_create_defect_detail(self, mock_db):
         """Test creating a defect detail"""
-        defect_data = {
-            "quality_entry_id": "QE-001",
-            "defect_type": "SCRATCH",
-            "defect_count": 5,
-            "severity": "MINOR"
-        }
+        defect_data = {"quality_entry_id": "QE-001", "defect_type": "SCRATCH", "defect_count": 5, "severity": "MINOR"}
 
         mock_db.add = MagicMock()
         mock_db.commit = MagicMock()
@@ -612,7 +594,7 @@ class TestDefectDetailCRUD:
         mock_defects = [
             MagicMock(defect_type="SCRATCH", defect_count=50),
             MagicMock(defect_type="DENT", defect_count=30),
-            MagicMock(defect_type="OTHER", defect_count=20)
+            MagicMock(defect_type="OTHER", defect_count=20),
         ]
 
         total = sum(d.defect_count for d in mock_defects)

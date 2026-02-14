@@ -2,6 +2,7 @@
 Capacity Stock Snapshot - Weekly inventory positions
 Point-in-time inventory data for capacity planning and MRP.
 """
+
 from sqlalchemy import Column, Integer, String, Numeric, Date, ForeignKey, Text, Index
 from sqlalchemy.sql import func
 from sqlalchemy import DateTime
@@ -22,18 +23,19 @@ class CapacityStockSnapshot(Base):
 
     Multi-tenant: All records isolated by client_id
     """
+
     __tablename__ = "capacity_stock_snapshot"
     __table_args__ = (
-        Index('ix_capacity_stock_date_item', 'client_id', 'snapshot_date', 'item_code'),
-        Index('ix_capacity_stock_item', 'client_id', 'item_code'),
-        {"extend_existing": True}
+        Index("ix_capacity_stock_date_item", "client_id", "snapshot_date", "item_code"),
+        Index("ix_capacity_stock_item", "client_id", "item_code"),
+        {"extend_existing": True},
     )
 
     # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Snapshot date (indexed via composite indexes in __table_args__)
     snapshot_date = Column(Date, nullable=False)

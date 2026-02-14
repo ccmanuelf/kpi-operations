@@ -3,6 +3,7 @@ CRUD operations for JOB (Work Order Line Items)
 Create, Read, Update, Delete with multi-tenant client filtering
 SECURITY: All operations enforce client-based access control
 """
+
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -14,11 +15,7 @@ from backend.middleware.client_auth import verify_client_access, build_client_fi
 from backend.utils.soft_delete import soft_delete
 
 
-def create_job(
-    db: Session,
-    job_data: dict,
-    current_user: User
-) -> Job:
+def create_job(db: Session, job_data: dict, current_user: User) -> Job:
     """
     Create new job (work order line item)
     SECURITY: Verifies user has access to the specified client
@@ -35,7 +32,7 @@ def create_job(
         ClientAccessError: If user doesn't have access to job_data['client_id_fk']
     """
     # Verify client access
-    verify_client_access(current_user, job_data.get('client_id_fk'))
+    verify_client_access(current_user, job_data.get("client_id_fk"))
 
     db_job = Job(**job_data)
     db.add(db_job)
@@ -44,11 +41,7 @@ def create_job(
     return db_job
 
 
-def get_job(
-    db: Session,
-    job_id: str,
-    current_user: User
-) -> Optional[Job]:
+def get_job(db: Session, job_id: str, current_user: User) -> Optional[Job]:
     """
     Get job by ID with client filtering
     SECURITY: Returns None if user doesn't have access to job's client
@@ -72,11 +65,7 @@ def get_job(
 
 
 def get_jobs(
-    db: Session,
-    current_user: User,
-    work_order_id: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100
+    db: Session, current_user: User, work_order_id: Optional[str] = None, skip: int = 0, limit: int = 100
 ) -> List[Job]:
     """
     List jobs with client filtering
@@ -106,11 +95,7 @@ def get_jobs(
     return query.offset(skip).limit(limit).all()
 
 
-def get_jobs_by_work_order(
-    db: Session,
-    work_order_id: str,
-    current_user: User
-) -> List[Job]:
+def get_jobs_by_work_order(db: Session, work_order_id: str, current_user: User) -> List[Job]:
     """
     Get all jobs for a specific work order with client filtering
     SECURITY: Returns only jobs for user's authorized clients
@@ -133,12 +118,7 @@ def get_jobs_by_work_order(
     return query.all()
 
 
-def update_job(
-    db: Session,
-    job_id: str,
-    job_update: dict,
-    current_user: User
-) -> Optional[Job]:
+def update_job(db: Session, job_id: str, job_update: dict, current_user: User) -> Optional[Job]:
     """
     Update job with client access verification
     SECURITY: Verifies user has access to the job's client
@@ -158,7 +138,7 @@ def update_job(
 
     # Update fields
     for key, value in job_update.items():
-        if hasattr(job, key) and key != 'job_id':  # Prevent ID changes
+        if hasattr(job, key) and key != "job_id":  # Prevent ID changes
             setattr(job, key, value)
 
     db.commit()
@@ -166,11 +146,7 @@ def update_job(
     return job
 
 
-def delete_job(
-    db: Session,
-    job_id: str,
-    current_user: User
-) -> bool:
+def delete_job(db: Session, job_id: str, current_user: User) -> bool:
     """
     Soft delete job (sets is_active = False)
     SECURITY: Only deletes if user has access to the job's client
@@ -192,11 +168,7 @@ def delete_job(
 
 
 def complete_job(
-    db: Session,
-    job_id: str,
-    completed_quantity: int,
-    actual_hours: float,
-    current_user: User
+    db: Session, job_id: str, completed_quantity: int, actual_hours: float, current_user: User
 ) -> Optional[Job]:
     """
     Mark job as completed with actual quantities and hours

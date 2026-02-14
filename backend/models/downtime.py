@@ -2,6 +2,7 @@
 Downtime tracking models (Pydantic)
 PHASE 2: Machine availability tracking
 """
+
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
@@ -11,6 +12,7 @@ from enum import Enum
 
 class DowntimeReasonEnum(str, Enum):
     """Downtime categories for availability calculation - matches DB enum"""
+
     EQUIPMENT_FAILURE = "EQUIPMENT_FAILURE"
     MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
     SETUP_CHANGEOVER = "SETUP_CHANGEOVER"
@@ -22,6 +24,7 @@ class DowntimeReasonEnum(str, Enum):
 
 class DowntimeEventCreate(BaseModel):
     """Create downtime event - aligned with DOWNTIME_ENTRY schema"""
+
     # Multi-tenant isolation - REQUIRED
     client_id: str = Field(..., min_length=1, max_length=50)
 
@@ -65,31 +68,32 @@ class DowntimeEventCreate(BaseModel):
             "POWER_OUTAGE": DowntimeReasonEnum.POWER_OUTAGE,
         }
 
-        raw_category = (data.get('downtime_category') or data.get('downtime_reason') or 'OTHER').upper()
+        raw_category = (data.get("downtime_category") or data.get("downtime_reason") or "OTHER").upper()
         reason_enum = category_mapping.get(raw_category, DowntimeReasonEnum.OTHER)
 
         # Convert hours to minutes if duration_hours provided
-        duration_minutes = data.get('downtime_duration_minutes')
+        duration_minutes = data.get("downtime_duration_minutes")
         if duration_minutes is None:
-            duration_hours = float(data.get('duration_hours', 0))
+            duration_hours = float(data.get("duration_hours", 0))
             duration_minutes = int(duration_hours * 60)
 
         return cls(
-            client_id=data.get('client_id', ''),
-            work_order_id=data.get('work_order_number') or data.get('work_order_id', ''),
-            shift_date=data.get('shift_date') or data.get('production_date'),
+            client_id=data.get("client_id", ""),
+            work_order_id=data.get("work_order_number") or data.get("work_order_id", ""),
+            shift_date=data.get("shift_date") or data.get("production_date"),
             downtime_reason=reason_enum,
             downtime_duration_minutes=duration_minutes,
-            machine_id=data.get('machine_id'),
-            equipment_code=data.get('equipment_code'),
-            root_cause_category=data.get('root_cause_category'),
-            corrective_action=data.get('corrective_action'),
-            notes=data.get('notes')
+            machine_id=data.get("machine_id"),
+            equipment_code=data.get("equipment_code"),
+            root_cause_category=data.get("root_cause_category"),
+            corrective_action=data.get("corrective_action"),
+            notes=data.get("notes"),
         )
 
 
 class DowntimeEventUpdate(BaseModel):
     """Update downtime event"""
+
     downtime_category: Optional[str] = Field(None, max_length=50)
     downtime_reason: Optional[str] = Field(None, max_length=255)
     duration_hours: Optional[Decimal] = Field(None, gt=0, le=24)
@@ -99,6 +103,7 @@ class DowntimeEventUpdate(BaseModel):
 
 class DowntimeEventResponse(BaseModel):
     """Downtime event response - matches DOWNTIME_ENTRY schema"""
+
     downtime_entry_id: str
     client_id: str
     work_order_id: str
@@ -119,6 +124,7 @@ class DowntimeEventResponse(BaseModel):
 
 class AvailabilityCalculationResponse(BaseModel):
     """Availability KPI calculation"""
+
     product_id: int
     shift_id: int
     production_date: date

@@ -7,6 +7,7 @@ Provides provider implementations for different database backends:
 - MySQL: Secondary production option
 - PostgreSQL: Tertiary option (planned)
 """
+
 from backend.db.providers.base import DatabaseProvider
 from backend.db.providers.sqlite import SQLiteProvider
 from backend.db.providers.mariadb import MariaDBProvider

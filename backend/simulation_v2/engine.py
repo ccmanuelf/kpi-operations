@@ -38,27 +38,17 @@ class SimulationMetrics:
     """Accumulated metrics during simulation run."""
 
     # Throughput tracking
-    throughput_by_product: Dict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
+    throughput_by_product: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
     bundles_completed: int = 0
 
     # Cycle time tracking
     cycle_times: List[float] = field(default_factory=list)
-    cycle_times_by_product: Dict[str, List[float]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
+    cycle_times_by_product: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
 
     # Station metrics (keyed by machine_tool)
-    station_busy_time: Dict[str, float] = field(
-        default_factory=lambda: defaultdict(float)
-    )
-    station_pieces_processed: Dict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
-    station_queue_waits: Dict[str, List[float]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
+    station_busy_time: Dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    station_pieces_processed: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    station_queue_waits: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
 
     # WIP tracking
     wip_samples: List[int] = field(default_factory=list)
@@ -66,21 +56,13 @@ class SimulationMetrics:
     max_wip: int = 0
 
     # Bundle tracking per product
-    bundles_by_product: Dict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
-    bundles_in_system_samples: Dict[str, List[int]] = field(
-        default_factory=lambda: defaultdict(list)
-    )
-    current_bundles_by_product: Dict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
+    bundles_by_product: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    bundles_in_system_samples: Dict[str, List[int]] = field(default_factory=lambda: defaultdict(list))
+    current_bundles_by_product: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     # Rework tracking
     rework_count: int = 0
-    rework_by_station: Dict[str, int] = field(
-        default_factory=lambda: defaultdict(int)
-    )
+    rework_by_station: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     # Breakdown tracking
     breakdown_events: int = 0
@@ -116,18 +98,13 @@ class ProductionLineSimulator:
         # Build data structures
         self.operations_by_product = self._group_operations_by_product()
         self.demands_by_product = {d.product: d for d in config.demands}
-        self.breakdowns_by_tool = {
-            b.machine_tool: b.breakdown_pct
-            for b in (config.breakdowns or [])
-        }
+        self.breakdowns_by_tool = {b.machine_tool: b.breakdown_pct for b in (config.breakdowns or [])}
 
         # Create SimPy resources (machine/tool pools)
         self.resources = self._create_resources()
 
         # Calculate simulation horizon in minutes
-        self.horizon_minutes = (
-            config.schedule.daily_planned_hours * 60 * config.horizon_days
-        )
+        self.horizon_minutes = config.schedule.daily_planned_hours * 60 * config.horizon_days
 
     def _group_operations_by_product(self) -> Dict[str, List[OperationInput]]:
         """Group operations by product, sorted by step."""
@@ -177,9 +154,7 @@ class ProductionLineSimulator:
         if op.variability == VariabilityType.TRIANGULAR:
             # Symmetric triangular distribution centered at 0
             variability_factor = random.triangular(
-                TRIANGULAR_VARIABILITY_MIN,
-                TRIANGULAR_VARIABILITY_MAX,
-                TRIANGULAR_VARIABILITY_MODE
+                TRIANGULAR_VARIABILITY_MIN, TRIANGULAR_VARIABILITY_MAX, TRIANGULAR_VARIABILITY_MODE
             )
         else:
             variability_factor = 0.0
@@ -230,11 +205,7 @@ class ProductionLineSimulator:
         return 0.0
 
     def _bundle_process(
-        self,
-        bundle_id: int,
-        product: str,
-        bundle_size: int,
-        operations: List[OperationInput]
+        self, bundle_id: int, product: str, bundle_size: int, operations: List[OperationInput]
     ) -> Generator[Any, Any, None]:
         """
         Generator function representing a bundle flowing through operations.
@@ -322,9 +293,7 @@ class ProductionLineSimulator:
             self.metrics.wip_samples.append(self.metrics.current_wip)
             # Also sample bundles per product
             for product in self.metrics.current_bundles_by_product:
-                self.metrics.bundles_in_system_samples[product].append(
-                    self.metrics.current_bundles_by_product[product]
-                )
+                self.metrics.bundles_in_system_samples[product].append(self.metrics.current_bundles_by_product[product])
 
     def _generate_bundles(self) -> None:
         """
@@ -346,7 +315,7 @@ class ProductionLineSimulator:
             if self.config.mode == DemandMode.MIX_DRIVEN:
                 # Mix-driven: calculate from total and percentage
                 if self.config.total_demand and demand.mix_share_pct:
-                    daily_demand = (self.config.total_demand * demand.mix_share_pct / 100)
+                    daily_demand = self.config.total_demand * demand.mix_share_pct / 100
                 else:
                     daily_demand = 0
             else:
@@ -372,19 +341,10 @@ class ProductionLineSimulator:
                 # Calculate start delay (spread bundles across horizon)
                 start_delay = bundle_id * inter_arrival_time * 0.1  # 10% spread factor
 
-                self.env.process(
-                    self._delayed_bundle_start(
-                        start_delay, bundle_id, product, bundle_size, operations
-                    )
-                )
+                self.env.process(self._delayed_bundle_start(start_delay, bundle_id, product, bundle_size, operations))
 
     def _delayed_bundle_start(
-        self,
-        delay: float,
-        bundle_id: int,
-        product: str,
-        bundle_size: int,
-        operations: List[OperationInput]
+        self, delay: float, bundle_id: int, product: str, bundle_size: int, operations: List[OperationInput]
     ) -> Generator[Any, Any, None]:
         """
         Start a bundle after an initial delay.
@@ -419,10 +379,7 @@ class ProductionLineSimulator:
         return self.metrics
 
 
-def run_simulation(
-    config: SimulationConfig,
-    seed: int | None = None
-) -> Tuple[SimulationMetrics, float]:
+def run_simulation(config: SimulationConfig, seed: int | None = None) -> Tuple[SimulationMetrics, float]:
     """
     Execute simulation and return metrics with duration.
 

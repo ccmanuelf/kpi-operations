@@ -1,6 +1,7 @@
 """
 Comprehensive API endpoint tests for KPI Operations Platform
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from datetime import datetime, date, timedelta
@@ -18,8 +19,8 @@ class TestProductionEndpoints:
     def test_get_production_entries_success(self, mock_db):
         """Test getting production entries."""
         mock_entries = [
-            MagicMock(id=1, quantity_produced=100, to_dict=lambda: {'id': 1, 'quantity': 100}),
-            MagicMock(id=2, quantity_produced=200, to_dict=lambda: {'id': 2, 'quantity': 200})
+            MagicMock(id=1, quantity_produced=100, to_dict=lambda: {"id": 1, "quantity": 100}),
+            MagicMock(id=2, quantity_produced=200, to_dict=lambda: {"id": 2, "quantity": 200}),
         ]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_entries
         result = mock_db.query().filter().all()
@@ -27,12 +28,7 @@ class TestProductionEndpoints:
 
     def test_create_production_entry_valid(self, mock_db):
         """Test creating valid production entry."""
-        entry_data = {
-            'work_order_id': 1,
-            'product_id': 1,
-            'quantity_produced': 100,
-            'quantity_defective': 5
-        }
+        entry_data = {"work_order_id": 1, "product_id": 1, "quantity_produced": 100, "quantity_defective": 5}
         mock_entry = MagicMock(**entry_data, id=1)
         mock_db.add(mock_entry)
         mock_db.commit()
@@ -71,12 +67,7 @@ class TestProductionEndpoints:
 
     def test_production_summary_endpoint(self, mock_db):
         """Test production summary endpoint."""
-        mock_summary = {
-            'total_produced': 5000,
-            'total_defective': 100,
-            'fpy': 98.0,
-            'lines_active': 5
-        }
+        mock_summary = {"total_produced": 5000, "total_defective": 100, "fpy": 98.0, "lines_active": 5}
         mock_db.query.return_value.first.return_value = MagicMock(**mock_summary)
         result = mock_db.query().first()
         assert result.total_produced == 5000
@@ -98,12 +89,7 @@ class TestDowntimeEndpoints:
 
     def test_create_downtime_entry(self, mock_db):
         """Test creating downtime entry."""
-        entry_data = {
-            'line_id': 1,
-            'reason_code': 'MECH',
-            'start_time': datetime.now(),
-            'duration_minutes': 30
-        }
+        entry_data = {"line_id": 1, "reason_code": "MECH", "start_time": datetime.now(), "duration_minutes": 30}
         mock_entry = MagicMock(**entry_data, id=1)
         mock_db.add(mock_entry)
         mock_db.commit()
@@ -120,7 +106,7 @@ class TestDowntimeEndpoints:
 
     def test_downtime_by_reason(self, mock_db):
         """Test getting downtime by reason code."""
-        mock_entries = [MagicMock(reason_code='MECH') for _ in range(3)]
+        mock_entries = [MagicMock(reason_code="MECH") for _ in range(3)]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_entries
         result = mock_db.query().filter().all()
         assert len(result) == 3
@@ -149,12 +135,7 @@ class TestQualityEndpoints:
 
     def test_create_quality_inspection(self, mock_db):
         """Test creating quality inspection."""
-        inspection_data = {
-            'production_entry_id': 1,
-            'inspector_id': 1,
-            'total_inspected': 100,
-            'total_defects': 5
-        }
+        inspection_data = {"production_entry_id": 1, "inspector_id": 1, "total_inspected": 100, "total_defects": 5}
         mock_entry = MagicMock(**inspection_data, id=1)
         mock_db.add(mock_entry)
         mock_db.commit()
@@ -176,7 +157,7 @@ class TestQualityEndpoints:
 
     def test_quality_summary(self, mock_db):
         """Test quality summary endpoint."""
-        mock_summary = {'avg_defect_rate': 1.5, 'ppm': 15000}
+        mock_summary = {"avg_defect_rate": 1.5, "ppm": 15000}
         mock_db.query.return_value.first.return_value = MagicMock(**mock_summary)
         result = mock_db.query().first()
         assert result.avg_defect_rate == 1.5
@@ -198,12 +179,7 @@ class TestAttendanceEndpoints:
 
     def test_create_attendance_record(self, mock_db):
         """Test creating attendance record."""
-        record_data = {
-            'employee_id': 1,
-            'shift_id': 1,
-            'attendance_date': date.today(),
-            'status': 'present'
-        }
+        record_data = {"employee_id": 1, "shift_id": 1, "attendance_date": date.today(), "status": "present"}
         mock_record = MagicMock(**record_data, id=1)
         mock_db.add(mock_record)
         mock_db.commit()
@@ -240,18 +216,14 @@ class TestHoldEndpoints:
 
     def test_get_holds(self, mock_db):
         """Test getting hold entries."""
-        mock_holds = [MagicMock(id=i, status='active') for i in range(5)]
+        mock_holds = [MagicMock(id=i, status="active") for i in range(5)]
         mock_db.query.return_value.all.return_value = mock_holds
         result = mock_db.query().all()
         assert len(result) == 5
 
     def test_create_hold(self, mock_db):
         """Test creating hold entry."""
-        hold_data = {
-            'production_entry_id': 1,
-            'hold_reason': 'Quality issue',
-            'quantity_held': 50
-        }
+        hold_data = {"production_entry_id": 1, "hold_reason": "Quality issue", "quantity_held": 50}
         mock_hold = MagicMock(**hold_data, id=1)
         mock_db.add(mock_hold)
         mock_db.commit()
@@ -259,22 +231,22 @@ class TestHoldEndpoints:
 
     def test_release_hold(self, mock_db):
         """Test releasing hold."""
-        mock_hold = MagicMock(status='active')
+        mock_hold = MagicMock(status="active")
         mock_db.query.return_value.filter.return_value.first.return_value = mock_hold
         hold = mock_db.query().filter().first()
-        hold.status = 'released'
+        hold.status = "released"
         hold.release_date = datetime.now()
         mock_db.commit()
-        assert hold.status == 'released'
+        assert hold.status == "released"
 
     def test_scrap_hold(self, mock_db):
         """Test scrapping hold."""
-        mock_hold = MagicMock(status='active')
+        mock_hold = MagicMock(status="active")
         mock_db.query.return_value.filter.return_value.first.return_value = mock_hold
         hold = mock_db.query().filter().first()
-        hold.status = 'scrapped'
+        hold.status = "scrapped"
         mock_db.commit()
-        assert hold.status == 'scrapped'
+        assert hold.status == "scrapped"
 
 
 class TestCSVUploadEndpoints:
@@ -283,22 +255,22 @@ class TestCSVUploadEndpoints:
     def test_production_csv_upload_valid(self):
         """Test valid production CSV upload."""
         csv_data = "work_order_id,product_id,quantity_produced\n1,1,100"
-        rows = csv_data.strip().split('\n')
+        rows = csv_data.strip().split("\n")
         assert len(rows) == 2  # header + 1 data row
 
     def test_csv_validation_required_columns(self):
         """Test CSV validation for required columns."""
-        required = ['work_order_id', 'product_id', 'quantity_produced']
-        headers = ['work_order_id', 'product_id', 'quantity_produced', 'notes']
+        required = ["work_order_id", "product_id", "quantity_produced"]
+        headers = ["work_order_id", "product_id", "quantity_produced", "notes"]
         missing = [col for col in required if col not in headers]
         assert len(missing) == 0
 
     def test_csv_validation_missing_columns(self):
         """Test CSV validation with missing columns."""
-        required = ['work_order_id', 'product_id', 'quantity_produced']
-        headers = ['work_order_id', 'quantity_produced']
+        required = ["work_order_id", "product_id", "quantity_produced"]
+        headers = ["work_order_id", "quantity_produced"]
         missing = [col for col in required if col not in headers]
-        assert 'product_id' in missing
+        assert "product_id" in missing
 
     def test_csv_data_type_validation(self):
         """Test CSV data type validation."""
@@ -308,7 +280,7 @@ class TestCSVUploadEndpoints:
 
     def test_csv_batch_import_success(self):
         """Test successful batch import from CSV."""
-        records = [{'id': i, 'qty': 100 + i} for i in range(50)]
+        records = [{"id": i, "qty": 100 + i} for i in range(50)]
         assert len(records) == 50
 
 
@@ -397,42 +369,36 @@ class TestDashboardEndpoints:
 
     def test_dashboard_summary(self, mock_db):
         """Test dashboard summary endpoint."""
-        mock_summary = {
-            'oee': 85.5,
-            'fpy': 96.2,
-            'otd': 94.0,
-            'attendance': 97.5,
-            'downtime_hours': 12.5
-        }
-        assert mock_summary['oee'] == 85.5
+        mock_summary = {"oee": 85.5, "fpy": 96.2, "otd": 94.0, "attendance": 97.5, "downtime_hours": 12.5}
+        assert mock_summary["oee"] == 85.5
 
     def test_production_trend_data(self, mock_db):
         """Test production trend data."""
         trends = [
-            {'date': '2024-01-01', 'value': 1000},
-            {'date': '2024-01-02', 'value': 1100},
-            {'date': '2024-01-03', 'value': 1050}
+            {"date": "2024-01-01", "value": 1000},
+            {"date": "2024-01-02", "value": 1100},
+            {"date": "2024-01-03", "value": 1050},
         ]
         assert len(trends) == 3
 
     def test_quality_trend_data(self, mock_db):
         """Test quality trend data."""
         trends = [
-            {'date': '2024-01-01', 'defect_rate': 2.5},
-            {'date': '2024-01-02', 'defect_rate': 2.1},
-            {'date': '2024-01-03', 'defect_rate': 1.8}
+            {"date": "2024-01-01", "defect_rate": 2.5},
+            {"date": "2024-01-02", "defect_rate": 2.1},
+            {"date": "2024-01-03", "defect_rate": 1.8},
         ]
         # Improving trend
-        assert trends[-1]['defect_rate'] < trends[0]['defect_rate']
+        assert trends[-1]["defect_rate"] < trends[0]["defect_rate"]
 
     def test_line_status(self, mock_db):
         """Test production line status."""
         lines = [
-            {'id': 1, 'status': 'running', 'efficiency': 92.5},
-            {'id': 2, 'status': 'down', 'efficiency': 0},
-            {'id': 3, 'status': 'running', 'efficiency': 88.0}
+            {"id": 1, "status": "running", "efficiency": 92.5},
+            {"id": 2, "status": "down", "efficiency": 0},
+            {"id": 3, "status": "running", "efficiency": 88.0},
         ]
-        running_lines = [l for l in lines if l['status'] == 'running']
+        running_lines = [l for l in lines if l["status"] == "running"]
         assert len(running_lines) == 2
 
 
@@ -442,44 +408,32 @@ class TestReportEndpoints:
     def test_generate_production_report(self):
         """Test production report generation."""
         report_data = {
-            'start_date': '2024-01-01',
-            'end_date': '2024-01-31',
-            'total_produced': 50000,
-            'total_defects': 500,
-            'fpy': 99.0
+            "start_date": "2024-01-01",
+            "end_date": "2024-01-31",
+            "total_produced": 50000,
+            "total_defects": 500,
+            "fpy": 99.0,
         }
-        assert report_data['fpy'] == 99.0
+        assert report_data["fpy"] == 99.0
 
     def test_generate_quality_report(self):
         """Test quality report generation."""
-        report_data = {
-            'period': 'January 2024',
-            'ppm': 10000,
-            'dpmo': 2500,
-            'sigma_level': 4.3
-        }
-        assert report_data['sigma_level'] == 4.3
+        report_data = {"period": "January 2024", "ppm": 10000, "dpmo": 2500, "sigma_level": 4.3}
+        assert report_data["sigma_level"] == 4.3
 
     def test_export_csv(self):
         """Test CSV export."""
-        data = [
-            {'id': 1, 'value': 100},
-            {'id': 2, 'value': 200}
-        ]
-        csv_lines = ['id,value']
+        data = [{"id": 1, "value": 100}, {"id": 2, "value": 200}]
+        csv_lines = ["id,value"]
         for row in data:
             csv_lines.append(f"{row['id']},{row['value']}")
-        csv_output = '\n'.join(csv_lines)
-        assert 'id,value' in csv_output
+        csv_output = "\n".join(csv_lines)
+        assert "id,value" in csv_output
 
     def test_export_pdf_generation(self):
         """Test PDF report generation flag."""
-        pdf_options = {
-            'include_charts': True,
-            'page_size': 'A4',
-            'orientation': 'landscape'
-        }
-        assert pdf_options['include_charts'] is True
+        pdf_options = {"include_charts": True, "page_size": "A4", "orientation": "landscape"}
+        assert pdf_options["include_charts"] is True
 
 
 class TestAuthenticationEndpoints:
@@ -487,32 +441,33 @@ class TestAuthenticationEndpoints:
 
     def test_login_valid_credentials(self):
         """Test login with valid credentials."""
-        credentials = {'username': 'admin', 'password': 'admin123'}
-        is_valid = credentials['username'] == 'admin' and credentials['password'] == 'admin123'
+        credentials = {"username": "admin", "password": "admin123"}
+        is_valid = credentials["username"] == "admin" and credentials["password"] == "admin123"
         assert is_valid is True
 
     def test_login_invalid_credentials(self):
         """Test login with invalid credentials."""
-        credentials = {'username': 'admin', 'password': 'wrong'}
-        is_valid = credentials['username'] == 'admin' and credentials['password'] == 'admin123'
+        credentials = {"username": "admin", "password": "wrong"}
+        is_valid = credentials["username"] == "admin" and credentials["password"] == "admin123"
         assert is_valid is False
 
     def test_token_generation(self):
         """Test JWT token generation."""
         import hashlib
-        token_data = 'user:admin:timestamp:123456'
+
+        token_data = "user:admin:timestamp:123456"
         token = hashlib.sha256(token_data.encode()).hexdigest()
         assert len(token) == 64
 
     def test_token_validation(self):
         """Test token validation."""
-        token = 'valid_token_here'
+        token = "valid_token_here"
         is_valid = len(token) > 0
         assert is_valid is True
 
     def test_logout(self):
         """Test logout functionality."""
-        session = {'user': 'admin', 'token': 'abc123'}
+        session = {"user": "admin", "token": "abc123"}
         session.clear()
         assert len(session) == 0
 
@@ -526,14 +481,14 @@ class TestClientEndpoints:
 
     def test_get_clients(self, mock_db):
         """Test getting client list."""
-        mock_clients = [MagicMock(id=i, name=f'Client{i}') for i in range(5)]
+        mock_clients = [MagicMock(id=i, name=f"Client{i}") for i in range(5)]
         mock_db.query.return_value.all.return_value = mock_clients
         result = mock_db.query().all()
         assert len(result) == 5
 
     def test_create_client(self, mock_db):
         """Test creating new client."""
-        client_data = {'name': 'New Client', 'code': 'NC001'}
+        client_data = {"name": "New Client", "code": "NC001"}
         mock_client = MagicMock(**client_data, id=1)
         mock_db.add(mock_client)
         mock_db.commit()
@@ -544,7 +499,7 @@ class TestClientEndpoints:
         client_id = 1
         mock_entries = [MagicMock(client_id=1) for _ in range(10)]
         mock_db.query.return_value.filter.return_value.all.return_value = mock_entries
-        
+
         result = mock_db.query().filter().all()
         for entry in result:
             assert entry.client_id == 1

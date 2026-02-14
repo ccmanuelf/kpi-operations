@@ -4,6 +4,7 @@ Cache Management API Routes
 Phase A.1: Provides endpoints for cache monitoring and management.
 Supports the Capacity Planning Module caching infrastructure.
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 from datetime import datetime
@@ -21,9 +22,7 @@ router = APIRouter(
 
 
 @router.get("/stats", response_model=Dict[str, Any])
-async def get_cache_stats(
-    current_user: User = Depends(get_current_user)
-) -> Dict[str, Any]:
+async def get_cache_stats(current_user: User = Depends(get_current_user)) -> Dict[str, Any]:
     """
     Get cache statistics.
 
@@ -40,17 +39,11 @@ async def get_cache_stats(
     cache = get_cache()
     stats = cache.get_stats()
 
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "statistics": stats
-    }
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat(), "statistics": stats}
 
 
 @router.post("/clear", response_model=Dict[str, Any])
-async def clear_cache(
-    current_user: User = Depends(get_current_admin)
-) -> Dict[str, Any]:
+async def clear_cache(current_user: User = Depends(get_current_admin)) -> Dict[str, Any]:
     """
     Clear all cache entries.
 
@@ -68,15 +61,12 @@ async def clear_cache(
         "status": "success",
         "message": f"Cache cleared successfully",
         "entries_cleared": cleared_count,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
 @router.delete("/invalidate/{pattern}", response_model=Dict[str, Any])
-async def invalidate_cache_pattern(
-    pattern: str,
-    current_user: User = Depends(get_current_admin)
-) -> Dict[str, Any]:
+async def invalidate_cache_pattern(pattern: str, current_user: User = Depends(get_current_admin)) -> Dict[str, Any]:
     """
     Invalidate cache entries matching a pattern prefix.
 
@@ -102,7 +92,7 @@ async def invalidate_cache_pattern(
         "status": "success",
         "pattern": pattern,
         "entries_invalidated": invalidated_count,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
@@ -137,11 +127,7 @@ async def cache_health() -> Dict[str, Any]:
             "status": status,
             "timestamp": datetime.utcnow().isoformat(),
             "entries": stats.get("entries", 0),
-            "hit_rate": hit_rate
+            "hit_rate": hit_rate,
         }
     except Exception as e:
-        return {
-            "status": "error",
-            "timestamp": datetime.utcnow().isoformat(),
-            "error": str(e)
-        }
+        return {"status": "error", "timestamp": datetime.utcnow().isoformat(), "error": str(e)}

@@ -6,6 +6,7 @@ Phase 2.2: Updated to support both:
 - Junction table (USER_CLIENT_ASSIGNMENT) - new normalized approach
 - Comma-separated client_id_assigned field - legacy fallback
 """
+
 from typing import Optional, List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -14,11 +15,9 @@ from backend.schemas.user import User, UserRole
 
 class ClientAccessError(HTTPException):
     """Custom exception for client access violations"""
+
     def __init__(self, detail: str = "Access denied to this client's data"):
-        super().__init__(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=detail
-        )
+        super().__init__(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
 
 def _get_clients_from_junction_table(db: Session, user_id: str) -> Optional[List[str]]:
@@ -35,10 +34,11 @@ def _get_clients_from_junction_table(db: Session, user_id: str) -> Optional[List
     try:
         from backend.schemas.user_client_assignment import UserClientAssignment
 
-        assignments = db.query(UserClientAssignment.client_id).filter(
-            UserClientAssignment.user_id == user_id,
-            UserClientAssignment.is_active == True
-        ).all()
+        assignments = (
+            db.query(UserClientAssignment.client_id)
+            .filter(UserClientAssignment.user_id == user_id, UserClientAssignment.is_active == True)
+            .all()
+        )
 
         if assignments:
             return [a.client_id for a in assignments]
@@ -62,7 +62,7 @@ def _get_clients_from_legacy_field(user: User) -> Optional[List[str]]:
         return None
 
     # Parse comma-separated client IDs
-    user_clients = [c.strip() for c in user.client_id_assigned.split(',') if c.strip()]
+    user_clients = [c.strip() for c in user.client_id_assigned.split(",") if c.strip()]
 
     return user_clients if user_clients else None
 
@@ -100,9 +100,7 @@ def get_user_client_filter(user: User, db: Session = None) -> Optional[List[str]
 
     # LEADER and OPERATOR must have client assignment
     if not user_clients:
-        raise ClientAccessError(
-            detail=f"User {user.username} has no client assignment. Contact administrator."
-        )
+        raise ClientAccessError(detail=f"User {user.username} has no client assignment. Contact administrator.")
 
     return user_clients
 
@@ -216,9 +214,12 @@ def require_client_access(resource_client_id: str):
             # Access already verified by decorator
             return work_order
     """
+
     def decorator(func):
         async def wrapper(*args, current_user: User, **kwargs):
             verify_client_access(current_user, resource_client_id)
             return await func(*args, current_user=current_user, **kwargs)
+
         return wrapper
+
     return decorator

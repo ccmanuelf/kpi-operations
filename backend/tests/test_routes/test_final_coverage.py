@@ -2,6 +2,7 @@
 Final Coverage Tests for Remaining Low Coverage Routes
 Target: Push coverage from 81% to 85%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 
@@ -19,18 +20,12 @@ class TestAttendanceFinal:
 
     def test_attendance_list_by_status(self, authenticated_client):
         """Test attendance list by status"""
-        response = authenticated_client.get(
-            "/api/attendance/",
-            params={"status": "present"}
-        )
+        response = authenticated_client.get("/api/attendance/", params={"status": "present"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_attendance_list_by_shift(self, authenticated_client):
         """Test attendance list by shift"""
-        response = authenticated_client.get(
-            "/api/attendance/",
-            params={"shift_id": "SHIFT-A"}
-        )
+        response = authenticated_client.get("/api/attendance/", params={"shift_id": "SHIFT-A"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_attendance_by_employee_id(self, authenticated_client):
@@ -48,8 +43,8 @@ class TestAttendanceFinal:
                 "shift_id": "SHIFT-A",
                 "status": "present",
                 "hours_worked": 8.0,
-                "hours_absent": 0
-            }
+                "hours_absent": 0,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -63,17 +58,14 @@ class TestAttendanceFinal:
                 "shift_id": "SHIFT-B",
                 "status": "absent",
                 "hours_worked": 0,
-                "hours_absent": 8.0
-            }
+                "hours_absent": 8.0,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_attendance_daily_summary(self, authenticated_client):
         """Test attendance daily summary"""
-        response = authenticated_client.get(
-            "/api/attendance/daily-summary",
-            params={"date": date.today().isoformat()}
-        )
+        response = authenticated_client.get("/api/attendance/daily-summary", params={"date": date.today().isoformat()})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_attendance_weekly_summary(self, authenticated_client):
@@ -81,10 +73,7 @@ class TestAttendanceFinal:
         today = date.today()
         response = authenticated_client.get(
             "/api/attendance/weekly-summary",
-            params={
-                "start_date": (today - timedelta(days=7)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=7)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -98,10 +87,7 @@ class TestAttendanceFinal:
         today = date.today()
         response = authenticated_client.get(
             "/api/attendance/report",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -129,10 +115,7 @@ class TestPredictionsFinal:
 
     def test_predictions_with_client(self, authenticated_client):
         """Test predictions with client filter"""
-        response = authenticated_client.get(
-            "/api/predictions/efficiency",
-            params={"client_id": "TEST-CLIENT"}
-        )
+        response = authenticated_client.get("/api/predictions/efficiency", params={"client_id": "TEST-CLIENT"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_predictions_model_info(self, authenticated_client):
@@ -147,10 +130,7 @@ class TestPredictionsFinal:
 
     def test_predictions_confidence_intervals(self, authenticated_client):
         """Test predictions confidence intervals"""
-        response = authenticated_client.get(
-            "/api/predictions/efficiency",
-            params={"include_confidence": True}
-        )
+        response = authenticated_client.get("/api/predictions/efficiency", params={"include_confidence": True})
         assert response.status_code in [200, 403, 404, 422]
 
 
@@ -194,8 +174,8 @@ class TestKPIFinal:
                 "period1_start": (today - timedelta(days=60)).isoformat(),
                 "period1_end": (today - timedelta(days=30)).isoformat(),
                 "period2_start": (today - timedelta(days=30)).isoformat(),
-                "period2_end": today.isoformat()
-            }
+                "period2_end": today.isoformat(),
+            },
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -231,19 +211,13 @@ class TestQualityFinal:
         today = date.today()
         response = authenticated_client.get(
             "/api/quality/",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
     def test_quality_by_client(self, authenticated_client):
         """Test quality by client"""
-        response = authenticated_client.get(
-            "/api/quality/",
-            params={"client_id": "TEST-CLIENT"}
-        )
+        response = authenticated_client.get("/api/quality/", params={"client_id": "TEST-CLIENT"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_quality_create_entry(self, authenticated_client):
@@ -255,8 +229,8 @@ class TestQualityFinal:
                 "inspection_date": date.today().isoformat(),
                 "units_inspected": 1000,
                 "units_passed": 995,
-                "defects_found": 5
-            }
+                "defects_found": 5,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
@@ -270,10 +244,7 @@ class TestQualityFinal:
         today = date.today()
         response = authenticated_client.get(
             "/api/quality/trend",
-            params={
-                "start_date": (today - timedelta(days=90)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=90)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -301,10 +272,7 @@ class TestProductionFinal:
 
     def test_production_by_client(self, authenticated_client):
         """Test production by client"""
-        response = authenticated_client.get(
-            "/api/production/",
-            params={"client_id": "TEST-CLIENT"}
-        )
+        response = authenticated_client.get("/api/production/", params={"client_id": "TEST-CLIENT"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_production_create_entry(self, authenticated_client):
@@ -317,25 +285,19 @@ class TestProductionFinal:
                 "shift_id": "SHIFT-A",
                 "units_produced": 1000,
                 "units_scrapped": 10,
-                "employees_assigned": 5
-            }
+                "employees_assigned": 5,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_production_daily_output(self, authenticated_client):
         """Test daily production output"""
-        response = authenticated_client.get(
-            "/api/production/daily-output",
-            params={"date": date.today().isoformat()}
-        )
+        response = authenticated_client.get("/api/production/daily-output", params={"date": date.today().isoformat()})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_production_shift_summary(self, authenticated_client):
         """Test production shift summary"""
-        response = authenticated_client.get(
-            "/api/production/shift-summary",
-            params={"shift_id": "SHIFT-A"}
-        )
+        response = authenticated_client.get("/api/production/shift-summary", params={"shift_id": "SHIFT-A"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_production_trend(self, authenticated_client):
@@ -343,10 +305,7 @@ class TestProductionFinal:
         today = date.today()
         response = authenticated_client.get(
             "/api/production/trend",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -370,10 +329,7 @@ class TestAdditionalRoutes:
     # Holds routes
     def test_holds_list_by_status(self, authenticated_client):
         """Test holds list by status"""
-        response = authenticated_client.get(
-            "/api/holds/",
-            params={"released": False}
-        )
+        response = authenticated_client.get("/api/holds/", params={"released": False})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_holds_create(self, authenticated_client):
@@ -384,17 +340,14 @@ class TestAdditionalRoutes:
                 "work_order_id": "WO-TEST",
                 "hold_reason_category": "quality",
                 "hold_reason": "Failed inspection",
-                "quantity_on_hold": 100
-            }
+                "quantity_on_hold": 100,
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_holds_release(self, authenticated_client):
         """Test hold release"""
-        response = authenticated_client.put(
-            "/api/holds/1/release",
-            json={"release_reason": "Issue resolved"}
-        )
+        response = authenticated_client.put("/api/holds/1/release", json={"release_reason": "Issue resolved"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     # Preferences routes
@@ -405,16 +358,14 @@ class TestAdditionalRoutes:
 
     def test_preferences_update(self, authenticated_client):
         """Test update preferences"""
-        response = authenticated_client.put(
-            "/api/preferences/",
-            json={"theme": "dark", "timezone": "UTC"}
-        )
+        response = authenticated_client.put("/api/preferences/", json={"theme": "dark", "timezone": "UTC"})
         assert response.status_code in [200, 400, 403, 404, 422]
 
     # Users routes
     def admin_users_create(self, authenticated_client):
         """Test user creation"""
         import uuid
+
         unique_id = str(uuid.uuid4())[:8]
         response = authenticated_client.post(
             "/api/users/",
@@ -422,17 +373,14 @@ class TestAdditionalRoutes:
                 "username": f"testuser_{unique_id}",
                 "email": f"test_{unique_id}@example.com",
                 "password": "SecurePass123!",
-                "role": "operator"
-            }
+                "role": "operator",
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def admin_users_list_by_role(self, authenticated_client):
         """Test users list by role"""
-        response = authenticated_client.get(
-            "/api/users/",
-            params={"role": "operator"}
-        )
+        response = authenticated_client.get("/api/users/", params={"role": "operator"})
         assert response.status_code in [200, 403, 404, 422]
 
     # Defect type catalog routes
@@ -445,15 +393,12 @@ class TestAdditionalRoutes:
                 "name": "Test Defect Type",
                 "category": "visual",
                 "severity": "minor",
-                "client_id": "TEST-CLIENT"
-            }
+                "client_id": "TEST-CLIENT",
+            },
         )
         assert response.status_code in [200, 201, 400, 403, 422]
 
     def test_defect_types_by_category(self, authenticated_client):
         """Test defect types by category"""
-        response = authenticated_client.get(
-            "/api/defect-types/global",
-            params={"category": "visual"}
-        )
+        response = authenticated_client.get("/api/defect-types/global", params={"category": "visual"})
         assert response.status_code in [200, 403, 404, 422]

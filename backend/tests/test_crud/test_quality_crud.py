@@ -1,6 +1,7 @@
 """
 Comprehensive tests for Quality CRUD operations
 """
+
 import pytest
 from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock
@@ -88,7 +89,7 @@ class TestQualityCRUD:
         assert round(rty_percent, 2) == 92.17
 
     def test_quality_summary(self, mock_db):
-        mock_summary = {'avg_defect_rate': 2.5, 'total_defects': 500}
+        mock_summary = {"avg_defect_rate": 2.5, "total_defects": 500}
         mock_db.query.return_value.first.return_value = MagicMock(**mock_summary)
         result = mock_db.query().first()
         assert result.avg_defect_rate == 2.5
@@ -117,6 +118,6 @@ class TestQualityEdgeCases:
         assert sigma == 6
 
     def test_pareto_defect_analysis(self):
-        defects = {'visual': 50, 'dimensional': 30, 'surface': 15, 'other': 5}
+        defects = {"visual": 50, "dimensional": 30, "surface": 15, "other": 5}
         sorted_defects = sorted(defects.items(), key=lambda x: x[1], reverse=True)
-        assert sorted_defects[0][0] == 'visual'
+        assert sorted_defects[0][0] == "visual"

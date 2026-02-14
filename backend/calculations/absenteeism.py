@@ -4,6 +4,7 @@ PHASE 3: Employee attendance tracking
 
 Absenteeism Rate = (Total Hours Absent / Total Scheduled Hours) * 100
 """
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import date, datetime
@@ -14,10 +15,7 @@ from backend.schemas.attendance_entry import AttendanceEntry
 
 
 def calculate_absenteeism(
-    db: Session,
-    shift_id: int,
-    start_date: date,
-    end_date: date
+    db: Session, shift_id: int, start_date: date, end_date: date
 ) -> tuple[Decimal, Decimal, Decimal, int, int]:
     """
     Calculate absenteeism rate for a shift over date range
@@ -29,13 +27,17 @@ def calculate_absenteeism(
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
     # Get all attendance records for period
-    records = db.query(AttendanceEntry).filter(
-        and_(
-            AttendanceEntry.shift_id == shift_id,
-            AttendanceEntry.shift_date >= start_datetime,
-            AttendanceEntry.shift_date <= end_datetime
+    records = (
+        db.query(AttendanceEntry)
+        .filter(
+            and_(
+                AttendanceEntry.shift_id == shift_id,
+                AttendanceEntry.shift_date >= start_datetime,
+                AttendanceEntry.shift_date <= end_datetime,
+            )
         )
-    ).all()
+        .all()
+    )
 
     if not records:
         return (Decimal("0"), Decimal("0"), Decimal("0"), 0, 0)
@@ -63,21 +65,10 @@ def calculate_absenteeism(
     else:
         absenteeism_rate = Decimal("0")
 
-    return (
-        absenteeism_rate,
-        total_scheduled,
-        total_absent,
-        len(unique_employees),
-        absence_count
-    )
+    return (absenteeism_rate, total_scheduled, total_absent, len(unique_employees), absence_count)
 
 
-def calculate_attendance_rate(
-    db: Session,
-    employee_id: int,
-    start_date: date,
-    end_date: date
-) -> Decimal:
+def calculate_attendance_rate(db: Session, employee_id: int, start_date: date, end_date: date) -> Decimal:
     """
     Calculate attendance rate for specific employee
 
@@ -87,36 +78,41 @@ def calculate_attendance_rate(
     start_datetime = datetime.combine(start_date, datetime.min.time())
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
-    total_days = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-        and_(
-            AttendanceEntry.employee_id == employee_id,
-            AttendanceEntry.shift_date >= start_datetime,
-            AttendanceEntry.shift_date <= end_datetime
+    total_days = (
+        db.query(func.count(AttendanceEntry.attendance_entry_id))
+        .filter(
+            and_(
+                AttendanceEntry.employee_id == employee_id,
+                AttendanceEntry.shift_date >= start_datetime,
+                AttendanceEntry.shift_date <= end_datetime,
+            )
         )
-    ).scalar()
+        .scalar()
+    )
 
     if not total_days:
         return Decimal("0")
 
     # Count days where employee was present (not absent)
-    present_days = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-        and_(
-            AttendanceEntry.employee_id == employee_id,
-            AttendanceEntry.shift_date >= start_datetime,
-            AttendanceEntry.shift_date <= end_datetime,
-            AttendanceEntry.is_absent == 0
+    present_days = (
+        db.query(func.count(AttendanceEntry.attendance_entry_id))
+        .filter(
+            and_(
+                AttendanceEntry.employee_id == employee_id,
+                AttendanceEntry.shift_date >= start_datetime,
+                AttendanceEntry.shift_date <= end_datetime,
+                AttendanceEntry.is_absent == 0,
+            )
         )
-    ).scalar()
+        .scalar()
+    )
 
     attendance_rate = (Decimal(str(present_days)) / Decimal(str(total_days))) * 100
     return attendance_rate
 
 
 def identify_chronic_absentees(
-    db: Session,
-    threshold_rate: Decimal = Decimal("10.0"),
-    start_date: date = None,
-    end_date: date = None
+    db: Session, threshold_rate: Decimal = Decimal("10.0"), start_date: date = None, end_date: date = None
 ) -> list[dict]:
     """
     Identify employees with absenteeism above threshold
@@ -134,12 +130,12 @@ def identify_chronic_absentees(
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
     # Get all unique employees
-    employees = db.query(AttendanceEntry.employee_id).filter(
-        and_(
-            AttendanceEntry.shift_date >= start_datetime,
-            AttendanceEntry.shift_date <= end_datetime
-        )
-    ).distinct().all()
+    employees = (
+        db.query(AttendanceEntry.employee_id)
+        .filter(and_(AttendanceEntry.shift_date >= start_datetime, AttendanceEntry.shift_date <= end_datetime))
+        .distinct()
+        .all()
+    )
 
     chronic_absentees = []
 
@@ -150,12 +146,14 @@ def identify_chronic_absentees(
         if rate < (100 - threshold_rate):
             absenteeism = 100 - rate
 
-            chronic_absentees.append({
-                "employee_id": emp_id,
-                "attendance_rate": rate,
-                "absenteeism_rate": absenteeism,
-                "needs_attention": True
-            })
+            chronic_absentees.append(
+                {
+                    "employee_id": emp_id,
+                    "attendance_rate": rate,
+                    "absenteeism_rate": absenteeism,
+                    "needs_attention": True,
+                }
+            )
 
     # Sort by worst absenteeism first
     chronic_absentees.sort(key=lambda x: x["absenteeism_rate"], reverse=True)
@@ -163,12 +161,7 @@ def identify_chronic_absentees(
     return chronic_absentees
 
 
-def calculate_bradford_factor(
-    db: Session,
-    employee_id: int,
-    start_date: date,
-    end_date: date
-) -> int:
+def calculate_bradford_factor(db: Session, employee_id: int, start_date: date, end_date: date) -> int:
     """
     Calculate Bradford Factor Score
 
@@ -184,28 +177,36 @@ def calculate_bradford_factor(
     - 251+: Final warning/termination
     """
     from sqlalchemy import or_
+
     # Convert date to datetime for comparison
     start_datetime = datetime.combine(start_date, datetime.min.time())
     end_datetime = datetime.combine(end_date, datetime.max.time())
 
-    absences = db.query(AttendanceEntry).filter(
-        and_(
-            AttendanceEntry.employee_id == employee_id,
-            AttendanceEntry.shift_date >= start_datetime,
-            AttendanceEntry.shift_date <= end_datetime,
-            or_(AttendanceEntry.is_absent == 1, AttendanceEntry.is_late == 1)
+    absences = (
+        db.query(AttendanceEntry)
+        .filter(
+            and_(
+                AttendanceEntry.employee_id == employee_id,
+                AttendanceEntry.shift_date >= start_datetime,
+                AttendanceEntry.shift_date <= end_datetime,
+                or_(AttendanceEntry.is_absent == 1, AttendanceEntry.is_late == 1),
+            )
         )
-    ).order_by(AttendanceEntry.shift_date).all()
+        .order_by(AttendanceEntry.shift_date)
+        .all()
+    )
 
     if not absences:
         return 0
 
     # Count spells (continuous absence periods)
     spells = 1
-    prev_date = absences[0].shift_date.date() if hasattr(absences[0].shift_date, 'date') else absences[0].shift_date
+    prev_date = absences[0].shift_date.date() if hasattr(absences[0].shift_date, "date") else absences[0].shift_date
 
     for i in range(1, len(absences)):
-        current_date = absences[i].shift_date.date() if hasattr(absences[i].shift_date, 'date') else absences[i].shift_date
+        current_date = (
+            absences[i].shift_date.date() if hasattr(absences[i].shift_date, "date") else absences[i].shift_date
+        )
         if (current_date - prev_date).days > 1:
             spells += 1
         prev_date = current_date
@@ -214,6 +215,6 @@ def calculate_bradford_factor(
     total_days = len(absences)
 
     # Calculate Bradford Factor
-    bradford_score = (spells ** 2) * total_days
+    bradford_score = (spells**2) * total_days
 
     return bradford_score

@@ -15,7 +15,7 @@ from .soft_delete import (
     restore_soft_deleted,
     get_active_query,
     get_all_including_deleted,
-    SoftDeleteMixin
+    SoftDeleteMixin,
 )
 
 from .logging_utils import (
@@ -24,7 +24,7 @@ from .logging_utils import (
     log_error,
     log_security_event,
     log_performance,
-    with_logging
+    with_logging,
 )
 
 from .tenant_guard import (
@@ -33,7 +33,7 @@ from .tenant_guard import (
     ensure_client_id,
     get_client_id_from_user,
     validate_resource_ownership,
-    filter_resources_by_tenant
+    filter_resources_by_tenant,
 )
 
 __all__ = [
@@ -57,5 +57,5 @@ __all__ = [
     "ensure_client_id",
     "get_client_id_from_user",
     "validate_resource_ownership",
-    "filter_resources_by_tenant"
+    "filter_resources_by_tenant",
 ]

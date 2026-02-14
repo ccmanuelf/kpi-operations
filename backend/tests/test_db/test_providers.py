@@ -3,6 +3,7 @@ Unit Tests for Database Providers
 
 Tests for SQLiteProvider, MariaDBProvider, MySQLProvider, and DatabaseProviderFactory.
 """
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from sqlalchemy import Engine
@@ -115,7 +116,7 @@ class TestMariaDBProvider:
 
         assert adapter.dialect_name == "mariadb"
 
-    @patch('backend.db.providers.mariadb.create_engine')
+    @patch("backend.db.providers.mariadb.create_engine")
     def test_create_engine_with_pool_settings(self, mock_create_engine):
         """Test engine creation with pool settings."""
         mock_engine = MagicMock()

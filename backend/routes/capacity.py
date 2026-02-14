@@ -18,6 +18,7 @@ This module provides REST API endpoints for:
 
 All endpoints enforce multi-tenant isolation via client_id.
 """
+
 from typing import List, Optional, Dict, Any
 from datetime import date
 from decimal import Decimal
@@ -43,16 +44,13 @@ from backend.schemas.capacity.component_check import ComponentStatus
 # Main Router
 # =============================================================================
 
-router = APIRouter(
-    prefix="/api/capacity",
-    tags=["Capacity Planning"],
-    responses={404: {"description": "Not found"}}
-)
+router = APIRouter(prefix="/api/capacity", tags=["Capacity Planning"], responses={404: {"description": "Not found"}})
 
 
 # =============================================================================
 # Pydantic Models for Request/Response
 # =============================================================================
+
 
 # Calendar Models
 class CalendarEntryCreate(BaseModel):
@@ -428,8 +426,7 @@ class ScheduleResponse(BaseModel):
 
 class ScheduleCommitRequest(BaseModel):
     kpi_commitments: Dict[str, float] = Field(
-        default_factory=dict,
-        description="KPI commitments e.g. {'efficiency': 85.0, 'quality': 98.5}"
+        default_factory=dict, description="KPI commitments e.g. {'efficiency': 85.0, 'quality': 98.5}"
     )
 
 
@@ -491,6 +488,7 @@ class KPICommitmentResponse(BaseModel):
 # Calendar Endpoints
 # =============================================================================
 
+
 @router.get("/calendar", response_model=List[CalendarEntryResponse])
 def list_calendar_entries(
     client_id: str = Query(..., description="Client ID"),
@@ -499,7 +497,7 @@ def list_calendar_entries(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get calendar entries for a client."""
     verify_client_access(current_user, client_id, db)
@@ -513,12 +511,13 @@ def create_calendar(
     entry: CalendarEntryCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new calendar entry."""
     verify_client_access(current_user, client_id, db)
     return calendar.create_calendar_entry(
-        db, client_id,
+        db,
+        client_id,
         entry.calendar_date,
         entry.is_working_day,
         entry.shifts_available,
@@ -526,7 +525,7 @@ def create_calendar(
         entry.shift2_hours,
         entry.shift3_hours,
         entry.holiday_name,
-        entry.notes
+        entry.notes,
     )
 
 
@@ -535,7 +534,7 @@ def get_calendar(
     entry_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific calendar entry."""
     verify_client_access(current_user, client_id, db)
@@ -551,14 +550,11 @@ def update_calendar(
     update: CalendarEntryUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a calendar entry."""
     verify_client_access(current_user, client_id, db)
-    entry = calendar.update_calendar_entry(
-        db, client_id, entry_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    entry = calendar.update_calendar_entry(db, client_id, entry_id, **update.model_dump(exclude_unset=True))
     if not entry:
         raise HTTPException(status_code=404, detail="Calendar entry not found")
     return entry
@@ -569,7 +565,7 @@ def delete_calendar(
     entry_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a calendar entry."""
     verify_client_access(current_user, client_id, db)
@@ -582,6 +578,7 @@ def delete_calendar(
 # Production Lines Endpoints
 # =============================================================================
 
+
 @router.get("/lines", response_model=List[ProductionLineResponse])
 def list_production_lines(
     client_id: str = Query(..., description="Client ID"),
@@ -590,7 +587,7 @@ def list_production_lines(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get production lines for a client."""
     verify_client_access(current_user, client_id, db)
@@ -604,12 +601,13 @@ def create_production_line(
     line: ProductionLineCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new production line."""
     verify_client_access(current_user, client_id, db)
     return production_lines.create_production_line(
-        db, client_id,
+        db,
+        client_id,
         line.line_code,
         line.line_name,
         line.department,
@@ -618,7 +616,7 @@ def create_production_line(
         line.efficiency_factor,
         line.absenteeism_factor,
         line.is_active,
-        line.notes
+        line.notes,
     )
 
 
@@ -627,7 +625,7 @@ def get_production_line(
     line_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific production line."""
     verify_client_access(current_user, client_id, db)
@@ -643,14 +641,11 @@ def update_production_line(
     update: ProductionLineUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a production line."""
     verify_client_access(current_user, client_id, db)
-    line = production_lines.update_production_line(
-        db, client_id, line_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    line = production_lines.update_production_line(db, client_id, line_id, **update.model_dump(exclude_unset=True))
     if not line:
         raise HTTPException(status_code=404, detail="Production line not found")
     return line
@@ -662,7 +657,7 @@ def delete_production_line(
     client_id: str = Query(..., description="Client ID"),
     soft_delete: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a production line."""
     verify_client_access(current_user, client_id, db)
@@ -675,6 +670,7 @@ def delete_production_line(
 # Orders Endpoints
 # =============================================================================
 
+
 @router.get("/orders", response_model=List[OrderResponse])
 def list_orders(
     client_id: str = Query(..., description="Client ID"),
@@ -682,7 +678,7 @@ def list_orders(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get orders for a client."""
     verify_client_access(current_user, client_id, db)
@@ -694,12 +690,13 @@ def create_order(
     order: OrderCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new order."""
     verify_client_access(current_user, client_id, db)
     return orders.create_order(
-        db, client_id,
+        db,
+        client_id,
         order.order_number,
         order.style_code,
         order.order_quantity,
@@ -712,7 +709,7 @@ def create_order(
         order.priority,
         order.status,
         order.order_sam_minutes,
-        order.notes
+        order.notes,
     )
 
 
@@ -722,7 +719,7 @@ def get_orders_for_scheduling(
     start_date: date = Query(..., description="Schedule period start"),
     end_date: date = Query(..., description="Schedule period end"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get confirmed orders ready for scheduling within a date range."""
     verify_client_access(current_user, client_id, db)
@@ -734,7 +731,7 @@ def get_order(
     order_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific order."""
     verify_client_access(current_user, client_id, db)
@@ -750,14 +747,11 @@ def update_order(
     update: OrderUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update an order."""
     verify_client_access(current_user, client_id, db)
-    order = orders.update_order(
-        db, client_id, order_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    order = orders.update_order(db, client_id, order_id, **update.model_dump(exclude_unset=True))
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
@@ -769,7 +763,7 @@ def update_order_status(
     new_status: OrderStatus,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update order status."""
     verify_client_access(current_user, client_id, db)
@@ -784,7 +778,7 @@ def delete_order(
     order_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete an order."""
     verify_client_access(current_user, client_id, db)
@@ -797,6 +791,7 @@ def delete_order(
 # Standards Endpoints
 # =============================================================================
 
+
 @router.get("/standards", response_model=List[StandardResponse])
 def list_standards(
     client_id: str = Query(..., description="Client ID"),
@@ -804,7 +799,7 @@ def list_standards(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get production standards for a client."""
     verify_client_access(current_user, client_id, db)
@@ -816,12 +811,13 @@ def create_standard(
     standard: StandardCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new production standard."""
     verify_client_access(current_user, client_id, db)
     return standards.create_standard(
-        db, client_id,
+        db,
+        client_id,
         standard.style_code,
         standard.operation_code,
         standard.sam_minutes,
@@ -830,7 +826,7 @@ def create_standard(
         standard.setup_time_minutes,
         standard.machine_time_minutes,
         standard.manual_time_minutes,
-        standard.notes
+        standard.notes,
     )
 
 
@@ -839,7 +835,7 @@ def get_standards_by_style(
     style_code: str,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get all standards for a specific style."""
     verify_client_access(current_user, client_id, db)
@@ -852,7 +848,7 @@ def get_total_sam_for_style(
     client_id: str = Query(..., description="Client ID"),
     department: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get total SAM minutes for a style."""
     verify_client_access(current_user, client_id, db)
@@ -865,7 +861,7 @@ def get_standard(
     standard_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific production standard."""
     verify_client_access(current_user, client_id, db)
@@ -881,14 +877,11 @@ def update_standard(
     update: StandardUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a production standard."""
     verify_client_access(current_user, client_id, db)
-    standard = standards.update_standard(
-        db, client_id, standard_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    standard = standards.update_standard(db, client_id, standard_id, **update.model_dump(exclude_unset=True))
     if not standard:
         raise HTTPException(status_code=404, detail="Standard not found")
     return standard
@@ -899,7 +892,7 @@ def delete_standard(
     standard_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a production standard."""
     verify_client_access(current_user, client_id, db)
@@ -912,6 +905,7 @@ def delete_standard(
 # BOM Endpoints
 # =============================================================================
 
+
 @router.get("/bom", response_model=List[BOMHeaderResponse])
 def list_bom_headers(
     client_id: str = Query(..., description="Client ID"),
@@ -919,7 +913,7 @@ def list_bom_headers(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get BOM headers for a client."""
     verify_client_access(current_user, client_id, db)
@@ -931,18 +925,19 @@ def create_bom_header(
     header: BOMHeaderCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new BOM header."""
     verify_client_access(current_user, client_id, db)
     return bom.create_bom_header(
-        db, client_id,
+        db,
+        client_id,
         header.parent_item_code,
         header.parent_item_description,
         header.style_code,
         header.revision,
         header.is_active,
-        header.notes
+        header.notes,
     )
 
 
@@ -951,7 +946,7 @@ def get_bom_header(
     header_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific BOM header."""
     verify_client_access(current_user, client_id, db)
@@ -967,14 +962,11 @@ def update_bom_header(
     update: BOMHeaderUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a BOM header."""
     verify_client_access(current_user, client_id, db)
-    header = bom.update_bom_header(
-        db, client_id, header_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    header = bom.update_bom_header(db, client_id, header_id, **update.model_dump(exclude_unset=True))
     if not header:
         raise HTTPException(status_code=404, detail="BOM header not found")
     return header
@@ -986,7 +978,7 @@ def delete_bom_header(
     client_id: str = Query(..., description="Client ID"),
     cascade: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a BOM header (and optionally its details)."""
     verify_client_access(current_user, client_id, db)
@@ -1000,7 +992,7 @@ def list_bom_details(
     header_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get details for a BOM header."""
     verify_client_access(current_user, client_id, db)
@@ -1013,19 +1005,21 @@ def create_bom_detail(
     detail: BOMDetailCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Add a component to a BOM."""
     verify_client_access(current_user, client_id, db)
     return bom.create_bom_detail(
-        db, client_id, header_id,
+        db,
+        client_id,
+        header_id,
         detail.component_item_code,
         detail.quantity_per,
         detail.component_description,
         detail.unit_of_measure,
         detail.waste_percentage,
         detail.component_type,
-        detail.notes
+        detail.notes,
     )
 
 
@@ -1035,14 +1029,11 @@ def update_bom_detail(
     update: BOMDetailUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a BOM detail."""
     verify_client_access(current_user, client_id, db)
-    detail = bom.update_bom_detail(
-        db, client_id, detail_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    detail = bom.update_bom_detail(db, client_id, detail_id, **update.model_dump(exclude_unset=True))
     if not detail:
         raise HTTPException(status_code=404, detail="BOM detail not found")
     return detail
@@ -1053,7 +1044,7 @@ def delete_bom_detail(
     detail_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a BOM detail."""
     verify_client_access(current_user, client_id, db)
@@ -1067,11 +1058,12 @@ def explode_bom(
     request: BOMExplosionRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Run BOM explosion for a parent item."""
     verify_client_access(current_user, client_id, db)
     from backend.services.capacity.bom_service import BOMService
+
     service = BOMService(db)
     try:
         result = service.explode_bom(client_id, request.parent_item_code, Decimal(str(request.quantity)))
@@ -1086,11 +1078,11 @@ def explode_bom(
                     "net_required": float(c.net_required),
                     "waste_percentage": float(c.waste_percentage),
                     "unit_of_measure": c.unit_of_measure,
-                    "component_type": c.component_type
+                    "component_type": c.component_type,
                 }
                 for c in result.components
             ],
-            "total_components": result.total_components
+            "total_components": result.total_components,
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1100,6 +1092,7 @@ def explode_bom(
 # Stock Endpoints
 # =============================================================================
 
+
 @router.get("/stock", response_model=List[StockSnapshotResponse])
 def list_stock_snapshots(
     client_id: str = Query(..., description="Client ID"),
@@ -1107,7 +1100,7 @@ def list_stock_snapshots(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get stock snapshots for a client."""
     verify_client_access(current_user, client_id, db)
@@ -1119,12 +1112,13 @@ def create_stock_snapshot(
     snapshot: StockSnapshotCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new stock snapshot."""
     verify_client_access(current_user, client_id, db)
     return stock.create_stock_snapshot(
-        db, client_id,
+        db,
+        client_id,
         snapshot.snapshot_date,
         snapshot.item_code,
         snapshot.on_hand_quantity,
@@ -1133,7 +1127,7 @@ def create_stock_snapshot(
         snapshot.item_description,
         snapshot.unit_of_measure,
         snapshot.location,
-        snapshot.notes
+        snapshot.notes,
     )
 
 
@@ -1142,7 +1136,7 @@ def get_latest_stock_for_item(
     item_code: str,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get the most recent stock snapshot for an item."""
     verify_client_access(current_user, client_id, db)
@@ -1158,7 +1152,7 @@ def get_available_stock_for_item(
     client_id: str = Query(..., description="Client ID"),
     as_of_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get available stock quantity for an item."""
     verify_client_access(current_user, client_id, db)
@@ -1171,7 +1165,7 @@ def get_shortage_items(
     client_id: str = Query(..., description="Client ID"),
     snapshot_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get items with shortage (zero or negative available quantity)."""
     verify_client_access(current_user, client_id, db)
@@ -1183,7 +1177,7 @@ def get_stock_snapshot(
     snapshot_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific stock snapshot."""
     verify_client_access(current_user, client_id, db)
@@ -1199,14 +1193,11 @@ def update_stock_snapshot(
     update: StockSnapshotUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Update a stock snapshot."""
     verify_client_access(current_user, client_id, db)
-    snapshot = stock.update_stock_snapshot(
-        db, client_id, snapshot_id,
-        **update.model_dump(exclude_unset=True)
-    )
+    snapshot = stock.update_stock_snapshot(db, client_id, snapshot_id, **update.model_dump(exclude_unset=True))
     if not snapshot:
         raise HTTPException(status_code=404, detail="Stock snapshot not found")
     return snapshot
@@ -1217,7 +1208,7 @@ def delete_stock_snapshot(
     snapshot_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a stock snapshot."""
     verify_client_access(current_user, client_id, db)
@@ -1230,12 +1221,13 @@ def delete_stock_snapshot(
 # Component Check (MRP) Endpoints
 # =============================================================================
 
+
 @router.post("/component-check/run", response_model=List[ComponentCheckResult])
 def run_component_check(
     request: ComponentCheckRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Run component availability check (MRP explosion).
@@ -1246,19 +1238,15 @@ def run_component_check(
 
     try:
         from backend.services.capacity.mrp_service import MRPService
+
         service = MRPService(db)
 
         if request.order_ids:
             results = service.check_components_for_orders(client_id, request.order_ids)
         elif request.start_date and request.end_date:
-            results = service.check_components_for_period(
-                client_id, request.start_date, request.end_date
-            )
+            results = service.check_components_for_period(client_id, request.start_date, request.end_date)
         else:
-            raise HTTPException(
-                status_code=400,
-                detail="Must provide either order_ids or both start_date and end_date"
-            )
+            raise HTTPException(status_code=400, detail="Must provide either order_ids or both start_date and end_date")
 
         return [
             {
@@ -1270,15 +1258,12 @@ def run_component_check(
                 "available_quantity": float(r.available_quantity),
                 "shortage_quantity": float(r.shortage_quantity),
                 "status": r.status.value,
-                "coverage_percent": r.coverage_percent()
+                "coverage_percent": r.coverage_percent(),
             }
             for r in results
         ]
     except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="MRP service not yet implemented"
-        )
+        raise HTTPException(status_code=501, detail="MRP service not yet implemented")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1288,7 +1273,7 @@ def get_component_shortages(
     client_id: str = Query(..., description="Client ID"),
     run_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get component shortages from the most recent check run."""
     verify_client_access(current_user, client_id, db)
@@ -1296,8 +1281,7 @@ def get_component_shortages(
     from backend.schemas.capacity.component_check import CapacityComponentCheck, ComponentStatus
 
     query = db.query(CapacityComponentCheck).filter(
-        CapacityComponentCheck.client_id == client_id,
-        CapacityComponentCheck.status != ComponentStatus.OK
+        CapacityComponentCheck.client_id == client_id, CapacityComponentCheck.status != ComponentStatus.OK
     )
 
     if run_date:
@@ -1315,7 +1299,7 @@ def get_component_shortages(
             "available_quantity": float(r.available_quantity),
             "shortage_quantity": float(r.shortage_quantity),
             "status": r.status.value,
-            "coverage_percent": r.coverage_percent()
+            "coverage_percent": r.coverage_percent(),
         }
         for r in results
     ]
@@ -1325,26 +1309,24 @@ def get_component_shortages(
 # Capacity Analysis Endpoints
 # =============================================================================
 
+
 @router.post("/analysis/calculate", response_model=List[AnalysisResult])
 def run_capacity_analysis(
     request: AnalysisRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Run capacity analysis for lines within a date range."""
     verify_client_access(current_user, client_id, db)
 
     try:
         from backend.services.capacity.analysis_service import CapacityAnalysisService
+
         service = CapacityAnalysisService(db)
 
         results = service.analyze_capacity(
-            client_id,
-            request.start_date,
-            request.end_date,
-            request.line_ids,
-            request.department
+            client_id, request.start_date, request.end_date, request.line_ids, request.department
         )
 
         return [
@@ -1358,15 +1340,12 @@ def run_capacity_analysis(
                 "capacity_hours": float(r.capacity_hours),
                 "demand_hours": float(r.demand_hours),
                 "utilization_percent": float(r.utilization_percent),
-                "is_bottleneck": r.is_bottleneck
+                "is_bottleneck": r.is_bottleneck,
             }
             for r in results
         ]
     except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="Capacity analysis service not yet implemented"
-        )
+        raise HTTPException(status_code=501, detail="Capacity analysis service not yet implemented")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1376,7 +1355,7 @@ def get_bottleneck_lines(
     client_id: str = Query(..., description="Client ID"),
     analysis_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get lines identified as bottlenecks."""
     verify_client_access(current_user, client_id, db)
@@ -1384,8 +1363,7 @@ def get_bottleneck_lines(
     from backend.schemas.capacity.analysis import CapacityAnalysis
 
     query = db.query(CapacityAnalysis).filter(
-        CapacityAnalysis.client_id == client_id,
-        CapacityAnalysis.is_bottleneck == True
+        CapacityAnalysis.client_id == client_id, CapacityAnalysis.is_bottleneck == True
     )
 
     if analysis_date:
@@ -1404,7 +1382,7 @@ def get_bottleneck_lines(
             "capacity_hours": float(r.capacity_hours or 0),
             "demand_hours": float(r.demand_hours or 0),
             "utilization_percent": float(r.utilization_percent or 0),
-            "is_bottleneck": r.is_bottleneck
+            "is_bottleneck": r.is_bottleneck,
         }
         for r in results
     ]
@@ -1414,6 +1392,7 @@ def get_bottleneck_lines(
 # Schedule Endpoints
 # =============================================================================
 
+
 @router.get("/schedules", response_model=List[ScheduleResponse])
 def list_schedules(
     client_id: str = Query(..., description="Client ID"),
@@ -1421,7 +1400,7 @@ def list_schedules(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get schedules for a client."""
     verify_client_access(current_user, client_id, db)
@@ -1441,7 +1420,7 @@ def create_schedule(
     schedule: ScheduleCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new schedule."""
     verify_client_access(current_user, client_id, db)
@@ -1454,7 +1433,7 @@ def create_schedule(
         period_start=schedule.period_start,
         period_end=schedule.period_end,
         status=ScheduleStatus.DRAFT,
-        notes=schedule.notes
+        notes=schedule.notes,
     )
     db.add(new_schedule)
     db.commit()
@@ -1467,17 +1446,18 @@ def get_schedule(
     schedule_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific schedule."""
     verify_client_access(current_user, client_id, db)
 
     from backend.schemas.capacity.schedule import CapacitySchedule
 
-    schedule = db.query(CapacitySchedule).filter(
-        CapacitySchedule.client_id == client_id,
-        CapacitySchedule.id == schedule_id
-    ).first()
+    schedule = (
+        db.query(CapacitySchedule)
+        .filter(CapacitySchedule.client_id == client_id, CapacitySchedule.id == schedule_id)
+        .first()
+    )
 
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -1491,24 +1471,20 @@ def generate_schedule(
     end_date: date = Query(..., description="Schedule period end"),
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Auto-generate a schedule from confirmed orders."""
     verify_client_access(current_user, client_id, db)
 
     try:
         from backend.services.capacity.scheduling_service import SchedulingService
+
         service = SchedulingService(db)
 
-        schedule = service.generate_schedule(
-            client_id, schedule_name, start_date, end_date
-        )
+        schedule = service.generate_schedule(client_id, schedule_name, start_date, end_date)
         return schedule
     except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="Scheduling service not yet implemented"
-        )
+        raise HTTPException(status_code=501, detail="Scheduling service not yet implemented")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1519,7 +1495,7 @@ def commit_schedule(
     request: ScheduleCommitRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Commit a schedule, locking KPI targets."""
     verify_client_access(current_user, client_id, db)
@@ -1527,10 +1503,11 @@ def commit_schedule(
     from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
     from datetime import date as date_type
 
-    schedule = db.query(CapacitySchedule).filter(
-        CapacitySchedule.client_id == client_id,
-        CapacitySchedule.id == schedule_id
-    ).first()
+    schedule = (
+        db.query(CapacitySchedule)
+        .filter(CapacitySchedule.client_id == client_id, CapacitySchedule.id == schedule_id)
+        .first()
+    )
 
     if not schedule:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -1552,6 +1529,7 @@ def commit_schedule(
 # Scenario Endpoints
 # =============================================================================
 
+
 @router.get("/scenarios", response_model=List[ScenarioResponse])
 def list_scenarios(
     client_id: str = Query(..., description="Client ID"),
@@ -1559,7 +1537,7 @@ def list_scenarios(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get scenarios for a client."""
     verify_client_access(current_user, client_id, db)
@@ -1579,7 +1557,7 @@ def create_scenario(
     scenario: ScenarioCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Create a new scenario."""
     verify_client_access(current_user, client_id, db)
@@ -1593,7 +1571,7 @@ def create_scenario(
         base_schedule_id=scenario.base_schedule_id,
         parameters_json=scenario.parameters,
         is_active=True,
-        notes=scenario.notes
+        notes=scenario.notes,
     )
     db.add(new_scenario)
     db.commit()
@@ -1606,17 +1584,18 @@ def get_scenario(
     scenario_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get a specific scenario."""
     verify_client_access(current_user, client_id, db)
 
     from backend.schemas.capacity.scenario import CapacityScenario
 
-    scenario = db.query(CapacityScenario).filter(
-        CapacityScenario.client_id == client_id,
-        CapacityScenario.id == scenario_id
-    ).first()
+    scenario = (
+        db.query(CapacityScenario)
+        .filter(CapacityScenario.client_id == client_id, CapacityScenario.id == scenario_id)
+        .first()
+    )
 
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
@@ -1634,17 +1613,18 @@ def run_scenario(
     request: ScenarioRunRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Run/evaluate a scenario by applying its parameters and analyzing impact."""
     verify_client_access(current_user, client_id, db)
 
     from backend.schemas.capacity.scenario import CapacityScenario
 
-    scenario = db.query(CapacityScenario).filter(
-        CapacityScenario.client_id == client_id,
-        CapacityScenario.id == scenario_id
-    ).first()
+    scenario = (
+        db.query(CapacityScenario)
+        .filter(CapacityScenario.client_id == client_id, CapacityScenario.id == scenario_id)
+        .first()
+    )
 
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
@@ -1661,36 +1641,34 @@ def run_scenario(
         if not period_start or not period_end:
             if scenario.base_schedule_id:
                 from backend.schemas.capacity.schedule import CapacitySchedule
-                base_schedule = db.query(CapacitySchedule).filter(
-                    CapacitySchedule.id == scenario.base_schedule_id
-                ).first()
+
+                base_schedule = (
+                    db.query(CapacitySchedule).filter(CapacitySchedule.id == scenario.base_schedule_id).first()
+                )
                 if base_schedule:
                     period_start = period_start or base_schedule.period_start
                     period_end = period_end or base_schedule.period_end
 
             if not period_start:
                 from datetime import timedelta
+
                 period_start = date.today()
             if not period_end:
                 from datetime import timedelta
+
                 period_end = period_start + timedelta(days=30)
 
-        result = service.apply_scenario_parameters(
-            client_id, scenario_id, period_start, period_end
-        )
+        result = service.apply_scenario_parameters(client_id, scenario_id, period_start, period_end)
 
         return {
             "scenario_id": result.scenario_id,
             "scenario_name": result.scenario_name,
             "original_metrics": result.original_metrics,
             "modified_metrics": result.modified_metrics,
-            "impact_summary": result.impact_summary
+            "impact_summary": result.impact_summary,
         }
     except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="Scenario service not yet implemented"
-        )
+        raise HTTPException(status_code=501, detail="Scenario service not yet implemented")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1700,17 +1678,18 @@ def delete_scenario(
     scenario_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Delete a scenario."""
     verify_client_access(current_user, client_id, db)
 
     from backend.schemas.capacity.scenario import CapacityScenario
 
-    scenario = db.query(CapacityScenario).filter(
-        CapacityScenario.client_id == client_id,
-        CapacityScenario.id == scenario_id
-    ).first()
+    scenario = (
+        db.query(CapacityScenario)
+        .filter(CapacityScenario.client_id == client_id, CapacityScenario.id == scenario_id)
+        .first()
+    )
 
     if not scenario:
         raise HTTPException(status_code=404, detail="Scenario not found")
@@ -1725,22 +1704,20 @@ def compare_scenarios(
     request: ScenarioCompareRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Compare multiple scenarios."""
     verify_client_access(current_user, client_id, db)
 
     try:
         from backend.services.capacity.scenario_service import ScenarioService
+
         service = ScenarioService(db)
 
         comparison = service.compare_scenarios(client_id, request.scenario_ids)
         return comparison
     except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="Scenario service not yet implemented"
-        )
+        raise HTTPException(status_code=501, detail="Scenario service not yet implemented")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1749,22 +1726,21 @@ def compare_scenarios(
 # KPI Integration Endpoints
 # =============================================================================
 
+
 @router.get("/kpi/commitments", response_model=List[KPICommitmentResponse])
 def get_kpi_commitments(
     client_id: str = Query(..., description="Client ID"),
     schedule_id: Optional[int] = None,
     kpi_key: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get KPI commitments for a client."""
     verify_client_access(current_user, client_id, db)
 
     from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
 
-    query = db.query(CapacityKPICommitment).filter(
-        CapacityKPICommitment.client_id == client_id
-    )
+    query = db.query(CapacityKPICommitment).filter(CapacityKPICommitment.client_id == client_id)
 
     if schedule_id:
         query = query.filter(CapacityKPICommitment.schedule_id == schedule_id)
@@ -1779,22 +1755,20 @@ def get_kpi_variance_report(
     client_id: str = Query(..., description="Client ID"),
     schedule_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get KPI variance report."""
     verify_client_access(current_user, client_id, db)
 
     try:
         from backend.services.capacity.kpi_integration_service import KPIIntegrationService
+
         service = KPIIntegrationService(db)
 
         report = service.get_variance_report(client_id, schedule_id)
         return report
     except ImportError:
-        raise HTTPException(
-            status_code=501,
-            detail="KPI integration service not yet implemented"
-        )
+        raise HTTPException(status_code=501, detail="KPI integration service not yet implemented")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -1803,12 +1777,9 @@ def get_kpi_variance_report(
 # Workbook Endpoints (Multi-sheet operations)
 # =============================================================================
 
+
 @router.get("/workbook/{client_id}")
-def load_workbook(
-    client_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Load all worksheet data for a client (capacity planning workbook).
 
     Returns all 13 worksheets with snake_case keys matching the frontend store mapping:
@@ -1833,29 +1804,47 @@ def load_workbook(
     from backend.schemas.capacity.scenario import CapacityScenario
     from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
 
-    component_checks = db.query(CapacityComponentCheck).filter(
-        CapacityComponentCheck.client_id == client_id
-    ).order_by(CapacityComponentCheck.run_date.desc(), CapacityComponentCheck.order_number).all()
+    component_checks = (
+        db.query(CapacityComponentCheck)
+        .filter(CapacityComponentCheck.client_id == client_id)
+        .order_by(CapacityComponentCheck.run_date.desc(), CapacityComponentCheck.order_number)
+        .all()
+    )
 
-    analysis_data = db.query(CapacityAnalysis).filter(
-        CapacityAnalysis.client_id == client_id
-    ).order_by(CapacityAnalysis.analysis_date.desc(), CapacityAnalysis.line_code).all()
+    analysis_data = (
+        db.query(CapacityAnalysis)
+        .filter(CapacityAnalysis.client_id == client_id)
+        .order_by(CapacityAnalysis.analysis_date.desc(), CapacityAnalysis.line_code)
+        .all()
+    )
 
-    schedules = db.query(CapacitySchedule).filter(
-        CapacitySchedule.client_id == client_id
-    ).order_by(CapacitySchedule.period_start.desc()).all()
+    schedules = (
+        db.query(CapacitySchedule)
+        .filter(CapacitySchedule.client_id == client_id)
+        .order_by(CapacitySchedule.period_start.desc())
+        .all()
+    )
 
-    schedule_details = db.query(CapacityScheduleDetail).filter(
-        CapacityScheduleDetail.client_id == client_id
-    ).order_by(CapacityScheduleDetail.scheduled_date, CapacityScheduleDetail.sequence).all()
+    schedule_details = (
+        db.query(CapacityScheduleDetail)
+        .filter(CapacityScheduleDetail.client_id == client_id)
+        .order_by(CapacityScheduleDetail.scheduled_date, CapacityScheduleDetail.sequence)
+        .all()
+    )
 
-    scenarios = db.query(CapacityScenario).filter(
-        CapacityScenario.client_id == client_id
-    ).order_by(CapacityScenario.created_at.desc()).all()
+    scenarios = (
+        db.query(CapacityScenario)
+        .filter(CapacityScenario.client_id == client_id)
+        .order_by(CapacityScenario.created_at.desc())
+        .all()
+    )
 
-    kpi_commitments = db.query(CapacityKPICommitment).filter(
-        CapacityKPICommitment.client_id == client_id
-    ).order_by(CapacityKPICommitment.period_start.desc()).all()
+    kpi_commitments = (
+        db.query(CapacityKPICommitment)
+        .filter(CapacityKPICommitment.client_id == client_id)
+        .order_by(CapacityKPICommitment.period_start.desc())
+        .all()
+    )
 
     return {
         # --- Sheet 1: Master Calendar ---
@@ -1869,7 +1858,7 @@ def load_workbook(
                 "shift2_hours": float(e.shift2_hours),
                 "shift3_hours": float(e.shift3_hours),
                 "holiday_name": e.holiday_name,
-                "notes": e.notes
+                "notes": e.notes,
             }
             for e in calendar_data
         ],
@@ -1885,7 +1874,7 @@ def load_workbook(
                 "efficiency_factor": float(l.efficiency_factor),
                 "absenteeism_factor": float(l.absenteeism_factor),
                 "is_active": l.is_active,
-                "notes": l.notes
+                "notes": l.notes,
             }
             for l in lines_data
         ],
@@ -1906,7 +1895,7 @@ def load_workbook(
                 "priority": o.priority.value,
                 "status": o.status.value,
                 "order_sam_minutes": float(o.order_sam_minutes) if o.order_sam_minutes else None,
-                "notes": o.notes
+                "notes": o.notes,
             }
             for o in orders_data
         ],
@@ -1922,7 +1911,7 @@ def load_workbook(
                 "setup_time_minutes": float(s.setup_time_minutes or 0),
                 "machine_time_minutes": float(s.machine_time_minutes or 0),
                 "manual_time_minutes": float(s.manual_time_minutes or 0),
-                "notes": s.notes
+                "notes": s.notes,
             }
             for s in standards_data
         ],
@@ -1935,7 +1924,7 @@ def load_workbook(
                 "style_code": h.style_code,
                 "revision": h.revision,
                 "is_active": h.is_active,
-                "notes": h.notes
+                "notes": h.notes,
             }
             for h in bom_headers
         ],
@@ -1952,7 +1941,7 @@ def load_workbook(
                 "available_quantity": float(s.available_quantity),
                 "unit_of_measure": s.unit_of_measure,
                 "location": s.location,
-                "notes": s.notes
+                "notes": s.notes,
             }
             for s in stock_data
         ],
@@ -1969,7 +1958,7 @@ def load_workbook(
                 "available_quantity": float(c.available_quantity),
                 "shortage_quantity": float(c.shortage_quantity or 0),
                 "status": c.status.value if c.status else None,
-                "notes": c.notes
+                "notes": c.notes,
             }
             for c in component_checks
         ],
@@ -1994,7 +1983,7 @@ def load_workbook(
                 "demand_units": a.demand_units or 0,
                 "utilization_percent": float(a.utilization_percent or 0),
                 "is_bottleneck": a.is_bottleneck or False,
-                "notes": a.notes
+                "notes": a.notes,
             }
             for a in analysis_data
         ],
@@ -2014,12 +2003,8 @@ def load_workbook(
                 "sequence": sd.sequence or 1,
                 "notes": sd.notes,
                 # Include parent schedule metadata
-                "schedule_name": next(
-                    (s.schedule_name for s in schedules if s.id == sd.schedule_id), None
-                ),
-                "schedule_status": next(
-                    (s.status.value for s in schedules if s.id == sd.schedule_id), None
-                ),
+                "schedule_name": next((s.schedule_name for s in schedules if s.id == sd.schedule_id), None),
+                "schedule_status": next((s.status.value for s in schedules if s.id == sd.schedule_id), None),
             }
             for sd in schedule_details
         ],
@@ -2033,7 +2018,7 @@ def load_workbook(
                 "parameters": sc.parameters_json or {},
                 "results": sc.results_json or {},
                 "is_active": sc.is_active,
-                "notes": sc.notes
+                "notes": sc.notes,
             }
             for sc in scenarios
         ],
@@ -2050,7 +2035,7 @@ def load_workbook(
             "schedule_freeze_days": 3,
             "max_shifts_per_day": 2,
             "min_lot_size": 50,
-            "schedule_granularity": "daily"
+            "schedule_granularity": "daily",
         },
         # --- Sheet 12: KPI Tracking ---
         "kpi_tracking": [
@@ -2065,7 +2050,7 @@ def load_workbook(
                 "actual_value": float(k.actual_value) if k.actual_value is not None else None,
                 "variance": float(k.variance) if k.variance is not None else None,
                 "variance_percent": float(k.variance_percent) if k.variance_percent is not None else None,
-                "notes": k.notes
+                "notes": k.notes,
             }
             for k in kpi_commitments
         ],
@@ -2093,7 +2078,7 @@ def load_workbook(
             "- **Utilization**: Demand hours / Capacity hours x 100\n"
             "- **Bottleneck**: Line where utilization exceeds threshold (default 90%)\n"
             "- **MRP Explosion**: Breaking down finished goods into component requirements\n"
-        )
+        ),
     }
 
 
@@ -2103,7 +2088,7 @@ def save_worksheet(
     worksheet_name: str,
     data: List[Dict[str, Any]],
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Save a specific worksheet's data (bulk update/create)."""
     verify_client_access(current_user, client_id, db)
@@ -2124,21 +2109,22 @@ def save_worksheet(
     worksheet_name = camel_to_snake.get(worksheet_name, worksheet_name)
 
     valid_worksheets = [
-        "master_calendar", "production_lines", "orders",
-        "production_standards", "bom", "stock_snapshot",
-        "component_check", "capacity_analysis", "production_schedule",
-        "what_if_scenarios", "kpi_tracking"
+        "master_calendar",
+        "production_lines",
+        "orders",
+        "production_standards",
+        "bom",
+        "stock_snapshot",
+        "component_check",
+        "capacity_analysis",
+        "production_schedule",
+        "what_if_scenarios",
+        "kpi_tracking",
     ]
 
     if worksheet_name not in valid_worksheets:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid worksheet name. Must be one of: {valid_worksheets}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid worksheet name. Must be one of: {valid_worksheets}")
 
     # Handle bulk operations based on worksheet type
     # This is a placeholder for actual implementation
-    return {
-        "message": f"Worksheet '{worksheet_name}' saved",
-        "rows_processed": len(data)
-    }
+    return {"message": f"Worksheet '{worksheet_name}' saved", "rows_processed": len(data)}

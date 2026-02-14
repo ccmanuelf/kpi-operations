@@ -5,6 +5,7 @@ Coordinates CRUD operations with business logic and KPI calculations.
 
 Phase 2: Service Layer Enforcement
 """
+
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
@@ -36,11 +37,7 @@ class QualityService:
         self.kpi_service = QualityKPIService(db)
 
     def calculate_quality_metrics(
-        self,
-        client_id: str,
-        user: User,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None
+        self, client_id: str, user: User, start_date: Optional[date] = None, end_date: Optional[date] = None
     ) -> dict:
         """
         Calculate quality metrics for a client.
@@ -54,11 +51,7 @@ class QualityService:
         Returns:
             Dictionary with quality metrics (PPM, DPMO, etc.)
         """
-        return self.kpi_service.calculate_quality_metrics(
-            client_id=client_id,
-            start_date=start_date,
-            end_date=end_date
-        )
+        return self.kpi_service.calculate_quality_metrics(client_id=client_id, start_date=start_date, end_date=end_date)
 
     def get_defect_pareto(
         self,
@@ -66,7 +59,7 @@ class QualityService:
         user: User,
         start_date: Optional[date] = None,
         end_date: Optional[date] = None,
-        limit: int = 10
+        limit: int = 10,
     ) -> List[dict]:
         """
         Get defect Pareto analysis (top defect types).
@@ -82,18 +75,10 @@ class QualityService:
             List of defect types with counts and percentages
         """
         return self.kpi_service.get_defect_pareto(
-            client_id=client_id,
-            start_date=start_date,
-            end_date=end_date,
-            limit=limit
+            client_id=client_id, start_date=start_date, end_date=end_date, limit=limit
         )
 
-    def get_quality_trend(
-        self,
-        client_id: str,
-        user: User,
-        days: int = 30
-    ) -> List[dict]:
+    def get_quality_trend(self, client_id: str, user: User, days: int = 30) -> List[dict]:
         """
         Get quality trend over time.
 
@@ -105,10 +90,7 @@ class QualityService:
         Returns:
             List of daily quality rates
         """
-        return self.kpi_service.get_quality_trend(
-            client_id=client_id,
-            days=days
-        )
+        return self.kpi_service.get_quality_trend(client_id=client_id, days=days)
 
 
 def get_quality_service(db: Session = Depends(get_db)) -> QualityService:

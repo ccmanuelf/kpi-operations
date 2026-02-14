@@ -3,6 +3,7 @@ CRUD operations for PART_OPPORTUNITIES (DPMO calculation metadata)
 Create, Read, Update, Delete with multi-tenant client filtering
 SECURITY: All operations enforce client-based access control
 """
+
 from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -14,11 +15,7 @@ from backend.middleware.client_auth import verify_client_access, build_client_fi
 from backend.utils.soft_delete import soft_delete
 
 
-def create_part_opportunity(
-    db: Session,
-    part_data: dict,
-    current_user: User
-) -> PartOpportunities:
+def create_part_opportunity(db: Session, part_data: dict, current_user: User) -> PartOpportunities:
     """
     Create new part opportunity record
     SECURITY: Verifies user has access to the specified client
@@ -35,7 +32,7 @@ def create_part_opportunity(
         ClientAccessError: If user doesn't have access to part_data['client_id_fk']
     """
     # Verify client access
-    verify_client_access(current_user, part_data.get('client_id_fk'))
+    verify_client_access(current_user, part_data.get("client_id_fk"))
 
     db_part = PartOpportunities(**part_data)
     db.add(db_part)
@@ -44,11 +41,7 @@ def create_part_opportunity(
     return db_part
 
 
-def get_part_opportunity(
-    db: Session,
-    part_number: str,
-    current_user: User
-) -> Optional[PartOpportunities]:
+def get_part_opportunity(db: Session, part_number: str, current_user: User) -> Optional[PartOpportunities]:
     """
     Get part opportunity by part number with client filtering
     SECURITY: Returns None if user doesn't have access to part's client
@@ -71,12 +64,7 @@ def get_part_opportunity(
     return query.first()
 
 
-def get_part_opportunities(
-    db: Session,
-    current_user: User,
-    skip: int = 0,
-    limit: int = 100
-) -> List[PartOpportunities]:
+def get_part_opportunities(db: Session, current_user: User, skip: int = 0, limit: int = 100) -> List[PartOpportunities]:
     """
     List part opportunities with client filtering
     SECURITY: Returns only part opportunities for user's authorized clients
@@ -100,11 +88,7 @@ def get_part_opportunities(
     return query.offset(skip).limit(limit).all()
 
 
-def get_part_opportunities_by_category(
-    db: Session,
-    category: str,
-    current_user: User
-) -> List[PartOpportunities]:
+def get_part_opportunities_by_category(db: Session, category: str, current_user: User) -> List[PartOpportunities]:
     """
     Get all part opportunities for a specific category with client filtering
     SECURITY: Returns only part opportunities for user's authorized clients
@@ -128,10 +112,7 @@ def get_part_opportunities_by_category(
 
 
 def update_part_opportunity(
-    db: Session,
-    part_number: str,
-    part_update: dict,
-    current_user: User
+    db: Session, part_number: str, part_update: dict, current_user: User
 ) -> Optional[PartOpportunities]:
     """
     Update part opportunity with client access verification
@@ -152,7 +133,7 @@ def update_part_opportunity(
 
     # Update fields
     for key, value in part_update.items():
-        if hasattr(part, key) and key != 'part_number':  # Prevent PK changes
+        if hasattr(part, key) and key != "part_number":  # Prevent PK changes
             setattr(part, key, value)
 
     db.commit()
@@ -160,11 +141,7 @@ def update_part_opportunity(
     return part
 
 
-def delete_part_opportunity(
-    db: Session,
-    part_number: str,
-    current_user: User
-) -> bool:
+def delete_part_opportunity(db: Session, part_number: str, current_user: User) -> bool:
     """
     Soft delete part opportunity (sets is_active = False)
     SECURITY: Only deletes if user has access to the part's client
@@ -185,11 +162,7 @@ def delete_part_opportunity(
     return soft_delete(db, part)
 
 
-def bulk_import_opportunities(
-    db: Session,
-    opportunities_list: List[dict],
-    current_user: User
-) -> Dict[str, int]:
+def bulk_import_opportunities(db: Session, opportunities_list: List[dict], current_user: User) -> Dict[str, int]:
     """
     Bulk import part opportunities (for CSV imports)
     SECURITY: Validates client_id_fk for all records before import
@@ -212,14 +185,14 @@ def bulk_import_opportunities(
     for idx, part_data in enumerate(opportunities_list):
         try:
             # Verify client access for each record
-            verify_client_access(current_user, part_data.get('client_id_fk'))
+            verify_client_access(current_user, part_data.get("client_id_fk"))
 
             # Check if part already exists (update vs create)
-            existing = get_part_opportunity(db, part_data.get('part_number'), current_user)
+            existing = get_part_opportunity(db, part_data.get("part_number"), current_user)
             if existing:
                 # Update existing
                 for key, value in part_data.items():
-                    if hasattr(existing, key) and key != 'part_number':
+                    if hasattr(existing, key) and key != "part_number":
                         setattr(existing, key, value)
             else:
                 # Create new
@@ -238,5 +211,5 @@ def bulk_import_opportunities(
     return {
         "success_count": success_count,
         "failure_count": failure_count,
-        "errors": errors[:10]  # Return first 10 errors to avoid large responses
+        "errors": errors[:10],  # Return first 10 errors to avoid large responses
     }

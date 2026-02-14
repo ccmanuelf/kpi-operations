@@ -2,6 +2,7 @@
 KPI Calculation and Dashboard API Routes
 All KPI calculation, dashboard, trend, and threshold endpoints
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
@@ -20,27 +21,20 @@ from backend.schemas.user import User
 from backend.schemas.product import Product
 
 
-router = APIRouter(
-    prefix="/api/kpi",
-    tags=["KPI Calculations"]
-)
+router = APIRouter(prefix="/api/kpi", tags=["KPI Calculations"])
 
 # Separate router for thresholds (different prefix)
-thresholds_router = APIRouter(
-    prefix="/api/kpi-thresholds",
-    tags=["KPI Thresholds"]
-)
+thresholds_router = APIRouter(prefix="/api/kpi-thresholds", tags=["KPI Thresholds"])
 
 
 # ============================================================================
 # KPI THRESHOLDS ROUTES
 # ============================================================================
 
+
 @thresholds_router.get("")
 def get_kpi_thresholds(
-    client_id: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client_id: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Get KPI thresholds for a specific client or global defaults.
@@ -51,16 +45,10 @@ def get_kpi_thresholds(
     from backend.schemas.client import Client
 
     # Get global defaults
-    global_thresholds = db.query(KPIThreshold).filter(
-        KPIThreshold.client_id.is_(None)
-    ).all()
+    global_thresholds = db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None)).all()
 
     # Build response with global defaults
-    result = {
-        "client_id": client_id,
-        "client_name": None,
-        "thresholds": {}
-    }
+    result = {"client_id": client_id, "client_name": None, "thresholds": {}}
 
     # Add global defaults first
     for t in global_thresholds:
@@ -72,7 +60,7 @@ def get_kpi_thresholds(
             "critical_threshold": t.critical_threshold,
             "unit": t.unit,
             "higher_is_better": t.higher_is_better,
-            "is_global": True
+            "is_global": True,
         }
 
     # If client_id provided, override with client-specific values
@@ -81,9 +69,7 @@ def get_kpi_thresholds(
         if client:
             result["client_name"] = client.client_name
 
-        client_thresholds = db.query(KPIThreshold).filter(
-            KPIThreshold.client_id == client_id
-        ).all()
+        client_thresholds = db.query(KPIThreshold).filter(KPIThreshold.client_id == client_id).all()
 
         for t in client_thresholds:
             result["thresholds"][t.kpi_key] = {
@@ -94,7 +80,7 @@ def get_kpi_thresholds(
                 "critical_threshold": t.critical_threshold,
                 "unit": t.unit,
                 "higher_is_better": t.higher_is_better,
-                "is_global": False
+                "is_global": False,
             }
 
     return result
@@ -102,19 +88,14 @@ def get_kpi_thresholds(
 
 @thresholds_router.put("")
 def update_kpi_thresholds(
-    thresholds_data: dict,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    thresholds_data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Update KPI thresholds for a client or global.
     Expects: { "client_id": "xxx" or null, "thresholds": { "efficiency": { "target_value": 85 }, ... } }
     """
-    if current_user.role not in ['admin', 'poweruser']:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin or supervisor access required"
-        )
+    if current_user.role not in ["admin", "poweruser"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin or supervisor access required")
 
     from backend.schemas.kpi_threshold import KPIThreshold
 
@@ -124,10 +105,14 @@ def update_kpi_thresholds(
     updated = []
     for kpi_key, values in thresholds.items():
         # Check if threshold exists
-        existing = db.query(KPIThreshold).filter(
-            KPIThreshold.client_id == client_id if client_id else KPIThreshold.client_id.is_(None),
-            KPIThreshold.kpi_key == kpi_key
-        ).first()
+        existing = (
+            db.query(KPIThreshold)
+            .filter(
+                KPIThreshold.client_id == client_id if client_id else KPIThreshold.client_id.is_(None),
+                KPIThreshold.kpi_key == kpi_key,
+            )
+            .first()
+        )
 
         if existing:
             # Update existing
@@ -155,43 +140,32 @@ def update_kpi_thresholds(
                 unit=values.get("unit", "%"),
                 higher_is_better=values.get("higher_is_better", "Y"),
                 created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                updated_at=datetime.utcnow(),
             )
             db.add(new_threshold)
             updated.append(kpi_key)
 
     db.commit()
 
-    return {
-        "message": f"Updated {len(updated)} thresholds",
-        "client_id": client_id,
-        "updated_kpis": updated
-    }
+    return {"message": f"Updated {len(updated)} thresholds", "client_id": client_id, "updated_kpis": updated}
 
 
 @thresholds_router.delete("/{client_id}/{kpi_key}")
 def delete_client_threshold(
-    client_id: str,
-    kpi_key: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    client_id: str, kpi_key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
     Delete a client-specific threshold (reverts to global default).
     Cannot delete global thresholds.
     """
-    if current_user.role != 'admin':
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
+    if current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
     from backend.schemas.kpi_threshold import KPIThreshold
 
-    threshold = db.query(KPIThreshold).filter(
-        KPIThreshold.client_id == client_id,
-        KPIThreshold.kpi_key == kpi_key
-    ).first()
+    threshold = (
+        db.query(KPIThreshold).filter(KPIThreshold.client_id == client_id, KPIThreshold.kpi_key == kpi_key).first()
+    )
 
     if not threshold:
         raise HTTPException(status_code=404, detail="Client threshold not found")
@@ -206,19 +180,13 @@ def delete_client_threshold(
 # KPI CALCULATION ROUTES
 # ============================================================================
 
+
 @router.get("/calculate/{entry_id}", response_model=KPICalculationResponse)
-def calculate_kpis(
-    entry_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def calculate_kpis(entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Calculate KPIs for a production entry"""
     entry = get_production_entry(db, entry_id, current_user)
     if not entry:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Production entry {entry_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Production entry {entry_id} not found")
 
     product = db.query(Product).filter(Product.product_id == entry.product_id).first()
 
@@ -233,7 +201,7 @@ def calculate_kpis(
         quality_rate=quality,
         ideal_cycle_time_used=ideal_time,
         was_inferred=was_inferred,
-        calculation_timestamp=datetime.utcnow()
+        calculation_timestamp=datetime.utcnow(),
     )
 
 
@@ -243,7 +211,7 @@ def get_kpi_dashboard(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get KPI dashboard data"""
     if not start_date:
@@ -260,7 +228,7 @@ def get_efficiency_by_shift(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get efficiency aggregated by shift"""
     from backend.schemas.production_entry import ProductionEntry
@@ -271,26 +239,22 @@ def get_efficiency_by_shift(
     if not end_date:
         end_date = date.today()
 
-    query = db.query(
-        ProductionEntry.shift_id,
-        Shift.shift_name,
-        func.sum(ProductionEntry.units_produced).label('actual_output'),
-        func.avg(ProductionEntry.efficiency_percentage).label('efficiency'),
-        func.count(ProductionEntry.production_entry_id).label('entry_count')
-    ).join(
-        Shift, ProductionEntry.shift_id == Shift.shift_id
-    ).filter(
-        ProductionEntry.shift_date >= start_date,
-        ProductionEntry.shift_date <= end_date
+    query = (
+        db.query(
+            ProductionEntry.shift_id,
+            Shift.shift_name,
+            func.sum(ProductionEntry.units_produced).label("actual_output"),
+            func.avg(ProductionEntry.efficiency_percentage).label("efficiency"),
+            func.count(ProductionEntry.production_entry_id).label("entry_count"),
+        )
+        .join(Shift, ProductionEntry.shift_id == Shift.shift_id)
+        .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
     )
 
     if client_id:
         query = query.filter(ProductionEntry.client_id == client_id)
 
-    results = query.group_by(
-        ProductionEntry.shift_id,
-        Shift.shift_name
-    ).all()
+    results = query.group_by(ProductionEntry.shift_id, Shift.shift_name).all()
 
     return [
         {
@@ -298,7 +262,7 @@ def get_efficiency_by_shift(
             "shift_name": r.shift_name or f"Shift {r.shift_id}",
             "actual_output": r.actual_output or 0,
             "expected_output": int((r.actual_output or 0) / ((r.efficiency or 100) / 100)) if r.efficiency else 0,
-            "efficiency": float(r.efficiency) if r.efficiency else 0
+            "efficiency": float(r.efficiency) if r.efficiency else 0,
         }
         for r in results
     ]
@@ -311,7 +275,7 @@ def get_efficiency_by_product(
     client_id: Optional[str] = None,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get top products by efficiency"""
     from backend.schemas.production_entry import ProductionEntry
@@ -322,35 +286,34 @@ def get_efficiency_by_product(
     if not end_date:
         end_date = date.today()
 
-    query = db.query(
-        ProductionEntry.product_id,
-        Product.product_name,
-        func.sum(ProductionEntry.units_produced).label('actual_output'),
-        func.avg(ProductionEntry.efficiency_percentage).label('efficiency'),
-        func.count(ProductionEntry.production_entry_id).label('entry_count')
-    ).join(
-        Product, ProductionEntry.product_id == Product.product_id
-    ).filter(
-        ProductionEntry.shift_date >= start_date,
-        ProductionEntry.shift_date <= end_date
+    query = (
+        db.query(
+            ProductionEntry.product_id,
+            Product.product_name,
+            func.sum(ProductionEntry.units_produced).label("actual_output"),
+            func.avg(ProductionEntry.efficiency_percentage).label("efficiency"),
+            func.count(ProductionEntry.production_entry_id).label("entry_count"),
+        )
+        .join(Product, ProductionEntry.product_id == Product.product_id)
+        .filter(ProductionEntry.shift_date >= start_date, ProductionEntry.shift_date <= end_date)
     )
 
     if client_id:
         query = query.filter(ProductionEntry.client_id == client_id)
 
-    results = query.group_by(
-        ProductionEntry.product_id,
-        Product.product_name
-    ).order_by(
-        func.avg(ProductionEntry.efficiency_percentage).desc()
-    ).limit(limit).all()
+    results = (
+        query.group_by(ProductionEntry.product_id, Product.product_name)
+        .order_by(func.avg(ProductionEntry.efficiency_percentage).desc())
+        .limit(limit)
+        .all()
+    )
 
     return [
         {
             "product_id": r.product_id,
             "product_name": r.product_name or f"Product {r.product_id}",
             "actual_output": r.actual_output or 0,
-            "efficiency": float(r.efficiency) if r.efficiency else 0
+            "efficiency": float(r.efficiency) if r.efficiency else 0,
         }
         for r in results
     ]
@@ -360,13 +323,14 @@ def get_efficiency_by_product(
 # OTD (On-Time Delivery) KPI ROUTES
 # ============================================================================
 
+
 @router.get("/otd")
 def calculate_otd_kpi(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Calculate On-Time Delivery KPI with client filtering
 
@@ -384,14 +348,14 @@ def calculate_otd_kpi(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Build query with client filter - use required_date as the due date
     query = db.query(WorkOrder).filter(
         WorkOrder.required_date.isnot(None),
         WorkOrder.required_date >= datetime.combine(start_date, datetime.min.time()),
-        WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time())
+        WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     # Apply client filter
@@ -407,13 +371,13 @@ def calculate_otd_kpi(
     for wo in work_orders:
         # Get the due date (required_date)
         due_date = wo.required_date
-        if hasattr(due_date, 'date'):
+        if hasattr(due_date, "date"):
             due_date = due_date.date()
 
         # Consider on-time if delivered by due date or still open before due date
         if wo.actual_delivery_date:
             delivery_date = wo.actual_delivery_date
-            if hasattr(delivery_date, 'date'):
+            if hasattr(delivery_date, "date"):
                 delivery_date = delivery_date.date()
             if delivery_date <= due_date:
                 on_time_count += 1
@@ -430,15 +394,13 @@ def calculate_otd_kpi(
         "otd_percentage": round(otd_percentage, 2),
         "on_time_count": on_time_count,
         "total_orders": total_orders,
-        "calculation_timestamp": datetime.utcnow()
+        "calculation_timestamp": datetime.utcnow(),
     }
 
 
 @router.get("/late-orders")
 def get_late_orders(
-    as_of_date: Optional[date] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    as_of_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """Identify late orders"""
     return identify_late_orders(db, as_of_date or date.today())
@@ -449,7 +411,7 @@ def get_otd_by_client(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get OTD metrics aggregated by client"""
     from backend.schemas.work_order import WorkOrder
@@ -462,34 +424,35 @@ def get_otd_by_client(
         start_date = end_date - timedelta(days=30)
 
     # Query work orders grouped by client
-    query = db.query(
-        WorkOrder.client_id,
-        Client.client_name,
-        func.count(WorkOrder.work_order_id).label('total_deliveries'),
-        func.sum(
-            case(
-                (WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1),
-                (WorkOrder.actual_delivery_date.is_(None),
-                 case((WorkOrder.required_date >= date.today(), 1), else_=0)),
-                else_=0
-            )
-        ).label('on_time')
-    ).join(
-        Client, WorkOrder.client_id == Client.client_id
-    ).filter(
-        WorkOrder.required_date.isnot(None),
-        WorkOrder.required_date >= datetime.combine(start_date, datetime.min.time()),
-        WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time())
+    query = (
+        db.query(
+            WorkOrder.client_id,
+            Client.client_name,
+            func.count(WorkOrder.work_order_id).label("total_deliveries"),
+            func.sum(
+                case(
+                    (WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1),
+                    (
+                        WorkOrder.actual_delivery_date.is_(None),
+                        case((WorkOrder.required_date >= date.today(), 1), else_=0),
+                    ),
+                    else_=0,
+                )
+            ).label("on_time"),
+        )
+        .join(Client, WorkOrder.client_id == Client.client_id)
+        .filter(
+            WorkOrder.required_date.isnot(None),
+            WorkOrder.required_date >= datetime.combine(start_date, datetime.min.time()),
+            WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     # Non-admin users only see their assigned client
-    if current_user.role != 'admin' and current_user.client_id_assigned:
+    if current_user.role != "admin" and current_user.client_id_assigned:
         query = query.filter(WorkOrder.client_id == current_user.client_id_assigned)
 
-    results = query.group_by(
-        WorkOrder.client_id,
-        Client.client_name
-    ).all()
+    results = query.group_by(WorkOrder.client_id, Client.client_name).all()
 
     return [
         {
@@ -497,7 +460,7 @@ def get_otd_by_client(
             "client_name": r.client_name or f"Client {r.client_id}",
             "total_deliveries": r.total_deliveries or 0,
             "on_time": r.on_time or 0,
-            "otd_percentage": round((r.on_time / r.total_deliveries * 100) if r.total_deliveries > 0 else 0, 1)
+            "otd_percentage": round((r.on_time / r.total_deliveries * 100) if r.total_deliveries > 0 else 0, 1),
         }
         for r in results
     ]
@@ -510,7 +473,7 @@ def get_late_deliveries(
     client_id: Optional[str] = None,
     limit: int = 20,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get recent late deliveries with details"""
     from backend.schemas.work_order import WorkOrder
@@ -524,25 +487,27 @@ def get_late_deliveries(
 
     # Determine effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Query for late deliveries (actual_delivery_date > required_date)
-    query = db.query(
-        WorkOrder.work_order_id,
-        WorkOrder.client_id,
-        Client.client_name,
-        WorkOrder.required_date,
-        WorkOrder.actual_delivery_date,
-        WorkOrder.style_model
-    ).join(
-        Client, WorkOrder.client_id == Client.client_id
-    ).filter(
-        WorkOrder.required_date.isnot(None),
-        WorkOrder.actual_delivery_date.isnot(None),
-        WorkOrder.actual_delivery_date > WorkOrder.required_date,
-        WorkOrder.actual_delivery_date >= datetime.combine(start_date, datetime.min.time()),
-        WorkOrder.actual_delivery_date <= datetime.combine(end_date, datetime.max.time())
+    query = (
+        db.query(
+            WorkOrder.work_order_id,
+            WorkOrder.client_id,
+            Client.client_name,
+            WorkOrder.required_date,
+            WorkOrder.actual_delivery_date,
+            WorkOrder.style_model,
+        )
+        .join(Client, WorkOrder.client_id == Client.client_id)
+        .filter(
+            WorkOrder.required_date.isnot(None),
+            WorkOrder.actual_delivery_date.isnot(None),
+            WorkOrder.actual_delivery_date > WorkOrder.required_date,
+            WorkOrder.actual_delivery_date >= datetime.combine(start_date, datetime.min.time()),
+            WorkOrder.actual_delivery_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     # Apply client filter
@@ -559,25 +524,27 @@ def get_late_deliveries(
         actual = r.actual_delivery_date
 
         # Handle datetime vs date conversion
-        if hasattr(required, 'date'):
+        if hasattr(required, "date"):
             required_dt = required
         else:
             required_dt = datetime.combine(required, datetime.min.time())
 
-        if hasattr(actual, 'date'):
+        if hasattr(actual, "date"):
             actual_dt = actual
         else:
             actual_dt = datetime.combine(actual, datetime.min.time())
 
         delay_hours = int((actual_dt - required_dt).total_seconds() / 3600)
 
-        late_deliveries.append({
-            "delivery_date": str(actual.date() if hasattr(actual, 'date') else actual),
-            "work_order": r.work_order_id,
-            "client": r.client_name or r.client_id,
-            "delay_hours": delay_hours,
-            "style_model": r.style_model
-        })
+        late_deliveries.append(
+            {
+                "delivery_date": str(actual.date() if hasattr(actual, "date") else actual),
+                "work_order": r.work_order_id,
+                "client": r.client_name or r.client_id,
+                "delay_hours": delay_hours,
+                "style_model": r.style_model,
+            }
+        )
 
     return late_deliveries
 
@@ -586,13 +553,14 @@ def get_late_deliveries(
 # KPI TREND ENDPOINTS
 # ============================================================================
 
+
 @router.get("/efficiency/trend")
 def get_efficiency_trend(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily efficiency trend data"""
     from backend.schemas.production_entry import ProductionEntry
@@ -603,21 +571,23 @@ def get_efficiency_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     query = db.query(
-        func.date(ProductionEntry.shift_date).label('date'),
-        func.avg(ProductionEntry.efficiency_percentage).label('value')
+        func.date(ProductionEntry.shift_date).label("date"),
+        func.avg(ProductionEntry.efficiency_percentage).label("value"),
     ).filter(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
         query = query.filter(ProductionEntry.client_id == effective_client_id)
 
-    results = query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
+    results = (
+        query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
+    )
 
     return [{"date": str(r.date), "value": round(float(r.value), 2) if r.value else 0} for r in results]
 
@@ -628,7 +598,7 @@ def get_performance_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily performance trend data"""
     from backend.schemas.production_entry import ProductionEntry
@@ -639,21 +609,23 @@ def get_performance_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     query = db.query(
-        func.date(ProductionEntry.shift_date).label('date'),
-        func.avg(ProductionEntry.performance_percentage).label('value')
+        func.date(ProductionEntry.shift_date).label("date"),
+        func.avg(ProductionEntry.performance_percentage).label("value"),
     ).filter(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
         query = query.filter(ProductionEntry.client_id == effective_client_id)
 
-    results = query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
+    results = (
+        query.group_by(func.date(ProductionEntry.shift_date)).order_by(func.date(ProductionEntry.shift_date)).all()
+    )
 
     return [{"date": str(r.date), "value": round(float(r.value), 2) if r.value else 0} for r in results]
 
@@ -664,7 +636,7 @@ def get_performance_by_shift(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get performance aggregated by shift"""
     from backend.schemas.production_entry import ProductionEntry
@@ -676,32 +648,33 @@ def get_performance_by_shift(
         end_date = date.today()
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
-    query = db.query(
-        ProductionEntry.shift_id,
-        Shift.shift_name,
-        func.sum(ProductionEntry.units_produced).label('units'),
-        func.sum(ProductionEntry.run_time_hours).label('hours'),
-        func.avg(ProductionEntry.performance_percentage).label('performance'),
-        func.count(ProductionEntry.production_entry_id).label('entry_count')
-    ).outerjoin(
-        Shift, ProductionEntry.shift_id == Shift.shift_id
-    ).filter(
-        ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    query = (
+        db.query(
+            ProductionEntry.shift_id,
+            Shift.shift_name,
+            func.sum(ProductionEntry.units_produced).label("units"),
+            func.sum(ProductionEntry.run_time_hours).label("hours"),
+            func.avg(ProductionEntry.performance_percentage).label("performance"),
+            func.count(ProductionEntry.production_entry_id).label("entry_count"),
+        )
+        .outerjoin(Shift, ProductionEntry.shift_id == Shift.shift_id)
+        .filter(
+            ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     if effective_client_id:
         query = query.filter(ProductionEntry.client_id == effective_client_id)
 
-    results = query.group_by(
-        ProductionEntry.shift_id,
-        Shift.shift_name
-    ).order_by(
-        func.avg(ProductionEntry.performance_percentage).desc()
-    ).all()
+    results = (
+        query.group_by(ProductionEntry.shift_id, Shift.shift_name)
+        .order_by(func.avg(ProductionEntry.performance_percentage).desc())
+        .all()
+    )
 
     return [
         {
@@ -709,7 +682,7 @@ def get_performance_by_shift(
             "shift_name": r.shift_name or f"Shift {r.shift_id}",
             "units": int(r.units) if r.units else 0,
             "rate": round(float(r.units) / float(r.hours), 1) if r.hours and r.hours > 0 else 0,
-            "performance": round(float(r.performance), 1) if r.performance else 0
+            "performance": round(float(r.performance), 1) if r.performance else 0,
         }
         for r in results
     ]
@@ -722,7 +695,7 @@ def get_performance_by_product(
     client_id: Optional[str] = None,
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get performance aggregated by product"""
     from backend.schemas.production_entry import ProductionEntry
@@ -734,32 +707,34 @@ def get_performance_by_product(
         end_date = date.today()
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
-    query = db.query(
-        ProductionEntry.product_id,
-        Product.product_name,
-        func.sum(ProductionEntry.units_produced).label('units'),
-        func.sum(ProductionEntry.run_time_hours).label('hours'),
-        func.avg(ProductionEntry.performance_percentage).label('performance'),
-        func.count(ProductionEntry.production_entry_id).label('entry_count')
-    ).join(
-        Product, ProductionEntry.product_id == Product.product_id
-    ).filter(
-        ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+    query = (
+        db.query(
+            ProductionEntry.product_id,
+            Product.product_name,
+            func.sum(ProductionEntry.units_produced).label("units"),
+            func.sum(ProductionEntry.run_time_hours).label("hours"),
+            func.avg(ProductionEntry.performance_percentage).label("performance"),
+            func.count(ProductionEntry.production_entry_id).label("entry_count"),
+        )
+        .join(Product, ProductionEntry.product_id == Product.product_id)
+        .filter(
+            ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+        )
     )
 
     if effective_client_id:
         query = query.filter(ProductionEntry.client_id == effective_client_id)
 
-    results = query.group_by(
-        ProductionEntry.product_id,
-        Product.product_name
-    ).order_by(
-        func.avg(ProductionEntry.performance_percentage).desc()
-    ).limit(limit).all()
+    results = (
+        query.group_by(ProductionEntry.product_id, Product.product_name)
+        .order_by(func.avg(ProductionEntry.performance_percentage).desc())
+        .limit(limit)
+        .all()
+    )
 
     return [
         {
@@ -767,7 +742,7 @@ def get_performance_by_product(
             "product_name": r.product_name or f"Product {r.product_id}",
             "units": int(r.units) if r.units else 0,
             "rate": round(float(r.units) / float(r.hours), 1) if r.hours and r.hours > 0 else 0,
-            "performance": round(float(r.performance), 1) if r.performance else 0
+            "performance": round(float(r.performance), 1) if r.performance else 0,
         }
         for r in results
     ]
@@ -779,7 +754,7 @@ def get_quality_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily quality (FPY) trend data"""
     from backend.schemas.quality_entry import QualityEntry
@@ -790,16 +765,16 @@ def get_quality_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     query = db.query(
-        func.date(QualityEntry.shift_date).label('date'),
-        func.sum(QualityEntry.units_passed).label('passed'),
-        func.sum(QualityEntry.units_inspected).label('inspected')
+        func.date(QualityEntry.shift_date).label("date"),
+        func.sum(QualityEntry.units_passed).label("passed"),
+        func.sum(QualityEntry.units_inspected).label("inspected"),
     ).filter(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
@@ -810,7 +785,7 @@ def get_quality_trend(
     return [
         {
             "date": str(r.date),
-            "value": round((r.passed / r.inspected) * 100, 2) if r.inspected and r.inspected > 0 else 0
+            "value": round((r.passed / r.inspected) * 100, 2) if r.inspected and r.inspected > 0 else 0,
         }
         for r in results
     ]
@@ -822,7 +797,7 @@ def get_availability_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily availability trend data (calculated from downtime)"""
     from backend.schemas.downtime_entry import DowntimeEntry
@@ -834,32 +809,37 @@ def get_availability_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Get production days (scheduled time proxy)
     prod_query = db.query(
-        func.date(ProductionEntry.shift_date).label('date'),
-        func.count(ProductionEntry.production_entry_id).label('entries')
+        func.date(ProductionEntry.shift_date).label("date"),
+        func.count(ProductionEntry.production_entry_id).label("entries"),
     ).filter(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
     if effective_client_id:
         prod_query = prod_query.filter(ProductionEntry.client_id == effective_client_id)
-    prod_results = {str(r.date): r.entries * 8 for r in prod_query.group_by(func.date(ProductionEntry.shift_date)).all()}
+    prod_results = {
+        str(r.date): r.entries * 8 for r in prod_query.group_by(func.date(ProductionEntry.shift_date)).all()
+    }
 
     # Get downtime by day
     dt_query = db.query(
-        func.date(DowntimeEntry.shift_date).label('date'),
-        func.sum(DowntimeEntry.downtime_duration_minutes).label('downtime_mins')
+        func.date(DowntimeEntry.shift_date).label("date"),
+        func.sum(DowntimeEntry.downtime_duration_minutes).label("downtime_mins"),
     ).filter(
         DowntimeEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
     if effective_client_id:
         dt_query = dt_query.filter(DowntimeEntry.client_id == effective_client_id)
-    dt_results = {str(r.date): float(r.downtime_mins) / 60 if r.downtime_mins else 0 for r in dt_query.group_by(func.date(DowntimeEntry.shift_date)).all()}
+    dt_results = {
+        str(r.date): float(r.downtime_mins) / 60 if r.downtime_mins else 0
+        for r in dt_query.group_by(func.date(DowntimeEntry.shift_date)).all()
+    }
 
     # Calculate availability per day
     trend_data = []
@@ -878,7 +858,7 @@ def get_oee_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily OEE trend data (Availability x Performance x Quality)"""
     from backend.schemas.production_entry import ProductionEntry
@@ -891,46 +871,55 @@ def get_oee_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Get performance by day
     perf_query = db.query(
-        func.date(ProductionEntry.shift_date).label('date'),
-        func.avg(ProductionEntry.performance_percentage).label('performance'),
-        func.count(ProductionEntry.production_entry_id).label('entries')
+        func.date(ProductionEntry.shift_date).label("date"),
+        func.avg(ProductionEntry.performance_percentage).label("performance"),
+        func.count(ProductionEntry.production_entry_id).label("entries"),
     ).filter(
         ProductionEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        ProductionEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
     if effective_client_id:
         perf_query = perf_query.filter(ProductionEntry.client_id == effective_client_id)
-    perf_results = {str(r.date): {"performance": float(r.performance) if r.performance else 95, "entries": r.entries} for r in perf_query.group_by(func.date(ProductionEntry.shift_date)).all()}
+    perf_results = {
+        str(r.date): {"performance": float(r.performance) if r.performance else 95, "entries": r.entries}
+        for r in perf_query.group_by(func.date(ProductionEntry.shift_date)).all()
+    }
 
     # Get quality by day
     qual_query = db.query(
-        func.date(QualityEntry.shift_date).label('date'),
-        func.sum(QualityEntry.units_passed).label('passed'),
-        func.sum(QualityEntry.units_inspected).label('inspected')
+        func.date(QualityEntry.shift_date).label("date"),
+        func.sum(QualityEntry.units_passed).label("passed"),
+        func.sum(QualityEntry.units_inspected).label("inspected"),
     ).filter(
         QualityEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        QualityEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
     if effective_client_id:
         qual_query = qual_query.filter(QualityEntry.client_id == effective_client_id)
-    qual_results = {str(r.date): (r.passed / r.inspected * 100) if r.inspected and r.inspected > 0 else 97 for r in qual_query.group_by(func.date(QualityEntry.shift_date)).all()}
+    qual_results = {
+        str(r.date): (r.passed / r.inspected * 100) if r.inspected and r.inspected > 0 else 97
+        for r in qual_query.group_by(func.date(QualityEntry.shift_date)).all()
+    }
 
     # Get downtime by day
     dt_query = db.query(
-        func.date(DowntimeEntry.shift_date).label('date'),
-        func.sum(DowntimeEntry.downtime_duration_minutes).label('downtime_mins')
+        func.date(DowntimeEntry.shift_date).label("date"),
+        func.sum(DowntimeEntry.downtime_duration_minutes).label("downtime_mins"),
     ).filter(
         DowntimeEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        DowntimeEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
     if effective_client_id:
         dt_query = dt_query.filter(DowntimeEntry.client_id == effective_client_id)
-    dt_results = {str(r.date): float(r.downtime_mins) / 60 if r.downtime_mins else 0 for r in dt_query.group_by(func.date(DowntimeEntry.shift_date)).all()}
+    dt_results = {
+        str(r.date): float(r.downtime_mins) / 60 if r.downtime_mins else 0
+        for r in dt_query.group_by(func.date(DowntimeEntry.shift_date)).all()
+    }
 
     # Calculate OEE per day
     trend_data = []
@@ -952,7 +941,7 @@ def get_otd_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily On-Time Delivery trend data"""
     from backend.schemas.work_order import WorkOrder
@@ -963,23 +952,18 @@ def get_otd_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Query work orders grouped by required_date
     query = db.query(
-        func.date(WorkOrder.required_date).label('date'),
-        func.count(WorkOrder.work_order_id).label('total'),
-        func.sum(
-            case(
-                (WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1),
-                else_=0
-            )
-        ).label('on_time')
+        func.date(WorkOrder.required_date).label("date"),
+        func.count(WorkOrder.work_order_id).label("total"),
+        func.sum(case((WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1), else_=0)).label("on_time"),
     ).filter(
         WorkOrder.required_date.isnot(None),
         WorkOrder.required_date >= datetime.combine(start_date, datetime.min.time()),
-        WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time())
+        WorkOrder.required_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
@@ -987,7 +971,9 @@ def get_otd_trend(
 
     results = query.group_by(func.date(WorkOrder.required_date)).order_by(func.date(WorkOrder.required_date)).all()
 
-    return [{"date": str(r.date), "value": round((r.on_time / r.total * 100) if r.total > 0 else 0, 2)} for r in results]
+    return [
+        {"date": str(r.date), "value": round((r.on_time / r.total * 100) if r.total > 0 else 0, 2)} for r in results
+    ]
 
 
 @router.get("/absenteeism/trend")
@@ -996,7 +982,7 @@ def get_absenteeism_trend(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """Get daily absenteeism trend data"""
     from backend.schemas.attendance_entry import AttendanceEntry
@@ -1007,30 +993,39 @@ def get_absenteeism_trend(
         start_date = end_date - timedelta(days=30)
 
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Query attendance grouped by shift_date
     query = db.query(
-        func.date(AttendanceEntry.shift_date).label('date'),
-        func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
-        func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label('absent')
+        func.date(AttendanceEntry.shift_date).label("date"),
+        func.sum(AttendanceEntry.scheduled_hours).label("scheduled"),
+        func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label("absent"),
     ).filter(
         AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time())
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
     )
 
     if effective_client_id:
         query = query.filter(AttendanceEntry.client_id == effective_client_id)
 
-    results = query.group_by(func.date(AttendanceEntry.shift_date)).order_by(func.date(AttendanceEntry.shift_date)).all()
+    results = (
+        query.group_by(func.date(AttendanceEntry.shift_date)).order_by(func.date(AttendanceEntry.shift_date)).all()
+    )
 
-    return [{"date": str(r.date), "value": round((r.absent / r.scheduled * 100) if r.scheduled and r.scheduled > 0 else 0, 2)} for r in results]
+    return [
+        {
+            "date": str(r.date),
+            "value": round((r.absent / r.scheduled * 100) if r.scheduled and r.scheduled > 0 else 0, 2),
+        }
+        for r in results
+    ]
 
 
 # ============================================================================
 # AGGREGATED DASHBOARD ENDPOINT
 # ============================================================================
+
 
 @router.get("/dashboard/aggregated")
 def get_aggregated_dashboard(
@@ -1038,7 +1033,7 @@ def get_aggregated_dashboard(
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get aggregated KPI dashboard data in a single API call.
@@ -1072,7 +1067,7 @@ def get_aggregated_dashboard(
 
     # Effective client filter
     effective_client_id = client_id
-    if not effective_client_id and current_user.role != 'admin' and current_user.client_id_assigned:
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
         effective_client_id = current_user.client_id_assigned
 
     # Build date filter conditions
@@ -1080,10 +1075,7 @@ def get_aggregated_dashboard(
     end_dt = datetime.combine(end_date, datetime.max.time())
 
     result = {
-        "date_range": {
-            "start_date": str(start_date),
-            "end_date": str(end_date)
-        },
+        "date_range": {"start_date": str(start_date), "end_date": str(end_date)},
         "client_id": effective_client_id,
         "efficiency": None,
         "performance": None,
@@ -1092,23 +1084,17 @@ def get_aggregated_dashboard(
         "absenteeism": None,
         "wip_aging": None,
         "otd": None,
-        "trends": {
-            "efficiency": [],
-            "performance": []
-        }
+        "trends": {"efficiency": [], "performance": []},
     }
 
     # ---- EFFICIENCY & PERFORMANCE ----
     try:
         prod_query = db.query(
-            func.avg(ProductionEntry.efficiency_percentage).label('avg_efficiency'),
-            func.avg(ProductionEntry.performance_percentage).label('avg_performance'),
-            func.sum(ProductionEntry.units_produced).label('total_units'),
-            func.sum(ProductionEntry.run_time_hours).label('total_hours')
-        ).filter(
-            ProductionEntry.shift_date >= start_dt,
-            ProductionEntry.shift_date <= end_dt
-        )
+            func.avg(ProductionEntry.efficiency_percentage).label("avg_efficiency"),
+            func.avg(ProductionEntry.performance_percentage).label("avg_performance"),
+            func.sum(ProductionEntry.units_produced).label("total_units"),
+            func.sum(ProductionEntry.run_time_hours).label("total_hours"),
+        ).filter(ProductionEntry.shift_date >= start_dt, ProductionEntry.shift_date <= end_dt)
         if effective_client_id:
             prod_query = prod_query.filter(ProductionEntry.client_id == effective_client_id)
 
@@ -1117,36 +1103,30 @@ def get_aggregated_dashboard(
             "current": round(float(prod_result.avg_efficiency or 0), 1),
             "target": 85.0,
             "total_units": int(prod_result.total_units or 0),
-            "total_hours": round(float(prod_result.total_hours or 0), 1)
+            "total_hours": round(float(prod_result.total_hours or 0), 1),
         }
-        result["performance"] = {
-            "current": round(float(prod_result.avg_performance or 0), 1),
-            "target": 90.0
-        }
+        result["performance"] = {"current": round(float(prod_result.avg_performance or 0), 1), "target": 90.0}
 
         # Efficiency trend
         trend_query = db.query(
-            func.date(ProductionEntry.shift_date).label('date'),
-            func.avg(ProductionEntry.efficiency_percentage).label('efficiency'),
-            func.avg(ProductionEntry.performance_percentage).label('performance')
-        ).filter(
-            ProductionEntry.shift_date >= start_dt,
-            ProductionEntry.shift_date <= end_dt
-        )
+            func.date(ProductionEntry.shift_date).label("date"),
+            func.avg(ProductionEntry.efficiency_percentage).label("efficiency"),
+            func.avg(ProductionEntry.performance_percentage).label("performance"),
+        ).filter(ProductionEntry.shift_date >= start_dt, ProductionEntry.shift_date <= end_dt)
         if effective_client_id:
             trend_query = trend_query.filter(ProductionEntry.client_id == effective_client_id)
 
-        trend_results = trend_query.group_by(
-            func.date(ProductionEntry.shift_date)
-        ).order_by(func.date(ProductionEntry.shift_date)).all()
+        trend_results = (
+            trend_query.group_by(func.date(ProductionEntry.shift_date))
+            .order_by(func.date(ProductionEntry.shift_date))
+            .all()
+        )
 
         result["trends"]["efficiency"] = [
-            {"date": str(r.date), "value": round(float(r.efficiency or 0), 1)}
-            for r in trend_results
+            {"date": str(r.date), "value": round(float(r.efficiency or 0), 1)} for r in trend_results
         ]
         result["trends"]["performance"] = [
-            {"date": str(r.date), "value": round(float(r.performance or 0), 1)}
-            for r in trend_results
+            {"date": str(r.date), "value": round(float(r.performance or 0), 1)} for r in trend_results
         ]
     except Exception as e:
         result["efficiency"] = {"current": 0, "target": 85.0, "error": str(e)}
@@ -1164,7 +1144,7 @@ def get_aggregated_dashboard(
             "ppm": int(ppm_data.get("ppm", 0)),
             "dpmo": int(dpmo_data.get("dpmo", 0)),
             "total_inspected": ppm_data.get("total_inspected", 0),
-            "total_defective": ppm_data.get("total_defective", 0)
+            "total_defective": ppm_data.get("total_defective", 0),
         }
     except Exception as e:
         result["quality"] = {"fpy": 0, "rty": 0, "ppm": 0, "dpmo": 0, "error": str(e)}
@@ -1172,11 +1152,8 @@ def get_aggregated_dashboard(
     # ---- AVAILABILITY ----
     try:
         downtime_query = db.query(
-            func.sum(DowntimeEntry.downtime_duration_minutes / 60.0).label('downtime_hours')
-        ).filter(
-            DowntimeEntry.shift_date >= start_dt,
-            DowntimeEntry.shift_date <= end_dt
-        )
+            func.sum(DowntimeEntry.downtime_duration_minutes / 60.0).label("downtime_hours")
+        ).filter(DowntimeEntry.shift_date >= start_dt, DowntimeEntry.shift_date <= end_dt)
         if effective_client_id:
             downtime_query = downtime_query.filter(DowntimeEntry.client_id == effective_client_id)
 
@@ -1191,7 +1168,7 @@ def get_aggregated_dashboard(
             "current": round(max(0, min(100, availability)), 1),
             "target": 95.0,
             "downtime_hours": round(downtime_hours, 1),
-            "scheduled_hours": round(scheduled_hours, 1)
+            "scheduled_hours": round(scheduled_hours, 1),
         }
     except Exception as e:
         result["availability"] = {"current": 100, "target": 95.0, "error": str(e)}
@@ -1199,13 +1176,10 @@ def get_aggregated_dashboard(
     # ---- ABSENTEEISM ----
     try:
         att_query = db.query(
-            func.sum(AttendanceEntry.scheduled_hours).label('scheduled'),
-            func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label('absent'),
-            func.count(func.distinct(AttendanceEntry.employee_id)).label('employee_count')
-        ).filter(
-            AttendanceEntry.shift_date >= start_dt,
-            AttendanceEntry.shift_date <= end_dt
-        )
+            func.sum(AttendanceEntry.scheduled_hours).label("scheduled"),
+            func.sum(func.coalesce(AttendanceEntry.absence_hours, 0)).label("absent"),
+            func.count(func.distinct(AttendanceEntry.employee_id)).label("employee_count"),
+        ).filter(AttendanceEntry.shift_date >= start_dt, AttendanceEntry.shift_date <= end_dt)
         if effective_client_id:
             att_query = att_query.filter(AttendanceEntry.client_id == effective_client_id)
 
@@ -1219,7 +1193,7 @@ def get_aggregated_dashboard(
             "target": 5.0,
             "total_scheduled_hours": round(scheduled, 1),
             "total_absent_hours": round(absent, 1),
-            "employee_count": att_result.employee_count or 0
+            "employee_count": att_result.employee_count or 0,
         }
     except Exception as e:
         result["absenteeism"] = {"rate": 0, "target": 5.0, "error": str(e)}
@@ -1229,9 +1203,7 @@ def get_aggregated_dashboard(
         from backend.schemas.hold_entry import HoldStatus
 
         # Count active holds (ON_HOLD status)
-        wip_query = db.query(
-            func.count(HoldEntry.hold_entry_id).label('total_count')
-        ).filter(
+        wip_query = db.query(func.count(HoldEntry.hold_entry_id).label("total_count")).filter(
             HoldEntry.hold_status == HoldStatus.ON_HOLD
         )
         if effective_client_id:
@@ -1245,7 +1217,7 @@ def get_aggregated_dashboard(
             "total_active": total_active,
             "within_target": total_active,
             "overdue": 0,
-            "avg_aging_days": 0
+            "avg_aging_days": 0,
         }
     except Exception as e:
         result["wip_aging"] = {"total_active": 0, "within_target": 0, "overdue": 0, "error": str(e)}
@@ -1253,16 +1225,13 @@ def get_aggregated_dashboard(
     # ---- OTD (On-Time Delivery) ----
     try:
         otd_query = db.query(
-            func.count(WorkOrder.work_order_id).label('total'),
-            func.sum(case(
-                (WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1),
-                else_=0
-            )).label('on_time')
+            func.count(WorkOrder.work_order_id).label("total"),
+            func.sum(case((WorkOrder.actual_delivery_date <= WorkOrder.required_date, 1), else_=0)).label("on_time"),
         ).filter(
             WorkOrder.required_date.isnot(None),
             WorkOrder.required_date >= start_dt,
             WorkOrder.required_date <= end_dt,
-            WorkOrder.actual_delivery_date.isnot(None)
+            WorkOrder.actual_delivery_date.isnot(None),
         )
         if effective_client_id:
             otd_query = otd_query.filter(WorkOrder.client_id == effective_client_id)
@@ -1277,7 +1246,7 @@ def get_aggregated_dashboard(
             "target": 95.0,
             "total_orders": total_orders,
             "on_time_orders": on_time_orders,
-            "late_orders": total_orders - on_time_orders
+            "late_orders": total_orders - on_time_orders,
         }
     except Exception as e:
         result["otd"] = {"rate": 100, "target": 95.0, "error": str(e)}

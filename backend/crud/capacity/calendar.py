@@ -6,6 +6,7 @@ for capacity planning calculations.
 
 Multi-tenant: All operations enforce client_id isolation.
 """
+
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
@@ -25,7 +26,7 @@ def create_calendar_entry(
     shift2_hours: float = 0,
     shift3_hours: float = 0,
     holiday_name: Optional[str] = None,
-    notes: Optional[str] = None
+    notes: Optional[str] = None,
 ) -> CapacityCalendar:
     """
     Create a new calendar entry.
@@ -56,7 +57,7 @@ def create_calendar_entry(
         shift2_hours=shift2_hours,
         shift3_hours=shift3_hours,
         holiday_name=holiday_name,
-        notes=notes
+        notes=notes,
     )
     db.add(entry)
     db.commit()
@@ -64,12 +65,7 @@ def create_calendar_entry(
     return entry
 
 
-def get_calendar_entries(
-    db: Session,
-    client_id: str,
-    skip: int = 0,
-    limit: int = 100
-) -> List[CapacityCalendar]:
+def get_calendar_entries(db: Session, client_id: str, skip: int = 0, limit: int = 100) -> List[CapacityCalendar]:
     """
     Get all calendar entries for a client.
 
@@ -83,16 +79,17 @@ def get_calendar_entries(
         List of CapacityCalendar entries ordered by date
     """
     ensure_client_id(client_id, "calendar query")
-    return db.query(CapacityCalendar).filter(
-        CapacityCalendar.client_id == client_id
-    ).order_by(CapacityCalendar.calendar_date).offset(skip).limit(limit).all()
+    return (
+        db.query(CapacityCalendar)
+        .filter(CapacityCalendar.client_id == client_id)
+        .order_by(CapacityCalendar.calendar_date)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_calendar_entry(
-    db: Session,
-    client_id: str,
-    entry_id: int
-) -> Optional[CapacityCalendar]:
+def get_calendar_entry(db: Session, client_id: str, entry_id: int) -> Optional[CapacityCalendar]:
     """
     Get a specific calendar entry by ID.
 
@@ -105,19 +102,14 @@ def get_calendar_entry(
         CapacityCalendar entry or None if not found
     """
     ensure_client_id(client_id, "calendar query")
-    return db.query(CapacityCalendar).filter(
-        and_(
-            CapacityCalendar.client_id == client_id,
-            CapacityCalendar.id == entry_id
-        )
-    ).first()
+    return (
+        db.query(CapacityCalendar)
+        .filter(and_(CapacityCalendar.client_id == client_id, CapacityCalendar.id == entry_id))
+        .first()
+    )
 
 
-def get_calendar_entry_by_date(
-    db: Session,
-    client_id: str,
-    calendar_date: date
-) -> Optional[CapacityCalendar]:
+def get_calendar_entry_by_date(db: Session, client_id: str, calendar_date: date) -> Optional[CapacityCalendar]:
     """
     Get a specific calendar entry by date.
 
@@ -130,20 +122,14 @@ def get_calendar_entry_by_date(
         CapacityCalendar entry or None if not found
     """
     ensure_client_id(client_id, "calendar query")
-    return db.query(CapacityCalendar).filter(
-        and_(
-            CapacityCalendar.client_id == client_id,
-            CapacityCalendar.calendar_date == calendar_date
-        )
-    ).first()
+    return (
+        db.query(CapacityCalendar)
+        .filter(and_(CapacityCalendar.client_id == client_id, CapacityCalendar.calendar_date == calendar_date))
+        .first()
+    )
 
 
-def update_calendar_entry(
-    db: Session,
-    client_id: str,
-    entry_id: int,
-    **updates
-) -> Optional[CapacityCalendar]:
+def update_calendar_entry(db: Session, client_id: str, entry_id: int, **updates) -> Optional[CapacityCalendar]:
     """
     Update a calendar entry.
 
@@ -169,11 +155,7 @@ def update_calendar_entry(
     return entry
 
 
-def delete_calendar_entry(
-    db: Session,
-    client_id: str,
-    entry_id: int
-) -> bool:
+def delete_calendar_entry(db: Session, client_id: str, entry_id: int) -> bool:
     """
     Delete a calendar entry.
 
@@ -194,12 +176,7 @@ def delete_calendar_entry(
     return True
 
 
-def get_calendar_for_period(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date
-) -> List[CapacityCalendar]:
+def get_calendar_for_period(db: Session, client_id: str, start_date: date, end_date: date) -> List[CapacityCalendar]:
     """
     Get calendar entries for a date range.
 
@@ -213,21 +190,21 @@ def get_calendar_for_period(
         List of CapacityCalendar entries for the period, ordered by date
     """
     ensure_client_id(client_id, "calendar period query")
-    return db.query(CapacityCalendar).filter(
-        and_(
-            CapacityCalendar.client_id == client_id,
-            CapacityCalendar.calendar_date >= start_date,
-            CapacityCalendar.calendar_date <= end_date
+    return (
+        db.query(CapacityCalendar)
+        .filter(
+            and_(
+                CapacityCalendar.client_id == client_id,
+                CapacityCalendar.calendar_date >= start_date,
+                CapacityCalendar.calendar_date <= end_date,
+            )
         )
-    ).order_by(CapacityCalendar.calendar_date).all()
+        .order_by(CapacityCalendar.calendar_date)
+        .all()
+    )
 
 
-def get_working_days_in_period(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date
-) -> List[CapacityCalendar]:
+def get_working_days_in_period(db: Session, client_id: str, start_date: date, end_date: date) -> List[CapacityCalendar]:
     """
     Get only working days for a date range.
 
@@ -241,22 +218,22 @@ def get_working_days_in_period(
         List of working day CapacityCalendar entries for the period
     """
     ensure_client_id(client_id, "working days query")
-    return db.query(CapacityCalendar).filter(
-        and_(
-            CapacityCalendar.client_id == client_id,
-            CapacityCalendar.calendar_date >= start_date,
-            CapacityCalendar.calendar_date <= end_date,
-            CapacityCalendar.is_working_day == True
+    return (
+        db.query(CapacityCalendar)
+        .filter(
+            and_(
+                CapacityCalendar.client_id == client_id,
+                CapacityCalendar.calendar_date >= start_date,
+                CapacityCalendar.calendar_date <= end_date,
+                CapacityCalendar.is_working_day == True,
+            )
         )
-    ).order_by(CapacityCalendar.calendar_date).all()
+        .order_by(CapacityCalendar.calendar_date)
+        .all()
+    )
 
 
-def get_total_hours_for_period(
-    db: Session,
-    client_id: str,
-    start_date: date,
-    end_date: date
-) -> float:
+def get_total_hours_for_period(db: Session, client_id: str, start_date: date, end_date: date) -> float:
     """
     Calculate total available hours for a date range.
 
@@ -273,11 +250,7 @@ def get_total_hours_for_period(
     return sum(day.total_hours() for day in working_days)
 
 
-def bulk_create_calendar_entries(
-    db: Session,
-    client_id: str,
-    entries: List[dict]
-) -> List[CapacityCalendar]:
+def bulk_create_calendar_entries(db: Session, client_id: str, entries: List[dict]) -> List[CapacityCalendar]:
     """
     Bulk create calendar entries.
 
@@ -293,10 +266,7 @@ def bulk_create_calendar_entries(
 
     created_entries = []
     for entry_data in entries:
-        entry = CapacityCalendar(
-            client_id=client_id,
-            **entry_data
-        )
+        entry = CapacityCalendar(client_id=client_id, **entry_data)
         db.add(entry)
         created_entries.append(entry)
 

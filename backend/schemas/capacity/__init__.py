@@ -17,6 +17,7 @@ Tables:
 - capacity_scenario: What-if scenario configurations
 - capacity_kpi_commitment: KPI targets and actuals tracking
 """
+
 from backend.schemas.capacity.calendar import CapacityCalendar
 from backend.schemas.capacity.production_lines import CapacityProductionLine
 from backend.schemas.capacity.orders import CapacityOrder, OrderPriority, OrderStatus

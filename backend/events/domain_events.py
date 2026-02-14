@@ -5,6 +5,7 @@ Phase 3: Domain Events Infrastructure
 Defines all domain events for the KPI Operations platform.
 Events capture significant state changes for audit and integration.
 """
+
 from pydantic import Field
 from typing import Optional, Dict, Any
 from datetime import date
@@ -17,8 +18,10 @@ from backend.events.base import DomainEvent
 # Work Order Events
 # =============================================================================
 
+
 class WorkOrderStatusChanged(DomainEvent):
     """Event raised when a work order status changes."""
+
     event_type: str = "work_order.status_changed"
     aggregate_type: str = "WorkOrder"
 
@@ -30,6 +33,7 @@ class WorkOrderStatusChanged(DomainEvent):
 
 class WorkOrderCreated(DomainEvent):
     """Event raised when a new work order is created."""
+
     event_type: str = "work_order.created"
     aggregate_type: str = "WorkOrder"
 
@@ -40,6 +44,7 @@ class WorkOrderCreated(DomainEvent):
 
 class WorkOrderClosed(DomainEvent):
     """Event raised when a work order is closed."""
+
     event_type: str = "work_order.closed"
     aggregate_type: str = "WorkOrder"
 
@@ -51,8 +56,10 @@ class WorkOrderClosed(DomainEvent):
 # Production Events
 # =============================================================================
 
+
 class ProductionEntryCreated(DomainEvent):
     """Event raised when a production entry is created."""
+
     event_type: str = "production.entry_created"
     aggregate_type: str = "ProductionEntry"
 
@@ -66,6 +73,7 @@ class ProductionEntryCreated(DomainEvent):
 
 class ProductionEntryUpdated(DomainEvent):
     """Event raised when a production entry is updated."""
+
     event_type: str = "production.entry_updated"
     aggregate_type: str = "ProductionEntry"
 
@@ -77,8 +85,10 @@ class ProductionEntryUpdated(DomainEvent):
 # Quality Events
 # =============================================================================
 
+
 class QualityInspectionRecorded(DomainEvent):
     """Event raised when a quality inspection is recorded."""
+
     event_type: str = "quality.inspection_recorded"
     aggregate_type: str = "QualityInspection"
 
@@ -91,6 +101,7 @@ class QualityInspectionRecorded(DomainEvent):
 
 class QualityDefectReported(DomainEvent):
     """Event raised when a quality defect is reported."""
+
     event_type: str = "quality.defect_reported"
     aggregate_type: str = "DefectEntry"
 
@@ -104,8 +115,10 @@ class QualityDefectReported(DomainEvent):
 # Hold Events
 # =============================================================================
 
+
 class HoldCreated(DomainEvent):
     """Event raised when a WIP hold is created."""
+
     event_type: str = "hold.created"
     aggregate_type: str = "HoldEntry"
 
@@ -118,6 +131,7 @@ class HoldCreated(DomainEvent):
 
 class HoldResumed(DomainEvent):
     """Event raised when a WIP hold is resumed."""
+
     event_type: str = "hold.resumed"
     aggregate_type: str = "HoldEntry"
 
@@ -129,6 +143,7 @@ class HoldResumed(DomainEvent):
 
 class HoldApprovalRequired(DomainEvent):
     """Event raised when a hold requires approval."""
+
     event_type: str = "hold.approval_required"
     aggregate_type: str = "HoldEntry"
 
@@ -141,8 +156,10 @@ class HoldApprovalRequired(DomainEvent):
 # KPI Threshold Events
 # =============================================================================
 
+
 class KPIThresholdViolated(DomainEvent):
     """Event raised when a KPI threshold is violated."""
+
     event_type: str = "kpi.threshold_violated"
     aggregate_type: str = "KPIMetric"
 
@@ -155,6 +172,7 @@ class KPIThresholdViolated(DomainEvent):
 
 class KPITargetAchieved(DomainEvent):
     """Event raised when a KPI target is achieved."""
+
     event_type: str = "kpi.target_achieved"
     aggregate_type: str = "KPIMetric"
 
@@ -168,8 +186,10 @@ class KPITargetAchieved(DomainEvent):
 # Employee Events
 # =============================================================================
 
+
 class EmployeeAssignedToFloatingPool(DomainEvent):
     """Event raised when an employee is assigned to floating pool."""
+
     event_type: str = "employee.assigned_to_floating_pool"
     aggregate_type: str = "Employee"
 
@@ -179,6 +199,7 @@ class EmployeeAssignedToFloatingPool(DomainEvent):
 
 class EmployeeAssignedToClient(DomainEvent):
     """Event raised when a floating pool employee is assigned to a client."""
+
     event_type: str = "employee.assigned_to_client"
     aggregate_type: str = "FloatingPoolAssignment"
 
@@ -193,8 +214,10 @@ class EmployeeAssignedToClient(DomainEvent):
 # Capacity Planning Events
 # =============================================================================
 
+
 class OrderScheduled(DomainEvent):
     """Event raised when an order is scheduled to a production line."""
+
     event_type: str = "capacity.order_scheduled"
     aggregate_type: str = "CapacitySchedule"
 
@@ -207,6 +230,7 @@ class OrderScheduled(DomainEvent):
 
 class ComponentShortageDetected(DomainEvent):
     """Event raised when component check detects a shortage."""
+
     event_type: str = "capacity.component_shortage"
     aggregate_type: str = "ComponentCheck"
 
@@ -220,6 +244,7 @@ class ComponentShortageDetected(DomainEvent):
 
 class CapacityOverloadDetected(DomainEvent):
     """Event raised when capacity analysis detects overload."""
+
     event_type: str = "capacity.overload_detected"
     aggregate_type: str = "CapacityAnalysis"
 
@@ -233,6 +258,7 @@ class CapacityOverloadDetected(DomainEvent):
 
 class ScheduleCommitted(DomainEvent):
     """Event raised when a production schedule is committed for KPI tracking."""
+
     event_type: str = "capacity.schedule_committed"
     aggregate_type: str = "CapacitySchedule"
 
@@ -246,6 +272,7 @@ class ScheduleCommitted(DomainEvent):
 
 class KPIVarianceAlert(DomainEvent):
     """Event raised when KPI variance exceeds threshold."""
+
     event_type: str = "capacity.kpi_variance"
     aggregate_type: str = "KPICommitment"
 
@@ -260,6 +287,7 @@ class KPIVarianceAlert(DomainEvent):
 
 class BOMExploded(DomainEvent):
     """Event raised when BOM explosion is completed."""
+
     event_type: str = "capacity.bom_exploded"
     aggregate_type: str = "BOM"
 
@@ -271,6 +299,7 @@ class BOMExploded(DomainEvent):
 
 class CapacityScenarioCreated(DomainEvent):
     """Event raised when a what-if scenario is created."""
+
     event_type: str = "capacity.scenario_created"
     aggregate_type: str = "CapacityScenario"
 
@@ -282,6 +311,7 @@ class CapacityScenarioCreated(DomainEvent):
 
 class CapacityScenarioCompared(DomainEvent):
     """Event raised when scenarios are compared."""
+
     event_type: str = "capacity.scenario_compared"
     aggregate_type: str = "CapacityScenario"
 

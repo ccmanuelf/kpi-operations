@@ -5,6 +5,7 @@ Phase B.2: Backend Services for Capacity Planning
 Provides schedule generation, management, and commitment operations.
 Supports auto-generation based on orders and capacity constraints.
 """
+
 from decimal import Decimal
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
@@ -12,9 +13,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from backend.schemas.capacity.schedule import (
-    CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
-)
+from backend.schemas.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
 from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.schemas.capacity.production_lines import CapacityProductionLine
 from backend.schemas.capacity.standards import CapacityProductionStandard
@@ -27,6 +26,7 @@ from backend.events.domain_events import OrderScheduled, ScheduleCommitted
 @dataclass
 class ScheduleLineItem:
     """A single line item in the schedule."""
+
     order_id: int
     order_number: str
     style_code: str
@@ -40,6 +40,7 @@ class ScheduleLineItem:
 @dataclass
 class ScheduleSummary:
     """Summary of a schedule."""
+
     schedule_id: int
     schedule_name: str
     status: ScheduleStatus
@@ -54,6 +55,7 @@ class ScheduleSummary:
 @dataclass
 class GeneratedSchedule:
     """Result of schedule generation."""
+
     schedule_name: str
     period_start: date
     period_end: date
@@ -92,7 +94,7 @@ class SchedulingService:
         period_end: date,
         order_ids: Optional[List[int]] = None,
         line_ids: Optional[List[int]] = None,
-        prioritize_by: str = "required_date"
+        prioritize_by: str = "required_date",
     ) -> GeneratedSchedule:
         """
         Auto-generate schedule based on orders and capacity.
@@ -127,7 +129,7 @@ class SchedulingService:
                 items=[],
                 unscheduled_orders=[],
                 total_scheduled_quantity=0,
-                utilization_percent=Decimal("0")
+                utilization_percent=Decimal("0"),
             )
 
         # Sort orders by priority
@@ -143,7 +145,7 @@ class SchedulingService:
                 items=[],
                 unscheduled_orders=[o.id for o in orders],
                 total_scheduled_quantity=0,
-                utilization_percent=Decimal("0")
+                utilization_percent=Decimal("0"),
             )
 
         # Get SAM data for styles
@@ -162,7 +164,7 @@ class SchedulingService:
             lines=lines,
             working_days=working_days,
             sam_by_style=sam_by_style,
-            capacity_by_line=capacity_by_line
+            capacity_by_line=capacity_by_line,
         )
 
         # Calculate totals
@@ -180,16 +182,11 @@ class SchedulingService:
             items=schedule_items,
             unscheduled_orders=[o.id for o in unscheduled],
             total_scheduled_quantity=total_quantity,
-            utilization_percent=utilization
+            utilization_percent=utilization,
         )
 
     def create_schedule(
-        self,
-        client_id: str,
-        schedule_name: str,
-        period_start: date,
-        period_end: date,
-        items: List[Dict]
+        self, client_id: str, schedule_name: str, period_start: date, period_end: date, items: List[Dict]
     ) -> CapacitySchedule:
         """
         Create a new schedule with specified items.
@@ -210,7 +207,7 @@ class SchedulingService:
             schedule_name=schedule_name,
             period_start=period_start,
             period_end=period_end,
-            status=ScheduleStatus.DRAFT
+            status=ScheduleStatus.DRAFT,
         )
         self.db.add(schedule)
         self.db.flush()
@@ -227,7 +224,7 @@ class SchedulingService:
                 line_code=item.get("line_code"),
                 scheduled_date=item.get("scheduled_date"),
                 scheduled_quantity=item.get("scheduled_quantity", 0),
-                sequence=item.get("sequence", 1)
+                sequence=item.get("sequence", 1),
             )
             self.db.add(detail)
 
@@ -238,7 +235,7 @@ class SchedulingService:
                 order_id=str(item.get("order_id")),
                 line_id=str(item.get("line_id")),
                 scheduled_date=item.get("scheduled_date"),
-                scheduled_quantity=item.get("scheduled_quantity", 0)
+                scheduled_quantity=item.get("scheduled_quantity", 0),
             )
             event_bus.collect(event)
 
@@ -246,11 +243,7 @@ class SchedulingService:
         return schedule
 
     def commit_schedule(
-        self,
-        client_id: str,
-        schedule_id: int,
-        committed_by: int,
-        kpi_commitments: Optional[Dict] = None
+        self, client_id: str, schedule_id: int, committed_by: int, kpi_commitments: Optional[Dict] = None
     ) -> CapacitySchedule:
         """
         Commit a schedule for KPI tracking.
@@ -267,22 +260,17 @@ class SchedulingService:
         Raises:
             SchedulingError: If schedule not found or not in DRAFT status
         """
-        schedule = self.db.query(CapacitySchedule).filter(
-            CapacitySchedule.client_id == client_id,
-            CapacitySchedule.id == schedule_id
-        ).first()
+        schedule = (
+            self.db.query(CapacitySchedule)
+            .filter(CapacitySchedule.client_id == client_id, CapacitySchedule.id == schedule_id)
+            .first()
+        )
 
         if not schedule:
-            raise SchedulingError(
-                message=f"Schedule {schedule_id} not found",
-                order_id=str(schedule_id)
-            )
+            raise SchedulingError(message=f"Schedule {schedule_id} not found", order_id=str(schedule_id))
 
         if schedule.status != ScheduleStatus.DRAFT:
-            raise SchedulingError(
-                message=f"Schedule {schedule_id} is not in DRAFT status",
-                order_id=str(schedule_id)
-            )
+            raise SchedulingError(message=f"Schedule {schedule_id} is not in DRAFT status", order_id=str(schedule_id))
 
         # Update schedule
         schedule.status = ScheduleStatus.COMMITTED
@@ -299,18 +287,14 @@ class SchedulingService:
             committed_by=committed_by,
             kpi_commitments=kpi_commitments or {},
             period_start=schedule.period_start,
-            period_end=schedule.period_end
+            period_end=schedule.period_end,
         )
         event_bus.collect(event)
 
         self.db.commit()
         return schedule
 
-    def activate_schedule(
-        self,
-        client_id: str,
-        schedule_id: int
-    ) -> CapacitySchedule:
+    def activate_schedule(self, client_id: str, schedule_id: int) -> CapacitySchedule:
         """
         Activate a committed schedule for execution.
 
@@ -321,32 +305,25 @@ class SchedulingService:
         Returns:
             Updated CapacitySchedule
         """
-        schedule = self.db.query(CapacitySchedule).filter(
-            CapacitySchedule.client_id == client_id,
-            CapacitySchedule.id == schedule_id
-        ).first()
+        schedule = (
+            self.db.query(CapacitySchedule)
+            .filter(CapacitySchedule.client_id == client_id, CapacitySchedule.id == schedule_id)
+            .first()
+        )
 
         if not schedule:
-            raise SchedulingError(
-                message=f"Schedule {schedule_id} not found",
-                order_id=str(schedule_id)
-            )
+            raise SchedulingError(message=f"Schedule {schedule_id} not found", order_id=str(schedule_id))
 
         if schedule.status != ScheduleStatus.COMMITTED:
             raise SchedulingError(
-                message=f"Schedule {schedule_id} must be COMMITTED before activation",
-                order_id=str(schedule_id)
+                message=f"Schedule {schedule_id} must be COMMITTED before activation", order_id=str(schedule_id)
             )
 
         schedule.status = ScheduleStatus.ACTIVE
         self.db.commit()
         return schedule
 
-    def get_schedule_summary(
-        self,
-        client_id: str,
-        schedule_id: int
-    ) -> Optional[ScheduleSummary]:
+    def get_schedule_summary(self, client_id: str, schedule_id: int) -> Optional[ScheduleSummary]:
         """
         Get summary of a schedule.
 
@@ -357,25 +334,27 @@ class SchedulingService:
         Returns:
             ScheduleSummary or None if not found
         """
-        schedule = self.db.query(CapacitySchedule).filter(
-            CapacitySchedule.client_id == client_id,
-            CapacitySchedule.id == schedule_id
-        ).first()
+        schedule = (
+            self.db.query(CapacitySchedule)
+            .filter(CapacitySchedule.client_id == client_id, CapacitySchedule.id == schedule_id)
+            .first()
+        )
 
         if not schedule:
             return None
 
         # Get aggregated details
-        details = self.db.query(
-            func.count(CapacityScheduleDetail.id).label('total_items'),
-            func.sum(CapacityScheduleDetail.scheduled_quantity).label('total_scheduled'),
-            func.sum(CapacityScheduleDetail.completed_quantity).label('total_completed'),
-            func.count(func.distinct(CapacityScheduleDetail.order_id)).label('total_orders'),
-            func.count(func.distinct(CapacityScheduleDetail.line_id)).label('total_lines')
-        ).filter(
-            CapacityScheduleDetail.schedule_id == schedule_id,
-            CapacityScheduleDetail.client_id == client_id
-        ).first()
+        details = (
+            self.db.query(
+                func.count(CapacityScheduleDetail.id).label("total_items"),
+                func.sum(CapacityScheduleDetail.scheduled_quantity).label("total_scheduled"),
+                func.sum(CapacityScheduleDetail.completed_quantity).label("total_completed"),
+                func.count(func.distinct(CapacityScheduleDetail.order_id)).label("total_orders"),
+                func.count(func.distinct(CapacityScheduleDetail.line_id)).label("total_lines"),
+            )
+            .filter(CapacityScheduleDetail.schedule_id == schedule_id, CapacityScheduleDetail.client_id == client_id)
+            .first()
+        )
 
         total_scheduled = int(details.total_scheduled or 0)
         total_completed = int(details.total_completed or 0)
@@ -392,7 +371,7 @@ class SchedulingService:
             total_orders=int(details.total_orders or 0),
             total_quantity=total_scheduled,
             total_lines_used=int(details.total_lines or 0),
-            completion_percent=completion_percent
+            completion_percent=completion_percent,
         )
 
     def list_schedules(
@@ -400,7 +379,7 @@ class SchedulingService:
         client_id: str,
         status: Optional[ScheduleStatus] = None,
         period_start: Optional[date] = None,
-        period_end: Optional[date] = None
+        period_end: Optional[date] = None,
     ) -> List[CapacitySchedule]:
         """
         List schedules with optional filters.
@@ -414,9 +393,7 @@ class SchedulingService:
         Returns:
             List of CapacitySchedule
         """
-        query = self.db.query(CapacitySchedule).filter(
-            CapacitySchedule.client_id == client_id
-        )
+        query = self.db.query(CapacitySchedule).filter(CapacitySchedule.client_id == client_id)
 
         if status:
             query = query.filter(CapacitySchedule.status == status)
@@ -427,15 +404,10 @@ class SchedulingService:
 
         return query.order_by(CapacitySchedule.created_at.desc()).all()
 
-    def _get_orders_to_schedule(
-        self,
-        client_id: str,
-        order_ids: Optional[List[int]] = None
-    ) -> List[CapacityOrder]:
+    def _get_orders_to_schedule(self, client_id: str, order_ids: Optional[List[int]] = None) -> List[CapacityOrder]:
         """Get orders available for scheduling."""
         query = self.db.query(CapacityOrder).filter(
-            CapacityOrder.client_id == client_id,
-            CapacityOrder.status.in_([OrderStatus.DRAFT, OrderStatus.CONFIRMED])
+            CapacityOrder.client_id == client_id, CapacityOrder.status.in_([OrderStatus.DRAFT, OrderStatus.CONFIRMED])
         )
 
         if order_ids:
@@ -443,39 +415,21 @@ class SchedulingService:
 
         return query.all()
 
-    def _sort_orders(
-        self,
-        orders: List[CapacityOrder],
-        prioritize_by: str
-    ) -> List[CapacityOrder]:
+    def _sort_orders(self, orders: List[CapacityOrder], prioritize_by: str) -> List[CapacityOrder]:
         """Sort orders by priority."""
-        priority_order = {
-            OrderPriority.URGENT: 0,
-            OrderPriority.HIGH: 1,
-            OrderPriority.NORMAL: 2,
-            OrderPriority.LOW: 3
-        }
+        priority_order = {OrderPriority.URGENT: 0, OrderPriority.HIGH: 1, OrderPriority.NORMAL: 2, OrderPriority.LOW: 3}
 
         if prioritize_by == "priority":
-            return sorted(orders, key=lambda o: (
-                priority_order.get(o.priority, 2),
-                o.required_date
-            ))
+            return sorted(orders, key=lambda o: (priority_order.get(o.priority, 2), o.required_date))
         else:
-            return sorted(orders, key=lambda o: (
-                o.required_date,
-                priority_order.get(o.priority, 2)
-            ))
+            return sorted(orders, key=lambda o: (o.required_date, priority_order.get(o.priority, 2)))
 
     def _get_production_lines(
-        self,
-        client_id: str,
-        line_ids: Optional[List[int]] = None
+        self, client_id: str, line_ids: Optional[List[int]] = None
     ) -> List[CapacityProductionLine]:
         """Get available production lines."""
         query = self.db.query(CapacityProductionLine).filter(
-            CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.is_active == True
+            CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True
         )
 
         if line_ids:
@@ -483,38 +437,39 @@ class SchedulingService:
 
         return query.all()
 
-    def _get_sam_by_style(
-        self,
-        client_id: str,
-        style_codes: List[str]
-    ) -> Dict[str, Decimal]:
+    def _get_sam_by_style(self, client_id: str, style_codes: List[str]) -> Dict[str, Decimal]:
         """Get total SAM by style code."""
         if not style_codes:
             return {}
 
-        results = self.db.query(
-            CapacityProductionStandard.style_code,
-            func.sum(CapacityProductionStandard.sam_minutes).label('total_sam')
-        ).filter(
-            CapacityProductionStandard.client_id == client_id,
-            CapacityProductionStandard.style_code.in_(style_codes)
-        ).group_by(CapacityProductionStandard.style_code).all()
+        results = (
+            self.db.query(
+                CapacityProductionStandard.style_code,
+                func.sum(CapacityProductionStandard.sam_minutes).label("total_sam"),
+            )
+            .filter(
+                CapacityProductionStandard.client_id == client_id,
+                CapacityProductionStandard.style_code.in_(style_codes),
+            )
+            .group_by(CapacityProductionStandard.style_code)
+            .all()
+        )
 
         return {r.style_code: Decimal(str(r.total_sam or 0)) for r in results}
 
-    def _get_working_days(
-        self,
-        client_id: str,
-        period_start: date,
-        period_end: date
-    ) -> List[date]:
+    def _get_working_days(self, client_id: str, period_start: date, period_end: date) -> List[date]:
         """Get working days in period."""
-        calendars = self.db.query(CapacityCalendar).filter(
-            CapacityCalendar.client_id == client_id,
-            CapacityCalendar.calendar_date >= period_start,
-            CapacityCalendar.calendar_date <= period_end,
-            CapacityCalendar.is_working_day == True
-        ).order_by(CapacityCalendar.calendar_date).all()
+        calendars = (
+            self.db.query(CapacityCalendar)
+            .filter(
+                CapacityCalendar.client_id == client_id,
+                CapacityCalendar.calendar_date >= period_start,
+                CapacityCalendar.calendar_date <= period_end,
+                CapacityCalendar.is_working_day == True,
+            )
+            .order_by(CapacityCalendar.calendar_date)
+            .all()
+        )
 
         if calendars:
             return [c.calendar_date for c in calendars]
@@ -529,11 +484,7 @@ class SchedulingService:
 
         return working_days
 
-    def _calculate_line_capacity(
-        self,
-        lines: List[CapacityProductionLine],
-        working_days: int
-    ) -> Dict[int, Decimal]:
+    def _calculate_line_capacity(self, lines: List[CapacityProductionLine], working_days: int) -> Dict[int, Decimal]:
         """Calculate capacity hours per line."""
         capacity_by_line = {}
         for line in lines:
@@ -555,7 +506,7 @@ class SchedulingService:
         lines: List[CapacityProductionLine],
         working_days: List[date],
         sam_by_style: Dict[str, Decimal],
-        capacity_by_line: Dict[int, Decimal]
+        capacity_by_line: Dict[int, Decimal],
     ) -> Tuple[List[ScheduleLineItem], List[CapacityOrder]]:
         """Assign orders to lines based on capacity."""
         schedule_items: List[ScheduleLineItem] = []
@@ -583,16 +534,18 @@ class SchedulingService:
                             seq = line_day_sequence.get(key, 0) + 1
                             line_day_sequence[key] = seq
 
-                            schedule_items.append(ScheduleLineItem(
-                                order_id=order.id,
-                                order_number=order.order_number,
-                                style_code=order.style_code,
-                                line_id=line.id,
-                                line_code=line.line_code,
-                                scheduled_date=work_date,
-                                scheduled_quantity=order.order_quantity,
-                                sequence=seq
-                            ))
+                            schedule_items.append(
+                                ScheduleLineItem(
+                                    order_id=order.id,
+                                    order_number=order.order_number,
+                                    style_code=order.style_code,
+                                    line_id=line.id,
+                                    line_code=line.line_code,
+                                    scheduled_date=work_date,
+                                    scheduled_quantity=order.order_quantity,
+                                    sequence=seq,
+                                )
+                            )
 
                             remaining_capacity[line.id] -= order_hours
                             assigned = True
@@ -605,11 +558,7 @@ class SchedulingService:
 
         return schedule_items, unscheduled
 
-    def _calculate_total_demand(
-        self,
-        items: List[ScheduleLineItem],
-        sam_by_style: Dict[str, Decimal]
-    ) -> Decimal:
+    def _calculate_total_demand(self, items: List[ScheduleLineItem], sam_by_style: Dict[str, Decimal]) -> Decimal:
         """Calculate total demand hours from schedule items."""
         total = Decimal("0")
         for item in items:

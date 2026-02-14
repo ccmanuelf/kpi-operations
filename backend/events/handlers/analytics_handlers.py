@@ -6,6 +6,7 @@ Handles analytics-related events:
 - Production metrics aggregation
 - Quality metrics tracking
 """
+
 import logging
 from backend.events.base import DomainEvent, EventHandler
 from backend.events.domain_events import (
@@ -49,8 +50,7 @@ class ProductionMetricsHandler(EventHandler):
     async def _handle_entry_updated(self, event: ProductionEntryUpdated) -> None:
         """Handle production entry update."""
         logger.debug(
-            f"METRICS: Production entry {event.aggregate_id} updated - "
-            f"fields: {list(event.changed_fields.keys())}"
+            f"METRICS: Production entry {event.aggregate_id} updated - " f"fields: {list(event.changed_fields.keys())}"
         )
         # TODO: Recalculate aggregate metrics if KPIs changed
 

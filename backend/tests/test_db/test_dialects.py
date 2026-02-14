@@ -3,6 +3,7 @@ Unit Tests for Dialect Adapters
 
 Tests for SQLiteDialect, MariaDBDialect, and MySQLDialect.
 """
+
 import pytest
 
 from backend.db.dialects.base import DialectAdapter
@@ -55,11 +56,7 @@ class TestSQLiteDialect:
     def test_get_upsert_sql(self):
         """Test upsert SQL generation."""
         dialect = SQLiteDialect()
-        sql = dialect.get_upsert_sql(
-            "users",
-            ["id", "name", "email"],
-            ["id"]
-        )
+        sql = dialect.get_upsert_sql("users", ["id", "name", "email"], ["id"])
 
         assert "INSERT INTO users" in sql
         assert "ON CONFLICT (id)" in sql
@@ -70,11 +67,7 @@ class TestSQLiteDialect:
     def test_get_upsert_sql_with_do_nothing(self):
         """Test upsert SQL when all columns are conflict columns."""
         dialect = SQLiteDialect()
-        sql = dialect.get_upsert_sql(
-            "users",
-            ["id"],
-            ["id"]
-        )
+        sql = dialect.get_upsert_sql("users", ["id"], ["id"])
 
         assert "ON CONFLICT (id) DO NOTHING" in sql
 
@@ -82,10 +75,7 @@ class TestSQLiteDialect:
         """Test upsert with custom update columns."""
         dialect = SQLiteDialect()
         sql = dialect.get_upsert_sql(
-            "users",
-            ["id", "name", "email", "updated_at"],
-            ["id"],
-            update_columns=["name", "updated_at"]
+            "users", ["id", "name", "email", "updated_at"], ["id"], update_columns=["name", "updated_at"]
         )
 
         assert "name = excluded.name" in sql
@@ -161,11 +151,7 @@ class TestMariaDBDialect:
     def test_get_upsert_sql(self):
         """Test upsert SQL generation."""
         dialect = MariaDBDialect()
-        sql = dialect.get_upsert_sql(
-            "users",
-            ["id", "name", "email"],
-            ["id"]
-        )
+        sql = dialect.get_upsert_sql("users", ["id", "name", "email"], ["id"])
 
         assert "INSERT INTO users" in sql
         assert "ON DUPLICATE KEY UPDATE" in sql
@@ -175,11 +161,7 @@ class TestMariaDBDialect:
     def test_get_upsert_sql_insert_ignore(self):
         """Test upsert with INSERT IGNORE when no update columns."""
         dialect = MariaDBDialect()
-        sql = dialect.get_upsert_sql(
-            "users",
-            ["id"],
-            ["id"]
-        )
+        sql = dialect.get_upsert_sql("users", ["id"], ["id"])
 
         assert "INSERT IGNORE INTO users" in sql
 
@@ -241,11 +223,7 @@ class TestMySQLDialect:
     def test_get_upsert_sql(self):
         """Test upsert SQL generation."""
         dialect = MySQLDialect()
-        sql = dialect.get_upsert_sql(
-            "users",
-            ["id", "name"],
-            ["id"]
-        )
+        sql = dialect.get_upsert_sql("users", ["id", "name"], ["id"])
 
         assert "INSERT INTO users" in sql
         assert "ON DUPLICATE KEY UPDATE" in sql

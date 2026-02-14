@@ -1,6 +1,7 @@
 """
 Pydantic models for request/response validation
 """
+
 from .user import UserCreate, UserLogin, UserResponse, Token
 from .production import (
     ProductionEntryCreate,
@@ -8,7 +9,7 @@ from .production import (
     ProductionEntryResponse,
     ProductionEntryWithKPIs,
     CSVUploadResponse,
-    KPICalculationResponse
+    KPICalculationResponse,
 )
 from .preferences import (
     DashboardWidgetConfig,
@@ -18,7 +19,7 @@ from .preferences import (
     WidgetDefaultResponse,
     RoleDefaultsResponse,
     ResetPreferencesRequest,
-    ResetPreferencesResponse
+    ResetPreferencesResponse,
 )
 from .work_order import (
     WorkOrderCreate,

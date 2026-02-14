@@ -7,6 +7,7 @@ Enhanced with:
 - Security checks for sensitive settings
 - Environment-aware validation rules
 """
+
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
 from typing import List, Optional
@@ -26,13 +27,14 @@ DEFAULT_INSECURE_VALUES = [
     "secret",
     "password",
     "changeme",
-    "default"
+    "default",
 ]
 
 
 @dataclass
 class ConfigValidationResult:
     """Result of configuration validation"""
+
     environment: str
     is_valid: bool
     warnings: List[str] = field(default_factory=list)
@@ -55,7 +57,9 @@ class Settings(BaseSettings):
 
     # Database - Using SQLite for temporary deployment (user requested)
     # Use absolute path for SQLite to avoid working directory issues
-    DATABASE_URL: str = f"sqlite:///{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/database/kpi_platform.db"
+    DATABASE_URL: str = (
+        f"sqlite:///{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}/database/kpi_platform.db"
+    )
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
     DB_NAME: str = "kpi_platform"
@@ -112,10 +116,7 @@ class Settings(BaseSettings):
     CAPACITY_PLANNING_ENABLED: bool = True
     CAPACITY_CACHING_ENABLED: bool = True
 
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": True
-    }
+    model_config = {"env_file": ".env", "case_sensitive": True}
 
     @property
     def is_production(self) -> bool:
@@ -144,10 +145,7 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
     Raises:
         ValueError: If raise_on_critical is True and critical errors found
     """
-    result = ConfigValidationResult(
-        environment=settings.ENVIRONMENT,
-        is_valid=True
-    )
+    result = ConfigValidationResult(environment=settings.ENVIRONMENT, is_valid=True)
 
     is_production = settings.is_production
 
@@ -156,13 +154,11 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
         if is_production:
             result.errors.append(
                 "CRITICAL: SECRET_KEY must be changed in production! "
-                "Generate a secure key with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
+                'Generate a secure key with: python -c "import secrets; print(secrets.token_urlsafe(64))"'
             )
             result.is_valid = False
         else:
-            result.warnings.append(
-                "WARNING: Using default SECRET_KEY. Change before deploying to production."
-            )
+            result.warnings.append("WARNING: Using default SECRET_KEY. Change before deploying to production.")
 
     # Check SECRET_KEY length (minimum 32 characters recommended)
     if len(settings.SECRET_KEY) < 32:
@@ -180,30 +176,20 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
 
     # Check DEBUG mode in production
     if is_production and settings.DEBUG:
-        result.errors.append(
-            "CRITICAL: DEBUG mode is enabled in production! "
-            "Set DEBUG=False for security."
-        )
+        result.errors.append("CRITICAL: DEBUG mode is enabled in production! " "Set DEBUG=False for security.")
         result.is_valid = False
 
     # Check database password security
     if settings.DB_PASSWORD in DEFAULT_INSECURE_VALUES:
         if is_production:
-            result.errors.append(
-                "CRITICAL: Default database password detected in production!"
-            )
+            result.errors.append("CRITICAL: Default database password detected in production!")
             result.is_valid = False
         else:
-            result.warnings.append(
-                "WARNING: Using default database password. Change before production."
-            )
+            result.warnings.append("WARNING: Using default database password. Change before production.")
 
     # Check CORS origins for production
     if is_production:
-        localhost_origins = [
-            o for o in settings.cors_origins_list
-            if "localhost" in o or "127.0.0.1" in o
-        ]
+        localhost_origins = [o for o in settings.cors_origins_list if "localhost" in o or "127.0.0.1" in o]
         if localhost_origins:
             result.warnings.append(
                 f"WARNING: Localhost CORS origins configured in production: {localhost_origins}. "
@@ -212,9 +198,7 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
 
         # Check for wildcard CORS
         if "*" in settings.CORS_ORIGINS:
-            result.errors.append(
-                "CRITICAL: Wildcard (*) CORS origin in production is a security risk!"
-            )
+            result.errors.append("CRITICAL: Wildcard (*) CORS origin in production is a security risk!")
             result.is_valid = False
 
     # Check email configuration if enabled
@@ -234,9 +218,7 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
             if ":" in url_parts and "//" in url_parts:
                 password_section = url_parts.split(":")[-1]
                 if password_section in DEFAULT_INSECURE_VALUES:
-                    result.errors.append(
-                        "CRITICAL: Default database password in DATABASE_URL!"
-                    )
+                    result.errors.append("CRITICAL: Default database password in DATABASE_URL!")
                     result.is_valid = False
         except Exception:
             pass  # URL parsing failed, skip this check
@@ -245,25 +227,17 @@ def validate_production_config(raise_on_critical: bool = False) -> ConfigValidat
     if settings.UPLOAD_DIR:
         upload_path = os.path.abspath(settings.UPLOAD_DIR)
         if not os.path.exists(upload_path):
-            result.warnings.append(
-                f"WARNING: Upload directory does not exist: {upload_path}"
-            )
+            result.warnings.append(f"WARNING: Upload directory does not exist: {upload_path}")
         elif not os.access(upload_path, os.W_OK):
-            result.warnings.append(
-                f"WARNING: Upload directory is not writable: {upload_path}"
-            )
+            result.warnings.append(f"WARNING: Upload directory is not writable: {upload_path}")
 
     # Check report output directory
     if settings.REPORT_OUTPUT_DIR:
         report_path = os.path.abspath(settings.REPORT_OUTPUT_DIR)
         if not os.path.exists(report_path):
-            result.warnings.append(
-                f"WARNING: Report output directory does not exist: {report_path}"
-            )
+            result.warnings.append(f"WARNING: Report output directory does not exist: {report_path}")
         elif not os.access(report_path, os.W_OK):
-            result.warnings.append(
-                f"WARNING: Report output directory is not writable: {report_path}"
-            )
+            result.warnings.append(f"WARNING: Report output directory is not writable: {report_path}")
 
     # Log validation results
     if result.errors:

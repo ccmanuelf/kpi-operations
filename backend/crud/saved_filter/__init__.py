@@ -39,21 +39,21 @@ from backend.crud.saved_filter.utilities import (
 
 __all__ = [
     # Filters
-    'create_saved_filter',
-    'get_saved_filters',
-    'get_saved_filter',
-    'get_default_filter',
-    'update_saved_filter',
-    'delete_saved_filter',
-    'apply_filter',
-    'set_default_filter',
-    'unset_default_filter',
-    '_clear_default_filter',
+    "create_saved_filter",
+    "get_saved_filters",
+    "get_saved_filter",
+    "get_default_filter",
+    "update_saved_filter",
+    "delete_saved_filter",
+    "apply_filter",
+    "set_default_filter",
+    "unset_default_filter",
+    "_clear_default_filter",
     # History
-    'get_filter_history',
-    'add_to_filter_history',
-    'clear_filter_history',
+    "get_filter_history",
+    "add_to_filter_history",
+    "clear_filter_history",
     # Utilities
-    'get_filter_statistics',
-    'duplicate_filter',
+    "get_filter_statistics",
+    "duplicate_filter",
 ]

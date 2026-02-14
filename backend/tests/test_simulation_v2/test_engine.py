@@ -80,25 +80,23 @@ class TestProcessTimeCalculation:
 
     def test_deterministic_variability(self):
         """Test that deterministic mode has no variability."""
-        schedule = ScheduleConfig(
-            shifts_enabled=1, shift1_hours=8.0, work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5)
         operations = [
             OperationInput(
-                product="A", step=1, operation="Test",
-                machine_tool="M1", sam_min=10.0,
+                product="A",
+                step=1,
+                operation="Test",
+                machine_tool="M1",
+                sam_min=10.0,
                 variability=VariabilityType.DETERMINISTIC,
                 grade_pct=100.0,  # No grade penalty
-                fpd_pct=0.0      # No FPD
+                fpd_pct=0.0,  # No FPD
             )
         ]
         demands = [DemandInput(product="A", daily_demand=10)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN
         )
 
         simulator = ProductionLineSimulator(config, seed=42)
@@ -109,25 +107,23 @@ class TestProcessTimeCalculation:
 
     def test_grade_penalty(self):
         """Test that grade below 100 adds penalty."""
-        schedule = ScheduleConfig(
-            shifts_enabled=1, shift1_hours=8.0, work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5)
         operations = [
             OperationInput(
-                product="A", step=1, operation="Test",
-                machine_tool="M1", sam_min=10.0,
+                product="A",
+                step=1,
+                operation="Test",
+                machine_tool="M1",
+                sam_min=10.0,
                 variability=VariabilityType.DETERMINISTIC,
                 grade_pct=80.0,  # 20% grade penalty
-                fpd_pct=0.0
+                fpd_pct=0.0,
             )
         ]
         demands = [DemandInput(product="A", daily_demand=10)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN
         )
 
         simulator = ProductionLineSimulator(config, seed=42)
@@ -138,25 +134,23 @@ class TestProcessTimeCalculation:
 
     def test_fpd_addition(self):
         """Test that FPD percentage adds to processing time."""
-        schedule = ScheduleConfig(
-            shifts_enabled=1, shift1_hours=8.0, work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5)
         operations = [
             OperationInput(
-                product="A", step=1, operation="Test",
-                machine_tool="M1", sam_min=10.0,
+                product="A",
+                step=1,
+                operation="Test",
+                machine_tool="M1",
+                sam_min=10.0,
                 variability=VariabilityType.DETERMINISTIC,
                 grade_pct=100.0,
-                fpd_pct=15.0  # 15% FPD
+                fpd_pct=15.0,  # 15% FPD
             )
         ]
         demands = [DemandInput(product="A", daily_demand=10)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN
         )
 
         simulator = ProductionLineSimulator(config, seed=42)
@@ -167,25 +161,23 @@ class TestProcessTimeCalculation:
 
     def test_combined_factors(self):
         """Test processing time with all factors combined."""
-        schedule = ScheduleConfig(
-            shifts_enabled=1, shift1_hours=8.0, work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5)
         operations = [
             OperationInput(
-                product="A", step=1, operation="Test",
-                machine_tool="M1", sam_min=10.0,
+                product="A",
+                step=1,
+                operation="Test",
+                machine_tool="M1",
+                sam_min=10.0,
                 variability=VariabilityType.DETERMINISTIC,
-                grade_pct=85.0,   # 15% grade penalty
-                fpd_pct=15.0     # 15% FPD
+                grade_pct=85.0,  # 15% grade penalty
+                fpd_pct=15.0,  # 15% FPD
             )
         ]
         demands = [DemandInput(product="A", daily_demand=10)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN
         )
 
         simulator = ProductionLineSimulator(config, seed=42)
@@ -196,25 +188,23 @@ class TestProcessTimeCalculation:
 
     def test_minimum_process_time(self):
         """Test that process time has minimum floor."""
-        schedule = ScheduleConfig(
-            shifts_enabled=1, shift1_hours=8.0, work_days=5
-        )
+        schedule = ScheduleConfig(shifts_enabled=1, shift1_hours=8.0, work_days=5)
         operations = [
             OperationInput(
-                product="A", step=1, operation="Test",
-                machine_tool="M1", sam_min=0.001,  # Very small SAM
+                product="A",
+                step=1,
+                operation="Test",
+                machine_tool="M1",
+                sam_min=0.001,  # Very small SAM
                 variability=VariabilityType.DETERMINISTIC,
                 grade_pct=100.0,
-                fpd_pct=0.0
+                fpd_pct=0.0,
             )
         ]
         demands = [DemandInput(product="A", daily_demand=10)]
 
         config = SimulationConfig(
-            operations=operations,
-            schedule=schedule,
-            demands=demands,
-            mode=DemandMode.DEMAND_DRIVEN
+            operations=operations, schedule=schedule, demands=demands, mode=DemandMode.DEMAND_DRIVEN
         )
 
         simulator = ProductionLineSimulator(config, seed=42)
@@ -281,10 +271,7 @@ class TestRunSimulation:
         metrics2, _ = run_simulation(simple_config, seed=12345)
 
         assert metrics1.bundles_completed == metrics2.bundles_completed
-        assert (
-            metrics1.throughput_by_product["PRODUCT_A"]
-            == metrics2.throughput_by_product["PRODUCT_A"]
-        )
+        assert metrics1.throughput_by_product["PRODUCT_A"] == metrics2.throughput_by_product["PRODUCT_A"]
 
     def test_multi_product_simulation(self, multi_product_config: SimulationConfig):
         """Test simulation with multiple products."""

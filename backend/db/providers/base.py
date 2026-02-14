@@ -4,6 +4,7 @@ Abstract Base Database Provider
 Defines the interface that all database providers must implement.
 This enables runtime selection of SQLite, MariaDB/MySQL, or PostgreSQL.
 """
+
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, TYPE_CHECKING
 

@@ -2,6 +2,7 @@
 EMPLOYEE table ORM schema (SQLAlchemy)
 Source: 01-Core_DataEntities_Inventory.csv lines 43-53
 """
+
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
@@ -9,6 +10,7 @@ from backend.database import Base
 
 class Employee(Base):
     """EMPLOYEE table - Staff directory with floating pool flag"""
+
     __tablename__ = "EMPLOYEE"
     __table_args__ = {"extend_existing": True}
 

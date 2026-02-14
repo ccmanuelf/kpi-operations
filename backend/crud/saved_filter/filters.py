@@ -3,6 +3,7 @@ CRUD operations for Saved Filters - Core filter operations
 Create, Read, Update, Delete with user-level security
 SECURITY: All operations enforce user ownership - no filter sharing
 """
+
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -16,11 +17,7 @@ from backend.models.filters import (
 )
 
 
-def _clear_default_filter(
-    db: Session,
-    user_id: str,
-    filter_type: str
-) -> None:
+def _clear_default_filter(db: Session, user_id: str, filter_type: str) -> None:
     """
     Internal: Clear default flag for all filters of a type for a user
 
@@ -30,19 +27,11 @@ def _clear_default_filter(
         filter_type: Filter type to clear default for
     """
     db.query(SavedFilter).filter(
-        and_(
-            SavedFilter.user_id == user_id,
-            SavedFilter.filter_type == filter_type,
-            SavedFilter.is_default == True
-        )
+        and_(SavedFilter.user_id == user_id, SavedFilter.filter_type == filter_type, SavedFilter.is_default == True)
     ).update({SavedFilter.is_default: False})
 
 
-def create_saved_filter(
-    db: Session,
-    user_id: str,
-    filter_data: SavedFilterCreate
-) -> SavedFilter:
+def create_saved_filter(db: Session, user_id: str, filter_data: SavedFilterCreate) -> SavedFilter:
     """
     Create a new saved filter for a user
 
@@ -60,18 +49,22 @@ def create_saved_filter(
         HTTPException 400: If filter name already exists for user and type
     """
     # Check for duplicate name within same type for user
-    existing = db.query(SavedFilter).filter(
-        and_(
-            SavedFilter.user_id == user_id,
-            SavedFilter.filter_name == filter_data.filter_name,
-            SavedFilter.filter_type == filter_data.filter_type.value
+    existing = (
+        db.query(SavedFilter)
+        .filter(
+            and_(
+                SavedFilter.user_id == user_id,
+                SavedFilter.filter_name == filter_data.filter_name,
+                SavedFilter.filter_type == filter_data.filter_type.value,
+            )
         )
-    ).first()
+        .first()
+    )
 
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Filter with name '{filter_data.filter_name}' already exists for type '{filter_data.filter_type.value}'"
+            detail=f"Filter with name '{filter_data.filter_name}' already exists for type '{filter_data.filter_type.value}'",
         )
 
     # If setting as default, clear existing default for this type
@@ -86,7 +79,7 @@ def create_saved_filter(
         filter_config=filter_data.filter_config.to_json_string(),
         is_default=filter_data.is_default,
         usage_count=0,
-        last_used_at=None
+        last_used_at=None,
     )
 
     db.add(db_filter)
@@ -97,11 +90,7 @@ def create_saved_filter(
 
 
 def get_saved_filters(
-    db: Session,
-    user_id: str,
-    filter_type: Optional[str] = None,
-    skip: int = 0,
-    limit: int = 100
+    db: Session, user_id: str, filter_type: Optional[str] = None, skip: int = 0, limit: int = 100
 ) -> List[SavedFilter]:
     """
     Get all saved filters for a user
@@ -123,18 +112,19 @@ def get_saved_filters(
     if filter_type:
         query = query.filter(SavedFilter.filter_type == filter_type)
 
-    return query.order_by(
-        SavedFilter.is_default.desc(),  # Default filters first
-        SavedFilter.last_used_at.desc().nullslast(),  # Recently used next
-        SavedFilter.filter_name.asc()  # Alphabetical fallback
-    ).offset(skip).limit(limit).all()
+    return (
+        query.order_by(
+            SavedFilter.is_default.desc(),  # Default filters first
+            SavedFilter.last_used_at.desc().nullslast(),  # Recently used next
+            SavedFilter.filter_name.asc(),  # Alphabetical fallback
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_saved_filter(
-    db: Session,
-    filter_id: int,
-    user_id: str
-) -> Optional[SavedFilter]:
+def get_saved_filter(db: Session, filter_id: int, user_id: str) -> Optional[SavedFilter]:
     """
     Get a specific saved filter by ID
 
@@ -152,28 +142,19 @@ def get_saved_filter(
         HTTPException 403: If user doesn't own the filter
         HTTPException 404: If filter not found
     """
-    db_filter = db.query(SavedFilter).filter(
-        SavedFilter.filter_id == filter_id
-    ).first()
+    db_filter = db.query(SavedFilter).filter(SavedFilter.filter_id == filter_id).first()
 
     if not db_filter:
         raise HTTPException(status_code=404, detail="Filter not found")
 
     # SECURITY: Verify ownership
     if db_filter.user_id != user_id:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have permission to access this filter"
-        )
+        raise HTTPException(status_code=403, detail="You do not have permission to access this filter")
 
     return db_filter
 
 
-def get_default_filter(
-    db: Session,
-    user_id: str,
-    filter_type: str
-) -> Optional[SavedFilter]:
+def get_default_filter(db: Session, user_id: str, filter_type: str) -> Optional[SavedFilter]:
     """
     Get the default filter for a user and type
 
@@ -187,21 +168,16 @@ def get_default_filter(
     Returns:
         Default SavedFilter or None
     """
-    return db.query(SavedFilter).filter(
-        and_(
-            SavedFilter.user_id == user_id,
-            SavedFilter.filter_type == filter_type,
-            SavedFilter.is_default == True
+    return (
+        db.query(SavedFilter)
+        .filter(
+            and_(SavedFilter.user_id == user_id, SavedFilter.filter_type == filter_type, SavedFilter.is_default == True)
         )
-    ).first()
+        .first()
+    )
 
 
-def update_saved_filter(
-    db: Session,
-    filter_id: int,
-    user_id: str,
-    filter_data: SavedFilterUpdate
-) -> SavedFilter:
+def update_saved_filter(db: Session, filter_id: int, user_id: str, filter_data: SavedFilterUpdate) -> SavedFilter:
     """
     Update an existing saved filter
 
@@ -226,19 +202,23 @@ def update_saved_filter(
     # Check for duplicate name if name is being changed
     if filter_data.filter_name and filter_data.filter_name != db_filter.filter_name:
         check_type = filter_data.filter_type.value if filter_data.filter_type else db_filter.filter_type
-        existing = db.query(SavedFilter).filter(
-            and_(
-                SavedFilter.user_id == user_id,
-                SavedFilter.filter_name == filter_data.filter_name,
-                SavedFilter.filter_type == check_type,
-                SavedFilter.filter_id != filter_id
+        existing = (
+            db.query(SavedFilter)
+            .filter(
+                and_(
+                    SavedFilter.user_id == user_id,
+                    SavedFilter.filter_name == filter_data.filter_name,
+                    SavedFilter.filter_type == check_type,
+                    SavedFilter.filter_id != filter_id,
+                )
             )
-        ).first()
+            .first()
+        )
 
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Filter with name '{filter_data.filter_name}' already exists for type '{check_type}'"
+                detail=f"Filter with name '{filter_data.filter_name}' already exists for type '{check_type}'",
             )
 
     # Handle default flag change
@@ -262,11 +242,7 @@ def update_saved_filter(
     return db_filter
 
 
-def delete_saved_filter(
-    db: Session,
-    filter_id: int,
-    user_id: str
-) -> bool:
+def delete_saved_filter(db: Session, filter_id: int, user_id: str) -> bool:
     """
     Delete a saved filter
 
@@ -292,11 +268,7 @@ def delete_saved_filter(
     return True
 
 
-def apply_filter(
-    db: Session,
-    filter_id: int,
-    user_id: str
-) -> SavedFilter:
+def apply_filter(db: Session, filter_id: int, user_id: str) -> SavedFilter:
     """
     Apply a filter and update usage statistics
 
@@ -328,11 +300,7 @@ def apply_filter(
     return db_filter
 
 
-def set_default_filter(
-    db: Session,
-    filter_id: int,
-    user_id: str
-) -> SavedFilter:
+def set_default_filter(db: Session, filter_id: int, user_id: str) -> SavedFilter:
     """
     Set a filter as the default for its type
 
@@ -366,11 +334,7 @@ def set_default_filter(
     return db_filter
 
 
-def unset_default_filter(
-    db: Session,
-    filter_id: int,
-    user_id: str
-) -> SavedFilter:
+def unset_default_filter(db: Session, filter_id: int, user_id: str) -> SavedFilter:
     """
     Remove default status from a filter
 

@@ -5,6 +5,7 @@ Coordinates CRUD operations with floating pool logic and client assignment.
 
 Phase 2: Service Layer Enforcement
 """
+
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -45,11 +46,7 @@ class EmployeeService:
         """
         self.db = db
 
-    def create_employee(
-        self,
-        data: dict,
-        user: User
-    ) -> Employee:
+    def create_employee(self, data: dict, user: User) -> Employee:
         """
         Create a new employee.
 
@@ -62,11 +59,7 @@ class EmployeeService:
         """
         return create_employee(self.db, data, user)
 
-    def get_employee(
-        self,
-        employee_id: int,
-        user: User
-    ) -> Optional[Employee]:
+    def get_employee(self, employee_id: int, user: User) -> Optional[Employee]:
         """
         Get an employee by ID.
 
@@ -85,7 +78,7 @@ class EmployeeService:
         skip: int = 0,
         limit: int = 100,
         client_id: Optional[str] = None,
-        is_floating_pool: Optional[bool] = None
+        is_floating_pool: Optional[bool] = None,
     ) -> List[Employee]:
         """
         List employees with filtering.
@@ -100,16 +93,9 @@ class EmployeeService:
         Returns:
             List of employees
         """
-        return get_employees(
-            self.db, user, skip, limit, client_id, is_floating_pool
-        )
+        return get_employees(self.db, user, skip, limit, client_id, is_floating_pool)
 
-    def update_employee(
-        self,
-        employee_id: int,
-        data: dict,
-        user: User
-    ) -> Optional[Employee]:
+    def update_employee(self, employee_id: int, data: dict, user: User) -> Optional[Employee]:
         """
         Update an employee.
 
@@ -123,11 +109,7 @@ class EmployeeService:
         """
         return update_employee(self.db, employee_id, data, user)
 
-    def delete_employee(
-        self,
-        employee_id: int,
-        user: User
-    ) -> bool:
+    def delete_employee(self, employee_id: int, user: User) -> bool:
         """
         Soft delete an employee.
 
@@ -142,12 +124,7 @@ class EmployeeService:
 
     # Floating Pool Operations
 
-    def get_floating_pool_employees(
-        self,
-        user: User,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Employee]:
+    def get_floating_pool_employees(self, user: User, skip: int = 0, limit: int = 100) -> List[Employee]:
         """
         Get all floating pool employees.
 
@@ -161,11 +138,7 @@ class EmployeeService:
         """
         return get_floating_pool_employees(self.db, user, skip, limit)
 
-    def assign_to_floating_pool(
-        self,
-        employee_id: int,
-        user: User
-    ) -> Employee:
+    def assign_to_floating_pool(self, employee_id: int, user: User) -> Employee:
         """
         Assign an employee to the floating pool.
 
@@ -178,11 +151,7 @@ class EmployeeService:
         """
         return assign_to_floating_pool(self.db, employee_id, user)
 
-    def remove_from_floating_pool(
-        self,
-        employee_id: int,
-        user: User
-    ) -> Employee:
+    def remove_from_floating_pool(self, employee_id: int, user: User) -> Employee:
         """
         Remove an employee from the floating pool.
 
@@ -197,13 +166,7 @@ class EmployeeService:
 
     # Client Assignment Operations
 
-    def get_employees_by_client(
-        self,
-        client_id: str,
-        user: User,
-        skip: int = 0,
-        limit: int = 100
-    ) -> List[Employee]:
+    def get_employees_by_client(self, client_id: str, user: User, skip: int = 0, limit: int = 100) -> List[Employee]:
         """
         Get all employees assigned to a client.
 
@@ -218,12 +181,7 @@ class EmployeeService:
         """
         return get_employees_by_client(self.db, client_id, user, skip, limit)
 
-    def assign_employee_to_client(
-        self,
-        employee_id: int,
-        client_id: str,
-        user: User
-    ) -> Employee:
+    def assign_employee_to_client(self, employee_id: int, client_id: str, user: User) -> Employee:
         """
         Assign an employee to a client.
 

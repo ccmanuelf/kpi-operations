@@ -3,6 +3,7 @@ API Tests for Database Configuration Endpoints
 
 Tests for /api/admin/database/* endpoints.
 """
+
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from fastapi.testclient import TestClient
@@ -15,6 +16,7 @@ class TestDatabaseConfigEndpoints:
     def client(self):
         """Create test client."""
         from backend.main import app
+
         return TestClient(app)
 
     def test_get_status_returns_current_provider(self, client):
@@ -40,19 +42,13 @@ class TestDatabaseConfigEndpoints:
 
     def test_test_connection_requires_url(self, client):
         """Test POST /test-connection validates input."""
-        response = client.post(
-            "/api/admin/database/test-connection",
-            json={}
-        )
+        response = client.post("/api/admin/database/test-connection", json={})
         assert response.status_code == 422  # Validation error
 
     def test_test_connection_with_valid_sqlite(self, client, tmp_path):
         """Test connection testing with SQLite."""
         db_path = tmp_path / "test.db"
-        response = client.post(
-            "/api/admin/database/test-connection",
-            json={"target_url": f"sqlite:///{db_path}"}
-        )
+        response = client.post("/api/admin/database/test-connection", json={"target_url": f"sqlite:///{db_path}"})
         assert response.status_code == 200
 
         data = response.json()
@@ -61,10 +57,7 @@ class TestDatabaseConfigEndpoints:
 
     def test_test_connection_with_invalid_url(self, client):
         """Test connection testing with invalid URL."""
-        response = client.post(
-            "/api/admin/database/test-connection",
-            json={"target_url": "invalid://not-a-real-url"}
-        )
+        response = client.post("/api/admin/database/test-connection", json={"target_url": "invalid://not-a-real-url"})
         assert response.status_code == 200
 
         data = response.json()
@@ -74,11 +67,7 @@ class TestDatabaseConfigEndpoints:
         """Test POST /migrate requires MIGRATE confirmation."""
         response = client.post(
             "/api/admin/database/migrate",
-            json={
-                "target_provider": "mariadb",
-                "target_url": "mysql://test",
-                "confirmation_text": "wrong"
-            }
+            json={"target_provider": "mariadb", "target_url": "mysql://test", "confirmation_text": "wrong"},
         )
         assert response.status_code == 400
         assert "MIGRATE" in response.json()["detail"]
@@ -87,15 +76,11 @@ class TestDatabaseConfigEndpoints:
         """Test POST /migrate validates provider."""
         response = client.post(
             "/api/admin/database/migrate",
-            json={
-                "target_provider": "invalid",
-                "target_url": "mysql://test",
-                "confirmation_text": "MIGRATE"
-            }
+            json={"target_provider": "invalid", "target_url": "mysql://test", "confirmation_text": "MIGRATE"},
         )
         assert response.status_code == 400
 
-    @patch('backend.routes.database_config.ProviderStateManager')
+    @patch("backend.routes.database_config.ProviderStateManager")
     def test_migrate_blocks_if_not_sqlite(self, mock_manager_class, client):
         """Test migration blocked if current provider is not SQLite."""
         mock_manager = MagicMock()
@@ -104,16 +89,12 @@ class TestDatabaseConfigEndpoints:
 
         response = client.post(
             "/api/admin/database/migrate",
-            json={
-                "target_provider": "mysql",
-                "target_url": "mysql://localhost/db",
-                "confirmation_text": "MIGRATE"
-            }
+            json={"target_provider": "mysql", "target_url": "mysql://localhost/db", "confirmation_text": "MIGRATE"},
         )
         assert response.status_code == 400
         assert "SQLite" in response.json()["detail"]
 
-    @patch('backend.routes.database_config.ProviderStateManager')
+    @patch("backend.routes.database_config.ProviderStateManager")
     def test_migrate_blocks_if_locked(self, mock_manager_class, client):
         """Test migration blocked if already in progress."""
         mock_manager = MagicMock()
@@ -123,11 +104,7 @@ class TestDatabaseConfigEndpoints:
 
         response = client.post(
             "/api/admin/database/migrate",
-            json={
-                "target_provider": "mariadb",
-                "target_url": "mysql://localhost/db",
-                "confirmation_text": "MIGRATE"
-            }
+            json={"target_provider": "mariadb", "target_url": "mysql://localhost/db", "confirmation_text": "MIGRATE"},
         )
         assert response.status_code == 409
         assert "already in progress" in response.json()["detail"]
@@ -158,38 +135,27 @@ class TestMigrationRequestValidation:
     def client(self):
         """Create test client."""
         from backend.main import app
+
         return TestClient(app)
 
     def test_missing_target_provider(self, client):
         """Test missing target_provider field."""
         response = client.post(
-            "/api/admin/database/migrate",
-            json={
-                "target_url": "mysql://test",
-                "confirmation_text": "MIGRATE"
-            }
+            "/api/admin/database/migrate", json={"target_url": "mysql://test", "confirmation_text": "MIGRATE"}
         )
         assert response.status_code == 422
 
     def test_missing_target_url(self, client):
         """Test missing target_url field."""
         response = client.post(
-            "/api/admin/database/migrate",
-            json={
-                "target_provider": "mariadb",
-                "confirmation_text": "MIGRATE"
-            }
+            "/api/admin/database/migrate", json={"target_provider": "mariadb", "confirmation_text": "MIGRATE"}
         )
         assert response.status_code == 422
 
     def test_missing_confirmation_text(self, client):
         """Test missing confirmation_text field."""
         response = client.post(
-            "/api/admin/database/migrate",
-            json={
-                "target_provider": "mariadb",
-                "target_url": "mysql://test"
-            }
+            "/api/admin/database/migrate", json={"target_provider": "mariadb", "target_url": "mysql://test"}
         )
         assert response.status_code == 422
 
@@ -200,8 +166,8 @@ class TestMigrationRequestValidation:
             json={
                 "target_provider": "mariadb",
                 "target_url": "mysql://test",
-                "confirmation_text": "migrate"  # lowercase
-            }
+                "confirmation_text": "migrate",  # lowercase
+            },
         )
         assert response.status_code == 400
         assert "MIGRATE" in response.json()["detail"]
@@ -210,10 +176,6 @@ class TestMigrationRequestValidation:
         """Test confirmation rejects extra spaces."""
         response = client.post(
             "/api/admin/database/migrate",
-            json={
-                "target_provider": "mariadb",
-                "target_url": "mysql://test",
-                "confirmation_text": " MIGRATE "
-            }
+            json={"target_provider": "mariadb", "target_url": "mysql://test", "confirmation_text": " MIGRATE "},
         )
         assert response.status_code == 400

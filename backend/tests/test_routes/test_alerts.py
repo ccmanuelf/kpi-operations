@@ -2,6 +2,7 @@
 Tests for Alert Calculations and Schemas
 Phase 10.3: Intelligent Alerting System
 """
+
 import pytest
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -35,7 +36,7 @@ class TestAlertCalculations:
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
             critical_threshold=Decimal("70"),
-            higher_is_better=True
+            higher_is_better=True,
         )
         assert result == "critical"
 
@@ -45,7 +46,7 @@ class TestAlertCalculations:
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
             critical_threshold=Decimal("70"),
-            higher_is_better=True
+            higher_is_better=True,
         )
         assert result == "warning"
 
@@ -55,7 +56,7 @@ class TestAlertCalculations:
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
             critical_threshold=Decimal("70"),
-            higher_is_better=True
+            higher_is_better=True,
         )
         assert result is None
 
@@ -69,7 +70,7 @@ class TestAlertCalculations:
             target=Decimal("1000"),
             warning_threshold=Decimal("1500"),
             critical_threshold=Decimal("2000"),
-            higher_is_better=False
+            higher_is_better=False,
         )
         assert result == "critical"
 
@@ -79,7 +80,7 @@ class TestAlertCalculations:
             target=Decimal("1000"),
             warning_threshold=Decimal("1500"),
             critical_threshold=Decimal("2000"),
-            higher_is_better=False
+            higher_is_better=False,
         )
         assert result == "warning"
 
@@ -89,7 +90,7 @@ class TestAlertCalculations:
             target=Decimal("1000"),
             warning_threshold=Decimal("1500"),
             critical_threshold=Decimal("2000"),
-            higher_is_better=False
+            higher_is_better=False,
         )
         assert result is None
 
@@ -103,7 +104,7 @@ class TestAlertCalculations:
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
             critical_threshold=Decimal("70"),
-            higher_is_better=True
+            higher_is_better=True,
         )
         assert result == "urgent"
 
@@ -115,7 +116,7 @@ class TestAlertCalculations:
             current_efficiency=Decimal("65"),
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
-            critical_threshold=Decimal("70")
+            critical_threshold=Decimal("70"),
         )
 
         assert result is not None
@@ -132,7 +133,7 @@ class TestAlertCalculations:
             current_efficiency=Decimal("75"),
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
-            critical_threshold=Decimal("70")
+            critical_threshold=Decimal("70"),
         )
 
         assert result is not None
@@ -147,7 +148,7 @@ class TestAlertCalculations:
             current_efficiency=Decimal("88"),
             target=Decimal("85"),
             warning_threshold=Decimal("80"),
-            critical_threshold=Decimal("70")
+            critical_threshold=Decimal("70"),
         )
 
         assert result is None
@@ -157,15 +158,10 @@ class TestAlertCalculations:
         from backend.calculations.alerts import generate_efficiency_alert
 
         # 5 consecutive declining values
-        historical = [
-            Decimal("90"), Decimal("89"), Decimal("88"),
-            Decimal("87"), Decimal("86")
-        ]
+        historical = [Decimal("90"), Decimal("89"), Decimal("88"), Decimal("87"), Decimal("86")]
 
         result = generate_efficiency_alert(
-            current_efficiency=Decimal("86"),
-            target=Decimal("85"),
-            historical_values=historical
+            current_efficiency=Decimal("86"), target=Decimal("85"), historical_values=historical
         )
 
         assert result is not None
@@ -182,7 +178,7 @@ class TestAlertCalculations:
             due_date=datetime.now() + timedelta(days=2),
             current_completion_percent=Decimal("40"),
             planned_completion_percent=Decimal("80"),
-            days_remaining=2
+            days_remaining=2,
         )
 
         assert result is not None
@@ -200,7 +196,7 @@ class TestAlertCalculations:
             due_date=datetime.now() + timedelta(days=14),
             current_completion_percent=Decimal("50"),
             planned_completion_percent=Decimal("50"),
-            days_remaining=14
+            days_remaining=14,
         )
 
         # Should be None since on track
@@ -216,7 +212,7 @@ class TestAlertCalculations:
             due_date=datetime.now() + timedelta(days=1),
             current_completion_percent=Decimal("20"),
             planned_completion_percent=Decimal("90"),
-            days_remaining=1
+            days_remaining=1,
         )
 
         assert result is not None
@@ -233,7 +229,7 @@ class TestAlertCalculations:
             current_value=Decimal("85"),
             target=Decimal("98"),
             warning_threshold=Decimal("95"),
-            critical_threshold=Decimal("90")
+            critical_threshold=Decimal("90"),
         )
 
         assert result is not None
@@ -250,7 +246,7 @@ class TestAlertCalculations:
             current_value=Decimal("5000"),
             target=Decimal("1000"),
             warning_threshold=Decimal("2000"),
-            critical_threshold=Decimal("3000")
+            critical_threshold=Decimal("3000"),
         )
 
         assert result is not None
@@ -266,7 +262,7 @@ class TestAlertCalculations:
             current_value=Decimal("88"),
             target=Decimal("95"),
             warning_threshold=Decimal("92"),
-            critical_threshold=Decimal("90")
+            critical_threshold=Decimal("90"),
         )
 
         assert result is not None
@@ -277,9 +273,7 @@ class TestAlertCalculations:
         from backend.calculations.alerts import generate_capacity_alert
 
         result = generate_capacity_alert(
-            load_percent=Decimal("115"),
-            optimal_min=Decimal("85"),
-            optimal_max=Decimal("95")
+            load_percent=Decimal("115"), optimal_min=Decimal("85"), optimal_max=Decimal("95")
         )
 
         assert result is not None
@@ -291,10 +285,7 @@ class TestAlertCalculations:
         """Test capacity alert when underutilized"""
         from backend.calculations.alerts import generate_capacity_alert
 
-        result = generate_capacity_alert(
-            load_percent=Decimal("60"),
-            predicted_idle_days=5
-        )
+        result = generate_capacity_alert(load_percent=Decimal("60"), predicted_idle_days=5)
 
         assert result is not None
         assert result.should_alert is True
@@ -304,9 +295,7 @@ class TestAlertCalculations:
         """Test no capacity alert when optimal"""
         from backend.calculations.alerts import generate_capacity_alert
 
-        result = generate_capacity_alert(
-            load_percent=Decimal("90")
-        )
+        result = generate_capacity_alert(load_percent=Decimal("90"))
 
         assert result is None
 
@@ -314,10 +303,7 @@ class TestAlertCalculations:
         """Test capacity alert includes bottleneck info"""
         from backend.calculations.alerts import generate_capacity_alert
 
-        result = generate_capacity_alert(
-            load_percent=Decimal("90"),
-            bottleneck_station="Station 12"
-        )
+        result = generate_capacity_alert(load_percent=Decimal("90"), bottleneck_station="Station 12")
 
         assert result is not None
         assert "Station 12" in result.message
@@ -332,7 +318,7 @@ class TestAlertCalculations:
             warning_threshold=Decimal("8"),
             critical_threshold=Decimal("12"),
             floating_pool_available=3,
-            coverage_needed=8
+            coverage_needed=8,
         )
 
         assert result is not None
@@ -348,7 +334,7 @@ class TestAlertCalculations:
             absenteeism_rate=Decimal("4"),
             target_rate=Decimal("5"),
             warning_threshold=Decimal("8"),
-            critical_threshold=Decimal("12")
+            critical_threshold=Decimal("12"),
         )
 
         assert result is None
@@ -357,11 +343,7 @@ class TestAlertCalculations:
         """Test hold alert for pending approvals"""
         from backend.calculations.alerts import generate_hold_alert
 
-        result = generate_hold_alert(
-            pending_holds_count=3,
-            oldest_hold_hours=12,
-            total_units_on_hold=150
-        )
+        result = generate_hold_alert(pending_holds_count=3, oldest_hold_hours=12, total_units_on_hold=150)
 
         assert result is not None
         assert result.should_alert is True
@@ -371,11 +353,7 @@ class TestAlertCalculations:
         """Test hold alert escalates to critical after 24 hours"""
         from backend.calculations.alerts import generate_hold_alert
 
-        result = generate_hold_alert(
-            pending_holds_count=1,
-            oldest_hold_hours=30,
-            total_units_on_hold=50
-        )
+        result = generate_hold_alert(pending_holds_count=1, oldest_hold_hours=30, total_units_on_hold=50)
 
         assert result is not None
         assert result.severity == "critical"
@@ -385,9 +363,7 @@ class TestAlertCalculations:
         """Test no hold alert when no holds pending"""
         from backend.calculations.alerts import generate_hold_alert
 
-        result = generate_hold_alert(
-            pending_holds_count=0
-        )
+        result = generate_hold_alert(pending_holds_count=0)
 
         assert result is None
 
@@ -402,7 +378,7 @@ class TestPredictionBasedAlerts:
         result = generate_prediction_based_alert(
             kpi_key="efficiency",
             historical_values=[Decimal("85"), Decimal("84")],  # Only 2 values
-            target=Decimal("85")
+            target=Decimal("85"),
         )
 
         assert result is None  # Need at least 5 values
@@ -420,7 +396,7 @@ class TestPredictionBasedAlerts:
             target=Decimal("80"),
             warning_threshold=Decimal("75"),
             critical_threshold=Decimal("70"),
-            higher_is_better=True
+            higher_is_better=True,
         )
 
         # Should be None since stable and above thresholds
@@ -443,7 +419,7 @@ class TestAlertSchemas:
             client_id="CLIENT-001",
             kpi_key="otd",
             current_value=Decimal("75"),
-            threshold_value=Decimal("95")
+            threshold_value=Decimal("95"),
         )
 
         assert alert.category == AlertCategory.OTD
@@ -459,7 +435,7 @@ class TestAlertSchemas:
             by_severity={"critical": 3, "warning": 5, "info": 2},
             by_category={"otd": 4, "quality": 6},
             critical_count=3,
-            urgent_count=0
+            urgent_count=0,
         )
 
         assert summary.total_active == 10
@@ -474,7 +450,7 @@ class TestAlertSchemas:
             client_id="CLIENT-001",
             category=AlertCategory.QUALITY,
             severity=AlertSeverity.WARNING,
-            status=AlertStatus.ACTIVE
+            status=AlertStatus.ACTIVE,
         )
 
         assert filter_params.category == AlertCategory.QUALITY
@@ -522,7 +498,7 @@ class TestAlertModels:
             status="active",
             title="Test Alert",
             message="Test message",
-            client_id="CLIENT-001"
+            client_id="CLIENT-001",
         )
 
         assert alert.alert_id == "ALT-20260126-TEST001"
@@ -540,7 +516,7 @@ class TestAlertModels:
             warning_threshold=80.0,
             critical_threshold=70.0,
             notification_email=True,
-            check_frequency_minutes=30
+            check_frequency_minutes=30,
         )
 
         assert config.config_id == "ACF-TEST001"
@@ -557,7 +533,7 @@ class TestAlertModels:
             alert_id="ALT-TEST001",
             predicted_value=85.0,
             actual_value=82.0,
-            prediction_date=datetime.now()
+            prediction_date=datetime.now(),
         )
 
         assert history.history_id == "AHT-TEST001"
@@ -567,6 +543,7 @@ class TestAlertModels:
 # =============================================================================
 # Alert Route Tests
 # =============================================================================
+
 
 class TestAlertRouteHelpers:
     """Tests for alert route helper functions and logic"""
@@ -663,7 +640,7 @@ class TestAlertDashboardEndpoint:
 
     def test_dashboard_response_structure(self):
         """Test dashboard response has required fields"""
-        expected_fields = ['summary', 'urgent_alerts', 'critical_alerts', 'recent_alerts']
+        expected_fields = ["summary", "urgent_alerts", "critical_alerts", "recent_alerts"]
 
         for field in expected_fields:
             assert field in expected_fields
@@ -712,7 +689,7 @@ class TestAlertSummaryEndpoint:
             by_severity={"critical": 2, "warning": 3},
             by_category={"otd": 3, "quality": 2},
             critical_count=2,
-            urgent_count=0
+            urgent_count=0,
         )
 
         assert summary.total_active == 5
@@ -869,12 +846,7 @@ class TestGenerateAllAlertsEndpoint:
 
     def test_returns_generation_summary(self):
         """Test returns generation summary"""
-        response = {
-            "status": "completed",
-            "alerts_generated": 5,
-            "alerts": [],
-            "errors": None
-        }
+        response = {"status": "completed", "alerts_generated": 5, "alerts": [], "errors": None}
 
         assert response["status"] == "completed"
         assert "alerts_generated" in response
@@ -1003,7 +975,7 @@ class TestPredictionAccuracyEndpoint:
                 "period_days": 30,
                 "total_predictions": 0,
                 "accuracy_metrics": None,
-                "message": "No prediction history available for this period"
+                "message": "No prediction history available for this period",
             }
         else:
             response = {}
@@ -1100,7 +1072,7 @@ class TestHelperFunctions:
         holds = [
             {"created_at": datetime.now() - timedelta(hours=10)},
             {"created_at": datetime.now() - timedelta(hours=20)},
-            {"created_at": datetime.now() - timedelta(hours=5)}
+            {"created_at": datetime.now() - timedelta(hours=5)},
         ]
 
         oldest = min(holds, key=lambda h: h["created_at"])
@@ -1115,13 +1087,27 @@ class TestAlertResponseValidation:
     def test_response_includes_all_fields(self):
         """Test response includes all required fields"""
         expected_fields = [
-            'alert_id', 'category', 'severity', 'status',
-            'title', 'message', 'recommendation',
-            'client_id', 'kpi_key', 'work_order_id',
-            'current_value', 'threshold_value', 'predicted_value',
-            'confidence', 'metadata',
-            'created_at', 'acknowledged_at', 'acknowledged_by',
-            'resolved_at', 'resolved_by', 'resolution_notes'
+            "alert_id",
+            "category",
+            "severity",
+            "status",
+            "title",
+            "message",
+            "recommendation",
+            "client_id",
+            "kpi_key",
+            "work_order_id",
+            "current_value",
+            "threshold_value",
+            "predicted_value",
+            "confidence",
+            "metadata",
+            "created_at",
+            "acknowledged_at",
+            "acknowledged_by",
+            "resolved_at",
+            "resolved_by",
+            "resolution_notes",
         ]
 
         assert len(expected_fields) > 15
@@ -1129,11 +1115,20 @@ class TestAlertResponseValidation:
     def test_nullable_fields(self):
         """Test nullable fields are properly handled"""
         nullable_fields = [
-            'recommendation', 'client_id', 'kpi_key', 'work_order_id',
-            'current_value', 'threshold_value', 'predicted_value',
-            'confidence', 'metadata',
-            'acknowledged_at', 'acknowledged_by',
-            'resolved_at', 'resolved_by', 'resolution_notes'
+            "recommendation",
+            "client_id",
+            "kpi_key",
+            "work_order_id",
+            "current_value",
+            "threshold_value",
+            "predicted_value",
+            "confidence",
+            "metadata",
+            "acknowledged_at",
+            "acknowledged_by",
+            "resolved_at",
+            "resolved_by",
+            "resolution_notes",
         ]
 
         for field in nullable_fields:

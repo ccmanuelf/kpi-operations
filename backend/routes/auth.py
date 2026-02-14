@@ -2,6 +2,7 @@
 Authentication API Routes
 All authentication endpoints: register, login, logout, password management
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -14,24 +15,20 @@ from backend.utils.logging_utils import get_module_logger, log_operation, log_se
 
 logger = get_module_logger(__name__)
 from backend.models.user import (
-    UserCreate, UserLogin, UserResponse, Token,
-    PasswordResetRequest, PasswordResetConfirm, PasswordChange
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    Token,
+    PasswordResetRequest,
+    PasswordResetConfirm,
+    PasswordChange,
 )
 from backend.middleware.rate_limit import limiter, RateLimitConfig
-from backend.auth.jwt import (
-    verify_password,
-    get_password_hash,
-    create_access_token,
-    get_current_user,
-    oauth2_scheme
-)
+from backend.auth.jwt import verify_password, get_password_hash, create_access_token, get_current_user, oauth2_scheme
 from backend.schemas.user import User
 
 
-router = APIRouter(
-    prefix="/api/auth",
-    tags=["Authentication"]
-)
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 
 # Token blacklist for logout functionality (per audit requirement)
@@ -53,24 +50,24 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
     # Check if username exists
     db_user = db.query(User).filter(User.username == user.username).first()
     if db_user:
-        log_security_event(logger, "REGISTER_DUPLICATE_USERNAME",
-                          details=f"Attempted registration with existing username: {user.username}",
-                          ip_address=client_ip)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+        log_security_event(
+            logger,
+            "REGISTER_DUPLICATE_USERNAME",
+            details=f"Attempted registration with existing username: {user.username}",
+            ip_address=client_ip,
         )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already registered")
 
     # Check if email exists
     db_user = db.query(User).filter(User.email == user.email).first()
     if db_user:
-        log_security_event(logger, "REGISTER_DUPLICATE_EMAIL",
-                          details=f"Attempted registration with existing email",
-                          ip_address=client_ip)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+        log_security_event(
+            logger,
+            "REGISTER_DUPLICATE_EMAIL",
+            details=f"Attempted registration with existing email",
+            ip_address=client_ip,
         )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
     # Create user with generated ID
     user_id = f"USR-{uuid.uuid4().hex[:8].upper()}"
@@ -81,17 +78,20 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
         email=user.email,
         password_hash=hashed_password,
         full_name=user.full_name,
-        role=user.role.upper() if user.role else "OPERATOR"
+        role=user.role.upper() if user.role else "OPERATOR",
     )
 
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
 
-    log_security_event(logger, "USER_REGISTERED",
-                      user_id=user_id,
-                      details=f"New user registered: {user.username}",
-                      ip_address=client_ip)
+    log_security_event(
+        logger,
+        "USER_REGISTERED",
+        user_id=user_id,
+        details=f"New user registered: {user.username}",
+        ip_address=client_ip,
+    )
     return db_user
 
 
@@ -103,9 +103,12 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
     user = db.query(User).filter(User.username == user_credentials.username).first()
 
     if not user or not verify_password(user_credentials.password, user.password_hash):
-        log_security_event(logger, "LOGIN_FAILED",
-                          details=f"Failed login attempt for: {user_credentials.username}",
-                          ip_address=client_ip)
+        log_security_event(
+            logger,
+            "LOGIN_FAILED",
+            details=f"Failed login attempt for: {user_credentials.username}",
+            ip_address=client_ip,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
@@ -113,34 +116,29 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
         )
 
     if not user.is_active:
-        log_security_event(logger, "LOGIN_INACTIVE_USER",
-                          user_id=user.user_id,
-                          details="Login attempt for inactive account",
-                          ip_address=client_ip)
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
+        log_security_event(
+            logger,
+            "LOGIN_INACTIVE_USER",
+            user_id=user.user_id,
+            details="Login attempt for inactive account",
+            ip_address=client_ip,
         )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
 
     # Create access token with client_id for stateless validation (per audit requirement)
     # Include client_id_assigned in JWT payload for stateless tenant verification
     token_data = {
         "sub": user.username,
         "role": user.role,
-        "client_ids": user.client_id_assigned  # Comma-separated or None for admin/poweruser
+        "client_ids": user.client_id_assigned,  # Comma-separated or None for admin/poweruser
     }
     access_token = create_access_token(data=token_data)
 
-    log_security_event(logger, "LOGIN_SUCCESS",
-                      user_id=user.user_id,
-                      client_id=user.client_id_assigned,
-                      ip_address=client_ip)
-
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        user=UserResponse.from_orm(user)
+    log_security_event(
+        logger, "LOGIN_SUCCESS", user_id=user.user_id, client_id=user.client_id_assigned, ip_address=client_ip
     )
+
+    return Token(access_token=access_token, token_type="bearer", user=UserResponse.from_orm(user))
 
 
 @router.get("/me", response_model=UserResponse)
@@ -150,11 +148,7 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-def logout(
-    request: Request,
-    current_user: User = Depends(get_current_user),
-    token: str = Depends(oauth2_scheme)
-):
+def logout(request: Request, current_user: User = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
     """
     Explicit logout endpoint (per audit requirement)
 
@@ -170,13 +164,11 @@ def logout(
     # In production, use Redis with TTL matching token expiration
     _token_blacklist.add(token)
 
-    log_security_event(logger, "LOGOUT",
-                      user_id=current_user.user_id,
-                      ip_address=client_ip)
+    log_security_event(logger, "LOGOUT", user_id=current_user.user_id, ip_address=client_ip)
 
     return {
         "message": "Successfully logged out",
-        "detail": "Token has been invalidated. Please clear your local session."
+        "detail": "Token has been invalidated. Please clear your local session.",
     }
 
 
@@ -194,8 +186,7 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
     if user and user.is_active:
         # Create password reset token (24 hour expiry)
         reset_token = create_access_token(
-            data={"sub": user.username, "type": "password_reset"},
-            expires_delta=timedelta(hours=24)
+            data={"sub": user.username, "type": "password_reset"}, expires_delta=timedelta(hours=24)
         )
         # TODO: Send email with reset link
         # In production, integrate with email service
@@ -218,17 +209,11 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
         token_type = payload.get("type")
 
         if token_type != "password_reset" or not username:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid reset token"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
 
         user = db.query(User).filter(User.username == username).first()
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid reset token"
-            )
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
 
         # Update password
         user.password_hash = get_password_hash(reset_confirm.new_password)
@@ -238,33 +223,27 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
         return {"message": "Password has been reset successfully"}
 
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired reset token"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid or expired reset token")
 
 
 @router.post("/change-password")
 def change_password(
-    password_data: PasswordChange,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    password_data: PasswordChange, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """Change password for authenticated user"""
     if not verify_password(password_data.current_password, current_user.password_hash):
-        log_security_event(logger, "PASSWORD_CHANGE_FAILED",
-                          user_id=current_user.user_id,
-                          details="Incorrect current password provided")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect"
+        log_security_event(
+            logger,
+            "PASSWORD_CHANGE_FAILED",
+            user_id=current_user.user_id,
+            details="Incorrect current password provided",
         )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
     current_user.password_hash = get_password_hash(password_data.new_password)
     current_user.updated_at = datetime.utcnow()
     db.commit()
 
-    log_security_event(logger, "PASSWORD_CHANGED",
-                      user_id=current_user.user_id)
+    log_security_event(logger, "PASSWORD_CHANGED", user_id=current_user.user_id)
 
     return {"message": "Password changed successfully"}

@@ -2,6 +2,7 @@
 Extended KPI Routes Tests
 Target: Increase KPI routes coverage from 22% to 60%+
 """
+
 import pytest
 from datetime import date, datetime, timedelta
 
@@ -19,10 +20,7 @@ class TestEfficiencyKPIRoutes:
 
     def test_efficiency_with_product(self, authenticated_client):
         """Test efficiency with product filter"""
-        response = authenticated_client.get(
-            "/api/kpi/efficiency",
-            params={"product_id": 1}
-        )
+        response = authenticated_client.get("/api/kpi/efficiency", params={"product_id": 1})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_efficiency_by_work_order(self, authenticated_client):
@@ -33,10 +31,7 @@ class TestEfficiencyKPIRoutes:
     def test_efficiency_daily(self, authenticated_client):
         """Test daily efficiency endpoint"""
         today = date.today()
-        response = authenticated_client.get(
-            "/api/kpi/efficiency/daily",
-            params={"date": today.isoformat()}
-        )
+        response = authenticated_client.get("/api/kpi/efficiency/daily", params={"date": today.isoformat()})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_efficiency_trend(self, authenticated_client):
@@ -44,10 +39,7 @@ class TestEfficiencyKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/efficiency/trend",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -68,19 +60,13 @@ class TestAvailabilityKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/availability",
-            params={
-                "start_date": (today - timedelta(days=7)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=7)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
     def test_availability_by_shift(self, authenticated_client):
         """Test availability by shift"""
-        response = authenticated_client.get(
-            "/api/kpi/availability",
-            params={"shift_id": "SHIFT-A"}
-        )
+        response = authenticated_client.get("/api/kpi/availability", params={"shift_id": "SHIFT-A"})
         assert response.status_code in [200, 403, 404, 422]
 
 
@@ -97,10 +83,7 @@ class TestPerformanceKPIRoutes:
 
     def test_performance_with_client(self, authenticated_client):
         """Test performance with client filter"""
-        response = authenticated_client.get(
-            "/api/kpi/performance",
-            params={"client_id": "TEST-CLIENT"}
-        )
+        response = authenticated_client.get("/api/kpi/performance", params={"client_id": "TEST-CLIENT"})
         assert response.status_code in [200, 403, 404, 422]
 
 
@@ -120,10 +103,7 @@ class TestQualityKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/ppm",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -139,10 +119,7 @@ class TestQualityKPIRoutes:
 
     def test_fpy_by_product(self, authenticated_client):
         """Test FPY by product"""
-        response = authenticated_client.get(
-            "/api/kpi/fpy",
-            params={"product_id": 1}
-        )
+        response = authenticated_client.get("/api/kpi/fpy", params={"product_id": 1})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_rty_calculate(self, authenticated_client):
@@ -167,10 +144,7 @@ class TestOTDKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/otd",
-            params={
-                "start_date": (today - timedelta(days=30)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=30)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -193,10 +167,7 @@ class TestAbsenteeismKPIRoutes:
 
     def test_absenteeism_by_department(self, authenticated_client):
         """Test absenteeism by department"""
-        response = authenticated_client.get(
-            "/api/kpi/absenteeism",
-            params={"department": "Production"}
-        )
+        response = authenticated_client.get("/api/kpi/absenteeism", params={"department": "Production"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_absenteeism_trend(self, authenticated_client):
@@ -204,10 +175,7 @@ class TestAbsenteeismKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/absenteeism/trend",
-            params={
-                "start_date": (today - timedelta(days=90)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=90)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -228,10 +196,7 @@ class TestOEEKPIRoutes:
         today = date.today()
         response = authenticated_client.get(
             "/api/kpi/oee",
-            params={
-                "start_date": (today - timedelta(days=7)).isoformat(),
-                "end_date": today.isoformat()
-            }
+            params={"start_date": (today - timedelta(days=7)).isoformat(), "end_date": today.isoformat()},
         )
         assert response.status_code in [200, 403, 404, 422]
 
@@ -254,10 +219,7 @@ class TestDashboardKPIRoutes:
 
     def test_dashboard_by_client(self, authenticated_client):
         """Test dashboard by client"""
-        response = authenticated_client.get(
-            "/api/kpi/dashboard",
-            params={"client_id": "TEST-CLIENT"}
-        )
+        response = authenticated_client.get("/api/kpi/dashboard", params={"client_id": "TEST-CLIENT"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_dashboard_today(self, authenticated_client):
@@ -299,10 +261,7 @@ class TestKPITrendsRoutes:
 
     def test_trends_with_period(self, authenticated_client):
         """Test trends with period parameter"""
-        response = authenticated_client.get(
-            "/api/kpi/trends",
-            params={"period": "weekly"}
-        )
+        response = authenticated_client.get("/api/kpi/trends", params={"period": "weekly"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_trends_comparison(self, authenticated_client):
@@ -329,10 +288,7 @@ class TestKPICalculationRoutes:
 
     def test_calculate_batch(self, authenticated_client):
         """Test batch KPI calculation"""
-        response = authenticated_client.post(
-            "/api/kpi/calculate/batch",
-            json={"entry_ids": [1, 2, 3]}
-        )
+        response = authenticated_client.post("/api/kpi/calculate/batch", json={"entry_ids": [1, 2, 3]})
         # 405 indicates endpoint doesn't exist yet
         assert response.status_code in [200, 400, 403, 404, 405, 422]
 
@@ -350,10 +306,7 @@ class TestWIPAgingKPIRoutes:
 
     def test_wip_aging_by_client(self, authenticated_client):
         """Test WIP aging by client"""
-        response = authenticated_client.get(
-            "/api/kpi/wip-aging",
-            params={"client_id": "TEST-CLIENT"}
-        )
+        response = authenticated_client.get("/api/kpi/wip-aging", params={"client_id": "TEST-CLIENT"})
         assert response.status_code in [200, 403, 404, 422]
 
     def test_wip_aging_chronic(self, authenticated_client):
