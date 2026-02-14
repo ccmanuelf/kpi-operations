@@ -6,10 +6,15 @@
  */
 
 @import './carbon-tokens.css';
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-primary: #1a237e;
+  --color-secondary: #0d47a1;
+  --color-success: #2e7d32;
+  --color-warning: #f57c00;
+  --color-danger: #c62828;
+}
 
 /* ============================================
    GLOBAL RESET & BASE STYLES
