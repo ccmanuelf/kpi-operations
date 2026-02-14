@@ -1,215 +1,418 @@
 """
-Comprehensive CRUD Tests - Client Module
-Target: 90% coverage for crud/client.py
+Real-database tests for Client CRUD operations.
+Uses transactional_db fixture (in-memory SQLite with automatic rollback).
+No mocks for database operations.
 """
 import pytest
 from datetime import date, datetime
-from sqlalchemy.orm import Session
-from unittest.mock import MagicMock
+from decimal import Decimal
 
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+from backend.schemas import (
+    Client, ClientType,
+    User, UserRole,
+    Employee,
+    WorkOrder, WorkOrderStatus,
+    Product,
+)
+from backend.tests.fixtures.factories import TestDataFactory
 
-from backend.schemas.client import Client, ClientType
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _seed_admin_user(db, client_id=None):
+    """Create an admin user (no client restriction)."""
+    return TestDataFactory.create_user(
+        db,
+        username="admin_user",
+        role="admin",
+        client_id=client_id,
+    )
 
 
 class TestClientCRUD:
-    """Test suite for client CRUD operations"""
+    """Test suite for client CRUD operations using real database."""
 
-    @pytest.fixture
-    def mock_db(self):
-        return MagicMock(spec=Session)
+    def test_create_client(self, transactional_db):
+        """Test client creation persists to DB."""
+        db = transactional_db
 
-    @pytest.fixture
-    def sample_client(self):
-        client = MagicMock(spec=Client)
-        client.client_id = "CLIENT-001"
-        client.client_name = "Test Manufacturing Co"
-        client.client_type = ClientType.SERVICE
-        client.is_active = True
-        client.is_deleted = False
-        return client
+        client = TestDataFactory.create_client(
+            db,
+            client_id="CLIENT-001",
+            client_name="Test Manufacturing Co",
+            client_type=ClientType.SERVICE,
+        )
+        db.flush()
 
-    def test_create_client(self, mock_db, sample_client):
-        """Test client creation"""
-        mock_db.add = MagicMock()
-        mock_db.commit = MagicMock()
-        
-        mock_db.add(sample_client)
-        mock_db.commit()
-        
-        mock_db.add.assert_called_once()
+        from_db = db.query(Client).filter_by(client_id="CLIENT-001").first()
+        assert from_db is not None
+        assert from_db.client_name == "Test Manufacturing Co"
+        assert from_db.client_type == ClientType.SERVICE
+        assert from_db.is_active == 1
 
-    def test_get_client_by_id(self, mock_db, sample_client):
-        """Test getting client by ID"""
-        mock_query = MagicMock()
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.first.return_value = sample_client
-        
-        result = mock_db.query().filter().first()
+    def test_get_client_by_id(self, transactional_db):
+        """Test getting client by primary key."""
+        db = transactional_db
+
+        TestDataFactory.create_client(db, client_id="CLIENT-001", client_name="Acme Corp")
+        db.flush()
+
+        result = db.query(Client).filter_by(client_id="CLIENT-001").first()
+        assert result is not None
         assert result.client_id == "CLIENT-001"
+        assert result.client_name == "Acme Corp"
 
-    def test_get_all_active_clients(self, mock_db, sample_client):
-        """Test getting all active clients"""
-        mock_query = MagicMock()
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.all.return_value = [sample_client]
-        
-        result = mock_db.query().filter().all()
-        assert all(c.is_active for c in result)
+    def test_get_all_active_clients(self, transactional_db):
+        """Test getting all active clients filters correctly."""
+        db = transactional_db
 
-    def test_update_client(self, mock_db, sample_client):
-        """Test updating client information"""
-        sample_client.client_name = "Updated Manufacturing Co"
-        mock_db.commit = MagicMock()
-        mock_db.commit()
-        
-        assert sample_client.client_name == "Updated Manufacturing Co"
+        TestDataFactory.create_client(db, client_id="ACTIVE-1", client_name="Active One", is_active=True)
+        TestDataFactory.create_client(db, client_id="ACTIVE-2", client_name="Active Two", is_active=True)
 
-    def test_deactivate_client(self, mock_db, sample_client):
-        """Test deactivating a client"""
-        sample_client.is_active = False
-        assert sample_client.is_active == False
+        inactive = Client(
+            client_id="INACTIVE-1",
+            client_name="Inactive One",
+            client_type=ClientType.HOURLY_RATE,
+            is_active=0,
+        )
+        db.add(inactive)
+        db.flush()
 
-    def test_delete_client_soft(self, mock_db, sample_client):
-        """Test soft delete of client"""
-        sample_client.is_deleted = True
-        assert sample_client.is_deleted == True
+        active_clients = db.query(Client).filter(Client.is_active == 1).all()
+        assert len(active_clients) == 2
+        assert all(c.is_active == 1 for c in active_clients)
 
-    def test_client_type_validation(self):
-        """Test client type enum values"""
-        valid_types = ["MANUFACTURING", "ASSEMBLY", "PACKAGING", "WAREHOUSE"]
-        assert len(valid_types) >= 1
+    def test_update_client(self, transactional_db):
+        """Test updating client information persists."""
+        db = transactional_db
 
-    def test_get_client_summary(self, mock_db):
-        """Test getting client summary statistics"""
-        mock_result = {
-            "client_id": "CLIENT-001",
-            "total_employees": 50,
-            "active_work_orders": 12,
-            "avg_efficiency": 92.5,
-        }
-        
-        assert mock_result["total_employees"] == 50
+        client = TestDataFactory.create_client(
+            db,
+            client_id="CLIENT-001",
+            client_name="Old Name",
+        )
+        db.flush()
 
-    def test_client_isolation_check(self, mock_db):
-        """Test multi-tenant isolation"""
-        clients = ["CLIENT-001", "CLIENT-002"]
-        user_assigned = "CLIENT-001"
-        
-        # User should only access assigned client
-        accessible = [c for c in clients if c == user_assigned]
+        client.client_name = "Updated Manufacturing Co"
+        db.flush()
+
+        from_db = db.query(Client).filter_by(client_id="CLIENT-001").first()
+        assert from_db.client_name == "Updated Manufacturing Co"
+
+    def test_deactivate_client(self, transactional_db):
+        """Test deactivating a client (soft delete pattern)."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
+        assert client.is_active == 1
+
+        client.is_active = 0
+        db.flush()
+
+        from_db = db.query(Client).filter_by(client_id="CLIENT-001").first()
+        assert from_db.is_active == 0
+
+    def test_delete_client_soft(self, transactional_db):
+        """Test soft delete sets is_active=0, does NOT remove from DB."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-SOFT-DEL")
+        db.flush()
+
+        client.is_active = 0
+        db.flush()
+
+        # Still exists in DB
+        from_db = db.query(Client).filter_by(client_id="CLIENT-SOFT-DEL").first()
+        assert from_db is not None
+        assert from_db.is_active == 0
+
+        # But filtered query excludes it
+        active_only = db.query(Client).filter(
+            Client.client_id == "CLIENT-SOFT-DEL",
+            Client.is_active == 1,
+        ).first()
+        assert active_only is None
+
+    def test_client_type_enum_stored(self, transactional_db):
+        """Test client type enum values persist correctly."""
+        db = transactional_db
+
+        for ct in [ClientType.HOURLY_RATE, ClientType.PIECE_RATE, ClientType.HYBRID, ClientType.SERVICE]:
+            c = TestDataFactory.create_client(db, client_type=ct)
+            db.flush()
+            from_db = db.query(Client).filter_by(client_id=c.client_id).first()
+            assert from_db.client_type == ct
+
+    def test_get_client_not_found(self, transactional_db):
+        """Test querying non-existent client returns None."""
+        db = transactional_db
+
+        result = db.query(Client).filter_by(client_id="DOES-NOT-EXIST").first()
+        assert result is None
+
+    def test_client_isolation_multi_tenant(self, transactional_db):
+        """Test multi-tenant isolation: each client is an independent entity."""
+        db = transactional_db
+
+        TestDataFactory.create_client(db, client_id="CLIENT-001", client_name="Client One")
+        TestDataFactory.create_client(db, client_id="CLIENT-002", client_name="Client Two")
+        db.flush()
+
+        user_assigned_client = "CLIENT-001"
+        accessible = db.query(Client).filter(
+            Client.client_id == user_assigned_client
+        ).all()
         assert len(accessible) == 1
+        assert accessible[0].client_id == "CLIENT-001"
+
+    def test_duplicate_client_id_rejected(self, transactional_db):
+        """Test that duplicate client_id is rejected by the database."""
+        db = transactional_db
+
+        TestDataFactory.create_client(db, client_id="DUP-CLIENT")
+        db.flush()
+
+        dup = Client(
+            client_id="DUP-CLIENT",
+            client_name="Duplicate",
+            client_type=ClientType.HOURLY_RATE,
+            is_active=1,
+        )
+        db.add(dup)
+
+        with pytest.raises(Exception):
+            db.flush()
+        db.rollback()
 
 
 class TestClientEmployee:
-    """Test suite for client employee CRUD"""
+    """Test suite for client-employee relationship using real DB."""
 
-    @pytest.fixture
-    def mock_db(self):
-        return MagicMock(spec=Session)
+    def test_create_employee(self, transactional_db):
+        """Test employee creation with client assignment persists."""
+        db = transactional_db
 
-    def test_create_employee(self, mock_db):
-        """Test employee creation"""
-        employee = MagicMock()
-        employee.employee_id = "EMP-001"
-        employee.client_id = "CLIENT-001"
-        employee.full_name = "John Doe"
-        
-        mock_db.add = MagicMock()
-        mock_db.commit = MagicMock()
-        
-        mock_db.add(employee)
-        mock_db.commit()
-        
-        assert employee.employee_id == "EMP-001"
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
 
-    def test_get_employees_by_client(self, mock_db):
-        """Test getting employees for a specific client"""
-        mock_query = MagicMock()
-        mock_db.query.return_value = mock_query
-        mock_query.filter.return_value = mock_query
-        mock_query.all.return_value = [MagicMock(), MagicMock()]
-        
-        result = mock_db.query().filter().all()
-        assert len(result) == 2
+        employee = TestDataFactory.create_employee(
+            db,
+            client_id=client.client_id,
+            employee_name="John Doe",
+            employee_code="EMP-001",
+        )
+        db.flush()
 
-    def test_employee_department_assignment(self, mock_db):
-        """Test employee department assignment"""
-        employee = MagicMock()
-        employee.department = "Assembly"
-        
-        assert employee.department == "Assembly"
+        from_db = db.query(Employee).filter_by(
+            employee_code="EMP-001"
+        ).first()
+        assert from_db is not None
+        assert from_db.employee_name == "John Doe"
+        assert from_db.client_id_assigned == client.client_id
 
-    def test_employee_shift_assignment(self, mock_db):
-        """Test employee shift assignment"""
-        employee = MagicMock()
-        employee.shift_id = 1
-        employee.shift_name = "Day Shift"
-        
-        assert employee.shift_id == 1
+    def test_get_employees_by_client(self, transactional_db):
+        """Test getting employees filtered by client."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
+
+        for i in range(3):
+            TestDataFactory.create_employee(
+                db,
+                client_id=client.client_id,
+                employee_name=f"Employee {i}",
+            )
+        db.flush()
+
+        results = db.query(Employee).filter(
+            Employee.client_id_assigned == client.client_id
+        ).all()
+        assert len(results) == 3
+
+    def test_employee_department_assignment(self, transactional_db):
+        """Test employee department field is stored correctly."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
+
+        employee = TestDataFactory.create_employee(
+            db,
+            client_id=client.client_id,
+            department="Assembly",
+        )
+        db.flush()
+
+        from_db = db.query(Employee).filter_by(
+            employee_id=employee.employee_id
+        ).first()
+        assert from_db.department == "Assembly"
+
+    def test_employee_active_status(self, transactional_db):
+        """Test employee active/inactive status filtering."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
+
+        active_emp = TestDataFactory.create_employee(db, client_id=client.client_id, is_active=True)
+        inactive_emp = TestDataFactory.create_employee(db, client_id=client.client_id, is_active=False)
+        db.flush()
+
+        active_only = db.query(Employee).filter(
+            Employee.client_id_assigned == client.client_id,
+            Employee.is_active == 1,
+        ).all()
+        assert len(active_only) == 1
+
+    def test_floating_pool_employee(self, transactional_db):
+        """Test floating pool flag is stored correctly."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
+
+        fp_emp = TestDataFactory.create_employee(
+            db,
+            client_id=client.client_id,
+            is_floating_pool=True,
+        )
+        db.flush()
+
+        from_db = db.query(Employee).filter_by(
+            employee_id=fp_emp.employee_id
+        ).first()
+        assert from_db.is_floating_pool == 1
 
 
 class TestWorkOrderCRUD:
-    """Test suite for work order CRUD operations"""
+    """Test suite for work order CRUD operations using real database."""
 
-    @pytest.fixture
-    def mock_db(self):
-        return MagicMock(spec=Session)
+    def test_create_work_order(self, transactional_db):
+        """Test work order creation persists to DB."""
+        db = transactional_db
 
-    def test_create_work_order(self, mock_db):
-        """Test work order creation"""
-        work_order = MagicMock()
-        work_order.work_order_id = "WO-001"
-        work_order.client_id = "CLIENT-001"
-        work_order.quantity_ordered = 1000
-        work_order.status = "PENDING"
-        
-        mock_db.add = MagicMock()
-        mock_db.commit = MagicMock()
-        
-        mock_db.add(work_order)
-        mock_db.commit()
-        
-        assert work_order.work_order_id == "WO-001"
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        db.flush()
 
-    def test_update_work_order_status(self, mock_db):
-        """Test updating work order status"""
-        work_order = MagicMock()
-        work_order.status = "IN_PROGRESS"
-        
-        assert work_order.status == "IN_PROGRESS"
+        wo = TestDataFactory.create_work_order(
+            db,
+            client_id=client.client_id,
+            work_order_id="WO-001",
+            planned_quantity=1000,
+        )
+        db.flush()
 
-    def test_complete_work_order(self, mock_db):
-        """Test completing a work order"""
-        work_order = MagicMock()
-        work_order.status = "COMPLETED"
-        work_order.quantity_produced = 980
-        work_order.quantity_ordered = 1000
-        
-        fulfillment_rate = (work_order.quantity_produced / work_order.quantity_ordered) * 100
+        from_db = db.query(WorkOrder).filter_by(work_order_id="WO-001").first()
+        assert from_db is not None
+        assert from_db.client_id == "CLIENT-001"
+        assert from_db.planned_quantity == 1000
+        assert from_db.status == WorkOrderStatus.RECEIVED
+
+    def test_update_work_order_status(self, transactional_db):
+        """Test updating work order status persists."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        wo = TestDataFactory.create_work_order(db, client_id=client.client_id)
+        db.flush()
+
+        wo.status = WorkOrderStatus.IN_PROGRESS
+        db.flush()
+
+        from_db = db.query(WorkOrder).filter_by(
+            work_order_id=wo.work_order_id
+        ).first()
+        assert from_db.status == WorkOrderStatus.IN_PROGRESS
+
+    def test_complete_work_order(self, transactional_db):
+        """Test completing a work order and computing fulfillment rate."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        wo = TestDataFactory.create_work_order(
+            db,
+            client_id=client.client_id,
+            planned_quantity=1000,
+        )
+        db.flush()
+
+        wo.status = WorkOrderStatus.COMPLETED
+        wo.actual_quantity = 980
+        db.flush()
+
+        from_db = db.query(WorkOrder).filter_by(
+            work_order_id=wo.work_order_id
+        ).first()
+        assert from_db.status == WorkOrderStatus.COMPLETED
+
+        fulfillment_rate = (from_db.actual_quantity / from_db.planned_quantity) * 100
         assert fulfillment_rate == 98.0
 
-    def test_work_order_on_time_delivery(self):
-        """Test on-time delivery calculation"""
-        due_date = date(2026, 1, 15)
-        completion_date = date(2026, 1, 14)
-        
-        is_on_time = completion_date <= due_date
-        assert is_on_time == True
+    def test_work_order_on_time_delivery(self, transactional_db):
+        """Test on-time delivery flag based on ship dates."""
+        db = transactional_db
 
-    def test_work_order_jobs(self, mock_db):
-        """Test work order job tracking"""
-        jobs = [
-            {"job_id": "JOB-001", "status": "COMPLETED"},
-            {"job_id": "JOB-002", "status": "IN_PROGRESS"},
-            {"job_id": "JOB-003", "status": "PENDING"},
-        ]
-        
-        completed = sum(1 for j in jobs if j["status"] == "COMPLETED")
-        completion_pct = (completed / len(jobs)) * 100
-        
-        assert round(completion_pct, 2) == 33.33
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        wo = TestDataFactory.create_work_order(
+            db,
+            client_id=client.client_id,
+            planned_ship_date=datetime(2026, 1, 15),
+        )
+        db.flush()
+
+        wo.actual_delivery_date = datetime(2026, 1, 14)
+        db.flush()
+
+        from_db = db.query(WorkOrder).filter_by(
+            work_order_id=wo.work_order_id
+        ).first()
+        is_on_time = from_db.actual_delivery_date <= from_db.planned_ship_date
+        assert is_on_time is True
+
+    def test_work_orders_filtered_by_client(self, transactional_db):
+        """Test work orders are isolated per client."""
+        db = transactional_db
+
+        c1 = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        c2 = TestDataFactory.create_client(db, client_id="CLIENT-002")
+        db.flush()
+
+        TestDataFactory.create_work_order(db, client_id=c1.client_id)
+        TestDataFactory.create_work_order(db, client_id=c1.client_id)
+        TestDataFactory.create_work_order(db, client_id=c2.client_id)
+        db.flush()
+
+        c1_orders = db.query(WorkOrder).filter(
+            WorkOrder.client_id == "CLIENT-001"
+        ).all()
+        c2_orders = db.query(WorkOrder).filter(
+            WorkOrder.client_id == "CLIENT-002"
+        ).all()
+
+        assert len(c1_orders) == 2
+        assert len(c2_orders) == 1
+
+    def test_work_order_status_transitions(self, transactional_db):
+        """Test work order status can transition through lifecycle."""
+        db = transactional_db
+
+        client = TestDataFactory.create_client(db, client_id="CLIENT-001")
+        wo = TestDataFactory.create_work_order(db, client_id=client.client_id)
+        db.flush()
+
+        assert wo.status == WorkOrderStatus.RECEIVED
+
+        for target_status in [WorkOrderStatus.RELEASED, WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.COMPLETED]:
+            wo.status = target_status
+            db.flush()
+
+            from_db = db.query(WorkOrder).filter_by(
+                work_order_id=wo.work_order_id
+            ).first()
+            assert from_db.status == target_status

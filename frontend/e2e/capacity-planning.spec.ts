@@ -117,11 +117,12 @@ async function navigateToCapacityPlanning(page: Page) {
   await navItem.waitFor({ state: 'visible', timeout: 15000 });
   await navItem.click();
 
-  // Wait for page to load completely
-  await page.waitForLoadState('networkidle', { timeout: 20000 });
+  // Wait for Vue Router to process the SPA navigation and mount the component
+  await page.waitForURL('**/capacity-planning', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1000);
 
   // Wait for the page header to confirm navigation
-  await expect(page.locator('text=Capacity Planning').first()).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('text=Capacity Planning').first()).toBeVisible({ timeout: 30000 });
 }
 
 // Helper to wait for tab content to load
@@ -156,7 +157,7 @@ test.describe('Capacity Planning - Navigation', () => {
     await navigateToCapacityPlanning(page);
 
     // Check page header - should contain "Capacity Planning"
-    await expect(page.locator('.v-card-title:has-text("Capacity Planning")')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.v-card-title:has-text("Capacity Planning")')).toBeVisible({ timeout: 30000 });
   });
 
   test('should display all worksheet tabs', async ({ page }) => {

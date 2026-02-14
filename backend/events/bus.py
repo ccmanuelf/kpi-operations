@@ -230,7 +230,6 @@ class EventBus:
             except RuntimeError:
                 # No event loop - run synchronously
                 try:
-                    import asyncio
                     asyncio.run(reg.handler.handle(event))
                 except Exception as e:
                     logger.error(f"Handler error for {event.event_type}: {e}")

@@ -85,6 +85,7 @@ def edge_setup(edge_db):
     # Create product
     product = TestDataFactory.create_product(
         db,
+        client_id=client.client_id,
         product_code="EDGE-PROD-001",
         product_name="Edge Test Product",
         ideal_cycle_time=Decimal("0.10")
@@ -93,6 +94,7 @@ def edge_setup(edge_db):
     # Create shift
     shift = TestDataFactory.create_shift(
         db,
+        client_id=client.client_id,
         shift_name="Edge Test Shift",
         start_time="06:00:00",
         end_time="14:00:00"
@@ -247,6 +249,7 @@ class TestNumericBoundaries:
         # Create product with precise cycle time
         product = Product(
             product_id=9999,
+            client_id=client.client_id,
             product_code="PREC-PROD",
             product_name="Precision Product",
             ideal_cycle_time=Decimal("0.0001")  # Very small
@@ -605,6 +608,7 @@ class TestInferenceChainEdgeCases:
         # Create product without ideal cycle time
         product = Product(
             product_id=8888,
+            client_id=edge_setup["client"].client_id,
             product_code="NO-ICT-PROD",
             product_name="No Ideal Cycle Time",
             ideal_cycle_time=None

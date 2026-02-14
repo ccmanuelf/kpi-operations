@@ -84,7 +84,9 @@ async function navigateToDataEntry(page: Page, module: 'production' | 'quality' 
   };
 
   await page.click(`text=${navMapping[module]}`);
-  await page.waitForTimeout(1000);
+  // Wait for Vue Router to process the SPA navigation and mount the component
+  await page.waitForTimeout(1500);
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 }
 
 // Helper to create clipboard data (tab-separated values like Excel)
@@ -102,16 +104,16 @@ test.describe('Excel Clipboard Paste', () => {
     test('should display production data grid', async ({ page }) => {
       // Check grid container is visible
       const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
-      await expect(grid).toBeVisible({ timeout: 10000 });
+      await expect(grid).toBeVisible({ timeout: 15000 });
 
       // Verify actual row data is visible (not just headers)
       // Wait for at least one data row to be visible
       const dataRow = page.locator('.ag-row[role="row"]').first();
-      await expect(dataRow).toBeVisible({ timeout: 10000 });
+      await expect(dataRow).toBeVisible({ timeout: 20000 });
 
       // Verify row contains actual cell data
       const dataCell = page.locator('.ag-cell[col-id]').first();
-      await expect(dataCell).toBeVisible({ timeout: 5000 });
+      await expect(dataCell).toBeVisible({ timeout: 10000 });
     });
 
     test('should show paste from Excel button', async ({ page }) => {

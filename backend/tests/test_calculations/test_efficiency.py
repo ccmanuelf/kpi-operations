@@ -401,13 +401,25 @@ class TestEfficiencyDatabaseIntegration:
     @pytest.mark.integration
     def test_calculate_efficiency_with_mock_db(self, db_session):
         """Test calculate_efficiency function with mock database"""
+        from backend.schemas.client import Client, ClientType
         from backend.schemas.product import Product
         from backend.schemas.production_entry import ProductionEntry
         from backend.schemas.shift import Shift
 
+        # Create client first (required FK for product and shift)
+        client = Client(
+            client_id="TEST-CLIENT",
+            client_name="Test Client",
+            client_type=ClientType.HOURLY_RATE,
+            is_active=1,
+        )
+        db_session.add(client)
+        db_session.flush()
+
         # Create mock shift
         shift = Shift(
             shift_id=1,
+            client_id="TEST-CLIENT",
             shift_name="Day Shift",
             start_time=time(7, 0),
             end_time=time(15, 0),
@@ -418,6 +430,7 @@ class TestEfficiencyDatabaseIntegration:
         # Create mock product
         product = Product(
             product_id=1,
+            client_id="TEST-CLIENT",
             product_code="TEST-001",
             product_name="Test Product",
             ideal_cycle_time=Decimal("0.01"),

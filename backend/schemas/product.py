@@ -1,7 +1,7 @@
 """
 Product ORM schema (SQLAlchemy)
 """
-from sqlalchemy import Column, Integer, String, Boolean, DECIMAL, Text, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Boolean, DECIMAL, Text, TIMESTAMP, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
 from backend.database import Base
 
@@ -9,10 +9,14 @@ from backend.database import Base
 class Product(Base):
     """Product table ORM"""
     __tablename__ = "PRODUCT"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        UniqueConstraint('client_id', 'product_code', name='uq_product_client_code'),
+        {"extend_existing": True}
+    )
 
     product_id = Column(Integer, primary_key=True, autoincrement=True)
-    product_code = Column(String(50), unique=True, nullable=False, index=True)
+    client_id = Column(String(50), ForeignKey('CLIENT.client_id'), nullable=False, index=True)
+    product_code = Column(String(50), nullable=False, index=True)
     product_name = Column(String(100), nullable=False)
     description = Column(Text)
     ideal_cycle_time = Column(

@@ -280,19 +280,9 @@ def init_database():
         print("    Others: supervisor1, operator1, etc. / password123")
 
         # ==============================================================
-        # Step 3: Products & Shifts (using MASTER_PRODUCTS)
+        # Step 3: Products & Shifts (per-client, using MASTER_PRODUCTS)
         # ==============================================================
-        print("\n[3/10] Creating products and shifts...")
-
-        products = []
-        for mp in MASTER_PRODUCTS:
-            prod = TestDataFactory.create_product(
-                db,
-                product_code=mp["code"],
-                product_name=mp["name"],
-                ideal_cycle_time=mp["cycle_h"],
-            )
-            products.append(prod)
+        print("\n[3/10] Creating per-client products and shifts...")
 
         shifts_data = [
             ("Morning Shift", "06:00:00", "14:00:00"),
@@ -300,13 +290,38 @@ def init_database():
             ("Night Shift", "22:00:00", "06:00:00"),
         ]
 
-        shifts = []
-        for name, start, end in shifts_data:
-            shift = TestDataFactory.create_shift(db, shift_name=name, start_time=start, end_time=end)
-            shifts.append(shift)
+        all_products = {}   # client_id -> list of Product
+        all_shifts = {}     # client_id -> list of Shift
+
+        for client_id in clients.keys():
+            client_products = []
+            for mp in MASTER_PRODUCTS:
+                prod = TestDataFactory.create_product(
+                    db,
+                    client_id=client_id,
+                    product_code=mp["code"],
+                    product_name=mp["name"],
+                    ideal_cycle_time=mp["cycle_h"],
+                )
+                client_products.append(prod)
+            all_products[client_id] = client_products
+
+            client_shifts = []
+            for name, start, end in shifts_data:
+                shift = TestDataFactory.create_shift(
+                    db,
+                    client_id=client_id,
+                    shift_name=name,
+                    start_time=start,
+                    end_time=end,
+                )
+                client_shifts.append(shift)
+            all_shifts[client_id] = client_shifts
 
         db.flush()
-        print(f"  Created {len(products)} products and {len(shifts)} shifts")
+        total_products = sum(len(v) for v in all_products.values())
+        total_shifts = sum(len(v) for v in all_shifts.values())
+        print(f"  Created {total_products} products and {total_shifts} shifts ({len(clients)} clients x {len(MASTER_PRODUCTS)} products, {len(shifts_data)} shifts each)")
 
         # ==============================================================
         # Step 4: Capacity Planning - Core Tables
@@ -957,12 +972,14 @@ def init_database():
                 supervisor_user = users["admin"]
 
             # Production entries (10 per client) with realistic KPI values
+            client_products = all_products[client_id]
+            client_shifts = all_shifts[client_id]
             wo_ids = [wo.work_order_id for wo in client_work_orders]
             random.seed(hash(client_id))  # Deterministic per client
             base_date = date.today() - timedelta(days=10)
             for i in range(10):
-                prod_idx = i % len(products)
-                product = products[prod_idx]
+                prod_idx = i % len(client_products)
+                product = client_products[prod_idx]
                 units = 1000 + (i * 50)
                 run_time = Decimal("8.0")
                 defects = max(1, int(units * random.uniform(0.003, 0.012)))
@@ -979,7 +996,7 @@ def init_database():
                     production_entry_id=f"PE-{client_id[:4]}-{i+1:03d}",
                     client_id=client_id,
                     product_id=product.product_id,
-                    shift_id=shifts[0].shift_id,
+                    shift_id=client_shifts[0].shift_id,
                     entered_by=supervisor_user.user_id,
                     production_date=datetime.combine(base_date + timedelta(days=i), datetime.min.time()),
                     shift_date=datetime.combine(base_date + timedelta(days=i), datetime.min.time()),
@@ -1016,7 +1033,7 @@ def init_database():
                     db,
                     employee_id=emp.employee_id,
                     client_id=client_id,
-                    shift_id=shifts[0].shift_id,
+                    shift_id=client_shifts[0].shift_id,
                     count=10,
                     attendance_rate=0.92,
                 )
@@ -1208,8 +1225,8 @@ def init_database():
             "Clients": db.query(Client).count(),
             "Users": db.query(User).count(),
             "Employees": db.query(Employee).count(),
-            "Products": len(products),
-            "Shifts": len(shifts),
+            "Products": db.query(Product).count(),
+            "Shifts": db.query(Shift).count(),
             "Work Orders": db.query(WorkOrder).count(),
             "Jobs": db.query(Job).count(),
             "Production Entries": db.query(ProductionEntry).count(),

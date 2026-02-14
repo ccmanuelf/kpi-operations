@@ -13,7 +13,7 @@ import {
   calculateMockEfficiency,
   calculateMockPerformance,
   validateHeaders
-} from '../csvValidation'
+} from './csvValidation'
 
 describe('CSV Validation', () => {
   describe('Constants', () => {

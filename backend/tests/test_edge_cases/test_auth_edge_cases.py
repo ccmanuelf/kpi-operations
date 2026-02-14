@@ -259,15 +259,31 @@ class TestMultiTenantIsolation:
         client_a = auth_setup["client_a"]
         client_b = auth_setup["client_b"]
 
-        # Create product and shift
+        # Create per-client product and shift
         product = TestDataFactory.create_product(
             db,
+            client_id=client_a.client_id,
+            product_code="ISO-PROD-001",
+            product_name="Isolation Test Product",
+            ideal_cycle_time=Decimal("0.10")
+        )
+        product_b = TestDataFactory.create_product(
+            db,
+            client_id=client_b.client_id,
             product_code="ISO-PROD-001",
             product_name="Isolation Test Product",
             ideal_cycle_time=Decimal("0.10")
         )
         shift = TestDataFactory.create_shift(
             db,
+            client_id=client_a.client_id,
+            shift_name="Isolation Test Shift",
+            start_time="06:00:00",
+            end_time="14:00:00"
+        )
+        shift_b = TestDataFactory.create_shift(
+            db,
+            client_id=client_b.client_id,
             shift_name="Isolation Test Shift",
             start_time="06:00:00",
             end_time="14:00:00"
@@ -290,8 +306,8 @@ class TestMultiTenantIsolation:
         entry_b = ProductionEntry(
             production_entry_id="ISO-B-001",
             client_id=client_b.client_id,
-            product_id=product.product_id,
-            shift_id=shift.shift_id,
+            product_id=product_b.product_id,
+            shift_id=shift_b.shift_id,
             production_date=date.today(),
             shift_date=date.today(),
             units_produced=200,
@@ -483,15 +499,17 @@ class TestCrossClientAccess:
         client_b = auth_setup["client_b"]
         supervisor_a = auth_setup["supervisor_a"]
 
-        # Create product and shift
+        # Create per-client product and shift
         product = TestDataFactory.create_product(
             db,
+            client_id=client_b.client_id,
             product_code="CROSS-PROD-001",
             product_name="Cross Client Product",
             ideal_cycle_time=Decimal("0.10")
         )
         shift = TestDataFactory.create_shift(
             db,
+            client_id=client_b.client_id,
             shift_name="Cross Client Shift",
             start_time="06:00:00",
             end_time="14:00:00"
@@ -531,15 +549,31 @@ class TestCrossClientAccess:
         client_b = auth_setup["client_b"]
         supervisor_a = auth_setup["supervisor_a"]
 
-        # Create product and shift
-        product = TestDataFactory.create_product(
+        # Create per-client product and shift
+        product_a = TestDataFactory.create_product(
             db,
+            client_id=client_a.client_id,
             product_code="FILTER-PROD-001",
             product_name="Filter Test Product",
             ideal_cycle_time=Decimal("0.10")
         )
-        shift = TestDataFactory.create_shift(
+        product_b = TestDataFactory.create_product(
             db,
+            client_id=client_b.client_id,
+            product_code="FILTER-PROD-001",
+            product_name="Filter Test Product",
+            ideal_cycle_time=Decimal("0.10")
+        )
+        shift_a = TestDataFactory.create_shift(
+            db,
+            client_id=client_a.client_id,
+            shift_name="Filter Test Shift",
+            start_time="06:00:00",
+            end_time="14:00:00"
+        )
+        shift_b = TestDataFactory.create_shift(
+            db,
+            client_id=client_b.client_id,
             shift_name="Filter Test Shift",
             start_time="06:00:00",
             end_time="14:00:00"
@@ -550,8 +584,8 @@ class TestCrossClientAccess:
         entry_a = ProductionEntry(
             production_entry_id="FILTER-A-001",
             client_id=client_a.client_id,
-            product_id=product.product_id,
-            shift_id=shift.shift_id,
+            product_id=product_a.product_id,
+            shift_id=shift_a.shift_id,
             production_date=date.today(),
             shift_date=date.today(),
             units_produced=100,
@@ -562,8 +596,8 @@ class TestCrossClientAccess:
         entry_b = ProductionEntry(
             production_entry_id="FILTER-B-001",
             client_id=client_b.client_id,
-            product_id=product.product_id,
-            shift_id=shift.shift_id,
+            product_id=product_b.product_id,
+            shift_id=shift_b.shift_id,
             production_date=date.today(),
             shift_date=date.today(),
             units_produced=200,

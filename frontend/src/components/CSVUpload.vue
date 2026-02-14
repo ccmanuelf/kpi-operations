@@ -69,10 +69,10 @@
 <script setup>
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useKPIStore } from '@/stores/kpiStore'
+import { useProductionDataStore } from '@/stores/productionDataStore'
 
 const { t } = useI18n()
-const kpiStore = useKPIStore()
+const kpiStore = useProductionDataStore()
 
 const file = ref(null)
 const loading = ref(false)

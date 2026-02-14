@@ -28,7 +28,7 @@ sleep 2
 
 # Start frontend
 echo "🔧 Starting Vue 3 development server"
-echo "   Application: http://localhost:5173"
+echo "   Application: http://localhost:3000"
 echo "   Backend API: http://localhost:8000"
 echo ""
 echo "Press CTRL+C to stop the server"

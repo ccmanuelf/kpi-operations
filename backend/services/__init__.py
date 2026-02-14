@@ -29,8 +29,6 @@ from backend.services.quality_service import QualityService, get_quality_service
 from backend.services.work_order_service import WorkOrderService, get_work_order_service
 from backend.services.hold_service import HoldService, get_hold_service
 from backend.services.employee_service import EmployeeService, get_employee_service
-from backend.services.attendance_service import AttendanceService, get_attendance_service
-from backend.services.downtime_service import DowntimeService, get_downtime_service
 
 # Capacity Planning Services (Phase B.2)
 from backend.services.capacity import (
@@ -55,8 +53,6 @@ __all__ = [
     "WorkOrderService",
     "HoldService",
     "EmployeeService",
-    "AttendanceService",
-    "DowntimeService",
     # Capacity Planning Services
     "CapacityPlanningService",
     "BOMService",
@@ -71,7 +67,5 @@ __all__ = [
     "get_work_order_service",
     "get_hold_service",
     "get_employee_service",
-    "get_attendance_service",
-    "get_downtime_service",
     "get_capacity_planning_service",
 ]

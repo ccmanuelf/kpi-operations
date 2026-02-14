@@ -335,6 +335,7 @@ def wip_setup(wip_db):
     # Create product
     product = TestDataFactory.create_product(
         db,
+        client_id=client.client_id,
         product_code="WIP-PROD-001",
         product_name="WIP Test Product",
         ideal_cycle_time=Decimal("0.10")

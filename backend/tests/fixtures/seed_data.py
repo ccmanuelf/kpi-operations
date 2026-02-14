@@ -42,17 +42,19 @@ def seed_minimal_data(db: Session) -> Dict[str, Any]:
         password="TestPass123!"
     )
 
-    # Create product (NOT multi-tenant)
+    # Create product (scoped to client)
     product = TestDataFactory.create_product(
         db,
+        client_id=client.client_id,
         product_code="PROD-MIN-001",
         product_name="Minimal Test Product",
         ideal_cycle_time=Decimal("0.15")
     )
 
-    # Create shift (NOT multi-tenant)
+    # Create shift (scoped to client)
     shift = TestDataFactory.create_shift(
         db,
+        client_id=client.client_id,
         shift_name="Day Shift",
         start_time="06:00:00",
         end_time="14:00:00"
@@ -120,7 +122,7 @@ def seed_comprehensive_data(
         employees.append(emp)
 
     # ========================================================================
-    # Products & Shifts (NOT multi-tenant)
+    # Products & Shifts (scoped to client)
     # ========================================================================
 
     products = []
@@ -132,6 +134,7 @@ def seed_comprehensive_data(
     for code, name, cycle_time in product_data:
         prod = TestDataFactory.create_product(
             db,
+            client_id=client.client_id,
             product_code=f"PROD-{code}-001",
             product_name=name,
             ideal_cycle_time=cycle_time
@@ -147,6 +150,7 @@ def seed_comprehensive_data(
     for name, start, end in shift_data:
         shift = TestDataFactory.create_shift(
             db,
+            client_id=client.client_id,
             shift_name=f"{name} Shift",
             start_time=start,
             end_time=end
@@ -372,20 +376,8 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
 
     result = {"clients": {}, "users": {}}
 
-    # Create shared products and shifts (NOT multi-tenant)
-    product = TestDataFactory.create_product(
-        db,
-        product_code="PROD-SHARED-001",
-        product_name="Shared Product"
-    )
-
-    shift = TestDataFactory.create_shift(
-        db,
-        shift_name="Shared Shift"
-    )
-
-    db.flush()
-
+    # Create clients first, then per-client products and shifts
+    clients_created = {}
     for client_suffix in ["A", "B"]:
         client_id = f"CLIENT-{client_suffix}"
 
@@ -396,6 +388,41 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
             client_name=f"Test Client {client_suffix}",
             client_type=ClientType.HOURLY_RATE
         )
+        clients_created[client_suffix] = client
+
+    # Create per-client products and shifts
+    product = TestDataFactory.create_product(
+        db,
+        client_id="CLIENT-A",
+        product_code="PROD-SHARED-001",
+        product_name="Shared Product"
+    )
+
+    shift = TestDataFactory.create_shift(
+        db,
+        client_id="CLIENT-A",
+        shift_name="Shared Shift"
+    )
+
+    # Also create for CLIENT-B
+    TestDataFactory.create_product(
+        db,
+        client_id="CLIENT-B",
+        product_code="PROD-SHARED-001",
+        product_name="Shared Product"
+    )
+
+    TestDataFactory.create_shift(
+        db,
+        client_id="CLIENT-B",
+        shift_name="Shared Shift"
+    )
+
+    db.flush()
+
+    for client_suffix in ["A", "B"]:
+        client_id = f"CLIENT-{client_suffix}"
+        client = clients_created[client_suffix]
 
         # Create supervisor for this client
         supervisor = TestDataFactory.create_user(

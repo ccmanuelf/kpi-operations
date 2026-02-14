@@ -174,14 +174,14 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useKPIStore } from '@/stores/kpiStore'
+import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
 import EmptyState from '@/components/ui/EmptyState.vue'
 import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
-const kpiStore = useKPIStore()
+const kpiStore = useProductionDataStore()
 
 // Unsaved changes warning when rows are being edited
 const { hasUnsavedChanges, markDirty, markClean } = useUnsavedChanges({

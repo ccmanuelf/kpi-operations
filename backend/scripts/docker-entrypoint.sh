@@ -91,10 +91,21 @@ except Exception as e:
 
 # Main initialization logic
 main() {
-    # Wait a moment for any dependent services (like databases) to be ready
-    sleep 2
+    # Wait for database to be ready (retry loop, max 30s at 2s intervals)
+    echo "[INIT] Waiting for database to be ready..."
+    local max_wait=30
+    local interval=2
+    local elapsed=0
+    while [ $elapsed -lt $max_wait ]; do
+        if check_database 2>/dev/null; then
+            break
+        fi
+        echo "[INIT] Database not ready, retrying in ${interval}s... (${elapsed}/${max_wait}s)"
+        sleep $interval
+        elapsed=$((elapsed + interval))
+    done
 
-    # Check database connectivity
+    # Final check
     check_database
 
     # Run migrations if enabled

@@ -9,8 +9,8 @@ import { createPinia, setActivePinia } from 'pinia'
 // Mock the kpiStore
 const mockUploadCSV = vi.fn()
 
-vi.mock('@/stores/kpiStore', () => ({
-  useKPIStore: () => ({
+vi.mock('@/stores/productionDataStore', () => ({
+  useProductionDataStore: () => ({
     uploadCSV: mockUploadCSV
   })
 }))

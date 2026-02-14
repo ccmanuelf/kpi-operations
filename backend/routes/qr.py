@@ -71,7 +71,7 @@ def _entity_to_dict(entity) -> dict:
 
     **Security:**
     - Work orders: Enforces client access control
-    - Products: Public (no client restriction)
+    - Products: Enforces client access control
     - Jobs: Enforces client access control via client_id_fk
     - Employees: Requires authentication
 
@@ -133,6 +133,8 @@ async def qr_lookup(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product '{entity_id}' not found"
             )
+        # Enforce client access control (products are now multi-tenant)
+        verify_client_access(current_user, entity.client_id)
         entity_data = _entity_to_dict(entity)
 
     elif entity_type == QREntityType.JOB or entity_type == "job":
@@ -270,6 +272,9 @@ async def get_product_qr_image(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Product '{product_id}' not found"
         )
+
+    # Enforce client access control (products are now multi-tenant)
+    verify_client_access(current_user, product.client_id)
 
     # Use product_code as the identifier in the QR code for consistency
     qr_identifier = product.product_code
@@ -468,6 +473,8 @@ async def generate_qr_code(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product '{entity_id}' not found"
             )
+        # Enforce client access control (products are now multi-tenant)
+        verify_client_access(current_user, product.client_id)
 
     elif entity_type == QREntityType.JOB or entity_type == "job":
         job = db.query(Job).filter(Job.job_id == entity_id).first()
@@ -560,6 +567,8 @@ async def generate_qr_code_image(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Product '{entity_id}' not found"
             )
+        # Enforce client access control (products are now multi-tenant)
+        verify_client_access(current_user, product.client_id)
 
     elif entity_type == QREntityType.JOB or entity_type == "job":
         job = db.query(Job).filter(Job.job_id == entity_id).first()

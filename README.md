@@ -4,16 +4,16 @@
 
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.4-blue)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-3456%20passing-success)](https://github.com)
-[![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)](https://github.com)
-[![Design](https://img.shields.io/badge/design-IBM%20Carbon-blue)](https://carbondesignsystem.com)
+[![Tests](https://img.shields.io/badge/tests-5833%20passing-success)](https://github.com)
+[![Coverage](https://img.shields.io/badge/coverage-76%25-brightgreen)](https://github.com)
+[![Design](https://img.shields.io/badge/design-Vuetify%20Material-blue)](https://vuetifyjs.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
 
 > Comprehensive multi-tenant KPI dashboard for manufacturing operations tracking production efficiency, quality, downtime, and labor metrics across 50+ clients with 3000+ employees.
 
 ---
 
-## 📊 Overview
+## Overview
 
 The KPI Operations Dashboard Platform is an enterprise-grade web application designed to consolidate scattered manufacturing data into a unified, real-time analytics system. It replaces manual whiteboard tracking with data-driven decision making across 10 critical KPIs.
 
@@ -26,9 +26,9 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-### 🎯 **10 Real-Time KPIs**
+### **10 Real-Time KPIs**
 1. **WIP Aging** - Work-in-progress age tracking with hold management
 2. **On-Time Delivery (OTD)** - TRUE-OTD and standard OTD metrics
 3. **Production Efficiency** - Hours produced vs. hours available
@@ -40,34 +40,34 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 9. **Performance** - Actual vs. ideal cycle time
 10. **Absenteeism** - Labor attendance tracking with Bradford Factor
 
-### 💼 **Enterprise Features**
-- ✅ **Multi-Tenant Architecture** - Complete client data isolation
-- ✅ **Role-Based Access Control** - Operator, Leader, PowerUser, Admin roles
-- ✅ **Excel-like Data Grids** - AG Grid Community Edition with copy/paste
-- ✅ **CSV Bulk Upload** - Import 100+ records with validation
-- ✅ **Inference Engine** - Smart defaults for missing data
-- ✅ **Real-Time Calculations** - KPIs update as data is entered
-- ✅ **Predictive Analytics** - Forecasting for all 10 KPIs with exponential smoothing (toggle "Show Forecast" on KPI detail charts)
-- ✅ **Custom Dashboards** - Role-based layouts with drag-drop widget customization
-- ✅ **Advanced Filtering** - Save, apply, and manage filter configurations (Saved Filters dropdown in dashboard header with save/load/history)
-- ✅ **QR Code Integration** - Scan QR codes for work order lookup and form auto-fill (Quick-access button in dashboard header OR Dashboard Customize → Add QR Scanner widget)
-- ✅ **Responsive Design** - Works on desktop, tablet, mobile
-- ✅ **Keyboard Shortcuts** - Power-user productivity features
-- ✅ **Demo Data** - Sample data generator with 5 clients, 100 employees
-- ✅ **Production Line Simulation** - SimPy-based simulation with station modeling, bottleneck detection, and throughput analysis
-- ✅ **Capacity Planning** - Calculate staffing requirements based on target production, shift hours, and efficiency goals
-- ✅ **Scenario Comparison** - What-if analysis to compare different production configurations
+### **Enterprise Features**
+- **Multi-Tenant Architecture** - Complete client data isolation
+- **Role-Based Access Control** - Operator, Leader, PowerUser, Admin roles
+- **Excel-like Data Grids** - AG Grid Community Edition with copy/paste
+- **CSV Bulk Upload** - Import 100+ records with validation
+- **Inference Engine** - Smart defaults for missing data
+- **Real-Time Calculations** - KPIs update as data is entered
+- **Predictive Analytics** - Forecasting for all 10 KPIs with exponential smoothing (toggle "Show Forecast" on KPI detail charts)
+- **Custom Dashboards** - Role-based layouts with drag-drop widget customization
+- **Advanced Filtering** - Save, apply, and manage filter configurations (Saved Filters dropdown in dashboard header)
+- **QR Code Integration** - Scan QR codes for work order lookup and form auto-fill
+- **Responsive Design** - Works on desktop, tablet, mobile
+- **Keyboard Shortcuts** - Power-user productivity features
+- **Demo Data** - Sample data generator with 5 clients, 100 employees
+- **Production Line Simulation** - SimPy-based simulation with station modeling, bottleneck detection, and throughput analysis
+- **Capacity Planning** - 13-worksheet workbook with orders, calendars, production lines, standards, BOM, stock, scheduling, and analysis
+- **Scenario Comparison** - 11 what-if scenario types (overtime, subcontract, new line, shift changes, efficiency improvements, and more)
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend (Vue.js 3)                       │
 │  Vuetify 3 + AG Grid Community + Chart.js + Pinia Store     │
 └────────────────────┬────────────────────────────────────────┘
-                     │ REST API
+                     │ REST API (393 endpoints)
 ┌────────────────────▼────────────────────────────────────────┐
 │                 Backend (Python FastAPI)                     │
 │  SQLAlchemy ORM + JWT Auth + KPI Calculations + Validation  │
@@ -75,21 +75,21 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
                      │ SQL
 ┌────────────────────▼────────────────────────────────────────┐
 │              Database (SQLite / MariaDB)                     │
-│     28 Normalized Tables + Indexes + Foreign Keys           │
+│     35 Normalized Tables + Indexes + Foreign Keys           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ### **Tech Stack**
-- **Frontend:** Vue.js 3.4, Vuetify 3.5 (IBM Carbon Design v11), AG Grid 35.0, Chart.js 4.4
-- **Backend:** Python 3.11+, FastAPI 0.109, SQLAlchemy 2.0
-- **Database:** SQLite (dev) → MariaDB 10.6+ (production)
+- **Frontend:** Vue.js 3.4, Vuetify 3.5 (Carbon-inspired theming), AG Grid 35.0, Chart.js 4.4
+- **Backend:** Python 3.11+, FastAPI 0.129, SQLAlchemy 2.0, Pydantic 2.12
+- **Database:** SQLite (dev) → MariaDB 10.11+ (production)
 - **Auth:** JWT tokens with role-based permissions
-- **Testing:** Pytest, HTTPx, Playwright (E2E)
+- **Testing:** Pytest + Vitest + Playwright (E2E)
 - **Deployment:** Docker containers (Dockerfile + docker-compose.yml included), Uvicorn ASGI server
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### **Prerequisites**
 - Python 3.11+
@@ -110,117 +110,124 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# Create database and load demo data
-python database/init_database.py
-python database/generators/generate_complete_sample_data.py
+# Initialize database and seed demo data
+python -c "from backend.database import engine, Base; Base.metadata.create_all(bind=engine)"
+PYTHONPATH=.. python -m backend.database.seed
 
 # Start backend server
-uvicorn main:app --reload --port 8000
+PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 # Frontend setup (new terminal)
 cd ../frontend
 npm install
-npm run dev  # Starts on http://localhost:5173
+npm run dev  # Starts on http://localhost:3000
 ```
 
 ### **Default Login Credentials**
-```
-Username: admin
-Password: admin123
-Role: ADMIN
-```
+
+| Username | Password | Role |
+|----------|----------|------|
+| admin | admin123 | Admin |
+| supervisor1 | password123 | Supervisor |
+| operator1 | password123 | Operator |
+| operator2 | password123 | Operator |
+
+For detailed setup including MariaDB production configuration, see [QUICKSTART.md](QUICKSTART.md).
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 kpi-operations/
 ├── backend/                    # Python FastAPI backend
-│   ├── calculations/           # KPI calculation engines
+│   ├── calculations/           # KPI calculation engines (16 modules)
 │   │   ├── efficiency.py       # KPI #3 - Efficiency
 │   │   ├── performance.py      # KPI #9 - Performance
 │   │   ├── availability.py     # KPI #8 - Availability
 │   │   ├── wip_aging.py        # KPI #1 - WIP Aging
 │   │   ├── otd.py              # KPI #2 - On-Time Delivery
 │   │   ├── absenteeism.py      # KPI #10 - Absenteeism
-│   │   ├── ppm_dpmo.py         # KPI #4, #5 - PPM, DPMO
-│   │   └── fpy_rty.py          # KPI #6, #7 - FPY, RTY
-│   ├── models/                 # SQLAlchemy database models
-│   ├── routes/                 # API endpoint definitions
+│   │   ├── ppm.py              # KPI #4 - PPM
+│   │   ├── dpmo.py             # KPI #5 - DPMO
+│   │   ├── fpy_rty.py          # KPI #6, #7 - FPY, RTY
+│   │   ├── predictions.py      # Forecasting engine
+│   │   └── simulation.py       # SimPy simulation
+│   ├── crud/                   # CRUD operations (13 modules)
+│   ├── events/                 # Domain event bus
+│   ├── routes/                 # API endpoint definitions (35 modules)
+│   ├── schemas/                # SQLAlchemy ORM models (41 files)
+│   │   └── capacity/           # Capacity planning models (11 files)
+│   ├── services/               # Business logic services
+│   │   └── capacity/           # Capacity planning services (7 modules)
 │   ├── tests/                  # Pytest unit & integration tests
 │   └── main.py                 # FastAPI application entry
 │
-├── frontend/                   # Vue.js 3 frontend
+├── frontend/                   # Vue.js 3 frontend (143 components)
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── entries/        # Data entry forms
-│   │   │   │   ├── AttendanceEntry.vue
-│   │   │   │   ├── DowntimeEntry.vue
-│   │   │   │   ├── HoldResumeEntry.vue
-│   │   │   │   └── QualityEntry.vue
-│   │   │   ├── grids/          # AG Grid implementations
-│   │   │   │   ├── ProductionEntryGrid.vue  (524 lines)
-│   │   │   │   ├── AttendanceEntryGrid.vue  (487 lines)
-│   │   │   │   └── QualityEntryGrid.vue     (485 lines)
-│   │   │   ├── ProductionKPIs.vue
-│   │   │   ├── AttendanceKPIs.vue
-│   │   │   ├── QualityKPIs.vue
-│   │   │   └── WIPDowntimeKPIs.vue
+│   │   │   ├── grids/          # AG Grid implementations (6 grids)
+│   │   │   │   ├── ProductionEntryGrid.vue
+│   │   │   │   ├── AttendanceEntryGrid.vue
+│   │   │   │   ├── QualityEntryGrid.vue
+│   │   │   │   ├── DowntimeEntryGrid.vue
+│   │   │   │   ├── HoldEntryGrid.vue
+│   │   │   │   └── AGGridBase.vue
+│   │   │   ├── simulation/     # Simulation components
+│   │   │   └── admin/          # Admin components
 │   │   ├── views/              # Page components
+│   │   │   ├── kpi/            # 8 KPI detail views
+│   │   │   ├── admin/          # Admin views
+│   │   │   ├── CapacityPlanning/  # 13-tab capacity planning
+│   │   │   ├── DashboardView.vue
 │   │   │   ├── KPIDashboard.vue
 │   │   │   └── LoginView.vue
-│   │   └── stores/             # Pinia state management
+│   │   ├── stores/             # Pinia state management (13 stores)
+│   │   └── services/api/       # API service modules
+│   ├── e2e/                    # Playwright E2E tests
 │   └── package.json
 │
-├── database/                   # Database schemas & migrations
-│   ├── generators/             # Demo data generators
-│   │   ├── generate_complete_sample_data.py  (5 clients, 100 employees)
-│   │   ├── generate_production.py            (250+ entries)
-│   │   ├── generate_downtime.py              (150 events)
-│   │   ├── generate_holds.py                 (80 hold/resume)
-│   │   └── generate_attendance.py            (Attendance tracking)
-│   └── schema/                 # SQL schema files
+├── database/                   # Database initialization & generators
+│   ├── generators/             # Demo data generators (11 scripts)
+│   ├── create_demo_users.py    # Demo user creation
+│   └── init_sqlite_schema.py   # SQLite schema initialization
 │
-├── docs/                       # Documentation (51 files)
-│   ├── MASTER_GAP_ANALYSIS_REPORT.md
+├── docs/                       # Documentation
 │   ├── API_DOCUMENTATION.md
 │   ├── DEPLOYMENT.md
-│   └── ... (48 more)
+│   ├── USER_GUIDE.md
+│   ├── ARCHITECTURE.md
+│   └── ...
 │
-├── 00-KPI_Dashboard_Platform.md     # Developer specification
-├── 01-Core_DataEntities_Inventory.csv
-├── 02-Phase1_Production_Inventory.csv
-├── 03-Phase2_Downtime_WIP_Inventory.csv
-├── 04-Phase3_Attendance_Inventory.csv
-├── 05-Phase4_Quality_Inventory.csv
+├── Dockerfile                  # Multi-stage Docker build
+├── docker-compose.yml          # Docker Compose configuration
+├── QUICKSTART.md               # Quick start guide (SQLite + MariaDB)
+├── CHANGELOG.md                # Version history
 └── README.md                   # This file
 ```
 
 ---
 
-## 📊 Implementation Status
+## Implementation Status
 
-### **Current Version: 1.0.0** (96% Complete) ✅
+### **Current Version: 1.0.4** (February 13, 2026)
 
-**🎯 PRODUCTION CERTIFIED** | **Certification ID:** KPI-CERT-2026-002 | **Grade:** A+
-
-| Phase | Module | Status | Completion |
-|-------|--------|--------|-----------|
-| **Phase 0** | Core Infrastructure | ✅ Complete | 100% |
-| **Phase 1** | Production Entry | ✅ Complete | 92% |
-| **Phase 2** | Downtime & WIP | ✅ Complete | 90% |
-| **Phase 3** | Attendance & Labor | ✅ Complete | 88% |
-| **Phase 4** | Quality Controls | ✅ Complete | 85% |
-| **UI/UX** | All Grids & Forms | ✅ Complete | 100% |
-| **Security** | Multi-Tenant + Auth | ✅ Certified | 95% |
-| **Testing** | Unit + Integration | ✅ Comprehensive | 90% |
-
-**Detailed Status:** See [docs/AUDIT_HIVE_MIND_REPORT.md](docs/AUDIT_HIVE_MIND_REPORT.md)
+| Phase | Module | Status |
+|-------|--------|--------|
+| **Phase 0** | Core Infrastructure | Complete |
+| **Phase 1** | Production Entry | Complete |
+| **Phase 2** | Downtime & WIP | Complete |
+| **Phase 3** | Attendance & Labor | Complete |
+| **Phase 4** | Quality Controls | Complete |
+| **UI/UX** | All Grids & Forms | Complete |
+| **Security** | Multi-Tenant + Auth | Complete |
+| **Capacity** | 13-Worksheet Workbook | Complete |
+| **Testing** | 5,833 tests, 0 failures | Complete |
 
 ---
 
-## 🎨 User Interface
+## User Interface
 
 ### **Data Entry Grids (Excel-Like)**
 - Single-click editing with inline cell editors
@@ -253,16 +260,30 @@ kpi-operations/
 
 ---
 
-## 🔬 Simulation & Capacity Planning
+## Simulation & Capacity Planning
 
-The platform includes a powerful simulation engine for production planning and optimization.
+The platform includes simulation and capacity planning tools for production optimization.
 
-### **Capacity Planning**
-Calculate staffing requirements based on production targets:
-- Target units per shift
-- Cycle time per unit
-- Efficiency goals (50-100%)
-- Absenteeism buffer calculation
+### **Capacity Planning (13-Worksheet Workbook)**
+Full-featured capacity planning with 13 interconnected worksheets:
+1. **Orders** - Customer orders and demand data
+2. **Master Calendar** - Production calendar and shift definitions
+3. **Production Lines** - Line capacity and availability
+4. **Production Standards** - Cycle times and standard rates
+5. **BOM (Bill of Materials)** - Component requirements
+6. **Stock Snapshot** - Current inventory levels
+7. **Component Check** - Material availability verification
+8. **Capacity Analysis** - Bottleneck identification and utilization
+9. **Production Schedule** - Generated production plan
+10. **What-If Scenarios** - 11 scenario types for optimization
+11. **KPI Tracking** - Capacity-related KPI monitoring
+12. **Dashboard Inputs** - Configurable analysis parameters
+13. **Instructions** - Embedded user guidance
+
+### **Scenario Types (11)**
+- OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT
+- LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT
+- SHIFT_ADD, EFFICIENCY_IMPROVEMENT, LABOR_ADD
 
 ### **Production Line Simulation**
 Model production lines using SimPy discrete-event simulation:
@@ -273,18 +294,9 @@ Model production lines using SimPy discrete-event simulation:
 - Identify bottleneck stations
 - Analyze throughput and quality yield
 
-### **Scenario Comparison**
-Compare what-if scenarios to optimize operations:
-- Create multiple configuration scenarios
-- Compare against baseline
-- View throughput improvements
-- Get best scenario recommendations
-
-**Access:** Navigate to the Simulation view in the dashboard and click "How to Use" for step-by-step guides.
-
 ---
 
-## 📖 API Documentation
+## API Documentation
 
 ### **Base URL**
 ```
@@ -333,62 +345,51 @@ GET /api/kpi/performance/{client_id}?days=30    # Performance trend
 GET /api/kpi/all/{client_id}?days=30            # All 10 KPIs
 ```
 
-**Full API Documentation:** See [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
+**393 total API endpoints** across 35 route modules. Full documentation: [docs/API_DOCUMENTATION.md](docs/API_DOCUMENTATION.md)
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### **Run Backend Tests**
 ```bash
 cd backend
-pytest                              # All tests
-pytest tests/test_calculations/     # KPI calculation tests
-pytest --cov                        # With coverage report
+source venv/bin/activate
+PYTHONPATH=.. pytest tests/                    # All tests
+PYTHONPATH=.. pytest tests/test_calculations/  # KPI calculation tests
+PYTHONPATH=.. pytest --cov                     # With coverage report
 ```
 
 ### **Run Frontend Tests**
 ```bash
 cd frontend
-npm run lint          # ESLint checks
-npm run build         # Production build
-npx playwright test   # Playwright E2E tests (120 scenarios)
+npm run test                                   # Vitest unit tests (1,434 tests)
+npm run lint                                   # ESLint checks
+npx playwright test --config=playwright.sqlite.config.ts  # E2E tests (211 scenarios)
 ```
 
 ### **Current Test Coverage**
-- ✅ KPI Calculations: 72% coverage (target: 85%)
-- ✅ Database Models: 80% coverage
-- ⚠️ API Routes: 33% coverage (needs improvement)
-- ⚠️ CRUD Operations: 29% coverage (needs improvement)
-- ✅ E2E Tests: 180+ Playwright scenarios (Chromium, Firefox, WebKit)
-- ✅ Simulation Engine: Comprehensive test suite
-- ✅ Overall Backend: 88% (3456 passing, 2 skipped)
+- **Backend:** 4,188 passed, 2 skipped, 76.26% coverage (threshold: 55%)
+- **Frontend:** 1,434 passed across 52 test files
+- **E2E:** 211 Playwright scenarios (Chromium)
+- **Total:** 5,833 tests, 0 failures
 
 ---
 
-## ✅ Known Issues & Enhancements
+## Completed Features
 
-### **Resolved Issues (v1.0.0)** ✅
-1. ✅ **API Routes** - All 94 endpoints implemented and functional
-2. ✅ **Database Schema** - All 213 fields complete across 14 tables
-3. ✅ **CSV Upload** - Read-Back confirmation dialog implemented
-4. ✅ **Multi-Tenant Security** - 100% data isolation enforced
-5. ✅ **KPI Calculations** - All 10 formulas validated and accurate
-
-### **Future Enhancements (Sprint 6+)** 🔵
-1. 📊 **Reports** - PDF and Excel export ✅ Implemented
-2. 📧 **Email Delivery** - Daily automated reports ✅ **COMPLETED** (UI added in v1.0.3)
-3. 📱 **QR Code Integration** - Mobile barcode scanning ✅ **COMPLETED** (Quick-access UI added)
-4. 📈 **Custom Dashboards** - Role-based dashboard views ✅ **COMPLETED**
-5. 🔍 **Advanced Filtering** - Saved views and filter presets ✅ **COMPLETED** (UI dropdown added)
-6. 🔮 **Predictive Analytics UI** - Forecast visualization on charts ✅ **COMPLETED** (v1.0.3)
-
-### **Production Status**
-✅ **CERTIFIED FOR DEPLOYMENT** - See [Audit Report](docs/AUDIT_HIVE_MIND_REPORT.md) for details
+### **All Planned Features Delivered**
+1. **Reports** - PDF and Excel export
+2. **Email Delivery** - Automated daily/weekly/monthly reports (UI in v1.0.3)
+3. **QR Code Integration** - Mobile barcode scanning with quick-access UI
+4. **Custom Dashboards** - Role-based dashboard views
+5. **Advanced Filtering** - Saved views and filter presets
+6. **Predictive Analytics** - Forecast visualization on charts (v1.0.3)
+7. **Capacity Planning** - 13-worksheet workbook with 11 scenario types (v1.0.4)
 
 ---
 
-## 🔐 Security
+## Security
 
 ### **Authentication & Authorization**
 - JWT tokens with 30-minute expiration (secure default)
@@ -408,7 +409,7 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 ### **Development Workflow**
 1. Create feature branch from `main`
@@ -428,6 +429,7 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 ## Documentation
 
 ### **Essential Guides**
+- [QUICKSTART.md](QUICKSTART.md) - Get started in 5 minutes (SQLite or MariaDB)
 - [CHANGELOG.md](CHANGELOG.md) - Version history and release notes
 - [Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
 - [API Documentation](docs/API_DOCUMENTATION.md) - All endpoints with examples
@@ -439,30 +441,9 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 - [Validation Report](docs/COMPREHENSIVE_VALIDATION_REPORT.md) - Platform audit results
 - [AG Grid Usage](docs/AGGRID_USAGE_EXAMPLES.md) - Grid customization examples
 
-### **CSV Inventories (Requirements)**
-- [01-Core_DataEntities_Inventory.csv](01-Core_DataEntities_Inventory.csv) - Core tables
-- [02-Phase1_Production_Inventory.csv](02-Phase1_Production_Inventory.csv) - Production tracking
-- [03-Phase2_Downtime_WIP_Inventory.csv](03-Phase2_Downtime_WIP_Inventory.csv) - Downtime & holds
-- [04-Phase3_Attendance_Inventory.csv](04-Phase3_Attendance_Inventory.csv) - Labor tracking
-- [05-Phase4_Quality_Inventory.csv](05-Phase4_Quality_Inventory.csv) - Quality controls
-
 ---
 
-## 🛣️ Roadmap
-
-### **Version 1.1 (Q1 2026)** - Production Stabilization
-- ✅ Complete all missing API routes
-- ✅ Fix all database schema gaps
-- ✅ Implement CSV Read-Back confirmation
-- ✅ Add PDF/Excel reports
-- ✅ Automated email delivery
-
-### **Version 1.2 (Q2 2026)** - Enhanced Features
-- ~~QR code integration for mobile data entry~~ ✅ **COMPLETED** (v1.0.3)
-- ~~Custom dashboards per role~~ ✅ **COMPLETED**
-- ~~Advanced filtering and saved views~~ ✅ **COMPLETED** (v1.0.3 UI)
-- ~~Predictive analytics~~ ✅ **COMPLETED** (v1.0.3 with UI)
-- ~~Email report configuration~~ ✅ **COMPLETED** (v1.0.3 UI)
+## Roadmap
 
 ### **Version 2.0 (Q3 2026)** - Mobile App
 - Native iOS/Android app
@@ -472,7 +453,7 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 
 ---
 
-## 📞 Support
+## Support
 
 ### **For Issues**
 - Create GitHub issue with:
@@ -489,12 +470,10 @@ npx playwright test   # Playwright E2E tests (120 scenarios)
 
 ### **For Questions**
 - Check [docs/](docs/) directory first
-- Email: [support email here]
-- Slack: [workspace link here]
 
 ---
 
-## 📄 License
+## License
 
 **Proprietary** - All rights reserved.
 
@@ -502,7 +481,7 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 ### **Technologies Used**
 - [Vue.js](https://vuejs.org/) - Progressive JavaScript framework
@@ -511,6 +490,7 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 - [Vuetify](https://vuetifyjs.com/) - Material Design component framework
 - [SQLAlchemy](https://www.sqlalchemy.org/) - Python ORM
 - [Chart.js](https://www.chartjs.org/) - Charting library
+- [SimPy](https://simpy.readthedocs.io/) - Discrete-event simulation
 
 ### **Development Team**
 - Architecture & Backend: [Team credits]
@@ -520,93 +500,77 @@ This software is proprietary and confidential. Unauthorized copying, distributio
 
 ---
 
-## 📊 Quick Stats
+## Quick Stats
 
 ```
 Frontend:
-- 110 Vue components
-- 5 AG Grid implementations (2,000+ lines)
-- 10 KPI dashboard views
+- 143 Vue components
+- 6 AG Grid implementations (4,100+ lines)
+- 8 KPI detail views + OEE composite view
+- 13-tab Capacity Planning workbook
+- 13 Pinia stores
 - 100% responsive design
 
 Backend:
-- 29 database tables (multi-tenant architecture)
+- 35 database tables (multi-tenant architecture)
 - 16 KPI calculation engines + predictive forecasting
-- 32 route modules + 19 CRUD modules
-- 88% test coverage (3456 tests passing, 2 skipped)
-- 95%+ coverage on KPI calculations
+- 35 route modules + 13 CRUD modules
+- 393 REST API endpoints
+- 76.26% test coverage (4,188 tests passing, 2 skipped)
 - Docker deployment ready (multi-stage Dockerfile + docker-compose.yml)
 - SimPy-based production line simulation engine
-
-Sample Data (8,274 total records):
-- 5 clients
-- 100 employees
-- 64 work orders
-- 301 jobs
-- 750 production entries
-- 120 quality entries
-- 5,200 attendance records
-- 975 shift coverage records
-- 115 downtime events
-- 55 hold entries
-- 204 defect details
-- 24 alerts + 37 alert history records
-
-Documentation:
-- 51 markdown files
-- 5 CSV requirement inventories
-- Comprehensive gap analysis
-- API documentation
+- Domain event bus with collect/flush pattern
 ```
 
 ---
 
 **Version:** 1.0.4
-**Release Date:** January 30, 2026
+**Release Date:** February 13, 2026
 **Status:** Production Ready
 
-**Test Coverage:** Backend 88% | E2E Tests: 180+ scenarios | Docker Support: YES | Design System: IBM Carbon v11 | Simulation Engine: SimPy
+**Test Coverage:** 5,833 tests (4,188 backend + 1,434 frontend + 211 E2E) | 76.26% backend coverage | Docker Support: YES | Simulation Engine: SimPy
 
 ### **Recent Updates (v1.0.4)**
-- ✅ **Schema Standardization** - Unified String-based UUIDs for all entry primary keys (production_entry_id, hold_entry_id)
-- ✅ **Production CRUD Fixes** - Fixed ID generation, shift_date handling, and ProductionEntryWithKPIs response model
-- ✅ **HoldEntry Schema Alignment** - Corrected field names (hold_entry_id, quantity_on_hold) and HoldStatus enum values
-- ✅ **KPI Route Improvements** - Fixed aggregated dashboard imports and field references for quality, downtime, and hold entries
-- ✅ **Daily Reports Module** - Fixed import paths for scheduled report generation
-- ✅ **Test Suite Improvements** - Reduced skipped tests from 108 to 2, increased passing tests to 3456 (88% coverage)
-- ✅ **CRUD Coverage Boost** - Fixed function name mismatches across 15 CRUD modules
-- ✅ **API Response Consistency** - Aligned all response models with actual database schema fields
+- **Capacity Planning Module** - 13-worksheet workbook with full CRUD for orders, calendars, production lines, standards, BOM, stock, scheduling, and analysis
+- **11 Scenario Types** - OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT, SHIFT_ADD, EFFICIENCY_IMPROVEMENT, LABOR_ADD
+- **Dashboard Inputs Tab** - Configurable parameters for capacity analysis
+- **Instructions Tab** - Embedded user guidance within Capacity Planning
+- **Undo/Redo UI** - Visual undo/redo controls for grid editing
+- **CSV Export** - Export capacity planning data to CSV format
+- **Event Bus Tests** - 176 new tests for domain event system
+- **Router Guard Tests** - 23 new tests for Vue Router navigation guards
+- **Mock CRUD Tests Replaced** - Converted 3 mock-based test files to real DB tests
+- **Dependency Upgrades** - FastAPI 0.129, Pydantic 2.12, SQLAlchemy 2.0.46, happy-dom 20.6.1 (critical RCE fix)
+- **Documentation** - QUICKSTART SQLite path, CHANGELOG v1.0.1-v1.0.4 entries, badge fixes
 
 ### **Previous Updates (v1.0.3)**
-- ✅ **Predictive Analytics UI** - Added "Show Forecast" toggle on Efficiency and Performance KPI charts
-- ✅ **Forecast Visualization** - Displays 7-30 day predictions with confidence intervals on trend charts
-- ✅ **QR Scanner Quick-Access** - Added QR Scanner button directly in dashboard header
-- ✅ **Saved Filters UI** - Added dropdown menu to save, load, and manage filter presets
-- ✅ **Bradford Factor Widget** - Now included in default dashboard for Leader, PowerUser, and Admin roles
-- ✅ **Email Reports Dialog** - Full UI for configuring automated report delivery (frequency, recipients, content)
-- ✅ **Tooltip Enhancements** - Added formula and meaning tooltips to all KPI cards
-- ✅ **Fixed keyboard shortcuts** - Corrected help shortcut to Ctrl+/, redo to Ctrl+Y
+- **Predictive Analytics UI** - Added "Show Forecast" toggle on Efficiency and Performance KPI charts
+- **Forecast Visualization** - Displays 7-30 day predictions with confidence intervals on trend charts
+- **QR Scanner Quick-Access** - Added QR Scanner button directly in dashboard header
+- **Saved Filters UI** - Added dropdown menu to save, load, and manage filter presets
+- **Bradford Factor Widget** - Now included in default dashboard for Leader, PowerUser, and Admin roles
+- **Email Reports Dialog** - Full UI for configuring automated report delivery (frequency, recipients, content)
+- **Tooltip Enhancements** - Added formula and meaning tooltips to all KPI cards
+- **Fixed keyboard shortcuts** - Corrected help shortcut to Ctrl+/, redo to Ctrl+Y
 
 ### **Previous Updates (v1.0.2)**
-- ✅ Fixed WIP Aging view - all data tables now connected and displaying
-- ✅ Added `/api/kpi/wip-aging/top` endpoint for top aging items
-- ✅ Added `/api/kpi/wip-aging/trend` endpoint for trend chart data
-- ✅ Fixed Hold Records History table with correct HOLD_ENTRY schema fields
-- ✅ Fixed "Oldest Item" card to show actual max age (not hardcoded)
-- ✅ Fixed Efficiency view with by-shift and by-product breakdown endpoints
-- ✅ Added OEE KPI view with component breakdown (Availability × Performance × Quality)
-- ✅ Updated response models to match database schema (WIPHoldResponse)
-- ✅ Fixed all KPI detail views with proper data binding
+- Fixed WIP Aging view - all data tables now connected and displaying
+- Added `/api/kpi/wip-aging/top` endpoint for top aging items
+- Added `/api/kpi/wip-aging/trend` endpoint for trend chart data
+- Fixed Hold Records History table with correct HOLD_ENTRY schema fields
+- Fixed "Oldest Item" card to show actual max age (not hardcoded)
+- Fixed Efficiency view with by-shift and by-product breakdown endpoints
+- Added OEE KPI view with component breakdown (Availability x Performance x Quality)
+- Updated response models to match database schema (WIPHoldResponse)
 
 ### **Previous Updates (v1.0.1)**
-- ✅ Fixed 34 skipped tests (93 → 59 skipped)
-- ✅ Increased test coverage from 43% to 77.48%
-- ✅ Fixed SQLite compatibility issues (datediff → date comparison)
-- ✅ Fixed ProductionEntry schema for multi-tenant isolation
-- ✅ Added ImportLog SQLAlchemy schema
-- ✅ Fixed SQL text() wrapper for SQLAlchemy 2.0 compatibility
-- ✅ Updated TestDataFactory for new schema fields
+- Fixed 34 skipped tests (93 → 59 skipped)
+- Increased test coverage from 43% to 77.48%
+- Fixed SQLite compatibility issues (datediff → date comparison)
+- Fixed ProductionEntry schema for multi-tenant isolation
+- Added ImportLog SQLAlchemy schema
+- Fixed SQL text() wrapper for SQLAlchemy 2.0 compatibility
 
 ---
 
-*For the latest updates, see [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md)*
+*For full version history, see [CHANGELOG.md](CHANGELOG.md)*

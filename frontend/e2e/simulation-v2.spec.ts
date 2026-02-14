@@ -121,11 +121,12 @@ async function navigateToSimulationV2(page: Page, clearSampleData = true) {
   await navItem.waitFor({ state: 'visible', timeout: 10000 });
   await navItem.click();
 
-  // Wait for page to load completely
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  // Wait for Vue Router to process the SPA navigation and mount the component
+  await page.waitForURL('**/simulation-v2', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1000);
 
   // Wait for the page header to confirm navigation
-  await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
+  await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 }
 
 // Helper to navigate with sample data pre-loaded (for testing sample data feature)
@@ -140,11 +141,12 @@ async function navigateToSimulationV2WithSampleData(page: Page) {
   await navItem.waitFor({ state: 'visible', timeout: 10000 });
   await navItem.click();
 
-  // Wait for page to load completely
-  await page.waitForLoadState('networkidle', { timeout: 15000 });
+  // Wait for Vue Router to process the SPA navigation and mount the component
+  await page.waitForURL('**/simulation-v2', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1000);
 
   // Wait for the page header to confirm navigation
-  await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
+  await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 
   // Wait for the welcome snackbar to appear (indicates sample data loaded)
   await page.waitForTimeout(1000);

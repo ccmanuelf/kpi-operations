@@ -422,6 +422,7 @@ def otd_setup(otd_real_db):
     # Create product
     product = TestDataFactory.create_product(
         db,
+        client_id=client.client_id,
         product_code="OTD-PROD-001",
         product_name="OTD Test Product",
         ideal_cycle_time=Decimal("0.10")
@@ -430,6 +431,7 @@ def otd_setup(otd_real_db):
     # Create shift
     shift = TestDataFactory.create_shift(
         db,
+        client_id=client.client_id,
         shift_name="OTD Test Shift",
         start_time="06:00:00",
         end_time="14:00:00"

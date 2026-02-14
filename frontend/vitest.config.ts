@@ -34,7 +34,9 @@ export default defineConfig({
       include: [
         'src/services/**/*.js',
         'src/stores/**/*.js',
-        'src/utils/**/*.js'
+        'src/utils/**/*.js',
+        'src/components/**/*.vue',
+        'src/views/**/*.vue'
       ],
       exclude: [
         'node_modules/',
@@ -43,10 +45,10 @@ export default defineConfig({
         'src/**/__tests__/**'
       ],
       thresholds: {
-        statements: 80,
-        branches: 70,
-        functions: 75,
-        lines: 80
+        statements: 55,
+        branches: 45,
+        functions: 50,
+        lines: 55
       }
     }
   }

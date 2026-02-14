@@ -268,7 +268,8 @@ def get_standards_by_department(
 def get_total_sam_for_style(
     db: Session,
     client_id: str,
-    style_code: str
+    style_code: str,
+    department: Optional[str] = None
 ) -> float:
     """
     Calculate total SAM for a style (sum of all operations).
@@ -277,17 +278,22 @@ def get_total_sam_for_style(
         db: Database session
         client_id: Client identifier for multi-tenant isolation
         style_code: Style code
+        department: Optional department filter
 
     Returns:
         Total SAM in minutes for the style
     """
     ensure_client_id(client_id, "total SAM query")
 
+    filters = [
+        CapacityProductionStandard.client_id == client_id,
+        CapacityProductionStandard.style_code == style_code
+    ]
+    if department:
+        filters.append(CapacityProductionStandard.department == department)
+
     result = db.query(func.sum(CapacityProductionStandard.sam_minutes)).filter(
-        and_(
-            CapacityProductionStandard.client_id == client_id,
-            CapacityProductionStandard.style_code == style_code
-        )
+        and_(*filters)
     ).scalar()
 
     return float(result) if result else 0.0

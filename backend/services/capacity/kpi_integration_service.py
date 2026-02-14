@@ -907,9 +907,9 @@ class KPIIntegrationService:
         total_completed = self.db.query(func.count(WorkOrder.work_order_id)).filter(
             WorkOrder.client_id == client_id,
             WorkOrder.status == "CLOSED",
-            WorkOrder.actual_ship_date.isnot(None),
-            WorkOrder.actual_ship_date >= period_start,
-            WorkOrder.actual_ship_date <= period_end
+            WorkOrder.shipped_date.isnot(None),
+            WorkOrder.shipped_date >= period_start,
+            WorkOrder.shipped_date <= period_end
         ).scalar()
 
         if not total_completed or total_completed == 0:
@@ -918,10 +918,10 @@ class KPIIntegrationService:
         on_time = self.db.query(func.count(WorkOrder.work_order_id)).filter(
             WorkOrder.client_id == client_id,
             WorkOrder.status == "CLOSED",
-            WorkOrder.actual_ship_date.isnot(None),
-            WorkOrder.actual_ship_date >= period_start,
-            WorkOrder.actual_ship_date <= period_end,
-            WorkOrder.actual_ship_date <= WorkOrder.required_date
+            WorkOrder.shipped_date.isnot(None),
+            WorkOrder.shipped_date >= period_start,
+            WorkOrder.shipped_date <= period_end,
+            WorkOrder.shipped_date <= WorkOrder.required_date
         ).scalar()
 
         return (Decimal(str(on_time or 0)) / Decimal(str(total_completed))) * 100

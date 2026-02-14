@@ -357,8 +357,8 @@ class CapacityAnalysisService:
         total_shifts = sum(c.shifts_available for c in calendars)
         total_hours = sum(Decimal(str(c.total_hours())) for c in calendars)
 
-        avg_shifts = total_shifts / working_days if working_days > 0 else 1
-        avg_hours = total_hours / total_shifts if total_shifts > 0 else Decimal("8.0")
+        avg_shifts = Decimal(str(total_shifts)) / Decimal(str(working_days)) if working_days > 0 else Decimal("1")
+        avg_hours = total_hours / Decimal(str(total_shifts)) if total_shifts > 0 else Decimal("8.0")
 
         return {
             "working_days": working_days,

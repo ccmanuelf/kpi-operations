@@ -54,20 +54,26 @@ def create_entry(
     current_user: User = Depends(get_current_user)
 ):
     """Create new production entry"""
-    # Verify product exists
-    product = db.query(Product).filter(Product.product_id == entry.product_id).first()
+    # Verify product exists and belongs to the same client
+    product = db.query(Product).filter(
+        Product.product_id == entry.product_id,
+        Product.client_id == entry.client_id
+    ).first()
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product ID {entry.product_id} not found"
+            detail=f"Product ID {entry.product_id} not found for client {entry.client_id}"
         )
 
-    # Verify shift exists
-    shift = db.query(Shift).filter(Shift.shift_id == entry.shift_id).first()
+    # Verify shift exists and belongs to the same client
+    shift = db.query(Shift).filter(
+        Shift.shift_id == entry.shift_id,
+        Shift.client_id == entry.client_id
+    ).first()
     if not shift:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Shift ID {entry.shift_id} not found"
+            detail=f"Shift ID {entry.shift_id} not found for client {entry.client_id}"
         )
 
     try:

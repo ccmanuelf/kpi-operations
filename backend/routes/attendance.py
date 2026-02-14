@@ -344,7 +344,10 @@ def calculate_absenteeism_kpi(
     # Get shift_id for response if not provided
     if shift_id is None:
         from backend.schemas.shift import Shift
-        first_shift = db.query(Shift).first()
+        shift_query = db.query(Shift)
+        if effective_client_id:
+            shift_query = shift_query.filter(Shift.client_id == effective_client_id)
+        first_shift = shift_query.first()
         shift_id = first_shift.shift_id if first_shift else 1
 
     # ========================================

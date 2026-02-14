@@ -13,6 +13,7 @@ from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 from backend.schemas.product import Product
 from backend.schemas.shift import Shift
+from backend.middleware.client_auth import build_client_filter_clause
 
 
 router = APIRouter(
@@ -26,8 +27,12 @@ def list_products(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List all active products (authentication required)"""
-    products = db.query(Product).filter(Product.is_active == True).all()
+    """List active products filtered by client access"""
+    query = db.query(Product).filter(Product.is_active == True)
+    client_filter = build_client_filter_clause(current_user, Product.client_id)
+    if client_filter is not None:
+        query = query.filter(client_filter)
+    products = query.all()
     return [
         {
             "product_id": p.product_id,
@@ -44,8 +49,12 @@ def list_shifts(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List all active shifts (authentication required)"""
-    shifts = db.query(Shift).filter(Shift.is_active == True).all()
+    """List active shifts filtered by client access"""
+    query = db.query(Shift).filter(Shift.is_active == True)
+    client_filter = build_client_filter_clause(current_user, Shift.client_id)
+    if client_filter is not None:
+        query = query.filter(client_filter)
+    shifts = query.all()
     return [
         {
             "shift_id": s.shift_id,
@@ -62,9 +71,13 @@ def get_active_shift(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get the currently active shift based on current time"""
+    """Get the currently active shift based on current time, filtered by client access"""
     now = datetime.now().time()
-    shifts = db.query(Shift).filter(Shift.is_active == True).all()
+    query = db.query(Shift).filter(Shift.is_active == True)
+    client_filter = build_client_filter_clause(current_user, Shift.client_id)
+    if client_filter is not None:
+        query = query.filter(client_filter)
+    shifts = query.all()
 
     for s in shifts:
         start = s.start_time

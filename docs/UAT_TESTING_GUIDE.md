@@ -74,7 +74,7 @@ docker-compose up -d
 ```
 
 ### Access URLs
-- **Frontend:** http://localhost:5173 (dev) or http://localhost:3000 (docker)
+- **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:8000
 - **API Docs:** http://localhost:8000/docs
 

@@ -77,8 +77,7 @@ check_environment_variables() {
 
     required_vars=(
         "DATABASE_URL"
-        "JWT_SECRET"
-        "API_BASE_URL"
+        "SECRET_KEY"
         "SMTP_HOST"
         "SMTP_USER"
         "SMTP_PASS"
@@ -141,7 +140,7 @@ setup_database() {
     TABLE_COUNT=$(sqlite3 "${DEPLOYMENT_DIR}/kpi_platform.db" "SELECT COUNT(*) FROM CLIENT;")
     if [ "$TABLE_COUNT" -eq 0 ]; then
         log "Loading seed data..."
-        python3 ../scripts/generate_complete_sample_data.py
+        python3 ../backend/scripts/init_demo_database.py
         log "✅ Seed data loaded"
     fi
 
@@ -172,8 +171,8 @@ install_frontend() {
 
     cd "${DEPLOYMENT_DIR}/frontend"
 
-    # Install npm dependencies
-    npm install
+    # Install npm dependencies (clean install for reproducible builds)
+    npm ci
 
     # Build frontend
     log "Building frontend..."
@@ -197,7 +196,7 @@ User=www-data
 Group=www-data
 WorkingDirectory=${DEPLOYMENT_DIR}/backend
 Environment="PATH=${DEPLOYMENT_DIR}/backend/venv/bin"
-ExecStart=${DEPLOYMENT_DIR}/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+ExecStart=${DEPLOYMENT_DIR}/backend/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
 

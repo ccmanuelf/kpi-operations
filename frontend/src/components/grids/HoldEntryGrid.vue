@@ -253,7 +253,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useKPIStore } from '@/stores/kpiStore'
+import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format, differenceInDays } from 'date-fns'
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
@@ -261,7 +261,7 @@ import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
 
 const { t } = useI18n()
 
-const kpiStore = useKPIStore()
+const kpiStore = useProductionDataStore()
 const gridRef = ref(null)
 const unsavedChanges = ref(new Set())
 const saving = ref(false)

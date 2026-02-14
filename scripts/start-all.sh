@@ -45,7 +45,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "✅ Application launched in separate Terminal tabs!"
     echo ""
     echo "📱 Access points:"
-    echo "   Frontend: http://localhost:5173"
+    echo "   Frontend: http://localhost:3000"
     echo "   Backend API: http://localhost:8000/docs"
     echo "   Database: ./database/kpi_platform.db (SQLite)"
     echo ""

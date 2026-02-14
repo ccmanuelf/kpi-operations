@@ -318,7 +318,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
-import { useKPIStore } from '@/stores/kpiStore'
+import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format, subDays, formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import { debounce } from '@/utils/performance'
@@ -336,7 +336,7 @@ const props = defineProps({
 const emit = defineEmits(['filter-change'])
 
 const filtersStore = useFiltersStore()
-const kpiStore = useKPIStore()
+const kpiStore = useProductionDataStore()
 
 // Local state
 const clients = ref([])

@@ -5,6 +5,82 @@ All notable changes to the Manufacturing KPI Platform will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2026-02-13
+
+### Added
+- **Capacity Planning Module** - 13-worksheet workbook pattern with full CRUD
+- **8 Scenario Types** - OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT
+- **Dashboard Inputs Tab** - Configurable parameters for capacity analysis
+- **Instructions Tab** - Embedded user guidance within Capacity Planning
+- **Undo/Redo UI** - Visual undo/redo controls for grid editing
+- **CSV Export** - Export capacity planning data to CSV format
+- **Planner Notes** - Per-worksheet planner notes column
+- **Stock Staleness Warning** - Alerts for outdated stock data
+- **Event Bus Tests** - 176 new tests for domain event system
+- **Router Guard Tests** - 23 new tests for Vue Router navigation guards
+
+### Changed
+- **Scenario Types Expanded** - Increased from 4 to 8 scenario types
+- **kpiStore Renamed** - `kpiStore.js` renamed to `productionDataStore.js` to resolve naming collision
+- **Mock CRUD Tests Replaced** - Converted 3 mock-based test files to real DB tests (71 mock refs eliminated)
+
+### Fixed
+- **EventBus Handler Dispatch** - Fixed shadowed asyncio import causing silent handler failures
+- **Production Bugs** - Fixed non-existent columns (hold_timestamp, resume_timestamp) and date/datetime mismatches
+- **E2E Test Stability** - Fixed 70 failing E2E tests, resolved flaky login selectors
+
+### Testing
+- **6,217 total tests** (4,188 backend + 1,434 frontend + 595 E2E), 0 failures
+- **76.26% backend coverage** (threshold: 55%)
+
+---
+
+## [1.0.3] - 2026-02-01
+
+### Added
+- **Predictive Analytics UI** - "Show Forecast" toggle on Efficiency and Performance KPI charts
+- **Forecast Visualization** - 7-30 day predictions with confidence intervals on trend charts
+- **QR Scanner Quick-Access** - QR Scanner button directly in dashboard header
+- **Saved Filters UI** - Dropdown menu to save, load, and manage filter presets
+- **Bradford Factor Widget** - Included in default dashboard for Leader, PowerUser, and Admin roles
+- **Email Reports Dialog** - UI for configuring automated report delivery
+
+### Fixed
+- **Keyboard Shortcuts** - Corrected help shortcut to Ctrl+/, redo to Ctrl+Y
+- **Tooltip Enhancements** - Added formula and meaning tooltips to all KPI cards
+
+---
+
+## [1.0.2] - 2026-01-30
+
+### Added
+- **OEE KPI View** - Component breakdown (Availability x Performance x Quality)
+- **WIP Aging Endpoints** - `/api/kpi/wip-aging/top` and `/api/kpi/wip-aging/trend`
+- **Efficiency Breakdowns** - By-shift and by-product breakdown endpoints
+
+### Fixed
+- **WIP Aging View** - All data tables connected and displaying correctly
+- **Hold Records History** - Corrected to use HOLD_ENTRY schema fields
+- **Oldest Item Card** - Shows actual max age instead of hardcoded value
+- **Response Models** - Aligned WIPHoldResponse with database schema
+
+---
+
+## [1.0.1] - 2026-01-27
+
+### Changed
+- **Test Coverage** - Increased from 43% to 77.48% backend coverage
+- **Skipped Tests** - Reduced from 93 to 59 skipped tests
+
+### Fixed
+- **SQLite Compatibility** - Replaced datediff with proper date comparison functions
+- **ProductionEntry Schema** - Fixed for multi-tenant isolation
+- **SQL text() Wrapper** - Fixed for SQLAlchemy 2.0 compatibility
+- **TestDataFactory** - Updated for new schema fields
+- **ImportLog Schema** - Added missing SQLAlchemy schema
+
+---
+
 ## [1.0.0] - 2026-01-25
 
 ### Added
@@ -139,6 +215,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Milestone |
 |---------|------|-----------|
+| 1.0.4 | 2026-02-13 | Capacity Planning (13 worksheets, 8 scenarios) |
+| 1.0.3 | 2026-02-01 | Predictive Analytics UI |
+| 1.0.2 | 2026-01-30 | OEE KPI View, WIP Aging fixes |
+| 1.0.1 | 2026-01-27 | Test coverage boost (43% to 77%) |
 | 1.0.0 | 2026-01-25 | Production Release |
 | 0.9.0 | 2026-01-15 | Pre-Release (Predictive Analytics) |
 | 0.8.0 | 2026-01-08 | Beta (AG Grid Integration) |

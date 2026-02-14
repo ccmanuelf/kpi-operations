@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useKPIStore } from '../kpiStore'
+import { useProductionDataStore } from '../productionDataStore'
 
 // Mock the API module
 vi.mock('@/services/api', () => ({
@@ -40,7 +40,7 @@ describe('KPI Store', () => {
 
   describe('State', () => {
     it('initializes with correct default state', () => {
-      const store = useKPIStore()
+      const store = useProductionDataStore()
 
       expect(store.productionEntries).toEqual([])
       expect(store.downtimeEntries).toEqual([])
@@ -55,7 +55,7 @@ describe('KPI Store', () => {
 
   describe('Getters', () => {
     it('recentEntries returns first 10 entries', () => {
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = Array.from({ length: 15 }, (_, i) => ({
         entry_id: i + 1,
         units_produced: 100
@@ -66,7 +66,7 @@ describe('KPI Store', () => {
     })
 
     it('averageEfficiency calculates correctly', () => {
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = [
         { efficiency_percentage: 80 },
         { efficiency_percentage: 90 },
@@ -77,14 +77,14 @@ describe('KPI Store', () => {
     })
 
     it('averageEfficiency returns 0 when no entries', () => {
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = []
 
       expect(store.averageEfficiency).toBe(0)
     })
 
     it('averageEfficiency ignores entries without efficiency', () => {
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = [
         { efficiency_percentage: 80 },
         { efficiency_percentage: null },
@@ -95,7 +95,7 @@ describe('KPI Store', () => {
     })
 
     it('averagePerformance calculates correctly', () => {
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = [
         { performance_percentage: 75 },
         { performance_percentage: 85 },
@@ -111,7 +111,7 @@ describe('KPI Store', () => {
       const mockData = [{ entry_id: 1, units_produced: 100 }]
       api.getProductionEntries.mockResolvedValue({ data: mockData })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.fetchProductionEntries()
 
       expect(result.success).toBe(true)
@@ -124,7 +124,7 @@ describe('KPI Store', () => {
         response: { data: { detail: 'Server error' } }
       })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.fetchProductionEntries()
 
       expect(result.success).toBe(false)
@@ -136,7 +136,7 @@ describe('KPI Store', () => {
       const newEntry = { entry_id: 1, units_produced: 100 }
       api.createProductionEntry.mockResolvedValue({ data: newEntry })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.createProductionEntry({ units_produced: 100 })
 
       expect(result.success).toBe(true)
@@ -147,7 +147,7 @@ describe('KPI Store', () => {
       const updatedEntry = { entry_id: 1, units_produced: 150 }
       api.updateProductionEntry.mockResolvedValue({ data: updatedEntry })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = [{ entry_id: 1, units_produced: 100 }]
 
       const result = await store.updateProductionEntry(1, { units_produced: 150 })
@@ -159,7 +159,7 @@ describe('KPI Store', () => {
     it('deleteProductionEntry removes entry', async () => {
       api.deleteProductionEntry.mockResolvedValue({})
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       store.productionEntries = [
         { entry_id: 1 },
         { entry_id: 2 }
@@ -179,7 +179,7 @@ describe('KPI Store', () => {
       api.getShifts.mockResolvedValue({ data: [{ shift_id: 1, shift_name: 'Day' }] })
       api.getDowntimeReasons.mockResolvedValue({ data: [{ reason_id: 1, reason: 'Maintenance' }] })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.fetchReferenceData()
 
       expect(result.success).toBe(true)
@@ -194,7 +194,7 @@ describe('KPI Store', () => {
       api.uploadCSV.mockResolvedValue({ data: { total_rows: 5, successful: 5, failed: 0 } })
       api.getProductionEntries.mockResolvedValue({ data: [] })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const file = new File(['test'], 'test.csv')
       const result = await store.uploadCSV(file)
 
@@ -208,7 +208,7 @@ describe('KPI Store', () => {
         response: { data: { detail: 'Invalid CSV format' } }
       })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.uploadCSV(new File([''], 'test.csv'))
 
       expect(result.success).toBe(false)
@@ -221,7 +221,7 @@ describe('KPI Store', () => {
       const mockData = [{ downtime_id: 1, duration_hours: 2 }]
       api.getDowntimeEntries.mockResolvedValue({ data: mockData })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.fetchDowntimeEntries()
 
       expect(result.success).toBe(true)
@@ -232,7 +232,7 @@ describe('KPI Store', () => {
       const newEntry = { downtime_id: 1, duration_hours: 2 }
       api.createDowntimeEntry.mockResolvedValue({ data: newEntry })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.createDowntimeEntry({ duration_hours: 2 })
 
       expect(result.success).toBe(true)
@@ -245,7 +245,7 @@ describe('KPI Store', () => {
       const mockData = [{ hold_id: 1, reason: 'Quality check' }]
       api.getHoldEntries.mockResolvedValue({ data: mockData })
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const result = await store.fetchHoldEntries()
 
       expect(result.success).toBe(true)
@@ -262,7 +262,7 @@ describe('KPI Store', () => {
         })
       )
 
-      const store = useKPIStore()
+      const store = useProductionDataStore()
       const fetchPromise = store.fetchProductionEntries()
 
       expect(store.loading).toBe(true)

@@ -36,6 +36,7 @@ env/
 
 # Database
 *.db
+*.db.invalid
 *.sqlite
 *.sqlite3
 
@@ -57,6 +58,12 @@ htmlcov/
 .pytest_cache/
 .tox/
 .hypothesis/
+**/coverage.xml
+
+# Test reports (generated)
+**/e2e-results*.json
+**/playwright-report-sqlite/
+**/test-results/
 
 # Build outputs
 dist/
@@ -123,3 +130,16 @@ frontend/e2e-results.json
 
 # Generated documentation reports
 docs/reports/
+
+# Spreadsheets
+*.xlsx
+
+# Audit working files
+_audit/
+
+# Task management
+.taskmaster/
+
+# Root-level artifacts
+package-lock.json
+reference_not_to_sync/

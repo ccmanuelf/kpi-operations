@@ -6,9 +6,55 @@ Get the platform running in 5 minutes!
 
 - Python 3.11+
 - Node.js 18+
-- MariaDB 10.11+
+- MariaDB 10.11+ (production) **OR** SQLite (demo/development — no install needed)
 
-## Step 1: Database Setup (2 minutes)
+---
+
+## Option A: SQLite Quick Start (Recommended for Development)
+
+No database installation required. SQLite is included with Python.
+
+### Step 1: Backend Setup
+
+```bash
+cd backend
+
+# Create virtual environment
+python3.11 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Initialize database and seed demo data
+python -c "from backend.database import engine, Base; Base.metadata.create_all(bind=engine)"
+PYTHONPATH=.. python -m backend.database.seed
+
+# Start backend
+PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Step 2: Frontend Setup
+
+Open a new terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Step 3: Login
+
+Open **http://localhost:3000** and login with `operator1` / `password123`.
+
+The SQLite database file is created at `database/kpi_platform.db`. Delete it and re-run the seed command to reset demo data at any time.
+
+---
+
+## Option B: MariaDB Setup (Production)
+
+### Step 1: Database Setup (2 minutes)
 
 ```bash
 # Create database and user
@@ -20,7 +66,7 @@ FLUSH PRIVILEGES;
 EOF
 
 # Load schema and seed data
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations
+cd .
 mysql -u kpi_user -p kpi_platform < database/schema.sql
 # Password: kpi_password_123
 
@@ -31,7 +77,7 @@ mysql -u kpi_user -p kpi_platform < database/seed_data.sql
 ## Step 2: Backend Setup (1 minute)
 
 ```bash
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations/backend
+cd ./backend
 
 # Create virtual environment
 python3.11 -m venv venv
@@ -45,7 +91,7 @@ cat > .env << 'EOF'
 DATABASE_URL=mysql+pymysql://kpi_user:kpi_password_123@localhost:3306/kpi_platform
 SECRET_KEY=dev-secret-key-change-in-production-min-32-chars-long
 DEBUG=True
-CORS_ORIGINS=http://localhost:5173
+CORS_ORIGINS=http://localhost:3000
 EOF
 
 # Start backend
@@ -59,7 +105,7 @@ Backend will start at: **http://localhost:8000**
 Open a new terminal:
 
 ```bash
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations/frontend
+cd frontend
 
 # Install dependencies
 npm install
@@ -68,11 +114,11 @@ npm install
 npm run dev
 ```
 
-Frontend will start at: **http://localhost:5173**
+Frontend will start at: **http://localhost:3000**
 
 ## Step 4: Login & Test
 
-1. Open browser: **http://localhost:5173**
+1. Open browser: **http://localhost:3000**
 2. Login with:
    - **Username**: `operator1`
    - **Password**: `password123`
@@ -235,4 +281,4 @@ For production setup, see `/docs/DEPLOYMENT.md` which includes:
 
 ---
 
-**Ready to go!** Login at http://localhost:5173 with `operator1` / `password123`
+**Ready to go!** Login at http://localhost:3000 with `operator1` / `password123`

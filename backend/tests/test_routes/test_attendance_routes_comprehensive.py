@@ -95,6 +95,7 @@ def attendance_setup(attendance_db):
     # Create shift
     shift = TestDataFactory.create_shift(
         db,
+        client_id=client.client_id,
         shift_name="Attendance Shift",
         start_time="06:00:00",
         end_time="14:00:00"

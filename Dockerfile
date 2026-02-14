@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for KPI Operations Platform
 # Stage 1: Build stage
-FROM python:3.11-slim as builder
+FROM python:3.11.11-slim-bookworm as builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir --user -r backend/requirements.txt
 
 # Stage 2: Production stage
-FROM python:3.11-slim as production
+FROM python:3.11.11-slim-bookworm as production
 
 WORKDIR /app
 

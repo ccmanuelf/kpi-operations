@@ -398,6 +398,7 @@ def perf_setup(perf_db):
     # Create product with known ideal cycle time
     product = TestDataFactory.create_product(
         db,
+        client_id=client.client_id,
         product_code="PERF-PROD-001",
         product_name="Performance Test Product",
         ideal_cycle_time=Decimal("0.10")  # 0.10 hours per unit = 10 units/hour
@@ -406,6 +407,7 @@ def perf_setup(perf_db):
     # Create shift
     shift = TestDataFactory.create_shift(
         db,
+        client_id=client.client_id,
         shift_name="Performance Shift",
         start_time="06:00:00",
         end_time="14:00:00"
@@ -972,6 +974,7 @@ class TestPerformanceWithInference:
 
         # Create product without ideal cycle time
         product_no_ict = Product(
+            client_id=client.client_id,
             product_code="NO-ICT-001",
             product_name="No Ideal Cycle Time Product",
             ideal_cycle_time=None  # No ideal cycle time set

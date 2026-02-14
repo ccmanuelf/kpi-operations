@@ -234,7 +234,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useKPIStore } from '@/stores/kpiStore'
+import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
 import api from '@/services/api'
 import EmailReportsDialog from '@/components/dialogs/EmailReportsDialog.vue'
@@ -243,7 +243,7 @@ import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import CardSkeleton from '@/components/ui/CardSkeleton.vue'
 
 const { t } = useI18n()
-const kpiStore = useKPIStore()
+const kpiStore = useProductionDataStore()
 
 // Loading states
 const initialLoading = ref(true)

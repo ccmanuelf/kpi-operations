@@ -180,24 +180,26 @@ class TestDataFactory:
         return assignment
 
     # ========================================================================
-    # Production Setup (Product, Shift) - NOT multi-tenant
+    # Production Setup (Product, Shift) - Multi-tenant (client_id required)
     # ========================================================================
 
     @staticmethod
     def create_product(
         db: Session,
+        client_id: str,
         product_code: Optional[str] = None,
         product_name: Optional[str] = None,
         ideal_cycle_time: Optional[Decimal] = Decimal("0.15"),
         **kwargs
     ) -> Product:
-        """Create a test product (Products are NOT multi-tenant)"""
+        """Create a test product scoped to a client"""
         if product_code is None:
             product_code = TestDataFactory._next_id("PROD")
         if product_name is None:
             product_name = f"Test Product {product_code}"
 
         product = Product(
+            client_id=client_id,
             product_code=product_code,
             product_name=product_name,
             ideal_cycle_time=ideal_cycle_time,
@@ -212,12 +214,13 @@ class TestDataFactory:
     @staticmethod
     def create_shift(
         db: Session,
+        client_id: str,
         shift_name: Optional[str] = None,
         start_time: str = "06:00:00",
         end_time: str = "14:00:00",
         **kwargs
     ) -> Shift:
-        """Create a test shift (Shifts are NOT multi-tenant)"""
+        """Create a test shift scoped to a client"""
         if shift_name is None:
             shift_name = f"Shift {TestDataFactory._next_int('shift')}"
 
@@ -226,6 +229,7 @@ class TestDataFactory:
         end = time.fromisoformat(end_time)
 
         shift = Shift(
+            client_id=client_id,
             shift_name=shift_name,
             start_time=start,
             end_time=end,
@@ -683,17 +687,17 @@ class TestDataFactory:
         if not client:
             client = cls.create_client(db, client_id=client_id)
 
-        # Create or get product
+        # Create or get product for this client
         from backend.schemas import Product
-        product = db.query(Product).first()
+        product = db.query(Product).filter(Product.client_id == client_id).first()
         if not product:
-            product = cls.create_product(db)
+            product = cls.create_product(db, client_id=client_id)
 
-        # Create or get shift
+        # Create or get shift for this client
         from backend.schemas import Shift
-        shift = db.query(Shift).first()
+        shift = db.query(Shift).filter(Shift.client_id == client_id).first()
         if not shift:
-            shift = cls.create_shift(db)
+            shift = cls.create_shift(db, client_id=client_id)
 
         # Create or get user
         from backend.schemas import User

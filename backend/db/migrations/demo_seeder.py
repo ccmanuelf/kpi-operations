@@ -240,9 +240,10 @@ class DemoDataSeeder:
         return len(employees)
 
     def _seed_products(self) -> int:
-        """Seed demo products.
+        """Seed demo products (per-client).
 
         Creates products that link to Capacity Planning BOMs and styles.
+        Each client gets the same product catalog with their own product IDs.
         These product codes are used across:
         - Work Orders (style_model)
         - Capacity Orders (style_code)
@@ -250,6 +251,7 @@ class DemoDataSeeder:
         - Production Standards (style_code)
         """
         from backend.schemas.product import Product
+        from backend.schemas.client import Client
 
         # Products with meaningful names that match capacity planning styles
         products_data = [
@@ -260,45 +262,48 @@ class DemoDataSeeder:
             {"code": "POLO-002", "name": "Performance Polo", "uom": "pieces", "cycle_time": 0.25},
         ]
 
-        products = [
-            Product(
-                product_code=p["code"],
-                product_name=p["name"],
-                description=f"Standard {p['name']} for manufacturing operations",
-                unit_of_measure=p["uom"],
-                ideal_cycle_time=Decimal(str(p["cycle_time"])),
-                is_active=True,
-            )
-            for p in products_data
-        ]
+        clients = self.session.query(Client).all()
+        products = []
+        for client in clients:
+            for p in products_data:
+                products.append(Product(
+                    client_id=client.client_id,
+                    product_code=p["code"],
+                    product_name=p["name"],
+                    description=f"Standard {p['name']} for manufacturing operations",
+                    unit_of_measure=p["uom"],
+                    ideal_cycle_time=Decimal(str(p["cycle_time"])),
+                    is_active=True,
+                ))
         self.session.add_all(products)
         return len(products)
 
     def _seed_shifts(self) -> int:
-        """Seed demo shifts."""
+        """Seed demo shifts (per-client).
+
+        Each client gets the same 3 shifts with their own shift IDs.
+        """
         from backend.schemas.shift import Shift
+        from backend.schemas.client import Client
         from datetime import time as dt_time
 
-        shifts = [
-            Shift(
-                shift_name="Day Shift",
-                start_time=dt_time(6, 0, 0),
-                end_time=dt_time(14, 0, 0),
-                is_active=True,
-            ),
-            Shift(
-                shift_name="Swing Shift",
-                start_time=dt_time(14, 0, 0),
-                end_time=dt_time(22, 0, 0),
-                is_active=True,
-            ),
-            Shift(
-                shift_name="Night Shift",
-                start_time=dt_time(22, 0, 0),
-                end_time=dt_time(6, 0, 0),
-                is_active=True,
-            ),
+        shifts_data = [
+            ("Day Shift", dt_time(6, 0, 0), dt_time(14, 0, 0)),
+            ("Swing Shift", dt_time(14, 0, 0), dt_time(22, 0, 0)),
+            ("Night Shift", dt_time(22, 0, 0), dt_time(6, 0, 0)),
         ]
+
+        clients = self.session.query(Client).all()
+        shifts = []
+        for client in clients:
+            for name, start, end in shifts_data:
+                shifts.append(Shift(
+                    client_id=client.client_id,
+                    shift_name=name,
+                    start_time=start,
+                    end_time=end,
+                    is_active=True,
+                ))
         self.session.add_all(shifts)
         return len(shifts)
 
@@ -389,31 +394,41 @@ class DemoDataSeeder:
 
         Creates production records that link to:
         - Work Orders (WO-0001, WO-0002, WO-0003)
-        - Products (via product_id matching)
-        - Shifts (by shift_id integer)
+        - Products (via product_id matching per client)
+        - Shifts (by shift_id per client)
 
         This data appears in KPI dashboards and feeds capacity analysis.
         """
         from backend.schemas.production_entry import ProductionEntry
+        from backend.schemas.product import Product
+        from backend.schemas.shift import Shift
+
+        # Look up DEMO-001's products and shifts by code/name
+        client_id = "DEMO-001"
+        client_products = self.session.query(Product).filter(Product.client_id == client_id).all()
+        client_shifts = self.session.query(Shift).filter(Shift.client_id == client_id).all()
+
+        # Build lookup maps
+        product_by_code = {p.product_code: p.product_id for p in client_products}
+        shift_by_idx = {i: s.shift_id for i, s in enumerate(client_shifts)}
+
+        wo_product_map = {
+            "WO-0001": product_by_code.get("TSHIRT-001", client_products[0].product_id if client_products else 1),
+            "WO-0002": product_by_code.get("POLO-001", client_products[1].product_id if len(client_products) > 1 else 1),
+            "WO-0003": product_by_code.get("JACKET-001", client_products[2].product_id if len(client_products) > 2 else 1),
+        }
 
         entries = []
         today = datetime.now()
 
-        # Map work orders to product IDs (products are created first with auto-increment IDs)
-        # Product 1: TSHIRT-001, Product 2: POLO-001, Product 3: JACKET-001
-        wo_product_map = {
-            "WO-0001": 1,  # TSHIRT-001
-            "WO-0002": 2,  # POLO-001
-            "WO-0003": 3,  # JACKET-001
-        }
-
         entry_num = 1
         for day_offset in range(7):
             entry_date = today - timedelta(days=day_offset)
-            for shift_num in range(1, 4):
+            for shift_idx in range(3):
+                shift_id = shift_by_idx.get(shift_idx, client_shifts[0].shift_id if client_shifts else 1)
                 wo_idx = (day_offset % 3) + 1
                 wo_id = f"WO-000{wo_idx}"
-                product_id = wo_product_map.get(wo_id, 1)
+                product_id = wo_product_map.get(wo_id, client_products[0].product_id if client_products else 1)
                 units = random.randint(50, 200)
                 defects = random.randint(0, 10)
                 scrap = random.randint(0, 5)
@@ -421,9 +436,9 @@ class DemoDataSeeder:
 
                 entry = ProductionEntry(
                     production_entry_id=f"PE-{entry_date.strftime('%Y%m%d')}-{entry_num:03d}",
-                    client_id="DEMO-001",
+                    client_id=client_id,
                     product_id=product_id,
-                    shift_id=shift_num,
+                    shift_id=shift_id,
                     work_order_id=wo_id,
                     job_id=f"JOB-000{wo_idx}-01",
                     production_date=entry_date,
@@ -481,6 +496,15 @@ class DemoDataSeeder:
         Creates attendance records for Absenteeism KPI calculation.
         """
         from backend.schemas.attendance_entry import AttendanceEntry, AbsenceType
+        from backend.schemas.shift import Shift
+
+        # Look up DEMO-001's Day Shift
+        client_id = "DEMO-001"
+        day_shift = self.session.query(Shift).filter(
+            Shift.client_id == client_id,
+            Shift.shift_name == "Day Shift"
+        ).first()
+        day_shift_id = day_shift.shift_id if day_shift else 1
 
         entries = []
         today = datetime.now()
@@ -495,9 +519,9 @@ class DemoDataSeeder:
 
                 entry = AttendanceEntry(
                     attendance_entry_id=f"ATT-{entry_date.strftime('%Y%m%d')}-{entry_num:03d}",
-                    client_id="DEMO-001",
+                    client_id=client_id,
                     employee_id=emp_id,  # Integer ID from auto-increment
-                    shift_id=1,  # Day Shift
+                    shift_id=day_shift_id,
                     shift_date=entry_date,
                     scheduled_hours=Decimal("8.0"),
                     actual_hours=Decimal(str(actual_hours)),
@@ -685,6 +709,16 @@ class DemoDataSeeder:
         Creates records of floating pool employees covering for absent employees.
         """
         from backend.schemas.coverage_entry import CoverageEntry
+        from backend.schemas.shift import Shift
+
+        # Look up DEMO-001's shift IDs
+        client_id = "DEMO-001"
+        client_shift_ids = [
+            s.shift_id for s in
+            self.session.query(Shift).filter(Shift.client_id == client_id).all()
+        ]
+        if not client_shift_ids:
+            client_shift_ids = [1, 2, 3]  # Fallback
 
         entries = []
         today = datetime.now()
@@ -705,11 +739,11 @@ class DemoDataSeeder:
             if random.random() > 0.5:
                 entry = CoverageEntry(
                     coverage_entry_id=f"COV-{entry_date.strftime('%Y%m%d')}-{random.randint(1, 99):02d}",
-                    client_id="DEMO-001",
+                    client_id=client_id,
                     floating_employee_id=random.randint(8, 10),  # Floating pool employees
                     covered_employee_id=random.randint(1, 5),    # Regular employees
                     shift_date=entry_date,
-                    shift_id=random.randint(1, 3),
+                    shift_id=random.choice(client_shift_ids),
                     coverage_start_time=entry_date.replace(hour=6, minute=0),
                     coverage_end_time=entry_date.replace(hour=14, minute=0),
                     coverage_hours=8,

@@ -221,7 +221,8 @@ def get_latest_stock(
 def get_available_stock(
     db: Session,
     client_id: str,
-    item_code: str
+    item_code: str,
+    as_of_date: Optional[date] = None
 ) -> float:
     """
     Get current available stock for an item.
@@ -232,14 +233,56 @@ def get_available_stock(
         db: Database session
         client_id: Client identifier for multi-tenant isolation
         item_code: Item code
+        as_of_date: Optional date filter (uses latest if None)
 
     Returns:
         Available quantity or 0 if no snapshot exists
     """
-    snapshot = get_latest_stock(db, client_id, item_code)
+    if as_of_date:
+        ensure_client_id(client_id, "available stock query")
+        snapshot = db.query(CapacityStockSnapshot).filter(
+            and_(
+                CapacityStockSnapshot.client_id == client_id,
+                CapacityStockSnapshot.item_code == item_code,
+                CapacityStockSnapshot.snapshot_date <= as_of_date
+            )
+        ).order_by(desc(CapacityStockSnapshot.snapshot_date)).first()
+    else:
+        snapshot = get_latest_stock(db, client_id, item_code)
     if not snapshot:
         return 0.0
     return snapshot.calculate_available()
+
+
+def get_shortage_items(
+    db: Session,
+    client_id: str,
+    snapshot_date: Optional[date] = None
+) -> List[CapacityStockSnapshot]:
+    """
+    Get items with zero or negative available quantity (shortages).
+
+    Args:
+        db: Database session
+        client_id: Client identifier for multi-tenant isolation
+        snapshot_date: Optional date filter
+
+    Returns:
+        List of CapacityStockSnapshot entries with shortages
+    """
+    ensure_client_id(client_id, "shortage items query")
+
+    filters = [
+        CapacityStockSnapshot.client_id == client_id,
+        CapacityStockSnapshot.available_quantity <= Decimal("0")
+    ]
+
+    if snapshot_date:
+        filters.append(CapacityStockSnapshot.snapshot_date == snapshot_date)
+
+    return db.query(CapacityStockSnapshot).filter(
+        and_(*filters)
+    ).order_by(CapacityStockSnapshot.available_quantity).all()
 
 
 def get_stock_by_date(

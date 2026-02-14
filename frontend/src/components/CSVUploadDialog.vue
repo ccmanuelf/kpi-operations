@@ -214,11 +214,11 @@
 import { ref, computed } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import * as Papa from 'papaparse'
-import { useKPIStore } from '@/stores/kpiStore'
+import { useProductionDataStore } from '@/stores/productionDataStore'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
 
-const kpiStore = useKPIStore()
+const kpiStore = useProductionDataStore()
 
 const dialog = ref(false)
 const step = ref(1)

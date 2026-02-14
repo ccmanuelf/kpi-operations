@@ -88,6 +88,7 @@ def reports_setup(reports_db):
     # Create product
     product = TestDataFactory.create_product(
         db,
+        client_id=client.client_id,
         product_code="RPT-PROD-001",
         product_name="Reports Test Product",
         ideal_cycle_time=Decimal("0.10")
@@ -96,6 +97,7 @@ def reports_setup(reports_db):
     # Create shift
     shift = TestDataFactory.create_shift(
         db,
+        client_id=client.client_id,
         shift_name="Reports Test Shift",
         start_time="06:00:00",
         end_time="14:00:00"
