@@ -15,9 +15,6 @@ import { test, expect, Page } from '@playwright/test';
 // Increase default timeout for all tests
 test.setTimeout(120000);
 
-// Run tests serially to avoid login rate limiting
-test.describe.configure({ mode: 'serial' });
-
 // Helper function to wait for backend to be ready
 async function waitForBackend(page: Page, timeout = 15000) {
   const startTime = Date.now();
@@ -112,17 +109,16 @@ async function login(page: Page, maxRetries = 3) {
 
 // Helper to navigate to Capacity Planning page
 async function navigateToCapacityPlanning(page: Page) {
-  // Wait for the navigation item to be clickable
-  const navItem = page.locator('.v-navigation-drawer').locator('text=Capacity Planning');
-  await navItem.waitFor({ state: 'visible', timeout: 15000 });
+  // Scroll nav item into view and click — it's near the bottom of a long drawer
+  const navItem = page.locator('.v-navigation-drawer a[href="/capacity-planning"]');
+  await navItem.scrollIntoViewIfNeeded();
   await navItem.click();
 
-  // Wait for Vue Router to process the SPA navigation and mount the component
-  await page.waitForURL('**/capacity-planning', { timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(1000);
+  // Wait for URL to confirm Vue Router navigation completed
+  await page.waitForURL('**/capacity-planning', { timeout: 15000 });
 
-  // Wait for the page header to confirm navigation
-  await expect(page.locator('text=Capacity Planning').first()).toBeVisible({ timeout: 30000 });
+  // Wait for the page-specific header (not the nav item text)
+  await page.waitForSelector('.v-card-title:has-text("Capacity Planning")', { state: 'visible', timeout: 30000 });
 }
 
 // Helper to wait for tab content to load

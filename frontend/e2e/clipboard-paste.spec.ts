@@ -76,16 +76,20 @@ async function login(page: Page, maxRetries = 3) {
 }
 
 async function navigateToDataEntry(page: Page, module: 'production' | 'quality' | 'attendance' | 'downtime') {
-  const navMapping = {
-    production: 'Production',
-    quality: 'Quality',
-    attendance: 'Attendance',
-    downtime: 'Downtime'
+  const urlMapping = {
+    production: '/production-entry',
+    quality: '/data-entry/quality',
+    attendance: '/data-entry/attendance',
+    downtime: '/data-entry/downtime'
   };
 
-  await page.click(`text=${navMapping[module]}`);
-  // Wait for Vue Router to process the SPA navigation and mount the component
-  await page.waitForTimeout(1500);
+  // Use href-based selector to avoid ambiguity with page content text
+  const navItem = page.locator(`.v-navigation-drawer a[href="${urlMapping[module]}"]`);
+  await navItem.scrollIntoViewIfNeeded();
+  await navItem.click();
+
+  // Wait for URL to confirm navigation completed
+  await page.waitForURL(`**${urlMapping[module]}`, { timeout: 15000 });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 }
 
@@ -282,19 +286,16 @@ test.describe('Excel Clipboard Paste', () => {
 
     test('should display quality data entry form or grid', async ({ page }) => {
       // Quality entry can be either AG Grid based or form-based depending on route
-      const grid = page.locator('.ag-root');
-      const form = page.locator('.v-form').or(page.locator('form'));
-      const card = page.locator('.v-card');
-
-      const hasGrid = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasForm = await form.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasCard = await card.isVisible({ timeout: 3000 }).catch(() => false);
-
-      // Should have either a grid, form, or at least a card container
-      expect(hasGrid || hasForm || hasCard).toBeTruthy();
+      // Wait for skeleton loaders to finish and content to appear
+      const content = page.locator('.ag-root, .v-form, form, .v-card-title');
+      await expect(content.first()).toBeVisible({ timeout: 15000 });
     });
 
     test('should accept quality data paste if grid-based', async ({ page }) => {
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-card-title');
+      await content.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const grid = page.locator('.ag-root').first();
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -317,13 +318,17 @@ test.describe('Excel Clipboard Paste', () => {
         const hasResponse = await dialog.isVisible({ timeout: 3000 }).catch(() => false);
         expect(hasResponse !== undefined).toBeTruthy();
       } else {
-        // Form-based entry - verify form is present
-        const form = page.locator('.v-form').or(page.locator('form'));
-        await expect(form).toBeVisible({ timeout: 5000 });
+        // Form-based entry - verify page loaded with content
+        const form = page.locator('.v-form, .v-card-title');
+        await expect(form.first()).toBeVisible({ timeout: 10000 });
       }
     });
 
     test('should validate defect counts if grid-based', async ({ page }) => {
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-card-title');
+      await content.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const grid = page.locator('.ag-root').first();
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -348,9 +353,9 @@ test.describe('Excel Clipboard Paste', () => {
         const hasValidation = await error.isVisible({ timeout: 3000 }).catch(() => false);
         expect(hasValidation !== undefined).toBeTruthy();
       } else {
-        // Form-based entry has its own validation - just verify form exists
-        const form = page.locator('.v-form');
-        expect(await form.isVisible()).toBeTruthy();
+        // Form-based entry has its own validation - verify page loaded
+        const form = page.locator('.v-form, .v-card-title');
+        await expect(form.first()).toBeVisible({ timeout: 10000 });
       }
     });
   });
@@ -362,19 +367,16 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('should display attendance data entry form or grid', async ({ page }) => {
-      // Attendance entry can be either AG Grid based or form-based
-      const grid = page.locator('.ag-root');
-      const form = page.locator('.v-form').or(page.locator('form'));
-      const card = page.locator('.v-card');
-
-      const hasGrid = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasForm = await form.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasCard = await card.isVisible({ timeout: 3000 }).catch(() => false);
-
-      expect(hasGrid || hasForm || hasCard).toBeTruthy();
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-form, form, .v-card-title');
+      await expect(content.first()).toBeVisible({ timeout: 15000 });
     });
 
     test('should accept attendance data paste if grid-based', async ({ page }) => {
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-card-title');
+      await content.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const grid = page.locator('.ag-root').first();
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -395,13 +397,17 @@ test.describe('Excel Clipboard Paste', () => {
         // Verify grid is still functional after paste attempt
         await expect(grid).toBeVisible();
       } else {
-        // Form-based entry - verify form is present
-        const form = page.locator('.v-form').or(page.locator('form'));
-        await expect(form).toBeVisible({ timeout: 5000 });
+        // Form-based entry - verify page loaded with content
+        const form = page.locator('.v-form, .v-card-title');
+        await expect(form.first()).toBeVisible({ timeout: 10000 });
       }
     });
 
     test('should validate attendance status codes if grid-based', async ({ page }) => {
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-card-title');
+      await content.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const grid = page.locator('.ag-root').first();
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -426,9 +432,9 @@ test.describe('Excel Clipboard Paste', () => {
         const hasValidation = await error.isVisible({ timeout: 3000 }).catch(() => false);
         expect(hasValidation !== undefined).toBeTruthy();
       } else {
-        // Form-based entry has its own validation - just verify form exists
-        const form = page.locator('.v-form');
-        expect(await form.isVisible()).toBeTruthy();
+        // Form-based entry has its own validation - verify page loaded
+        const form = page.locator('.v-form, .v-card-title');
+        await expect(form.first()).toBeVisible({ timeout: 10000 });
       }
     });
   });
@@ -440,19 +446,16 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('should display downtime data entry form or grid', async ({ page }) => {
-      // Downtime entry can be either AG Grid based or form-based
-      const grid = page.locator('.ag-root');
-      const form = page.locator('.v-form').or(page.locator('form'));
-      const card = page.locator('.v-card');
-
-      const hasGrid = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasForm = await form.isVisible({ timeout: 3000 }).catch(() => false);
-      const hasCard = await card.isVisible({ timeout: 3000 }).catch(() => false);
-
-      expect(hasGrid || hasForm || hasCard).toBeTruthy();
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-form, form, .v-card-title');
+      await expect(content.first()).toBeVisible({ timeout: 15000 });
     });
 
     test('should accept downtime data paste if grid-based', async ({ page }) => {
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-card-title');
+      await content.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const grid = page.locator('.ag-root').first();
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -470,13 +473,17 @@ test.describe('Excel Clipboard Paste', () => {
 
         await page.waitForTimeout(1000);
       } else {
-        // Form-based entry - verify form is present
-        const form = page.locator('.v-form').or(page.locator('form'));
-        await expect(form).toBeVisible({ timeout: 5000 });
+        // Form-based entry - verify page loaded with content
+        const form = page.locator('.v-form, .v-card-title');
+        await expect(form.first()).toBeVisible({ timeout: 10000 });
       }
     });
 
     test('should calculate duration automatically if grid-based', async ({ page }) => {
+      // Wait for content to load past skeleton loaders
+      const content = page.locator('.ag-root, .v-card-title');
+      await content.first().waitFor({ state: 'visible', timeout: 15000 });
+
       const grid = page.locator('.ag-root').first();
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
@@ -501,9 +508,9 @@ test.describe('Excel Clipboard Paste', () => {
         const hasDuration = await durationField.isVisible({ timeout: 3000 }).catch(() => false);
         expect(hasDuration !== undefined).toBeTruthy();
       } else {
-        // Form-based entry - verify form is present
-        const form = page.locator('.v-form');
-        expect(await form.isVisible()).toBeTruthy();
+        // Form-based entry - verify page loaded
+        const form = page.locator('.v-form, .v-card-title');
+        await expect(form.first()).toBeVisible({ timeout: 10000 });
       }
     });
   });

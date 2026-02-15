@@ -116,14 +116,13 @@ async function navigateToSimulationV2(page: Page, clearSampleData = true) {
     });
   }
 
-  // Wait for the navigation item to be clickable
-  const navItem = page.locator('text=Simulation v2');
-  await navItem.waitFor({ state: 'visible', timeout: 10000 });
+  // Scroll nav item into view and click — it's near the bottom of a long drawer
+  const navItem = page.locator('.v-navigation-drawer a[href="/simulation-v2"]');
+  await navItem.scrollIntoViewIfNeeded();
   await navItem.click();
 
-  // Wait for Vue Router to process the SPA navigation and mount the component
-  await page.waitForURL('**/simulation-v2', { timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(1000);
+  // Wait for URL to confirm Vue Router navigation completed
+  await page.waitForURL('**/simulation-v2', { timeout: 15000 });
 
   // Wait for the page header to confirm navigation
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
@@ -136,14 +135,13 @@ async function navigateToSimulationV2WithSampleData(page: Page) {
     localStorage.removeItem('simulation_v2_visited');
   });
 
-  // Navigate to the simulation page
-  const navItem = page.locator('text=Simulation v2');
-  await navItem.waitFor({ state: 'visible', timeout: 10000 });
+  // Navigate to the simulation page — scroll into view, it's near bottom of drawer
+  const navItem = page.locator('.v-navigation-drawer a[href="/simulation-v2"]');
+  await navItem.scrollIntoViewIfNeeded();
   await navItem.click();
 
-  // Wait for Vue Router to process the SPA navigation and mount the component
-  await page.waitForURL('**/simulation-v2', { timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(1000);
+  // Wait for URL to confirm Vue Router navigation completed
+  await page.waitForURL('**/simulation-v2', { timeout: 15000 });
 
   // Wait for the page header to confirm navigation
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
