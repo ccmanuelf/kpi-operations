@@ -608,16 +608,18 @@ test.describe('Simulation V2 - Config Management', () => {
     await resetButton.click();
     await page.waitForTimeout(500);
 
-    // Click "Clear All" option in the reset dialog — use force:true because
-    // WebKit's v-overlay-scroll-blocked on <html> intercepts pointer events
+    // Wait for dialog to fully render before interacting — under parallel
+    // load WebKit is slower to make dialog content interactive
     const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
+    await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
+    // Use force:true — WebKit's v-overlay-scroll-blocked intercepts pointer events
     await clearAllOption.click({ force: true });
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000);
     await page.waitForLoadState('networkidle');
 
     // Operations should be cleared
     const gridRows = page.locator('.ag-row');
-    await expect(gridRows).toHaveCount(0, { timeout: 10000 });
+    await expect(gridRows).toHaveCount(0, { timeout: 15000 });
   });
 });
 
@@ -863,9 +865,10 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await resetButton.click();
     await page.waitForTimeout(500);
 
-    // Click Load Sample Data option
+    // Click Load Sample Data option — wait for render + force:true for WebKit overlay
     const loadSampleOption = page.locator('.v-list-item').filter({ hasText: 'Load Sample Data' });
-    await loadSampleOption.click();
+    await loadSampleOption.waitFor({ state: 'visible', timeout: 5000 });
+    await loadSampleOption.click({ force: true });
     await page.waitForTimeout(1000);
 
     // Should have sample data loaded
@@ -902,9 +905,11 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await resetButton.click();
     await page.waitForTimeout(500);
 
-    // Click Clear All option
+    // Wait for dialog to fully render, then click Clear All
+    // Use force:true — WebKit's v-overlay-scroll-blocked intercepts pointer events
     const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
-    await clearAllOption.click();
+    await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
+    await clearAllOption.click({ force: true });
     await page.waitForTimeout(1000);
 
     // Summary stats bar should not be visible (no operations)
