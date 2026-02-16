@@ -592,8 +592,9 @@ test.describe('Simulation V2 - Config Management', () => {
     await expect(page.locator('text=Clear All')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('text=Load Sample Data')).toBeVisible({ timeout: 5000 });
 
-    // Cancel
-    await page.locator('.v-dialog button:has-text("Cancel")').click();
+    // Cancel — use Escape key because WebKit's v-overlay-scroll-blocked
+    // on <html> intercepts pointer events on dialog buttons
+    await page.keyboard.press('Escape');
   });
 
   test('should reset all data after confirmation', async ({ page }) => {
@@ -607,9 +608,10 @@ test.describe('Simulation V2 - Config Management', () => {
     await resetButton.click();
     await page.waitForTimeout(500);
 
-    // Click "Clear All" option in the reset dialog (now uses list items)
+    // Click "Clear All" option in the reset dialog — use force:true because
+    // WebKit's v-overlay-scroll-blocked on <html> intercepts pointer events
     const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
-    await clearAllOption.click();
+    await clearAllOption.click({ force: true });
     await page.waitForTimeout(500);
     await page.waitForLoadState('networkidle');
 
@@ -846,8 +848,9 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await expect(dialog.locator('.v-list-item:has-text("Clear All")')).toBeVisible({ timeout: 5000 });
     await expect(dialog.locator('.v-list-item:has-text("Load Sample Data")')).toBeVisible({ timeout: 5000 });
 
-    // Close dialog
-    await dialog.locator('button:has-text("Cancel")').click();
+    // Close dialog — use Escape key instead of clicking Cancel because
+    // WebKit's v-overlay-scroll-blocked on <html> intercepts pointer events
+    await page.keyboard.press('Escape');
   });
 
   test('should load sample data when clicking Load Sample Data in reset dialog', async ({ page }) => {
