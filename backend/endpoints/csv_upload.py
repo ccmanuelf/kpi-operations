@@ -46,6 +46,16 @@ from backend.models.floating_pool import FloatingPoolCreate
 
 router = APIRouter()
 
+_CSV_INJECTION_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+_MAX_CSV_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+def sanitize_csv_value(value: str) -> str:
+    """Strip CSV injection prefixes (=, +, -, @, \\t, \\r) from string values"""
+    if isinstance(value, str) and value and value[0] in _CSV_INJECTION_PREFIXES:
+        return "'" + value
+    return value
+
 
 # ==================== 1. DOWNTIME EVENTS CSV UPLOAD ====================
 @router.post("/api/downtime/upload/csv", response_model=CSVUploadResponse)
@@ -74,6 +84,8 @@ async def upload_downtime_csv(
 
     # Read CSV
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -88,7 +100,7 @@ async def upload_downtime_csv(
 
         try:
             # SECURITY: Validate client_id - REQUIRED
-            client_id = row.get("client_id")
+            client_id = sanitize_csv_value(row.get("client_id", ""))
             if not client_id:
                 raise ValueError("client_id is required")
             verify_client_access(current_user, client_id)
@@ -102,19 +114,19 @@ async def upload_downtime_csv(
             # Build data dict for legacy CSV mapping
             csv_data = {
                 "client_id": client_id,
-                "work_order_number": row.get("work_order_number") or row.get("work_order_id"),
+                "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
                 "shift_date": shift_date,
-                "downtime_category": row.get("downtime_category"),
-                "downtime_reason": row.get("downtime_reason"),
+                "downtime_category": sanitize_csv_value(row.get("downtime_category") or ""),
+                "downtime_reason": sanitize_csv_value(row.get("downtime_reason") or ""),
                 "duration_hours": row.get("duration_hours"),
                 "downtime_duration_minutes": (
                     int(row["downtime_duration_minutes"]) if row.get("downtime_duration_minutes") else None
                 ),
-                "machine_id": row.get("machine_id"),
-                "equipment_code": row.get("equipment_code"),
-                "root_cause_category": row.get("root_cause_category"),
-                "corrective_action": row.get("corrective_action"),
-                "notes": row.get("notes"),
+                "machine_id": sanitize_csv_value(row.get("machine_id") or ""),
+                "equipment_code": sanitize_csv_value(row.get("equipment_code") or ""),
+                "root_cause_category": sanitize_csv_value(row.get("root_cause_category") or ""),
+                "corrective_action": sanitize_csv_value(row.get("corrective_action") or ""),
+                "notes": sanitize_csv_value(row.get("notes") or ""),
             }
 
             # Use the from_legacy_csv method for proper field mapping
@@ -160,6 +172,8 @@ async def upload_holds_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -174,7 +188,7 @@ async def upload_holds_csv(
 
         try:
             # SECURITY: Validate client_id - REQUIRED
-            client_id = row.get("client_id")
+            client_id = sanitize_csv_value(row.get("client_id", ""))
             if not client_id:
                 raise ValueError("client_id is required")
             verify_client_access(current_user, client_id)
@@ -192,15 +206,15 @@ async def upload_holds_csv(
             # Build data dict for legacy CSV mapping
             csv_data = {
                 "client_id": client_id,
-                "work_order_number": row.get("work_order_number") or row.get("work_order_id"),
-                "job_id": row.get("job_id"),
+                "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
+                "job_id": sanitize_csv_value(row.get("job_id") or ""),
                 "hold_date": hold_date,
-                "hold_category": row.get("hold_category") or row.get("hold_reason_category"),
-                "hold_reason": row.get("hold_reason"),
-                "hold_reason_description": row.get("hold_reason_description"),
-                "quality_issue_type": row.get("quality_issue_type"),
+                "hold_category": sanitize_csv_value(row.get("hold_category") or row.get("hold_reason_category") or ""),
+                "hold_reason": sanitize_csv_value(row.get("hold_reason") or ""),
+                "hold_reason_description": sanitize_csv_value(row.get("hold_reason_description") or ""),
+                "quality_issue_type": sanitize_csv_value(row.get("quality_issue_type") or ""),
                 "expected_resolution_date": expected_date,
-                "notes": row.get("notes"),
+                "notes": sanitize_csv_value(row.get("notes") or ""),
             }
 
             # Use the from_legacy_csv method for proper field mapping
@@ -253,6 +267,8 @@ async def upload_attendance_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -267,7 +283,7 @@ async def upload_attendance_csv(
 
         try:
             # SECURITY: Validate client_id - REQUIRED
-            client_id = row.get("client_id")
+            client_id = sanitize_csv_value(row.get("client_id", ""))
             if not client_id:
                 raise ValueError("client_id is required")
             verify_client_access(current_user, client_id)
@@ -284,13 +300,13 @@ async def upload_attendance_csv(
                 "employee_id": row.get("employee_id"),
                 "shift_date": shift_date,
                 "shift_id": row.get("shift_id"),
-                "status": row.get("status", "Present"),
+                "status": sanitize_csv_value(row.get("status", "Present")),
                 "scheduled_hours": row.get("scheduled_hours", 8),
                 "actual_hours_worked": row.get("actual_hours_worked") or row.get("actual_hours"),
                 "covered_by_employee_id": row.get("covered_by_employee_id"),
                 "coverage_confirmed": row.get("coverage_confirmed", 0),
-                "absence_reason": row.get("absence_reason"),
-                "notes": row.get("notes"),
+                "absence_reason": sanitize_csv_value(row.get("absence_reason") or ""),
+                "notes": sanitize_csv_value(row.get("notes") or ""),
             }
 
             # Use the from_legacy_csv method for proper field mapping
@@ -330,6 +346,8 @@ async def upload_coverage_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -348,7 +366,7 @@ async def upload_coverage_csv(
                 coverage_date=datetime.strptime(row["coverage_date"], "%Y-%m-%d").date(),
                 required_employees=int(row["required_employees"]),
                 actual_employees=int(row["actual_employees"]),
-                notes=row.get("notes"),
+                notes=sanitize_csv_value(row.get("notes") or ""),
             )
 
             created = create_shift_coverage(db, entry, current_user)
@@ -397,6 +415,8 @@ async def upload_quality_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -411,7 +431,7 @@ async def upload_quality_csv(
 
         try:
             # SECURITY: Validate client_id - REQUIRED
-            client_id = row.get("client_id")
+            client_id = sanitize_csv_value(row.get("client_id", ""))
             if not client_id:
                 raise ValueError("client_id is required")
             verify_client_access(current_user, client_id)
@@ -435,8 +455,8 @@ async def upload_quality_csv(
             # Build data dict for legacy CSV mapping
             csv_data = {
                 "client_id": client_id,
-                "work_order_number": row.get("work_order_number") or row.get("work_order_id"),
-                "job_id": row.get("job_id"),
+                "work_order_number": sanitize_csv_value(row.get("work_order_number") or row.get("work_order_id") or ""),
+                "job_id": sanitize_csv_value(row.get("job_id") or ""),
                 "shift_date": shift_date,
                 "inspection_date": inspection_date,
                 "units_inspected": units_inspected,
@@ -444,15 +464,15 @@ async def upload_quality_csv(
                 "defects_found": defects_found,
                 "units_defective": defects_found,
                 "total_defects_count": int(row.get("total_defects_count") or defects_found),
-                "inspection_stage": row.get("inspection_stage"),
-                "process_step": row.get("process_step"),
-                "operation_checked": row.get("operation_checked"),
+                "inspection_stage": sanitize_csv_value(row.get("inspection_stage") or ""),
+                "process_step": sanitize_csv_value(row.get("process_step") or ""),
+                "operation_checked": sanitize_csv_value(row.get("operation_checked") or ""),
                 "is_first_pass": int(row.get("is_first_pass", 1)),
                 "scrap_units": int(row.get("scrap_units") or row.get("units_scrapped") or 0),
                 "rework_units": int(row.get("rework_units") or row.get("units_reworked") or 0),
                 "units_requiring_repair": int(row.get("units_requiring_repair", 0)),
-                "inspection_method": row.get("inspection_method"),
-                "notes": row.get("notes"),
+                "inspection_method": sanitize_csv_value(row.get("inspection_method") or ""),
+                "notes": sanitize_csv_value(row.get("notes") or ""),
             }
 
             # Use the from_legacy_csv method for proper field mapping
@@ -496,6 +516,8 @@ async def upload_defects_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -510,18 +532,18 @@ async def upload_defects_csv(
 
         try:
             # Validate client access
-            verify_client_access(current_user, row["client_id_fk"])
+            verify_client_access(current_user, sanitize_csv_value(row["client_id_fk"]))
 
             entry = DefectDetailCreate(
-                defect_detail_id=row["defect_detail_id"],
-                quality_entry_id=row["quality_entry_id"],
-                client_id_fk=row["client_id_fk"],
-                defect_type=row["defect_type"],
-                defect_category=row.get("defect_category"),
+                defect_detail_id=sanitize_csv_value(row["defect_detail_id"]),
+                quality_entry_id=sanitize_csv_value(row["quality_entry_id"]),
+                client_id_fk=sanitize_csv_value(row["client_id_fk"]),
+                defect_type=sanitize_csv_value(row["defect_type"]),
+                defect_category=sanitize_csv_value(row.get("defect_category") or ""),
                 defect_count=int(row["defect_count"]),
-                severity=row.get("severity"),
-                location=row.get("location"),
-                description=row.get("description"),
+                severity=sanitize_csv_value(row.get("severity") or ""),
+                location=sanitize_csv_value(row.get("location") or ""),
+                description=sanitize_csv_value(row.get("description") or ""),
             )
 
             created = create_defect_detail(db, entry, current_user)
@@ -570,6 +592,8 @@ async def upload_work_orders_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -584,7 +608,7 @@ async def upload_work_orders_csv(
 
         try:
             # Validate client access
-            verify_client_access(current_user, row["client_id"])
+            verify_client_access(current_user, sanitize_csv_value(row["client_id"]))
 
             # Parse optional datetime fields
             def parse_datetime(date_str):
@@ -596,9 +620,9 @@ async def upload_work_orders_csv(
                     return datetime.strptime(date_str, "%Y-%m-%d")
 
             entry = WorkOrderCreate(
-                work_order_id=row["work_order_id"],
-                client_id=row["client_id"],
-                style_model=row["style_model"],
+                work_order_id=sanitize_csv_value(row["work_order_id"]),
+                client_id=sanitize_csv_value(row["client_id"]),
+                style_model=sanitize_csv_value(row["style_model"]),
                 planned_quantity=int(row["planned_quantity"]),
                 actual_quantity=int(row.get("actual_quantity", 0)),
                 planned_start_date=parse_datetime(row.get("planned_start_date")),
@@ -610,11 +634,11 @@ async def upload_work_orders_csv(
                 calculated_cycle_time=(
                     Decimal(row["calculated_cycle_time"]) if row.get("calculated_cycle_time") else None
                 ),
-                status=row.get("status", "ACTIVE"),
-                priority=row.get("priority"),
-                customer_po_number=row.get("customer_po_number"),
-                notes=row.get("notes"),
-                internal_notes=row.get("internal_notes"),
+                status=sanitize_csv_value(row.get("status", "ACTIVE")),
+                priority=sanitize_csv_value(row.get("priority") or ""),
+                customer_po_number=sanitize_csv_value(row.get("customer_po_number") or ""),
+                notes=sanitize_csv_value(row.get("notes") or ""),
+                internal_notes=sanitize_csv_value(row.get("internal_notes") or ""),
             )
 
             created = create_work_order(db, entry, current_user)
@@ -663,6 +687,8 @@ async def upload_jobs_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -677,7 +703,7 @@ async def upload_jobs_csv(
 
         try:
             # Validate client access
-            verify_client_access(current_user, row["client_id_fk"])
+            verify_client_access(current_user, sanitize_csv_value(row["client_id_fk"]))
 
             # Parse optional datetime
             completed_date = None
@@ -688,14 +714,14 @@ async def upload_jobs_csv(
                     completed_date = datetime.strptime(row["completed_date"], "%Y-%m-%d")
 
             entry = JobCreate(
-                job_id=row["job_id"],
-                work_order_id=row["work_order_id"],
-                client_id_fk=row["client_id_fk"],
-                operation_name=row["operation_name"],
-                operation_code=row.get("operation_code"),
+                job_id=sanitize_csv_value(row["job_id"]),
+                work_order_id=sanitize_csv_value(row["work_order_id"]),
+                client_id_fk=sanitize_csv_value(row["client_id_fk"]),
+                operation_name=sanitize_csv_value(row["operation_name"]),
+                operation_code=sanitize_csv_value(row.get("operation_code") or ""),
                 sequence_number=int(row["sequence_number"]),
-                part_number=row.get("part_number"),
-                part_description=row.get("part_description"),
+                part_number=sanitize_csv_value(row.get("part_number") or ""),
+                part_description=sanitize_csv_value(row.get("part_description") or ""),
                 planned_quantity=int(row["planned_quantity"]) if row.get("planned_quantity") else None,
                 completed_quantity=int(row.get("completed_quantity", 0)),
                 planned_hours=Decimal(row["planned_hours"]) if row.get("planned_hours") else None,
@@ -704,7 +730,7 @@ async def upload_jobs_csv(
                 completed_date=completed_date,
                 assigned_employee_id=int(row["assigned_employee_id"]) if row.get("assigned_employee_id") else None,
                 assigned_shift_id=int(row["assigned_shift_id"]) if row.get("assigned_shift_id") else None,
-                notes=row.get("notes"),
+                notes=sanitize_csv_value(row.get("notes") or ""),
             )
 
             created = create_job(db, entry, current_user)
@@ -752,6 +778,8 @@ async def upload_clients_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -766,17 +794,17 @@ async def upload_clients_csv(
 
         try:
             entry = ClientCreate(
-                client_id=row["client_id"],
-                client_name=row["client_name"],
-                client_contact=row.get("client_contact"),
-                client_email=row.get("client_email"),
-                client_phone=row.get("client_phone"),
-                location=row.get("location"),
-                supervisor_id=row.get("supervisor_id"),
-                planner_id=row.get("planner_id"),
-                engineering_id=row.get("engineering_id"),
-                client_type=row.get("client_type", "Piece Rate"),
-                timezone=row.get("timezone", "America/New_York"),
+                client_id=sanitize_csv_value(row["client_id"]),
+                client_name=sanitize_csv_value(row["client_name"]),
+                client_contact=sanitize_csv_value(row.get("client_contact") or ""),
+                client_email=sanitize_csv_value(row.get("client_email") or ""),
+                client_phone=sanitize_csv_value(row.get("client_phone") or ""),
+                location=sanitize_csv_value(row.get("location") or ""),
+                supervisor_id=sanitize_csv_value(row.get("supervisor_id") or ""),
+                planner_id=sanitize_csv_value(row.get("planner_id") or ""),
+                engineering_id=sanitize_csv_value(row.get("engineering_id") or ""),
+                client_type=sanitize_csv_value(row.get("client_type", "Piece Rate")),
+                timezone=sanitize_csv_value(row.get("timezone", "America/New_York")),
                 is_active=int(row.get("is_active", 1)),
             )
 
@@ -821,6 +849,8 @@ async def upload_employees_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -843,13 +873,13 @@ async def upload_employees_csv(
                     hire_date = datetime.strptime(row["hire_date"], "%Y-%m-%d")
 
             entry = EmployeeCreate(
-                employee_code=row["employee_code"],
-                employee_name=row["employee_name"],
-                client_id_assigned=row.get("client_id_assigned"),
+                employee_code=sanitize_csv_value(row["employee_code"]),
+                employee_name=sanitize_csv_value(row["employee_name"]),
+                client_id_assigned=sanitize_csv_value(row.get("client_id_assigned") or ""),
                 is_floating_pool=int(row.get("is_floating_pool", 0)),
-                contact_phone=row.get("contact_phone"),
-                contact_email=row.get("contact_email"),
-                position=row.get("position"),
+                contact_phone=sanitize_csv_value(row.get("contact_phone") or ""),
+                contact_email=sanitize_csv_value(row.get("contact_email") or ""),
+                position=sanitize_csv_value(row.get("position") or ""),
                 hire_date=hire_date,
             )
 
@@ -893,6 +923,8 @@ async def upload_floating_pool_csv(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     contents = await file.read()
+    if len(contents) > _MAX_CSV_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     csv_file = io.StringIO(contents.decode("utf-8"))
     csv_reader = csv.DictReader(csv_file)
 
@@ -919,8 +951,8 @@ async def upload_floating_pool_csv(
                 employee_id=int(row["employee_id"]),
                 available_from=parse_datetime(row.get("available_from")),
                 available_to=parse_datetime(row.get("available_to")),
-                current_assignment=row.get("current_assignment"),
-                notes=row.get("notes"),
+                current_assignment=sanitize_csv_value(row.get("current_assignment") or ""),
+                notes=sanitize_csv_value(row.get("notes") or ""),
             )
 
             created = create_floating_pool_entry(db, entry, current_user)

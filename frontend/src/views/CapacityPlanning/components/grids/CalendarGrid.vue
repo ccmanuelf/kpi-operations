@@ -134,6 +134,17 @@
 </template>
 
 <script setup>
+/**
+ * CalendarGrid - Editable grid for the master production calendar.
+ *
+ * Manages working day entries with date, working day flag, shifts available,
+ * shift hours, and holiday names. Includes a "Generate Month" dialog that
+ * auto-creates calendar entries for a selected year/month, marking weekends
+ * as non-working days.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.masterCalendar)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

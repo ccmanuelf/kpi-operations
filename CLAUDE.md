@@ -344,6 +344,39 @@ Message 4: Write "file.js"
 
 Remember: **Claude Flow coordinates, Claude Code creates!**
 
+# Codebase Audit Status (Run 2)
+**Current Phase:** Phase 4 — Docker & Deployment Audit — NOT STARTED
+**Audit Prompt:** See _audit/ directory for all reports
+**Previous run:** Archived in `_audit/_history/run-1/`
+
+### Completed Phases
+- Phase 0: Baseline — COMPLETE — see `_audit/PHASE-0-BASELINE.md`
+- Phase 1: Dead Code — COMPLETE — see `_audit/PHASE-1-DEAD-CODE.md`
+- Phase 2: Structure — COMPLETE — see `_audit/PHASE-2-STRUCTURE.md`
+- Phase 2.5: Config & Security — COMPLETE — see `_audit/PHASE-2.5-CONFIG-SECURITY.md`
+- Phase 3: Build & CI/CD — COMPLETE — see `_audit/PHASE-3-BUILD-CICD.md`
+
+### Key Cross-Phase Findings
+- Backend venv is stale (old package versions vs requirements.txt)
+- Simulation V1 + V2 both active (cannot remove V1 — floating_pool.py dependency)
+- 3 phantom backend services (employee, hold, work_order) — 602 lines dead
+- 3 unused Python packages (pandas, matplotlib, alembic)
+- Default SECRET_KEY hardcoded in config
+- coverage.xml is only tracked artifact that needs git rm --cached
+- 2 misplaced frontend test files (capacityPlanning specs beside source)
+- Duplicate backend venvs (.venv/ active, venv/ stale)
+- 33 security findings (7 CRITICAL, 11 HIGH) — mostly config defaults + missing hardening
+- V1 Simulation cannot be archived until floating_pool.py dependency decoupled
+- Python version mismatch: local 3.12.2 vs CI/Docker 3.11
+
+### Audit Conventions
+- All audit reports are in `_audit/` directory
+- All reports use Summary Index Format (read summaries first, details on demand)
+- Cross-phase connections tracked in `_audit/CROSS-REFERENCES.md`
+- Subagent temp files go in `_audit/temp/`
+- No code modifications without explicit user approval
+- Write findings to disk immediately after each sub-section
+
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.

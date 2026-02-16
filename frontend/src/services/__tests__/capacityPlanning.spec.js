@@ -7,7 +7,7 @@
  */
 import { vi } from 'vitest'
 
-vi.mock('./client', () => ({
+vi.mock('../api/client', () => ({
   default: {
     get: vi.fn(),
     post: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('./client', () => ({
   }
 }))
 
-import api from './client'
+import api from '../api/client'
 import {
   // Workbook
   loadWorkbook,
@@ -92,7 +92,7 @@ import {
   // Utility
   isFeatureEnabled,
   getModuleInfo,
-} from './capacityPlanning'
+} from '../api/capacityPlanning'
 
 describe('Capacity Planning API Service', () => {
   beforeEach(() => {

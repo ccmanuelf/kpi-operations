@@ -172,7 +172,7 @@ install_frontend() {
     cd "${DEPLOYMENT_DIR}/frontend"
 
     # Install npm dependencies (clean install for reproducible builds)
-    npm ci
+    npm ci --legacy-peer-deps
 
     # Build frontend
     log "Building frontend..."
@@ -245,6 +245,13 @@ server {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
+
+    # Security headers (sync with backend SecurityHeadersMiddleware)
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 }
 EOF
 

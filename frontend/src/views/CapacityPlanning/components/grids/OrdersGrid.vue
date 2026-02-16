@@ -140,6 +140,16 @@
 </template>
 
 <script setup>
+/**
+ * OrdersGrid - Editable grid for customer orders in capacity planning.
+ *
+ * Allows CRUD operations on order records (order number, customer, style,
+ * quantity, required date, priority). Supports CSV import, row duplication,
+ * and inline editing. Status is displayed as a colored chip.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.orders)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

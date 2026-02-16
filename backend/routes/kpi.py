@@ -183,7 +183,14 @@ def delete_client_threshold(
 
 @router.get("/calculate/{entry_id}", response_model=KPICalculationResponse)
 def calculate_kpis(entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Calculate KPIs for a production entry"""
+    """
+    Calculate KPIs for a production entry.
+
+    Returns efficiency, performance, quality rate, and ideal cycle time
+    for the specified production entry.
+
+    SECURITY: Requires authentication; client access verified via get_production_entry.
+    """
     entry = get_production_entry(db, entry_id, current_user)
     if not entry:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Production entry {entry_id} not found")
@@ -213,7 +220,14 @@ def get_kpi_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get KPI dashboard data"""
+    """
+    Get KPI dashboard data.
+
+    Returns daily summary metrics for the given date range and optional client filter.
+    Defaults to the last 30 days if no dates are provided.
+
+    SECURITY: Requires authentication; client access enforced in get_daily_summary.
+    """
     if not start_date:
         start_date = date.today() - timedelta(days=30)
     if not end_date:
@@ -230,7 +244,14 @@ def get_efficiency_by_shift(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get efficiency aggregated by shift"""
+    """
+    Get efficiency aggregated by shift.
+
+    Returns actual output, expected output, and average efficiency percentage
+    grouped by shift for the specified date range.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.production_entry import ProductionEntry
     from backend.schemas.shift import Shift
 
@@ -277,7 +298,14 @@ def get_efficiency_by_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get top products by efficiency"""
+    """
+    Get top products by efficiency.
+
+    Returns products ranked by average efficiency with actual output and entry counts.
+    Limited to the top N products (default 10).
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.production_entry import ProductionEntry
     from backend.schemas.product import Product
 
@@ -402,7 +430,14 @@ def calculate_otd_kpi(
 def get_late_orders(
     as_of_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    """Identify late orders"""
+    """
+    Identify late orders.
+
+    Returns work orders whose required_date has passed without delivery.
+    Uses the specified as_of_date or today as the reference point.
+
+    SECURITY: Requires authentication; client filtering applied in identify_late_orders.
+    """
     return identify_late_orders(db, as_of_date or date.today())
 
 
@@ -413,7 +448,14 @@ def get_otd_by_client(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get OTD metrics aggregated by client"""
+    """
+    Get OTD metrics aggregated by client.
+
+    Returns on-time delivery counts and percentages grouped by client
+    for the specified date range.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.work_order import WorkOrder
     from backend.schemas.client import Client
 
@@ -475,7 +517,14 @@ def get_late_deliveries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get recent late deliveries with details"""
+    """
+    Get recent late deliveries with details.
+
+    Returns work orders delivered after their required_date, ordered by most recent,
+    including delay duration in hours and style/model information.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.work_order import WorkOrder
     from backend.schemas.client import Client
 
@@ -562,7 +611,14 @@ def get_efficiency_trend(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get daily efficiency trend data"""
+    """
+    Get daily efficiency trend data.
+
+    Returns date/value pairs of average efficiency percentage per day
+    for charting. Defaults to the last 30 days.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.production_entry import ProductionEntry
 
     if end_date is None:
@@ -600,7 +656,14 @@ def get_performance_trend(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get daily performance trend data"""
+    """
+    Get daily performance trend data.
+
+    Returns date/value pairs of average performance percentage per day
+    for charting. Defaults to the last 30 days.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.production_entry import ProductionEntry
 
     if end_date is None:
@@ -638,7 +701,14 @@ def get_performance_by_shift(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get performance aggregated by shift"""
+    """
+    Get performance aggregated by shift.
+
+    Returns units produced, production rate, and average performance percentage
+    grouped by shift for the specified date range.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.production_entry import ProductionEntry
     from backend.schemas.shift import Shift
 
@@ -697,7 +767,14 @@ def get_performance_by_product(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get performance aggregated by product"""
+    """
+    Get performance aggregated by product.
+
+    Returns units produced, production rate, and average performance percentage
+    grouped by product. Limited to the top N products (default 10).
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.production_entry import ProductionEntry
     from backend.schemas.product import Product
 

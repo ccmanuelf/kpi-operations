@@ -118,6 +118,16 @@
 </template>
 
 <script setup>
+/**
+ * StandardsGrid - Editable grid for SAM (Standard Allowed Minutes) data.
+ *
+ * Manages production standards per style/operation, including operation code,
+ * operation name, department, SAM minutes, setup time, and machine time.
+ * Used by the capacity analysis engine to calculate demand hours.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.productionStandards)
+ * No props or emits -- all state managed via store.
+ */
 import { computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

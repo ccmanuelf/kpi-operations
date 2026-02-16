@@ -190,6 +190,17 @@
 </template>
 
 <script setup>
+/**
+ * BOMGrid - Editable grid for Bill of Materials management.
+ *
+ * Displays BOMs as expandable panels, each with a header (parent item code,
+ * description, style code, revision, active flag) and a nested components
+ * table (component code, description, quantity per, UOM, waste percentage).
+ * Supports add/remove for both BOMs and individual components.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.bom)
+ * No props or emits -- all state managed via store.
+ */
 import { computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

@@ -30,7 +30,7 @@ class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
     - Link: pointer to the successor API
     """
 
-    V1_SUNSET_DATE = "2025-08-01T00:00:00Z"
+    V1_SUNSET_DATE = "2026-06-01T00:00:00Z"
     V2_API_URL = "/api/v2/simulation"
 
     async def dispatch(self, request: Request, call_next):
@@ -55,6 +55,8 @@ class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
 from backend.events import register_all_handlers, get_event_bus
 from backend.schemas.event_store import create_event_persistence_handler
 from backend.middleware.rate_limit import limiter, configure_rate_limiting, RateLimitConfig
+from backend.middleware.security_headers import SecurityHeadersMiddleware
+from backend.middleware.audit_log import AuditLogMiddleware
 
 # Create tables (DISABLED - using pre-populated SQLite database with demo data)
 # Base.metadata.create_all(bind=engine)
@@ -71,15 +73,21 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
 )
 
 # V1 Simulation API Deprecation middleware
 app.add_middleware(V1SimulationDeprecationMiddleware)
 
+# Security headers middleware (SEC-010)
+app.add_middleware(SecurityHeadersMiddleware)
+
 # Rate limiting middleware (SEC-001)
 configure_rate_limiting(app)
+
+# Audit logging middleware — logs POST/PUT/PATCH/DELETE on /api/ paths
+app.add_middleware(AuditLogMiddleware)
 
 
 # ============================================================================

@@ -1,338 +1,390 @@
 """
 Coverage Boost Tests for Low-Coverage CRUD Modules
-Target: Push overall coverage from 80% to 85%+
+Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
 
+from backend.tests.fixtures.factories import TestDataFactory
+
 
 # =============================================================================
-# COVERAGE CRUD Tests (34% coverage)
+# COVERAGE CRUD Tests
 # =============================================================================
 class TestCoverageCRUD:
-    """Tests for crud/coverage.py"""
+    """Tests for crud/coverage.py using real DB"""
 
-    def test_get_shift_coverages(self, db_session, admin_user):
-        """Test get shift coverages"""
-        try:
-            from backend.crud.coverage import get_shift_coverages
+    def test_get_shift_coverages_empty(self, transactional_db):
+        """Test get shift coverages returns empty list"""
+        from backend.crud.coverage import get_shift_coverages
 
-            result = get_shift_coverages(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_shift_coverage_not_found(self, db_session, admin_user):
-        """Test get non-existent shift coverage"""
-        try:
-            from backend.crud.coverage import get_shift_coverage
+        result = get_shift_coverages(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-            result = get_shift_coverage(db_session, 99999, admin_user)
-            assert result is None
-        except ImportError:
-            pytest.skip("Function not available")
-        except HTTPException as e:
-            assert e.status_code == 404
-        except Exception:
-            pass
+    def test_get_shift_coverage_not_found(self, transactional_db):
+        """Test get non-existent shift coverage raises 404"""
+        from backend.crud.coverage import get_shift_coverage
+
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_shift_coverage(transactional_db, 99999, admin)
+        assert exc_info.value.status_code == 404
+
+    def test_get_shift_coverages_with_data(self, transactional_db):
+        """Test get shift coverages with real data"""
+        from backend.crud.coverage import get_shift_coverages
+
+        client = TestDataFactory.create_client(transactional_db, client_id="COV-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="COV-CL")
+        shift = TestDataFactory.create_shift(transactional_db, client_id="COV-CL")
+        transactional_db.flush()
+
+        TestDataFactory.create_shift_coverage(
+            transactional_db, shift_id=shift.shift_id, client_id="COV-CL", entered_by=admin.user_id
+        )
+        transactional_db.commit()
+
+        result = get_shift_coverages(transactional_db, admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# DEFECT DETAIL CRUD Tests (37% coverage)
+# DEFECT DETAIL CRUD Tests
 # =============================================================================
 class TestDefectDetailCRUD:
-    """Tests for crud/defect_detail.py"""
+    """Tests for crud/defect_detail.py using real DB"""
 
-    def test_get_defect_details(self, db_session, admin_user):
-        """Test get defect details"""
-        try:
-            from backend.crud.defect_detail import get_defect_details
+    def test_get_defect_details_empty(self, transactional_db):
+        """Test get defect details returns empty list"""
+        from backend.crud.defect_detail import get_defect_details
 
-            result = get_defect_details(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_defect_detail_by_id_not_found(self, db_session, admin_user):
-        """Test get non-existent defect detail"""
-        try:
-            from backend.crud.defect_detail import get_defect_detail
+        result = get_defect_details(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-            result = get_defect_detail(db_session, 99999, admin_user)
-            assert result is None
-        except ImportError:
-            pytest.skip("Function not available")
-        except HTTPException as e:
-            assert e.status_code == 404
-        except Exception:
-            pass
+    def test_get_defect_details_with_data(self, transactional_db):
+        """Test get defect details with real data"""
+        from backend.crud.defect_detail import get_defect_details
+
+        client = TestDataFactory.create_client(transactional_db, client_id="DD-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DD-CL")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DD-CL")
+        transactional_db.flush()
+
+        qe = TestDataFactory.create_quality_entry(
+            transactional_db, work_order_id=wo.work_order_id, client_id="DD-CL", inspector_id=admin.user_id
+        )
+        transactional_db.flush()
+
+        TestDataFactory.create_defect_detail(transactional_db, quality_entry_id=qe.quality_entry_id, client_id="DD-CL")
+        transactional_db.commit()
+
+        result = get_defect_details(transactional_db, admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# DEFECT TYPE CATALOG CRUD Tests (33% coverage)
+# DEFECT TYPE CATALOG CRUD Tests
 # =============================================================================
 class TestDefectTypeCatalogCRUD:
-    """Tests for crud/defect_type_catalog.py"""
+    """Tests for crud/defect_type_catalog.py using real DB"""
 
-    def test_get_defect_types(self, db_session, admin_user):
-        """Test get defect types"""
-        try:
-            from backend.crud.defect_type_catalog import get_defect_types_by_client
+    def test_get_defect_types_by_client_empty(self, transactional_db):
+        """Test get defect types returns empty list for new client"""
+        from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-            client_id = getattr(admin_user, "client_id_assigned", None) or "TEST-CLIENT"
-            result = get_defect_types_by_client(db_session, client_id, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC-CL")
+        transactional_db.commit()
+
+        result = get_defect_types_by_client(transactional_db, "DTC-CL", admin)
+        assert isinstance(result, list)
+
+    def test_get_defect_types_with_data(self, transactional_db):
+        """Test get defect types with seeded catalog entries"""
+        from backend.crud.defect_type_catalog import get_defect_types_by_client
+
+        client = TestDataFactory.create_client(transactional_db, client_id="DTC2-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC2-CL")
+        TestDataFactory.create_defect_type_catalog(transactional_db, client_id="DTC2-CL", defect_name="Thread Loose")
+        transactional_db.commit()
+
+        result = get_defect_types_by_client(transactional_db, "DTC2-CL", admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# EMPLOYEE CRUD Tests (34% coverage)
+# EMPLOYEE CRUD Tests
 # =============================================================================
 class TestEmployeeCRUD:
-    """Tests for crud/employee.py"""
+    """Tests for crud/employee.py using real DB"""
 
-    def test_get_employees(self, db_session, admin_user):
-        """Test get employees"""
-        try:
-            from backend.crud.employee import get_employees
+    def test_get_employees_empty(self, transactional_db):
+        """Test get employees returns empty list"""
+        from backend.crud.employee import get_employees
 
-            result = get_employees(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_employee_not_found(self, db_session, admin_user):
-        """Test get non-existent employee"""
-        try:
-            from backend.crud.employee import get_employee
+        result = get_employees(transactional_db, admin)
+        assert isinstance(result, list)
 
-            result = get_employee(db_session, 99999, admin_user)
-            assert result is None
-        except ImportError:
-            pytest.skip("Function not available")
-        except HTTPException as e:
-            assert e.status_code == 404
-        except Exception:
-            pass
+    def test_get_employee_not_found(self, transactional_db):
+        """Test get non-existent employee raises 404"""
+        from backend.crud.employee import get_employee
+
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_employee(transactional_db, 99999, admin)
+        assert exc_info.value.status_code == 404
+
+    def test_get_employees_with_data(self, transactional_db):
+        """Test get employees with seeded data"""
+        from backend.crud.employee import get_employees
+
+        client = TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMP-CL")
+        TestDataFactory.create_employee(transactional_db, client_id="EMP-CL")
+        transactional_db.commit()
+
+        result = get_employees(transactional_db, admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# JOB CRUD Tests (40% coverage)
+# JOB CRUD Tests
 # =============================================================================
 class TestJobCRUD:
-    """Tests for crud/job.py"""
+    """Tests for crud/job.py using real DB"""
 
-    def test_get_jobs(self, db_session, admin_user):
-        """Test get jobs"""
-        try:
-            from backend.crud.job import get_jobs
+    def test_get_jobs_empty(self, transactional_db):
+        """Test get jobs returns empty list"""
+        from backend.crud.job import get_jobs
 
-            result = get_jobs(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_jobs(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_get_jobs_with_data(self, transactional_db):
+        """Test get jobs with seeded data"""
+        from backend.crud.job import get_jobs
+
+        client = TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="JOB-CL")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="JOB-CL")
+        transactional_db.flush()
+
+        TestDataFactory.create_job(transactional_db, work_order_id=wo.work_order_id, client_id="JOB-CL")
+        transactional_db.commit()
+
+        result = get_jobs(transactional_db, admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# PART OPPORTUNITIES CRUD Tests (30% coverage)
+# PART OPPORTUNITIES CRUD Tests
 # =============================================================================
 class TestPartOpportunitiesCRUD:
-    """Tests for crud/part_opportunities.py"""
+    """Tests for crud/part_opportunities.py using real DB"""
 
-    def test_get_part_opportunities(self, db_session, admin_user):
-        """Test get part opportunities"""
-        try:
-            from backend.crud.part_opportunities import get_part_opportunities
+    def test_get_part_opportunities_empty(self, transactional_db):
+        """Test get part opportunities returns empty list"""
+        from backend.crud.part_opportunities import get_part_opportunities
 
-            result = get_part_opportunities(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_part_opportunities(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
 
 # =============================================================================
-# PREFERENCES CRUD Tests (45% coverage)
+# PREFERENCES CRUD Tests
 # =============================================================================
 class TestPreferencesCRUD:
-    """Tests for crud/preferences.py"""
+    """Tests for crud/preferences.py using real DB"""
 
-    def test_get_user_preferences(self, db_session, admin_user):
-        """Test get user preferences"""
-        try:
-            from backend.crud.preferences import get_user_dashboard_preferences
+    def test_get_user_preferences_returns_defaults(self, transactional_db):
+        """Test get user preferences returns defaults when none set"""
+        from backend.crud.preferences import get_user_dashboard_preferences
 
-            result = get_user_dashboard_preferences(db_session, admin_user.user_id)
-            # May return None if no preferences set
-            assert result is None or hasattr(result, "user_id")
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_user_dashboard_preferences(transactional_db, admin.user_id)
+        assert isinstance(result, tuple)
+        assert result[0] is None  # No preference_id when using defaults
 
 
 # =============================================================================
-# SAVED FILTER CRUD Tests (29% coverage)
+# SAVED FILTER CRUD Tests
 # =============================================================================
 class TestSavedFilterCRUD:
-    """Tests for crud/saved_filter.py"""
+    """Tests for crud/saved_filter.py using real DB"""
 
-    def test_get_saved_filters(self, db_session, admin_user):
-        """Test get saved filters"""
-        try:
-            from backend.crud.saved_filter import get_saved_filters
+    def test_get_saved_filters_empty(self, transactional_db):
+        """Test get saved filters returns empty list"""
+        from backend.crud.saved_filter import get_saved_filters
 
-            result = get_saved_filters(db_session, admin_user.user_id)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_saved_filters(transactional_db, admin.user_id)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_get_saved_filters_with_data(self, transactional_db):
+        """Test get saved filters with seeded data"""
+        from backend.crud.saved_filter import get_saved_filters
+
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.flush()
+
+        TestDataFactory.create_saved_filter(transactional_db, user_id=admin.user_id)
+        transactional_db.commit()
+
+        result = get_saved_filters(transactional_db, admin.user_id)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# QUALITY CRUD Tests (38% coverage)
+# QUALITY CRUD Tests
 # =============================================================================
 class TestQualityCRUD:
-    """Tests for crud/quality.py"""
+    """Tests for crud/quality.py using real DB"""
 
-    def test_get_quality_entries(self, db_session, admin_user):
-        """Test get quality entries"""
-        try:
-            from backend.crud.quality import get_quality_inspections
+    def test_get_quality_entries_empty(self, transactional_db):
+        """Test get quality entries returns empty list"""
+        from backend.crud.quality import get_quality_inspections
 
-            result = get_quality_inspections(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_quality_inspections(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
 
 # =============================================================================
-# PRODUCTION CRUD Tests (47% coverage)
+# PRODUCTION CRUD Tests
 # =============================================================================
 class TestProductionCRUD:
-    """Tests for crud/production.py"""
+    """Tests for crud/production.py using real DB"""
 
-    def test_get_production_entries(self, db_session, admin_user):
-        """Test get production entries"""
-        try:
-            from backend.crud.production import get_production_entries
+    def test_get_production_entries_empty(self, transactional_db):
+        """Test get production entries returns empty list"""
+        from backend.crud.production import get_production_entries
 
-            result = get_production_entries(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_production_entries(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
 
 # =============================================================================
-# DOWNTIME CRUD Tests (50% coverage)
+# DOWNTIME CRUD Tests
 # =============================================================================
 class TestDowntimeCRUD:
-    """Tests for crud/downtime.py"""
+    """Tests for crud/downtime.py using real DB"""
 
-    def test_get_downtime_entries(self, db_session, admin_user):
-        """Test get downtime entries"""
-        try:
-            from backend.crud.downtime import get_downtime_events
+    def test_get_downtime_entries_empty(self, transactional_db):
+        """Test get downtime entries returns empty list"""
+        from backend.crud.downtime import get_downtime_events
 
-            result = get_downtime_events(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_downtime_events(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
 
 # =============================================================================
-# ATTENDANCE CRUD Tests (48% coverage)
+# ATTENDANCE CRUD Tests
 # =============================================================================
 class TestAttendanceCRUD:
-    """Tests for crud/attendance.py"""
+    """Tests for crud/attendance.py using real DB"""
 
-    def test_get_attendance_entries(self, db_session, admin_user):
-        """Test get attendance entries"""
-        try:
-            from backend.crud.attendance import get_attendance_records
+    def test_get_attendance_entries_empty(self, transactional_db):
+        """Test get attendance entries returns empty list"""
+        from backend.crud.attendance import get_attendance_records
 
-            result = get_attendance_records(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        result = get_attendance_records(transactional_db, admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
 
 # =============================================================================
-# ANALYTICS CRUD Tests (49% coverage)
+# ANALYTICS CRUD Tests
 # =============================================================================
 class TestAnalyticsCRUD:
-    """Tests for crud/analytics.py"""
+    """Tests for crud/analytics.py using real DB"""
 
-    def test_get_analytics_summary(self, db_session, admin_user):
-        """Test get analytics time series data"""
-        try:
-            from backend.crud.analytics import get_kpi_time_series_data
+    def test_get_analytics_time_series_empty(self, transactional_db):
+        """Test get analytics time series data returns empty list"""
+        from backend.crud.analytics import get_kpi_time_series_data
 
-            # Use admin_user's client_id or a test client_id
-            client_id = getattr(admin_user, "client_id_assigned", None) or "TEST-CLIENT"
-            result = get_kpi_time_series_data(
-                db_session, client_id, "efficiency", date.today() - timedelta(days=30), date.today(), admin_user
-            )
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        TestDataFactory.create_client(transactional_db, client_id="ANA-CL")
+        transactional_db.commit()
+
+        result = get_kpi_time_series_data(
+            transactional_db,
+            client_id="ANA-CL",
+            kpi_type="efficiency",
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today(),
+            current_user=admin,
+        )
+        assert isinstance(result, list)
 
 
 # =============================================================================
-# CLIENT CRUD Tests (67% coverage)
+# CLIENT CRUD Tests
 # =============================================================================
 class TestClientCRUD:
-    """Tests for crud/client.py"""
+    """Tests for crud/client.py using real DB"""
 
-    def test_get_clients(self, db_session, admin_user):
-        """Test get clients"""
-        try:
-            from backend.crud.client import get_clients
+    def test_get_clients_empty(self, transactional_db):
+        """Test get clients returns empty list"""
+        from backend.crud.client import get_clients
 
-            result = get_clients(db_session, admin_user)
-            assert isinstance(result, list)
-        except ImportError:
-            pytest.skip("Function not available")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_client_not_found(self, db_session, admin_user):
-        """Test get non-existent client"""
-        try:
-            from backend.crud.client import get_client
+        result = get_clients(transactional_db, admin)
+        assert isinstance(result, list)
 
-            result = get_client(db_session, "NONEXISTENT", admin_user)
-            assert result is None
-        except ImportError:
-            pytest.skip("Function not available")
-        except HTTPException as e:
-            assert e.status_code == 404
-        except Exception:
-            pass
+    def test_get_client_not_found(self, transactional_db):
+        """Test get non-existent client raises 404"""
+        from backend.crud.client import get_client
+
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
+
+        with pytest.raises(HTTPException) as exc_info:
+            get_client(transactional_db, "NONEXISTENT", admin)
+        assert exc_info.value.status_code == 404

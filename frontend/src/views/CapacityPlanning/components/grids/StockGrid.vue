@@ -205,6 +205,18 @@
 </template>
 
 <script setup>
+/**
+ * StockGrid - Editable grid for inventory stock snapshots.
+ *
+ * Manages stock item records (snapshot date, item code, description, on-hand,
+ * allocated, on-order, available quantities, UOM). Features a staleness warning
+ * when snapshot data exceeds the configured alert threshold, summary stat cards,
+ * search filtering, and CSV import. Available quantity auto-calculates as
+ * on_hand - allocated.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.stockSnapshot, worksheets.dashboardInputs)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

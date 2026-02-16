@@ -137,6 +137,18 @@
 </template>
 
 <script setup>
+/**
+ * ComponentCheckPanel - Material Requirements Planning (MRP) component check.
+ *
+ * Runs a component requirements check against current stock snapshots and BOMs
+ * to identify material shortages. Displays summary cards (available, partial,
+ * shortage counts), a filterable results table with search and status toggle,
+ * and inline planner notes for each component. Errors from the MRP engine
+ * are shown as dismissible alerts.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.componentCheck)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

@@ -177,6 +177,18 @@
 </template>
 
 <script setup>
+/**
+ * CapacityAnalysisPanel - Runs and displays production line capacity analysis.
+ *
+ * Evaluates capacity utilization across production lines for a configurable
+ * date range. Shows summary stats (average utilization, lines analyzed,
+ * bottleneck count, overloaded count), a visual utilization bar chart, and
+ * a detailed results table. Color-coded thresholds flag lines at risk
+ * (>=90%) and overloaded (>=100%).
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.capacityAnalysis)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

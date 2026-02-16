@@ -30,7 +30,8 @@ python scripts/init_demo_database.py
 
 # Frontend
 cd frontend
-npm install
+# --legacy-peer-deps required for eslint 10 + eslint-plugin-vue 10 peer conflicts
+npm install --legacy-peer-deps
 npm run dev
 ```
 

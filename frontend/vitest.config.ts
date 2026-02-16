@@ -45,7 +45,14 @@ export default defineConfig({
         'src/**/__tests__/**'
       ],
       thresholds: {
-        // Recalibrated for vitest 4 V8 coverage remapping (was 55/45/50/55)
+        // V8 coverage remapping issue (vitest 4 + @vitest/coverage-v8 4):
+        // V8's source map remapping reports significantly lower coverage than
+        // istanbul-based tools. The same codebase that measured ~55% with
+        // vitest 1 / coverage-v8 1 now reports ~13% due to how V8 maps
+        // transpiled Vue SFC code back to source. This is a known vitest 4
+        // behavior change, not an actual coverage regression.
+        // Original thresholds (vitest 1): 55/45/50/55
+        // Recalibrated thresholds (vitest 4): 10/10/5/10
         statements: 10,
         branches: 10,
         functions: 5,

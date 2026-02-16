@@ -5,6 +5,7 @@
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.4-blue)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-5833%20passing-success)](https://github.com)
+[![Audit](https://img.shields.io/badge/audit-90%20findings%20resolved-blue)](CHANGELOG.md)
 [![Coverage](https://img.shields.io/badge/coverage-76%25-brightgreen)](https://github.com)
 [![Design](https://img.shields.io/badge/design-Vuetify%20Material-blue)](https://vuetifyjs.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
@@ -111,15 +112,18 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # Initialize database and seed demo data
-python -c "from backend.database import engine, Base; Base.metadata.create_all(bind=engine)"
-PYTHONPATH=.. python -m backend.database.seed
+cd ../database
+python init_sqlite_schema.py
+python generators/generate_demo_data.py
+python create_demo_users.py
+cd ../backend
 
-# Start backend server
+# Start backend server (PYTHONPATH required for module imports)
 PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 
 # Frontend setup (new terminal)
 cd ../frontend
-npm install
+npm install --legacy-peer-deps
 npm run dev  # Starts on http://localhost:3000
 ```
 
@@ -280,10 +284,10 @@ Full-featured capacity planning with 13 interconnected worksheets:
 12. **Dashboard Inputs** - Configurable analysis parameters
 13. **Instructions** - Embedded user guidance
 
-### **Scenario Types (11)**
-- OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT
-- LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT
-- SHIFT_ADD, EFFICIENCY_IMPROVEMENT, LABOR_ADD
+### **Scenario Types**
+The capacity planning module supports 8 core what-if scenarios backed by the `ScenarioType` enum in the backend, plus 3 frontend-only composition types:
+- **Core (backend):** OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT
+- **Composition (frontend):** SHIFT_ADD, EFFICIENCY_IMPROVEMENT, LABOR_ADD
 
 ### **Production Line Simulation**
 Model production lines using SimPy discrete-event simulation:
@@ -355,6 +359,7 @@ GET /api/kpi/all/{client_id}?days=30            # All 10 KPIs
 ```bash
 cd backend
 source venv/bin/activate
+# PYTHONPATH=.. is required so Python can resolve 'backend.*' imports
 PYTHONPATH=.. pytest tests/                    # All tests
 PYTHONPATH=.. pytest tests/test_calculations/  # KPI calculation tests
 PYTHONPATH=.. pytest --cov                     # With coverage report

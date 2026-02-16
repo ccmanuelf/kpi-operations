@@ -290,6 +290,18 @@
 </template>
 
 <script setup>
+/**
+ * ScenariosPanel - What-if scenario creation, evaluation, and comparison.
+ *
+ * Supports 8 scenario types: OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE,
+ * THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT. Each type
+ * has dedicated parameter inputs. Scenarios progress through DRAFT -> EVALUATED
+ * -> APPLIED/REJECTED workflow. Multi-select enables side-by-side comparison
+ * of evaluated scenarios.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.whatIfScenarios)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed, reactive } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

@@ -88,7 +88,7 @@ import {
   getDefaultScenario,
   getDefaultKPITrackingRow,
   getDefaultDashboardInputs
-} from './capacityPlanningStore'
+} from '../capacityPlanningStore'
 
 // ---------------------------------------------------------------------------
 // Helpers

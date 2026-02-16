@@ -191,6 +191,17 @@
 </template>
 
 <script setup>
+/**
+ * SchedulePanel - Generates and manages production schedules.
+ *
+ * Creates production schedules from pending orders, displaying schedule
+ * details grouped by date with sequence reordering controls. Supports
+ * schedule generation with configurable name and date range, status tracking
+ * (DRAFT, GENERATED, COMMITTED), and schedule commitment workflow.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.productionSchedule, activeSchedule)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

@@ -1,5 +1,6 @@
 """
-Backend middleware for multi-tenant authorization, client isolation, and rate limiting
+Backend middleware for multi-tenant authorization, client isolation, rate limiting,
+and audit logging.
 """
 
 from .client_auth import verify_client_access, get_user_client_filter, ClientAccessError
@@ -13,6 +14,7 @@ from .rate_limit import (
     upload_rate_limit,
     report_rate_limit,
 )
+from .audit_log import AuditLogMiddleware
 
 __all__ = [
     # Client authorization
@@ -28,4 +30,6 @@ __all__ = [
     "sensitive_rate_limit",
     "upload_rate_limit",
     "report_rate_limit",
+    # Audit logging
+    "AuditLogMiddleware",
 ]

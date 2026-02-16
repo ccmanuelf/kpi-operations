@@ -1,6 +1,13 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
 
+// SECURITY NOTE: JWT tokens are stored in localStorage for simplicity in the
+// demo/development phase. This is vulnerable to XSS but acceptable because:
+// 1. Vue's template escaping mitigates XSS in rendered content
+// 2. CSP headers block inline scripts
+// 3. Tokens have 30-minute expiry
+// For production hardening, consider httpOnly cookies with CSRF protection.
+// See docs/SECURITY.md for the full risk acceptance analysis.
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem('user') || 'null'),

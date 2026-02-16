@@ -59,6 +59,9 @@ from backend.schemas import (
 # Import log for batch imports
 from backend.schemas.import_log import ImportLog
 
+# Alert ORM model (in models/, not schemas/) — needed for Base.metadata.create_all()
+from backend.models.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
+
 # Backward compatibility aliases - use the correct _entry schemas
 QualityInspection = QualityEntry
 Downtime = DowntimeEntry

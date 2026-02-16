@@ -82,6 +82,14 @@
 </template>
 
 <script setup>
+/**
+ * InstructionsPanel - Reference guide for capacity planning methodology.
+ *
+ * Static read-only panel with three expandable sections: the 12-step capacity
+ * calculation procedure, common pitfalls to avoid, and key formulas
+ * (net capacity, utilization, SAM per order, gross required, coverage).
+ * Purely informational -- no store dependency, props, or emits.
+ */
 const calculationSteps = [
   { number: 1, title: 'Working Days', description: 'Count calendar working days in period' },
   { number: 2, title: 'Shifts per Day', description: 'Multiply by available shifts' },

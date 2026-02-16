@@ -22,7 +22,14 @@ router = APIRouter(prefix="/api/holds", tags=["WIP Holds"])
 
 @router.post("", response_model=WIPHoldResponse, status_code=status.HTTP_201_CREATED)
 def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Create WIP hold record"""
+    """
+    Create WIP hold record.
+
+    Creates a new hold entry for a work order, recording the hold reason
+    and initiating the approval workflow.
+
+    SECURITY: Requires authentication; client access verified in CRUD layer.
+    """
     return create_wip_hold(db, hold, current_user)
 
 
@@ -68,7 +75,13 @@ def list_active_holds(
 
 @router.get("/{hold_id}", response_model=WIPHoldResponse)
 def get_hold(hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Get WIP hold by ID"""
+    """
+    Get WIP hold by ID.
+
+    Returns the full hold record including status, dates, and approval details.
+
+    SECURITY: Requires authentication; client access verified in CRUD layer.
+    """
     hold = get_wip_hold(db, hold_id, current_user)
     if not hold:
         raise HTTPException(status_code=404, detail="WIP hold not found")
@@ -272,7 +285,14 @@ def calculate_wip_aging_kpi(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Calculate WIP aging analysis with client filtering"""
+    """
+    Calculate WIP aging analysis with client filtering.
+
+    Returns aging bucket distribution (0-7, 8-14, 15-30, 30+ days),
+    average aging days, and total active hold count.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client.
+    """
     from backend.schemas.hold_entry import HoldEntry, HoldStatus
 
     # Determine effective client filter
@@ -433,5 +453,12 @@ def get_wip_aging_trend(
 def get_chronic_holds(
     threshold_days: int = 30, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
-    """Identify chronic WIP holds"""
+    """
+    Identify chronic WIP holds.
+
+    Returns holds that have been active longer than the threshold (default 30 days).
+    Useful for identifying systemic issues in the production pipeline.
+
+    SECURITY: Requires authentication; client filtering applied in identify_chronic_holds.
+    """
     return identify_chronic_holds(db, threshold_days)

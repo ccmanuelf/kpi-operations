@@ -1,847 +1,479 @@
 """
 Additional Tests for Low Coverage CRUD Modules
-Target: Increase CRUD coverage from 29% to 85%+
+Migrated to use real database (transactional_db) instead of mocks.
 Covers: workflow, saved_filter, client_config, part_opportunities,
-        defect_type_catalog, employee, work_order, job, defect_detail
+        defect_type_catalog, employee, work_order, job, defect_detail, coverage
 """
 
 import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-import sys
-import os
+from fastapi import HTTPException
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
-
-from backend.database import Base
+from backend.tests.fixtures.factories import TestDataFactory
 from backend.schemas.client import Client, ClientType
 from backend.schemas.user import User, UserRole
 
 
-@pytest.fixture(scope="function")
-def test_db():
-    """Create fresh in-memory database for each test"""
-    engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(bind=engine)
-    TestingSession = sessionmaker(bind=engine)
-    db = TestingSession()
-
-    # Create test client (ClientType is for payment type: HOURLY_RATE, PIECE_RATE, etc.)
-    client = Client(
-        client_id="CLIENT001", client_name="Test Client", client_type=ClientType.HOURLY_RATE, is_active=True
-    )
-    db.add(client)
-    db.commit()
-
-    yield db
-    db.close()
-
-
-@pytest.fixture(scope="function")
-def mock_user():
-    """Create mock user for authorization"""
-    user = MagicMock(spec=User)
-    user.user_id = "USR-TEST-001"
-    user.username = "testuser"
-    user.role = UserRole.ADMIN
-    user.client_id_assigned = "CLIENT001"
-    user.is_active = True
-    return user
-
-
 # =============================================================================
-# WORKFLOW CRUD - Currently 24% coverage
+# WORKFLOW CRUD Tests
 # =============================================================================
 class TestWorkflowCRUD:
-    """Tests for workflow CRUD operations"""
+    """Tests for workflow CRUD operations using real DB"""
 
-    def test_create_transition_log(self, test_db, mock_user):
-        """Test creating a workflow transition log"""
-        from backend.crud.workflow import create_transition_log
-
-        try:
-            result = create_transition_log(
-                db=test_db,
-                work_order_id="WO-TEST-001",
-                client_id="CLIENT001",
-                from_status="RECEIVED",
-                to_status="IN_PROGRESS",
-                user_id=1,
-                notes="Test transition",
-                trigger_source="manual",
-            )
-            assert result is not None
-        except Exception:
-            # May fail if work order doesn't exist - that's ok
-            pass
-
-    def test_get_transition_log_by_id(self, test_db, mock_user):
-        """Test getting transition log by ID"""
-        from backend.crud.workflow import get_transition_log_by_id
-
-        try:
-            result = get_transition_log_by_id(db=test_db, log_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "log_id")
-        except Exception:
-            pass
-
-    def test_get_work_order_transitions(self, test_db, mock_user):
-        """Test getting transitions for work order"""
+    def test_get_work_order_transitions_empty(self, transactional_db):
+        """Test getting transitions for a work order with no transitions"""
         from backend.crud.workflow import get_work_order_transitions
 
-        try:
-            result = get_work_order_transitions(db=test_db, work_order_id="WO-TEST-001", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WFEMPTY-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFEMPTY-CL")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="WFEMPTY-CL")
+        transactional_db.commit()
 
-    def test_get_client_transitions(self, test_db, mock_user):
-        """Test getting transitions for client"""
+        result = get_work_order_transitions(db=transactional_db, work_order_id=wo.work_order_id, current_user=admin)
+        assert isinstance(result, list)
+
+    def test_get_client_transitions_empty(self, transactional_db):
+        """Test getting transitions for client with no transitions"""
         from backend.crud.workflow import get_client_transitions
 
-        try:
-            result = get_client_transitions(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WF-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WF-CL")
+        transactional_db.commit()
 
-    def test_get_workflow_configuration(self, test_db, mock_user):
+        result = get_client_transitions(db=transactional_db, client_id="WF-CL", current_user=admin)
+        assert isinstance(result, list)
+
+    def test_create_and_retrieve_transition(self, transactional_db):
+        """Test creating a transition log and retrieving it"""
+        from backend.crud.workflow import get_work_order_transitions
+
+        client = TestDataFactory.create_client(transactional_db, client_id="WF2-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WF2-CL")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="WF2-CL")
+        transactional_db.flush()
+
+        TestDataFactory.create_workflow_transition(
+            transactional_db,
+            work_order_id=wo.work_order_id,
+            from_status="RECEIVED",
+            to_status="IN_PROGRESS",
+            transitioned_by=admin.user_id,
+            client_id="WF2-CL",
+        )
+        transactional_db.commit()
+
+        result = get_work_order_transitions(db=transactional_db, work_order_id=wo.work_order_id, current_user=admin)
+        assert len(result) >= 1
+
+    def test_get_workflow_configuration(self, transactional_db):
         """Test getting workflow configuration"""
         from backend.crud.workflow import get_workflow_configuration
 
-        try:
-            result = get_workflow_configuration(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert result is None or isinstance(result, dict)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WFCFG-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFCFG-CL")
+        transactional_db.commit()
 
-    def test_get_transition_statistics(self, test_db, mock_user):
+        result = get_workflow_configuration(db=transactional_db, client_id="WFCFG-CL", current_user=admin)
+        # Returns a dict with workflow config or None
+        assert result is None or isinstance(result, dict)
+
+    def test_get_transition_statistics(self, transactional_db):
         """Test getting transition statistics"""
         from backend.crud.workflow import get_transition_statistics
 
-        try:
-            result = get_transition_statistics(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert result is None or isinstance(result, dict)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WFSTAT-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFSTAT-CL")
+        transactional_db.commit()
 
-    def test_get_status_distribution(self, test_db, mock_user):
+        result = get_transition_statistics(db=transactional_db, client_id="WFSTAT-CL", current_user=admin)
+        assert result is None or isinstance(result, dict)
+
+    def test_get_status_distribution(self, transactional_db):
         """Test getting status distribution"""
         from backend.crud.workflow import get_status_distribution
 
-        try:
-            result = get_status_distribution(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert result is None or isinstance(result, dict)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WFDIST-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFDIST-CL")
+        transactional_db.commit()
 
-    def test_bulk_transition_work_orders(self, test_db, mock_user):
+        result = get_status_distribution(db=transactional_db, client_id="WFDIST-CL", current_user=admin)
+        assert result is None or isinstance(result, dict)
+
+    def test_bulk_transition_work_orders(self, transactional_db):
         """Test bulk status transition"""
         from backend.crud.workflow import bulk_transition_work_orders
 
-        try:
-            result = bulk_transition_work_orders(
-                db=test_db, work_order_ids=["WO-001", "WO-002"], to_status="IN_PROGRESS", current_user=mock_user
-            )
-            assert isinstance(result, dict)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WFBULK-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFBULK-CL")
+        transactional_db.commit()
 
-    def test_apply_workflow_template(self, test_db, mock_user):
+        result = bulk_transition_work_orders(
+            db=transactional_db,
+            work_order_ids=["WO-001", "WO-002"],
+            to_status="IN_PROGRESS",
+            client_id="WFBULK-CL",
+            current_user=admin,
+        )
+        assert isinstance(result, dict)
+
+    def test_apply_workflow_template(self, transactional_db):
         """Test applying workflow template"""
         from backend.crud.workflow import apply_workflow_template
 
+        client = TestDataFactory.create_client(transactional_db, client_id="WFTMPL-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFTMPL-CL")
+        transactional_db.commit()
+
         try:
             result = apply_workflow_template(
-                db=test_db, client_id="CLIENT001", template_name="default", current_user=mock_user
+                db=transactional_db, client_id="WFTMPL-CL", template_name="default", current_user=admin
             )
             assert result is not None or result is None
         except Exception:
-            pass
+            pass  # Template may not exist
 
 
 # =============================================================================
-# SAVED FILTER CRUD - Currently 29% coverage
+# SAVED FILTER CRUD Tests
 # =============================================================================
 class TestSavedFilterCRUD:
-    """Tests for saved filter CRUD operations"""
+    """Tests for saved filter CRUD operations using real DB"""
 
-    def test_create_saved_filter(self, test_db, mock_user):
-        """Test creating a saved filter"""
-        from backend.crud.saved_filter import create_saved_filter
-        from backend.models.filters import SavedFilterCreate
-
-        try:
-            filter_data = SavedFilterCreate(
-                name="Test Filter", filter_type="production", filter_criteria={"status": "active"}, is_default=False
-            )
-            result = create_saved_filter(db=test_db, filter_data=filter_data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
-
-    def test_get_saved_filters(self, test_db, mock_user):
-        """Test getting saved filters for user"""
+    def test_get_saved_filters_empty(self, transactional_db):
+        """Test getting saved filters when none exist"""
         from backend.crud.saved_filter import get_saved_filters
 
-        try:
-            result = get_saved_filters(db=test_db, current_user=mock_user, filter_type="production")
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_saved_filter_by_id(self, test_db, mock_user):
-        """Test getting saved filter by ID"""
-        from backend.crud.saved_filter import get_saved_filter
+        result = get_saved_filters(db=transactional_db, user_id=admin.user_id)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-        try:
-            result = get_saved_filter(db=test_db, filter_id=1, current_user=mock_user)
-            # May return None if not found
-            assert result is None or hasattr(result, "filter_id")
-        except Exception:
-            pass
+    def test_create_and_get_saved_filter(self, transactional_db):
+        """Test creating and retrieving saved filters"""
+        from backend.crud.saved_filter import get_saved_filters
 
-    def test_update_saved_filter(self, test_db, mock_user):
-        """Test updating a saved filter"""
-        from backend.crud.saved_filter import update_saved_filter
-        from backend.models.filters import SavedFilterUpdate
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.flush()
 
-        try:
-            update_data = SavedFilterUpdate(name="Updated Filter")
-            result = update_saved_filter(db=test_db, filter_id=1, filter_data=update_data, current_user=mock_user)
-            assert result is None or hasattr(result, "name")
-        except Exception:
-            pass
+        TestDataFactory.create_saved_filter(transactional_db, user_id=admin.user_id, filter_name="My Filter")
+        transactional_db.commit()
 
-    def test_delete_saved_filter(self, test_db, mock_user):
-        """Test deleting a saved filter"""
-        from backend.crud.saved_filter import delete_saved_filter
-
-        try:
-            result = delete_saved_filter(db=test_db, filter_id=99999, current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
-
-    def test_get_default_filter(self, test_db, mock_user):
-        """Test getting default filter"""
-        from backend.crud.saved_filter import get_default_filter
-
-        try:
-            result = get_default_filter(db=test_db, filter_type="production", current_user=mock_user)
-            assert result is None or hasattr(result, "is_default")
-        except Exception:
-            pass
-
-    def test_set_default_filter(self, test_db, mock_user):
-        """Test setting filter as default"""
-        from backend.crud.saved_filter import set_default_filter
-
-        try:
-            result = set_default_filter(db=test_db, filter_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "is_default")
-        except Exception:
-            pass
+        result = get_saved_filters(db=transactional_db, user_id=admin.user_id)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# CLIENT CONFIG CRUD - Currently 30% coverage
+# CLIENT CONFIG CRUD Tests
 # =============================================================================
 class TestClientConfigCRUD:
-    """Tests for client config CRUD operations"""
+    """Tests for client config CRUD operations using real DB"""
 
-    def test_get_client_config(self, test_db, mock_user):
-        """Test getting client configuration"""
+    def test_get_client_config_none_returns_none(self, transactional_db):
+        """Test getting client config when not set"""
         from backend.crud.client_config import get_client_config
 
-        try:
-            result = get_client_config(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert result is None or hasattr(result, "client_id")
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="CFG-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="CFG-CL")
+        transactional_db.commit()
 
-    def test_update_client_config(self, test_db, mock_user):
-        """Test updating client configuration"""
-        from backend.crud.client_config import update_client_config
-        from backend.models.client_config import ClientConfigUpdate
+        result = get_client_config(db=transactional_db, client_id="CFG-CL", current_user=admin)
+        assert result is None or hasattr(result, "client_id")
 
-        try:
-            config_data = ClientConfigUpdate(target_efficiency=85.0, target_availability=90.0)
-            result = update_client_config(
-                db=test_db, client_id="CLIENT001", config_data=config_data, current_user=mock_user
-            )
-            assert result is None or hasattr(result, "client_id")
-        except Exception:
-            pass
-
-    def test_get_client_config_or_defaults(self, test_db, mock_user):
+    def test_get_client_config_or_defaults(self, transactional_db):
         """Test getting client config or defaults"""
         from backend.crud.client_config import get_client_config_or_defaults
 
-        try:
-            result = get_client_config_or_defaults(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="CFGD-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="CFGD-CL")
+        transactional_db.commit()
 
-    def test_get_all_client_configs(self, test_db, mock_user):
+        result = get_client_config_or_defaults(db=transactional_db, client_id="CFGD-CL")
+        assert result is not None
+
+    def test_get_all_client_configs(self, transactional_db):
         """Test getting all client configs"""
         from backend.crud.client_config import get_all_client_configs
 
-        try:
-            result = get_all_client_configs(db=test_db, current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_create_client_config(self, test_db, mock_user):
-        """Test creating client configuration"""
-        from backend.crud.client_config import create_client_config
-        from backend.models.client_config import ClientConfigCreate
-
-        try:
-            config_data = ClientConfigCreate(client_id="NEW_CLIENT", target_efficiency=80.0, target_availability=85.0)
-            result = create_client_config(db=test_db, config_data=config_data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
+        result = get_all_client_configs(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
 
 
 # =============================================================================
-# PART OPPORTUNITIES CRUD - Currently 30% coverage
+# PART OPPORTUNITIES CRUD Tests
 # =============================================================================
 class TestPartOpportunitiesCRUD:
-    """Tests for part opportunities CRUD operations"""
+    """Tests for part opportunities CRUD operations using real DB"""
 
-    def test_get_part_opportunities(self, test_db, mock_user):
-        """Test getting part opportunities"""
+    def test_get_part_opportunities_empty(self, transactional_db):
+        """Test getting part opportunities returns empty list"""
         from backend.crud.part_opportunities import get_part_opportunities
 
-        try:
-            result = get_part_opportunities(db=test_db, current_user=mock_user, skip=0, limit=100)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_part_opportunity_by_id(self, test_db, mock_user):
-        """Test getting part opportunity by ID"""
-        from backend.crud.part_opportunities import get_part_opportunity
+        result = get_part_opportunities(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-        try:
-            result = get_part_opportunity(db=test_db, opportunity_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "opportunity_id")
-        except Exception:
-            pass
+    def test_get_part_opportunities_with_data(self, transactional_db):
+        """Test getting part opportunities with data"""
+        from backend.crud.part_opportunities import get_part_opportunities
 
-    def test_create_part_opportunity(self, test_db, mock_user):
-        """Test creating part opportunity"""
-        from backend.crud.part_opportunities import create_part_opportunity
-        from backend.models.part_opportunities import PartOpportunityCreate
+        client = TestDataFactory.create_client(transactional_db, client_id="PO-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="PO-CL")
+        TestDataFactory.create_part_opportunities(transactional_db, part_number="PART-001", client_id="PO-CL")
+        transactional_db.commit()
 
-        try:
-            data = PartOpportunityCreate(
-                client_id="CLIENT001",
-                part_number="PART-001",
-                opportunity_type="COST_REDUCTION",
-                description="Test opportunity",
-            )
-            result = create_part_opportunity(db=test_db, opportunity_data=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
-
-    def test_update_part_opportunity(self, test_db, mock_user):
-        """Test updating part opportunity"""
-        from backend.crud.part_opportunities import update_part_opportunity
-        from backend.models.part_opportunities import PartOpportunityUpdate
-
-        try:
-            data = PartOpportunityUpdate(description="Updated description")
-            result = update_part_opportunity(
-                db=test_db, opportunity_id=1, opportunity_data=data, current_user=mock_user
-            )
-            assert result is None or hasattr(result, "opportunity_id")
-        except Exception:
-            pass
-
-    def test_delete_part_opportunity(self, test_db, mock_user):
-        """Test deleting part opportunity"""
-        from backend.crud.part_opportunities import delete_part_opportunity
-
-        try:
-            result = delete_part_opportunity(db=test_db, opportunity_id=99999, current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
+        result = get_part_opportunities(db=transactional_db, current_user=admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# DEFECT TYPE CATALOG CRUD - Currently 33% coverage
+# DEFECT TYPE CATALOG CRUD Tests
 # =============================================================================
 class TestDefectTypeCatalogCRUD:
-    """Tests for defect type catalog CRUD operations"""
+    """Tests for defect type catalog CRUD operations using real DB"""
 
-    def test_get_global_defect_types(self, test_db, mock_user):
-        """Test getting global defect types"""
-        from backend.crud.defect_type_catalog import get_global_defect_types
-
-        try:
-            result = get_global_defect_types(db=test_db, current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
-
-    def test_get_defect_type_by_id(self, test_db, mock_user):
-        """Test getting defect type by ID"""
-        from backend.crud.defect_type_catalog import get_defect_type
-
-        try:
-            result = get_defect_type(db=test_db, defect_type_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "defect_type_id")
-        except Exception:
-            pass
-
-    def test_get_defect_types_by_client(self, test_db, mock_user):
-        """Test getting defect types by client"""
+    def test_get_defect_types_by_client_empty(self, transactional_db):
+        """Test getting defect types for a client with none set"""
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-        try:
-            result = get_defect_types_by_client(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC-CL")
+        transactional_db.commit()
 
-    def test_create_defect_type(self, test_db, mock_user):
-        """Test creating defect type"""
-        from backend.crud.defect_type_catalog import create_defect_type
-        from backend.models.defect_type_catalog import DefectTypeCatalogCreate
+        result = get_defect_types_by_client(db=transactional_db, client_id="DTC-CL", current_user=admin)
+        assert isinstance(result, list)
 
-        try:
-            data = DefectTypeCatalogCreate(
-                client_id="CLIENT001", defect_name="Test Defect", defect_code="TD-001", severity="MINOR"
-            )
-            result = create_defect_type(db=test_db, defect_type_data=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
+    def test_get_defect_types_with_data(self, transactional_db):
+        """Test getting defect types with catalog entries"""
+        from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-    def test_update_defect_type(self, test_db, mock_user):
-        """Test updating defect type"""
-        from backend.crud.defect_type_catalog import update_defect_type
-        from backend.models.defect_type_catalog import DefectTypeCatalogUpdate
+        client = TestDataFactory.create_client(transactional_db, client_id="DTC2-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC2-CL")
+        TestDataFactory.create_defect_type_catalog(transactional_db, client_id="DTC2-CL")
+        transactional_db.commit()
 
-        try:
-            data = DefectTypeCatalogUpdate(defect_name="Updated Defect")
-            result = update_defect_type(db=test_db, defect_type_id=1, defect_type_data=data, current_user=mock_user)
-            assert result is None or hasattr(result, "defect_type_id")
-        except Exception:
-            pass
-
-    def test_delete_defect_type(self, test_db, mock_user):
-        """Test deleting defect type"""
-        from backend.crud.defect_type_catalog import delete_defect_type
-
-        try:
-            result = delete_defect_type(db=test_db, defect_type_id=99999, current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
+        result = get_defect_types_by_client(db=transactional_db, client_id="DTC2-CL", current_user=admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# EMPLOYEE CRUD - Currently 34% coverage
+# EMPLOYEE CRUD Tests
 # =============================================================================
 class TestEmployeeCRUD:
-    """Tests for employee CRUD operations"""
+    """Tests for employee CRUD operations using real DB"""
 
-    def test_get_employees(self, test_db, mock_user):
-        """Test getting employees"""
+    def test_get_employees_empty(self, transactional_db):
+        """Test getting employees returns empty list"""
         from backend.crud.employee import get_employees
 
-        try:
-            result = get_employees(db=test_db, current_user=mock_user, skip=0, limit=100)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_employee_by_id(self, test_db, mock_user):
+        result = get_employees(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
+
+    def test_get_employees_with_data(self, transactional_db):
+        """Test getting employees with seeded data"""
+        from backend.crud.employee import get_employees
+
+        client = TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMP-CL")
+        TestDataFactory.create_employee(transactional_db, client_id="EMP-CL")
+        TestDataFactory.create_employee(transactional_db, client_id="EMP-CL")
+        transactional_db.commit()
+
+        result = get_employees(db=transactional_db, current_user=admin)
+        assert len(result) >= 2
+
+    def test_get_employee_by_id(self, transactional_db):
         """Test getting employee by ID"""
         from backend.crud.employee import get_employee
 
-        try:
-            result = get_employee(db=test_db, employee_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "employee_id")
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="EMPID-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMPID-CL")
+        emp = TestDataFactory.create_employee(transactional_db, client_id="EMPID-CL", employee_name="Jane Smith")
+        transactional_db.commit()
 
-    def test_get_employees_by_client(self, test_db, mock_user):
-        """Test getting employees by client"""
-        from backend.crud.employee import get_employees_by_client
+        result = get_employee(db=transactional_db, employee_id=emp.employee_id, current_user=admin)
+        assert result is not None
+        assert result.employee_name == "Jane Smith"
 
-        try:
-            result = get_employees_by_client(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+    def test_get_employee_not_found(self, transactional_db):
+        """Test getting non-existent employee raises 404"""
+        from backend.crud.employee import get_employee
 
-    def test_create_employee(self, test_db, mock_user):
-        """Test creating employee"""
-        from backend.crud.employee import create_employee
-        from backend.models.employee import EmployeeCreate
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-        try:
-            data = EmployeeCreate(client_id="CLIENT001", employee_name="Test Employee", department="Production")
-            result = create_employee(db=test_db, employee_data=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
-
-    def test_update_employee(self, test_db, mock_user):
-        """Test updating employee"""
-        from backend.crud.employee import update_employee
-        from backend.models.employee import EmployeeUpdate
-
-        try:
-            data = EmployeeUpdate(employee_name="Updated Name")
-            result = update_employee(db=test_db, employee_id=1, employee_data=data, current_user=mock_user)
-            assert result is None or hasattr(result, "employee_id")
-        except Exception:
-            pass
-
-    def test_delete_employee(self, test_db, mock_user):
-        """Test deleting employee"""
-        from backend.crud.employee import delete_employee
-
-        try:
-            result = delete_employee(db=test_db, employee_id=99999, current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
-
-    def test_get_floating_pool_employees(self, test_db, mock_user):
-        """Test getting floating pool employees"""
-        from backend.crud.employee import get_floating_pool_employees
-
-        try:
-            result = get_floating_pool_employees(db=test_db, current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
-
-    def test_assign_to_floating_pool(self, test_db, mock_user):
-        """Test assigning employee to floating pool"""
-        from backend.crud.employee import assign_to_floating_pool
-
-        try:
-            result = assign_to_floating_pool(db=test_db, employee_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "employee_id")
-        except Exception:
-            pass
+        with pytest.raises(HTTPException) as exc_info:
+            get_employee(db=transactional_db, employee_id=99999, current_user=admin)
+        assert exc_info.value.status_code == 404
 
 
 # =============================================================================
-# WORK ORDER CRUD - Currently 36% coverage
+# WORK ORDER CRUD Tests
 # =============================================================================
 class TestWorkOrderCRUD:
-    """Tests for work order CRUD operations"""
+    """Tests for work order CRUD operations using real DB"""
 
-    def test_get_work_orders(self, test_db, mock_user):
-        """Test getting work orders"""
+    def test_get_work_orders_empty(self, transactional_db):
+        """Test getting work orders returns empty list"""
         from backend.crud.work_order import get_work_orders
 
-        try:
-            result = get_work_orders(db=test_db, current_user=mock_user, skip=0, limit=100)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_work_order_by_id(self, test_db, mock_user):
-        """Test getting work order by ID"""
-        from backend.crud.work_order import get_work_order
+        result = get_work_orders(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-        try:
-            result = get_work_order(db=test_db, work_order_id="WO-001", current_user=mock_user)
-            assert result is None or hasattr(result, "work_order_id")
-        except Exception:
-            pass
+    def test_get_work_orders_with_data(self, transactional_db):
+        """Test getting work orders with seeded data"""
+        from backend.crud.work_order import get_work_orders
 
-    def test_get_work_orders_by_client(self, test_db, mock_user):
-        """Test getting work orders by client"""
-        from backend.crud.work_order import get_work_orders_by_client
+        client = TestDataFactory.create_client(transactional_db, client_id="WO-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WO-CL")
+        TestDataFactory.create_work_order(transactional_db, client_id="WO-CL")
+        transactional_db.commit()
 
-        try:
-            result = get_work_orders_by_client(db=test_db, client_id="CLIENT001", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        result = get_work_orders(db=transactional_db, current_user=admin)
+        assert len(result) >= 1
 
-    def test_get_work_orders_by_status(self, test_db, mock_user):
-        """Test getting work orders by status"""
-        from backend.crud.work_order import get_work_orders_by_status
-
-        try:
-            result = get_work_orders_by_status(db=test_db, status="IN_PROGRESS", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
-
-    def test_create_work_order(self, test_db, mock_user):
+    def test_create_work_order(self, transactional_db):
         """Test creating work order"""
         from backend.crud.work_order import create_work_order
-        from backend.models.work_order import WorkOrderCreate
 
-        try:
-            data = WorkOrderCreate(
-                work_order_id="WO-TEST-001",
-                client_id="CLIENT001",
-                product_id=1,
-                quantity_ordered=100,
-                status="RECEIVED",
-            )
-            result = create_work_order(db=test_db, work_order_data=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
+        client = TestDataFactory.create_client(transactional_db, client_id="WOCR-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WOCR-CL")
+        transactional_db.commit()
 
-    def test_update_work_order(self, test_db, mock_user):
-        """Test updating work order"""
-        from backend.crud.work_order import update_work_order
-        from backend.models.work_order import WorkOrderUpdate
-
-        try:
-            data = WorkOrderUpdate(status="IN_PROGRESS")
-            result = update_work_order(db=test_db, work_order_id="WO-001", work_order_data=data, current_user=mock_user)
-            assert result is None or hasattr(result, "work_order_id")
-        except Exception:
-            pass
-
-    def test_delete_work_order(self, test_db, mock_user):
-        """Test deleting work order"""
-        from backend.crud.work_order import delete_work_order
-
-        try:
-            result = delete_work_order(db=test_db, work_order_id="WO-NONEXISTENT", current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
+        data = {
+            "work_order_id": "WO-ADD-001",
+            "client_id": "WOCR-CL",
+            "style_model": "STYLE-TEST",
+            "planned_quantity": 200,
+        }
+        result = create_work_order(db=transactional_db, work_order_data=data, current_user=admin)
+        assert result.work_order_id == "WO-ADD-001"
 
 
 # =============================================================================
-# JOB CRUD - Currently 40% coverage
+# JOB CRUD Tests
 # =============================================================================
 class TestJobCRUD:
-    """Tests for job CRUD operations"""
+    """Tests for job CRUD operations using real DB"""
 
-    def test_get_jobs(self, test_db, mock_user):
-        """Test getting jobs"""
+    def test_get_jobs_empty(self, transactional_db):
+        """Test getting jobs returns empty list"""
         from backend.crud.job import get_jobs
 
-        try:
-            result = get_jobs(db=test_db, current_user=mock_user, skip=0, limit=100)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_job_by_id(self, test_db, mock_user):
-        """Test getting job by ID"""
-        from backend.crud.job import get_job
+        result = get_jobs(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
 
-        try:
-            result = get_job(db=test_db, job_id="JOB-001", current_user=mock_user)
-            assert result is None or hasattr(result, "job_id")
-        except Exception:
-            pass
+    def test_get_jobs_with_data(self, transactional_db):
+        """Test getting jobs with seeded data"""
+        from backend.crud.job import get_jobs
 
-    def test_get_jobs_by_work_order(self, test_db, mock_user):
-        """Test getting jobs by work order"""
-        from backend.crud.job import get_jobs_by_work_order
+        client = TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="JOB-CL")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="JOB-CL")
+        transactional_db.flush()
+        TestDataFactory.create_job(transactional_db, work_order_id=wo.work_order_id, client_id="JOB-CL")
+        transactional_db.commit()
 
-        try:
-            result = get_jobs_by_work_order(db=test_db, work_order_id="WO-001", current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
-
-    def test_create_job(self, test_db, mock_user):
-        """Test creating job"""
-        from backend.crud.job import create_job
-        from backend.models.job import JobCreate
-
-        try:
-            data = JobCreate(
-                job_id="JOB-TEST-001", work_order_id="WO-001", client_id="CLIENT001", operation_name="Assembly"
-            )
-            result = create_job(db=test_db, job_data=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
-
-    def test_update_job(self, test_db, mock_user):
-        """Test updating job"""
-        from backend.crud.job import update_job
-        from backend.models.job import JobUpdate
-
-        try:
-            data = JobUpdate(operation_name="Updated Operation")
-            result = update_job(db=test_db, job_id="JOB-001", job_data=data, current_user=mock_user)
-            assert result is None or hasattr(result, "job_id")
-        except Exception:
-            pass
-
-    def test_delete_job(self, test_db, mock_user):
-        """Test deleting job"""
-        from backend.crud.job import delete_job
-
-        try:
-            result = delete_job(db=test_db, job_id="JOB-NONEXISTENT", current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
+        result = get_jobs(db=transactional_db, current_user=admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# DEFECT DETAIL CRUD - Currently 40% coverage
+# DEFECT DETAIL CRUD Tests
 # =============================================================================
 class TestDefectDetailCRUD:
-    """Tests for defect detail CRUD operations"""
+    """Tests for defect detail CRUD operations using real DB"""
 
-    def test_get_defect_details(self, test_db, mock_user):
-        """Test getting defect details"""
+    def test_get_defect_details_empty(self, transactional_db):
+        """Test getting defect details returns empty list"""
         from backend.crud.defect_detail import get_defect_details
 
-        try:
-            result = get_defect_details(db=test_db, current_user=mock_user, skip=0, limit=100)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_defect_detail_by_id(self, test_db, mock_user):
-        """Test getting defect detail by ID"""
-        from backend.crud.defect_detail import get_defect_detail
+        result = get_defect_details(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
 
-        try:
-            result = get_defect_detail(db=test_db, defect_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "defect_id")
-        except Exception:
-            pass
+    def test_get_defect_details_with_data(self, transactional_db):
+        """Test getting defect details with seeded data"""
+        from backend.crud.defect_detail import get_defect_details
 
-    def test_get_defects_by_quality_entry(self, test_db, mock_user):
-        """Test getting defects by quality entry"""
-        from backend.crud.defect_detail import get_defect_details_by_quality_entry
+        client = TestDataFactory.create_client(transactional_db, client_id="DD-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DD-CL")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DD-CL")
+        transactional_db.flush()
 
-        try:
-            result = get_defect_details_by_quality_entry(db=test_db, quality_entry_id=1, current_user=mock_user)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        qe = TestDataFactory.create_quality_entry(
+            transactional_db, work_order_id=wo.work_order_id, client_id="DD-CL", inspector_id=admin.user_id
+        )
+        transactional_db.flush()
+        TestDataFactory.create_defect_detail(transactional_db, quality_entry_id=qe.quality_entry_id, client_id="DD-CL")
+        transactional_db.commit()
 
-    def test_get_defect_summary_by_type(self, test_db, mock_user):
-        """Test getting defect summary by type"""
-        from backend.crud.defect_detail import get_defect_summary_by_type
-
-        try:
-            result = get_defect_summary_by_type(db=test_db, current_user=mock_user)
-            assert result is None or isinstance(result, (list, dict))
-        except Exception:
-            pass
-
-    def test_create_defect_detail(self, test_db, mock_user):
-        """Test creating defect detail"""
-        from backend.crud.defect_detail import create_defect_detail
-        from backend.models.defect_detail import DefectDetailCreate
-
-        try:
-            data = DefectDetailCreate(quality_entry_id=1, defect_type_id=1, defect_count=5, description="Test defect")
-            result = create_defect_detail(db=test_db, defect_data=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
-
-    def test_update_defect_detail(self, test_db, mock_user):
-        """Test updating defect detail"""
-        from backend.crud.defect_detail import update_defect_detail
-        from backend.models.defect_detail import DefectDetailUpdate
-
-        try:
-            data = DefectDetailUpdate(defect_count=10)
-            result = update_defect_detail(db=test_db, defect_id=1, defect_data=data, current_user=mock_user)
-            assert result is None or hasattr(result, "defect_id")
-        except Exception:
-            pass
-
-    def test_delete_defect_detail(self, test_db, mock_user):
-        """Test deleting defect detail"""
-        from backend.crud.defect_detail import delete_defect_detail
-
-        try:
-            result = delete_defect_detail(db=test_db, defect_id=99999, current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
+        result = get_defect_details(db=transactional_db, current_user=admin)
+        assert len(result) >= 1
 
 
 # =============================================================================
-# SHIFT COVERAGE CRUD - For shift coverage tracking
+# SHIFT COVERAGE CRUD Tests
 # =============================================================================
 class TestShiftCoverageCRUD:
-    """Tests for shift coverage CRUD operations"""
+    """Tests for shift coverage CRUD operations using real DB"""
 
-    def test_get_shift_coverages(self, test_db, mock_user):
-        """Test getting shift coverage records"""
+    def test_get_shift_coverages_empty(self, transactional_db):
+        """Test getting shift coverage records returns empty list"""
         from backend.crud.coverage import get_shift_coverages
 
-        try:
-            result = get_shift_coverages(db=test_db, current_user=mock_user, skip=0, limit=100)
-            assert isinstance(result, list)
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_get_shift_coverage(self, test_db, mock_user):
-        """Test getting shift coverage by ID"""
+        result = get_shift_coverages(db=transactional_db, current_user=admin)
+        assert isinstance(result, list)
+        assert len(result) == 0
+
+    def test_get_shift_coverage_not_found(self, transactional_db):
+        """Test getting non-existent shift coverage raises 404"""
         from backend.crud.coverage import get_shift_coverage
 
-        try:
-            result = get_shift_coverage(db=test_db, coverage_id=1, current_user=mock_user)
-            assert result is None or hasattr(result, "coverage_id")
-        except Exception:
-            pass
+        admin = TestDataFactory.create_user(transactional_db, role="admin")
+        transactional_db.commit()
 
-    def test_create_shift_coverage(self, test_db, mock_user):
-        """Test creating shift coverage record"""
-        from backend.crud.coverage import create_shift_coverage
-        from backend.models.coverage import ShiftCoverageCreate
+        with pytest.raises(HTTPException) as exc_info:
+            get_shift_coverage(db=transactional_db, coverage_id=99999, current_user=admin)
+        assert exc_info.value.status_code == 404
 
-        try:
-            data = ShiftCoverageCreate(
-                client_id="CLIENT001", shift_id=1, coverage_date=date.today(), required_employees=10, actual_employees=8
-            )
-            result = create_shift_coverage(db=test_db, coverage=data, current_user=mock_user)
-            assert result is not None
-        except Exception:
-            pass
+    def test_get_shift_coverages_with_data(self, transactional_db):
+        """Test getting shift coverage with seeded data"""
+        from backend.crud.coverage import get_shift_coverages
 
-    def test_update_shift_coverage(self, test_db, mock_user):
-        """Test updating shift coverage record"""
-        from backend.crud.coverage import update_shift_coverage
-        from backend.models.coverage import ShiftCoverageUpdate
+        client = TestDataFactory.create_client(transactional_db, client_id="SC-CL")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="SC-CL")
+        shift = TestDataFactory.create_shift(transactional_db, client_id="SC-CL")
+        transactional_db.flush()
 
-        try:
-            data = ShiftCoverageUpdate(actual_employees=9)
-            result = update_shift_coverage(db=test_db, coverage_id=1, coverage_update=data, current_user=mock_user)
-            assert result is None or hasattr(result, "coverage_id")
-        except Exception:
-            pass
+        TestDataFactory.create_shift_coverage(
+            transactional_db, shift_id=shift.shift_id, client_id="SC-CL", entered_by=admin.user_id
+        )
+        transactional_db.commit()
 
-    def test_delete_shift_coverage(self, test_db, mock_user):
-        """Test deleting shift coverage record"""
-        from backend.crud.coverage import delete_shift_coverage
-
-        try:
-            result = delete_shift_coverage(db=test_db, coverage_id=99999, current_user=mock_user)
-            assert result in [True, False]
-        except Exception:
-            pass
+        result = get_shift_coverages(db=transactional_db, current_user=admin)
+        assert len(result) >= 1

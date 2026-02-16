@@ -49,6 +49,19 @@
 </template>
 
 <script setup>
+/**
+ * TableSkeleton - Animated loading placeholder for data tables.
+ *
+ * Renders a pulsing skeleton UI that mimics a table structure with header,
+ * body rows, and optional pagination footer. Used as a loading state while
+ * table data is being fetched. Supports reduced-motion and dark theme.
+ *
+ * @prop {number} rows - Number of skeleton body rows (default: 5)
+ * @prop {number} columns - Number of skeleton columns (default: 6)
+ * @prop {boolean} showHeader - Whether to render the header skeleton (default: true)
+ * @prop {boolean} showPagination - Whether to render the footer skeleton (default: true)
+ * @prop {Array} columnWidths - Optional custom column width percentages
+ */
 defineProps({
   rows: {
     type: Number,

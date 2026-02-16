@@ -38,6 +38,24 @@
 </template>
 
 <script setup>
+/**
+ * EmptyState - Reusable empty/no-data placeholder component.
+ *
+ * Displays an icon, title, optional description, and optional action button
+ * when a view or table has no data to show. Supports multiple visual variants
+ * (no-data, no-results, error, empty-table, no-entries, no-filter-match)
+ * and three sizes (small, medium, large).
+ *
+ * @prop {string} title - Heading text (default: 'No data found')
+ * @prop {string} description - Explanatory subtext
+ * @prop {string} icon - Override icon (auto-selected from variant if empty)
+ * @prop {string} variant - Visual preset: default|no-data|no-results|error|empty-table|no-entries|no-filter-match
+ * @prop {string} size - Component size: small|medium|large
+ * @prop {string} actionText - If set, renders an action button
+ * @prop {boolean} elevated - Adds background and border styling
+ * @emits action - Fired when the action button is clicked
+ * @slot default - Custom action content (replaces actionText button)
+ */
 import { computed } from 'vue'
 
 const props = defineProps({

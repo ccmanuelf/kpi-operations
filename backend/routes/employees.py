@@ -57,7 +57,11 @@ def list_employees(
     current_user: User = Depends(get_current_user),
 ):
     """
-    List employees with filters
+    List employees with filters.
+
+    Returns paginated employee list with optional client_id and floating pool filters.
+
+    SECURITY: Requires authentication; non-admin users see only their assigned client's employees.
     """
     return get_employees(db, current_user, skip, limit, client_id, is_floating_pool)
 
@@ -67,7 +71,12 @@ def get_floating_pool_employees_endpoint(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
     """
-    Get all floating pool employees
+    Get all floating pool employees.
+
+    Returns employees currently assigned to the floating pool, available
+    for temporary assignment to any production line.
+
+    SECURITY: Requires authentication; results filtered by user's client access.
     """
     return get_floating_pool_employees(db, current_user, skip, limit)
 

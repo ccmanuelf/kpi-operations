@@ -32,6 +32,9 @@ from backend.config import settings, validate_production_config, ConfigValidatio
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/health", tags=["Health"])
 
+# Named constant for database ping query (used in health checks)
+_DB_PING_QUERY = text("SELECT 1")
+
 # Application start time for uptime calculation
 APP_START_TIME = datetime.utcnow()
 
@@ -58,7 +61,7 @@ async def database_health(db: Session = Depends(get_db)):
     """
     try:
         # Execute simple query to test connection
-        result = db.execute(text("SELECT 1"))
+        result = db.execute(_DB_PING_QUERY)
         result.fetchone()
 
         return {"status": "healthy", "database": "connected", "timestamp": datetime.utcnow().isoformat()}
@@ -120,7 +123,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
     # Database connectivity test with latency measurement
     try:
         start_time = time.perf_counter()
-        db.execute(text("SELECT 1"))
+        db.execute(_DB_PING_QUERY)
         db_latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
 
         checks["database"] = {"status": "healthy", "latency_ms": db_latency_ms, "pool": get_pool_status()}
@@ -256,7 +259,7 @@ async def readiness_check(db: Session = Depends(get_db)):
     """
     try:
         # Test database connection
-        db.execute(text("SELECT 1"))
+        db.execute(_DB_PING_QUERY)
 
         return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
     except Exception as e:

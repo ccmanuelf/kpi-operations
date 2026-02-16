@@ -371,7 +371,7 @@ class QualityKPIService:
         Returns:
             RTYResult with calculation details
         """
-        from backend.calculations.fpy_rty import calculate_rty_pure, get_rty_interpretation
+        from backend.calculations.fpy_rty import calculate_fpy_pure, calculate_rty_pure, get_rty_interpretation
 
         if not process_steps:
             process_steps = ["Incoming", "In-Process", "Final"]

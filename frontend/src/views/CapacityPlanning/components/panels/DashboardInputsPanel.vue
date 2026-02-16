@@ -130,6 +130,17 @@
 </template>
 
 <script setup>
+/**
+ * DashboardInputsPanel - Configuration form for capacity planning parameters.
+ *
+ * Provides controls for global planning settings: planning horizon (days),
+ * stock staleness alert threshold, default efficiency percentage (slider),
+ * bottleneck threshold percentage (slider), and auto-schedule toggle.
+ * Changes are tracked with a dirty indicator and persisted via store.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.dashboardInputs)
+ * No props or emits -- all state managed via store.
+ */
 import { computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

@@ -115,6 +115,16 @@
 </template>
 
 <script setup>
+/**
+ * ProductionLinesGrid - Editable grid for production line configuration.
+ *
+ * Manages production line definitions including line code, name, department,
+ * standard capacity (units/hr), max operators, efficiency factor, and
+ * active status. Supports add, duplicate, and delete operations.
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.productionLines)
+ * No props or emits -- all state managed via store.
+ */
 import { computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

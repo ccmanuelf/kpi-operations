@@ -64,10 +64,10 @@ class Settings(BaseSettings):
     DB_PORT: int = 3306
     DB_NAME: str = "kpi_platform"
     DB_USER: str = "kpi_user"
-    DB_PASSWORD: str = "password"
+    DB_PASSWORD: str = ""
 
     # JWT
-    SECRET_KEY: str = "your-super-secret-key-change-in-production"
+    SECRET_KEY: str = "insecure-dev-only-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
 
     # Application
-    DEBUG: bool = True
+    DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
     # File Upload
@@ -115,6 +115,16 @@ class Settings(BaseSettings):
     # Feature Flags
     CAPACITY_PLANNING_ENABLED: bool = True
     CAPACITY_CACHING_ENABLED: bool = True
+
+    @field_validator("CORS_ORIGINS")
+    @classmethod
+    def validate_cors_origins(cls, v: str) -> str:
+        """Validate that CORS origins have a scheme (http:// or https://)"""
+        for origin in v.split(","):
+            origin = origin.strip()
+            if origin and not origin.startswith(("http://", "https://")):
+                raise ValueError(f"CORS origin must start with http:// or https://: {origin}")
+        return v
 
     model_config = {"env_file": ".env", "case_sensitive": True}
 
@@ -275,4 +285,5 @@ settings = Settings()
 
 # Validate configuration on module load (non-blocking)
 # In production, use validate_production_config(raise_on_critical=True) at app startup
-_startup_validation = validate_production_config(raise_on_critical=False)
+_is_demo = settings.ENVIRONMENT.lower() in ("development", "dev", "local", "demo", "test")
+_startup_validation = validate_production_config(raise_on_critical=not _is_demo)

@@ -179,6 +179,17 @@
 </template>
 
 <script setup>
+/**
+ * KPITrackingPanel - Tracks KPI commitments with target vs actual comparison.
+ *
+ * Displays KPI metrics in an editable table with target values, loaded actuals,
+ * variance percentages, and status chips. Summary cards show counts of on-target,
+ * off-target, and critical KPIs. Supports manual KPI creation and period-based
+ * actuals loading (current/last week/month).
+ *
+ * Store dependency: useCapacityPlanningStore (worksheets.kpiTracking)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 

@@ -26,9 +26,6 @@ from backend.services.analytics_service import AnalyticsService
 # Business Logic Services (Phase 2)
 from backend.services.production_service import ProductionService, get_production_service
 from backend.services.quality_service import QualityService, get_quality_service
-from backend.services.work_order_service import WorkOrderService, get_work_order_service
-from backend.services.hold_service import HoldService, get_hold_service
-from backend.services.employee_service import EmployeeService, get_employee_service
 
 # Capacity Planning Services (Phase B.2)
 from backend.services.capacity import (
@@ -50,9 +47,6 @@ __all__ = [
     # Business Logic Services
     "ProductionService",
     "QualityService",
-    "WorkOrderService",
-    "HoldService",
-    "EmployeeService",
     # Capacity Planning Services
     "CapacityPlanningService",
     "BOMService",
@@ -64,8 +58,5 @@ __all__ = [
     # Dependency Injection Factories
     "get_production_service",
     "get_quality_service",
-    "get_work_order_service",
-    "get_hold_service",
-    "get_employee_service",
     "get_capacity_planning_service",
 ]

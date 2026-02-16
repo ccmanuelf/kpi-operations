@@ -35,6 +35,9 @@ if not os.path.exists(DB_PATH):
 
 # Demo users to create
 # Password: admin123 for admin, password123 for others
+# NOTE: Demo passwords intentionally simple. This script is for local development
+# only. Production deployments MUST use strong passwords via environment variables.
+# See docs/SECURITY.md for production password policy.
 DEMO_USERS = [
     {
         'user_id': 'USR-ADMIN-001',

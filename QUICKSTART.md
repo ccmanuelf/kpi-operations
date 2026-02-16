@@ -27,10 +27,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # Initialize database and seed demo data
-python -c "from backend.database import engine, Base; Base.metadata.create_all(bind=engine)"
-PYTHONPATH=.. python -m backend.database.seed
+cd ../database
+python init_sqlite_schema.py
+python generators/generate_demo_data.py
+python create_demo_users.py
+cd ../backend
 
-# Start backend
+# Start backend (PYTHONPATH required for module imports)
 PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -40,7 +43,7 @@ Open a new terminal:
 
 ```bash
 cd frontend
-npm install
+npm install --legacy-peer-deps
 npm run dev
 ```
 

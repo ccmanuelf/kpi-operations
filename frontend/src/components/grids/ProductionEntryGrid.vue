@@ -164,6 +164,17 @@
 </template>
 
 <script setup>
+/**
+ * ProductionEntryGrid - Editable data grid for production entry records.
+ *
+ * Provides inline editing of production data (date, product, shift, units,
+ * runtime, employees, defects, scrap) with AG Grid. Supports clipboard paste
+ * from spreadsheets, read-back confirmation before save, date/product/shift
+ * filtering, and summary statistics (total units, runtime, avg efficiency).
+ *
+ * Store dependency: useProductionDataStore (productionDataStore)
+ * No props or emits -- all state managed via store.
+ */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'

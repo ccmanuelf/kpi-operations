@@ -7,10 +7,13 @@ Phase 2.2: Updated to support both:
 - Comma-separated client_id_assigned field - legacy fallback
 """
 
+import logging
 from typing import Optional, List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from backend.schemas.user import User, UserRole
+
+logger = logging.getLogger(__name__)
 
 
 class ClientAccessError(HTTPException):
@@ -74,8 +77,15 @@ def get_user_client_filter(user: User, db: Session = None) -> Optional[List[str]
     Phase 2.2: Supports both junction table and legacy comma-separated field.
     Tries junction table first, falls back to legacy field.
 
+    JWT Freshness Note:
+        This function reads client assignments from the DB user record
+        (user.client_id_assigned) or the junction table — never from JWT
+        claims. The user object passed here is loaded fresh from the DB
+        by get_current_user on every request, so the client list is always
+        current regardless of what the JWT token contains.
+
     Args:
-        user: Authenticated user object
+        user: Authenticated user object (loaded from DB by get_current_user)
         db: Optional database session for junction table lookup
 
     Returns:
@@ -111,8 +121,24 @@ def verify_client_access(user: User, resource_client_id: str, db: Session = None
 
     Phase 2.2: Added db parameter for junction table support.
 
+    JWT Freshness Note:
+        The client_id in the JWT is set at login time. If a user's client
+        association changes (e.g., admin reassignment), the stale JWT will
+        still carry the old client_id until it expires.
+
+        Mitigation: Short token expiry (30 min) + this function always checks
+        against the DB user record (loaded by get_current_user), not the JWT
+        claim. The get_current_user dependency (backend/auth/jwt.py) performs
+        a full DB lookup on every request, so user.client_id_assigned is
+        always the current DB value.
+
+        Additionally, if the JWT-embedded client_ids drift from the DB value,
+        a warning is logged for audit visibility. Hard enforcement of token
+        revocation is deferred to the MariaDB production phase where a
+        Redis-backed token blacklist will be available.
+
     Args:
-        user: Authenticated user object
+        user: Authenticated user object (loaded from DB by get_current_user)
         resource_client_id: Client ID of the resource being accessed
         db: Optional database session for junction table lookup
 
@@ -141,7 +167,23 @@ def verify_client_access(user: User, resource_client_id: str, db: Session = None
     if user.role in [UserRole.ADMIN, UserRole.POWERUSER]:
         return True
 
-    # Get user's authorized client list
+    # JWT freshness check: warn if JWT-embedded client_ids differ from DB record.
+    # The _jwt_client_ids attribute is attached by get_current_user (auth/jwt.py).
+    # This is a logging-only check — access decisions always use the DB record.
+    jwt_client_ids = getattr(user, "_jwt_client_ids", None)
+    db_client_ids = user.client_id_assigned
+    if jwt_client_ids is not None and db_client_ids is not None:
+        if jwt_client_ids.strip() != db_client_ids.strip():
+            logger.warning(
+                "JWT client_id freshness mismatch for user '%s': "
+                "jwt_client_ids='%s', db_client_ids='%s'. "
+                "User's client assignment may have changed since login.",
+                user.username,
+                jwt_client_ids,
+                db_client_ids,
+            )
+
+    # Get user's authorized client list (always from DB record, not JWT)
     user_clients = get_user_client_filter(user, db)
 
     # Check if resource's client is in user's authorized list

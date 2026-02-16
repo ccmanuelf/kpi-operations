@@ -191,7 +191,7 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
         # TODO: Send email with reset link
         # In production, integrate with email service
         # For now, log the token (remove in production)
-        print(f"[DEV] Password reset token for {user.email}: {reset_token}")
+        get_module_logger(__name__).debug("Password reset token generated for %s", user.email)
 
     # Always return success to prevent email enumeration
     return {"message": "If your email is registered, you will receive a password reset link"}

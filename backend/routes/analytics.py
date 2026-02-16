@@ -155,7 +155,7 @@ def get_heatmap_color_code(value: Optional[Decimal], benchmark: Decimal = Decima
 async def get_kpi_trends(
     client_id: str = Query(..., description="Client ID to analyze"),
     kpi_type: KPIType = Query(..., description="Type of KPI to analyze"),
-    time_range: str = Query("30d", regex="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
+    time_range: str = Query("30d", pattern="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
     start_date: Optional[date] = Query(None, description="Custom start date (overrides time_range)"),
     end_date: Optional[date] = Query(None, description="Custom end date (defaults to today)"),
     db: Session = Depends(get_db),
@@ -262,7 +262,7 @@ async def get_kpi_predictions(
     historical_days: int = Query(30, ge=7, le=90, description="Historical data window (7-90 days)"),
     forecast_days: int = Query(7, ge=1, le=30, description="Forecast horizon (1-30 days)"),
     method: Optional[str] = Query(
-        None, regex="^(auto|simple|double|linear)$", description="Forecasting method (auto, simple, double, linear)"
+        None, pattern="^(auto|simple|double|linear)$", description="Forecasting method (auto, simple, double, linear)"
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -373,7 +373,7 @@ async def get_kpi_predictions(
 )
 async def get_client_comparisons(
     kpi_type: KPIType = Query(..., description="Type of KPI to compare"),
-    time_range: str = Query("30d", regex="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
+    time_range: str = Query("30d", pattern="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
     start_date: Optional[date] = Query(None, description="Custom start date"),
     end_date: Optional[date] = Query(None, description="Custom end date"),
     db: Session = Depends(get_db),
@@ -488,7 +488,7 @@ async def get_client_comparisons(
 async def get_performance_heatmap(
     client_id: str = Query(..., description="Client ID to visualize"),
     kpi_type: KPIType = Query(..., description="Type of KPI to visualize"),
-    time_range: str = Query("30d", regex="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
+    time_range: str = Query("30d", pattern="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
     start_date: Optional[date] = Query(None, description="Custom start date"),
     end_date: Optional[date] = Query(None, description="Custom end date"),
     db: Session = Depends(get_db),
@@ -603,7 +603,7 @@ async def get_performance_heatmap(
 )
 async def get_defect_pareto_analysis(
     client_id: str = Query(..., description="Client ID to analyze"),
-    time_range: str = Query("30d", regex="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
+    time_range: str = Query("30d", pattern="^(7d|30d|90d)$", description="Time range (7d, 30d, 90d)"),
     start_date: Optional[date] = Query(None, description="Custom start date"),
     end_date: Optional[date] = Query(None, description="Custom end date"),
     pareto_threshold: Decimal = Query(Decimal("80.0"), ge=50, le=95, description="Pareto threshold percentage"),

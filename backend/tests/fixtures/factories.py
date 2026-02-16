@@ -39,6 +39,7 @@ from backend.schemas import (
     FilterHistory,
     WorkflowTransitionLog,
 )
+from backend.schemas.coverage import ShiftCoverage
 from backend.auth.jwt import get_password_hash
 
 
@@ -486,26 +487,60 @@ class TestDataFactory:
 
     @staticmethod
     def create_coverage_entry(
-        db: Session, shift_id: int, client_id: str, coverage_date: Optional[date] = None, **kwargs
+        db: Session,
+        shift_id: int,
+        client_id: str,
+        floating_employee_id: Optional[int] = None,
+        covered_employee_id: Optional[int] = None,
+        **kwargs,
     ) -> CoverageEntry:
         """Create a shift coverage entry"""
-        if coverage_date is None:
-            coverage_date = date.today()
-
         entry_id = TestDataFactory._next_id("COV")
+
+        # Create placeholder employees if IDs not provided
+        if floating_employee_id is None:
+            floating_emp = TestDataFactory.create_employee(db, client_id=client_id, employee_name="Floating Worker")
+            floating_employee_id = floating_emp.employee_id
+        if covered_employee_id is None:
+            covered_emp = TestDataFactory.create_employee(db, client_id=client_id, employee_name="Covered Worker")
+            covered_employee_id = covered_emp.employee_id
 
         entry = CoverageEntry(
             coverage_entry_id=entry_id,
             shift_id=shift_id,
             client_id=client_id,
-            coverage_date=coverage_date,
-            required_headcount=kwargs.get("required_headcount", 10),
-            actual_headcount=kwargs.get("actual_headcount", 10),
-            coverage_percentage=kwargs.get("coverage_percentage", Decimal("100.0")),
+            floating_employee_id=floating_employee_id,
+            covered_employee_id=covered_employee_id,
+            shift_date=kwargs.get("shift_date", datetime.combine(date.today(), datetime.min.time())),
+            coverage_reason=kwargs.get("coverage_reason", "Absence"),
+            notes=kwargs.get("notes", "Test coverage entry"),
         )
         db.add(entry)
         db.flush()
         return entry
+
+    @staticmethod
+    def create_shift_coverage(
+        db: Session,
+        shift_id: int,
+        client_id: str,
+        entered_by: int,
+        **kwargs,
+    ) -> ShiftCoverage:
+        """Create a ShiftCoverage record (shift_coverage table) for coverage CRUD tests"""
+        coverage = ShiftCoverage(
+            client_id=client_id,
+            shift_id=shift_id,
+            coverage_date=kwargs.get("coverage_date", date.today()),
+            required_employees=kwargs.get("required_employees", 10),
+            actual_employees=kwargs.get("actual_employees", 8),
+            coverage_percentage=kwargs.get("coverage_percentage", 80.00),
+            notes=kwargs.get("notes", "Test shift coverage"),
+            entered_by=entered_by,
+        )
+        db.add(coverage)
+        db.flush()
+        return coverage
 
     # ========================================================================
     # Quality
@@ -563,7 +598,8 @@ class TestDataFactory:
         detail = DefectDetail(
             defect_detail_id=detail_id,
             quality_entry_id=quality_entry_id,
-            defect_type=defect_type,
+            client_id_fk=kwargs.get("client_id_fk", kwargs.get("client_id")),
+            defect_type=defect_type.value if hasattr(defect_type, "value") else str(defect_type),
             defect_count=defect_count,
             severity=kwargs.get("severity", "MINOR"),
             location=kwargs.get("location", "Front"),
@@ -583,7 +619,9 @@ class TestDataFactory:
         if defect_name is None:
             defect_name = f"Defect Type {defect_code}"
 
+        type_id = TestDataFactory._next_id("DTYPE")
         catalog = DefectTypeCatalog(
+            defect_type_id=type_id,
             defect_code=defect_code,
             defect_name=defect_name,
             client_id=client_id,
@@ -620,9 +658,8 @@ class TestDataFactory:
             user_id=user_id,
             filter_name=filter_name,
             filter_type=filter_type,
-            filter_criteria=json.dumps(filter_criteria),
-            is_default=kwargs.get("is_default", 0),
-            is_shared=kwargs.get("is_shared", 0),
+            filter_config=json.dumps(filter_criteria),
+            is_default=kwargs.get("is_default", False),
         )
         db.add(saved_filter)
         db.flush()
@@ -643,18 +680,14 @@ class TestDataFactory:
         **kwargs,
     ) -> WorkflowTransitionLog:
         """Create a workflow transition log"""
-        log_id = TestDataFactory._next_id("TRANS")
-
         transition = WorkflowTransitionLog(
-            transition_log_id=log_id,
             work_order_id=work_order_id,
             from_status=from_status,
             to_status=to_status,
-            transitioned_by=transitioned_by,
+            transitioned_by=None,  # Integer FK, leave as NULL for test
             client_id=client_id,
-            transition_timestamp=kwargs.get("transition_timestamp", datetime.now()),
-            reason=kwargs.get("reason", "Test transition"),
-            job_id=kwargs.get("job_id"),
+            notes=kwargs.get("notes", "Test transition"),
+            trigger_source=kwargs.get("trigger_source", "manual"),
         )
         db.add(transition)
         db.flush()
