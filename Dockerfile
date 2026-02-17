@@ -3,11 +3,8 @@
 # Stage 1: Build stage
 # python:3.11.11-slim-bookworm — pin to digest for reproducible builds:
 # docker pull python:3.11.11-slim-bookworm && docker inspect --format='{{index .RepoDigests 0}}' python:3.11.11-slim-bookworm
+# TODO: Pin to @sha256: digest for production reproducibility
 FROM python:3.11.11-slim-bookworm as builder
-
-LABEL maintainer="KPI Operations Team"
-LABEL version="1.0.4"
-LABEL description="KPI Operations Platform - FastAPI Backend"
 
 WORKDIR /app
 
@@ -23,7 +20,12 @@ COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir --prefix=/usr/local -r backend/requirements.txt
 
 # Stage 2: Production stage (same base as builder for consistency)
+# TODO: Pin to @sha256: digest for production reproducibility
 FROM python:3.11.11-slim-bookworm as production
+
+LABEL maintainer="KPI Operations Team"
+LABEL version="1.0.4"
+LABEL description="KPI Operations Platform - FastAPI Backend"
 
 WORKDIR /app
 

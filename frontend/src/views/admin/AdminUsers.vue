@@ -148,7 +148,7 @@
             <v-select
               v-model="userFormData.role"
               :items="roleOptions"
-              label="Role"
+              :label="t('common.role')"
               prepend-icon="mdi-shield-account"
               :rules="[rules.required]"
               variant="outlined"
@@ -295,7 +295,7 @@ const formatRole = (role) => {
 }
 
 const formatDate = (date) => {
-  if (!date) return 'N/A'
+  if (!date) return t('common.na')
   return new Date(date).toLocaleDateString()
 }
 

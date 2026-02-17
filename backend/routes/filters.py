@@ -12,6 +12,9 @@ from datetime import datetime
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 from backend.models.filters import (
     SavedFilterCreate,
     SavedFilterUpdate,
@@ -76,9 +79,7 @@ def list_saved_filters(
         return [_to_filter_response(f) for f in filters]
     except Exception:
         # Return empty list if table doesn't exist or other DB error
-        import logging
-
-        logging.getLogger(__name__).warning("Error fetching saved filters", exc_info=True)
+        logger.warning("Error fetching saved filters", exc_info=True)
         return []
 
 

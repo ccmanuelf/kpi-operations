@@ -146,7 +146,7 @@
         <v-card-text>
           <v-text-field
             v-model="scheduleName"
-            label="Schedule Name"
+            :label="t('capacityPlanning.dialogs.scheduleName')"
             variant="outlined"
             class="mb-2"
           />
@@ -154,7 +154,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="startDate"
-                label="Start Date"
+                :label="t('common.start')"
                 type="date"
                 variant="outlined"
               />
@@ -162,7 +162,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="endDate"
-                label="End Date"
+                :label="t('common.end')"
                 type="date"
                 variant="outlined"
               />
@@ -170,7 +170,7 @@
           </v-row>
           <v-checkbox
             v-model="includeAllOrders"
-            label="Include all pending orders"
+            :label="t('capacityPlanning.dialogs.includeAllOrders')"
             hide-details
           />
         </v-card-text>
@@ -203,8 +203,10 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const showGenerateDialog = ref(false)

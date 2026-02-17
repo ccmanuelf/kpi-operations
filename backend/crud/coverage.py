@@ -32,7 +32,7 @@ def create_shift_coverage(db: Session, coverage: ShiftCoverageCreate, current_us
     else:
         coverage_pct = Decimal("0")
 
-    db_coverage = ShiftCoverage(**coverage.dict(), coverage_percentage=coverage_pct, entered_by=current_user.user_id)
+    db_coverage = ShiftCoverage(**coverage.model_dump(), coverage_percentage=coverage_pct, entered_by=current_user.user_id)
 
     db.add(db_coverage)
     db.commit()
@@ -111,7 +111,7 @@ def update_shift_coverage(
     if hasattr(db_coverage, "client_id") and db_coverage.client_id:
         verify_client_access(current_user, db_coverage.client_id)
 
-    update_data = coverage_update.dict(exclude_unset=True)
+    update_data = coverage_update.model_dump(exclude_unset=True)
 
     # Recalculate coverage percentage if values changed
     required = update_data.get("required_employees", db_coverage.required_employees)

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,15 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+# Token blacklist for logout functionality (per audit requirement)
+# In production, this should be replaced with Redis or database-backed storage
+_token_blacklist: set = set()
+
+
+def is_token_blacklisted(token: str) -> bool:
+    """Check if a token has been blacklisted (logged out)"""
+    return token in _token_blacklist
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -75,6 +84,14 @@ def decode_access_token(token: str) -> dict:
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    # Check token blacklist before decoding (catches logged-out tokens)
+    if is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username: str = payload.get("sub")
@@ -85,14 +102,18 @@ def decode_access_token(token: str) -> dict:
         raise credentials_exception
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(
+    request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+) -> User:
     """
     Dependency to get current authenticated user
 
     Enhanced: Extracts client_ids from JWT for stateless validation (per audit requirement)
     This allows client access verification without additional DB queries.
+    Sets request.state.user_id for AuditLogMiddleware attribution.
 
     Args:
+        request: FastAPI request (used to set user_id on request.state for audit logging)
         token: JWT token from request
         db: Database session
 
@@ -121,6 +142,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     # This allows client_auth middleware to validate without DB lookup
     user._jwt_role = payload.get("role")
     user._jwt_client_ids = payload.get("client_ids")  # Comma-separated or None
+
+    # Set user_id on request.state so AuditLogMiddleware can attribute actions correctly
+    request.state.user_id = user.user_id
 
     return user
 

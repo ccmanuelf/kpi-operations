@@ -66,10 +66,7 @@ vi.mock('@/services/api/capacityPlanning', () => ({
   runScenario: vi.fn(),
   deleteScenario: vi.fn(),
   getKPICommitments: vi.fn(),
-  getKPIActuals: vi.fn(),
-  getKPIVariance: vi.fn(),
-  isFeatureEnabled: vi.fn(),
-  getModuleInfo: vi.fn()
+  getKPIVariance: vi.fn()
 }))
 
 import * as capacityApi from '@/services/api/capacityPlanning'
@@ -1405,41 +1402,6 @@ describe('Capacity Planning Store', () => {
       await store.deleteScenario(1)
 
       expect(store.activeScenario).toEqual({ id: 2 })
-    })
-  })
-
-  // =========================================================================
-  // 31. Actions - KPI Integration
-  // =========================================================================
-  describe('Actions - KPI Integration', () => {
-    beforeEach(() => {
-      store.setClientId(1)
-    })
-
-    it('loadKPIActuals updates existing KPI tracking entries', async () => {
-      store.worksheets.kpiTracking.data = [
-        { kpi_name: 'OTD', target_value: 95, actual_value: null, variance_percent: null },
-        { kpi_name: 'Efficiency', target_value: 85, actual_value: null, variance_percent: null }
-      ]
-      const mockActuals = [
-        { kpi_name: 'OTD', value: 92 },
-        { kpi_name: 'Efficiency', value: 88 }
-      ]
-      capacityApi.getKPIActuals.mockResolvedValue(mockActuals)
-
-      const result = await store.loadKPIActuals('week')
-
-      expect(result).toEqual(mockActuals)
-      expect(store.worksheets.kpiTracking.data[0].actual_value).toBe(92)
-      expect(store.worksheets.kpiTracking.data[1].actual_value).toBe(88)
-      // Variance: (88 - 85) / 85 * 100 = 3.5
-      expect(parseFloat(store.worksheets.kpiTracking.data[1].variance_percent)).toBeCloseTo(3.5, 1)
-    })
-
-    it('loadKPIActuals returns null when no clientId', async () => {
-      store.clientId = null
-      const result = await store.loadKPIActuals('month')
-      expect(result).toBeNull()
     })
   })
 

@@ -1,6 +1,7 @@
 /**
  * Unit tests for QR Code API Service
  * Phase 8: Increase test coverage
+ * Note: getWorkOrderQR, getProductQR, getJobQR, getEmployeeQR, generateQR removed (DC-FE-24: unused)
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
@@ -49,107 +50,6 @@ describe('QR Code API Service', () => {
       await qrApi.lookupQR('encoded%20data')
 
       expect(api.get).toHaveBeenCalledWith('/qr/lookup', { params: { data: 'encoded%20data' } })
-    })
-  })
-
-  describe('getWorkOrderQR', () => {
-    it('fetches work order QR image as blob', async () => {
-      const mockBlob = new Blob(['image data'], { type: 'image/png' })
-      api.get.mockResolvedValueOnce({ data: mockBlob })
-
-      await qrApi.getWorkOrderQR('WO-001')
-
-      expect(api.get).toHaveBeenCalledWith('/qr/work-order/WO-001/image', { responseType: 'blob' })
-    })
-
-    it('handles numeric work order ID', async () => {
-      api.get.mockResolvedValueOnce({ data: new Blob() })
-
-      await qrApi.getWorkOrderQR(123)
-
-      expect(api.get).toHaveBeenCalledWith('/qr/work-order/123/image', { responseType: 'blob' })
-    })
-  })
-
-  describe('getProductQR', () => {
-    it('fetches product QR image as blob', async () => {
-      const mockBlob = new Blob(['image data'], { type: 'image/png' })
-      api.get.mockResolvedValueOnce({ data: mockBlob })
-
-      await qrApi.getProductQR('PROD-001')
-
-      expect(api.get).toHaveBeenCalledWith('/qr/product/PROD-001/image', { responseType: 'blob' })
-    })
-
-    it('handles numeric product ID', async () => {
-      api.get.mockResolvedValueOnce({ data: new Blob() })
-
-      await qrApi.getProductQR(456)
-
-      expect(api.get).toHaveBeenCalledWith('/qr/product/456/image', { responseType: 'blob' })
-    })
-  })
-
-  describe('getJobQR', () => {
-    it('fetches job QR image as blob', async () => {
-      api.get.mockResolvedValueOnce({ data: new Blob() })
-
-      await qrApi.getJobQR('JOB-001')
-
-      expect(api.get).toHaveBeenCalledWith('/qr/job/JOB-001/image', { responseType: 'blob' })
-    })
-  })
-
-  describe('getEmployeeQR', () => {
-    it('fetches employee QR image as blob', async () => {
-      api.get.mockResolvedValueOnce({ data: new Blob() })
-
-      await qrApi.getEmployeeQR('EMP-001')
-
-      expect(api.get).toHaveBeenCalledWith('/qr/employee/EMP-001/image', { responseType: 'blob' })
-    })
-  })
-
-  describe('generateQR', () => {
-    it('generates QR code for work order', async () => {
-      const mockResponse = {
-        data: {
-          qr_data: 'encoded_string',
-          entity_type: 'work_order',
-          entity_id: 'WO-001'
-        }
-      }
-      api.post.mockResolvedValueOnce(mockResponse)
-
-      const result = await qrApi.generateQR('work_order', 'WO-001')
-
-      expect(api.post).toHaveBeenCalledWith('/qr/generate', {
-        entity_type: 'work_order',
-        entity_id: 'WO-001'
-      })
-      expect(result).toEqual(mockResponse)
-    })
-
-    it('generates QR code for product', async () => {
-      api.post.mockResolvedValueOnce({ data: {} })
-
-      await qrApi.generateQR('product', 123)
-
-      expect(api.post).toHaveBeenCalledWith('/qr/generate', {
-        entity_type: 'product',
-        entity_id: 123
-      })
-    })
-
-    it('generates QR code for employee', async () => {
-      api.post.mockResolvedValueOnce({ data: {} })
-
-      await qrApi.generateQR('employee', 'EMP-123')
-
-      expect(api.post).toHaveBeenCalledWith('/qr/generate', {
-        entity_type: 'employee',
-        entity_id: 'EMP-123'
-      })
     })
   })
 

@@ -87,11 +87,7 @@ import {
   deleteScenario,
   // KPI Integration
   getKPICommitments,
-  getKPIActuals,
   getKPIVariance,
-  // Utility
-  isFeatureEnabled,
-  getModuleInfo,
 } from '../api/capacityPlanning'
 
 describe('Capacity Planning API Service', () => {
@@ -1111,17 +1107,6 @@ describe('Capacity Planning API Service', () => {
       })
     })
 
-    it('getKPIActuals calls GET with client_id and period params', async () => {
-      api.get.mockResolvedValue({ data: { efficiency: 82 } })
-
-      const result = await getKPIActuals(5, 'month')
-
-      expect(api.get).toHaveBeenCalledWith('/capacity/kpi/actuals', {
-        params: { client_id: 5, period: 'month' },
-      })
-      expect(result).toEqual({ efficiency: 82 })
-    })
-
     it('getKPIVariance calls GET with client_id param', async () => {
       api.get.mockResolvedValue({
         data: { otd_variance: -2.5, efficiency_variance: 1.3 },
@@ -1143,55 +1128,6 @@ describe('Capacity Planning API Service', () => {
       expect(api.get).toHaveBeenCalledWith('/capacity/kpi/variance', {
         params: { client_id: 5, schedule_id: 10 },
       })
-    })
-  })
-
-  // ============================================
-  // Utility Operations
-  // ============================================
-
-  describe('Utility Operations', () => {
-    it('isFeatureEnabled returns true when API responds with enabled: true', async () => {
-      api.get.mockResolvedValue({ data: { enabled: true } })
-
-      const result = await isFeatureEnabled()
-
-      expect(api.get).toHaveBeenCalledWith('/capacity/health')
-      expect(result).toBe(true)
-    })
-
-    it('isFeatureEnabled returns false when API responds with enabled: false', async () => {
-      api.get.mockResolvedValue({ data: { enabled: false } })
-
-      const result = await isFeatureEnabled()
-
-      expect(result).toBe(false)
-    })
-
-    it('isFeatureEnabled returns false when API call fails', async () => {
-      api.get.mockRejectedValue(new Error('Network error'))
-
-      const result = await isFeatureEnabled()
-
-      expect(result).toBe(false)
-    })
-
-    it('isFeatureEnabled returns false when response data is null', async () => {
-      api.get.mockResolvedValue({ data: null })
-
-      const result = await isFeatureEnabled()
-
-      expect(result).toBe(false)
-    })
-
-    it('getModuleInfo calls GET and returns module data', async () => {
-      const info = { version: '1.0.0', worksheets: 13 }
-      api.get.mockResolvedValue({ data: info })
-
-      const result = await getModuleInfo()
-
-      expect(api.get).toHaveBeenCalledWith('/capacity/info')
-      expect(result).toEqual(info)
     })
   })
 
@@ -1246,12 +1182,6 @@ describe('Capacity Planning API Service', () => {
       await expect(
         runCapacityAnalysis(5, '2026-03-01', '2026-03-31')
       ).rejects.toThrow('Network Error')
-    })
-
-    it('getModuleInfo propagates errors unlike isFeatureEnabled', async () => {
-      api.get.mockRejectedValue(new Error('Service unavailable'))
-
-      await expect(getModuleInfo()).rejects.toThrow('Service unavailable')
     })
 
     it('commitSchedule propagates errors', async () => {

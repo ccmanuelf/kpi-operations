@@ -45,6 +45,7 @@ class HoldNotificationHandler(EventHandler):
         )
         # TODO: Send email/SMS notification to supervisors
         # TODO: Create in-app notification
+        logger.info("Notification handler not yet implemented")
 
     async def _handle_approval_required(self, event: HoldApprovalRequired) -> None:
         """Handle hold approval request."""
@@ -54,6 +55,7 @@ class HoldNotificationHandler(EventHandler):
         )
         # TODO: Send urgent notification to supervisors
         # TODO: Create approval workflow task
+        logger.info("Notification handler not yet implemented")
 
 
 class KPIAlertHandler(EventHandler):
@@ -79,3 +81,4 @@ class KPIAlertHandler(EventHandler):
         )
         # TODO: Send alert notification based on alert configuration
         # TODO: Create alert record for dashboard
+        logger.info("Notification handler not yet implemented")

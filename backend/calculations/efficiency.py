@@ -16,8 +16,11 @@ from decimal import Decimal
 from typing import Optional, Tuple
 from datetime import time, date
 from dataclasses import dataclass
+import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
+
+logger = logging.getLogger(__name__)
 from backend.schemas.product import Product
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.shift import Shift
@@ -124,7 +127,8 @@ def get_client_cycle_time_default(db: Session, client_id: Optional[str] = None) 
     try:
         config = get_client_config_or_defaults(db, client_id)
         return Decimal(str(config.get("default_cycle_time_hours", DEFAULT_CYCLE_TIME)))
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error calculating cycle time: {e}")
         return DEFAULT_CYCLE_TIME
 
 
@@ -250,8 +254,8 @@ def infer_employees_count(db: Session, entry: ProductionEntry, include_floating_
             floating_pool_count = get_floating_pool_coverage_count(
                 db, entry.client_id, shift_date_value, entry.shift_id if hasattr(entry, "shift_id") else None
             )
-        except Exception:
-            # Silently ignore errors in floating pool lookup
+        except Exception as e:
+            logger.warning(f"Error in floating pool lookup: {e}")
             floating_pool_count = 0
 
     total_count = base_count + floating_pool_count

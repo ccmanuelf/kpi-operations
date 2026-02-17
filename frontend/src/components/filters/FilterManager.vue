@@ -255,7 +255,7 @@
         <v-card-text class="pa-4">
           <v-text-field
             v-model="editingFilter.filter_name"
-            label="Filter Name"
+            :label="t('filters.filterName')"
             variant="outlined"
             density="comfortable"
           ></v-text-field>
@@ -265,7 +265,7 @@
             :items="filterTypeOptions"
             item-title="label"
             item-value="value"
-            label="Filter Type"
+            :label="t('filters.filterType')"
             variant="outlined"
             density="comfortable"
             class="mt-4"
@@ -273,7 +273,7 @@
 
           <v-checkbox
             v-model="editingFilter.is_default"
-            label="Set as default for this type"
+            :label="t('filters.setAsDefault')"
             density="compact"
             class="mt-2"
           ></v-checkbox>
@@ -305,7 +305,7 @@
         <v-card-text class="pa-4">
           <v-text-field
             v-model="duplicateName"
-            label="New Filter Name"
+            :label="t('filters.filterName')"
             variant="outlined"
             density="comfortable"
             :placeholder="`Copy of ${duplicatingFilter?.filter_name || ''}`"
@@ -390,8 +390,11 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
 import { formatDistanceToNow } from 'date-fns'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {

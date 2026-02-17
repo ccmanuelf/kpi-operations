@@ -94,7 +94,7 @@
               <v-text-field
                 v-model="customStartDate"
                 type="date"
-                label="Start"
+                :label="t('common.start')"
                 density="compact"
                 variant="outlined"
                 hide-details
@@ -104,7 +104,7 @@
               <v-text-field
                 v-model="customEndDate"
                 type="date"
-                label="End"
+                :label="t('common.end')"
                 density="compact"
                 variant="outlined"
                 hide-details
@@ -132,7 +132,7 @@
       :items="clients"
       item-title="client_name"
       item-value="client_id"
-      label="Client"
+      :label="t('common.client')"
       density="compact"
       variant="outlined"
       hide-details
@@ -317,6 +317,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format, subDays, formatDistanceToNow } from 'date-fns'
@@ -324,6 +325,8 @@ import api from '@/services/api'
 import { debounce } from '@/utils/performance'
 import SaveFilterDialog from './SaveFilterDialog.vue'
 import FilterManager from './FilterManager.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   filterType: {

@@ -27,7 +27,7 @@ def create_attendance_record(
     if hasattr(attendance, "client_id") and attendance.client_id:
         verify_client_access(current_user, attendance.client_id)
 
-    db_attendance = AttendanceEntry(**attendance.dict(), entered_by=current_user.user_id)
+    db_attendance = AttendanceEntry(**attendance.model_dump(), entered_by=current_user.user_id)
 
     db.add(db_attendance)
     db.commit()
@@ -114,7 +114,7 @@ def update_attendance_record(
     if hasattr(db_attendance, "client_id") and db_attendance.client_id:
         verify_client_access(current_user, db_attendance.client_id)
 
-    update_data = attendance_update.dict(exclude_unset=True)
+    update_data = attendance_update.model_dump(exclude_unset=True)
 
     for field, value in update_data.items():
         if hasattr(db_attendance, field):

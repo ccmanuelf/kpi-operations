@@ -239,28 +239,3 @@ def build_client_filter_clause(user: User, client_id_column):
     # Return IN clause for user's authorized clients
     return client_id_column.in_(user_clients)
 
-
-# Convenience decorator for FastAPI endpoints
-def require_client_access(resource_client_id: str):
-    """
-    Decorator to enforce client access verification in API endpoints
-
-    Args:
-        resource_client_id: Client ID to check access for
-
-    Usage:
-        @app.get("/api/v1/work-orders/{work_order_id}")
-        @require_client_access(work_order.client_id)
-        async def get_work_order(work_order_id: str, current_user: User = Depends(get_current_user)):
-            # Access already verified by decorator
-            return work_order
-    """
-
-    def decorator(func):
-        async def wrapper(*args, current_user: User, **kwargs):
-            verify_client_access(current_user, resource_client_id)
-            return await func(*args, current_user=current_user, **kwargs)
-
-        return wrapper
-
-    return decorator

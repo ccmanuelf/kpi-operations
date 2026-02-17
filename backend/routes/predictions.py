@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
-import logging
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -24,7 +23,6 @@ from backend.schemas.user import User
 from backend.constants import (
     LOOKBACK_WEEKLY_DAYS,
     LOOKBACK_MONTHLY_DAYS,
-    LOOKBACK_QUARTERLY_DAYS,
     MIN_FORECAST_DAYS,
     MAX_FORECAST_DAYS,
     MIN_HISTORICAL_DAYS,
@@ -54,8 +52,9 @@ from backend.generators.sample_data_phase5 import (
     KPIHistoryGenerator,
     KPITypePhase5,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/predictions", tags=["predictions"])
 

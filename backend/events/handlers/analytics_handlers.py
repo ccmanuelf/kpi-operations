@@ -46,6 +46,7 @@ class ProductionMetricsHandler(EventHandler):
         )
         # TODO: Update daily aggregate metrics
         # TODO: Check if daily targets met
+        logger.info("Analytics handler not yet implemented")
 
     async def _handle_entry_updated(self, event: ProductionEntryUpdated) -> None:
         """Handle production entry update."""
@@ -53,6 +54,7 @@ class ProductionMetricsHandler(EventHandler):
             f"METRICS: Production entry {event.aggregate_id} updated - " f"fields: {list(event.changed_fields.keys())}"
         )
         # TODO: Recalculate aggregate metrics if KPIs changed
+        logger.info("Analytics handler not yet implemented")
 
 
 class QualityMetricsHandler(EventHandler):
@@ -81,6 +83,7 @@ class QualityMetricsHandler(EventHandler):
         )
         # TODO: Update quality rate metrics
         # TODO: Update PPM/DPMO calculations
+        logger.info("Analytics handler not yet implemented")
 
     async def _handle_defect(self, event: QualityDefectReported) -> None:
         """Handle defect report."""
@@ -90,3 +93,4 @@ class QualityMetricsHandler(EventHandler):
         )
         # TODO: Update defect Pareto data
         # TODO: Check if defect threshold exceeded
+        logger.info("Analytics handler not yet implemented")

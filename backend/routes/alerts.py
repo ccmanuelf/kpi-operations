@@ -3,8 +3,6 @@ Alert Routes - API endpoints for intelligent alerting system
 Provides proactive alerts based on predictions, thresholds, and patterns
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.orm import Session
@@ -56,8 +54,9 @@ from backend.constants import (
     MAX_DAYS_SHORT,
     MAX_DAYS_LONG,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 

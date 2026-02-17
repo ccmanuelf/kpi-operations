@@ -4,7 +4,6 @@ Capacity Planning - KPI and Workbook Endpoints
 KPI integration (commitments, variance) and workbook save/load operations.
 """
 
-import logging
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -26,8 +25,9 @@ from ._models import (
     KPICommitmentResponse,
     WorksheetSaveResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 kpi_workbook_router = APIRouter()
 

@@ -4,7 +4,6 @@ Capacity Planning - Production Lines Endpoints
 Production line CRUD operations (capacity specifications, efficiency factors).
 """
 
-import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -23,8 +22,9 @@ from ._models import (
     ProductionLineResponse,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 lines_router = APIRouter()
 

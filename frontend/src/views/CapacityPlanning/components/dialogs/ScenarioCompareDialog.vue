@@ -41,7 +41,7 @@
                 class="text-center"
               >
                 <span :class="getBestClass('total_output', scenario.results?.total_output)">
-                  {{ scenario.results?.total_output?.toLocaleString() || 'N/A' }}
+                  {{ scenario.results?.total_output?.toLocaleString() || t('common.na') }}
                 </span>
               </td>
             </tr>
@@ -53,7 +53,7 @@
                 class="text-center"
               >
                 <span :class="getBestClass('avg_utilization', scenario.results?.avg_utilization)">
-                  {{ scenario.results?.avg_utilization?.toFixed(1) || 'N/A' }}%
+                  {{ scenario.results?.avg_utilization?.toFixed(1) || t('common.na') }}%
                 </span>
               </td>
             </tr>
@@ -65,7 +65,7 @@
                 class="text-center"
               >
                 <span :class="getBestClass('on_time_rate', scenario.results?.on_time_rate)">
-                  {{ scenario.results?.on_time_rate?.toFixed(1) || 'N/A' }}%
+                  {{ scenario.results?.on_time_rate?.toFixed(1) || t('common.na') }}%
                 </span>
               </td>
             </tr>
@@ -76,7 +76,7 @@
                 :key="scenario.id"
                 class="text-center"
               >
-                {{ scenario.results?.total_hours?.toFixed(1) || 'N/A' }}
+                {{ scenario.results?.total_hours?.toFixed(1) || t('common.na') }}
               </td>
             </tr>
             <tr>
@@ -97,7 +97,7 @@
                 class="text-center"
               >
                 <span :class="getLowestClass('estimated_cost', scenario.results?.estimated_cost)">
-                  ${{ scenario.results?.estimated_cost?.toLocaleString() || 'N/A' }}
+                  ${{ scenario.results?.estimated_cost?.toLocaleString() || t('common.na') }}
                 </span>
               </td>
             </tr>
@@ -158,6 +158,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
   modelValue: {
@@ -171,6 +172,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'close'])
+
+const { t } = useI18n()
 
 // Find the best (highest) value for a metric
 const getBestValue = (metric) => {

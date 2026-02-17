@@ -56,7 +56,7 @@
           <v-col cols="5">
             <v-text-field
               v-model="kpi.name"
-              label="KPI Name"
+              :label="t('kpi.name')"
               variant="outlined"
               density="compact"
               :readonly="kpi.readonly"
@@ -65,7 +65,7 @@
           <v-col cols="3">
             <v-text-field
               v-model.number="kpi.target"
-              label="Target"
+              :label="t('common.target')"
               type="number"
               variant="outlined"
               density="compact"
@@ -74,7 +74,7 @@
           <v-col cols="3">
             <v-text-field
               v-model="kpi.unit"
-              label="Unit"
+              :label="t('common.unit')"
               variant="outlined"
               density="compact"
             />
@@ -131,6 +131,9 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {

@@ -3,6 +3,8 @@ Manufacturing KPI Platform - FastAPI Backend
 Main application with modular routes
 """
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -55,12 +57,107 @@ from backend.middleware.rate_limit import limiter, configure_rate_limiting, Rate
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.middleware.audit_log import AuditLogMiddleware
 
-# Ensure all tables exist (idempotent — safe on pre-populated databases)
-Base.metadata.create_all(bind=engine)
+import logging
 
-from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
+from backend.exceptions.domain_exceptions import (
+    DomainException,
+    ResourceNotFoundError,
+    ValidationError as DomainValidationError,
+)
 
-create_capacity_tables()
+_logger = logging.getLogger(__name__)
+
+# Optional scheduler import for lifecycle events
+try:
+    from backend.tasks.daily_reports import scheduler as report_scheduler
+except ImportError:
+    report_scheduler = None
+
+
+# ============================================================================
+# APPLICATION LIFESPAN
+# ============================================================================
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown logic."""
+    # ------------------------------------------------------------------
+    # STARTUP
+    # ------------------------------------------------------------------
+
+    # Ensure all tables exist (idempotent — safe on pre-populated databases)
+    Base.metadata.create_all(bind=engine)
+
+    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+
+    create_capacity_tables()
+
+    # Initialize Domain Events Infrastructure (Phase 3)
+    try:
+        # Register all event handlers
+        register_all_handlers()
+
+        # Set up event persistence to EVENT_STORE
+        from backend.database import SessionLocal
+
+        event_bus = get_event_bus()
+        event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
+        print("[EVENTS] Domain events infrastructure initialized")
+    except Exception as e:
+        print(f"Warning: Failed to initialize event infrastructure: {e}")
+
+    # Start daily report scheduler
+    if report_scheduler is not None:
+        try:
+            report_scheduler.start()
+        except Exception as e:
+            print(f"Warning: Failed to start report scheduler: {e}")
+
+    # Auto-seed demo data if database is empty
+    try:
+        from backend.database import SessionLocal
+        from backend.schemas.client import Client
+
+        db = SessionLocal()
+        try:
+            client_count = db.query(Client).count()
+        finally:
+            db.close()
+
+        if client_count == 0:
+            _logger.info("Empty database detected — auto-seeding demo data...")
+            from backend.scripts.init_demo_database import init_database
+
+            init_database()
+            _logger.info("Auto-seeding complete")
+        else:
+            _logger.info("Database already populated (%d clients)", client_count)
+    except Exception as e:
+        _logger.warning("Auto-seed check failed: %s", e)
+
+    yield
+
+    # ------------------------------------------------------------------
+    # SHUTDOWN
+    # ------------------------------------------------------------------
+
+    # Stop report scheduler
+    if report_scheduler is not None:
+        try:
+            report_scheduler.stop()
+        except Exception as e:
+            _logger.warning("Failed to stop report scheduler: %s", e)
+
+    # Dispose database engine to clean up connection pool
+    try:
+        engine.dispose()
+        _logger.info("Database engine disposed")
+    except Exception as e:
+        _logger.warning("Failed to dispose database engine: %s", e)
+
 
 # Initialize FastAPI app
 tags_metadata = [
@@ -215,15 +312,7 @@ app = FastAPI(
     description="FastAPI backend for production tracking and KPI calculation",
     version="1.0.0",
     openapi_tags=tags_metadata,
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+    lifespan=lifespan,
 )
 
 # V1 Simulation API Deprecation middleware
@@ -238,22 +327,21 @@ configure_rate_limiting(app)
 # Audit logging middleware — logs POST/PUT/PATCH/DELETE on /api/ paths
 app.add_middleware(AuditLogMiddleware)
 
+# CORS middleware — added last so it runs first (outermost in LIFO order),
+# ensuring CORS preflight OPTIONS requests are handled before rate limiting
+# and audit logging middleware process them.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Requested-With"],
+)
+
 
 # ============================================================================
 # GLOBAL EXCEPTION HANDLERS
 # ============================================================================
-
-import logging
-
-from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
-from backend.exceptions.domain_exceptions import (
-    DomainException,
-    ResourceNotFoundError,
-    ValidationError as DomainValidationError,
-)
-
-_logger = logging.getLogger(__name__)
 
 
 @app.exception_handler(DomainValidationError)
@@ -571,84 +659,8 @@ app.include_router(capacity_router)
 
 # ============================================================================
 # NOTE: Report routes are now in routes/reports.py with proper authentication
-# See: app.include_router(reports_router) at line 248
+# See: app.include_router(reports_router) above
 # ============================================================================
-
-# Optional scheduler import for lifecycle events
-try:
-    from backend.tasks.daily_reports import scheduler as report_scheduler
-except ImportError:
-    report_scheduler = None
-
-
-# ============================================================================
-# APPLICATION LIFECYCLE EVENTS
-# ============================================================================
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize application services"""
-    # Initialize Domain Events Infrastructure (Phase 3)
-    try:
-        # Register all event handlers
-        register_all_handlers()
-
-        # Set up event persistence to EVENT_STORE
-        from backend.database import SessionLocal
-
-        event_bus = get_event_bus()
-        event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
-        print("[EVENTS] Domain events infrastructure initialized")
-    except Exception as e:
-        print(f"Warning: Failed to initialize event infrastructure: {e}")
-
-    # Start daily report scheduler
-    if report_scheduler is not None:
-        try:
-            report_scheduler.start()
-        except Exception as e:
-            print(f"Warning: Failed to start report scheduler: {e}")
-
-    # Auto-seed demo data if database is empty
-    try:
-        from backend.database import SessionLocal
-        from backend.schemas.client import Client
-
-        db = SessionLocal()
-        try:
-            client_count = db.query(Client).count()
-        finally:
-            db.close()
-
-        if client_count == 0:
-            _logger.info("Empty database detected — auto-seeding demo data...")
-            from backend.scripts.init_demo_database import init_database
-
-            init_database()
-            _logger.info("Auto-seeding complete")
-        else:
-            _logger.info("Database already populated (%d clients)", client_count)
-    except Exception as e:
-        _logger.warning("Auto-seed check failed: %s", e)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup application services"""
-    # Stop report scheduler
-    if report_scheduler is not None:
-        try:
-            report_scheduler.stop()
-        except Exception as e:
-            _logger.warning("Failed to stop report scheduler: %s", e)
-
-    # Dispose database engine to clean up connection pool
-    try:
-        engine.dispose()
-        _logger.info("Database engine disposed")
-    except Exception as e:
-        _logger.warning("Failed to dispose database engine: %s", e)
 
 
 if __name__ == "__main__":

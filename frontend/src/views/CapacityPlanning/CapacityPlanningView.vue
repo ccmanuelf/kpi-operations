@@ -14,7 +14,7 @@
               :items="clients"
               item-title="client_name"
               item-value="client_id"
-              label="Select Client"
+              :label="t('common.client')"
               density="compact"
               variant="outlined"
               hide-details
@@ -378,7 +378,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="analysisStartDate"
-                label="Start Date"
+                :label="t('common.start')"
                 type="date"
                 variant="outlined"
               />
@@ -386,7 +386,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="analysisEndDate"
-                label="End Date"
+                :label="t('common.end')"
                 type="date"
                 variant="outlined"
               />
@@ -408,7 +408,7 @@
         <v-card-text>
           <v-text-field
             v-model="scheduleName"
-            label="Schedule Name"
+            :label="t('capacityPlanning.dialogs.scheduleName')"
             variant="outlined"
             class="mb-2"
           />
@@ -416,7 +416,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="scheduleStartDate"
-                label="Start Date"
+                :label="t('common.start')"
                 type="date"
                 variant="outlined"
               />
@@ -424,7 +424,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="scheduleEndDate"
-                label="End Date"
+                :label="t('common.end')"
                 type="date"
                 variant="outlined"
               />
@@ -447,7 +447,7 @@
           <v-select
             v-model="exportFormat"
             :items="['JSON', 'CSV']"
-            label="Format"
+            :label="t('common.format')"
             variant="outlined"
           />
         </v-card-text>
@@ -466,7 +466,7 @@
         <v-card-text>
           <v-file-input
             v-model="importFile"
-            label="Select file"
+            :label="t('capacityPlanning.dialogs.selectFile')"
             accept=".json,.csv"
             variant="outlined"
             prepend-icon="mdi-file-upload"
@@ -474,7 +474,7 @@
           <v-select
             v-model="importTarget"
             :items="worksheetOptions"
-            label="Target Worksheet"
+            :label="t('capacityPlanning.dialogs.targetWorksheet')"
             variant="outlined"
             class="mt-2"
           />
@@ -509,6 +509,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useRoute } from 'vue-router'
@@ -535,6 +536,8 @@ import InstructionsPanel from './components/panels/InstructionsPanel.vue'
 import MRPResultsDialog from './components/dialogs/MRPResultsDialog.vue'
 import ScenarioCompareDialog from './components/dialogs/ScenarioCompareDialog.vue'
 import ScheduleCommitDialog from './components/dialogs/ScheduleCommitDialog.vue'
+
+const { t } = useI18n()
 
 const store = useCapacityPlanningStore()
 const authStore = useAuthStore()

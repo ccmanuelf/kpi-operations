@@ -24,21 +24,19 @@ from backend.models.user import (
     PasswordChange,
 )
 from backend.middleware.rate_limit import limiter, RateLimitConfig
-from backend.auth.jwt import verify_password, get_password_hash, create_access_token, get_current_user, oauth2_scheme
+from backend.auth.jwt import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    get_current_user,
+    oauth2_scheme,
+    _token_blacklist,
+    is_token_blacklisted,
+)
 from backend.schemas.user import User
 
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
-
-
-# Token blacklist for logout functionality (per audit requirement)
-# In production, this should be replaced with Redis or database-backed storage
-_token_blacklist: set = set()
-
-
-def is_token_blacklisted(token: str) -> bool:
-    """Check if a token has been blacklisted (logged out)"""
-    return token in _token_blacklist
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -194,7 +192,12 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
         get_module_logger(__name__).debug("Password reset token generated for %s", user.email)
 
     # Always return success to prevent email enumeration
-    return {"message": "If your email is registered, you will receive a password reset link"}
+    return {
+        "message": (
+            "If an account with this email exists, a password reset has been initiated. "
+            "Check server logs for the reset token."
+        )
+    }
 
 
 @router.post("/reset-password")
@@ -202,6 +205,9 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
 def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Session = Depends(get_db)) -> dict:
     """
     Reset password using token (rate limited: 10 requests/minute)
+
+    Password policy is enforced by the PasswordResetConfirm Pydantic model:
+    requires min 8 chars, uppercase, lowercase, digit, and special character.
     """
     try:
         payload = jwt.decode(reset_confirm.token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -215,6 +221,7 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
         if not user:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token")
 
+        # Password policy already validated by PasswordResetConfirm.validate_password_policy()
         # Update password
         user.password_hash = get_password_hash(reset_confirm.new_password)
         user.updated_at = datetime.now(tz=timezone.utc)
@@ -227,10 +234,14 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
 
 
 @router.post("/change-password")
+@limiter.limit(RateLimitConfig.AUTH_LIMIT)
 def change_password(
-    password_data: PasswordChange, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    request: Request,
+    password_data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Change password for authenticated user"""
+    """Change password for authenticated user (rate limited: 10 requests/minute)"""
     if not verify_password(password_data.current_password, current_user.password_hash):
         log_security_event(
             logger,

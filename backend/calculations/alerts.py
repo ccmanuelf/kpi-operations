@@ -7,9 +7,26 @@ from typing import List, Optional, Dict, Any
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
+import logging
 import uuid
 
 from backend.calculations.predictions import auto_forecast, ForecastResult
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Named constants — avoid magic numbers in alert thresholds
+# ---------------------------------------------------------------------------
+
+# check_threshold_breach: ratio thresholds for "urgent" severity
+URGENT_RATIO_THRESHOLD = Decimal("0.5")   # higher-is-better: below 50% of target → urgent
+URGENT_MULTIPLIER_THRESHOLD = Decimal("5")  # lower-is-better: above 5× target → urgent
+
+# generate_quality_alert: default threshold multipliers for quality KPIs
+QUALITY_WARNING_RATIO_HIGH = Decimal("0.95")   # higher-is-better warning: 95% of target
+QUALITY_CRITICAL_RATIO_HIGH = Decimal("0.90")  # higher-is-better critical: 90% of target
+QUALITY_WARNING_RATIO_LOW = Decimal("1.5")     # lower-is-better warning: 150% of target
+QUALITY_CRITICAL_RATIO_LOW = Decimal("2.0")   # lower-is-better critical: 200% of target
 
 
 @dataclass
@@ -49,7 +66,7 @@ def check_threshold_breach(
     if higher_is_better:
         # For metrics where higher is better (efficiency, FPY)
         # Check for urgent FIRST (far below target - more severe than critical)
-        if current_value < target * Decimal("0.5"):
+        if current_value < target * URGENT_RATIO_THRESHOLD:
             return "urgent"
         if critical_threshold and current_value <= critical_threshold:
             return "critical"
@@ -58,7 +75,7 @@ def check_threshold_breach(
     else:
         # For metrics where lower is better (DPMO, PPM, downtime)
         # Check for urgent FIRST (far above target - more severe than critical)
-        if current_value > target * Decimal("5"):
+        if current_value > target * URGENT_MULTIPLIER_THRESHOLD:
             return "urgent"
         if critical_threshold and current_value >= critical_threshold:
             return "critical"
@@ -249,11 +266,11 @@ def generate_quality_alert(
 
     # Set default thresholds if not provided
     if higher_is_better:
-        warning_threshold = warning_threshold or (target * Decimal("0.95"))
-        critical_threshold = critical_threshold or (target * Decimal("0.90"))
+        warning_threshold = warning_threshold or (target * QUALITY_WARNING_RATIO_HIGH)
+        critical_threshold = critical_threshold or (target * QUALITY_CRITICAL_RATIO_HIGH)
     else:
-        warning_threshold = warning_threshold or (target * Decimal("1.5"))
-        critical_threshold = critical_threshold or (target * Decimal("2.0"))
+        warning_threshold = warning_threshold or (target * QUALITY_WARNING_RATIO_LOW)
+        critical_threshold = critical_threshold or (target * QUALITY_CRITICAL_RATIO_LOW)
 
     severity = check_threshold_breach(
         current_value, target, warning_threshold, critical_threshold, higher_is_better=higher_is_better
@@ -444,7 +461,8 @@ def generate_prediction_based_alert(
     # Generate forecast
     try:
         forecast: ForecastResult = auto_forecast(historical_values, forecast_periods)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error in alert calculation: {e}")
         return None
 
     # Check if any prediction breaches thresholds

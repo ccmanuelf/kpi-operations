@@ -153,7 +153,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="clientFormData.address"
-                  label="Address"
+                  :label="t('common.address')"
                   prepend-icon="mdi-map-marker"
                   variant="outlined"
                   density="comfortable"
@@ -163,7 +163,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="clientFormData.notes"
-                  label="Notes"
+                  :label="t('common.notes')"
                   prepend-icon="mdi-note-text"
                   variant="outlined"
                   density="comfortable"
@@ -350,7 +350,7 @@ const showSnackbar = (message, color = 'success') => {
 }
 
 const formatDate = (date) => {
-  if (!date) return 'N/A'
+  if (!date) return t('common.na')
   return new Date(date).toLocaleDateString()
 }
 

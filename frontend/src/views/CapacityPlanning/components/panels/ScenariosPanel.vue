@@ -78,9 +78,9 @@
                 <v-divider class="my-2" />
                 <div class="text-caption text-grey mb-1">{{ t('capacityPlanning.scenarios.resultsLabel') }}</div>
                 <div class="text-body-2">
-                  <div>{{ t('capacityPlanning.scenarios.totalOutput') }}: {{ scenario.results.total_output?.toLocaleString() || 'N/A' }}</div>
-                  <div>{{ t('capacityPlanning.scenarios.utilization') }}: {{ scenario.results.avg_utilization?.toFixed(1) || 'N/A' }}%</div>
-                  <div>{{ t('capacityPlanning.scenarios.onTime') }}: {{ scenario.results.on_time_rate?.toFixed(1) || 'N/A' }}%</div>
+                  <div>{{ t('capacityPlanning.scenarios.totalOutput') }}: {{ scenario.results.total_output?.toLocaleString() || t('common.na') }}</div>
+                  <div>{{ t('capacityPlanning.scenarios.utilization') }}: {{ scenario.results.avg_utilization?.toFixed(1) || t('common.na') }}%</div>
+                  <div>{{ t('capacityPlanning.scenarios.onTime') }}: {{ scenario.results.on_time_rate?.toFixed(1) || t('common.na') }}%</div>
                 </div>
               </div>
             </v-card-text>
@@ -305,10 +305,12 @@
 import { ref, computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 const { t } = useI18n()
 
 const store = useCapacityPlanningStore()
+const notificationStore = useNotificationStore()
 
 const showCreateDialog = ref(false)
 const selectedScenarios = ref([])
@@ -391,12 +393,14 @@ const runScenario = async (scenario) => {
     await store.runScenario(scenario.id || scenario._id)
   } catch (error) {
     console.error('Failed to run scenario:', error)
+    notificationStore.showError(error.message || 'Failed to run scenario')
   }
 }
 
 const applyScenario = (scenario) => {
   // TODO: Apply scenario to main schedule
   console.log('Applying scenario:', scenario)
+  notificationStore.showInfo('Apply scenario is not yet implemented')
 }
 
 const deleteScenario = async (scenario) => {
@@ -404,6 +408,7 @@ const deleteScenario = async (scenario) => {
     await store.deleteScenario(scenario.id || scenario._id)
   } catch (error) {
     console.error('Failed to delete scenario:', error)
+    notificationStore.showError(error.message || 'Failed to delete scenario')
   }
 }
 

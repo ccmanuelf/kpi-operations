@@ -70,7 +70,20 @@
     "showMore": "Show More",
     "loadError": "Failed to load data",
     "apply": "Apply",
-    "standard": "Standard"
+    "standard": "Standard",
+    "na": "N/A",
+    "client": "Client",
+    "name": "Name",
+    "type": "Type",
+    "role": "Role",
+    "address": "Address",
+    "period": "Period",
+    "format": "Format",
+    "year": "Year",
+    "month": "Month",
+    "description": "Description",
+    "unit": "Unit",
+    "target": "Target"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -171,6 +184,7 @@
   },
   "kpi": {
     "title": "Key Performance Indicators",
+    "name": "KPI Name",
     "efficiency": "Efficiency",
     "efficiencyDesc": "Production output vs target",
     "efficiencyDescription": "Track production output against targets and identify improvement areas",
@@ -1665,7 +1679,8 @@
       "selectFile": "Select file",
       "targetWorksheet": "Target Worksheet",
       "resetTitle": "Reset Workbook",
-      "resetConfirmation": "Are you sure you want to reset all data? This will discard any unsaved changes."
+      "resetConfirmation": "Are you sure you want to reset all data? This will discard any unsaved changes.",
+      "includeAllOrders": "Include all pending orders"
     },
     "mrpResults": {
       "title": "MRP / Component Check Results",

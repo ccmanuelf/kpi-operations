@@ -24,6 +24,7 @@ DEFAULT_INSECURE_VALUES = [
     "your-super-secret-key-change-in-production",
     "change-me-in-production",
     "CHANGE_ME_IN_PRODUCTION",
+    "insecure-dev-only-change-in-production",
     "secret",
     "password",
     "changeme",

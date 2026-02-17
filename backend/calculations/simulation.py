@@ -14,31 +14,21 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Optional, Tuple, Any
 from datetime import date, datetime, timedelta, timezone
 from dataclasses import dataclass, field
-from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
 from backend.crud.client_config import get_client_config_or_defaults
+from backend.schemas.simulation import SimulationScenarioType, OptimizationGoal  # canonical definitions
 
+# ---------------------------------------------------------------------------
+# Named constants — avoid magic numbers in calculation logic
+# ---------------------------------------------------------------------------
 
-class SimulationScenarioType(str, Enum):
-    """Types of simulation scenarios"""
-
-    STAFFING = "staffing"
-    PRODUCTION = "production"
-    CAPACITY = "capacity"
-    EFFICIENCY = "efficiency"
-    FLOATING_POOL = "floating_pool"
-    SHIFT_COVERAGE = "shift_coverage"
-
-
-class OptimizationGoal(str, Enum):
-    """Optimization goals for capacity planning"""
-
-    MINIMIZE_COST = "minimize_cost"
-    MAXIMIZE_PRODUCTION = "maximize_production"
-    BALANCE_WORKLOAD = "balance_workload"
-    MEET_TARGET = "meet_target"
+# Staffing ratio thresholds used in run_staffing_simulation
+STAFFING_UNDERSTAFFED_RATIO = Decimal("0.7")   # below this → understaffed
+STAFFING_OVERSTAFFED_RATIO = Decimal("1.5")    # above this → overstaffed
+STAFFING_UNDERSTAFFED_EFFICIENCY_PENALTY = Decimal("0.95")  # efficiency multiplier when understaffed
+STAFFING_OVERSTAFFED_EFFICIENCY_BONUS = Decimal("0.98")    # efficiency multiplier when overstaffed
 
 
 @dataclass
@@ -290,12 +280,12 @@ def run_staffing_simulation(
         adjusted_efficiency = base_efficiency
         if efficiency_scaling:
             ratio = Decimal(employee_count) / Decimal(max(1, base_employees))
-            if ratio < Decimal("0.7"):
+            if ratio < STAFFING_UNDERSTAFFED_RATIO:
                 # Understaffed - efficiency drops
-                adjusted_efficiency = base_efficiency * Decimal("0.95")
-            elif ratio > Decimal("1.5"):
+                adjusted_efficiency = base_efficiency * STAFFING_UNDERSTAFFED_EFFICIENCY_PENALTY
+            elif ratio > STAFFING_OVERSTAFFED_RATIO:
                 # Overstaffed - marginal efficiency decrease
-                adjusted_efficiency = base_efficiency * Decimal("0.98")
+                adjusted_efficiency = base_efficiency * STAFFING_OVERSTAFFED_EFFICIENCY_BONUS
 
         # Calculate capacity for this scenario
         capacity = calculate_production_capacity(

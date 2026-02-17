@@ -286,7 +286,7 @@
                   />
                   <figcaption class="sr-only">
                     Efficiency trend chart displaying {{ efficiencyChartData.labels.length }} data points.
-                    Latest value: {{ efficiencyChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                    Latest value: {{ efficiencyChartData.datasets[0]?.data?.slice(-1)[0] || t('common.na') }}%
                   </figcaption>
                 </figure>
               </v-col>
@@ -299,7 +299,7 @@
                   />
                   <figcaption class="sr-only">
                     Quality FPY trend chart displaying {{ qualityChartData.labels.length }} data points.
-                    Latest value: {{ qualityChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                    Latest value: {{ qualityChartData.datasets[0]?.data?.slice(-1)[0] || t('common.na') }}%
                   </figcaption>
                 </figure>
               </v-col>
@@ -312,7 +312,7 @@
                   />
                   <figcaption class="sr-only">
                     Availability trend chart displaying {{ availabilityChartData.labels.length }} data points.
-                    Latest value: {{ availabilityChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                    Latest value: {{ availabilityChartData.datasets[0]?.data?.slice(-1)[0] || t('common.na') }}%
                   </figcaption>
                 </figure>
               </v-col>
@@ -325,7 +325,7 @@
                   />
                   <figcaption class="sr-only">
                     OEE trend chart displaying {{ oeeChartData.labels.length }} data points.
-                    Latest value: {{ oeeChartData.datasets[0]?.data?.slice(-1)[0] || 'N/A' }}%
+                    Latest value: {{ oeeChartData.datasets[0]?.data?.slice(-1)[0] || t('common.na') }}%
                   </figcaption>
                 </figure>
               </v-col>
@@ -787,7 +787,7 @@ const chartOptions = {
 
 // Methods
 const formatValue = (value, unit) => {
-  if (value === null || value === undefined) return 'N/A'
+  if (value === null || value === undefined) return t('common.na')
   return `${Number(value).toFixed(1)}${unit}`
 }
 
@@ -914,6 +914,7 @@ const refreshData = async () => {
     await kpiStore.fetchAllKPIs()
   } catch (error) {
     console.error('Error refreshing data:', error)
+    showSnackbar(t('errors.refreshFailed') || 'Failed to refresh data', 'error')
   } finally {
     loading.value = false
   }
@@ -928,6 +929,7 @@ const loadClients = async () => {
     ]
   } catch (error) {
     console.error('Error loading clients:', error)
+    showSnackbar(t('errors.loadClientsFailed') || 'Failed to load clients', 'error')
   }
 }
 

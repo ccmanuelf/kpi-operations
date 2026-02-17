@@ -4,7 +4,6 @@ Capacity Planning - Analysis and Schedule Endpoints
 Component check (MRP), capacity analysis, and production schedule operations.
 """
 
-import logging
 from typing import List, Optional
 from datetime import date
 
@@ -29,8 +28,9 @@ from ._models import (
     ScheduleCommitRequest,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 analysis_router = APIRouter()
 

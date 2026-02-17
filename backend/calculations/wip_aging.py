@@ -12,10 +12,13 @@ from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
+import logging
 
 from backend.schemas.hold_entry import HoldEntry, HoldStatus
 from backend.schemas.work_order import WorkOrder
 from backend.crud.client_config import get_client_config_or_defaults
+
+logger = logging.getLogger(__name__)
 
 
 # Fallback default thresholds
@@ -45,7 +48,8 @@ def get_client_wip_thresholds(db: Session, client_id: Optional[str] = None) -> T
         aging = config.get("wip_aging_threshold_days", DEFAULT_AGING_THRESHOLD_DAYS)
         critical = config.get("wip_critical_threshold_days", DEFAULT_CRITICAL_THRESHOLD_DAYS)
         return (aging, critical)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error in WIP aging calculation: {e}")
         return (DEFAULT_AGING_THRESHOLD_DAYS, DEFAULT_CRITICAL_THRESHOLD_DAYS)
 
 

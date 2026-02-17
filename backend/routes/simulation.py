@@ -19,15 +19,15 @@ Provides endpoints for:
 - Comprehensive capacity simulation
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-logger = logging.getLogger(__name__)
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
@@ -42,7 +42,6 @@ from backend.calculations.simulation import (
     simulate_multi_shift_coverage,
     optimize_floating_pool_allocation,
     run_capacity_simulation,
-    OptimizationGoal as CalcOptimizationGoal,
 )
 
 from backend.schemas.simulation import (
@@ -482,16 +481,13 @@ async def optimize_floating_pool_endpoint(
             for s in request.shift_requirements
         ]
 
-        # Map optimization goal
-        calc_goal = CalcOptimizationGoal(request.optimization_goal.value)
-
         result = optimize_floating_pool_allocation(
             db=db,
             client_id=current_user.client_id_assigned,
             target_date=target_date_val,
             available_pool_employees=pool_employees,
             shift_requirements=shift_requirements,
-            optimization_goal=calc_goal,
+            optimization_goal=request.optimization_goal,
         )
 
         allocation_suggestions = [
@@ -880,7 +876,7 @@ async def run_production_line_simulation(
 
     except Exception as e:
         logger.exception("Failed to run production line simulation: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid request parameters")
+        raise HTTPException(status_code=500, detail="Simulation failed. Check server logs for details.")
 
 
 @router.post("/production-line/compare")
@@ -949,7 +945,7 @@ async def compare_production_scenarios(
 
     except Exception as e:
         logger.exception("Failed to compare production scenarios: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid request parameters")
+        raise HTTPException(status_code=500, detail="Simulation failed. Check server logs for details.")
 
 
 @router.post("/production-line/bottlenecks")
@@ -1003,7 +999,7 @@ async def analyze_production_bottlenecks(
 
     except Exception as e:
         logger.exception("Failed to analyze production bottlenecks: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid request parameters")
+        raise HTTPException(status_code=500, detail="Simulation failed. Check server logs for details.")
 
 
 @router.post("/production-line/floating-pool-impact")
@@ -1065,4 +1061,4 @@ async def analyze_floating_pool_impact(
 
     except Exception as e:
         logger.exception("Failed to analyze floating pool impact: %s", e)
-        raise HTTPException(status_code=400, detail="Invalid request parameters")
+        raise HTTPException(status_code=500, detail="Simulation failed. Check server logs for details.")

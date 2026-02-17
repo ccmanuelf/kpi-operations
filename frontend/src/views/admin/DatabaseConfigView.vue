@@ -58,7 +58,7 @@
               <tbody>
                 <tr v-for="(value, key) in connectionInfo" :key="key">
                   <td class="text-capitalize">{{ key.replace(/_/g, ' ') }}</td>
-                  <td><code>{{ value || 'N/A' }}</code></td>
+                  <td><code>{{ value || t('common.na') }}</code></td>
                 </tr>
               </tbody>
             </v-table>
@@ -138,10 +138,13 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { storeToRefs } from 'pinia'
 import { useDatabaseConfigStore } from '@/stores/databaseConfigStore'
 import MigrationWizard from '@/components/admin/MigrationWizard.vue'
 import MigrationProgress from '@/components/admin/MigrationProgress.vue'
+
+const { t } = useI18n()
 
 // Store
 const store = useDatabaseConfigStore()

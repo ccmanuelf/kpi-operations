@@ -3,8 +3,6 @@ KPI Calculation and Dashboard API Routes
 All KPI calculation, dashboard, trend, and threshold endpoints
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
@@ -13,7 +11,9 @@ from typing import Optional
 from datetime import date, datetime, timedelta, timezone
 import uuid
 
-logger = logging.getLogger(__name__)
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 from backend.database import get_db
 from backend.models.production import KPICalculationResponse

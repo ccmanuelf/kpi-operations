@@ -4,11 +4,11 @@ Provides endpoints for PDF and Excel report generation with multi-client support
 Also includes email report configuration endpoints
 """
 
-import logging
-
 from datetime import date, datetime, timedelta, timezone
 
-logger = logging.getLogger(__name__)
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 from typing import Optional, List
 from io import BytesIO
 from pydantic import BaseModel, EmailStr

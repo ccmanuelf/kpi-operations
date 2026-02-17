@@ -3,11 +3,11 @@ QR Code API Routes
 Provides QR code generation and lookup endpoints for work orders, products, jobs, and employees
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-logger = logging.getLogger(__name__)
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional

@@ -540,7 +540,7 @@ const chartOptions = {
 }
 
 const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(1) : 'N/A'
+  return value !== null && value !== undefined ? Number(value).toFixed(1) : t('common.na')
 }
 
 const formatDate = (dateStr) => {

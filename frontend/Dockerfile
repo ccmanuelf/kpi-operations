@@ -1,7 +1,7 @@
 # Frontend Dockerfile for KPI Operations Platform
 # node:20.18-alpine3.20 — pin to digest for reproducible builds:
 # docker pull node:20.18-alpine3.20 && docker inspect --format='{{index .RepoDigests 0}}' node:20.18-alpine3.20
-
+# TODO: Pin to @sha256: digest for production reproducibility
 FROM node:20.18-alpine3.20 AS builder
 
 WORKDIR /app
@@ -14,6 +14,10 @@ RUN npm ci --legacy-peer-deps
 
 # Copy source files
 COPY . .
+
+# Build arg for API URL — must be declared here so Vite bakes it at build time
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
 
 # Build for production
 RUN npm run build
@@ -39,6 +43,7 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 # Production stage (final — default target for `docker build`)
 # nginx:1.27-alpine — pin to digest for reproducible builds:
 # docker pull nginx:1.27-alpine && docker inspect --format='{{index .RepoDigests 0}}' nginx:1.27-alpine
+# TODO: Pin to @sha256: digest for production reproducibility
 FROM nginx:1.27-alpine AS production
 
 LABEL maintainer="KPI Operations Team"

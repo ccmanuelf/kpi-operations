@@ -130,8 +130,8 @@ class DailyReportScheduler:
             return result
 
         except Exception as e:
-            logger.error(f"Error generating/sending report for {client.client_name}: {str(e)}")
-            return {"success": False, "error": str(e)}
+            logger.error(f"Error generating/sending report for {client.client_name}: {e}")
+            return {"success": False, "error": "Report generation failed"}
 
     def _get_client_admin_emails(self, db: Session, client_id: int) -> List[str]:
         """Get list of admin email addresses for a client"""
@@ -180,8 +180,8 @@ class DailyReportScheduler:
             return result
 
         except Exception as e:
-            logger.error(f"Error in manual report generation: {str(e)}")
-            return {"success": False, "error": str(e)}
+            logger.error(f"Error in manual report generation: {e}")
+            return {"success": False, "error": "Report generation failed"}
         finally:
             db.close()
 

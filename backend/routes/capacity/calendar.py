@@ -4,7 +4,6 @@ Capacity Planning - Calendar Endpoints
 Master Calendar (working days, shifts, holidays) CRUD operations.
 """
 
-import logging
 from typing import List, Optional
 from datetime import date
 
@@ -24,8 +23,9 @@ from ._models import (
     CalendarEntryResponse,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 calendar_router = APIRouter()
 

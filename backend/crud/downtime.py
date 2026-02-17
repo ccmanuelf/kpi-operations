@@ -21,7 +21,7 @@ def create_downtime_event(db: Session, downtime: DowntimeEventCreate, current_us
     # Verify user has access to this client
     verify_client_access(current_user, downtime.client_id)
 
-    db_downtime = DowntimeEntry(**downtime.dict(), entered_by=current_user.user_id)
+    db_downtime = DowntimeEntry(**downtime.model_dump(), entered_by=current_user.user_id)
 
     db.add(db_downtime)
     db.commit()
@@ -89,7 +89,7 @@ def update_downtime_event(
     if not db_downtime:
         return None
 
-    update_data = downtime_update.dict(exclude_unset=True)
+    update_data = downtime_update.model_dump(exclude_unset=True)
 
     # Verify client_id if being updated
     if "client_id" in update_data:

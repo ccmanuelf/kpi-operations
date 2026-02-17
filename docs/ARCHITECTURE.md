@@ -1,7 +1,7 @@
 # KPI Operations Platform - Architecture Documentation
 
 **Version**: 1.0.0
-**Last Updated**: 2026-02-16
+**Last Updated**: 2026-02-17
 **Architecture Grade**: B+ (Backend) / B+ (Frontend)
 
 ---
@@ -14,7 +14,7 @@ KPI Operations is a manufacturing KPI tracking platform designed for shopfloor o
 
 | Layer | Technology | Version |
 |-------|------------|---------|
-| **Frontend** | Vue 3 + Vuetify 3 + Pinia | 3.4 / 3.5 / 2.1 |
+| **Frontend** | Vue 3 + Vuetify 3 + Pinia | 3.4 / 3.5 / 3.0 |
 | **Backend** | FastAPI + SQLAlchemy | 0.100+ / 2.0+ |
 | **Database** | SQLite (dev) / MariaDB (prod) | - |
 | **Authentication** | JWT + bcrypt | - |
@@ -188,10 +188,11 @@ frontend/src/
 │   ├── useResponsive.js
 │   └── useMobileGrid.js
 ├── services/
-│   └── api.js             # API client
+│   ├── api.js             # Backward-compat stub; real API client is services/api/ (18 sub-modules)
+│   └── api/               # API sub-modules (18 modules)
 ├── stores/                # Pinia state management
 │   ├── authStore.js       # Authentication
-│   ├── kpiStore.js        # Production data
+│   ├── productionDataStore.js  # Production data (renamed; kpiStore.js backward-compat stub)
 │   ├── kpi.js             # KPI metrics
 │   └── dashboardStore.js  # Dashboard customization
 ├── views/
@@ -367,7 +368,7 @@ Each type has default parameters. Scenarios are persisted and can be compared si
 
 ### API Surface
 
-All endpoints are under `/api/capacity/*` in `backend/routes/capacity.py` (~1,900 lines). Every endpoint enforces multi-tenant isolation via `client_id`.
+Capacity planning endpoints are organized as a sub-package at `backend/routes/capacity/` with 10 modules: `__init__.py`, `analysis.py`, `bom_stock.py`, `calendar.py`, `kpi_workbook.py`, `lines.py`, `orders.py`, `scenarios.py`, `standards.py`, `_models.py`. Every endpoint enforces multi-tenant isolation via `client_id`.
 
 ---
 
@@ -459,7 +460,7 @@ This is the sole reason V1 cannot be archived. Decoupling requires extracting th
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| Monolithic main.py | `backend/main.py` (3,647 lines) | Maintainability |
+| backend/main.py (~657 lines) — middleware, lifecycle, and route registration | `backend/main.py` | Maintainability |
 | Duplicate KPI stores | `frontend/stores/kpi*.js` | Confusion |
 | Inconsistent error handling | Frontend components | UX |
 
@@ -469,7 +470,7 @@ This is the sole reason V1 cannot be archived. Decoupling requires extracting th
 |-------|----------|--------|
 | Business logic in routes | Various route files | Testability |
 | Missing service layer | Backend | Architecture |
-| Large API service file | `frontend/services/api.js` | Maintainability |
+| Large API service file | `frontend/services/api/` (18 sub-modules; `api.js` is now a stub) | Maintainability |
 
 ### Documented for Future
 

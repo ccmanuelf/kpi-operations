@@ -4,7 +4,6 @@ Capacity Planning - Orders Endpoints
 Planning order CRUD operations and scheduling queries.
 """
 
-import logging
 from typing import List, Optional
 from datetime import date
 
@@ -25,8 +24,9 @@ from ._models import (
     OrderResponse,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 orders_router = APIRouter()
 

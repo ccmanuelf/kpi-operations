@@ -15,7 +15,7 @@
           <!-- Filter Name -->
           <v-text-field
             v-model="filterName"
-            label="Filter Name"
+            :label="t('filters.filterName')"
             placeholder="e.g., Q1 Production Overview"
             variant="outlined"
             density="comfortable"
@@ -35,7 +35,7 @@
             :items="filterTypeOptions"
             item-title="label"
             item-value="value"
-            label="Filter Type"
+            :label="t('filters.filterType')"
             variant="outlined"
             density="comfortable"
             :rules="[(v) => !!v || 'Filter type is required']"
@@ -174,6 +174,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
 import api from '@/services/api'
 
@@ -194,6 +195,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'saved'])
 
+const { t } = useI18n()
 const filtersStore = useFiltersStore()
 
 // Form state

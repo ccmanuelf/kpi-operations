@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timezone
 import json
-import logging
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -32,8 +31,9 @@ from backend.crud.preferences import (
     get_role_default_widgets,
     reset_to_role_defaults,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/preferences", tags=["preferences"])
 

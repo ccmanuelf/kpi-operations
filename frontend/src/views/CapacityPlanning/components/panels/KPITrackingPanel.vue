@@ -164,7 +164,7 @@
           <v-select
             v-model="selectedPeriod"
             :items="periodOptions"
-            label="Period"
+            :label="t('common.period')"
             variant="outlined"
           />
         </v-card-text>
@@ -191,8 +191,10 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const showLoadActualsDialog = ref(false)

@@ -4,7 +4,6 @@ Capacity Planning - Standards Endpoints
 Production standards (SAM data) CRUD operations.
 """
 
-import logging
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -24,8 +23,9 @@ from ._models import (
     TotalSAMResponse,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 standards_router = APIRouter()
 

@@ -4,7 +4,6 @@ Capacity Planning - Scenario Endpoints
 What-if scenario CRUD, run/evaluate, compare, and delete operations.
 """
 
-import logging
 from typing import List, Optional
 from datetime import date
 
@@ -26,8 +25,9 @@ from ._models import (
     ScenarioCompareRequest,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 scenarios_router = APIRouter()
 

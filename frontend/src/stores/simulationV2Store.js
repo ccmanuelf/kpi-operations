@@ -6,6 +6,7 @@
  */
 
 import { defineStore } from 'pinia'
+import { useNotificationStore } from '@/stores/notificationStore'
 import {
   getSimulationInfo,
   validateSimulationConfig,
@@ -154,6 +155,7 @@ export const useSimulationV2Store = defineStore('simulationV2', {
       } catch (error) {
         console.error('Failed to fetch simulation info:', error)
         this.error = error.message
+        useNotificationStore().showError(this.error || 'Failed to fetch simulation info')
       }
     },
 

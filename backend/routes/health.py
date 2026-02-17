@@ -14,7 +14,6 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
-import logging
 import time
 import os
 import sys
@@ -31,8 +30,9 @@ from backend.database import get_db, get_pool_status
 from backend.config import settings, validate_production_config, ConfigValidationResult
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 router = APIRouter(prefix="/health", tags=["Health"])
 
 # Named constant for database ping query (used in health checks)

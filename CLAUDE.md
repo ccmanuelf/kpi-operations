@@ -344,19 +344,48 @@ Message 4: Write "file.js"
 
 Remember: **Claude Flow coordinates, Claude Code creates!**
 
-# Codebase Audit Status (Run 4)
-**Status:** REMEDIATION COMPLETE — 6 sprints, all GATE_PASS
-**Previous runs:** Run 1 (62 findings), Run 2 (90 findings), Run 3 (148 findings) — all in `_audit/_history/`
-**Final test count:** 4277 BE + 1494 FE = 5771 passing, 0 failures, 77.31% coverage
+# Codebase Audit Status (Run 5)
+**Current Phase:** ALL PHASES COMPLETE
+**Audit Prompt:** See `_audit/` directory for all reports
+**Previous runs:** Run 1-4 archived in `_audit/_history/`
 
-### Remediation Sprints (all committed to main)
-- Sprint 1 (`f25c386`): Security — auth on 7 endpoint groups, 223→0 bare exceptions, CSP hardened, str(e) leaks removed
-- Sprint 2 (`e60a8dd`): Structure — capacity.py→10 sub-modules, store→5 sub-stores, Dockerfile fix, __init__.py
-- Sprint 3 (`a05bf1e`): Code quality — datetime.utcnow()→tz-aware (31 files), PaginationParams DI, catch blocks
-- Sprint 4 (`6e33aad`): Build/CI — Python 3.11 alignment, coverage artifacts, Docker smoke test, Dependabot
-- Sprint 5 (`7c959d5`): Documentation — OpenAPI 36 tags, 60+ i18n strings, QUICKSTART/DEPLOYMENT fixes
-- Sprint 6 (`a959f98`): Cleanup — pre-commit fix, 15 dead i18n keys removed, .hive-mind untracked
-6. Cleanup & Polish (10 tasks) — remaining MEDIUM+ findings
+### Completed Phases
+- Phase 0: Baseline — COMPLETE — see `_audit/PHASE-0-BASELINE.md`
+- Phase 1: Dead Code & Dependencies — COMPLETE — see `_audit/PHASE-1-DEAD-CODE.md` (73 findings: 58H/6M/9L)
+- Phase 2: Project Structure — COMPLETE — see `_audit/PHASE-2-STRUCTURE.md` (65 findings: 7H/20M/35L)
+- Phase 2.5: Data Layer & Integration — COMPLETE — see `_audit/PHASE-2.5-DATA-LAYER.md` (45 findings: 4H/10M/23L)
+- Phase 3: Repository Hygiene — COMPLETE — see `_audit/PHASE-3-REPO-HYGIENE.md` (16 findings: 4H/8M/4L)
+- Phase 4: Docker & Deployment — COMPLETE — see `_audit/PHASE-4-DOCKER-DEPLOY.md` (27 findings: 6H/8M/13L)
+- Phase 5: Code Quality — COMPLETE — see `_audit/PHASE-5-CODE-QUALITY.md` (19 findings: 2H/9M/8L)
+- Phase 6: Documentation & Tests — COMPLETE — see `_audit/PHASE-6-DOCS-TESTS.md` (22 findings: 5H/12M/5L)
+- Phase 7: Consolidation Plan — COMPLETE — see `_audit/PHASE-7-CONSOLIDATION.md`
+
+### Aggregate Findings (Phases 1-6)
+- **Total: 287 findings** (86 HIGH / 73 MEDIUM / 97 LOW / 23 INFO/PASS)
+- **79 actionable tasks** organized into 6 execution groups + 4 deferred
+- **Grade: C+** — production deployment chain is broken (D07+D13+D19+D17+D22)
+
+### Key Cross-Phase Findings
+- Python 3.12 local vs 3.11 Docker target (version drift)
+- Pydantic `.dict()` — 4 CRUD files confirmed (should be .model_dump())
+- Simulation V1 + V2 not 1-for-1 replaceable — distinct feature sets, sunset 2026-06-01
+- python-jose CVE-2024-33663 MITIGATED — algorithms=["HS256"] confirmed in jwt.decode()
+- Token blacklist defined but never checked — logout does not invalidate tokens (SEC-R5-01)
+- schemas/models naming inverted vs Python conventions (HIGH structural concern)
+- 3 frontend API functions call non-existent backend endpoints
+- VITE_API_URL ARG not declared in frontend Dockerfile — production API URL silently broken (D07)
+- JWT admin token in tracked .claude/settings.local.json (H3-01)
+- ARCHITECTURE.md massively outdated (main.py 3647→657, capacity.py monolith→10 modules)
+- 216 hardcoded i18n strings not using $t() (F-01)
+- 5 backend modules excluded from coverage measurement including auth/ (T-01)
+
+### Audit Conventions
+- All audit reports in `_audit/` directory (Run 5)
+- Previous run reports in `_audit/_history/run-{1,2,3,4}/`
+- Cross-phase connections tracked in `_audit/CROSS-REFERENCES.md`
+- Subagent temp files go in `_audit/temp/`
+- No code modifications without explicit user approval
+- Write findings to disk immediately after each sub-section
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

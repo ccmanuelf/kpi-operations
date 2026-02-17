@@ -55,6 +55,7 @@ export function useUnsavedChanges(options: UnsavedChangesOptions = {}) {
   // Handle Vue Router navigation
   onBeforeRouteLeave((to, from, next) => {
     if (hasUnsavedChanges.value && isEnabled.value) {
+      // TODO(CQ-19): Replace with Vuetify dialog when async navigation guards are supported
       const confirmed = window.confirm(message)
       if (confirmed) {
         hasUnsavedChanges.value = false
@@ -85,6 +86,7 @@ export function useUnsavedChanges(options: UnsavedChangesOptions = {}) {
   // Programmatic navigation check
   const confirmNavigation = (): boolean => {
     if (hasUnsavedChanges.value && isEnabled.value) {
+      // TODO(CQ-19): Replace with Vuetify dialog when async navigation guards are supported
       return window.confirm(message)
     }
     return true

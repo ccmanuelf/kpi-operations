@@ -1,3 +1,7 @@
+// NOTE: This test file uses a mock component (ProductionKPIsMock) rather than
+// the real ProductionKPIs.vue. Consider updating to test the real component
+// or archiving this file. See audit finding T-07.
+
 /**
  * Unit tests for ProductionKPIs component
  * Tests KPI display, data fetching, and color-coded status indicators

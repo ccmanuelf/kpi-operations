@@ -11,7 +11,6 @@ Provides admin endpoints for:
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
-import logging
 
 from backend.database import get_db, Base, engine as current_engine
 from backend.db.factory import DatabaseProviderFactory
@@ -24,8 +23,9 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from backend.auth.jwt import get_current_active_supervisor
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 router = APIRouter(
     prefix="/api/admin/database",

@@ -4,7 +4,7 @@ Get the platform running in 5 minutes!
 
 ## Prerequisites
 
-- Python 3.12+ (see `.python-version`)
+- Python 3.11+ (see `.python-version`)
 - Node.js 20+ (see `.nvmrc`)
 - MariaDB 10.11+ (production) **OR** SQLite (demo/development — no install needed)
 
@@ -203,7 +203,7 @@ Visit: **http://localhost:8000/docs** for interactive Swagger UI
 
 ```bash
 # Check Python version
-python --version  # Should be 3.12+
+python --version  # Should be 3.11+
 
 # Check virtual environment
 which python  # Should point to venv/bin/python

@@ -7,6 +7,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import axios from 'axios'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
   // ============================================================================
@@ -105,7 +106,9 @@ export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
       const response = await axios.get('/api/admin/database/providers')
       availableProviders.value = response.data.providers
     } catch (e) {
+      error.value = e.response?.data?.detail || 'Failed to fetch database providers'
       console.error('Error fetching providers:', e)
+      useNotificationStore().showError(error.value)
     }
   }
 
@@ -178,7 +181,9 @@ export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
         await fetchStatus()
       }
     } catch (e) {
+      error.value = e.response?.data?.detail || 'Failed to fetch migration status'
       console.error('Error fetching migration status:', e)
+      useNotificationStore().showError(error.value)
     }
   }
 
@@ -225,7 +230,9 @@ export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
       const response = await axios.get('/api/admin/database/full-status')
       return response.data
     } catch (e) {
+      error.value = e.response?.data?.detail || 'Failed to fetch full database status'
       console.error('Error fetching full status:', e)
+      useNotificationStore().showError(error.value)
       return null
     }
   }

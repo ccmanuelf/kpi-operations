@@ -15,9 +15,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from datetime import date
 from typing import Optional, Tuple
+import logging
 import math
 
 from backend.schemas.quality_entry import QualityEntry
+
+logger = logging.getLogger(__name__)
 from backend.schemas.part_opportunities import PartOpportunities
 from backend.crud.client_config import get_client_config_or_defaults
 
@@ -120,7 +123,8 @@ def get_client_opportunities_default(db: Session, client_id: Optional[str] = Non
     try:
         config = get_client_config_or_defaults(db, client_id)
         return config.get("dpmo_opportunities_default", DEFAULT_OPPORTUNITIES_PER_UNIT)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error calculating opportunities per unit: {e}")
         return DEFAULT_OPPORTUNITIES_PER_UNIT
 
 

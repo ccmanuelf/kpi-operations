@@ -188,7 +188,7 @@
         <v-card-text>
           <v-textarea
             v-model="csvData"
-            label="Paste CSV data"
+            :label="t('capacityPlanning.orders.pasteCsvData')"
             rows="10"
             variant="outlined"
             placeholder="item_code,item_description,on_hand_quantity,allocated_quantity,on_order_quantity"
@@ -218,8 +218,10 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const showImportDialog = ref(false)

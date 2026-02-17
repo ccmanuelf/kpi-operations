@@ -9,7 +9,6 @@ tool without persisting scenarios to the database.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-import logging
 
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
@@ -36,9 +35,9 @@ from backend.simulation_v2.constants import (
     DEFAULT_SEQUENCE,
     DEFAULT_VARIABILITY,
 )
+from backend.utils.logging_utils import get_module_logger
 
-
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 router = APIRouter(
     prefix="/api/v2/simulation",

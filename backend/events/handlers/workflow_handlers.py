@@ -38,6 +38,7 @@ class WorkflowAuditHandler(EventHandler):
         )
 
         # TODO: Persist to audit log table if needed beyond EVENT_STORE
+        logger.info("Workflow handler not yet implemented")
 
 
 class WorkOrderAutoCloseHandler(EventHandler):
@@ -63,3 +64,4 @@ class WorkOrderAutoCloseHandler(EventHandler):
             logger.debug(f"Work order {event.aggregate_id} reached {event.to_status} - " f"eligible for auto-close")
             # Actual auto-close logic would be triggered here
             # based on client configuration (workflow_closure_trigger)
+            logger.info("Workflow handler not yet implemented")

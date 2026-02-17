@@ -6,7 +6,9 @@
 # Date: January 2, 2026
 ###############################################################################
 
-set -e  # Exit on error
+set -e          # Exit on error
+set -u          # Treat unset variables as errors
+set -o pipefail # Propagate pipe failures
 
 # Colors for output
 RED='\033[0;31m'
@@ -48,8 +50,8 @@ check_requirements() {
     fi
 
     PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1-2)
-    if [ $(echo "$PYTHON_VERSION < 3.8" | bc) -eq 1 ]; then
-        error "Python 3.8 or higher is required (found $PYTHON_VERSION)"
+    if [ $(echo "$PYTHON_VERSION < 3.11" | bc) -eq 1 ]; then
+        error "Python 3.11 or higher is required (found $PYTHON_VERSION)"
     fi
 
     # Check Node.js version
@@ -58,8 +60,8 @@ check_requirements() {
     fi
 
     NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -lt 16 ]; then
-        error "Node.js 16 or higher is required (found $NODE_VERSION)"
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        error "Node.js 20 or higher is required (found $NODE_VERSION)"
     fi
 
     # Check required packages
@@ -80,7 +82,7 @@ check_environment_variables() {
         "SECRET_KEY"
         "SMTP_HOST"
         "SMTP_USER"
-        "SMTP_PASS"
+        "SMTP_PASSWORD"
     )
 
     missing_vars=()
@@ -118,7 +120,7 @@ create_backup() {
     fi
 
     log "✅ Backup created: ${BACKUP_PATH}"
-    echo "$BACKUP_PATH" > /tmp/last_backup_path
+    echo "$BACKUP_PATH" > "${DEPLOYMENT_DIR:-.}/.last_backup_path"
 }
 
 setup_database() {
@@ -269,7 +271,7 @@ setup_ssl() {
     log "Setting up SSL certificate..."
 
     if command -v certbot &> /dev/null; then
-        certbot --nginx -d $DOMAIN_NAME --non-interactive --agree-tos -m $SSL_EMAIL
+        certbot --nginx -d "${DOMAIN_NAME:-}" --non-interactive --agree-tos -m "${SSL_EMAIL:-}"
         log "✅ SSL certificate installed"
     else
         warning "Certbot not installed. Skipping SSL setup."
@@ -320,7 +322,7 @@ show_summary() {
     log ""
     log "Application: ${APP_NAME}"
     log "Deployment Directory: ${DEPLOYMENT_DIR}"
-    log "Backup Location: $(cat /tmp/last_backup_path)"
+    log "Backup Location: $(cat "${DEPLOYMENT_DIR:-.}/.last_backup_path")"
     log ""
     log "Services:"
     log "  Backend:  systemctl status ${APP_NAME}-backend"
@@ -347,9 +349,10 @@ show_summary() {
 }
 
 rollback() {
+    # WARNING: This only restores the database. Application code must be rolled back separately via git.
     log "Rolling back deployment..."
 
-    LAST_BACKUP=$(cat /tmp/last_backup_path)
+    LAST_BACKUP=$(cat "${DEPLOYMENT_DIR:-.}/.last_backup_path")
 
     if [ -d "$LAST_BACKUP" ]; then
         # Restore database
@@ -384,7 +387,7 @@ main() {
     setup_nginx
 
     # Optional: SSL setup
-    if [ -n "$DOMAIN_NAME" ] && [ -n "$SSL_EMAIL" ]; then
+    if [ -n "${DOMAIN_NAME:-}" ] && [ -n "${SSL_EMAIL:-}" ]; then
         setup_ssl
     fi
 

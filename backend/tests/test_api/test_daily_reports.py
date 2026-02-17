@@ -253,7 +253,7 @@ class TestGenerateAndSendReport:
             )
 
             assert result["success"] is False
-            assert "PDF error" in result["error"]
+            assert "Report generation failed" in result["error"]
 
 
 @pytest.mark.skipif(not MODULE_AVAILABLE, reason="daily_reports module not available")
@@ -360,7 +360,7 @@ class TestSendManualReport:
                 )
 
             assert result["success"] is False
-            assert "Generation failed" in result["error"]
+            assert "Report generation failed" in result["error"]
 
 
 @pytest.mark.skipif(not MODULE_AVAILABLE, reason="daily_reports module not available")

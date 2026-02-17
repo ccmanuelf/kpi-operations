@@ -65,8 +65,6 @@ from backend.events.domain_events import (
 # Session hooks
 from backend.events.session_hooks import (
     setup_session_hooks,
-    setup_scoped_session_hooks,
-    EventCollectorMixin,
 )
 
 # Handler registration
@@ -112,8 +110,6 @@ __all__ = [
     "CapacityScenarioCompared",
     # Session hooks
     "setup_session_hooks",
-    "setup_scoped_session_hooks",
-    "EventCollectorMixin",
     # Handler registration
     "register_all_handlers",
 ]

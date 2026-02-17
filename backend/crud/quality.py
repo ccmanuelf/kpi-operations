@@ -62,7 +62,7 @@ def create_quality_inspection(
 
     ppm, dpmo = _calculate_quality_kpis(units_inspected, units_defective)
 
-    db_inspection = QualityEntry(**inspection.dict(), ppm=ppm, dpmo=dpmo, inspector_id=current_user.user_id)
+    db_inspection = QualityEntry(**inspection.model_dump(), ppm=ppm, dpmo=dpmo, inspector_id=current_user.user_id)
 
     db.add(db_inspection)
     db.commit()
@@ -145,7 +145,7 @@ def update_quality_inspection(
     if hasattr(db_inspection, "client_id") and db_inspection.client_id:
         verify_client_access(current_user, db_inspection.client_id)
 
-    update_data = inspection_update.dict(exclude_unset=True)
+    update_data = inspection_update.model_dump(exclude_unset=True)
 
     # Recalculate PPM and DPMO if values changed (using pure functions)
     units = update_data.get("units_inspected", db_inspection.units_inspected)

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 export const useKPIStore = defineStore('kpi', {
   state: () => ({
@@ -320,6 +321,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch dashboard'
         console.error('Dashboard fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -342,6 +344,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch efficiency'
         console.error('Efficiency fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -364,6 +367,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch WIP aging'
         console.error('WIP Aging fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -386,6 +390,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch on-time delivery'
         console.error('On-time delivery fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -408,6 +413,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch availability'
         console.error('Availability fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -430,6 +436,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch performance'
         console.error('Performance fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -452,6 +459,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch quality'
         console.error('Quality fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -474,6 +482,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch OEE'
         console.error('OEE fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -496,6 +505,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch absenteeism'
         console.error('Absenteeism fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -514,6 +524,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch defect rates'
         console.error('Defect rates fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -532,6 +543,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch throughput time'
         console.error('Throughput time fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -603,6 +615,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || `Failed to fetch ${kpiType} prediction`
         console.error(`Prediction fetch error for ${kpiType}:`, error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false
@@ -639,6 +652,7 @@ export const useKPIStore = defineStore('kpi', {
       } catch (error) {
         this.error = error.response?.data?.detail || 'Failed to fetch all predictions'
         console.error('All predictions fetch error:', error)
+        useNotificationStore().showError(this.error)
         return null
       } finally {
         this.loading = false

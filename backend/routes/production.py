@@ -258,7 +258,8 @@ async def upload_csv(
 
         except Exception as e:
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            logger.error(f"CSV upload row {row_num} failed: {e}")
+            errors.append({"row": row_num, "error": "CSV upload failed. Check server logs for details.", "data": row})
 
     log_operation(
         logger,
@@ -313,7 +314,8 @@ def batch_import_production(
 
         except Exception as e:
             failed += 1
-            errors.append({"row": idx + 1, "error": str(e), "data": row})
+            logger.error(f"Batch import row {idx + 1} failed: {e}")
+            errors.append({"row": idx + 1, "error": "Batch import failed. Check server logs for details.", "data": row})
 
     # Create import log entry
     import_log_id = None

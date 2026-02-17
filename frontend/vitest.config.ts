@@ -53,10 +53,11 @@ export default defineConfig({
         // behavior change, not an actual coverage regression.
         // Original thresholds (vitest 1): 55/45/50/55
         // Recalibrated thresholds (vitest 4): 10/10/5/10
-        statements: 10,
-        branches: 10,
-        functions: 5,
-        lines: 10
+        // Thresholds raised from 10/10/5/10 (Run 5 remediation)
+        statements: 30,
+        branches: 25,
+        functions: 20,
+        lines: 30
       }
     }
   }

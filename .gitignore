@@ -141,3 +141,14 @@ _audit/
 # Root-level artifacts
 /package-lock.json
 reference_not_to_sync/
+
+# Claude settings (local, not for sharing)
+.claude/settings.local.json
+
+# Claude Flow telemetry and memory (regenerated per session)
+.claude-flow/metrics/
+memory/
+
+# Generated documentation reports
+docs/hive_mind/
+docs/analysis/SCHEMA_COMPARISON.json

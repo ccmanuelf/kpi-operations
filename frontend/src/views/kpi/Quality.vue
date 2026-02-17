@@ -4,8 +4,8 @@
 
     <v-row>
       <v-col cols="12" md="6">
-        <h1 class="text-h3">{{ $t('kpi.quality') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.qualityDescription') }}</p>
+        <h1 class="text-h3">{{ t('kpi.quality') }}</h1>
+        <p class="text-subtitle-1 text-grey-darken-1">{{ t('kpi.qualityDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="fpyColor" size="large" class="mr-2 text-white" variant="flat">
@@ -23,7 +23,7 @@
           :items="clients"
           item-title="client_name"
           item-value="client_id"
-          :label="$t('filters.client')"
+          :label="t('filters.client')"
           clearable
           density="compact"
           variant="outlined"
@@ -34,7 +34,7 @@
         <v-text-field
           v-model="startDate"
           type="date"
-          :label="$t('filters.startDate')"
+          :label="t('filters.startDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -44,7 +44,7 @@
         <v-text-field
           v-model="endDate"
           type="date"
-          :label="$t('filters.endDate')"
+          :label="t('filters.endDate')"
           density="compact"
           variant="outlined"
           @change="onDateChange"
@@ -52,7 +52,7 @@
       </v-col>
       <v-col cols="12" md="2">
         <v-btn color="primary" block @click="refreshData" :loading="loading">
-          <v-icon left>mdi-refresh</v-icon> {{ $t('common.refresh') }}
+          <v-icon left>mdi-refresh</v-icon> {{ t('common.refresh') }}
         </v-btn>
       </v-col>
     </v-row>
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" :color="fpyColor" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">{{ $t('kpi.fpy') }}</div>
+                <div class="text-caption">{{ t('kpi.fpy') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.fpy) }}%</div>
                 <div class="text-caption text-grey-darken-1">Target: 99% | First attempt pass rate</div>
               </v-card-text>
@@ -83,7 +83,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" :color="rtyColor" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">{{ $t('kpi.rty') }}</div>
+                <div class="text-caption">{{ t('kpi.rty') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.rty) }}%</div>
                 <div class="text-caption text-grey-darken-1">Target: 95% | All stages combined</div>
               </v-card-text>
@@ -102,7 +102,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" :color="finalYieldColor" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption">{{ $t('kpi.finalYield') }}</div>
+                <div class="text-caption">{{ t('kpi.finalYield') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.final_yield) }}%</div>
                 <div class="text-caption text-grey-darken-1">Target: 99% | After rework</div>
               </v-card-text>
@@ -125,7 +125,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalUnitsInspected') }}</div>
+                <div class="text-caption text-grey-darken-1">{{ t('kpi.totalUnitsInspected') }}</div>
                 <div class="text-h4 font-weight-bold">{{ qualityData?.total_units || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -141,7 +141,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.firstPassGood') }}</div>
+                <div class="text-caption text-grey-darken-1">{{ t('kpi.firstPassGood') }}</div>
                 <div class="text-h4 font-weight-bold text-success">{{ qualityData?.first_pass_good || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -157,7 +157,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalScrapped') }}</div>
+                <div class="text-caption text-grey-darken-1">{{ t('kpi.totalScrapped') }}</div>
                 <div class="text-h4 font-weight-bold text-error">{{ qualityData?.total_scrapped || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -176,7 +176,7 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-tools</v-icon>
-            {{ $t('kpi.repairReworkBreakdown') }}
+            {{ t('kpi.repairReworkBreakdown') }}
             <v-chip v-if="repairBreakdown?.rty_breakdown?.interpretation" class="ml-3" :color="getInterpretationColor(repairBreakdown?.rty_breakdown?.interpretation)" size="small" variant="tonal">
               {{ repairBreakdown?.rty_breakdown?.interpretation }}
             </v-chip>
@@ -190,15 +190,15 @@
                     <v-card variant="outlined" color="info" v-bind="props" class="cursor-help">
                       <v-card-text class="text-center">
                         <v-icon color="info" size="24" class="mb-1">mdi-wrench</v-icon>
-                        <div class="text-caption">{{ $t('kpi.reworkRate') }}</div>
+                        <div class="text-caption">{{ t('kpi.reworkRate') }}</div>
                         <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.rework_rate) }}%</div>
-                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_reworked || 0 }} {{ $t('common.units') }}</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_reworked || 0 }} {{ t('common.units') }}</div>
                       </v-card-text>
                     </v-card>
                   </template>
                   <div>
-                    <div class="tooltip-title">{{ $t('kpi.reworkRateTooltipTitle') }}</div>
-                    <div class="tooltip-meaning">{{ $t('kpi.reworkRateTooltipMeaning') }}</div>
+                    <div class="tooltip-title">{{ t('kpi.reworkRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ t('kpi.reworkRateTooltipMeaning') }}</div>
                   </div>
                 </v-tooltip>
               </v-col>
@@ -210,15 +210,15 @@
                     <v-card variant="outlined" color="warning" v-bind="props" class="cursor-help">
                       <v-card-text class="text-center">
                         <v-icon color="warning" size="24" class="mb-1">mdi-hammer-wrench</v-icon>
-                        <div class="text-caption">{{ $t('kpi.repairRate') }}</div>
+                        <div class="text-caption">{{ t('kpi.repairRate') }}</div>
                         <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.repair_rate) }}%</div>
-                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_requiring_repair || 0 }} {{ $t('common.units') }}</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_requiring_repair || 0 }} {{ t('common.units') }}</div>
                       </v-card-text>
                     </v-card>
                   </template>
                   <div>
-                    <div class="tooltip-title">{{ $t('kpi.repairRateTooltipTitle') }}</div>
-                    <div class="tooltip-meaning">{{ $t('kpi.repairRateTooltipMeaning') }}</div>
+                    <div class="tooltip-title">{{ t('kpi.repairRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ t('kpi.repairRateTooltipMeaning') }}</div>
                   </div>
                 </v-tooltip>
               </v-col>
@@ -230,15 +230,15 @@
                     <v-card variant="outlined" color="error" v-bind="props" class="cursor-help">
                       <v-card-text class="text-center">
                         <v-icon color="error" size="24" class="mb-1">mdi-delete</v-icon>
-                        <div class="text-caption">{{ $t('kpi.scrapRate') }}</div>
+                        <div class="text-caption">{{ t('kpi.scrapRate') }}</div>
                         <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.scrap_rate) }}%</div>
-                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_scrapped || 0 }} {{ $t('common.units') }}</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.units_scrapped || 0 }} {{ t('common.units') }}</div>
                       </v-card-text>
                     </v-card>
                   </template>
                   <div>
-                    <div class="tooltip-title">{{ $t('kpi.scrapRateTooltipTitle') }}</div>
-                    <div class="tooltip-meaning">{{ $t('kpi.scrapRateTooltipMeaning') }}</div>
+                    <div class="tooltip-title">{{ t('kpi.scrapRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ t('kpi.scrapRateTooltipMeaning') }}</div>
                   </div>
                 </v-tooltip>
               </v-col>
@@ -250,15 +250,15 @@
                     <v-card variant="outlined" color="success" v-bind="props" class="cursor-help">
                       <v-card-text class="text-center">
                         <v-icon color="success" size="24" class="mb-1">mdi-recycle</v-icon>
-                        <div class="text-caption">{{ $t('kpi.recoveryRate') }}</div>
+                        <div class="text-caption">{{ t('kpi.recoveryRate') }}</div>
                         <div class="text-h5 font-weight-bold">{{ formatValue(repairBreakdown?.fpy_breakdown?.recovery_rate) }}%</div>
-                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.recovered_units || 0 }} {{ $t('common.recovered') }}</div>
+                        <div class="text-caption">{{ repairBreakdown?.fpy_breakdown?.recovered_units || 0 }} {{ t('common.recovered') }}</div>
                       </v-card-text>
                     </v-card>
                   </template>
                   <div>
-                    <div class="tooltip-title">{{ $t('kpi.recoveryRateTooltipTitle') }}</div>
-                    <div class="tooltip-meaning">{{ $t('kpi.recoveryRateTooltipMeaning') }}</div>
+                    <div class="tooltip-title">{{ t('kpi.recoveryRateTooltipTitle') }}</div>
+                    <div class="tooltip-meaning">{{ t('kpi.recoveryRateTooltipMeaning') }}</div>
                   </div>
                 </v-tooltip>
               </v-col>
@@ -271,11 +271,11 @@
                   <div class="d-flex align-center">
                     <v-icon class="mr-2">mdi-chart-timeline-variant</v-icon>
                     <div>
-                      <strong>{{ $t('kpi.throughputLoss') }}:</strong>
+                      <strong>{{ t('kpi.throughputLoss') }}:</strong>
                       {{ formatValue(repairBreakdown?.rty_breakdown?.throughput_loss_percentage) }}%
                       <span class="text-caption ml-2">
-                        ({{ $t('kpi.rework') }}: {{ formatValue(repairBreakdown?.rty_breakdown?.rework_impact_percentage) }}% +
-                        {{ $t('kpi.repair') }}: {{ formatValue(repairBreakdown?.rty_breakdown?.repair_impact_percentage) }}%)
+                        ({{ t('kpi.rework') }}: {{ formatValue(repairBreakdown?.rty_breakdown?.rework_impact_percentage) }}% +
+                        {{ t('kpi.repair') }}: {{ formatValue(repairBreakdown?.rty_breakdown?.repair_impact_percentage) }}%)
                       </span>
                     </div>
                   </div>
@@ -288,18 +288,18 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
-                  {{ $t('kpi.stageBreakdown') }} ({{ repairBreakdown?.rty_breakdown?.step_details?.length || 0 }} {{ $t('common.stages') }})
+                  {{ t('kpi.stageBreakdown') }} ({{ repairBreakdown?.rty_breakdown?.step_details?.length || 0 }} {{ t('common.stages') }})
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-table density="compact">
                     <thead>
                       <tr>
-                        <th>{{ $t('common.stage') }}</th>
-                        <th class="text-right">{{ $t('kpi.fpy') }}</th>
-                        <th class="text-right">{{ $t('kpi.inspected') }}</th>
-                        <th class="text-right">{{ $t('kpi.rework') }}</th>
-                        <th class="text-right">{{ $t('kpi.repair') }}</th>
-                        <th class="text-right">{{ $t('kpi.scrap') }}</th>
+                        <th>{{ t('common.stage') }}</th>
+                        <th class="text-right">{{ t('kpi.fpy') }}</th>
+                        <th class="text-right">{{ t('kpi.inspected') }}</th>
+                        <th class="text-right">{{ t('kpi.rework') }}</th>
+                        <th class="text-right">{{ t('kpi.repair') }}</th>
+                        <th class="text-right">{{ t('kpi.scrap') }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -341,7 +341,7 @@
         <v-card>
           <v-card-title class="d-flex align-center">
             <v-icon class="mr-2">mdi-format-list-numbered</v-icon>
-            {{ $t('kpi.jobRtySummary') }}
+            {{ t('kpi.jobRtySummary') }}
             <v-spacer />
             <v-btn
               color="primary"
@@ -351,7 +351,7 @@
               :loading="loadingJobRty"
             >
               <v-icon left>mdi-refresh</v-icon>
-              {{ $t('common.refresh') }}
+              {{ t('common.refresh') }}
             </v-btn>
           </v-card-title>
           <v-card-text>
@@ -359,7 +359,7 @@
               <v-col cols="6" md="3">
                 <v-card variant="outlined">
                   <v-card-text class="text-center">
-                    <div class="text-caption text-grey-darken-1">{{ $t('jobs.totalJobsCompleted') }}</div>
+                    <div class="text-caption text-grey-darken-1">{{ t('jobs.totalJobsCompleted') }}</div>
                     <div class="text-h4 font-weight-bold">{{ jobRtySummary.total_jobs_completed || 0 }}</div>
                   </v-card-text>
                 </v-card>
@@ -367,7 +367,7 @@
               <v-col cols="6" md="3">
                 <v-card variant="outlined" :color="getYieldColor(jobRtySummary.average_job_yield)">
                   <v-card-text class="text-center">
-                    <div class="text-caption">{{ $t('jobs.avgJobYield') }}</div>
+                    <div class="text-caption">{{ t('jobs.avgJobYield') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(jobRtySummary.average_job_yield) }}%</div>
                   </v-card-text>
                 </v-card>
@@ -375,7 +375,7 @@
               <v-col cols="6" md="3">
                 <v-card variant="outlined" :color="getYieldColor(jobRtySummary.overall_yield)">
                   <v-card-text class="text-center">
-                    <div class="text-caption">{{ $t('jobs.overallYield') }}</div>
+                    <div class="text-caption">{{ t('jobs.overallYield') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(jobRtySummary.overall_yield) }}%</div>
                   </v-card-text>
                 </v-card>
@@ -383,9 +383,9 @@
               <v-col cols="6" md="3">
                 <v-card variant="outlined" color="error">
                   <v-card-text class="text-center">
-                    <div class="text-caption">{{ $t('jobs.jobsBelowTarget') }}</div>
+                    <div class="text-caption">{{ t('jobs.jobsBelowTarget') }}</div>
                     <div class="text-h4 font-weight-bold">{{ jobRtySummary.jobs_below_target || 0 }}</div>
-                    <div class="text-caption">({{ $t('jobs.target') }}: {{ jobRtySummary.target_threshold }}%)</div>
+                    <div class="text-caption">({{ t('jobs.target') }}: {{ jobRtySummary.target_threshold }}%)</div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -396,17 +396,17 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon class="mr-2" color="error">mdi-alert-circle</v-icon>
-                  {{ $t('jobs.topScrapOperations') }} ({{ jobRtySummary.top_scrap_operations.length }})
+                  {{ t('jobs.topScrapOperations') }} ({{ jobRtySummary.top_scrap_operations.length }})
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-table density="compact">
                     <thead>
                       <tr>
-                        <th>{{ $t('jobs.jobId') }}</th>
-                        <th>{{ $t('workOrders.workOrderId') }}</th>
-                        <th class="text-right">{{ $t('jobs.completed') }}</th>
-                        <th class="text-right">{{ $t('jobs.scrapped') }}</th>
-                        <th class="text-right">{{ $t('jobs.yield') }}</th>
+                        <th>{{ t('jobs.jobId') }}</th>
+                        <th>{{ t('workOrders.workOrderId') }}</th>
+                        <th class="text-right">{{ t('jobs.completed') }}</th>
+                        <th class="text-right">{{ t('jobs.scrapped') }}</th>
+                        <th class="text-right">{{ t('jobs.yield') }}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -428,7 +428,7 @@
             </v-expansion-panels>
 
             <v-alert v-if="!jobRtySummary && !loadingJobRty" type="info" variant="tonal" class="mt-2">
-              {{ $t('jobs.noJobRtyData') }}
+              {{ t('jobs.noJobRtyData') }}
             </v-alert>
           </v-card-text>
         </v-card>
@@ -439,10 +439,10 @@
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-card-title>{{ $t('kpi.qualityTrends') }}</v-card-title>
+          <v-card-title>{{ t('kpi.qualityTrends') }}</v-card-title>
           <v-card-text>
             <Line v-if="chartData.labels.length" :data="chartData" :options="chartOptions" />
-            <v-alert v-else type="info" variant="tonal">{{ $t('kpi.noTrendData') }}</v-alert>
+            <v-alert v-else type="info" variant="tonal">{{ t('kpi.noTrendData') }}</v-alert>
           </v-card-text>
         </v-card>
       </v-col>
@@ -453,12 +453,12 @@
       <v-col cols="12">
         <v-card>
           <v-card-title>
-            {{ $t('quality.inspectionRecords') }}
+            {{ t('quality.inspectionRecords') }}
             <v-spacer />
             <v-text-field
               v-model="tableSearch"
               append-icon="mdi-magnify"
-              :label="$t('common.search')"
+              :label="t('common.search')"
               single-line
               hide-details
               density="compact"
@@ -483,7 +483,7 @@
                   size="small"
                   variant="tonal"
                 >
-                  {{ item.inspection_stage || 'N/A' }}
+                  {{ item.inspection_stage || t('common.na') }}
                 </v-chip>
               </template>
               <template v-slot:item.fpy_percentage="{ item }">
@@ -501,7 +501,7 @@
     <v-row class="mt-4">
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>{{ $t('quality.topDefectTypes') }}</v-card-title>
+          <v-card-title>{{ t('quality.topDefectTypes') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="defectHeaders"
@@ -527,7 +527,7 @@
 
       <v-col cols="12" md="6">
         <v-card>
-          <v-card-title>{{ $t('quality.byProduct') }}</v-card-title>
+          <v-card-title>{{ t('quality.byProduct') }}</v-card-title>
           <v-card-text>
             <v-data-table
               :headers="productHeaders"
@@ -670,7 +670,7 @@ const chartOptions = {
 }
 
 const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(2) : 'N/A'
+  return value !== null && value !== undefined ? Number(value).toFixed(2) : t('common.na')
 }
 
 const formatDate = (dateStr) => {

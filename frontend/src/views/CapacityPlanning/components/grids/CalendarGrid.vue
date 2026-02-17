@@ -109,7 +109,7 @@
         <v-card-text>
           <v-text-field
             v-model="generateYear"
-            label="Year"
+            :label="t('common.year')"
             type="number"
             variant="outlined"
             class="mb-2"
@@ -119,7 +119,7 @@
             :items="monthOptions"
             item-title="text"
             item-value="value"
-            label="Month"
+            :label="t('common.month')"
             variant="outlined"
           />
         </v-card-text>
@@ -146,8 +146,10 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const showGenerateDialog = ref(false)

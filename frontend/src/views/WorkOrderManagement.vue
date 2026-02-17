@@ -248,7 +248,7 @@
                 {{ formatDate(item.planned_ship_date) }}
               </span>
             </div>
-            <span v-else class="text-medium-emphasis">Not set</span>
+            <span v-else class="text-medium-emphasis">{{ $t('common.notSet') }}</span>
           </template>
 
           <!-- Actions -->
@@ -261,7 +261,7 @@
               :aria-label="`View details for work order ${item.work_order_id}`"
             >
               <v-icon aria-hidden="true">mdi-eye</v-icon>
-              <v-tooltip activator="parent">View Details</v-tooltip>
+              <v-tooltip activator="parent">{{ $t('workOrders.viewDetails') }}</v-tooltip>
             </v-btn>
             <v-btn
               icon
@@ -271,7 +271,7 @@
               :aria-label="`Edit work order ${item.work_order_id}`"
             >
               <v-icon aria-hidden="true">mdi-pencil</v-icon>
-              <v-tooltip activator="parent">Edit</v-tooltip>
+              <v-tooltip activator="parent">{{ $t('workOrders.edit') }}</v-tooltip>
             </v-btn>
             <v-menu>
               <template v-slot:activator="{ props }">

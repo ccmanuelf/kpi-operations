@@ -788,19 +788,6 @@ export const getKPICommitments = async (clientId, scheduleId = null) => {
 }
 
 /**
- * Get actual KPIs from production data
- * @param {number} clientId - The client ID
- * @param {string} period - Time period (e.g., 'week', 'month', 'quarter')
- * @returns {Promise<Object>} Actual KPI values
- */
-export const getKPIActuals = async (clientId, period) => {
-  const response = await api.get('/capacity/kpi/actuals', {
-    params: { client_id: clientId, period }
-  })
-  return response.data
-}
-
-/**
  * Get variance report (committed vs actual)
  * @param {number} clientId - The client ID
  * @param {number|null} scheduleId - Optional schedule ID filter
@@ -879,28 +866,6 @@ export const saveWorkbook = async (clientId, workbookData) => {
 // Utility Functions
 // ============================================
 
-/**
- * Check if capacity planning feature is enabled
- * @returns {Promise<boolean>} True if feature is enabled
- */
-export const isFeatureEnabled = async () => {
-  try {
-    const response = await api.get('/capacity/health')
-    return response.data?.enabled === true
-  } catch {
-    return false
-  }
-}
-
-/**
- * Get capacity planning module info
- * @returns {Promise<Object>} Module information
- */
-export const getModuleInfo = async () => {
-  const response = await api.get('/capacity/info')
-  return response.data
-}
-
 // ============================================
 // Default Export
 // ============================================
@@ -975,9 +940,5 @@ export default {
   saveWorkbook,
   // KPI Integration
   getKPICommitments,
-  getKPIActuals,
   getKPIVariance,
-  // Utility
-  isFeatureEnabled,
-  getModuleInfo
 }

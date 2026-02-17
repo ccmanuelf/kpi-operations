@@ -88,6 +88,17 @@ def disable_rate_limit():
         yield  # Ignore if rate limiter is not available
 
 
+# Clear token blacklist between tests to prevent cross-test contamination
+@pytest.fixture(autouse=True)
+def clear_token_blacklist():
+    """Clear the in-memory token blacklist before each test."""
+    from backend.auth.jwt import _token_blacklist
+
+    _token_blacklist.clear()
+    yield
+    _token_blacklist.clear()
+
+
 # Test Database Engine (shared across tests)
 TEST_DATABASE_URL = "sqlite:///:memory:"
 

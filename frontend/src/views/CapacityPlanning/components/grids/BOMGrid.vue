@@ -50,7 +50,7 @@
               <v-col cols="4">
                 <v-text-field
                   v-model="bom.parent_item_description"
-                  label="Description"
+                  :label="t('common.description')"
                   variant="outlined"
                   density="compact"
                   @update:modelValue="markDirty"
@@ -77,7 +77,7 @@
               <v-col cols="1" class="d-flex align-center">
                 <v-checkbox
                   v-model="bom.is_active"
-                  label="Active"
+                  :label="t('common.active')"
                   density="compact"
                   hide-details
                   @update:modelValue="markDirty"
@@ -202,8 +202,10 @@
  * No props or emits -- all state managed via store.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const componentHeaders = [

@@ -4,8 +4,8 @@
 
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
 [![Version](https://img.shields.io/badge/version-1.0.4-blue)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-5833%20passing-success)](https://github.com)
-[![Audit](https://img.shields.io/badge/audit-90%20findings%20resolved-blue)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-5771%20passing-success)](https://github.com)
+[![Audit](https://img.shields.io/badge/audit-Run%205%3A%20287%20findings%2C%20remediation%20in%20progress-orange)](CHANGELOG.md)
 [![Coverage](https://img.shields.io/badge/coverage-76%25-brightgreen)](https://github.com)
 [![Design](https://img.shields.io/badge/design-Vuetify%20Material-blue)](https://vuetifyjs.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
@@ -94,7 +94,7 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 
 ### **Prerequisites**
 - Python 3.11+
-- Node.js 18+
+- Node.js 20+
 - SQLite 3 (included with Python)
 - Git
 
@@ -187,7 +187,7 @@ kpi-operations/
 │   │   │   ├── DashboardView.vue
 │   │   │   ├── KPIDashboard.vue
 │   │   │   └── LoginView.vue
-│   │   ├── stores/             # Pinia state management (13 stores)
+│   │   ├── stores/             # Pinia state management (17 stores)
 │   │   └── services/api/       # API service modules
 │   ├── e2e/                    # Playwright E2E tests
 │   └── package.json
@@ -227,7 +227,7 @@ kpi-operations/
 | **UI/UX** | All Grids & Forms | Complete |
 | **Security** | Multi-Tenant + Auth | Complete |
 | **Capacity** | 13-Worksheet Workbook | Complete |
-| **Testing** | 5,833 tests, 0 failures | Complete |
+| **Testing** | 5,771 tests, 0 failures | Complete |
 
 ---
 
@@ -374,10 +374,10 @@ npx playwright test --config=playwright.sqlite.config.ts  # E2E tests (211 scena
 ```
 
 ### **Current Test Coverage**
-- **Backend:** 4,188 passed, 2 skipped, 76.26% coverage (threshold: 55%)
-- **Frontend:** 1,434 passed across 52 test files
+- **Backend:** 4,277 passed, 76.26% coverage (threshold: 70%)
+- **Frontend:** 1,494 passed across 52 test files
 - **E2E:** 211 Playwright scenarios (Chromium)
-- **Total:** 5,833 tests, 0 failures
+- **Total:** 4,277 backend + 1,494 frontend = 5,771 passing tests, 0 failures
 
 ---
 
@@ -513,7 +513,7 @@ Frontend:
 - 6 AG Grid implementations (4,100+ lines)
 - 8 KPI detail views + OEE composite view
 - 13-tab Capacity Planning workbook
-- 13 Pinia stores
+- 17 Pinia stores (12 top-level + 5 capacity sub-stores)
 - 100% responsive design
 
 Backend:
@@ -521,7 +521,7 @@ Backend:
 - 16 KPI calculation engines + predictive forecasting
 - 35 route modules + 13 CRUD modules
 - 393 REST API endpoints
-- 76.26% test coverage (4,188 tests passing, 2 skipped)
+- 76.26% test coverage (4,277 tests passing)
 - Docker deployment ready (multi-stage Dockerfile + docker-compose.yml)
 - SimPy-based production line simulation engine
 - Domain event bus with collect/flush pattern
@@ -533,7 +533,7 @@ Backend:
 **Release Date:** February 13, 2026
 **Status:** Production Ready
 
-**Test Coverage:** 5,833 tests (4,188 backend + 1,434 frontend + 211 E2E) | 76.26% backend coverage | Docker Support: YES | Simulation Engine: SimPy
+**Test Coverage:** 5,771 tests (4,277 backend + 1,494 frontend) | 76.26% backend coverage | Docker Support: YES | Simulation Engine: SimPy
 
 ### **Recent Updates (v1.0.4)**
 - **Capacity Planning Module** - 13-worksheet workbook with full CRUD for orders, calendars, production lines, standards, BOM, stock, scheduling, and analysis

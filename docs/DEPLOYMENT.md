@@ -36,7 +36,7 @@ This guide covers deploying the KPI Operations Platform to production environmen
 
 | Software | Version | Purpose |
 |----------|---------|---------|
-| **Python** | 3.12+ | Backend runtime |
+| **Python** | 3.11+ | Backend runtime |
 | **Node.js** | 20+ LTS | Frontend build |
 | **MariaDB** | 10.11+ | Production database |
 | **Nginx** | 1.18+ | Reverse proxy |
@@ -506,7 +506,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
     container_name: kpi_backend
     restart: unless-stopped

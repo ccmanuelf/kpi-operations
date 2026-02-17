@@ -292,34 +292,6 @@ export const useAnalysisStore = defineStore('capacityPlanning-analysis', {
       }
     },
 
-    // ---- KPI Integration ----
-
-    async loadKPIActuals(period) {
-      const wb = useWorkbookStore()
-      const wsOps = useWorksheetOpsStore()
-      if (!wb.clientId) return null
-
-      try {
-        const actuals = await capacityApi.getKPIActuals(wb.clientId, period)
-
-        if (actuals && Array.isArray(actuals)) {
-          for (const actual of actuals) {
-            const kpi = wsOps.worksheets.kpiTracking.data.find(k => k.kpi_name === actual.kpi_name)
-            if (kpi) {
-              kpi.actual_value = actual.value
-              kpi.variance_percent = kpi.target_value
-                ? ((actual.value - kpi.target_value) / kpi.target_value * 100).toFixed(1)
-                : null
-            }
-          }
-        }
-
-        return actuals
-      } catch (error) {
-        throw error
-      }
-    },
-
     // ---- Reset ----
 
     resetAnalysis() {

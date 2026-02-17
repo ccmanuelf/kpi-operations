@@ -10,6 +10,7 @@ pytest-cov==6.1.1
 httpx==0.28.1
 
 # Code Quality
+bandit==1.8.3
 black==25.1.0
 flake8==7.2.0
 mypy==1.15.0

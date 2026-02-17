@@ -3,8 +3,6 @@ Work Order API Routes
 All work order CRUD endpoints with progress tracking and timeline
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -13,7 +11,9 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from decimal import Decimal
 
-logger = logging.getLogger(__name__)
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 from backend.database import get_db
 from backend.models.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderWithMetrics

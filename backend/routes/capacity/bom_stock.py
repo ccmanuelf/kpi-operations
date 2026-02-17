@@ -4,7 +4,6 @@ Capacity Planning - BOM and Stock Endpoints
 Bill of Materials (headers + details + explosion) and Stock Snapshot CRUD.
 """
 
-import logging
 from typing import List, Optional
 from datetime import date
 from decimal import Decimal
@@ -35,8 +34,9 @@ from ._models import (
     AvailableStockResponse,
     MessageResponse,
 )
+from backend.utils.logging_utils import get_module_logger
 
-logger = logging.getLogger(__name__)
+logger = get_module_logger(__name__)
 
 bom_stock_router = APIRouter()
 
