@@ -4,7 +4,7 @@ Target: Increase CRUD module coverage to 85%+
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
@@ -272,8 +272,8 @@ class TestDowntimeCRUD:
         downtime_data = {
             "client_id": "CLIENT-001",
             "machine_id": "MACHINE-001",
-            "start_time": datetime.now() - timedelta(hours=1),
-            "end_time": datetime.now(),
+            "start_time": datetime.now(tz=timezone.utc) - timedelta(hours=1),
+            "end_time": datetime.now(tz=timezone.utc),
             "downtime_reason": "MAINTENANCE",
         }
 

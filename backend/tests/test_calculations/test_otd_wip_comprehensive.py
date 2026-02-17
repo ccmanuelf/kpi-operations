@@ -3,7 +3,7 @@ Comprehensive tests for OTD (On Time Delivery) calculations
 """
 
 import pytest
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from unittest.mock import MagicMock
 
 
@@ -217,8 +217,8 @@ class TestWIPAgingCalculations:
 
     def test_wip_resolution_time(self):
         """Test WIP resolution time calculation."""
-        start_date = datetime.now() - timedelta(days=5, hours=6)
-        end_date = datetime.now()
+        start_date = datetime.now(tz=timezone.utc) - timedelta(days=5, hours=6)
+        end_date = datetime.now(tz=timezone.utc)
         resolution_hours = (end_date - start_date).total_seconds() / 3600
         assert resolution_hours == pytest.approx(126, rel=0.001)  # 5 days + 6 hours
 

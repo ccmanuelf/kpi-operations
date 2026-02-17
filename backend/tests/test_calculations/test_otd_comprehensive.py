@@ -4,7 +4,7 @@ Target: Increase otd.py coverage to 85%+
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
@@ -25,7 +25,7 @@ class TestInferredDate:
         from backend.calculations.otd import InferredDate
 
         inferred = InferredDate(
-            date=datetime.now(), is_inferred=False, inference_source="planned_ship_date", confidence_score=1.0
+            date=datetime.now(tz=timezone.utc), is_inferred=False, inference_source="planned_ship_date", confidence_score=1.0
         )
 
         assert inferred.date is not None
@@ -38,7 +38,7 @@ class TestInferredDate:
         from backend.calculations.otd import InferredDate
 
         inferred = InferredDate(
-            date=datetime.now() + timedelta(days=7),
+            date=datetime.now(tz=timezone.utc) + timedelta(days=7),
             is_inferred=True,
             inference_source="calculated",
             confidence_score=0.5,
@@ -56,7 +56,7 @@ class TestInferPlannedDeliveryDate:
         from backend.calculations.otd import infer_planned_delivery_date
 
         mock_wo = MagicMock()
-        mock_wo.planned_ship_date = datetime.now() + timedelta(days=10)
+        mock_wo.planned_ship_date = datetime.now(tz=timezone.utc) + timedelta(days=10)
         mock_wo.required_date = None
         mock_wo.planned_start_date = None
 
@@ -73,7 +73,7 @@ class TestInferPlannedDeliveryDate:
 
         mock_wo = MagicMock()
         mock_wo.planned_ship_date = None
-        mock_wo.required_date = datetime.now() + timedelta(days=14)
+        mock_wo.required_date = datetime.now(tz=timezone.utc) + timedelta(days=14)
         mock_wo.planned_start_date = None
 
         result = infer_planned_delivery_date(mock_wo)
@@ -90,7 +90,7 @@ class TestInferPlannedDeliveryDate:
         mock_wo = MagicMock()
         mock_wo.planned_ship_date = None
         mock_wo.required_date = None
-        mock_wo.planned_start_date = datetime.now()
+        mock_wo.planned_start_date = datetime.now(tz=timezone.utc)
         mock_wo.ideal_cycle_time = 2.0  # 2 hours per unit
         mock_wo.calculated_cycle_time = None
         mock_wo.planned_quantity = 100
@@ -109,7 +109,7 @@ class TestInferPlannedDeliveryDate:
         mock_wo = MagicMock()
         mock_wo.planned_ship_date = None
         mock_wo.required_date = None
-        mock_wo.planned_start_date = datetime.now()
+        mock_wo.planned_start_date = datetime.now(tz=timezone.utc)
         mock_wo.ideal_cycle_time = None
         mock_wo.calculated_cycle_time = 1.5
         mock_wo.planned_quantity = 50
@@ -127,7 +127,7 @@ class TestInferPlannedDeliveryDate:
         mock_wo = MagicMock()
         mock_wo.planned_ship_date = None
         mock_wo.required_date = None
-        mock_wo.planned_start_date = datetime.now()
+        mock_wo.planned_start_date = datetime.now(tz=timezone.utc)
         mock_wo.ideal_cycle_time = None
         mock_wo.calculated_cycle_time = None
         mock_wo.planned_quantity = 100
@@ -658,7 +658,7 @@ class TestCalculateOTDByWorkOrderWithData:
         db = otd_setup["db"]
         client = otd_setup["client"]
 
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
 
         # Create a completed work order with delivery dates
         work_order = WorkOrder(
@@ -690,7 +690,7 @@ class TestCalculateOTDByWorkOrderWithData:
         db = otd_setup["db"]
         client = otd_setup["client"]
 
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
 
         # Create a late work order
         work_order = WorkOrder(
@@ -720,7 +720,7 @@ class TestCalculateOTDByWorkOrderWithData:
         db = otd_setup["db"]
         client = otd_setup["client"]
 
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
 
         # Create an in-progress work order (doesn't qualify for TRUE-OTD)
         work_order = WorkOrder(
@@ -752,7 +752,7 @@ class TestCalculateTrueOTDWithData:
         db = otd_setup["db"]
         client = otd_setup["client"]
 
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
 
         # Create completed orders with various delivery statuses
         wo1 = WorkOrder(
@@ -796,7 +796,7 @@ class TestCalculateOTDByProductWithData:
         db = otd_setup["db"]
         client = otd_setup["client"]
 
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
 
         # Create work orders with different styles and delivery statuses
         wo1 = WorkOrder(
@@ -848,7 +848,7 @@ class TestCalculateTrueOTDEdgeCases:
         db = otd_setup["db"]
         client = otd_setup["client"]
 
-        today = datetime.now()
+        today = datetime.now(tz=timezone.utc)
 
         # Create order without planned_ship_date but with required_date (needs inference)
         wo_inferred = WorkOrder(

@@ -5,7 +5,7 @@ Uses mock-based testing pattern consistent with other tests
 
 import pytest
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class TestAnalyticsEndpoints:
@@ -33,8 +33,8 @@ class TestAnalyticsEndpoints:
 
     def test_get_production_analytics_with_date_range(self, mock_db):
         """Test production analytics with date range filter"""
-        start_date = datetime.now() - timedelta(days=30)
-        end_date = datetime.now()
+        start_date = datetime.now(tz=timezone.utc) - timedelta(days=30)
+        end_date = datetime.now(tz=timezone.utc)
 
         mock_db.query.return_value.filter.return_value.filter.return_value.all.return_value = []
 
@@ -168,7 +168,7 @@ class TestHealthEndpoints:
 
     def test_health_check_basic(self):
         """Test basic health check response"""
-        health_status = {"status": "healthy", "timestamp": datetime.now().isoformat()}
+        health_status = {"status": "healthy", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
         assert health_status["status"] == "healthy"
 
     def test_health_check_detailed(self):

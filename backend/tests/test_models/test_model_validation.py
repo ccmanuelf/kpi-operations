@@ -12,7 +12,7 @@ Covers:
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pydantic import ValidationError
 
@@ -105,7 +105,7 @@ class TestHoldEntryORM:
             client_id="HOLD-C1",
             work_order_id=wo.work_order_id,
             hold_status=HoldStatus.ON_HOLD,
-            hold_date=datetime.now(),
+            hold_date=datetime.now(tz=timezone.utc),
             hold_initiated_by=user.user_id,
             hold_reason=HoldReason.QUALITY_ISSUE,
         )

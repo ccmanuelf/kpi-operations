@@ -500,7 +500,7 @@ class ComprehensivePredictionResponse(BaseModel):
 
     # Metadata
     generated_at: datetime.datetime = Field(
-        default_factory=datetime.datetime.utcnow, description="Response generation timestamp"
+        default_factory=lambda: datetime.datetime.now(tz=datetime.timezone.utc), description="Response generation timestamp"
     )
     data_quality_score: float = Field(default=100.0, description="Quality score of input data (0-100)")
 
@@ -549,7 +549,7 @@ class AllKPIPredictionsResponse(BaseModel):
 
     client_id: str = Field(..., description="Client ID")
     forecast_days: int = Field(..., description="Number of days forecasted")
-    generated_at: datetime.datetime = Field(default_factory=datetime.datetime.utcnow)
+    generated_at: datetime.datetime = Field(default_factory=lambda: datetime.datetime.now(tz=datetime.timezone.utc))
 
     # Individual KPI predictions
     efficiency: Optional[ComprehensivePredictionResponse] = None

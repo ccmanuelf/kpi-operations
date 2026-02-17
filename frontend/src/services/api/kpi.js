@@ -48,6 +48,7 @@ export const getEfficiency = async (params) => {
       }
     }
   } catch (error) {
+    console.error('[KPI API] Failed to fetch efficiency:', error)
     return { data: { current: null, target: 85, actual_output: 0, expected_output: 0, gap: 0, by_shift: [], by_product: [] } }
   }
 }
@@ -321,7 +322,8 @@ export const getQuality = async (params) => {
         by_product: byProductRes.data || []
       }
     }
-  } catch {
+  } catch (error) {
+    console.error('[KPI API] Failed to fetch quality:', error)
     return { data: { fpy: 0, rty: 0, final_yield: 0, total_units: 0, total_scrapped: 0, defects_by_type: [], by_product: [] } }
   }
 }
@@ -352,6 +354,7 @@ export const getOEE = async (params) => {
     }
     return { data: { percentage: null } }
   } catch (error) {
+    console.error('[KPI API] Failed to fetch OEE:', error)
     return { data: { percentage: null } }
   }
 }
@@ -369,16 +372,19 @@ export const getAbsenteeism = (params) => {
       by_department: res.data?.by_department || [],
       high_absence_employees: res.data?.high_absence_employees || []
     }
-  })).catch(() => ({
-    data: {
-      rate: 0,
-      total_employees: 0,
-      total_absences: 0,
-      by_reason: [],
-      by_department: [],
-      high_absence_employees: []
+  })).catch((error) => {
+    console.error('[KPI API] Failed to fetch absenteeism:', error)
+    return {
+      data: {
+        rate: 0,
+        total_employees: 0,
+        total_absences: 0,
+        by_reason: [],
+        by_department: [],
+        high_absence_employees: []
+      }
     }
-  }))
+  })
 }
 
 export const getDefectRates = (params) => {
@@ -387,7 +393,10 @@ export const getDefectRates = (params) => {
       ppm: res.data?.ppm ?? null,
       defect_rate_percentage: res.data?.defect_rate_percentage ?? null
     }
-  })).catch(() => ({ data: { ppm: null, defect_rate_percentage: null } }))
+  })).catch((error) => {
+    console.error('[KPI API] Failed to fetch defect rates:', error)
+    return { data: { ppm: null, defect_rate_percentage: null } }
+  })
 }
 
 export const getThroughputTime = async (params) => {
@@ -415,23 +424,24 @@ export const getThroughputTime = async (params) => {
     }
     return { data: { average_hours: null } }
   } catch (error) {
+    console.error('[KPI API] Failed to fetch throughput time:', error)
     return { data: { average_hours: null } }
   }
 }
 
 // KPI Trends (fallback to empty arrays if endpoints don't exist)
-export const getEfficiencyTrend = (params) => api.get('/kpi/efficiency/trend', { params }).catch(() => ({ data: [] }))
+export const getEfficiencyTrend = (params) => api.get('/kpi/efficiency/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch efficiency trend:', error); return { data: [] } })
 
-export const getWIPAgingTrend = (params) => api.get('/kpi/wip-aging/trend', { params }).catch(() => ({ data: [] }))
+export const getWIPAgingTrend = (params) => api.get('/kpi/wip-aging/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch WIP aging trend:', error); return { data: [] } })
 
-export const getOnTimeDeliveryTrend = (params) => api.get('/kpi/on-time-delivery/trend', { params }).catch(() => ({ data: [] }))
+export const getOnTimeDeliveryTrend = (params) => api.get('/kpi/on-time-delivery/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch OTD trend:', error); return { data: [] } })
 
-export const getAvailabilityTrend = (params) => api.get('/kpi/availability/trend', { params }).catch(() => ({ data: [] }))
+export const getAvailabilityTrend = (params) => api.get('/kpi/availability/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch availability trend:', error); return { data: [] } })
 
-export const getPerformanceTrend = (params) => api.get('/kpi/performance/trend', { params }).catch(() => ({ data: [] }))
+export const getPerformanceTrend = (params) => api.get('/kpi/performance/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch performance trend:', error); return { data: [] } })
 
-export const getQualityTrend = (params) => api.get('/kpi/quality/trend', { params }).catch(() => ({ data: [] }))
+export const getQualityTrend = (params) => api.get('/kpi/quality/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch quality trend:', error); return { data: [] } })
 
-export const getOEETrend = (params) => api.get('/kpi/oee/trend', { params }).catch(() => ({ data: [] }))
+export const getOEETrend = (params) => api.get('/kpi/oee/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch OEE trend:', error); return { data: [] } })
 
-export const getAbsenteeismTrend = (params) => api.get('/attendance/kpi/absenteeism/trend', { params }).catch(() => ({ data: [] }))
+export const getAbsenteeismTrend = (params) => api.get('/attendance/kpi/absenteeism/trend', { params }).catch((error) => { console.error('[KPI API] Failed to fetch absenteeism trend:', error); return { data: [] } })

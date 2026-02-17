@@ -4,7 +4,7 @@ Target: Increase overall route coverage to 85%+
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 
@@ -173,7 +173,7 @@ class TestDowntimeRoutesComprehensive:
         """Test creating downtime event"""
         data = {
             "machine_id": "MACHINE-001",
-            "start_time": datetime.now().isoformat(),
+            "start_time": datetime.now(tz=timezone.utc).isoformat(),
             "downtime_reason": "MAINTENANCE",
             "downtime_duration_minutes": 30,
         }
@@ -240,7 +240,7 @@ class TestWorkOrderRoutesComprehensive:
     def test_create_work_order(self, authenticated_client):
         """Test creating work order"""
         data = {
-            "work_order_id": f"WO-TEST-{datetime.now().timestamp()}",
+            "work_order_id": f"WO-TEST-{datetime.now(tz=timezone.utc).timestamp()}",
             "product_id": 1,
             "planned_quantity": 1000,
             "due_date": (date.today() + timedelta(days=7)).isoformat(),

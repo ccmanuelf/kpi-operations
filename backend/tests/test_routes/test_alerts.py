@@ -4,7 +4,7 @@ Phase 10.3: Intelligent Alerting System
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 
@@ -175,7 +175,7 @@ class TestAlertCalculations:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=2),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=2),
             current_completion_percent=Decimal("40"),
             planned_completion_percent=Decimal("80"),
             days_remaining=2,
@@ -193,7 +193,7 @@ class TestAlertCalculations:
         result = generate_otd_risk_alert(
             work_order_id="WO-002",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=14),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=14),
             current_completion_percent=Decimal("50"),
             planned_completion_percent=Decimal("50"),
             days_remaining=14,
@@ -209,7 +209,7 @@ class TestAlertCalculations:
         result = generate_otd_risk_alert(
             work_order_id="WO-003",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=1),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=1),
             current_completion_percent=Decimal("20"),
             planned_completion_percent=Decimal("90"),
             days_remaining=1,
@@ -533,7 +533,7 @@ class TestAlertModels:
             alert_id="ALT-TEST001",
             predicted_value=85.0,
             actual_value=82.0,
-            prediction_date=datetime.now(),
+            prediction_date=datetime.now(tz=timezone.utc),
         )
 
         assert history.history_id == "AHT-TEST001"
@@ -628,10 +628,10 @@ class TestListAlertsEndpoint:
         from datetime import datetime, timedelta
 
         days = 7
-        from_date = datetime.now() - timedelta(days=days)
+        from_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
 
         # Should be about 7 days ago
-        delta = datetime.now() - from_date
+        delta = datetime.now(tz=timezone.utc) - from_date
         assert delta.days >= 6  # Account for timing variance
 
 
@@ -672,9 +672,9 @@ class TestAlertDashboardEndpoint:
         from datetime import datetime, timedelta
 
         hours_window = 24
-        cutoff = datetime.now() - timedelta(hours=hours_window)
+        cutoff = datetime.now(tz=timezone.utc) - timedelta(hours=hours_window)
 
-        assert (datetime.now() - cutoff).total_seconds() < 86400 + 60  # 24h + buffer
+        assert (datetime.now(tz=timezone.utc) - cutoff).total_seconds() < 86400 + 60  # 24h + buffer
 
 
 class TestAlertSummaryEndpoint:
@@ -762,7 +762,7 @@ class TestAcknowledgeAlertEndpoint:
         """Test acknowledgement sets acknowledged_at"""
         from datetime import datetime
 
-        acknowledged_at = datetime.now()
+        acknowledged_at = datetime.now(tz=timezone.utc)
 
         assert acknowledged_at is not None
 
@@ -791,7 +791,7 @@ class TestResolveAlertEndpoint:
         """Test resolution sets resolved_at"""
         from datetime import datetime
 
-        resolved_at = datetime.now()
+        resolved_at = datetime.now(tz=timezone.utc)
 
         assert resolved_at is not None
 
@@ -836,7 +836,7 @@ class TestDismissAlertEndpoint:
         """Test dismissal sets resolved_at timestamp"""
         from datetime import datetime
 
-        resolved_at = datetime.now()
+        resolved_at = datetime.now(tz=timezone.utc)
 
         assert resolved_at is not None
 
@@ -1070,13 +1070,13 @@ class TestHelperFunctions:
         from datetime import datetime, timedelta
 
         holds = [
-            {"created_at": datetime.now() - timedelta(hours=10)},
-            {"created_at": datetime.now() - timedelta(hours=20)},
-            {"created_at": datetime.now() - timedelta(hours=5)},
+            {"created_at": datetime.now(tz=timezone.utc) - timedelta(hours=10)},
+            {"created_at": datetime.now(tz=timezone.utc) - timedelta(hours=20)},
+            {"created_at": datetime.now(tz=timezone.utc) - timedelta(hours=5)},
         ]
 
         oldest = min(holds, key=lambda h: h["created_at"])
-        oldest_hours = int((datetime.now() - oldest["created_at"]).total_seconds() / 3600)
+        oldest_hours = int((datetime.now(tz=timezone.utc) - oldest["created_at"]).total_seconds() / 3600)
 
         assert oldest_hours >= 19  # ~20 hours
 

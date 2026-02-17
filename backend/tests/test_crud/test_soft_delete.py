@@ -11,7 +11,7 @@ individual CRUD test files (e.g., test_crud_integration.py delete tests).
 """
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
@@ -207,7 +207,7 @@ class TestRestoreSoftDeleted:
         mock_db = MagicMock(spec=Session)
         mock_entity = MagicMock()
         mock_entity.is_active = False
-        mock_entity.deleted_at = datetime.utcnow()
+        mock_entity.deleted_at = datetime.now(tz=timezone.utc)
         mock_entity.deleted_by = 123
 
         result = restore_soft_deleted(mock_db, mock_entity, commit=False)

@@ -4,7 +4,7 @@ Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory
@@ -214,7 +214,7 @@ class TestIsEmployeeAvailableForAssignment:
         from backend.crud.floating_pool import is_employee_available_for_assignment
 
         result = is_employee_available_for_assignment(
-            transactional_db, 99999, proposed_start=datetime.utcnow(), proposed_end=datetime.utcnow() + timedelta(days=7)
+            transactional_db, 99999, proposed_start=datetime.now(tz=timezone.utc), proposed_end=datetime.now(tz=timezone.utc) + timedelta(days=7)
         )
         assert "is_available" in result
 
@@ -258,7 +258,7 @@ class TestGetAvailableFloatingPoolEmployees:
         admin = TestDataFactory.create_user(transactional_db, role="admin")
         transactional_db.commit()
 
-        result = get_available_floating_pool_employees(transactional_db, admin, as_of_date=datetime.utcnow())
+        result = get_available_floating_pool_employees(transactional_db, admin, as_of_date=datetime.now(tz=timezone.utc))
         assert isinstance(result, list)
 
 

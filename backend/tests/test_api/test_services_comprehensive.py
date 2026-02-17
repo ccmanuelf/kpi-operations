@@ -6,7 +6,7 @@ Target: Increase services/ coverage to 85%+
 import smtplib
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch, PropertyMock
 from io import BytesIO
 
@@ -88,7 +88,7 @@ class TestSendKPIReport:
             result = service.send_kpi_report(
                 to_emails=["test@test.com"],
                 client_name="Test Client",
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
                 pdf_content=b"PDF content",
             )
 
@@ -113,7 +113,7 @@ class TestSendKPIReport:
             result = service.send_kpi_report(
                 to_emails=["test@test.com"],
                 client_name="Test Client",
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
                 pdf_content=b"PDF content",
             )
 
@@ -138,7 +138,7 @@ class TestSendKPIReport:
             result = service.send_kpi_report(
                 to_emails=["test@test.com"],
                 client_name="Test Client",
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
                 pdf_content=b"PDF content",
                 subject="Custom Subject",
             )

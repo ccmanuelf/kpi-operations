@@ -12,7 +12,7 @@ All tests use transactional_db + TestDataFactory (no mocks for DB operations).
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from backend.services.production_kpi_service import ProductionKPIService
@@ -696,8 +696,8 @@ class TestWorkflowServiceFunctions:
 
     def test_calculate_elapsed_hours_none(self):
         """calculate_elapsed_hours returns None when either argument is None."""
-        assert calculate_elapsed_hours(None, datetime.now()) is None
-        assert calculate_elapsed_hours(datetime.now(), None) is None
+        assert calculate_elapsed_hours(None, datetime.now(tz=timezone.utc)) is None
+        assert calculate_elapsed_hours(datetime.now(tz=timezone.utc), None) is None
 
     def test_get_transition_history(self, transactional_db):
         """After executing transitions, history is returned in chronological order."""

@@ -14,7 +14,7 @@ Run with:
 
 import asyncio
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from typing import List
 
@@ -161,9 +161,9 @@ class TestDomainEvent:
         assert e1.event_id != e2.event_id
 
     def test_occurred_at_is_auto_populated(self):
-        before = datetime.utcnow()
+        before = datetime.now(tz=timezone.utc)
         event = _make_event()
-        after = datetime.utcnow()
+        after = datetime.now(tz=timezone.utc)
         assert before <= event.occurred_at <= after
 
     def test_aggregate_id_is_required(self):

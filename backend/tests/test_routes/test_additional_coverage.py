@@ -5,7 +5,7 @@ Target: Increase coverage for data_completeness (16%), attendance (26%),
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 
 # =============================================================================
@@ -491,7 +491,7 @@ class TestDowntimeRoutesExtended:
                 "downtime_reason": "Equipment failure",
                 "downtime_category": "MECHANICAL",
                 "duration_minutes": 45,
-                "start_time": datetime.now().isoformat(),
+                "start_time": datetime.now(tz=timezone.utc).isoformat(),
             },
         )
         assert response.status_code in [200, 201, 400, 403, 422]

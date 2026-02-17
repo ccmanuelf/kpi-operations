@@ -76,7 +76,7 @@ class QualityKPIResult:
     dpmo: DPMOResult
     fpy: FPYResult
     rty: Optional[RTYResult] = None
-    calculated_at: datetime = field(default_factory=datetime.utcnow)
+    calculated_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
 
 
 class QualityKPIService:

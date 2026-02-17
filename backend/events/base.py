@@ -7,7 +7,7 @@ Events are value objects that capture significant state changes.
 """
 
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import uuid4
 
@@ -27,7 +27,7 @@ class DomainEvent(BaseModel):
 
     event_id: str = Field(default_factory=lambda: str(uuid4()))
     event_type: str = ""
-    occurred_at: datetime = Field(default_factory=datetime.utcnow)
+    occurred_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
     aggregate_id: str
     aggregate_type: str
     client_id: Optional[str] = None

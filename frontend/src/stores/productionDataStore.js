@@ -56,6 +56,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.productionEntries = response.data
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] fetchProductionEntries failed:', error)
         this.error = error.response?.data?.detail || 'Failed to fetch entries'
         return { success: false, error: this.error }
       } finally {
@@ -72,6 +73,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.productionEntries.unshift(response.data)
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] createProductionEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to create entry'
         return { success: false, error: this.error }
       } finally {
@@ -91,6 +93,7 @@ export const useProductionDataStore = defineStore('productionData', {
         }
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] updateProductionEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to update entry'
         return { success: false, error: this.error }
       } finally {
@@ -107,6 +110,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.productionEntries = this.productionEntries.filter(e => e.entry_id !== id)
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] deleteProductionEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to delete entry'
         return { success: false, error: this.error }
       } finally {
@@ -130,6 +134,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.dashboardData = response.data
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] fetchKPIDashboard failed:', error)
         this.error = error.response?.data?.detail || 'Failed to fetch dashboard'
         return { success: false, error: this.error }
       } finally {
@@ -158,6 +163,7 @@ export const useProductionDataStore = defineStore('productionData', {
 
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] fetchReferenceData failed:', error)
         this.error = error.response?.data?.detail || 'Failed to fetch reference data'
         return { success: false, error: this.error }
       }
@@ -172,6 +178,7 @@ export const useProductionDataStore = defineStore('productionData', {
         await this.fetchProductionEntries()
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] uploadCSV failed:', error)
         this.error = error.response?.data?.detail || 'Failed to upload CSV'
         return { success: false, error: this.error }
       } finally {
@@ -187,6 +194,7 @@ export const useProductionDataStore = defineStore('productionData', {
         const response = await api.batchImportProduction(entries)
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] batchImportProduction failed:', error)
         this.error = error.response?.data?.detail || 'Failed to batch import'
         return { success: false, error: this.error }
       } finally {
@@ -204,6 +212,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.downtimeEntries = response.data
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] fetchDowntimeEntries failed:', error)
         this.error = error.response?.data?.detail || 'Failed to fetch downtime entries'
         return { success: false, error: this.error }
       } finally {
@@ -220,6 +229,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.downtimeEntries.unshift(response.data)
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] createDowntimeEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to create downtime entry'
         return { success: false, error: this.error }
       } finally {
@@ -239,6 +249,7 @@ export const useProductionDataStore = defineStore('productionData', {
         }
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] updateDowntimeEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to update downtime entry'
         return { success: false, error: this.error }
       } finally {
@@ -255,6 +266,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.downtimeEntries = this.downtimeEntries.filter(e => e.downtime_id !== id)
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] deleteDowntimeEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to delete downtime entry'
         return { success: false, error: this.error }
       } finally {
@@ -272,6 +284,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.holdEntries = response.data
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] fetchHoldEntries failed:', error)
         this.error = error.response?.data?.detail || 'Failed to fetch hold entries'
         return { success: false, error: this.error }
       } finally {
@@ -288,6 +301,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.holdEntries.unshift(response.data)
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] createHoldEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to create hold entry'
         return { success: false, error: this.error }
       } finally {
@@ -307,6 +321,7 @@ export const useProductionDataStore = defineStore('productionData', {
         }
         return { success: true, data: response.data }
       } catch (error) {
+        console.error('[ProductionDataStore] updateHoldEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to update hold entry'
         return { success: false, error: this.error }
       } finally {
@@ -323,6 +338,7 @@ export const useProductionDataStore = defineStore('productionData', {
         this.holdEntries = this.holdEntries.filter(e => e.hold_id !== id)
         return { success: true }
       } catch (error) {
+        console.error('[ProductionDataStore] deleteHoldEntry failed:', error)
         this.error = error.response?.data?.detail || 'Failed to delete hold entry'
         return { success: false, error: this.error }
       } finally {

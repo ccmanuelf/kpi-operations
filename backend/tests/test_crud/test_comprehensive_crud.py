@@ -4,7 +4,7 @@ Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory
@@ -137,15 +137,15 @@ class TestDowntimeEdgeCases:
 
     def test_open_downtime_entry(self):
         """Test open downtime entry detection"""
-        start_time = datetime.now()
+        start_time = datetime.now(tz=timezone.utc)
         end_time = None
         is_open = end_time is None
         assert is_open is True
 
     def test_overlapping_downtime(self):
         """Test overlapping downtime detection"""
-        entry1_end = datetime.now()
-        entry2_start = datetime.now() - timedelta(minutes=30)
+        entry1_end = datetime.now(tz=timezone.utc)
+        entry2_start = datetime.now(tz=timezone.utc) - timedelta(minutes=30)
         overlaps = entry2_start < entry1_end
         assert overlaps is True
 
@@ -238,8 +238,8 @@ class TestHoldCRUD:
 
     def test_hold_aging_calculation(self):
         """Test hold aging calculation in days"""
-        hold_date = datetime.now() - timedelta(days=5)
-        aging_days = (datetime.now() - hold_date).days
+        hold_date = datetime.now(tz=timezone.utc) - timedelta(days=5)
+        aging_days = (datetime.now(tz=timezone.utc) - hold_date).days
         assert aging_days == 5
 
 

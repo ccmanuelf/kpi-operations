@@ -4,7 +4,7 @@ Target: Increase routes/kpi.py coverage to 75%+
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -121,8 +121,8 @@ def kpi_setup(kpi_db):
         client_id=client.client_id,
         style_model="STYLE-001",
         status=WorkOrderStatus.COMPLETED,
-        required_date=datetime.now() + timedelta(days=5),
-        actual_delivery_date=datetime.now() - timedelta(days=1),
+        required_date=datetime.now(tz=timezone.utc) + timedelta(days=5),
+        actual_delivery_date=datetime.now(tz=timezone.utc) - timedelta(days=1),
         planned_quantity=100,
     )
     db.add(on_time_wo)
@@ -133,8 +133,8 @@ def kpi_setup(kpi_db):
         client_id=client.client_id,
         style_model="STYLE-002",
         status=WorkOrderStatus.COMPLETED,
-        required_date=datetime.now() - timedelta(days=5),
-        actual_delivery_date=datetime.now() - timedelta(days=2),
+        required_date=datetime.now(tz=timezone.utc) - timedelta(days=5),
+        actual_delivery_date=datetime.now(tz=timezone.utc) - timedelta(days=2),
         planned_quantity=100,
     )
     db.add(late_wo)
@@ -145,7 +145,7 @@ def kpi_setup(kpi_db):
         client_id=client.client_id,
         style_model="STYLE-003",
         status=WorkOrderStatus.IN_PROGRESS,
-        required_date=datetime.now() + timedelta(days=10),
+        required_date=datetime.now(tz=timezone.utc) + timedelta(days=10),
         actual_delivery_date=None,
         planned_quantity=100,
     )

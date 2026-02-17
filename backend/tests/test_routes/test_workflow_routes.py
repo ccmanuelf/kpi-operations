@@ -12,7 +12,7 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, MagicMock, patch
 from fastapi.testclient import TestClient
 import json
@@ -132,14 +132,14 @@ class TestGetTransitionHistory:
                 transition_id=1,
                 from_status=None,
                 to_status="RECEIVED",
-                transitioned_at=datetime.utcnow(),
+                transitioned_at=datetime.now(tz=timezone.utc),
                 notes="Initial",
             ),
             Mock(
                 transition_id=2,
                 from_status="RECEIVED",
                 to_status="RELEASED",
-                transitioned_at=datetime.utcnow(),
+                transitioned_at=datetime.now(tz=timezone.utc),
                 notes=None,
             ),
         ]
@@ -290,13 +290,13 @@ class TestElapsedTimeEndpoints:
         mock_wo.work_order_id = "WO-001"
         mock_wo.client_id = "CLIENT-001"
         mock_wo.status = "IN_PROGRESS"
-        mock_wo.received_date = datetime.utcnow() - timedelta(hours=24)
-        mock_wo.dispatch_date = datetime.utcnow() - timedelta(hours=12)
+        mock_wo.received_date = datetime.now(tz=timezone.utc) - timedelta(hours=24)
+        mock_wo.dispatch_date = datetime.now(tz=timezone.utc) - timedelta(hours=12)
         mock_wo.closure_date = None
         mock_wo.shipped_date = None
-        mock_wo.expected_date = datetime.utcnow() + timedelta(days=1)
+        mock_wo.expected_date = datetime.now(tz=timezone.utc) + timedelta(days=1)
         mock_wo.actual_delivery_date = None
-        mock_wo.updated_at = datetime.utcnow()
+        mock_wo.updated_at = datetime.now(tz=timezone.utc)
 
         mock_query = Mock()
         mock_db.query.return_value = mock_query

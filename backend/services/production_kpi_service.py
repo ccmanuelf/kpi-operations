@@ -13,7 +13,7 @@ import logging
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, and_
@@ -90,7 +90,7 @@ class ProductionKPIResult:
     quality: QualityRateResult
     oee: OEEResult
     entry_id: str
-    calculated_at: datetime = field(default_factory=datetime.utcnow)
+    calculated_at: datetime = field(default_factory=lambda: datetime.now(tz=timezone.utc))
 
 
 class ProductionKPIService:

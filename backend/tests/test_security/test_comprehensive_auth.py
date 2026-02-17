@@ -4,7 +4,7 @@ Target: 90% coverage for auth/ module
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from jose import jwt
 import sys
@@ -70,7 +70,7 @@ class TestJWTTokens:
         algorithm = "HS256"
 
         data = {"sub": "testuser"}
-        expire = datetime.utcnow() + timedelta(minutes=30)
+        expire = datetime.now(tz=timezone.utc) + timedelta(minutes=30)
 
         to_encode = data.copy()
         to_encode.update({"exp": expire})
@@ -85,7 +85,7 @@ class TestJWTTokens:
         algorithm = "HS256"
 
         data = {"sub": "testuser"}
-        expire = datetime.utcnow() + timedelta(minutes=30)
+        expire = datetime.now(tz=timezone.utc) + timedelta(minutes=30)
 
         to_encode = data.copy()
         to_encode.update({"exp": expire})
@@ -101,7 +101,7 @@ class TestJWTTokens:
         algorithm = "HS256"
 
         data = {"sub": "testuser"}
-        expire = datetime.utcnow() - timedelta(minutes=1)  # Already expired
+        expire = datetime.now(tz=timezone.utc) - timedelta(minutes=1)  # Already expired
 
         to_encode = data.copy()
         to_encode.update({"exp": expire})
@@ -128,7 +128,7 @@ class TestJWTTokens:
         algorithm = "HS256"
 
         data = {"sub": "testuser"}
-        expire = datetime.utcnow() + timedelta(minutes=30)
+        expire = datetime.now(tz=timezone.utc) + timedelta(minutes=30)
 
         to_encode = data.copy()
         to_encode.update({"exp": expire})
@@ -261,8 +261,8 @@ class TestRateLimiting:
     def test_rate_limit_window_reset(self):
         """Test rate limit window resets after time"""
         window_seconds = 60
-        last_request_time = datetime.now() - timedelta(seconds=120)
-        current_time = datetime.now()
+        last_request_time = datetime.now(tz=timezone.utc) - timedelta(seconds=120)
+        current_time = datetime.now(tz=timezone.utc)
 
         window_elapsed = (current_time - last_request_time).seconds > window_seconds
         assert window_elapsed == True

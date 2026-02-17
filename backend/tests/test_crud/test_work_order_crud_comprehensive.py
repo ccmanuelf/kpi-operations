@@ -5,7 +5,7 @@ Target: Increase crud/work_order.py coverage from 39% to 85%+
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -66,7 +66,7 @@ def work_order_setup(work_order_db):
 
     # Create work orders with different statuses
     work_orders = []
-    base_date = datetime.now() - timedelta(days=30)
+    base_date = datetime.now(tz=timezone.utc) - timedelta(days=30)
 
     wo1 = TestDataFactory.create_work_order(
         db,
@@ -225,7 +225,7 @@ class TestCreateWorkOrder:
         admin = work_order_setup["admin"]
         client = work_order_setup["client"]
 
-        before_create = datetime.utcnow()
+        before_create = datetime.now(tz=timezone.utc)
 
         work_order_data = {
             "work_order_id": "WO-AUTO-DATE-001",
@@ -239,7 +239,9 @@ class TestCreateWorkOrder:
 
         assert result.received_date is not None
         # Received date should be close to creation time
-        assert result.received_date >= before_create
+        # SQLite strips timezone info, so compare as naive UTC
+        received = result.received_date if result.received_date.tzinfo else result.received_date.replace(tzinfo=timezone.utc)
+        assert received >= before_create
 
     def test_create_work_order_supervisor_own_client(self, work_order_setup):
         """Test supervisor can create work order for own client."""
@@ -596,8 +598,10 @@ class TestGetWorkOrdersByDateRange:
         # Should find work orders with planned_ship_date in range
         assert len(results) >= 1
         for wo in results:
-            assert wo.planned_ship_date >= start_date
-            assert wo.planned_ship_date <= end_date
+            # SQLite strips timezone info, so normalize for comparison
+            ship_date = wo.planned_ship_date if wo.planned_ship_date.tzinfo else wo.planned_ship_date.replace(tzinfo=timezone.utc)
+            assert ship_date >= start_date
+            assert ship_date <= end_date
 
     def test_get_work_orders_by_date_range_empty(self, work_order_setup):
         """Test date range with no results."""
@@ -605,8 +609,8 @@ class TestGetWorkOrdersByDateRange:
         admin = work_order_setup["admin"]
 
         # Far future date range
-        start_date = datetime.now() + timedelta(days=1000)
-        end_date = datetime.now() + timedelta(days=1100)
+        start_date = datetime.now(tz=timezone.utc) + timedelta(days=1000)
+        end_date = datetime.now(tz=timezone.utc) + timedelta(days=1100)
 
         results = work_order_crud.get_work_orders_by_date_range(db, start_date, end_date, admin)
 
@@ -630,8 +634,8 @@ class TestGetWorkOrdersByDateRange:
         db = multi_tenant_setup["db"]
         user_a = multi_tenant_setup["user_a"]
 
-        start_date = datetime.now() - timedelta(days=100)
-        end_date = datetime.now() + timedelta(days=100)
+        start_date = datetime.now(tz=timezone.utc) - timedelta(days=100)
+        end_date = datetime.now(tz=timezone.utc) + timedelta(days=100)
 
         results = work_order_crud.get_work_orders_by_date_range(db, start_date, end_date, user_a)
 

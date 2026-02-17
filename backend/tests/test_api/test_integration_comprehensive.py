@@ -6,7 +6,7 @@ Target: Increase overall backend test coverage to 90%+
 """
 
 import pytest
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
 
 
@@ -378,7 +378,7 @@ class TestCRUDIntegration:
             json={
                 "job_id": "JOB-TEST-001",
                 "shift_id": "DAY-1",
-                "start_time": datetime.now().isoformat(),
+                "start_time": datetime.now(tz=timezone.utc).isoformat(),
                 "category": "unplanned",
                 "reason": "Equipment failure",
                 "client_id": "TEST-CLIENT",

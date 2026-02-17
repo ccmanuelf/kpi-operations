@@ -4,7 +4,7 @@ Task #42: Comprehensive testing of auth boundary conditions and error scenarios
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
@@ -384,7 +384,7 @@ class TestJWTEdgeCases:
 
         # Create a token without 'sub' claim - should raise HTTPException
         with patch("backend.auth.jwt.jwt.decode") as mock_decode:
-            mock_decode.return_value = {"exp": datetime.utcnow() + timedelta(hours=1)}  # No 'sub'
+            mock_decode.return_value = {"exp": datetime.now(tz=timezone.utc) + timedelta(hours=1)}  # No 'sub'
 
             with pytest.raises(HTTPException) as exc_info:
                 decode_access_token("fake_token")

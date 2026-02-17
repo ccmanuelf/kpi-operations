@@ -337,7 +337,7 @@ class TestGenerateOtdRiskAlert:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=14),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=14),
             current_completion_percent=Decimal("50"),
             planned_completion_percent=Decimal("50"),
             days_remaining=14,
@@ -349,7 +349,7 @@ class TestGenerateOtdRiskAlert:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=10),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=10),
             current_completion_percent=Decimal("40"),
             planned_completion_percent=Decimal("55"),
             days_remaining=10,
@@ -365,7 +365,7 @@ class TestGenerateOtdRiskAlert:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=5),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=5),
             current_completion_percent=Decimal("30"),
             planned_completion_percent=Decimal("60"),
             days_remaining=5,
@@ -380,7 +380,7 @@ class TestGenerateOtdRiskAlert:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=1),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=1),
             current_completion_percent=Decimal("50"),
             planned_completion_percent=Decimal("90"),
             days_remaining=1,
@@ -395,7 +395,7 @@ class TestGenerateOtdRiskAlert:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=3),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=3),
             current_completion_percent=Decimal("20"),
             planned_completion_percent=Decimal("70"),
             days_remaining=3,
@@ -411,7 +411,7 @@ class TestGenerateOtdRiskAlert:
         result = generate_otd_risk_alert(
             work_order_id="WO-001",
             client_name="Test Client",
-            due_date=datetime.now() + timedelta(days=5),
+            due_date=datetime.now(tz=timezone.utc) + timedelta(days=5),
             current_completion_percent=Decimal("30"),
             planned_completion_percent=Decimal("60"),
             days_remaining=5,

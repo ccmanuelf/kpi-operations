@@ -12,7 +12,7 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, MagicMock, patch
 import json
 
@@ -214,7 +214,7 @@ class TestValidateTransitionWorkOrder:
         wo.actual_quantity = actual_quantity
         wo.qc_approved = qc_approved
         wo.previous_status = previous_status
-        wo.received_date = datetime.utcnow() - timedelta(days=1)
+        wo.received_date = datetime.now(tz=timezone.utc) - timedelta(days=1)
         return wo
 
     def _create_mock_db_with_config(self):
@@ -484,14 +484,14 @@ class TestCalculateElapsedHoursService:
         """Test returns None when from is None"""
         from backend.services.workflow_service import calculate_elapsed_hours
 
-        result = calculate_elapsed_hours(None, datetime.now())
+        result = calculate_elapsed_hours(None, datetime.now(tz=timezone.utc))
         assert result is None
 
     def test_calculate_elapsed_hours_none_to(self):
         """Test returns None when to is None"""
         from backend.services.workflow_service import calculate_elapsed_hours
 
-        result = calculate_elapsed_hours(datetime.now(), None)
+        result = calculate_elapsed_hours(datetime.now(tz=timezone.utc), None)
         assert result is None
 
 

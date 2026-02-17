@@ -4,7 +4,7 @@ Uses real database sessions — no mocks for DB layer.
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import patch
 from fastapi import HTTPException
@@ -35,7 +35,7 @@ def _create_on_hold(db, client_id, work_order_id, user_id, hold_date=None, **kwa
         client_id=client_id,
         created_by=user_id,
         hold_status=HoldStatus.ON_HOLD,
-        hold_date=hold_date or datetime.now() - timedelta(hours=3),
+        hold_date=hold_date or datetime.now(tz=timezone.utc) - timedelta(hours=3),
         **kwargs,
     )
     db.commit()
@@ -215,7 +215,7 @@ class TestBulkUpdateAging:
         db = transactional_db
         client, user, wo = _seed_hold_prereqs(db)
         _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now() - timedelta(days=5)
+            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(days=5)
         )
 
         try:
@@ -254,7 +254,7 @@ class TestResumeHold:
         client, user, wo = _seed_hold_prereqs(db)
 
         # Create a hold 3 hours ago
-        hold_time = datetime.now() - timedelta(hours=3)
+        hold_time = datetime.now(tz=timezone.utc) - timedelta(hours=3)
         hold = _create_on_hold(db, client.client_id, wo.work_order_id, user.user_id, hold_date=hold_time)
 
         from backend.crud.hold.duration import resume_hold
@@ -333,7 +333,7 @@ class TestGetTotalHoldDuration:
 
         # Hold started 2 hours ago
         _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now() - timedelta(hours=2)
+            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2)
         )
 
         from backend.crud.hold.duration import get_total_hold_duration
@@ -373,7 +373,7 @@ class TestGetTotalHoldDuration:
 
         # Active hold (1 hour ago)
         _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now() - timedelta(hours=1)
+            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=1)
         )
 
         # Completed hold with stored duration
@@ -383,7 +383,7 @@ class TestGetTotalHoldDuration:
             client_id=client.client_id,
             created_by=user.user_id,
             hold_status=HoldStatus.RESUMED,
-            hold_date=datetime.now() - timedelta(days=2),
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(days=2),
         )
         completed.total_hold_duration_hours = Decimal("10.0")
         db.commit()
@@ -444,7 +444,7 @@ class TestReleaseHold:
         db = transactional_db
         client, user, wo = _seed_hold_prereqs(db)
         hold = _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now() - timedelta(hours=4)
+            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=4)
         )
 
         from backend.crud.hold.duration import release_hold
@@ -495,7 +495,7 @@ class TestReleaseHold:
         db = transactional_db
         client, user, wo = _seed_hold_prereqs(db)
         hold = _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now() - timedelta(hours=2)
+            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2)
         )
         # Ensure duration is None before release
         hold.total_hold_duration_hours = None

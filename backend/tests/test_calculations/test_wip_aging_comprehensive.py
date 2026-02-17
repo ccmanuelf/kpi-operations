@@ -421,7 +421,7 @@ class TestCalculateWipAging:
             hold_entry_id="HOLD-WIP-001",
             client_id=client.client_id,
             work_order_id=work_order.work_order_id,
-            hold_date=datetime.now() - timedelta(days=5),
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(days=5),
             hold_status=HoldStatus.ON_HOLD,
             hold_reason_category="QUALITY",
         )
@@ -456,7 +456,7 @@ class TestCalculateWipAging:
                 hold_entry_id=f"HOLD-BUCKET-{idx}",
                 client_id=client.client_id,
                 work_order_id=work_order.work_order_id,
-                hold_date=datetime.now() - timedelta(days=days_ago),
+                hold_date=datetime.now(tz=timezone.utc) - timedelta(days=days_ago),
                 hold_status=HoldStatus.ON_HOLD,
                 hold_reason_category="QUALITY",
             )
@@ -503,7 +503,7 @@ class TestCalculateHoldResolutionRate:
             db.add(work_order)
             db.flush()
 
-            hold_date = datetime.now() - timedelta(days=10)
+            hold_date = datetime.now(tz=timezone.utc) - timedelta(days=10)
             resume_date = hold_date + timedelta(days=(i + 1) * 2)  # Vary resolution time
 
             hold = HoldEntry(
@@ -561,7 +561,7 @@ class TestIdentifyChronicHolds:
             hold_entry_id="HOLD-CHRONIC-001",
             client_id=client.client_id,
             work_order_id=work_order.work_order_id,
-            hold_date=datetime.now() - timedelta(days=60),  # Very old
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(days=60),  # Very old
             hold_status=HoldStatus.ON_HOLD,
             hold_reason_category="QUALITY",
         )
@@ -639,8 +639,8 @@ class TestGetTotalHoldDurationHours:
             hold_entry_id="HOLD-DUR-002",
             client_id=client.client_id,
             work_order_id=work_order.work_order_id,
-            hold_date=datetime.now() - timedelta(hours=5),
-            resume_date=datetime.now() - timedelta(hours=2),
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=5),
+            resume_date=datetime.now(tz=timezone.utc) - timedelta(hours=2),
             hold_status=HoldStatus.RESUMED,
             hold_reason_category="QUALITY",
             total_hold_duration_hours=Decimal("3.0"),
@@ -662,7 +662,7 @@ class TestCalculateWipAgeAdjusted:
 
         db = wip_setup["db"]
 
-        created_at = datetime.now() - timedelta(hours=48)
+        created_at = datetime.now(tz=timezone.utc) - timedelta(hours=48)
 
         result = calculate_wip_age_adjusted(db, work_order_number="TEST-WO", work_order_created_at=created_at)
 
@@ -685,7 +685,7 @@ class TestCalculateWipAgeAdjusted:
             client_id=client.client_id,
             style_model="TEST-STYLE",
             planned_quantity=100,
-            created_at=datetime.now() - timedelta(hours=48),
+            created_at=datetime.now(tz=timezone.utc) - timedelta(hours=48),
         )
         db.add(work_order)
         db.flush()
@@ -695,8 +695,8 @@ class TestCalculateWipAgeAdjusted:
             hold_entry_id="HOLD-ADJ-001",
             client_id=client.client_id,
             work_order_id=work_order.work_order_id,
-            hold_date=datetime.now() - timedelta(hours=10),
-            resume_date=datetime.now() - timedelta(hours=5),
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=10),
+            resume_date=datetime.now(tz=timezone.utc) - timedelta(hours=5),
             hold_status=HoldStatus.RESUMED,
             hold_reason_category="QUALITY",
             total_hold_duration_hours=Decimal("5.0"),
@@ -739,7 +739,7 @@ class TestCalculateWorkOrderWipAge:
             client_id=client.client_id,
             style_model="TEST-STYLE",
             planned_quantity=100,
-            created_at=datetime.now() - timedelta(hours=24),
+            created_at=datetime.now(tz=timezone.utc) - timedelta(hours=24),
         )
         db.add(work_order)
         db.commit()
@@ -786,7 +786,7 @@ class TestCalculateWipAgingWithHoldAdjustment:
             hold_entry_id="HOLD-HADJ-001",
             client_id=client.client_id,
             work_order_id=work_order.work_order_id,
-            hold_date=datetime.now() - timedelta(days=10),
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(days=10),
             hold_status=HoldStatus.ON_HOLD,
             hold_reason_category="QUALITY",
         )

@@ -5,7 +5,7 @@ Uses real database transactions instead of mocks.
 """
 
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -276,7 +276,7 @@ class TestDataFactory:
             status=status,
             planned_quantity=planned_quantity,
             actual_quantity=kwargs.get("actual_quantity", 0),
-            received_date=kwargs.get("received_date", datetime.now()),
+            received_date=kwargs.get("received_date", datetime.now(tz=timezone.utc)),
             planned_ship_date=kwargs.get("planned_ship_date"),
             priority=kwargs.get("priority", "NORMAL"),
             notes=kwargs.get("notes"),
@@ -406,7 +406,7 @@ class TestDataFactory:
             hold_reason=HoldReason[hold_reason] if hold_reason in HoldReason.__members__ else HoldReason.QUALITY_ISSUE,
             hold_reason_category=kwargs.get("hold_reason_category", "QUALITY"),
             hold_status=hold_status,
-            hold_date=kwargs.get("hold_date", datetime.now()),
+            hold_date=kwargs.get("hold_date", datetime.now(tz=timezone.utc)),
             resume_date=kwargs.get("resume_date"),
             hold_approved_by=kwargs.get("hold_approved_by"),
             job_id=kwargs.get("job_id"),
@@ -430,7 +430,7 @@ class TestDataFactory:
         entry_id = TestDataFactory._next_id("DT")
 
         if shift_date is None:
-            shift_date = datetime.now()
+            shift_date = datetime.now(tz=timezone.utc)
 
         entry = DowntimeEntry(
             downtime_entry_id=entry_id,

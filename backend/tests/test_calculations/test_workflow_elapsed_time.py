@@ -12,7 +12,7 @@ Tests cover:
 """
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import Mock, MagicMock, patch
 
@@ -44,14 +44,14 @@ class TestElapsedHoursCalculation:
         """Test returns None when from_datetime is None"""
         from backend.calculations.elapsed_time import calculate_elapsed_hours
 
-        result = calculate_elapsed_hours(None, datetime.now())
+        result = calculate_elapsed_hours(None, datetime.now(tz=timezone.utc))
         assert result is None
 
     def test_calculate_elapsed_hours_none_to_uses_now(self):
         """Test uses current time when to_datetime is None"""
         from backend.calculations.elapsed_time import calculate_elapsed_hours
 
-        from_dt = datetime.utcnow() - timedelta(hours=2)
+        from_dt = datetime.now(tz=timezone.utc) - timedelta(hours=2)
         result = calculate_elapsed_hours(from_dt, None)
 
         # Should be approximately 2 hours
@@ -95,14 +95,14 @@ class TestElapsedDaysCalculation:
         """Test returns None when from_datetime is None"""
         from backend.calculations.elapsed_time import calculate_elapsed_days
 
-        result = calculate_elapsed_days(None, datetime.now())
+        result = calculate_elapsed_days(None, datetime.now(tz=timezone.utc))
         assert result is None
 
     def test_calculate_elapsed_days_none_to_uses_now(self):
         """Test uses current time when to_datetime is None"""
         from backend.calculations.elapsed_time import calculate_elapsed_days
 
-        from_dt = datetime.utcnow() - timedelta(days=2)
+        from_dt = datetime.now(tz=timezone.utc) - timedelta(days=2)
         result = calculate_elapsed_days(from_dt, None)
 
         # Should be approximately 2 days
@@ -138,7 +138,7 @@ class TestBusinessHoursCalculation:
         """Test returns None when from_datetime is None"""
         from backend.calculations.elapsed_time import calculate_business_hours
 
-        result = calculate_business_hours(None, datetime.now())
+        result = calculate_business_hours(None, datetime.now(tz=timezone.utc))
         assert result is None
 
     def test_business_hours_custom_working_days(self):
@@ -176,7 +176,7 @@ class TestWorkOrderElapsedTime:
         wo.shipped_date = shipped_date
         wo.expected_date = expected_date
         wo.actual_delivery_date = actual_delivery_date
-        wo.updated_at = updated_at or datetime.utcnow()
+        wo.updated_at = updated_at or datetime.now(tz=timezone.utc)
         return wo
 
     def test_total_lifecycle_hours_closed(self):
@@ -195,7 +195,7 @@ class TestWorkOrderElapsedTime:
         """Test total lifecycle hours for open work order"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        received = datetime.utcnow() - timedelta(hours=24)
+        received = datetime.now(tz=timezone.utc) - timedelta(hours=24)
 
         wo = self._create_mock_work_order(received_date=received)
         calc = WorkOrderElapsedTime(wo)
@@ -230,7 +230,7 @@ class TestWorkOrderElapsedTime:
         """Test is_overdue when past expected date"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        expected = datetime.utcnow() - timedelta(days=1)  # Yesterday
+        expected = datetime.now(tz=timezone.utc) - timedelta(days=1)  # Yesterday
 
         wo = self._create_mock_work_order(expected_date=expected)
         calc = WorkOrderElapsedTime(wo)
@@ -241,7 +241,7 @@ class TestWorkOrderElapsedTime:
         """Test is_overdue when not past expected date"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        expected = datetime.utcnow() + timedelta(days=1)  # Tomorrow
+        expected = datetime.now(tz=timezone.utc) + timedelta(days=1)  # Tomorrow
 
         wo = self._create_mock_work_order(expected_date=expected)
         calc = WorkOrderElapsedTime(wo)
@@ -252,8 +252,8 @@ class TestWorkOrderElapsedTime:
         """Test closed orders aren't overdue"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        expected = datetime.utcnow() - timedelta(days=1)  # Yesterday
-        closed = datetime.utcnow()
+        expected = datetime.now(tz=timezone.utc) - timedelta(days=1)  # Yesterday
+        closed = datetime.now(tz=timezone.utc)
 
         wo = self._create_mock_work_order(expected_date=expected, closure_date=closed)
         calc = WorkOrderElapsedTime(wo)
@@ -273,7 +273,7 @@ class TestWorkOrderElapsedTime:
         """Test days_early_or_late when early"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        expected = datetime.utcnow() + timedelta(days=3)
+        expected = datetime.now(tz=timezone.utc) + timedelta(days=3)
 
         wo = self._create_mock_work_order(expected_date=expected)
         calc = WorkOrderElapsedTime(wo)
@@ -285,7 +285,7 @@ class TestWorkOrderElapsedTime:
         """Test days_early_or_late when late"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        expected = datetime.utcnow() - timedelta(days=2)
+        expected = datetime.now(tz=timezone.utc) - timedelta(days=2)
 
         wo = self._create_mock_work_order(expected_date=expected)
         calc = WorkOrderElapsedTime(wo)
@@ -297,9 +297,9 @@ class TestWorkOrderElapsedTime:
         """Test get_all_metrics returns complete dictionary"""
         from backend.calculations.elapsed_time import WorkOrderElapsedTime
 
-        received = datetime.utcnow() - timedelta(hours=48)
-        dispatch = datetime.utcnow() - timedelta(hours=24)
-        expected = datetime.utcnow() + timedelta(days=1)
+        received = datetime.now(tz=timezone.utc) - timedelta(hours=48)
+        dispatch = datetime.now(tz=timezone.utc) - timedelta(hours=24)
+        expected = datetime.now(tz=timezone.utc) + timedelta(days=1)
 
         wo = self._create_mock_work_order(received_date=received, dispatch_date=dispatch, expected_date=expected)
 
@@ -327,13 +327,13 @@ class TestCalculateWorkOrderElapsedTimes:
         wo = Mock()
         wo.work_order_id = "WO-001"
         wo.status = "IN_PROGRESS"
-        wo.received_date = datetime.utcnow() - timedelta(hours=24)
-        wo.dispatch_date = datetime.utcnow() - timedelta(hours=12)
+        wo.received_date = datetime.now(tz=timezone.utc) - timedelta(hours=24)
+        wo.dispatch_date = datetime.now(tz=timezone.utc) - timedelta(hours=12)
         wo.closure_date = None
         wo.shipped_date = None
-        wo.expected_date = datetime.utcnow() + timedelta(days=2)
+        wo.expected_date = datetime.now(tz=timezone.utc) + timedelta(days=2)
         wo.actual_delivery_date = None
-        wo.updated_at = datetime.utcnow()
+        wo.updated_at = datetime.now(tz=timezone.utc)
 
         result = calculate_work_order_elapsed_times(wo)
 
@@ -367,22 +367,22 @@ class TestCalculateClientAverageTimes:
 
         # Create mock work orders
         wo1 = Mock()
-        wo1.received_date = datetime.utcnow() - timedelta(hours=48)
-        wo1.dispatch_date = datetime.utcnow() - timedelta(hours=40)
-        wo1.closure_date = datetime.utcnow() - timedelta(hours=24)
+        wo1.received_date = datetime.now(tz=timezone.utc) - timedelta(hours=48)
+        wo1.dispatch_date = datetime.now(tz=timezone.utc) - timedelta(hours=40)
+        wo1.closure_date = datetime.now(tz=timezone.utc) - timedelta(hours=24)
         wo1.shipped_date = None
-        wo1.expected_date = datetime.utcnow()
+        wo1.expected_date = datetime.now(tz=timezone.utc)
         wo1.actual_delivery_date = None
-        wo1.updated_at = datetime.utcnow()
+        wo1.updated_at = datetime.now(tz=timezone.utc)
 
         wo2 = Mock()
-        wo2.received_date = datetime.utcnow() - timedelta(hours=72)
-        wo2.dispatch_date = datetime.utcnow() - timedelta(hours=60)
-        wo2.closure_date = datetime.utcnow() - timedelta(hours=48)
+        wo2.received_date = datetime.now(tz=timezone.utc) - timedelta(hours=72)
+        wo2.dispatch_date = datetime.now(tz=timezone.utc) - timedelta(hours=60)
+        wo2.closure_date = datetime.now(tz=timezone.utc) - timedelta(hours=48)
         wo2.shipped_date = None
-        wo2.expected_date = datetime.utcnow() - timedelta(days=1)  # Overdue
+        wo2.expected_date = datetime.now(tz=timezone.utc) - timedelta(days=1)  # Overdue
         wo2.actual_delivery_date = None
-        wo2.updated_at = datetime.utcnow()
+        wo2.updated_at = datetime.now(tz=timezone.utc)
 
         mock_db = Mock()
         mock_query = Mock()

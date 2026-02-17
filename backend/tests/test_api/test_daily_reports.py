@@ -7,7 +7,7 @@ Only external services (email, PDF) are mocked.
 """
 
 import pytest
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 # Try to import the module - skip all tests if not available
@@ -197,7 +197,7 @@ class TestGenerateAndSendReport:
             client=test_client,
             start_date=date.today() - timedelta(days=1),
             end_date=date.today(),
-            report_date=datetime.now(),
+            report_date=datetime.now(tz=timezone.utc),
         )
 
         assert result["success"] is False
@@ -226,7 +226,7 @@ class TestGenerateAndSendReport:
                 client=test_client,
                 start_date=date.today() - timedelta(days=1),
                 end_date=date.today(),
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
             )
 
             assert result["success"] is True
@@ -249,7 +249,7 @@ class TestGenerateAndSendReport:
                 client=test_client,
                 start_date=date.today() - timedelta(days=1),
                 end_date=date.today(),
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
             )
 
             assert result["success"] is False

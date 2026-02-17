@@ -8,7 +8,7 @@ Tests for:
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch, PropertyMock
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -600,7 +600,7 @@ class TestEdgeCases:
 
     def test_timestamp_format(self):
         """Test calculation_timestamp is ISO format"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(tz=timezone.utc).isoformat()
 
         # Should be parseable as datetime
         parsed = datetime.fromisoformat(timestamp)

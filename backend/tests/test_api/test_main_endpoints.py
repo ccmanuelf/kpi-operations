@@ -18,7 +18,7 @@ Tests cover:
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import uuid
 import sys
@@ -442,11 +442,12 @@ class TestWorkOrderEndpoints:
 
     def test_get_work_orders_by_date_range(self, test_client, admin_auth_headers):
         """Test work orders by date range"""
-        start = datetime.now() - timedelta(days=30)
-        end = datetime.now()
+        start = datetime.now(tz=timezone.utc) - timedelta(days=30)
+        end = datetime.now(tz=timezone.utc)
 
         response = test_client.get(
-            f"/api/work-orders/date-range?start_date={start.isoformat()}&end_date={end.isoformat()}",
+            "/api/work-orders/date-range",
+            params={"start_date": start.isoformat(), "end_date": end.isoformat()},
             headers=admin_auth_headers,
         )
         # 404 if endpoint not implemented
