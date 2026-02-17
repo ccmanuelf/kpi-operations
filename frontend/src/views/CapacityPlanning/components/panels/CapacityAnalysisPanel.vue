@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-chart-bar</v-icon>
-      Capacity Analysis
+      {{ t('capacityPlanning.analysis.title') }}
       <v-spacer />
       <v-btn
         color="primary"
@@ -12,7 +12,7 @@
         @click="showAnalysisDialog = true"
       >
         <v-icon start>mdi-play</v-icon>
-        Run Analysis
+        {{ t('capacityPlanning.analysis.runAnalysis') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -22,7 +22,7 @@
           <v-card variant="tonal" color="primary">
             <v-card-text class="text-center">
               <div class="text-h4">{{ store.averageUtilization }}%</div>
-              <div class="text-subtitle-1">Avg Utilization</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.analysis.avgUtilization') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -30,7 +30,7 @@
           <v-card variant="tonal" color="success">
             <v-card-text class="text-center">
               <div class="text-h4">{{ analysis.length }}</div>
-              <div class="text-subtitle-1">Lines Analyzed</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.analysis.linesAnalyzed') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -38,7 +38,7 @@
           <v-card variant="tonal" color="error">
             <v-card-text class="text-center">
               <div class="text-h4">{{ bottleneckCount }}</div>
-              <div class="text-subtitle-1">Bottlenecks</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.analysis.bottlenecks') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -46,7 +46,7 @@
           <v-card variant="tonal" color="warning">
             <v-card-text class="text-center">
               <div class="text-h4">{{ overloadCount }}</div>
-              <div class="text-subtitle-1">Overloaded</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.analysis.overloaded') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -54,7 +54,7 @@
 
       <!-- Utilization Chart (Simple Bar Visualization) -->
       <v-card v-if="analysis.length" variant="outlined" class="mb-4">
-        <v-card-title class="text-subtitle-1">Line Utilization</v-card-title>
+        <v-card-title class="text-subtitle-1">{{ t('capacityPlanning.analysis.lineUtilization') }}</v-card-title>
         <v-card-text>
           <div v-for="line in analysis" :key="line._id" class="mb-3">
             <div class="d-flex align-center mb-1">
@@ -77,7 +77,7 @@
                 color="error"
                 class="ml-2"
               >
-                Bottleneck
+                {{ t('capacityPlanning.analysis.bottleneck') }}
               </v-chip>
             </div>
           </div>
@@ -121,9 +121,9 @@
       <!-- Empty State -->
       <div v-else class="text-center pa-8 text-grey">
         <v-icon size="64" color="grey-lighten-1">mdi-chart-bar</v-icon>
-        <div class="text-h6 mt-4">No Capacity Analysis Results</div>
+        <div class="text-h6 mt-4">{{ t('capacityPlanning.analysis.noResultsTitle') }}</div>
         <div class="text-body-2 mt-2">
-          Click "Run Analysis" to evaluate production line capacity and identify bottlenecks.
+          {{ t('capacityPlanning.analysis.noResultsDescription') }}
         </div>
         <v-btn
           color="primary"
@@ -131,7 +131,7 @@
           class="mt-4"
           @click="showAnalysisDialog = true"
         >
-          Run Analysis
+          {{ t('capacityPlanning.analysis.runAnalysis') }}
         </v-btn>
       </div>
     </v-card-text>
@@ -139,13 +139,13 @@
     <!-- Analysis Dialog -->
     <v-dialog v-model="showAnalysisDialog" max-width="500">
       <v-card>
-        <v-card-title>Run Capacity Analysis</v-card-title>
+        <v-card-title>{{ t('capacityPlanning.analysis.runCapacityAnalysis') }}</v-card-title>
         <v-card-text>
           <v-row>
             <v-col cols="6">
               <v-text-field
                 v-model="startDate"
-                label="Start Date"
+                :label="t('capacityPlanning.analysis.startDate')"
                 type="date"
                 variant="outlined"
               />
@@ -153,7 +153,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="endDate"
-                label="End Date"
+                :label="t('capacityPlanning.analysis.endDate')"
                 type="date"
                 variant="outlined"
               />
@@ -162,13 +162,13 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showAnalysisDialog = false">Cancel</v-btn>
+          <v-btn @click="showAnalysisDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="store.isRunningAnalysis"
             @click="runAnalysis"
           >
-            Run Analysis
+            {{ t('capacityPlanning.analysis.runAnalysis') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -190,7 +190,10 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+
+const { t } = useI18n()
 
 const store = useCapacityPlanningStore()
 
@@ -198,14 +201,14 @@ const showAnalysisDialog = ref(false)
 const startDate = ref('')
 const endDate = ref('')
 
-const headers = [
-  { title: 'Line', key: 'line_code', width: '120px' },
-  { title: 'Period', key: 'period_date', width: '120px' },
-  { title: 'Required Hours', key: 'required_hours', width: '120px' },
-  { title: 'Available Hours', key: 'available_hours', width: '120px' },
-  { title: 'Utilization', key: 'utilization_percent', width: '120px' },
-  { title: 'Bottleneck', key: 'is_bottleneck', width: '100px' }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanning.analysis.headers.line'), key: 'line_code', width: '120px' },
+  { title: t('capacityPlanning.analysis.headers.period'), key: 'period_date', width: '120px' },
+  { title: t('capacityPlanning.analysis.headers.requiredHours'), key: 'required_hours', width: '120px' },
+  { title: t('capacityPlanning.analysis.headers.availableHours'), key: 'available_hours', width: '120px' },
+  { title: t('capacityPlanning.analysis.headers.utilization'), key: 'utilization_percent', width: '120px' },
+  { title: t('capacityPlanning.analysis.headers.bottleneck'), key: 'is_bottleneck', width: '100px' }
+])
 
 const analysis = computed(() => store.worksheets.capacityAnalysis.data)
 

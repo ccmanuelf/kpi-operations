@@ -180,19 +180,13 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 
-### 3. Initialize Schema
+### 3. Initialize Schema and Data
 
-```bash
-cd /var/www/kpi-platform
+No manual SQL import is required. The backend automatically creates all tables (via SQLAlchemy `Base.metadata.create_all()` and `create_capacity_tables()`) and seeds comprehensive demo data on first startup when it detects an empty database.
 
-# Run schema creation
-mysql -u kpi_user -p kpi_platform < database/schema.sql
+Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. Tables and demo data will be created automatically.
 
-# (Optional) Load demo data for testing
-mysql -u kpi_user -p kpi_platform < database/seed_data.sql
-```
-
-> **Note:** This project does not use Alembic or any migration tooling. Schema changes are applied by modifying `database/schema.sql` directly and re-running the schema creation command above. Demo data can be regenerated at any time with `python database/generators/generate_demo_data.py`.
+> **Note:** This project does not use Alembic or any migration tooling. Schema is managed directly by SQLAlchemy model definitions in the codebase. To reset the database, drop and recreate it in MariaDB, then restart the backend to re-initialize.
 
 ---
 
@@ -501,7 +495,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
-      - ./database/schema:/docker-entrypoint-initdb.d
+      # No init SQL needed — the backend auto-creates tables on startup
     networks:
       - kpi_network
     healthcheck:

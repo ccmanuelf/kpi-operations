@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="d-flex align-center bg-primary text-white">
         <v-icon start>mdi-check-decagram</v-icon>
-        MRP / Component Check Results
+        {{ t('capacityPlanning.mrp.title') }}
         <v-spacer />
         <v-btn
           icon="mdi-close"
@@ -24,7 +24,7 @@
             <v-card variant="tonal" color="primary">
               <v-card-text class="text-center">
                 <div class="text-h4">{{ results.total_components || 0 }}</div>
-                <div class="text-subtitle-1">Total Components</div>
+                <div class="text-subtitle-1">{{ t('capacityPlanning.mrp.totalComponents') }}</div>
               </v-card-text>
             </v-card>
           </v-col>
@@ -32,7 +32,7 @@
             <v-card variant="tonal" color="success">
               <v-card-text class="text-center">
                 <div class="text-h4">{{ results.available_count || 0 }}</div>
-                <div class="text-subtitle-1">Available</div>
+                <div class="text-subtitle-1">{{ t('capacityPlanning.mrp.available') }}</div>
               </v-card-text>
             </v-card>
           </v-col>
@@ -40,7 +40,7 @@
             <v-card variant="tonal" color="error">
               <v-card-text class="text-center">
                 <div class="text-h4">{{ results.shortage_count || 0 }}</div>
-                <div class="text-subtitle-1">Shortages</div>
+                <div class="text-subtitle-1">{{ t('capacityPlanning.mrp.shortages') }}</div>
               </v-card-text>
             </v-card>
           </v-col>
@@ -53,13 +53,13 @@
           variant="tonal"
           class="mb-4"
         >
-          <strong>{{ results.shortage_count }} component shortages detected.</strong>
-          Review the shortages below and take action to resolve them before production.
+          <strong>{{ t('capacityPlanning.mrp.shortageAlert', { count: results.shortage_count }) }}</strong>
+          {{ t('capacityPlanning.mrp.shortageActionPrompt') }}
         </v-alert>
 
         <!-- Component Details -->
         <v-expansion-panels v-if="results.components?.length">
-          <v-expansion-panel title="Shortages" v-if="shortages.length">
+          <v-expansion-panel :title="t('capacityPlanning.mrp.shortages')" v-if="shortages.length">
             <v-expansion-panel-text>
               <v-list density="compact">
                 <v-list-item
@@ -74,15 +74,15 @@
                   <v-list-item-subtitle>
                     {{ item.component_description }}
                     <br />
-                    Required: {{ item.required_quantity }} | Available: {{ item.available_quantity }} |
-                    <strong class="text-error">Short: {{ item.shortage_quantity }}</strong>
+                    {{ t('capacityPlanning.mrp.required') }}: {{ item.required_quantity }} | {{ t('capacityPlanning.mrp.available') }}: {{ item.available_quantity }} |
+                    <strong class="text-error">{{ t('capacityPlanning.mrp.short') }}: {{ item.shortage_quantity }}</strong>
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-expansion-panel-text>
           </v-expansion-panel>
 
-          <v-expansion-panel title="Partial Availability" v-if="partials.length">
+          <v-expansion-panel :title="t('capacityPlanning.mrp.partialAvailability')" v-if="partials.length">
             <v-expansion-panel-text>
               <v-list density="compact">
                 <v-list-item
@@ -97,14 +97,14 @@
                   <v-list-item-subtitle>
                     {{ item.component_description }}
                     <br />
-                    Required: {{ item.required_quantity }} | Available: {{ item.available_quantity }}
+                    {{ t('capacityPlanning.mrp.required') }}: {{ item.required_quantity }} | {{ t('capacityPlanning.mrp.available') }}: {{ item.available_quantity }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-list>
             </v-expansion-panel-text>
           </v-expansion-panel>
 
-          <v-expansion-panel title="Available Components">
+          <v-expansion-panel :title="t('capacityPlanning.mrp.availableComponents')">
             <v-expansion-panel-text>
               <v-list density="compact">
                 <v-list-item
@@ -119,7 +119,7 @@
                   <v-list-item-subtitle>
                     {{ item.component_description }}
                     <br />
-                    Required: {{ item.required_quantity }} | Available: {{ item.available_quantity }}
+                    {{ t('capacityPlanning.mrp.required') }}: {{ item.required_quantity }} | {{ t('capacityPlanning.mrp.available') }}: {{ item.available_quantity }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </v-list>
@@ -129,19 +129,19 @@
 
         <!-- No Results -->
         <div v-else class="text-center pa-4 text-grey">
-          No component data available.
+          {{ t('capacityPlanning.mrp.noComponentData') }}
         </div>
       </v-card-text>
       <v-card-text v-else class="text-center pa-8 text-grey">
-        No MRP results available.
+        {{ t('capacityPlanning.mrp.noMrpResults') }}
       </v-card-text>
       <v-card-actions>
         <v-btn variant="tonal" @click="exportResults">
           <v-icon start>mdi-download</v-icon>
-          Export Results
+          {{ t('capacityPlanning.mrp.exportResults') }}
         </v-btn>
         <v-spacer />
-        <v-btn color="primary" @click="$emit('close')">Close</v-btn>
+        <v-btn color="primary" @click="$emit('close')">{{ t('common.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -149,6 +149,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {

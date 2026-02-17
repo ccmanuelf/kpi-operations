@@ -67,14 +67,9 @@ CREATE USER 'kpi_user'@'localhost' IDENTIFIED BY 'kpi_password_123';
 GRANT ALL PRIVILEGES ON kpi_platform.* TO 'kpi_user'@'localhost';
 FLUSH PRIVILEGES;
 EOF
-
-# Load schema and seed data
-mysql -u kpi_user -p kpi_platform < database/schema.sql
-# Password: kpi_password_123
-
-mysql -u kpi_user -p kpi_platform < database/seed_data.sql
-# Password: kpi_password_123
 ```
+
+> **Note:** You do not need to run any SQL files manually. The backend automatically creates all tables (via SQLAlchemy `create_all()`) and seeds demo data on first startup when the database is empty.
 
 ## Step 2: Backend Setup (1 minute)
 
@@ -252,8 +247,9 @@ brew services list  # macOS
 # Check database exists
 mysql -u root -p -e "SHOW DATABASES LIKE 'kpi_platform';"
 
-# Re-run schema if needed
-mysql -u kpi_user -p kpi_platform < database/schema.sql
+# To reset demo data, drop and recreate the database, then restart the backend:
+mysql -u root -p -e "DROP DATABASE kpi_platform; CREATE DATABASE kpi_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# The backend will auto-create tables and seed demo data on next startup.
 ```
 
 ## Stop Services

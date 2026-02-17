@@ -6,6 +6,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+// Mock vue-i18n
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: (key) => key
+  })
+}))
+
 // Mock the capacityPlanningStore
 const mockStore = {
   worksheets: {
@@ -217,7 +224,7 @@ describe('CapacityAnalysisPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Capacity Analysis')
+    expect(wrapper.text()).toContain('capacityPlanning.analysis.title')
   })
 
   it('shows empty state when no analysis data', () => {
@@ -225,7 +232,7 @@ describe('CapacityAnalysisPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('No Capacity Analysis Results')
+    expect(wrapper.text()).toContain('capacityPlanning.analysis.noResultsTitle')
   })
 
   it('shows Run Analysis button', () => {
@@ -233,7 +240,7 @@ describe('CapacityAnalysisPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Run Analysis')
+    expect(wrapper.text()).toContain('capacityPlanning.analysis.runAnalysis')
   })
 
   it('renders summary stats when analysis data is present', () => {
@@ -246,9 +253,9 @@ describe('CapacityAnalysisPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Avg Utilization')
-    expect(wrapper.text()).toContain('Lines Analyzed')
-    expect(wrapper.text()).toContain('Bottlenecks')
+    expect(wrapper.text()).toContain('capacityPlanning.analysis.avgUtilization')
+    expect(wrapper.text()).toContain('capacityPlanning.analysis.linesAnalyzed')
+    expect(wrapper.text()).toContain('capacityPlanning.analysis.bottlenecks')
   })
 })
 
@@ -271,7 +278,7 @@ describe('ScenariosPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('What-If Scenarios')
+    expect(wrapper.text()).toContain('capacityPlanning.scenarios.title')
   })
 
   it('shows Create Scenario button', () => {
@@ -279,7 +286,7 @@ describe('ScenariosPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Create Scenario')
+    expect(wrapper.text()).toContain('capacityPlanning.scenarios.createScenario')
   })
 
   it('shows empty state when no scenarios exist', () => {
@@ -287,6 +294,6 @@ describe('ScenariosPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('No Scenarios Created')
+    expect(wrapper.text()).toContain('capacityPlanning.scenarios.noScenariosTitle')
   })
 })

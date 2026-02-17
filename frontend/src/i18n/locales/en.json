@@ -1695,6 +1695,128 @@
       "short": "Short"
     }
   },
+  "qrScanner": {
+    "title": "QR Code Scanner",
+    "startScanning": "Start Scanning",
+    "stop": "Stop",
+    "entityType": "Entity Type",
+    "id": "ID",
+    "lookUp": "Look Up",
+    "generateQrCode": "Generate QR Code",
+    "download": "Download",
+    "scanned": "Scanned: {type}",
+    "autoFillForm": "Auto-Fill Form",
+    "scanHistory": "Scan History",
+    "entityTypes": {
+      "workOrder": "Work Order",
+      "product": "Product",
+      "job": "Job",
+      "employee": "Employee"
+    }
+  },
+  "capacityPlanning": {
+    "orders": {
+      "title": "Orders",
+      "addOrder": "Add Order",
+      "importCsv": "Import CSV",
+      "noOrdersYet": "No orders yet. Click \"Add Order\" to create one or import from CSV.",
+      "importOrdersFromCsv": "Import Orders from CSV",
+      "pasteCsvData": "Paste CSV data",
+      "headers": {
+        "orderNumber": "Order #",
+        "customer": "Customer",
+        "style": "Style",
+        "quantity": "Quantity",
+        "requiredDate": "Required Date",
+        "priority": "Priority",
+        "status": "Status",
+        "actions": "Actions"
+      }
+    },
+    "scenarios": {
+      "title": "What-If Scenarios",
+      "createScenario": "Create Scenario",
+      "compareCount": "Compare ({count})",
+      "statusLabel": "Status:",
+      "resultsLabel": "Results:",
+      "totalOutput": "Total Output",
+      "utilization": "Utilization",
+      "onTime": "On-Time",
+      "evaluate": "Evaluate",
+      "apply": "Apply",
+      "noScenariosTitle": "No Scenarios Created",
+      "noScenariosDescription": "Create what-if scenarios to evaluate different planning options like overtime, adding lines, or rush orders.",
+      "createDialogTitle": "Create What-If Scenario",
+      "scenarioName": "Scenario Name",
+      "scenarioType": "Scenario Type",
+      "cancel": "Cancel",
+      "create": "Create",
+      "types": {
+        "overtime": "Overtime +20%",
+        "setupReduction": "Setup Time Reduction -30%",
+        "subcontract": "Subcontract Cutting 40%",
+        "newLine": "New Sewing Line",
+        "threeShift": "3-Shift Operation",
+        "leadTimeDelay": "Material Lead Time Delay",
+        "absenteeismSpike": "Absenteeism Spike 15%",
+        "multiConstraint": "Multi-Constraint Combined"
+      },
+      "params": {
+        "overtimePercent": "Overtime Increase (%)",
+        "reductionPercent": "Setup Time Reduction (%)",
+        "subcontractPercent": "Subcontract Percentage (%)",
+        "department": "Department to Subcontract",
+        "newLineCode": "New Line Code",
+        "operators": "Number of Operators",
+        "shift3Hours": "Third Shift Hours",
+        "shift3Efficiency": "Night Shift Efficiency (0-1)",
+        "delayDays": "Delay Duration (days)",
+        "absenteeismPercent": "Absenteeism Rate (%)",
+        "durationDays": "Duration (days)",
+        "overtimePercentMulti": "Overtime (%)",
+        "setupReductionPercent": "Setup Reduction (%)",
+        "absenteeismPercentMulti": "Absenteeism (%)"
+      }
+    },
+    "analysis": {
+      "title": "Capacity Analysis",
+      "runAnalysis": "Run Analysis",
+      "avgUtilization": "Avg Utilization",
+      "linesAnalyzed": "Lines Analyzed",
+      "bottlenecks": "Bottlenecks",
+      "overloaded": "Overloaded",
+      "lineUtilization": "Line Utilization",
+      "bottleneck": "Bottleneck",
+      "noResultsTitle": "No Capacity Analysis Results",
+      "noResultsDescription": "Click \"Run Analysis\" to evaluate production line capacity and identify bottlenecks.",
+      "runCapacityAnalysis": "Run Capacity Analysis",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "headers": {
+        "line": "Line",
+        "period": "Period",
+        "requiredHours": "Required Hours",
+        "availableHours": "Available Hours",
+        "utilization": "Utilization",
+        "bottleneck": "Bottleneck"
+      }
+    },
+    "mrp": {
+      "title": "MRP / Component Check Results",
+      "totalComponents": "Total Components",
+      "available": "Available",
+      "shortages": "Shortages",
+      "shortageAlert": "{count} component shortages detected.",
+      "shortageActionPrompt": "Review the shortages below and take action to resolve them before production.",
+      "partialAvailability": "Partial Availability",
+      "availableComponents": "Available Components",
+      "required": "Required",
+      "short": "Short",
+      "noComponentData": "No component data available.",
+      "noMrpResults": "No MRP results available.",
+      "exportResults": "Export Results"
+    }
+  },
   "simulationV2": {
     "title": "Production Line Simulation v2.0",
     "subtitle": "Discrete-event simulation for multi-product production lines with bottleneck analysis and rebalancing suggestions",

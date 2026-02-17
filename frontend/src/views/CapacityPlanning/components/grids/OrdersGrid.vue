@@ -2,15 +2,15 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-clipboard-list</v-icon>
-      Orders
+      {{ t('capacityPlanning.orders.title') }}
       <v-spacer />
       <v-btn color="primary" size="small" variant="tonal" class="mr-2" @click="addRow">
         <v-icon start>mdi-plus</v-icon>
-        Add Order
+        {{ t('capacityPlanning.orders.addOrder') }}
       </v-btn>
       <v-btn size="small" variant="outlined" @click="showImportDialog = true">
         <v-icon start>mdi-upload</v-icon>
-        Import CSV
+        {{ t('capacityPlanning.orders.importCsv') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -112,18 +112,18 @@
       </v-data-table>
 
       <div v-if="!orders.length" class="text-center pa-4 text-grey">
-        No orders yet. Click "Add Order" to create one or import from CSV.
+        {{ t('capacityPlanning.orders.noOrdersYet') }}
       </div>
     </v-card-text>
 
     <!-- CSV Import Dialog -->
     <v-dialog v-model="showImportDialog" max-width="600">
       <v-card>
-        <v-card-title>Import Orders from CSV</v-card-title>
+        <v-card-title>{{ t('capacityPlanning.orders.importOrdersFromCsv') }}</v-card-title>
         <v-card-text>
           <v-textarea
             v-model="csvData"
-            label="Paste CSV data"
+            :label="t('capacityPlanning.orders.pasteCsvData')"
             rows="10"
             variant="outlined"
             placeholder="order_number,customer_name,style_code,order_quantity,required_date"
@@ -131,8 +131,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showImportDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="importCSV">Import</v-btn>
+          <v-btn @click="showImportDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="primary" @click="importCSV">{{ t('common.import') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -151,23 +151,26 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+
+const { t } = useI18n()
 
 const store = useCapacityPlanningStore()
 
 const showImportDialog = ref(false)
 const csvData = ref('')
 
-const headers = [
-  { title: 'Order #', key: 'order_number', width: '120px' },
-  { title: 'Customer', key: 'customer_name', width: '150px' },
-  { title: 'Style', key: 'style_code', width: '100px' },
-  { title: 'Quantity', key: 'order_quantity', width: '100px' },
-  { title: 'Required Date', key: 'required_date', width: '140px' },
-  { title: 'Priority', key: 'priority', width: '120px' },
-  { title: 'Status', key: 'status', width: '100px' },
-  { title: 'Actions', key: 'actions', width: '100px', sortable: false }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanning.orders.headers.orderNumber'), key: 'order_number', width: '120px' },
+  { title: t('capacityPlanning.orders.headers.customer'), key: 'customer_name', width: '150px' },
+  { title: t('capacityPlanning.orders.headers.style'), key: 'style_code', width: '100px' },
+  { title: t('capacityPlanning.orders.headers.quantity'), key: 'order_quantity', width: '100px' },
+  { title: t('capacityPlanning.orders.headers.requiredDate'), key: 'required_date', width: '140px' },
+  { title: t('capacityPlanning.orders.headers.priority'), key: 'priority', width: '120px' },
+  { title: t('capacityPlanning.orders.headers.status'), key: 'status', width: '100px' },
+  { title: t('capacityPlanning.orders.headers.actions'), key: 'actions', width: '100px', sortable: false }
+])
 
 const priorityOptions = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW']
 

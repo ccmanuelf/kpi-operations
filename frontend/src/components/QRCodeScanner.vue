@@ -2,7 +2,7 @@
   <v-card class="qr-scanner">
     <v-card-title class="d-flex align-center">
       <v-icon class="me-2">mdi-qrcode-scan</v-icon>
-      QR Code Scanner
+      {{ t('qrScanner.title') }}
       <v-spacer />
       <v-btn-toggle v-model="mode" mandatory density="compact">
         <v-btn value="scan" size="small">
@@ -23,7 +23,7 @@
         <div v-if="!isScanning" class="text-center pa-8">
           <v-btn color="primary" size="large" @click="startScanning">
             <v-icon start>mdi-camera</v-icon>
-            Start Scanning
+            {{ t('qrScanner.startScanning') }}
           </v-btn>
           <p v-if="cameraError" class="text-error mt-2">{{ cameraError }}</p>
         </div>
@@ -41,30 +41,30 @@
             </div>
           </qrcode-stream>
           <v-btn class="stop-btn" color="error" @click="stopScanning">
-            Stop
+            {{ t('qrScanner.stop') }}
           </v-btn>
         </div>
       </div>
 
       <!-- MANUAL MODE -->
       <div v-if="mode === 'manual'" class="manual-entry pa-4">
-        <v-select v-model="manualType" :items="entityTypes" label="Entity Type" />
-        <v-text-field v-model="manualId" label="ID" @keyup.enter="lookupManual" />
+        <v-select v-model="manualType" :items="entityTypes" :label="t('qrScanner.entityType')" />
+        <v-text-field v-model="manualId" :label="t('qrScanner.id')" @keyup.enter="lookupManual" />
         <v-btn color="primary" block @click="lookupManual" :loading="isLoading">
-          Look Up
+          {{ t('qrScanner.lookUp') }}
         </v-btn>
       </div>
 
       <!-- GENERATE MODE -->
       <div v-if="mode === 'generate'" class="generate-area pa-4">
-        <v-select v-model="generateType" :items="entityTypes" label="Entity Type" />
-        <v-text-field v-model="generateId" label="ID" />
+        <v-select v-model="generateType" :items="entityTypes" :label="t('qrScanner.entityType')" />
+        <v-text-field v-model="generateId" :label="t('qrScanner.id')" />
         <v-btn color="primary" block @click="generateQR" :loading="isLoading">
-          Generate QR Code
+          {{ t('qrScanner.generateQrCode') }}
         </v-btn>
         <div v-if="generatedQR" class="text-center mt-4">
           <img :src="generatedQR" alt="QR Code" class="generated-qr" />
-          <v-btn class="mt-2" @click="downloadQR">Download</v-btn>
+          <v-btn class="mt-2" @click="downloadQR">{{ t('qrScanner.download') }}</v-btn>
         </div>
       </div>
 
@@ -72,7 +72,7 @@
       <v-alert v-if="scanError" type="error" class="mt-4">{{ scanError }}</v-alert>
 
       <v-card v-if="lastScannedData" class="mt-4" variant="outlined">
-        <v-card-title>Scanned: {{ lastScannedData.entity_type }}</v-card-title>
+        <v-card-title>{{ t('qrScanner.scanned', { type: lastScannedData.entity_type }) }}</v-card-title>
         <v-card-text>
           <v-list density="compact">
             <v-list-item v-for="(value, key) in lastScannedData.auto_fill_fields" :key="key">
@@ -83,15 +83,15 @@
         </v-card-text>
         <v-card-actions>
           <v-btn color="primary" @click="$emit('auto-fill', lastScannedData)">
-            Auto-Fill Form
+            {{ t('qrScanner.autoFillForm') }}
           </v-btn>
-          <v-btn @click="clearLastScan">Clear</v-btn>
+          <v-btn @click="clearLastScan">{{ t('common.clear') }}</v-btn>
         </v-card-actions>
       </v-card>
 
       <!-- SCAN HISTORY -->
       <v-expansion-panels v-if="scanHistory.length" class="mt-4">
-        <v-expansion-panel title="Scan History">
+        <v-expansion-panel :title="t('qrScanner.scanHistory')">
           <v-expansion-panel-text>
             <v-list density="compact">
               <v-list-item v-for="(item, index) in scanHistory" :key="index"
@@ -108,9 +108,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { QrcodeStream } from 'vue-qrcode-reader'
 import { useQRScanner } from '@/composables/useQRScanner'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['auto-fill', 'scanned'])
 
@@ -136,12 +139,12 @@ const generateId = ref('')
 const generatedQR = ref(null)
 const isLoading = ref(false)
 
-const entityTypes = [
-  { title: 'Work Order', value: 'work_order' },
-  { title: 'Product', value: 'product' },
-  { title: 'Job', value: 'job' },
-  { title: 'Employee', value: 'employee' }
-]
+const entityTypes = computed(() => [
+  { title: t('qrScanner.entityTypes.workOrder'), value: 'work_order' },
+  { title: t('qrScanner.entityTypes.product'), value: 'product' },
+  { title: t('qrScanner.entityTypes.job'), value: 'job' },
+  { title: t('qrScanner.entityTypes.employee'), value: 'employee' }
+])
 
 const onCameraOn = () => {
   // Camera is ready

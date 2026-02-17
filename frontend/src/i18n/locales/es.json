@@ -1779,6 +1779,128 @@
       "short": "Faltante"
     }
   },
+  "qrScanner": {
+    "title": "Escáner de Código QR",
+    "startScanning": "Iniciar Escaneo",
+    "stop": "Detener",
+    "entityType": "Tipo de Entidad",
+    "id": "ID",
+    "lookUp": "Buscar",
+    "generateQrCode": "Generar Código QR",
+    "download": "Descargar",
+    "scanned": "Escaneado: {type}",
+    "autoFillForm": "Autocompletar Formulario",
+    "scanHistory": "Historial de Escaneos",
+    "entityTypes": {
+      "workOrder": "Orden de Trabajo",
+      "product": "Producto",
+      "job": "Trabajo",
+      "employee": "Empleado"
+    }
+  },
+  "capacityPlanning": {
+    "orders": {
+      "title": "Órdenes",
+      "addOrder": "Agregar Orden",
+      "importCsv": "Importar CSV",
+      "noOrdersYet": "No hay órdenes aún. Haga clic en \"Agregar Orden\" para crear una o importe desde CSV.",
+      "importOrdersFromCsv": "Importar Órdenes desde CSV",
+      "pasteCsvData": "Pegar datos CSV",
+      "headers": {
+        "orderNumber": "Orden #",
+        "customer": "Cliente",
+        "style": "Estilo",
+        "quantity": "Cantidad",
+        "requiredDate": "Fecha Requerida",
+        "priority": "Prioridad",
+        "status": "Estado",
+        "actions": "Acciones"
+      }
+    },
+    "scenarios": {
+      "title": "Escenarios Hipotéticos",
+      "createScenario": "Crear Escenario",
+      "compareCount": "Comparar ({count})",
+      "statusLabel": "Estado:",
+      "resultsLabel": "Resultados:",
+      "totalOutput": "Producción Total",
+      "utilization": "Utilización",
+      "onTime": "A Tiempo",
+      "evaluate": "Evaluar",
+      "apply": "Aplicar",
+      "noScenariosTitle": "Sin Escenarios Creados",
+      "noScenariosDescription": "Cree escenarios hipotéticos para evaluar diferentes opciones de planificación como tiempo extra, líneas adicionales u órdenes urgentes.",
+      "createDialogTitle": "Crear Escenario Hipotético",
+      "scenarioName": "Nombre del Escenario",
+      "scenarioType": "Tipo de Escenario",
+      "cancel": "Cancelar",
+      "create": "Crear",
+      "types": {
+        "overtime": "Tiempo Extra +20%",
+        "setupReduction": "Reducción de Preparación -30%",
+        "subcontract": "Subcontratación Corte 40%",
+        "newLine": "Nueva Línea de Costura",
+        "threeShift": "Operación de 3 Turnos",
+        "leadTimeDelay": "Retraso en Tiempo de Entrega de Material",
+        "absenteeismSpike": "Pico de Ausentismo 15%",
+        "multiConstraint": "Multi-Restricción Combinada"
+      },
+      "params": {
+        "overtimePercent": "Incremento de Tiempo Extra (%)",
+        "reductionPercent": "Reducción de Tiempo de Preparación (%)",
+        "subcontractPercent": "Porcentaje de Subcontratación (%)",
+        "department": "Departamento a Subcontratar",
+        "newLineCode": "Código de Nueva Línea",
+        "operators": "Número de Operadores",
+        "shift3Hours": "Horas del Tercer Turno",
+        "shift3Efficiency": "Eficiencia del Turno Nocturno (0-1)",
+        "delayDays": "Duración del Retraso (días)",
+        "absenteeismPercent": "Tasa de Ausentismo (%)",
+        "durationDays": "Duración (días)",
+        "overtimePercentMulti": "Tiempo Extra (%)",
+        "setupReductionPercent": "Reducción de Preparación (%)",
+        "absenteeismPercentMulti": "Ausentismo (%)"
+      }
+    },
+    "analysis": {
+      "title": "Análisis de Capacidad",
+      "runAnalysis": "Ejecutar Análisis",
+      "avgUtilization": "Utilización Promedio",
+      "linesAnalyzed": "Líneas Analizadas",
+      "bottlenecks": "Cuellos de Botella",
+      "overloaded": "Sobrecargadas",
+      "lineUtilization": "Utilización de Líneas",
+      "bottleneck": "Cuello de Botella",
+      "noResultsTitle": "Sin Resultados de Análisis de Capacidad",
+      "noResultsDescription": "Haga clic en \"Ejecutar Análisis\" para evaluar la capacidad de las líneas de producción e identificar cuellos de botella.",
+      "runCapacityAnalysis": "Ejecutar Análisis de Capacidad",
+      "startDate": "Fecha de Inicio",
+      "endDate": "Fecha de Fin",
+      "headers": {
+        "line": "Línea",
+        "period": "Período",
+        "requiredHours": "Horas Requeridas",
+        "availableHours": "Horas Disponibles",
+        "utilization": "Utilización",
+        "bottleneck": "Cuello de Botella"
+      }
+    },
+    "mrp": {
+      "title": "Resultados de MRP / Verificación de Componentes",
+      "totalComponents": "Total de Componentes",
+      "available": "Disponibles",
+      "shortages": "Faltantes",
+      "shortageAlert": "{count} faltantes de componentes detectados.",
+      "shortageActionPrompt": "Revise los faltantes a continuación y tome medidas para resolverlos antes de la producción.",
+      "partialAvailability": "Disponibilidad Parcial",
+      "availableComponents": "Componentes Disponibles",
+      "required": "Requerido",
+      "short": "Faltante",
+      "noComponentData": "No hay datos de componentes disponibles.",
+      "noMrpResults": "No hay resultados de MRP disponibles.",
+      "exportResults": "Exportar Resultados"
+    }
+  },
   "simulationV2": {
     "title": "Simulación de Línea de Producción v2.0",
     "subtitle": "Simulación de eventos discretos para líneas de producción multi-producto con análisis de cuellos de botella y sugerencias de rebalanceo",

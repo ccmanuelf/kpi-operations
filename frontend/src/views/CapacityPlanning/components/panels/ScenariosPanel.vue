@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-help-rhombus</v-icon>
-      What-If Scenarios
+      {{ t('capacityPlanning.scenarios.title') }}
       <v-spacer />
       <v-btn
         color="primary"
@@ -12,7 +12,7 @@
         @click="showCreateDialog = true"
       >
         <v-icon start>mdi-plus</v-icon>
-        Create Scenario
+        {{ t('capacityPlanning.scenarios.createScenario') }}
       </v-btn>
       <v-btn
         v-if="selectedScenarios.length >= 2"
@@ -23,7 +23,7 @@
         @click="compareScenarios"
       >
         <v-icon start>mdi-compare</v-icon>
-        Compare ({{ selectedScenarios.length }})
+        {{ t('capacityPlanning.scenarios.compareCount', { count: selectedScenarios.length }) }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -60,7 +60,7 @@
             </v-card-title>
             <v-card-text>
               <div class="mb-2">
-                <span class="text-caption text-grey">Status:</span>
+                <span class="text-caption text-grey">{{ t('capacityPlanning.scenarios.statusLabel') }}</span>
                 <v-chip
                   :color="getStatusColor(scenario.status)"
                   size="x-small"
@@ -76,11 +76,11 @@
               </div>
               <div v-if="scenario.results" class="mt-2">
                 <v-divider class="my-2" />
-                <div class="text-caption text-grey mb-1">Results:</div>
+                <div class="text-caption text-grey mb-1">{{ t('capacityPlanning.scenarios.resultsLabel') }}</div>
                 <div class="text-body-2">
-                  <div>Total Output: {{ scenario.results.total_output?.toLocaleString() || 'N/A' }}</div>
-                  <div>Utilization: {{ scenario.results.avg_utilization?.toFixed(1) || 'N/A' }}%</div>
-                  <div>On-Time: {{ scenario.results.on_time_rate?.toFixed(1) || 'N/A' }}%</div>
+                  <div>{{ t('capacityPlanning.scenarios.totalOutput') }}: {{ scenario.results.total_output?.toLocaleString() || 'N/A' }}</div>
+                  <div>{{ t('capacityPlanning.scenarios.utilization') }}: {{ scenario.results.avg_utilization?.toFixed(1) || 'N/A' }}%</div>
+                  <div>{{ t('capacityPlanning.scenarios.onTime') }}: {{ scenario.results.on_time_rate?.toFixed(1) || 'N/A' }}%</div>
                 </div>
               </div>
             </v-card-text>
@@ -93,7 +93,7 @@
                 @click="runScenario(scenario)"
               >
                 <v-icon start>mdi-play</v-icon>
-                Evaluate
+                {{ t('capacityPlanning.scenarios.evaluate') }}
               </v-btn>
               <v-btn
                 v-if="scenario.status === 'EVALUATED'"
@@ -103,7 +103,7 @@
                 @click="applyScenario(scenario)"
               >
                 <v-icon start>mdi-check</v-icon>
-                Apply
+                {{ t('capacityPlanning.scenarios.apply') }}
               </v-btn>
               <v-spacer />
               <v-btn
@@ -122,9 +122,9 @@
       <!-- Empty State -->
       <div v-else class="text-center pa-8 text-grey">
         <v-icon size="64" color="grey-lighten-1">mdi-help-rhombus</v-icon>
-        <div class="text-h6 mt-4">No Scenarios Created</div>
+        <div class="text-h6 mt-4">{{ t('capacityPlanning.scenarios.noScenariosTitle') }}</div>
         <div class="text-body-2 mt-2">
-          Create what-if scenarios to evaluate different planning options like overtime, adding lines, or rush orders.
+          {{ t('capacityPlanning.scenarios.noScenariosDescription') }}
         </div>
         <v-btn
           color="primary"
@@ -132,7 +132,7 @@
           class="mt-4"
           @click="showCreateDialog = true"
         >
-          Create Scenario
+          {{ t('capacityPlanning.scenarios.createScenario') }}
         </v-btn>
       </div>
     </v-card-text>
@@ -140,11 +140,11 @@
     <!-- Create Scenario Dialog -->
     <v-dialog v-model="showCreateDialog" max-width="600">
       <v-card>
-        <v-card-title>Create What-If Scenario</v-card-title>
+        <v-card-title>{{ t('capacityPlanning.scenarios.createDialogTitle') }}</v-card-title>
         <v-card-text>
           <v-text-field
             v-model="newScenario.name"
-            label="Scenario Name"
+            :label="t('capacityPlanning.scenarios.scenarioName')"
             variant="outlined"
             class="mb-2"
           />
@@ -153,7 +153,7 @@
             :items="scenarioTypes"
             item-title="text"
             item-value="value"
-            label="Scenario Type"
+            :label="t('capacityPlanning.scenarios.scenarioType')"
             variant="outlined"
             class="mb-2"
           />
@@ -162,7 +162,7 @@
           <div v-if="newScenario.type === 'OVERTIME'">
             <v-text-field
               v-model.number="newScenario.parameters.overtime_percent"
-              label="Overtime Increase (%)"
+              :label="t('capacityPlanning.scenarios.params.overtimePercent')"
               type="number"
               variant="outlined"
               hint="Default: 20%"
@@ -171,7 +171,7 @@
           <div v-else-if="newScenario.type === 'SETUP_REDUCTION'">
             <v-text-field
               v-model.number="newScenario.parameters.reduction_percent"
-              label="Setup Time Reduction (%)"
+              :label="t('capacityPlanning.scenarios.params.reductionPercent')"
               type="number"
               variant="outlined"
               hint="Default: 30%"
@@ -180,14 +180,14 @@
           <div v-else-if="newScenario.type === 'SUBCONTRACT'">
             <v-text-field
               v-model.number="newScenario.parameters.subcontract_percent"
-              label="Subcontract Percentage (%)"
+              :label="t('capacityPlanning.scenarios.params.subcontractPercent')"
               type="number"
               variant="outlined"
               hint="Default: 40%"
             />
             <v-text-field
               v-model="newScenario.parameters.department"
-              label="Department to Subcontract"
+              :label="t('capacityPlanning.scenarios.params.department')"
               variant="outlined"
               hint="Default: CUTTING"
             />
@@ -195,13 +195,13 @@
           <div v-else-if="newScenario.type === 'NEW_LINE'">
             <v-text-field
               v-model="newScenario.parameters.new_line_code"
-              label="New Line Code"
+              :label="t('capacityPlanning.scenarios.params.newLineCode')"
               variant="outlined"
               hint="Default: SEWING_NEW"
             />
             <v-text-field
               v-model.number="newScenario.parameters.operators"
-              label="Number of Operators"
+              :label="t('capacityPlanning.scenarios.params.operators')"
               type="number"
               variant="outlined"
               hint="Default: 12"
@@ -210,14 +210,14 @@
           <div v-else-if="newScenario.type === 'THREE_SHIFT'">
             <v-text-field
               v-model.number="newScenario.parameters.shift3_hours"
-              label="Third Shift Hours"
+              :label="t('capacityPlanning.scenarios.params.shift3Hours')"
               type="number"
               variant="outlined"
               hint="Default: 8.0"
             />
             <v-text-field
               v-model.number="newScenario.parameters.shift3_efficiency"
-              label="Night Shift Efficiency (0-1)"
+              :label="t('capacityPlanning.scenarios.params.shift3Efficiency')"
               type="number"
               step="0.05"
               variant="outlined"
@@ -227,7 +227,7 @@
           <div v-else-if="newScenario.type === 'LEAD_TIME_DELAY'">
             <v-text-field
               v-model.number="newScenario.parameters.delay_days"
-              label="Delay Duration (days)"
+              :label="t('capacityPlanning.scenarios.params.delayDays')"
               type="number"
               variant="outlined"
               hint="Default: 7"
@@ -236,14 +236,14 @@
           <div v-else-if="newScenario.type === 'ABSENTEEISM_SPIKE'">
             <v-text-field
               v-model.number="newScenario.parameters.absenteeism_percent"
-              label="Absenteeism Rate (%)"
+              :label="t('capacityPlanning.scenarios.params.absenteeismPercent')"
               type="number"
               variant="outlined"
               hint="Default: 15%"
             />
             <v-text-field
               v-model.number="newScenario.parameters.duration_days"
-              label="Duration (days)"
+              :label="t('capacityPlanning.scenarios.params.durationDays')"
               type="number"
               variant="outlined"
               hint="Default: 5"
@@ -252,21 +252,21 @@
           <div v-else-if="newScenario.type === 'MULTI_CONSTRAINT'">
             <v-text-field
               v-model.number="newScenario.parameters.overtime_percent"
-              label="Overtime (%)"
+              :label="t('capacityPlanning.scenarios.params.overtimePercentMulti')"
               type="number"
               variant="outlined"
               hint="Default: 10%"
             />
             <v-text-field
               v-model.number="newScenario.parameters.setup_reduction_percent"
-              label="Setup Reduction (%)"
+              :label="t('capacityPlanning.scenarios.params.setupReductionPercent')"
               type="number"
               variant="outlined"
               hint="Default: 15%"
             />
             <v-text-field
               v-model.number="newScenario.parameters.absenteeism_percent"
-              label="Absenteeism (%)"
+              :label="t('capacityPlanning.scenarios.params.absenteeismPercentMulti')"
               type="number"
               variant="outlined"
               hint="Default: 8%"
@@ -275,13 +275,13 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showCreateDialog = false">Cancel</v-btn>
+          <v-btn @click="showCreateDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="store.isCreatingScenario"
             @click="createScenario"
           >
-            Create
+            {{ t('capacityPlanning.scenarios.create') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -303,7 +303,10 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+
+const { t } = useI18n()
 
 const store = useCapacityPlanningStore()
 
@@ -316,16 +319,16 @@ const newScenario = reactive({
   parameters: {}
 })
 
-const scenarioTypes = [
-  { text: 'Overtime +20%', value: 'OVERTIME' },
-  { text: 'Setup Time Reduction -30%', value: 'SETUP_REDUCTION' },
-  { text: 'Subcontract Cutting 40%', value: 'SUBCONTRACT' },
-  { text: 'New Sewing Line', value: 'NEW_LINE' },
-  { text: '3-Shift Operation', value: 'THREE_SHIFT' },
-  { text: 'Material Lead Time Delay', value: 'LEAD_TIME_DELAY' },
-  { text: 'Absenteeism Spike 15%', value: 'ABSENTEEISM_SPIKE' },
-  { text: 'Multi-Constraint Combined', value: 'MULTI_CONSTRAINT' }
-]
+const scenarioTypes = computed(() => [
+  { text: t('capacityPlanning.scenarios.types.overtime'), value: 'OVERTIME' },
+  { text: t('capacityPlanning.scenarios.types.setupReduction'), value: 'SETUP_REDUCTION' },
+  { text: t('capacityPlanning.scenarios.types.subcontract'), value: 'SUBCONTRACT' },
+  { text: t('capacityPlanning.scenarios.types.newLine'), value: 'NEW_LINE' },
+  { text: t('capacityPlanning.scenarios.types.threeShift'), value: 'THREE_SHIFT' },
+  { text: t('capacityPlanning.scenarios.types.leadTimeDelay'), value: 'LEAD_TIME_DELAY' },
+  { text: t('capacityPlanning.scenarios.types.absenteeismSpike'), value: 'ABSENTEEISM_SPIKE' },
+  { text: t('capacityPlanning.scenarios.types.multiConstraint'), value: 'MULTI_CONSTRAINT' }
+])
 
 const scenarios = computed(() => store.worksheets.whatIfScenarios.data)
 
