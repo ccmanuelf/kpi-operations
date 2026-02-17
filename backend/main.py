@@ -55,8 +55,12 @@ from backend.middleware.rate_limit import limiter, configure_rate_limiting, Rate
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.middleware.audit_log import AuditLogMiddleware
 
-# Create tables (DISABLED - using pre-populated SQLite database with demo data)
-# Base.metadata.create_all(bind=engine)
+# Ensure all tables exist (idempotent — safe on pre-populated databases)
+Base.metadata.create_all(bind=engine)
+
+from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+
+create_capacity_tables()
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -457,6 +461,28 @@ async def startup_event():
             report_scheduler.start()
         except Exception as e:
             print(f"Warning: Failed to start report scheduler: {e}")
+
+    # Auto-seed demo data if database is empty
+    try:
+        from backend.database import SessionLocal
+        from backend.schemas.client import Client
+
+        db = SessionLocal()
+        try:
+            client_count = db.query(Client).count()
+        finally:
+            db.close()
+
+        if client_count == 0:
+            _logger.info("Empty database detected — auto-seeding demo data...")
+            from backend.scripts.init_demo_database import init_database
+
+            init_database()
+            _logger.info("Auto-seeding complete")
+        else:
+            _logger.info("Database already populated (%d clients)", client_count)
+    except Exception as e:
+        _logger.warning("Auto-seed check failed: %s", e)
 
 
 @app.on_event("shutdown")
