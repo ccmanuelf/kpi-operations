@@ -26,7 +26,7 @@ coverage[toml]==7.3.4
 assertpy==1.1
 
 # Performance Testing
-pytest-benchmark==4.0.0
+pytest-benchmark==5.2.3
 
 # Test Reporting
 pytest-html==4.1.1
