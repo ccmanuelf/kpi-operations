@@ -345,35 +345,17 @@ Message 4: Write "file.js"
 Remember: **Claude Flow coordinates, Claude Code creates!**
 
 # Codebase Audit Status (Run 4)
-**Status:** AUDIT COMPLETE — Awaiting remediation approval
-**Previous runs:** Archived in `_audit/_history/run-1/` (62 findings), `_audit/_history/run-2/` (90 findings), `_audit/_history/run-3/` (148 findings)
-**Test baseline:** 4277 BE + 1516 FE = 5793 passing, 0 failures
-**Overall Grade:** C+ (improved from Run 3's C)
+**Status:** REMEDIATION COMPLETE — 6 sprints, all GATE_PASS
+**Previous runs:** Run 1 (62 findings), Run 2 (90 findings), Run 3 (148 findings) — all in `_audit/_history/`
+**Final test count:** 4277 BE + 1494 FE = 5771 passing, 0 failures, 77.31% coverage
 
-### All Phases Complete
-- Phase 0: Baseline — `_audit/PHASE-0-BASELINE.md`
-- Phase 1: Dead Code — `_audit/PHASE-1-DEAD-CODE.md` (52 findings: 1C/20H/20M/11L)
-- Phase 2: Structure — `_audit/PHASE-2-STRUCTURE.md` (39 findings: 6C/14H/14M/5L)
-- Phase 2.5: Config & Security — `_audit/PHASE-2.5-CONFIG-SECURITY.md` (28 findings: 3C/10H/10M/5L)
-- Phase 3: Build/CI — `_audit/PHASE-3-BUILD-CICD.md` (17 active: 0C/3H/7M/7L; 7 Run 3 fixes verified)
-- Phase 4: Docker/Deploy — `_audit/PHASE-4-DOCKER-DEPLOY.md` (21 findings: 1C/6H/9M/5L)
-- Phase 5: Code Quality — `_audit/PHASE-5-CODE-QUALITY.md` (25 findings: 3C/7H/11M/4L)
-- Phase 6: Documentation — `_audit/PHASE-6-DOCUMENTATION.md` (22 findings: 0C/7H/10M/5L)
-- Phase 7: Consolidation — `_audit/PHASE-7-CONSOLIDATION.md` (195 unique after cross-phase dedup)
-- Cross-References — `_audit/CROSS-REFERENCES.md` (9 cross-phase duplicates identified)
-
-### Master Findings (195 unique after dedup)
-- **12 CRITICAL**: Hold bug, 223 bare excepts, 4 auth gaps, rate limiting, Dockerfile, monolithic files
-- **62 HIGH**: Security (auth, CSP, HTTPS, str(e) leak), code quality (DI, pagination, datetime), structure (oversized files, missing __init__.py), dead code (14 dead APIs), docs (API coverage, i18n)
-- **79 MEDIUM**: Patterns, consistency, config, build improvements
-- **42 LOW**: Polish, naming, informational
-
-### Remediation Plan (6 sprints in PHASE-7-CONSOLIDATION.md)
-1. Security Critical (18 tasks) — auth gaps, bare exceptions, CSP, HTTPS
-2. Structure & Dead Code (20 tasks) — split monoliths, remove dead code
-3. Code Quality Patterns (15 tasks) — DI, pagination, datetime, error handling
-4. Build/CI & Docker (12 tasks) — Python version, smoke test, branch protection
-5. Documentation (10 tasks) — OpenAPI, READMEs, i18n, API docs
+### Remediation Sprints (all committed to main)
+- Sprint 1 (`f25c386`): Security — auth on 7 endpoint groups, 223→0 bare exceptions, CSP hardened, str(e) leaks removed
+- Sprint 2 (`e60a8dd`): Structure — capacity.py→10 sub-modules, store→5 sub-stores, Dockerfile fix, __init__.py
+- Sprint 3 (`a05bf1e`): Code quality — datetime.utcnow()→tz-aware (31 files), PaginationParams DI, catch blocks
+- Sprint 4 (`6e33aad`): Build/CI — Python 3.11 alignment, coverage artifacts, Docker smoke test, Dependabot
+- Sprint 5 (`7c959d5`): Documentation — OpenAPI 36 tags, 60+ i18n strings, QUICKSTART/DEPLOYMENT fixes
+- Sprint 6 (`a959f98`): Cleanup — pre-commit fix, 15 dead i18n keys removed, .hive-mind untracked
 6. Cleanup & Polish (10 tasks) — remaining MEDIUM+ findings
 
 # important-instruction-reminders
