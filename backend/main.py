@@ -493,7 +493,14 @@ async def shutdown_event():
         try:
             report_scheduler.stop()
         except Exception as e:
-            print(f"Warning: Failed to stop report scheduler: {e}")
+            _logger.warning("Failed to stop report scheduler: %s", e)
+
+    # Dispose database engine to clean up connection pool
+    try:
+        engine.dispose()
+        _logger.info("Database engine disposed")
+    except Exception as e:
+        _logger.warning("Failed to dispose database engine: %s", e)
 
 
 if __name__ == "__main__":

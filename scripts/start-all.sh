@@ -49,9 +49,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     echo "   Backend API: http://localhost:8000/docs"
     echo "   Database: ./database/kpi_platform.db (SQLite)"
     echo ""
-    echo "👤 Demo Credentials:"
-    echo "   Username: admin@example.com"
-    echo "   Password: admin123"
+    echo "👤 Demo Credentials: See QUICKSTART.md"
     echo ""
 
 # Linux/Windows - Use tmux if available
