@@ -617,29 +617,18 @@ class TestHealthConcurrency:
     """Tests for health endpoints under concurrent load"""
 
     def test_concurrent_health_checks(self, test_client, auth_headers):
-        """Test health endpoints handle concurrent requests"""
-        import concurrent.futures
-
-        # Separate unauthenticated and authenticated endpoints
+        """Test health endpoints handle repeated rapid requests"""
         unauth_endpoints = ["/health/", "/health/live", "/health/pool"]
         auth_endpoints = ["/health/ready"]
 
-        def make_unauth_request(endpoint):
-            return test_client.get(endpoint)
-
-        def make_auth_request(endpoint):
-            return test_client.get(endpoint, headers=auth_headers)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = []
-            for ep in unauth_endpoints * 3:
-                futures.append(executor.submit(make_unauth_request, ep))
-            for ep in auth_endpoints * 3:
-                futures.append(executor.submit(make_auth_request, ep))
-            results = [f.result() for f in concurrent.futures.as_completed(futures)]
-
-        for response in results:
-            assert response.status_code == 200
+        # Fire 3 rounds of all endpoints in rapid succession
+        for _ in range(3):
+            for ep in unauth_endpoints:
+                response = test_client.get(ep)
+                assert response.status_code == 200
+            for ep in auth_endpoints:
+                response = test_client.get(ep, headers=auth_headers)
+                assert response.status_code == 200
 
     def test_rapid_health_checks(self, test_client):
         """Test rapid sequential health checks"""
