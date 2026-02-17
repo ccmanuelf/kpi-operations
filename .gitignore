@@ -101,11 +101,8 @@ config/secrets.json
 .env.mcp
 .claude-memory.json
 
-# Hive Mind session data (contains sensitive info)
-.hive-mind/sessions/
-.hive-mind/hive.db
-.hive-mind/hive.db-shm
-.hive-mind/hive.db-wal
+# Hive Mind (tool artifacts, not project code)
+.hive-mind/
 .swarm/memory.db
 .swarm/memory.db-shm
 .swarm/memory.db-wal

@@ -565,23 +565,10 @@
   },
   "reports": {
     "title": "Reports",
-    "generate": "Generate Report",
-    "dateRange": "Date Range",
-    "startDate": "Start Date",
-    "endDate": "End Date",
-    "groupBy": "Group By",
-    "daily": "Daily",
-    "weekly": "Weekly",
-    "monthly": "Monthly",
-    "quarterly": "Quarterly",
-    "yearly": "Yearly",
     "exportPdf": "Export PDF",
     "exportExcel": "Export Excel",
     "exportCsv": "Export CSV",
-    "summary": "Summary",
-    "detailed": "Detailed",
-    "comparison": "Comparison",
-    "trend": "Trend Analysis"
+    "summary": "Summary"
   },
   "dataEntry": {
     "title": "Data Entry",
@@ -1134,7 +1121,6 @@
     },
     "floatingPool": {
       "title": "Floating Pool Management",
-      "description": "Manage floating pool employees and their client assignments",
       "howToUse": "How to Use",
       "totalEmployees": "Total Employees",
       "available": "Available",
@@ -1160,7 +1146,6 @@
       "assignmentSuccess": "Employee assigned successfully",
       "unassignmentSuccess": "Employee unassigned successfully",
       "doubleAssignmentError": "This employee is already assigned to another client. Please unassign first.",
-      "conflictDetected": "Assignment conflict detected",
       "simulationInsights": "Simulation Insights",
       "staffingScenarios": "Staffing Scenarios",
       "recommendations": "Recommendations",
