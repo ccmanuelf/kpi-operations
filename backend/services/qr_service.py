@@ -4,10 +4,13 @@ Handles QR code generation, decoding, and auto-fill field mapping
 """
 
 import json
+import logging
 import qrcode
 from io import BytesIO
 from typing import Dict, Any, Optional, Tuple
 from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 from backend.models.qr import QRCodeData, QREntityType
 
@@ -73,8 +76,12 @@ class QRService:
 
             return buffer.getvalue()
 
-        except Exception as e:
-            raise QRServiceError(f"Failed to generate QR code: {str(e)}")
+        except (ValueError, TypeError) as e:
+            logger.exception("QR code generation failed due to invalid input")
+            raise QRServiceError("Failed to generate QR code due to invalid input")
+        except (IOError, OSError) as e:
+            logger.exception("QR code image generation I/O error")
+            raise QRServiceError("Failed to generate QR code image")
 
     @staticmethod
     def create_qr_data(entity_type: str, entity_id: str) -> QRCodeData:
@@ -121,8 +128,9 @@ class QRService:
             raise QRServiceError(f"Invalid QR code format: not valid JSON - {str(e)}")
         except ValidationError as e:
             raise QRServiceError(f"Invalid QR code data: {str(e)}")
-        except Exception as e:
-            raise QRServiceError(f"Failed to decode QR string: {str(e)}")
+        except (TypeError, KeyError) as e:
+            logger.exception("QR string decoding failed due to unexpected data format")
+            raise QRServiceError("Failed to decode QR string due to unexpected data format")
 
     @staticmethod
     def get_auto_fill_fields(entity_type: str, entity_data: Dict[str, Any]) -> Dict[str, Any]:

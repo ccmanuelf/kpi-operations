@@ -20,6 +20,10 @@ from backend.db.migrations.schema_initializer import SchemaInitializer
 from backend.db.migrations.demo_seeder import DemoDataSeeder
 from backend.db.migrations.data_migrator import DataMigrator, DataMigrationError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+
+from backend.auth.jwt import get_current_active_supervisor
+from backend.schemas.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -105,11 +109,14 @@ class AvailableProvidersResponse(BaseModel):
 
 
 @router.get("/status", response_model=DatabaseStatus)
-async def get_database_status():
+async def get_database_status(
+    current_user: User = Depends(get_current_active_supervisor),
+):
     """Get current database provider status.
 
     Returns information about the current provider and whether
     migration to another provider is available.
+    Requires supervisor or admin role.
     """
     state_manager = ProviderStateManager()
     factory = DatabaseProviderFactory.get_instance()
@@ -131,18 +138,27 @@ async def get_database_status():
 
 
 @router.get("/providers", response_model=AvailableProvidersResponse)
-async def get_available_providers():
-    """Get information about available database providers."""
+async def get_available_providers(
+    current_user: User = Depends(get_current_active_supervisor),
+):
+    """Get information about available database providers.
+
+    Requires supervisor or admin role.
+    """
     factory = DatabaseProviderFactory.get_instance()
     return AvailableProvidersResponse(providers=factory.get_available_providers())
 
 
 @router.post("/test-connection", response_model=ConnectionTestResponse)
-async def test_connection(request: ConnectionTestRequest):
+async def test_connection(
+    request: ConnectionTestRequest,
+    current_user: User = Depends(get_current_active_supervisor),
+):
     """Test connection to target database.
 
     Attempts to connect to the specified database URL and validates
     the connection without affecting the current database.
+    Requires supervisor or admin role.
     """
     factory = DatabaseProviderFactory.get_instance()
 
@@ -164,22 +180,27 @@ async def test_connection(request: ConnectionTestRequest):
                 connection_info={},
             )
 
-    except Exception as e:
-        logger.error(f"Connection test failed: {e}")
+    except (SQLAlchemyError, ConnectionError, OSError) as e:
+        logger.error("Connection test failed: %s", e)
         return ConnectionTestResponse(
             success=False,
             provider=None,
-            message=str(e),
+            message="Connection test failed. Check the target URL and ensure the database is reachable.",
             connection_info={},
         )
 
 
 @router.post("/migrate", response_model=MigrationStartResponse)
-async def start_migration(request: MigrationRequest, background_tasks: BackgroundTasks):
+async def start_migration(
+    request: MigrationRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_supervisor),
+):
     """Start database migration (schema + demo data).
 
     This is a ONE-WAY operation from SQLite to MariaDB/MySQL.
     Requires explicit confirmation with 'MIGRATE' text.
+    Requires supervisor or admin role.
 
     The migration runs in the background and progress can be
     monitored via the /migration/status endpoint.
@@ -221,7 +242,7 @@ async def start_migration(request: MigrationRequest, background_tasks: Backgroun
             raise HTTPException(status_code=400, detail=f"Cannot connect to target database: {result['message']}")
     except HTTPException:
         raise
-    except Exception as e:
+    except (SQLAlchemyError, ConnectionError, OSError) as e:
         state_manager.release_migration_lock()
         logger.exception("Connection validation failed: %s", e)
         raise HTTPException(status_code=400, detail="Connection validation failed")
@@ -250,10 +271,13 @@ async def start_migration(request: MigrationRequest, background_tasks: Backgroun
 
 
 @router.get("/migration/status", response_model=MigrationStatusResponse)
-async def get_migration_status():
+async def get_migration_status(
+    current_user: User = Depends(get_current_active_supervisor),
+):
     """Get current migration progress.
 
     Poll this endpoint to monitor migration progress.
+    Requires supervisor or admin role.
     """
     state_manager = ProviderStateManager()
     state = state_manager.get_migration_state()
@@ -272,8 +296,13 @@ async def get_migration_status():
 
 
 @router.get("/full-status")
-async def get_full_status():
-    """Get complete database status including migration history."""
+async def get_full_status(
+    current_user: User = Depends(get_current_active_supervisor),
+):
+    """Get complete database status including migration history.
+
+    Requires supervisor or admin role.
+    """
     state_manager = ProviderStateManager()
     return state_manager.get_full_status()
 
@@ -453,9 +482,11 @@ async def run_migration(
         logger.info(f"Migration completed successfully: sqlite → {target_provider}")
 
     except DataMigrationError as e:
-        logger.error(f"Data migration failed: {e}")
+        logger.exception("Data migration failed")
 
-        state_manager.add_migration_history(source="sqlite", target=target_provider, success=False, error=str(e))
+        state_manager.add_migration_history(
+            source="sqlite", target=target_provider, success=False, error="DataMigrationError"
+        )
 
         state_manager.update_migration_state(
             MigrationState(
@@ -463,14 +494,16 @@ async def run_migration(
                 source_provider="sqlite",
                 target_provider=target_provider,
                 current_step="Data migration failed",
-                error_message=str(e),
+                error_message="Data migration failed. Check server logs for details.",
             )
         )
 
-    except Exception as e:
-        logger.error(f"Migration failed: {e}")
+    except (SQLAlchemyError, ConnectionError, OSError, RuntimeError) as e:
+        logger.error("Migration failed with %s: %s", type(e).__name__, e)
 
-        state_manager.add_migration_history(source="sqlite", target=target_provider, success=False, error=str(e))
+        state_manager.add_migration_history(
+            source="sqlite", target=target_provider, success=False, error=type(e).__name__
+        )
 
         state_manager.update_migration_state(
             MigrationState(
@@ -478,7 +511,25 @@ async def run_migration(
                 source_provider="sqlite",
                 target_provider=target_provider,
                 current_step="Migration failed",
-                error_message=str(e),
+                error_message=f"Migration failed: {type(e).__name__}",
+            )
+        )
+
+    except Exception as e:
+        # Catch-all for background task — must not crash silently
+        logger.exception("Migration failed with unexpected error: %s", type(e).__name__)
+
+        state_manager.add_migration_history(
+            source="sqlite", target=target_provider, success=False, error=type(e).__name__
+        )
+
+        state_manager.update_migration_state(
+            MigrationState(
+                status="failed",
+                source_provider="sqlite",
+                target_provider=target_provider,
+                current_step="Migration failed",
+                error_message="An unexpected error occurred during migration",
             )
         )
 

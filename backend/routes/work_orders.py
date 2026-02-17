@@ -3,12 +3,17 @@ Work Order API Routes
 All work order CRUD endpoints with progress tracking and timeline
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from backend.database import get_db
 from backend.models.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderWithMetrics
@@ -162,9 +167,8 @@ def get_work_order_progress(
                     "product_name": row[8],
                 }
             )
-    except Exception as e:
-        # Table might not exist or have different schema
-        print(f"Warning: Could not fetch production entries: {e}")
+    except SQLAlchemyError as e:
+        logger.warning("Could not fetch production entries for work order %s", work_order_id, exc_info=True)
 
     # Get quality inspections for this work order
     quality_inspections = []
@@ -198,8 +202,8 @@ def get_work_order_progress(
                     "notes": row[5],
                 }
             )
-    except Exception as e:
-        print(f"Warning: Could not fetch quality inspections: {e}")
+    except SQLAlchemyError as e:
+        logger.warning("Could not fetch quality inspections for work order %s", work_order_id, exc_info=True)
 
     # Get hold history
     hold_history = []
@@ -233,8 +237,8 @@ def get_work_order_progress(
                     "status": row[5],
                 }
             )
-    except Exception as e:
-        print(f"Warning: Could not fetch hold history: {e}")
+    except SQLAlchemyError as e:
+        logger.warning("Could not fetch hold history for work order %s", work_order_id, exc_info=True)
 
     return {
         "work_order_id": work_order.work_order_id,
@@ -371,8 +375,8 @@ def get_work_order_timeline(
                         "color": "info",
                     }
                 )
-    except Exception as e:
-        print(f"Warning: Could not fetch hold events: {e}")
+    except SQLAlchemyError as e:
+        logger.warning("Could not fetch hold events for work order %s", work_order_id, exc_info=True)
 
     # Sort all events by timestamp
     timeline_events.sort(key=lambda x: x["timestamp"])
@@ -513,9 +517,9 @@ def approve_qc(
             trigger_source="qc_approval",
         )
         db.add(log_entry)
-    except Exception as e:
+    except SQLAlchemyError as e:
         # Log but don't fail - audit log is secondary
-        print(f"Warning: Could not create QC approval log: {e}")
+        logger.warning("Could not create QC approval log for work order %s", work_order_id, exc_info=True)
 
     db.commit()
     db.refresh(work_order)

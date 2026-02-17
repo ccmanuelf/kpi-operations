@@ -92,8 +92,8 @@ async def get_dashboard_preferences(
             updated_at=preference_record.updated_at,
         )
 
-    except Exception as e:
-        logger.warning(f"Error retrieving dashboard preferences (returning defaults): {e}")
+    except Exception:
+        logger.warning("Error retrieving dashboard preferences (returning defaults)", exc_info=True)
         # Return default preferences if DB is unavailable or table doesn't exist
         from backend.crud.preferences import FALLBACK_DEFAULT_WIDGETS
 
@@ -164,8 +164,8 @@ async def save_dashboard_preferences(
     except ValueError as e:
         logger.exception("Failed to save preferences: %s", e)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to save preferences")
-    except Exception as e:
-        logger.error(f"Error saving dashboard preferences: {e}")
+    except Exception:
+        logger.exception("Error saving dashboard preferences")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to save dashboard preferences"
         )
@@ -216,8 +216,8 @@ async def patch_dashboard_preferences(
     except ValueError as e:
         logger.exception("Failed to save preferences: %s", e)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to save preferences")
-    except Exception as e:
-        logger.error(f"Error updating dashboard preferences: {e}")
+    except Exception:
+        logger.exception("Error updating dashboard preferences")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update dashboard preferences"
         )
@@ -273,8 +273,8 @@ async def get_role_defaults(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error retrieving role defaults: {e}")
+    except Exception:
+        logger.exception("Error retrieving role defaults")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve role defaults"
         )
@@ -344,8 +344,8 @@ async def reset_preferences(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error resetting preferences: {e}")
+    except Exception:
+        logger.exception("Error resetting preferences")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to reset preferences")
 
 
@@ -380,8 +380,8 @@ async def get_my_role_defaults(
 
         return RoleDefaultsResponse(role=role, widgets=defaults, total_widgets=len(defaults))
 
-    except Exception as e:
-        logger.error(f"Error retrieving user role defaults: {e}")
+    except Exception:
+        logger.exception("Error retrieving user role defaults")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve role defaults"
         )

@@ -16,7 +16,7 @@ from datetime import date, timedelta
 
 
 class TestHealthEndpoints:
-    """Test health check endpoints (no auth required)."""
+    """Test health check endpoints (some require auth)."""
 
     def test_health_root(self, test_client):
         response = test_client.get("/health/")
@@ -30,8 +30,8 @@ class TestHealthEndpoints:
         assert response.status_code == 200
         assert response.json()["status"] == "alive"
 
-    def test_health_ready(self, test_client):
-        response = test_client.get("/health/ready")
+    def test_health_ready(self, test_client, auth_headers):
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
         assert response.json()["status"] == "ready"
 
@@ -40,8 +40,8 @@ class TestHealthEndpoints:
         assert response.status_code == 200
         assert response.json()["database"] == "connected"
 
-    def test_health_detailed(self, test_client):
-        response = test_client.get("/health/detailed")
+    def test_health_detailed(self, test_client, auth_headers):
+        response = test_client.get("/health/detailed", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "checks" in data

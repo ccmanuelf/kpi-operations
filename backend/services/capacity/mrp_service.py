@@ -12,6 +12,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 from datetime import date
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
@@ -128,7 +129,7 @@ class MRPService:
                 if order.style_code not in order_by_style:
                     order_by_style[order.style_code] = []
                 order_by_style[order.style_code].append(order.order_number)
-            except Exception as e:
+            except (SQLAlchemyError, ValueError, KeyError) as e:
                 # Skip orders without valid BOMs
                 logger.exception("BOM explosion failed for order %s", order.order_number)
                 continue

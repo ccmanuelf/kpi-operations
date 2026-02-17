@@ -27,9 +27,9 @@ class TestBasicHealthEndpoints:
         data = response.json()
         assert data.get("status") in ["healthy", "ok", "live", "alive"]
 
-    def test_health_readiness_probe(self, test_client):
+    def test_health_readiness_probe(self, test_client, auth_headers):
         """Test Kubernetes readiness probe"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert "status" in data
@@ -38,9 +38,9 @@ class TestBasicHealthEndpoints:
 class TestDetailedHealthChecks:
     """Tests for detailed health check endpoints"""
 
-    def test_detailed_health_check(self, test_client):
+    def test_detailed_health_check(self, test_client, auth_headers):
         """Test detailed health check endpoint"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         assert response.status_code in [200, 403, 404]
         if response.status_code == 200:
             data = response.json()
@@ -90,9 +90,9 @@ class TestHealthCheckResponses:
         # Should have minimal response
         assert isinstance(data, dict)
 
-    def test_ready_response_format(self, test_client):
+    def test_ready_response_format(self, test_client, auth_headers):
         """Test readiness probe response format"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, dict)
@@ -109,9 +109,9 @@ class TestHealthCheckResponses:
 class TestHealthCheckDegradedState:
     """Tests for health check in degraded states"""
 
-    def test_health_with_db_connected(self, test_client):
+    def test_health_with_db_connected(self, test_client, auth_headers):
         """Test health when database is connected"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
         # Database should be connected in test environment
 
@@ -161,9 +161,9 @@ class TestHealthCheckTimestamps:
 class TestHealthCheckComponents:
     """Tests for individual health check components"""
 
-    def test_check_database_component(self, test_client):
+    def test_check_database_component(self, test_client, auth_headers):
         """Test database component check"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
 
     def test_check_api_component(self, test_client):
@@ -248,10 +248,10 @@ class TestHealthCheckAuthentication:
         response = test_client.get("/health/live")
         assert response.status_code == 200
 
-    def test_ready_no_auth_required(self, test_client):
-        """Test readiness probe doesn't require auth"""
+    def test_ready_requires_auth(self, test_client):
+        """Test readiness probe requires authentication"""
         response = test_client.get("/health/ready")
-        assert response.status_code == 200
+        assert response.status_code in (401, 403)
 
     def test_root_health_no_auth_required(self, test_client):
         """Test root health endpoint doesn't require auth"""

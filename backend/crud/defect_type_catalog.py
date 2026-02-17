@@ -3,11 +3,15 @@ CRUD operations for Client-specific Defect Type Catalog
 Supports both client-specific and global defect types
 """
 
+import logging
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import and_, or_
 from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
+
+logger = logging.getLogger(__name__)
 
 from backend.schemas.defect_type_catalog import DefectTypeCatalog
 from backend.models.defect_type_catalog import (
@@ -249,8 +253,12 @@ def bulk_create_defect_types(
             db.add(db_defect_type)
             created += 1
 
-        except Exception as e:
-            errors.append({"row": idx + 1, "defect_code": dt.defect_code, "error": str(e)})
+        except SQLAlchemyError as e:
+            logger.exception("Database error bulk-creating defect type at row %d, defect_code=%s", idx + 1, dt.defect_code)
+            errors.append({"row": idx + 1, "defect_code": dt.defect_code, "error": "Database error creating defect type"})
+        except (ValueError, TypeError) as e:
+            logger.exception("Validation error bulk-creating defect type at row %d, defect_code=%s", idx + 1, dt.defect_code)
+            errors.append({"row": idx + 1, "defect_code": dt.defect_code, "error": "Validation error creating defect type"})
 
     db.commit()
 

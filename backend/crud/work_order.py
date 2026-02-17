@@ -14,6 +14,8 @@ from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
@@ -74,7 +76,7 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
         )
         db.add(initial_log)
         db.commit()
-    except Exception as e:
+    except SQLAlchemyError as e:
         # Don't fail creation if logging fails
         logger.exception("Failed to log initial status transition for work_order_id=%s", db_work_order.work_order_id)
 
@@ -215,9 +217,9 @@ def update_work_order(
             work_order_update = {k: v for k, v in work_order_update.items() if k != "status"}
         except HTTPException:
             raise
-        except Exception as e:
+        except SQLAlchemyError as e:
             # Log but don't fail the update
-            logger.exception("Failed to execute status transition for work_order_id=%s", work_order_id)
+            logger.exception("Database error executing status transition for work_order_id=%s", work_order_id)
 
     # Update remaining fields
     for field, value in work_order_update.items():

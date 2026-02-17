@@ -215,14 +215,14 @@ class TestHealthRoutes:
         response = test_client.get("/health/live")
         assert response.status_code == 200
 
-    def test_health_ready(self, test_client):
-        """Test /health/ready endpoint"""
-        response = test_client.get("/health/ready")
+    def test_health_ready(self, test_client, auth_headers):
+        """Test /health/ready endpoint (requires auth)"""
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_health_db_check(self, test_client):
-        """Test database health check"""
-        response = test_client.get("/health/ready")
+    def test_health_db_check(self, test_client, auth_headers):
+        """Test database health check via readiness probe (requires auth)"""
+        response = test_client.get("/health/ready", headers=auth_headers)
         data = response.json()
         assert response.status_code == 200
 

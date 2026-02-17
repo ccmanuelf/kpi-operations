@@ -269,7 +269,7 @@ def get_floating_pool_simulation_insights(
             base_efficiency=base_efficiency,
         )
         simulation_results = result.get("scenario_results", [])
-    except Exception as e:
+    except Exception:
         simulation_results = [
             {
                 "scenario": "Current",
@@ -373,7 +373,7 @@ def optimize_floating_pool_allocation_endpoint(
             target_date=target_date or date.today(),
         )
         return result
-    except Exception as e:
+    except Exception:
         # Fallback simple allocation
         total_shortage = sum(max(0, sr.get("required", 0) - sr.get("current", 0)) for sr in shift_requirements)
         allocations = []
@@ -452,7 +452,7 @@ def simulate_shift_coverage_endpoint(
             target_date=target_date or date.today(),
         )
         return result
-    except Exception as e:
+    except Exception:
         # Fallback calculation
         shortage = max(0, required_employees - regular_employees)
         pool_needed = min(shortage, floating_pool_available)

@@ -5,6 +5,7 @@ All production CRUD and CSV upload endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
@@ -346,9 +347,9 @@ def batch_import_production(
 
         db.commit()
 
-    except Exception as log_error:
+    except SQLAlchemyError as log_err:
         # Don't fail the entire import if logging fails
-        print(f"Warning: Failed to create import log: {log_error}")
+        logger.warning("Failed to create import log", exc_info=True)
         db.rollback()
 
     log_operation(

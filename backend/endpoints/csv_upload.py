@@ -3,13 +3,18 @@ CSV Upload Endpoints for All Resources
 Provides CSV upload functionality for all major entities in the system
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+from pydantic import ValidationError
 import io
 import csv
+
+logger = logging.getLogger(__name__)
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -137,9 +142,18 @@ async def upload_downtime_csv(
             created_ids.append(created.downtime_entry_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -224,9 +238,18 @@ async def upload_holds_csv(
             created_ids.append(created.hold_entry_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -316,9 +339,18 @@ async def upload_attendance_csv(
             created_ids.append(created.attendance_entry_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -373,9 +405,18 @@ async def upload_coverage_csv(
             created_ids.append(created.coverage_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -482,9 +523,18 @@ async def upload_quality_csv(
             created_ids.append(created.quality_entry_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -550,9 +600,18 @@ async def upload_defects_csv(
             created_ids.append(created.defect_detail_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -645,9 +704,18 @@ async def upload_work_orders_csv(
             created_ids.append(created.work_order_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -737,9 +805,18 @@ async def upload_jobs_csv(
             created_ids.append(created.job_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -812,9 +889,18 @@ async def upload_clients_csv(
             created_ids.append(created.client_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -887,9 +973,18 @@ async def upload_employees_csv(
             created_ids.append(created.employee_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids
@@ -959,9 +1054,18 @@ async def upload_floating_pool_csv(
             created_ids.append(created.pool_id)
             successful += 1
 
-        except Exception as e:
+        except ValidationError as e:
+            logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
-            errors.append({"row": row_num, "error": str(e), "data": row})
+            errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
+        except SQLAlchemyError as e:
+            logger.exception("Database error processing CSV row %d", row_num)
+            failed += 1
+            errors.append({"row": row_num, "error": "Database error processing row", "data": row})
+        except (ValueError, TypeError, KeyError, InvalidOperation) as e:
+            logger.warning("Data parsing error in CSV row %d: %s", row_num, e)
+            failed += 1
+            errors.append({"row": row_num, "error": "Data parsing error in CSV row", "data": row})
 
     return CSVUploadResponse(
         total_rows=total_rows, successful=successful, failed=failed, errors=errors[:100], created_entries=created_ids

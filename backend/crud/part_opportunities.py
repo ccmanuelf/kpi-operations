@@ -4,10 +4,14 @@ Create, Read, Update, Delete with multi-tenant client filtering
 SECURITY: All operations enforce client-based access control
 """
 
+import logging
 from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import and_
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 from backend.schemas.part_opportunities import PartOpportunities
 from backend.schemas.user import User
@@ -200,9 +204,14 @@ def bulk_import_opportunities(db: Session, opportunities_list: List[dict], curre
                 db.add(db_part)
 
             success_count += 1
-        except Exception as e:
+        except SQLAlchemyError as e:
+            logger.exception("Database error importing part opportunity at row %d", idx + 1)
             failure_count += 1
-            errors.append(f"Row {idx + 1}: {str(e)}")
+            errors.append(f"Row {idx + 1}: Database error importing part opportunity")
+        except (ValueError, TypeError, KeyError) as e:
+            logger.exception("Validation error importing part opportunity at row %d", idx + 1)
+            failure_count += 1
+            errors.append(f"Row {idx + 1}: Validation error importing part opportunity")
 
     # Commit all successful imports
     if success_count > 0:

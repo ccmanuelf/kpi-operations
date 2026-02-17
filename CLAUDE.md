@@ -344,65 +344,37 @@ Message 4: Write "file.js"
 
 Remember: **Claude Flow coordinates, Claude Code creates!**
 
-# Codebase Audit Status (Run 3)
-**Status:** COMPLETE — All phases (0-7) finished
-**Consolidation:** `_audit/PHASE-7-CONSOLIDATION.md` — 148 unique findings (5 CRIT, 29 HIGH, 62 MEDIUM, 48 LOW, 1 INFO, 3 DEFERRED)
-**Previous runs:** Archived in `_audit/_history/run-1/` (62 findings) and `_audit/_history/run-2/` (90 findings, 100% resolved)
+# Codebase Audit Status (Run 4)
+**Status:** AUDIT COMPLETE — Awaiting remediation approval
+**Previous runs:** Archived in `_audit/_history/run-1/` (62 findings), `_audit/_history/run-2/` (90 findings), `_audit/_history/run-3/` (148 findings)
+**Test baseline:** 4277 BE + 1516 FE = 5793 passing, 0 failures
+**Overall Grade:** C+ (improved from Run 3's C)
 
-### Completed Phases
-- Phase 0: Baseline — COMPLETE — see `_audit/PHASE-0-BASELINE.md`
-- Phase 1: Dead Code — COMPLETE — see `_audit/PHASE-1-DEAD-CODE.md` (69 findings: 3 HIGH, 10 MEDIUM, 12 LOW)
-- Phase 2: Structure — COMPLETE — see `_audit/PHASE-2-STRUCTURE.md` (39 findings: 2 CRIT, 8 HIGH, 17 MEDIUM, 12 LOW)
-- Phase 2.5: Config & Security — COMPLETE — see `_audit/PHASE-2.5-CONFIG-SECURITY.md` (16 findings: 1 HIGH, 5 MEDIUM, 7 LOW, 3 DEFERRED; Grade B+)
-- Phase 3: Build & CI/CD — COMPLETE — see `_audit/PHASE-3-BUILD-CICD.md` (21 findings: 5 HIGH, 8 MEDIUM, 8 LOW)
-- Phase 4: Docker & Deployment — COMPLETE — see `_audit/PHASE-4-DOCKER-DEPLOY.md` (21 findings: 3 HIGH, 10 MEDIUM, 8 LOW)
-- Phase 5: Code Quality & Patterns — COMPLETE — see `_audit/PHASE-5-CODE-QUALITY.md` (25 findings: 3 CRIT, 7 HIGH, 11 MEDIUM, 4 LOW)
-- Phase 6: Documentation & Completeness — COMPLETE — see `_audit/PHASE-6-DOCUMENTATION.md` (22 findings: 7 HIGH, 10 MEDIUM, 5 LOW)
-- Phase 7: Consolidation — COMPLETE — see `_audit/PHASE-7-CONSOLIDATION.md` (148 unique findings after 9 dedup merges)
+### All Phases Complete
+- Phase 0: Baseline — `_audit/PHASE-0-BASELINE.md`
+- Phase 1: Dead Code — `_audit/PHASE-1-DEAD-CODE.md` (52 findings: 1C/20H/20M/11L)
+- Phase 2: Structure — `_audit/PHASE-2-STRUCTURE.md` (39 findings: 6C/14H/14M/5L)
+- Phase 2.5: Config & Security — `_audit/PHASE-2.5-CONFIG-SECURITY.md` (28 findings: 3C/10H/10M/5L)
+- Phase 3: Build/CI — `_audit/PHASE-3-BUILD-CICD.md` (17 active: 0C/3H/7M/7L; 7 Run 3 fixes verified)
+- Phase 4: Docker/Deploy — `_audit/PHASE-4-DOCKER-DEPLOY.md` (21 findings: 1C/6H/9M/5L)
+- Phase 5: Code Quality — `_audit/PHASE-5-CODE-QUALITY.md` (25 findings: 3C/7H/11M/4L)
+- Phase 6: Documentation — `_audit/PHASE-6-DOCUMENTATION.md` (22 findings: 0C/7H/10M/5L)
+- Phase 7: Consolidation — `_audit/PHASE-7-CONSOLIDATION.md` (195 unique after cross-phase dedup)
+- Cross-References — `_audit/CROSS-REFERENCES.md` (9 cross-phase duplicates identified)
 
-### Key Findings Summary (Run 3)
-- Backend .venv stale (pre-upgrade package versions, HIGH)
-- Docker NOT installed on dev machine
-- Python 3.12.2 local vs 3.11 CI/Docker
-- 1 intermittent E2E failure (webkit sim-v2 reset dialog)
-- Test baseline: 4277 BE + 1516 FE + 595 E2E = 6388 passing
-- 15 dead alerts API functions (component bypasses abstraction layer)
-- 4 dead DB backups (~6 MB), 6 dead generator scripts, 4 dead migration scripts
-- coverage.xml still tracked despite .gitignore (Run 2 fix may have been lost)
-- All 7 Run 2 CRITICAL security findings verified FIXED (security grade C → B+)
-- Error info disclosure in simulation.py (6 endpoints leak str(e) in 500 responses, HIGH)
-- Frontend Dockerfile LABEL before FROM (invalid syntax, works with BuildKit only, HIGH)
-- No HTTPS/TLS termination configured in nginx (HIGH)
-- No global exception handlers in main.py (HIGH)
-- In-memory cache + rate limiting break in multi-worker deployments
-- Audit logs to stdout only (lost on container restart)
-- 222 bare `except Exception` blocks across backend (CRITICAL pattern)
-- Alert routes + analytics endpoints completely missing authentication (CRITICAL)
-- Inconsistent datetime.now() vs datetime.utcnow() across 85+ files
-- Silent error failures in kpi.js API service (8 functions swallow errors)
-- alert() usage in 5 entry components (should use Snackbar)
-- CSP uses unsafe-inline/unsafe-eval in nginx.conf (MEDIUM)
-- Frontend package-lock.json NOT tracked in git — non-deterministic builds (HIGH)
-- CI security gates bypassed: mypy, bandit, npm audit all use `|| true` (HIGH)
-- No Docker build testing or deployment workflow in CI
-- Redundant test directories: root tests/, database/tests/ not integrated
-- Pydantic models missing Field(description=...) on ~85% of fields — OpenAPI schema undocumented (HIGH)
-- API_DOCUMENTATION.md covers only ~15 of 393 endpoints (HIGH)
-- 19+ hardcoded English strings bypass i18n system across 8 components (HIGH)
-- No frontend-specific README (HIGH)
-- QUICKSTART.md MariaDB paths reference non-existent files (HIGH)
-- ARCHITECTURE.md missing Capacity Planning, Event Bus, Simulation sections (HIGH)
-- docs/ directory: 151 files with no index or navigation (MEDIUM)
-- CONTRIBUTING.md extremely minimal (MEDIUM)
-- SECURITY.md missing threat model, incident response (MEDIUM)
+### Master Findings (195 unique after dedup)
+- **12 CRITICAL**: Hold bug, 223 bare excepts, 4 auth gaps, rate limiting, Dockerfile, monolithic files
+- **62 HIGH**: Security (auth, CSP, HTTPS, str(e) leak), code quality (DI, pagination, datetime), structure (oversized files, missing __init__.py), dead code (14 dead APIs), docs (API coverage, i18n)
+- **79 MEDIUM**: Patterns, consistency, config, build improvements
+- **42 LOW**: Polish, naming, informational
 
-### Audit Conventions
-- All audit reports are in `_audit/` directory
-- All reports use Summary Index Format (read summaries first, details on demand)
-- Cross-phase connections tracked in `_audit/CROSS-REFERENCES.md`
-- Subagent temp files go in `_audit/temp/`
-- No code modifications without explicit user approval
-- Write findings to disk immediately after each sub-section
+### Remediation Plan (6 sprints in PHASE-7-CONSOLIDATION.md)
+1. Security Critical (18 tasks) — auth gaps, bare exceptions, CSP, HTTPS
+2. Structure & Dead Code (20 tasks) — split monoliths, remove dead code
+3. Code Quality Patterns (15 tasks) — DI, pagination, datetime, error handling
+4. Build/CI & Docker (12 tasks) — Python version, smoke test, branch protection
+5. Documentation (10 tasks) — OpenAPI, READMEs, i18n, API docs
+6. Cleanup & Polish (10 tasks) — remaining MEDIUM+ findings
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.

@@ -3,12 +3,17 @@ KPI Calculation and Dashboard API Routes
 All KPI calculation, dashboard, trend, and threshold endpoints
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
+from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional
 from datetime import date, datetime, timedelta, timezone
 import uuid
+
+logger = logging.getLogger(__name__)
 
 from backend.database import get_db
 from backend.models.production import KPICalculationResponse
@@ -1205,9 +1210,14 @@ def get_aggregated_dashboard(
         result["trends"]["performance"] = [
             {"date": str(r.date), "value": round(float(r.performance or 0), 1)} for r in trend_results
         ]
+    except SQLAlchemyError as e:
+        logger.exception("Database error fetching efficiency/performance metrics")
+        result["efficiency"] = {"current": 0, "target": 85.0, "error": "Database error"}
+        result["performance"] = {"current": 0, "target": 90.0, "error": "Database error"}
     except Exception as e:
-        result["efficiency"] = {"current": 0, "target": 85.0, "error": str(e)}
-        result["performance"] = {"current": 0, "target": 90.0, "error": str(e)}
+        logger.exception("Unexpected error fetching efficiency/performance metrics")
+        result["efficiency"] = {"current": 0, "target": 85.0, "error": "Calculation error"}
+        result["performance"] = {"current": 0, "target": 90.0, "error": "Calculation error"}
 
     # ---- QUALITY (FPY, RTY, PPM, DPMO) ----
     try:
@@ -1223,8 +1233,12 @@ def get_aggregated_dashboard(
             "total_inspected": ppm_data.get("total_inspected", 0),
             "total_defective": ppm_data.get("total_defective", 0),
         }
+    except SQLAlchemyError as e:
+        logger.exception("Database error fetching quality metrics")
+        result["quality"] = {"fpy": 0, "rty": 0, "ppm": 0, "dpmo": 0, "error": "Database error"}
     except Exception as e:
-        result["quality"] = {"fpy": 0, "rty": 0, "ppm": 0, "dpmo": 0, "error": str(e)}
+        logger.exception("Unexpected error fetching quality metrics")
+        result["quality"] = {"fpy": 0, "rty": 0, "ppm": 0, "dpmo": 0, "error": "Calculation error"}
 
     # ---- AVAILABILITY ----
     try:
@@ -1247,8 +1261,12 @@ def get_aggregated_dashboard(
             "downtime_hours": round(downtime_hours, 1),
             "scheduled_hours": round(scheduled_hours, 1),
         }
+    except SQLAlchemyError as e:
+        logger.exception("Database error fetching availability metrics")
+        result["availability"] = {"current": 100, "target": 95.0, "error": "Database error"}
     except Exception as e:
-        result["availability"] = {"current": 100, "target": 95.0, "error": str(e)}
+        logger.exception("Unexpected error fetching availability metrics")
+        result["availability"] = {"current": 100, "target": 95.0, "error": "Calculation error"}
 
     # ---- ABSENTEEISM ----
     try:
@@ -1272,8 +1290,12 @@ def get_aggregated_dashboard(
             "total_absent_hours": round(absent, 1),
             "employee_count": att_result.employee_count or 0,
         }
+    except SQLAlchemyError as e:
+        logger.exception("Database error fetching absenteeism metrics")
+        result["absenteeism"] = {"rate": 0, "target": 5.0, "error": "Database error"}
     except Exception as e:
-        result["absenteeism"] = {"rate": 0, "target": 5.0, "error": str(e)}
+        logger.exception("Unexpected error fetching absenteeism metrics")
+        result["absenteeism"] = {"rate": 0, "target": 5.0, "error": "Calculation error"}
 
     # ---- WIP AGING ----
     try:
@@ -1296,8 +1318,12 @@ def get_aggregated_dashboard(
             "overdue": 0,
             "avg_aging_days": 0,
         }
+    except SQLAlchemyError as e:
+        logger.exception("Database error fetching WIP aging metrics")
+        result["wip_aging"] = {"total_active": 0, "within_target": 0, "overdue": 0, "error": "Database error"}
     except Exception as e:
-        result["wip_aging"] = {"total_active": 0, "within_target": 0, "overdue": 0, "error": str(e)}
+        logger.exception("Unexpected error fetching WIP aging metrics")
+        result["wip_aging"] = {"total_active": 0, "within_target": 0, "overdue": 0, "error": "Calculation error"}
 
     # ---- OTD (On-Time Delivery) ----
     try:
@@ -1325,7 +1351,11 @@ def get_aggregated_dashboard(
             "on_time_orders": on_time_orders,
             "late_orders": total_orders - on_time_orders,
         }
+    except SQLAlchemyError as e:
+        logger.exception("Database error fetching OTD metrics")
+        result["otd"] = {"rate": 100, "target": 95.0, "error": "Database error"}
     except Exception as e:
-        result["otd"] = {"rate": 100, "target": 95.0, "error": str(e)}
+        logger.exception("Unexpected error fetching OTD metrics")
+        result["otd"] = {"rate": 100, "target": 95.0, "error": "Calculation error"}
 
     return result

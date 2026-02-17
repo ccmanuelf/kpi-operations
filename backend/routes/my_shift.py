@@ -16,6 +16,8 @@ from backend.schemas.downtime_entry import DowntimeEntry
 from backend.schemas.quality_entry import QualityEntry
 from backend.schemas.attendance_entry import AttendanceEntry
 from backend.schemas.work_order import WorkOrder
+from backend.auth.jwt import get_current_user
+from backend.schemas.user import User
 
 router = APIRouter(prefix="/api/my-shift", tags=["my-shift"])
 
@@ -91,6 +93,7 @@ def get_my_shift_summary(
     shift_number: Optional[int] = Query(None, ge=1, le=3, description="Shift number (1-3)"),
     operator_id: Optional[str] = Query(None, description="Operator employee ID"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get personalized shift summary for an operator.
@@ -289,6 +292,7 @@ def get_my_shift_stats(
     shift_number: Optional[int] = Query(None, ge=1, le=3),
     operator_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get just the statistics portion of shift summary.
@@ -350,6 +354,7 @@ def get_my_recent_activity(
     shift_number: Optional[int] = Query(None, ge=1, le=3),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get recent activity entries for the shift.

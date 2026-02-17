@@ -3,6 +3,7 @@ Email Service for KPI Platform
 Handles email delivery using SendGrid or SMTP
 """
 
+import logging
 import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -11,6 +12,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+
+logger = logging.getLogger(__name__)
 
 try:
     from sendgrid import SendGridAPIClient
@@ -112,8 +115,12 @@ class EmailService:
                 "message": "Email sent successfully via SendGrid",
             }
 
+        except (ConnectionError, TimeoutError) as e:
+            logger.exception("SendGrid API connection failed")
+            return {"success": False, "message": "Failed to connect to SendGrid API"}
         except Exception as e:
-            return {"success": False, "error": str(e), "message": f"Failed to send email via SendGrid: {str(e)}"}
+            logger.exception("Unexpected error sending email via SendGrid")
+            return {"success": False, "message": "Failed to send email via SendGrid"}
 
     def _send_via_smtp(
         self, to_emails: List[str], subject: str, html_content: str, pdf_content: bytes, pdf_filename: str
@@ -146,8 +153,12 @@ class EmailService:
 
             return {"success": True, "message": "Email sent successfully via SMTP"}
 
-        except Exception as e:
-            return {"success": False, "error": str(e), "message": f"Failed to send email via SMTP: {str(e)}"}
+        except smtplib.SMTPAuthenticationError as e:
+            logger.exception("SMTP authentication failed")
+            return {"success": False, "message": "SMTP authentication failed"}
+        except (smtplib.SMTPException, ConnectionError, TimeoutError, OSError) as e:
+            logger.exception("SMTP delivery failed")
+            return {"success": False, "message": "Failed to send email via SMTP"}
 
     def _generate_email_template(
         self, client_name: str, report_date: datetime, additional_message: Optional[str] = None
@@ -274,8 +285,12 @@ class EmailService:
                 sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
                 response = sg.send(message)
                 return {"success": True, "status_code": response.status_code}
+            except (ConnectionError, TimeoutError) as e:
+                logger.exception("SendGrid test email connection failed")
+                return {"success": False, "message": "Failed to connect to SendGrid API"}
             except Exception as e:
-                return {"success": False, "error": str(e)}
+                logger.exception("Unexpected error sending test email via SendGrid")
+                return {"success": False, "message": "Failed to send test email via SendGrid"}
         else:
             try:
                 from_email = getattr(settings, "REPORT_FROM_EMAIL", self.smtp_user)
@@ -291,5 +306,9 @@ class EmailService:
                         server.login(self.smtp_user, self.smtp_password)
                     server.send_message(msg)
                 return {"success": True}
-            except Exception as e:
-                return {"success": False, "error": str(e)}
+            except smtplib.SMTPAuthenticationError as e:
+                logger.exception("SMTP test email authentication failed")
+                return {"success": False, "message": "SMTP authentication failed"}
+            except (smtplib.SMTPException, ConnectionError, TimeoutError, OSError) as e:
+                logger.exception("SMTP test email delivery failed")
+                return {"success": False, "message": "Failed to send test email via SMTP"}

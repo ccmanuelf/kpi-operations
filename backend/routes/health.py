@@ -11,6 +11,7 @@ Enhanced with:
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import logging
@@ -28,6 +29,8 @@ except ImportError:
 
 from backend.database import get_db, get_pool_status
 from backend.config import settings, validate_production_config, ConfigValidationResult
+from backend.auth.jwt import get_current_user
+from backend.schemas.user import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/health", tags=["Health"])
@@ -65,7 +68,7 @@ async def database_health(db: Session = Depends(get_db)):
         result.fetchone()
 
         return {"status": "healthy", "database": "connected", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
-    except Exception as e:
+    except (SQLAlchemyError, OSError) as e:
         logger.exception("Health check failed: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Health check failed"
@@ -89,7 +92,7 @@ async def connection_pool_status():
         pool_stats = get_pool_status()
 
         return {"status": "healthy", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "pool": pool_stats}
-    except Exception as e:
+    except (SQLAlchemyError, OSError) as e:
         logger.exception("Failed to retrieve pool status: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve pool status"
@@ -97,7 +100,10 @@ async def connection_pool_status():
 
 
 @router.get("/detailed", response_model=Dict[str, Any])
-async def detailed_health_check(db: Session = Depends(get_db)):
+async def detailed_health_check(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Comprehensive health check with system metrics (DEP-001)
 
@@ -135,9 +141,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
             if overall_status == "healthy":
                 overall_status = "degraded"
 
-    except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
-        checks["database"] = {"status": "unhealthy", "error": str(e)}
+    except (SQLAlchemyError, OSError) as e:
+        logger.exception("Database health check failed")
+        checks["database"] = {"status": "unhealthy", "error": "Database connection failed"}
         overall_status = "unhealthy"
 
     # Memory usage check (DEP-001)
@@ -160,9 +166,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
                 "available_mb": round(memory.available / (1024 * 1024), 0),
                 "total_mb": round(memory.total / (1024 * 1024), 0),
             }
-        except Exception as e:
-            logger.warning(f"Memory check failed: {str(e)}")
-            checks["memory"] = {"status": "unknown", "error": str(e)}
+        except (OSError, ValueError) as e:
+            logger.warning("Memory check failed: %s", e)
+            checks["memory"] = {"status": "unknown", "error": "Memory metrics unavailable"}
     else:
         checks["memory"] = {"status": "unavailable", "message": "psutil not installed"}
 
@@ -186,9 +192,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
                 "free_gb": round(disk.free / (1024 * 1024 * 1024), 2),
                 "total_gb": round(disk.total / (1024 * 1024 * 1024), 2),
             }
-        except Exception as e:
-            logger.warning(f"Disk check failed: {str(e)}")
-            checks["disk"] = {"status": "unknown", "error": str(e)}
+        except (OSError, ValueError) as e:
+            logger.warning("Disk check failed: %s", e)
+            checks["disk"] = {"status": "unknown", "error": "Disk metrics unavailable"}
     else:
         checks["disk"] = {"status": "unavailable", "message": "psutil not installed"}
 
@@ -206,9 +212,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
                 cpu_status = "warning"
 
             checks["cpu"] = {"status": cpu_status, "used_percent": round(cpu_percent, 1), "cores": psutil.cpu_count()}
-        except Exception as e:
-            logger.warning(f"CPU check failed: {str(e)}")
-            checks["cpu"] = {"status": "unknown", "error": str(e)}
+        except (OSError, ValueError) as e:
+            logger.warning("CPU check failed: %s", e)
+            checks["cpu"] = {"status": "unknown", "error": "CPU metrics unavailable"}
     else:
         checks["cpu"] = {"status": "unavailable", "message": "psutil not installed"}
 
@@ -231,9 +237,9 @@ async def detailed_health_check(db: Session = Depends(get_db)):
             "warnings": config_result.warnings if config_result.warnings else None,
             "errors": config_result.errors if config_result.errors else None,
         }
-    except Exception as e:
-        logger.warning(f"Configuration check failed: {str(e)}")
-        checks["configuration"] = {"status": "unknown", "error": str(e)}
+    except (ValueError, OSError) as e:
+        logger.warning("Configuration check failed: %s", e)
+        checks["configuration"] = {"status": "unknown", "error": "Configuration validation failed"}
 
     return {
         "status": overall_status,
@@ -250,7 +256,10 @@ async def detailed_health_check(db: Session = Depends(get_db)):
 
 
 @router.get("/ready", response_model=Dict[str, Any])
-async def readiness_check(db: Session = Depends(get_db)):
+async def readiness_check(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """
     Kubernetes-style readiness probe
 
@@ -262,8 +271,8 @@ async def readiness_check(db: Session = Depends(get_db)):
         db.execute(_DB_PING_QUERY)
 
         return {"status": "ready", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
-    except Exception as e:
-        logger.error(f"Readiness check failed: {str(e)}")
+    except (SQLAlchemyError, OSError) as e:
+        logger.exception("Readiness check failed")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready")
 
 

@@ -74,11 +74,11 @@ def list_saved_filters(
 
         # Transform to response model with parsed config
         return [_to_filter_response(f) for f in filters]
-    except Exception as e:
+    except Exception:
         # Return empty list if table doesn't exist or other DB error
         import logging
 
-        logging.getLogger(__name__).warning(f"Error fetching saved filters: {e}")
+        logging.getLogger(__name__).warning("Error fetching saved filters", exc_info=True)
         return []
 
 

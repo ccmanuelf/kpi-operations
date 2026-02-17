@@ -3,7 +3,10 @@ Alert Routes - API endpoints for intelligent alerting system
 Provides proactive alerts based on predictions, thresholds, and patterns
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
@@ -53,6 +56,8 @@ from backend.constants import (
     MAX_DAYS_SHORT,
     MAX_DAYS_LONG,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
@@ -370,29 +375,33 @@ async def generate_all_alerts(
     try:
         efficiency_result = _check_efficiency_alerts(db, client_id, thresholds)
         generated_alerts.extend(efficiency_result)
-    except Exception as e:
-        errors.append(f"Efficiency check failed: {str(e)}")
+    except (SQLAlchemyError, ValueError) as e:
+        logger.exception("Efficiency alert check failed")
+        errors.append("Efficiency check failed")
 
     # Check OTD
     try:
         otd_result = _check_otd_alerts(db, client_id)
         generated_alerts.extend(otd_result)
-    except Exception as e:
-        errors.append(f"OTD check failed: {str(e)}")
+    except (SQLAlchemyError, ValueError) as e:
+        logger.exception("OTD alert check failed")
+        errors.append("OTD check failed")
 
     # Check quality
     try:
         quality_result = _check_quality_alerts(db, client_id, thresholds)
         generated_alerts.extend(quality_result)
-    except Exception as e:
-        errors.append(f"Quality check failed: {str(e)}")
+    except (SQLAlchemyError, ValueError) as e:
+        logger.exception("Quality alert check failed")
+        errors.append("Quality check failed")
 
     # Check holds
     try:
         hold_result = _check_hold_alerts(db, client_id)
         generated_alerts.extend(hold_result)
-    except Exception as e:
-        errors.append(f"Hold check failed: {str(e)}")
+    except (SQLAlchemyError, ValueError) as e:
+        logger.exception("Hold alert check failed")
+        errors.append("Hold check failed")
 
     return {
         "status": "completed",
@@ -689,7 +698,7 @@ def _check_hold_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
     )
 
     if client_id:
-        query = query.filter(Hold.client_id == client_id)
+        query = query.filter(HoldEntry.client_id == client_id)
 
     pending_holds = query.all()
 

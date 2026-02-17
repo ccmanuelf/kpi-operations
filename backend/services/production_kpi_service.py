@@ -15,6 +15,7 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, and_
 
 logger = logging.getLogger(__name__)
@@ -387,12 +388,12 @@ class ProductionKPIService:
                     )
                     results["successful"] += 1
 
-                except Exception as e:
+                except (ValueError, TypeError, ArithmeticError) as e:
                     logger.exception("KPI calculation failed for entry_id=%s", entry_id)
                     results["entries"].append({"entry_id": entry_id, "success": False, "error": "KPI calculation failed"})
                     results["failed"] += 1
 
-        except Exception as e:
+        except (SQLAlchemyError, ValueError, TypeError, ArithmeticError) as e:
             # If batch calculation fails, fall back to individual processing
             logger.exception("Batch KPI calculation failed, falling back to individual processing")
             for entry in entries:
@@ -416,7 +417,7 @@ class ProductionKPIService:
                     )
                     results["successful"] += 1
 
-                except Exception as entry_error:
+                except (ValueError, TypeError, ArithmeticError) as entry_error:
                     logger.exception("Individual KPI calculation failed for entry_id=%s", entry.production_entry_id)
                     results["entries"].append(
                         {"entry_id": entry.production_entry_id, "success": False, "error": "KPI calculation failed"}
@@ -494,8 +495,11 @@ class ProductionKPIService:
             return {}
         try:
             return get_client_config_or_defaults(self.db, client_id)
-        except Exception as e:
-            logger.exception("Failed to get client config for client_id=%s", client_id)
+        except SQLAlchemyError as e:
+            logger.exception("Database error fetching client config for client_id=%s", client_id)
+            return {}
+        except (ValueError, KeyError) as e:
+            logger.exception("Invalid client config data for client_id=%s", client_id)
             return {}
 
     def _calculate_efficiency(

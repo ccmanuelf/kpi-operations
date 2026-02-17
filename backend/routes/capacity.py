@@ -25,6 +25,7 @@ from datetime import date
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -1134,6 +1135,15 @@ def explode_bom(
             ],
             "total_components": result.total_components,
         }
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Database error in BOM explosion for parent_item_code=%s", request.parent_item_code)
+        raise HTTPException(status_code=503, detail="Database error during BOM explosion")
+    except (ValueError, TypeError) as e:
+        logger.exception("Validation error in BOM explosion for parent_item_code=%s", request.parent_item_code)
+        raise HTTPException(status_code=400, detail="Invalid BOM explosion parameters")
     except Exception as e:
         db.rollback()
         logger.exception("BOM explosion failed for parent_item_code=%s", request.parent_item_code)
@@ -1318,6 +1328,10 @@ def run_component_check(
         raise HTTPException(status_code=501, detail="MRP service not yet implemented")
     except HTTPException:
         raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Database error in component check for client_id=%s", client_id)
+        raise HTTPException(status_code=503, detail="Database error during component check")
     except Exception as e:
         db.rollback()
         logger.exception("Component check failed for client_id=%s", client_id)
@@ -1402,6 +1416,12 @@ def run_capacity_analysis(
         ]
     except ImportError:
         raise HTTPException(status_code=501, detail="Capacity analysis service not yet implemented")
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Database error in capacity analysis for client_id=%s", client_id)
+        raise HTTPException(status_code=503, detail="Database error during capacity analysis")
     except Exception as e:
         db.rollback()
         logger.exception("Capacity analysis failed for client_id=%s", client_id)
@@ -1543,6 +1563,12 @@ def generate_schedule(
         return schedule
     except ImportError:
         raise HTTPException(status_code=501, detail="Scheduling service not yet implemented")
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Database error in schedule generation for client_id=%s", client_id)
+        raise HTTPException(status_code=503, detail="Database error during schedule generation")
     except Exception as e:
         db.rollback()
         logger.exception("Schedule generation failed for client_id=%s", client_id)
@@ -1729,6 +1755,12 @@ def run_scenario(
         }
     except ImportError:
         raise HTTPException(status_code=501, detail="Scenario service not yet implemented")
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        db.rollback()
+        logger.exception("Database error in scenario run for scenario_id=%s", scenario_id)
+        raise HTTPException(status_code=503, detail="Database error during scenario evaluation")
     except Exception as e:
         db.rollback()
         logger.exception("Scenario run failed for scenario_id=%s", scenario_id)
@@ -1780,6 +1812,11 @@ def compare_scenarios(
         return comparison
     except ImportError:
         raise HTTPException(status_code=501, detail="Scenario service not yet implemented")
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.exception("Database error in scenario comparison for client_id=%s", client_id)
+        raise HTTPException(status_code=503, detail="Database error during scenario comparison")
     except Exception as e:
         logger.exception("Scenario comparison failed for client_id=%s", client_id)
         raise HTTPException(status_code=400, detail="Scenario comparison failed")
@@ -1832,6 +1869,11 @@ def get_kpi_variance_report(
         return report
     except ImportError:
         raise HTTPException(status_code=501, detail="KPI integration service not yet implemented")
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.exception("Database error in KPI variance report for client_id=%s", client_id)
+        raise HTTPException(status_code=503, detail="Database error generating KPI variance report")
     except Exception as e:
         logger.exception("KPI variance report failed for client_id=%s", client_id)
         raise HTTPException(status_code=400, detail="KPI variance report failed")

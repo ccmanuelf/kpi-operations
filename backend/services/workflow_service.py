@@ -9,12 +9,16 @@ Provides:
 - Elapsed time calculations
 """
 
+import logging
 from typing import List, Optional, Dict, Tuple
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import and_
 from fastapi import HTTPException
 import json
+
+logger = logging.getLogger(__name__)
 
 from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.client_config import ClientConfig
@@ -472,8 +476,13 @@ def bulk_transition(
         except HTTPException as e:
             results["results"].append({"work_order_id": wo_id, "success": False, "error": e.detail})
             results["failed"] += 1
-        except Exception as e:
-            results["results"].append({"work_order_id": wo_id, "success": False, "error": str(e)})
+        except SQLAlchemyError as e:
+            logger.exception("Database error during bulk transition for work_order_id=%s", wo_id)
+            results["results"].append({"work_order_id": wo_id, "success": False, "error": "Database error during transition"})
+            results["failed"] += 1
+        except (ValueError, TypeError) as e:
+            logger.exception("Validation error during bulk transition for work_order_id=%s", wo_id)
+            results["results"].append({"work_order_id": wo_id, "success": False, "error": "Validation error during transition"})
             results["failed"] += 1
 
     return results

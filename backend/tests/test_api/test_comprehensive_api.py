@@ -86,8 +86,8 @@ class TestHealthEndpoints:
         response = test_client.get("/health/live")
         assert response.status_code == 200
 
-    def test_health_ready(self, test_client):
-        response = test_client.get("/health/ready")
+    def test_health_ready(self, test_client, auth_headers):
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
 
 

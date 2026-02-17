@@ -151,29 +151,29 @@ class TestConnectionPoolEndpoint:
 
 
 class TestDetailedHealthEndpoint:
-    """Tests for GET /health/detailed - Comprehensive health check"""
+    """Tests for GET /health/detailed - Comprehensive health check (requires auth)"""
 
-    def test_detailed_health_returns_200(self, test_client):
+    def test_detailed_health_returns_200(self, test_client, auth_headers):
         """Test detailed health endpoint returns 200"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_detailed_health_overall_status(self, test_client):
+    def test_detailed_health_overall_status(self, test_client, auth_headers):
         """Test detailed health returns overall status"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "status" in data
         assert data["status"] in ["healthy", "degraded", "unhealthy"]
 
-    def test_detailed_health_timestamp(self, test_client):
+    def test_detailed_health_timestamp(self, test_client, auth_headers):
         """Test detailed health returns timestamp"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "timestamp" in data
 
-    def test_detailed_health_service_info(self, test_client):
+    def test_detailed_health_service_info(self, test_client, auth_headers):
         """Test detailed health returns service information"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "service" in data
         service = data["service"]
@@ -183,33 +183,33 @@ class TestDetailedHealthEndpoint:
         assert "uptime_seconds" in service
         assert "started_at" in service
 
-    def test_detailed_health_checks_present(self, test_client):
+    def test_detailed_health_checks_present(self, test_client, auth_headers):
         """Test detailed health returns checks section"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "checks" in data
 
-    def test_detailed_health_database_check(self, test_client):
+    def test_detailed_health_database_check(self, test_client, auth_headers):
         """Test detailed health includes database check"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "database" in data["checks"]
         db_check = data["checks"]["database"]
         assert "status" in db_check
         assert "latency_ms" in db_check or "error" in db_check
 
-    def test_detailed_health_database_latency(self, test_client):
+    def test_detailed_health_database_latency(self, test_client, auth_headers):
         """Test detailed health measures database latency"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         db_check = data["checks"]["database"]
         if "latency_ms" in db_check:
             assert isinstance(db_check["latency_ms"], (int, float))
             assert db_check["latency_ms"] >= 0
 
-    def test_detailed_health_memory_check(self, test_client):
+    def test_detailed_health_memory_check(self, test_client, auth_headers):
         """Test detailed health includes memory check"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "memory" in data["checks"]
         mem_check = data["checks"]["memory"]
@@ -218,25 +218,25 @@ class TestDetailedHealthEndpoint:
         if mem_check["status"] != "unavailable":
             assert "used_percent" in mem_check or "error" in mem_check
 
-    def test_detailed_health_disk_check(self, test_client):
+    def test_detailed_health_disk_check(self, test_client, auth_headers):
         """Test detailed health includes disk check"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "disk" in data["checks"]
         disk_check = data["checks"]["disk"]
         assert "status" in disk_check
 
-    def test_detailed_health_cpu_check(self, test_client):
+    def test_detailed_health_cpu_check(self, test_client, auth_headers):
         """Test detailed health includes CPU check"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "cpu" in data["checks"]
         cpu_check = data["checks"]["cpu"]
         assert "status" in cpu_check
 
-    def test_detailed_health_configuration_check(self, test_client):
+    def test_detailed_health_configuration_check(self, test_client, auth_headers):
         """Test detailed health includes configuration validation"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "configuration" in data["checks"]
         config_check = data["checks"]["configuration"]
@@ -245,9 +245,9 @@ class TestDetailedHealthEndpoint:
 
 
 class TestDetailedHealthWithMockedPsutil:
-    """Tests for detailed health with mocked psutil metrics"""
+    """Tests for detailed health with mocked psutil metrics (requires auth)"""
 
-    def test_high_memory_warning(self, test_client):
+    def test_high_memory_warning(self, test_client, auth_headers):
         """Test detailed health shows warning on high memory usage"""
         import psutil
 
@@ -269,11 +269,11 @@ class TestDetailedHealthWithMockedPsutil:
             mock_disk_obj.total = 1024 * 1024 * 1024 * 500  # 500GB
             mock_disk.return_value = mock_disk_obj
 
-            response = test_client.get("/health/detailed")
+            response = test_client.get("/health/detailed", headers=auth_headers)
             # Test passes if response is valid
             assert response.status_code == 200
 
-    def test_critical_memory_unhealthy(self, test_client):
+    def test_critical_memory_unhealthy(self, test_client, auth_headers):
         """Test detailed health shows unhealthy on critical memory"""
         import psutil
 
@@ -295,10 +295,10 @@ class TestDetailedHealthWithMockedPsutil:
             mock_disk_obj.total = 1024 * 1024 * 1024 * 500
             mock_disk.return_value = mock_disk_obj
 
-            response = test_client.get("/health/detailed")
+            response = test_client.get("/health/detailed", headers=auth_headers)
             assert response.status_code == 200
 
-    def test_high_disk_warning(self, test_client):
+    def test_high_disk_warning(self, test_client, auth_headers):
         """Test detailed health shows warning on high disk usage"""
         import psutil
 
@@ -320,10 +320,10 @@ class TestDetailedHealthWithMockedPsutil:
             mock_disk_obj.total = 1024 * 1024 * 1024 * 500
             mock_disk.return_value = mock_disk_obj
 
-            response = test_client.get("/health/detailed")
+            response = test_client.get("/health/detailed", headers=auth_headers)
             assert response.status_code == 200
 
-    def test_critical_disk_unhealthy(self, test_client):
+    def test_critical_disk_unhealthy(self, test_client, auth_headers):
         """Test detailed health shows unhealthy on critical disk"""
         import psutil
 
@@ -345,10 +345,10 @@ class TestDetailedHealthWithMockedPsutil:
             mock_disk_obj.total = 1024 * 1024 * 1024 * 500
             mock_disk.return_value = mock_disk_obj
 
-            response = test_client.get("/health/detailed")
+            response = test_client.get("/health/detailed", headers=auth_headers)
             assert response.status_code == 200
 
-    def test_high_cpu_warning(self, test_client):
+    def test_high_cpu_warning(self, test_client, auth_headers):
         """Test detailed health handles high CPU usage"""
         import psutil
 
@@ -370,10 +370,10 @@ class TestDetailedHealthWithMockedPsutil:
             mock_disk_obj.total = 1024 * 1024 * 1024 * 500
             mock_disk.return_value = mock_disk_obj
 
-            response = test_client.get("/health/detailed")
+            response = test_client.get("/health/detailed", headers=auth_headers)
             assert response.status_code == 200
 
-    def test_critical_cpu_degraded(self, test_client):
+    def test_critical_cpu_degraded(self, test_client, auth_headers):
         """Test detailed health shows degraded on critical CPU"""
         import psutil
 
@@ -395,18 +395,18 @@ class TestDetailedHealthWithMockedPsutil:
             mock_disk_obj.total = 1024 * 1024 * 1024 * 500
             mock_disk.return_value = mock_disk_obj
 
-            response = test_client.get("/health/detailed")
+            response = test_client.get("/health/detailed", headers=auth_headers)
             assert response.status_code == 200
 
 
 class TestDetailedHealthDatabaseLatency:
-    """Tests for database latency handling in detailed health"""
+    """Tests for database latency handling in detailed health (requires auth)"""
 
-    def test_high_db_latency_warning(self, test_client):
+    def test_high_db_latency_warning(self, test_client, auth_headers):
         """Test detailed health shows warning on high DB latency"""
         # Note: Cannot easily mock latency without complex patching
         # This test validates the structure is present
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         db_check = data["checks"]["database"]
         assert "status" in db_check
@@ -415,22 +415,22 @@ class TestDetailedHealthDatabaseLatency:
 
 
 class TestReadinessProbe:
-    """Tests for GET /health/ready - Kubernetes readiness probe"""
+    """Tests for GET /health/ready - Kubernetes readiness probe (requires auth)"""
 
-    def test_ready_returns_200(self, test_client):
+    def test_ready_returns_200(self, test_client, auth_headers):
         """Test readiness probe returns 200 when healthy"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         assert response.status_code == 200
 
-    def test_ready_status_ready(self, test_client):
+    def test_ready_status_ready(self, test_client, auth_headers):
         """Test readiness probe returns ready status"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         data = response.json()
         assert data["status"] == "ready"
 
-    def test_ready_returns_timestamp(self, test_client):
+    def test_ready_returns_timestamp(self, test_client, auth_headers):
         """Test readiness probe returns timestamp"""
-        response = test_client.get("/health/ready")
+        response = test_client.get("/health/ready", headers=auth_headers)
         data = response.json()
         assert "timestamp" in data
 
@@ -532,24 +532,24 @@ class TestFormatUptimeHelper:
 
 
 class TestHealthConfigurationValidation:
-    """Tests for configuration validation in detailed health"""
+    """Tests for configuration validation in detailed health (requires auth)"""
 
-    def test_configuration_check_present(self, test_client):
+    def test_configuration_check_present(self, test_client, auth_headers):
         """Test configuration check is included"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         assert "configuration" in data["checks"]
 
-    def test_configuration_check_environment(self, test_client):
+    def test_configuration_check_environment(self, test_client, auth_headers):
         """Test configuration check shows environment"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         config = data["checks"]["configuration"]
         assert "environment" in config
 
-    def test_configuration_check_status(self, test_client):
+    def test_configuration_check_status(self, test_client, auth_headers):
         """Test configuration check shows status"""
-        response = test_client.get("/health/detailed")
+        response = test_client.get("/health/detailed", headers=auth_headers)
         data = response.json()
         config = data["checks"]["configuration"]
         assert config["status"] in ["healthy", "warning", "critical", "unknown"]
@@ -580,7 +580,7 @@ class TestHealthErrorHandling:
 
 
 class TestHealthNoAuthRequired:
-    """Tests verifying health endpoints don't require authentication"""
+    """Tests verifying which health endpoints require authentication and which don't"""
 
     def test_root_no_auth(self, test_client):
         """Test root health doesn't require auth"""
@@ -597,15 +597,15 @@ class TestHealthNoAuthRequired:
         response = test_client.get("/health/pool")
         assert response.status_code == 200
 
-    def test_detailed_no_auth(self, test_client):
-        """Test detailed health doesn't require auth"""
+    def test_detailed_requires_auth(self, test_client):
+        """Test detailed health requires auth - returns 401/403 without token"""
         response = test_client.get("/health/detailed")
-        assert response.status_code == 200
+        assert response.status_code in (401, 403)
 
-    def test_ready_no_auth(self, test_client):
-        """Test readiness probe doesn't require auth"""
+    def test_ready_requires_auth(self, test_client):
+        """Test readiness probe requires auth - returns 401/403 without token"""
         response = test_client.get("/health/ready")
-        assert response.status_code == 200
+        assert response.status_code in (401, 403)
 
     def test_live_no_auth(self, test_client):
         """Test liveness probe doesn't require auth"""
@@ -616,17 +616,26 @@ class TestHealthNoAuthRequired:
 class TestHealthConcurrency:
     """Tests for health endpoints under concurrent load"""
 
-    def test_concurrent_health_checks(self, test_client):
+    def test_concurrent_health_checks(self, test_client, auth_headers):
         """Test health endpoints handle concurrent requests"""
         import concurrent.futures
 
-        def make_request(endpoint):
+        # Separate unauthenticated and authenticated endpoints
+        unauth_endpoints = ["/health/", "/health/live", "/health/pool"]
+        auth_endpoints = ["/health/ready"]
+
+        def make_unauth_request(endpoint):
             return test_client.get(endpoint)
 
-        endpoints = ["/health/", "/health/live", "/health/ready", "/health/pool"]
+        def make_auth_request(endpoint):
+            return test_client.get(endpoint, headers=auth_headers)
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(make_request, ep) for ep in endpoints * 3]
+            futures = []
+            for ep in unauth_endpoints * 3:
+                futures.append(executor.submit(make_unauth_request, ep))
+            for ep in auth_endpoints * 3:
+                futures.append(executor.submit(make_auth_request, ep))
             results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
         for response in results:
@@ -642,54 +651,74 @@ class TestHealthConcurrency:
 class TestHealthResponseConsistency:
     """Tests for consistent response structure"""
 
-    def test_all_endpoints_json(self, test_client):
+    def test_all_endpoints_json(self, test_client, auth_headers):
         """Test all health endpoints return JSON"""
-        endpoints = [
+        unauthenticated_endpoints = [
             "/health/",
             "/health/database",
             "/health/pool",
-            "/health/detailed",
-            "/health/ready",
             "/health/live",
         ]
+        authenticated_endpoints = [
+            "/health/detailed",
+            "/health/ready",
+        ]
 
-        for endpoint in endpoints:
+        for endpoint in unauthenticated_endpoints:
             response = test_client.get(endpoint)
             assert response.headers["content-type"] == "application/json"
 
-    def test_all_endpoints_have_status(self, test_client):
+        for endpoint in authenticated_endpoints:
+            response = test_client.get(endpoint, headers=auth_headers)
+            assert response.headers["content-type"] == "application/json"
+
+    def test_all_endpoints_have_status(self, test_client, auth_headers):
         """Test all health endpoints include status field"""
-        endpoints = [
+        unauthenticated_endpoints = [
             "/health/",
             "/health/database",
             "/health/pool",
-            "/health/detailed",
-            "/health/ready",
             "/health/live",
         ]
+        authenticated_endpoints = [
+            "/health/detailed",
+            "/health/ready",
+        ]
 
-        for endpoint in endpoints:
+        for endpoint in unauthenticated_endpoints:
             response = test_client.get(endpoint)
             data = response.json()
             assert "status" in data, f"Missing status in {endpoint}"
 
-    def test_all_endpoints_have_timestamp(self, test_client):
+        for endpoint in authenticated_endpoints:
+            response = test_client.get(endpoint, headers=auth_headers)
+            data = response.json()
+            assert "status" in data, f"Missing status in {endpoint}"
+
+    def test_all_endpoints_have_timestamp(self, test_client, auth_headers):
         """Test all health endpoints include timestamp"""
-        endpoints = [
+        unauthenticated_endpoints = [
             "/health/",
             "/health/database",
             "/health/pool",
-            "/health/detailed",
-            "/health/ready",
             "/health/live",
         ]
+        authenticated_endpoints = [
+            "/health/detailed",
+            "/health/ready",
+        ]
 
-        for endpoint in endpoints:
+        for endpoint in unauthenticated_endpoints:
             response = test_client.get(endpoint)
             data = response.json()
             # live uses uptime_seconds instead of timestamp
             if endpoint != "/health/live":
                 assert "timestamp" in data or "uptime_seconds" in data
+
+        for endpoint in authenticated_endpoints:
+            response = test_client.get(endpoint, headers=auth_headers)
+            data = response.json()
+            assert "timestamp" in data or "uptime_seconds" in data
 
 
 class TestPoolStatusWithQueuePool:

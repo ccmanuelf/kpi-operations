@@ -3,6 +3,8 @@ Comprehensive Tests for Services Module
 Target: Increase services/ coverage to 85%+
 """
 
+import smtplib
+
 import pytest
 from datetime import datetime
 from unittest.mock import MagicMock, patch, PropertyMock
@@ -253,7 +255,7 @@ class TestSendViaSMTP:
             mock_settings.SMTP_USER = ""
             mock_settings.SMTP_PASSWORD = ""
 
-            mock_smtp.return_value.__enter__.side_effect = Exception("SMTP error")
+            mock_smtp.return_value.__enter__.side_effect = smtplib.SMTPException("SMTP error")
 
             from services.email_service import EmailService
 
@@ -268,7 +270,7 @@ class TestSendViaSMTP:
             )
 
             assert result["success"] is False
-            assert "SMTP error" in result["error"]
+            assert "Failed to send email via SMTP" in result["message"]
 
 
 class TestGenerateEmailTemplate:
@@ -388,7 +390,7 @@ class TestSendTestEmail:
             mock_settings.SMTP_USER = ""
             mock_settings.SMTP_PASSWORD = ""
 
-            mock_smtp.return_value.__enter__.side_effect = Exception("SMTP error")
+            mock_smtp.return_value.__enter__.side_effect = smtplib.SMTPException("SMTP error")
 
             from services.email_service import EmailService
 
@@ -397,6 +399,7 @@ class TestSendTestEmail:
             result = service.send_test_email("test@test.com")
 
             assert result["success"] is False
+            assert "Failed to send test email via SMTP" in result["message"]
 
 
 # =============================================================================

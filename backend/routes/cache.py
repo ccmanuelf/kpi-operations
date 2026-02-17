@@ -5,6 +5,8 @@ Phase A.1: Provides endpoints for cache monitoring and management.
 Supports the Capacity Planning Module caching infrastructure.
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 from datetime import datetime, timezone
@@ -12,6 +14,8 @@ from datetime import datetime, timezone
 from backend.auth.jwt import get_current_user, get_current_admin
 from backend.schemas.user import User
 from backend.cache import get_cache
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
@@ -130,4 +134,5 @@ async def cache_health() -> Dict[str, Any]:
             "hit_rate": hit_rate,
         }
     except Exception as e:
-        return {"status": "error", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "error": str(e)}
+        logger.exception("Cache health check failed")
+        return {"status": "error", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "error": "Cache health check failed"}
