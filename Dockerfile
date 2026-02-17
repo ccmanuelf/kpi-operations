@@ -1,12 +1,13 @@
 # Multi-stage Dockerfile for KPI Operations Platform
-LABEL maintainer="KPI Operations Team"
-LABEL version="1.0.4"
-LABEL description="KPI Operations Platform - FastAPI Backend"
 
 # Stage 1: Build stage
 # python:3.11.11-slim-bookworm — pin to digest for reproducible builds:
 # docker pull python:3.11.11-slim-bookworm && docker inspect --format='{{index .RepoDigests 0}}' python:3.11.11-slim-bookworm
 FROM python:3.11.11-slim-bookworm as builder
+
+LABEL maintainer="KPI Operations Team"
+LABEL version="1.0.4"
+LABEL description="KPI Operations Platform - FastAPI Backend"
 
 WORKDIR /app
 

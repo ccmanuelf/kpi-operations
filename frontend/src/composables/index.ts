@@ -4,5 +4,3 @@
  */
 export { useUnsavedChanges } from './useUnsavedChanges'
 export { useKeyboardShortcuts, useDataEntryShortcuts } from './useKeyboardShortcuts'
-export { default as useDashboardWidgets } from './useDashboardWidgets'
-export * from './useDashboardWidgets'
