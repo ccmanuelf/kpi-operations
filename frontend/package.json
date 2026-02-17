@@ -28,7 +28,7 @@
     "@vue-flow/core": "^1.48.1",
     "@vue-flow/minimap": "^1.5.4",
     "ag-grid-community": "^35.0.0",
-    "ag-grid-vue3": "^35.0.0",
+    "ag-grid-vue3": "^35.1.0",
     "axios": "^1.6.5",
     "chart.js": "^4.4.1",
     "date-fns": "^4.1.0",
