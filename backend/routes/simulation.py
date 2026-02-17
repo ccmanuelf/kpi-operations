@@ -19,11 +19,15 @@ Provides endpoints for:
 - Comprehensive capacity simulation
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
@@ -162,9 +166,11 @@ async def calculate_capacity_requirements_endpoint(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.exception("Invalid input for capacity requirements: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid input: validation failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calculating capacity requirements: {str(e)}")
+        logger.exception("Failed to calculate capacity requirements: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -206,9 +212,11 @@ async def calculate_production_capacity_endpoint(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.exception("Invalid input for production capacity: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid input: validation failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error calculating production capacity: {str(e)}")
+        logger.exception("Failed to calculate production capacity: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 # =============================================================================
@@ -261,9 +269,11 @@ async def run_staffing_simulation_endpoint(
         ]
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.exception("Invalid input for staffing simulation: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid input: validation failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error running staffing simulation: {str(e)}")
+        logger.exception("Failed to run staffing simulation: %s", e)
+        raise HTTPException(status_code=500, detail="Simulation failed")
 
 
 # =============================================================================
@@ -313,9 +323,11 @@ async def run_efficiency_simulation_endpoint(
         ]
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.exception("Invalid input for efficiency simulation: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid input: validation failed")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error running efficiency simulation: {str(e)}")
+        logger.exception("Failed to run efficiency simulation: %s", e)
+        raise HTTPException(status_code=500, detail="Simulation failed")
 
 
 # =============================================================================
@@ -361,7 +373,8 @@ async def simulate_shift_coverage_endpoint(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error simulating shift coverage: {str(e)}")
+        logger.exception("Failed to simulate shift coverage: %s", e)
+        raise HTTPException(status_code=500, detail="Simulation failed")
 
 
 @router.post("/multi-shift-coverage", response_model=MultiShiftCoverageResponse)
@@ -424,7 +437,8 @@ async def simulate_multi_shift_coverage_endpoint(
         return MultiShiftCoverageResponse(shift_simulations=shift_responses, summary=summary_response)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error simulating multi-shift coverage: {str(e)}")
+        logger.exception("Failed to simulate multi-shift coverage: %s", e)
+        raise HTTPException(status_code=500, detail="Simulation failed")
 
 
 # =============================================================================
@@ -501,7 +515,8 @@ async def optimize_floating_pool_endpoint(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error optimizing floating pool: {str(e)}")
+        logger.exception("Failed to optimize floating pool: %s", e)
+        raise HTTPException(status_code=500, detail="Optimization failed")
 
 
 # =============================================================================
@@ -552,7 +567,8 @@ async def run_comprehensive_simulation(
         return result
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error running comprehensive simulation: {str(e)}")
+        logger.exception("Failed to run comprehensive simulation: %s", e)
+        raise HTTPException(status_code=500, detail="Simulation failed")
 
 
 # =============================================================================
@@ -863,7 +879,8 @@ async def run_production_line_simulation(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error running simulation: {str(e)}")
+        logger.exception("Failed to run production line simulation: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid request parameters")
 
 
 @router.post("/production-line/compare")
@@ -919,7 +936,7 @@ async def compare_production_scenarios(
         )
 
         return {
-            "comparison_date": datetime.utcnow().isoformat(),
+            "comparison_date": datetime.now(tz=timezone.utc).isoformat(),
             "duration_hours": duration_hours,
             "baseline": results[0] if results else None,
             "scenarios": results[1:] if len(results) > 1 else [],
@@ -931,7 +948,8 @@ async def compare_production_scenarios(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error comparing scenarios: {str(e)}")
+        logger.exception("Failed to compare production scenarios: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid request parameters")
 
 
 @router.post("/production-line/bottlenecks")
@@ -984,7 +1002,8 @@ async def analyze_production_bottlenecks(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error analyzing bottlenecks: {str(e)}")
+        logger.exception("Failed to analyze production bottlenecks: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid request parameters")
 
 
 @router.post("/production-line/floating-pool-impact")
@@ -1045,4 +1064,5 @@ async def analyze_floating_pool_impact(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error analyzing floating pool impact: {str(e)}")
+        logger.exception("Failed to analyze floating pool impact: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid request parameters")

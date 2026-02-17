@@ -26,10 +26,10 @@ class DowntimeEventCreate(BaseModel):
     """Create downtime event - aligned with DOWNTIME_ENTRY schema"""
 
     # Multi-tenant isolation - REQUIRED
-    client_id: str = Field(..., min_length=1, max_length=50)
+    client_id: str = Field(..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation")
 
     # Work order reference - REQUIRED (replaces product_id/shift_id)
-    work_order_id: str = Field(..., min_length=1, max_length=50)
+    work_order_id: str = Field(..., min_length=1, max_length=50, description="Work order affected by this downtime event")
 
     # Date tracking - shift_date is REQUIRED
     shift_date: date = Field(..., description="Shift date - REQUIRED for Availability KPI")
@@ -39,15 +39,15 @@ class DowntimeEventCreate(BaseModel):
     downtime_duration_minutes: int = Field(..., gt=0, le=1440, description="Duration in minutes (max 24h)")
 
     # Equipment details
-    machine_id: Optional[str] = Field(None, max_length=100)
-    equipment_code: Optional[str] = Field(None, max_length=50)
+    machine_id: Optional[str] = Field(None, max_length=100, description="Identifier of the machine or equipment affected")
+    equipment_code: Optional[str] = Field(None, max_length=50, description="Equipment asset code for maintenance tracking")
 
     # Root cause analysis
-    root_cause_category: Optional[str] = Field(None, max_length=100)
-    corrective_action: Optional[str] = None
+    root_cause_category: Optional[str] = Field(None, max_length=100, description="Classification of the root cause for analysis")
+    corrective_action: Optional[str] = Field(None, description="Description of corrective or preventive action taken")
 
     # Metadata
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, description="Additional context or observations about the downtime event")
 
     @classmethod
     def from_legacy_csv(cls, data: dict) -> "DowntimeEventCreate":
@@ -94,29 +94,29 @@ class DowntimeEventCreate(BaseModel):
 class DowntimeEventUpdate(BaseModel):
     """Update downtime event"""
 
-    downtime_category: Optional[str] = Field(None, max_length=50)
-    downtime_reason: Optional[str] = Field(None, max_length=255)
-    duration_hours: Optional[Decimal] = Field(None, gt=0, le=24)
-    machine_id: Optional[str] = Field(None, max_length=50)
-    notes: Optional[str] = None
+    downtime_category: Optional[str] = Field(None, max_length=50, description="Updated downtime classification category")
+    downtime_reason: Optional[str] = Field(None, max_length=255, description="Updated detailed reason for the downtime")
+    duration_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated downtime duration in hours")
+    machine_id: Optional[str] = Field(None, max_length=50, description="Updated machine or equipment identifier")
+    notes: Optional[str] = Field(None, description="Updated notes about the downtime event")
 
 
 class DowntimeEventResponse(BaseModel):
     """Downtime event response - matches DOWNTIME_ENTRY schema"""
 
-    downtime_entry_id: str
-    client_id: str
-    work_order_id: str
-    shift_date: datetime
-    downtime_reason: str
-    downtime_duration_minutes: int
-    machine_id: Optional[str] = None
-    equipment_code: Optional[str] = None
-    root_cause_category: Optional[str] = None
-    corrective_action: Optional[str] = None
-    notes: Optional[str] = None
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    downtime_entry_id: str = Field(..., description="Unique identifier for this downtime entry")
+    client_id: str = Field(..., description="Tenant client identifier for data isolation")
+    work_order_id: str = Field(..., description="Work order affected by this downtime event")
+    shift_date: datetime = Field(..., description="Shift date when the downtime occurred")
+    downtime_reason: str = Field(..., description="Category or reason for the downtime")
+    downtime_duration_minutes: int = Field(..., description="Total downtime duration in minutes")
+    machine_id: Optional[str] = Field(None, description="Machine or equipment identifier affected")
+    equipment_code: Optional[str] = Field(None, description="Equipment asset code for maintenance tracking")
+    root_cause_category: Optional[str] = Field(None, description="Classification of the root cause")
+    corrective_action: Optional[str] = Field(None, description="Corrective or preventive action taken")
+    notes: Optional[str] = Field(None, description="Additional context about the downtime event")
+    created_at: Optional[datetime] = Field(None, description="Timestamp when the record was created")
+    updated_at: Optional[datetime] = Field(None, description="Timestamp of the last modification")
 
     class Config:
         from_attributes = True
@@ -125,12 +125,12 @@ class DowntimeEventResponse(BaseModel):
 class AvailabilityCalculationResponse(BaseModel):
     """Availability KPI calculation"""
 
-    product_id: int
-    shift_id: int
-    production_date: date
-    total_scheduled_hours: Decimal
-    total_downtime_hours: Decimal
-    available_hours: Decimal
-    availability_percentage: Decimal
-    downtime_events: int
-    calculation_timestamp: datetime
+    product_id: int = Field(..., description="Product identifier for this availability calculation")
+    shift_id: int = Field(..., description="Shift identifier for the calculation period")
+    production_date: date = Field(..., description="Production date of the availability calculation")
+    total_scheduled_hours: Decimal = Field(..., description="Total scheduled production hours for the period")
+    total_downtime_hours: Decimal = Field(..., description="Sum of all downtime hours during the period")
+    available_hours: Decimal = Field(..., description="Net available hours (scheduled minus downtime)")
+    availability_percentage: Decimal = Field(..., description="Availability rate as percentage (available / scheduled * 100)")
+    downtime_events: int = Field(..., description="Count of distinct downtime events in the period")
+    calculation_timestamp: datetime = Field(..., description="Timestamp when this calculation was performed")

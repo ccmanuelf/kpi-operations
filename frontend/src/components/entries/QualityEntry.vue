@@ -77,7 +77,7 @@
             <v-text-field
               v-model.number="formData.rejected_quantity"
               type="number"
-              label="Rejected Quantity"
+              :label="$t('quality.rejectedQty')"
               variant="outlined"
               density="comfortable"
             />
@@ -91,11 +91,11 @@
               :items="defectTypes"
               item-title="defect_name"
               item-value="defect_type_id"
-              label="Primary Defect Type"
+              :label="$t('quality.primaryDefectType')"
               variant="outlined"
               density="comfortable"
               :disabled="!formData.client_id"
-              :hint="!formData.client_id ? 'Select a client first' : ''"
+              :hint="!formData.client_id ? $t('quality.selectClientFirst') : ''"
               persistent-hint
             />
           </v-col>
@@ -103,7 +103,9 @@
             <v-select
               v-model="formData.severity"
               :items="severities"
-              label="Severity"
+              item-title="title"
+              item-value="value"
+              :label="$t('quality.severity')"
               variant="outlined"
               density="comfortable"
             />
@@ -115,7 +117,9 @@
             <v-select
               v-model="formData.disposition"
               :items="dispositions"
-              label="Disposition *"
+              item-title="title"
+              item-value="value"
+              :label="`${$t('quality.disposition')} *`"
               :rules="[rules.required]"
               variant="outlined"
               density="comfortable"
@@ -124,7 +128,7 @@
           <v-col cols="12" md="6">
             <v-text-field
               v-model="formData.inspector_id"
-              label="Inspector ID"
+              :label="$t('quality.inspectorId')"
               variant="outlined"
               density="comfortable"
             />
@@ -135,7 +139,7 @@
           <v-col cols="12">
             <v-textarea
               v-model="formData.defect_description"
-              label="Defect Description"
+              :label="$t('quality.defectDescription')"
               rows="3"
               variant="outlined"
               density="comfortable"
@@ -147,7 +151,7 @@
           <v-col cols="12">
             <v-textarea
               v-model="formData.corrective_action"
-              label="Corrective Action Taken"
+              :label="$t('quality.correctiveAction')"
               rows="3"
               variant="outlined"
               density="comfortable"
@@ -159,14 +163,14 @@
         <v-row v-if="formData.inspected_quantity > 0">
           <v-col cols="12">
             <v-alert type="info" variant="tonal">
-              <div class="text-subtitle-2">Calculated Metrics</div>
+              <div class="text-subtitle-2">{{ $t('quality.calculatedMetrics') }}</div>
               <v-row class="mt-2">
                 <v-col cols="6" md="3">
                   <div class="text-caption">FPY</div>
                   <div class="text-h6">{{ calculateFPY() }}%</div>
                 </v-col>
                 <v-col cols="6" md="3">
-                  <div class="text-caption">Defect Rate</div>
+                  <div class="text-caption">{{ $t('quality.defectRate') }}</div>
                   <div class="text-h6">{{ calculateDefectRate() }}%</div>
                 </v-col>
                 <v-col cols="6" md="3">
@@ -174,7 +178,7 @@
                   <div class="text-h6">{{ calculatePPM() }}</div>
                 </v-col>
                 <v-col cols="6" md="3">
-                  <div class="text-caption">Pass Qty</div>
+                  <div class="text-caption">{{ $t('quality.passQty') }}</div>
                   <div class="text-h6">{{ calculatePassQty() }}</div>
                 </v-col>
               </v-row>
@@ -206,11 +210,20 @@
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
+
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-card>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import CSVUploadDialogQuality from '@/components/CSVUploadDialogQuality.vue'
@@ -231,9 +244,21 @@ const defectTypes = ref([])
 const workOrders = ref([])
 const clients = ref([])
 const showConfirmDialog = ref(false)
+const snackbar = ref({ show: false, text: '', color: 'info' })
 
-const severities = ['Critical', 'Major', 'Minor', 'Cosmetic']
-const dispositions = ['Accept', 'Reject', 'Rework', 'Use As Is', 'Return to Supplier']
+const severities = computed(() => [
+  { title: t('quality.severities.critical'), value: 'Critical' },
+  { title: t('quality.severities.major'), value: 'Major' },
+  { title: t('quality.severities.minor'), value: 'Minor' },
+  { title: t('quality.severities.cosmetic'), value: 'Cosmetic' }
+])
+const dispositions = computed(() => [
+  { title: t('quality.dispositions.accept'), value: 'Accept' },
+  { title: t('quality.dispositions.reject'), value: 'Reject' },
+  { title: t('quality.dispositions.rework'), value: 'Rework' },
+  { title: t('quality.dispositions.useAsIs'), value: 'Use As Is' },
+  { title: t('quality.dispositions.returnToSupplier'), value: 'Return to Supplier' }
+])
 
 const formData = ref({
   client_id: null,
@@ -268,13 +293,13 @@ const confirmationFieldConfig = computed(() => {
     { key: 'product_id', label: t('workOrders.product'), type: 'text', displayValue: productName },
     { key: 'inspected_quantity', label: t('quality.inspectedQty'), type: 'number' },
     { key: 'defect_quantity', label: t('quality.defectQty'), type: 'number' },
-    { key: 'rejected_quantity', label: 'Rejected Quantity', type: 'number' },
-    { key: 'defect_type_id', label: 'Primary Defect Type', type: 'text', displayValue: defectTypeName },
-    { key: 'severity', label: 'Severity', type: 'text' },
-    { key: 'disposition', label: 'Disposition', type: 'text' },
-    { key: 'inspector_id', label: 'Inspector ID', type: 'text' },
-    { key: 'defect_description', label: 'Defect Description', type: 'text' },
-    { key: 'corrective_action', label: 'Corrective Action', type: 'text' }
+    { key: 'rejected_quantity', label: t('quality.rejectedQty'), type: 'number' },
+    { key: 'defect_type_id', label: t('quality.primaryDefectType'), type: 'text', displayValue: defectTypeName },
+    { key: 'severity', label: t('quality.severity'), type: 'text' },
+    { key: 'disposition', label: t('quality.disposition'), type: 'text' },
+    { key: 'inspector_id', label: t('quality.inspectorId'), type: 'text' },
+    { key: 'defect_description', label: t('quality.defectDescription'), type: 'text' },
+    { key: 'corrective_action', label: t('quality.correctiveAction'), type: 'text' }
   ]
 })
 
@@ -340,7 +365,11 @@ const onConfirmSave = async () => {
 
     emit('submitted')
   } catch (error) {
-    alert('Error creating quality entry: ' + (error.response?.data?.detail || error.message))
+    snackbar.value = {
+      show: true,
+      text: t('quality.errors.createEntry') + ': ' + (error.response?.data?.detail || error.message),
+      color: 'error'
+    }
   } finally {
     loading.value = false
   }

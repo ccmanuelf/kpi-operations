@@ -6,7 +6,7 @@ All functions are pure (no side effects) and stateless.
 """
 
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 import statistics
 
@@ -514,7 +514,7 @@ def _calculate_block8_assumption_log(config: SimulationConfig, defaults_applied:
     for audit and reproducibility.
     """
     return AssumptionLog(
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(tz=timezone.utc),
         simulation_engine_version=ENGINE_VERSION,
         configuration_mode=config.mode.value,
         schedule={

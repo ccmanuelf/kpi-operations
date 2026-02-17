@@ -10,7 +10,7 @@ Provides:
 """
 
 from typing import List, Optional, Dict, Tuple
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException
@@ -292,6 +292,12 @@ def calculate_elapsed_hours(from_datetime: Optional[datetime], to_datetime: Opti
     if from_datetime is None or to_datetime is None:
         return None
 
+    # Normalize naive datetimes (from SQLite) to UTC for safe comparison
+    if from_datetime.tzinfo is None and to_datetime.tzinfo is not None:
+        from_datetime = from_datetime.replace(tzinfo=timezone.utc)
+    elif from_datetime.tzinfo is not None and to_datetime.tzinfo is None:
+        to_datetime = to_datetime.replace(tzinfo=timezone.utc)
+
     delta = to_datetime - from_datetime
     return int(delta.total_seconds() / 3600)
 
@@ -329,7 +335,7 @@ def execute_transition(
         raise HTTPException(status_code=400, detail=reason)
 
     from_status = work_order.status
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
 
     # Calculate elapsed times
     elapsed_from_received = calculate_elapsed_hours(work_order.received_date, now)

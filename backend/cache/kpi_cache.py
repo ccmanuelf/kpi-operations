@@ -8,7 +8,7 @@ Used for caching dashboard summaries, trend calculations, and client config look
 """
 
 from typing import Optional, Any, Dict, Callable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import threading
 import hashlib
@@ -67,7 +67,7 @@ class KPICache:
         with self._lock:
             if key in self._cache:
                 entry = self._cache[key]
-                if datetime.now() < entry.expiry:
+                if datetime.now(tz=timezone.utc) < entry.expiry:
                     self._stats["hits"] += 1
                     return entry.value
                 else:
@@ -93,7 +93,7 @@ class KPICache:
                 self._cleanup_expired()
 
             ttl = timedelta(seconds=ttl_seconds) if ttl_seconds else self._ttl
-            now = datetime.now()
+            now = datetime.now(tz=timezone.utc)
 
             self._cache[key] = CacheEntry(value=value, expiry=now + ttl, created_at=now)
             self._stats["sets"] += 1
@@ -204,7 +204,7 @@ class KPICache:
         Returns:
             Number of entries removed
         """
-        now = datetime.now()
+        now = datetime.now(tz=timezone.utc)
         expired_keys = [key for key, entry in self._cache.items() if now >= entry.expiry]
 
         for key in expired_keys:

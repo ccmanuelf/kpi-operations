@@ -9,6 +9,7 @@ Provides normalized user-to-client many-to-many relationship.
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 from backend.database import Base
 
 
@@ -127,7 +128,7 @@ def remove_user_from_client(db, user_id: str, client_id: str, removed_by: str) -
         return False
 
     assignment.is_active = False
-    assignment.deactivated_at = datetime.utcnow()
+    assignment.deactivated_at = datetime.now(tz=timezone.utc)
     assignment.deactivated_by = removed_by
 
     return True

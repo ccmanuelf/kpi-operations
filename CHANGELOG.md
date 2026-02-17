@@ -5,6 +5,37 @@ All notable changes to the Manufacturing KPI Platform will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-02-16
+
+### Changed
+- **Documentation Expansion** - Expanded API documentation from 6 to 18 endpoint groups covering all 197+ routes
+- **CONTRIBUTING.md** - Added code style guide (Black, ESLint 10), testing requirements (real DB only, no mocks for CRUD), and PR process
+- **SECURITY.md** - Added JWT auth flow, CORS configuration, rate limiting, CSP headers, and known limitations sections
+- **docs/INDEX.md** - Created navigation guide linking all documentation files by category
+
+---
+
+## [1.0.4+1] - 2026-02-14
+
+### Changed
+- **Full Dependency Upgrade** - 9-phase gate-based upgrade across 371 files
+- **Security Upgrades** - cryptography 44 to 46, python-jose 3.3 to 3.5, python-multipart 0.0.6 to 0.0.22, xlsx replaced with ExcelJS
+- **Backend Upgrades** - FastAPI 0.109 to 0.129, Pydantic 2.5 to 2.12, uvicorn 0.27 to 0.40, SQLAlchemy 2.0.25 to 2.0.46, httpx 0.26 to 0.28, black 23 to 25 (353 files reformatted), mypy 1.8 to 1.15, pytest 7 to 8
+- **Frontend Major Upgrades** - Pinia 2 to 3, vue-router 4 to 5, vue-i18n 9 to 11, mermaid 10 to 11, date-fns 3 to 4, happy-dom 14 to 20 (GHSA-96g7-g7g9-jxw8 resolved)
+- **Tooling Upgrades** - ESLint 8 to 10 (flat config), Tailwind CSS 3 to 4, Vite 5 to 7, Vitest 1 to 4
+
+### Fixed
+- **E2E Flaky Tests** - Fixed 3 flaky tests and 28 skipped capacity-planning tests (214 passed, 0 failed)
+- **E2E Navigation** - Replaced `text=` selectors with `a[href="/path"]`, added `scrollIntoViewIfNeeded()` and URL verification
+- **E2E Serial Mode** - Removed `describe.serial` from capacity-planning (was cascading single failure to 28 skips)
+- **Skeleton Loader Waits** - Added proper waits in clipboard-paste tests for quality/downtime pages
+
+### Testing
+- **Gate results** - 4,188 backend (76.26% coverage) + 1,434 frontend + 595 E2E, 0 failures
+- **npm audit** - 0 HIGH/CRITICAL vulnerabilities
+
+---
+
 ## [1.0.4] - 2026-02-13
 
 ### Added
@@ -215,6 +246,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Milestone |
 |---------|------|-----------|
+| 1.0.5 | 2026-02-16 | Documentation expansion (API, Security, Contributing) |
+| 1.0.4+1 | 2026-02-14 | Full dependency upgrade + E2E stability fixes |
 | 1.0.4 | 2026-02-13 | Capacity Planning (13 worksheets, 8 scenarios) |
 | 1.0.3 | 2026-02-01 | Predictive Analytics UI |
 | 1.0.2 | 2026-01-30 | OEE KPI View, WIP Aging fixes |

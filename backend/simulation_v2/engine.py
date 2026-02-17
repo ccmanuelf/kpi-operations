@@ -14,7 +14,7 @@ import math
 from typing import Dict, List, Tuple, Generator, Any
 from dataclasses import dataclass, field
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .models import (
     SimulationConfig,
@@ -392,12 +392,12 @@ def run_simulation(config: SimulationConfig, seed: int | None = None) -> Tuple[S
     Returns:
         Tuple of (SimulationMetrics, duration_seconds)
     """
-    start_time = datetime.now()
+    start_time = datetime.now(tz=timezone.utc)
 
     simulator = ProductionLineSimulator(config, seed=seed)
     metrics = simulator.run()
 
-    end_time = datetime.now()
+    end_time = datetime.now(tz=timezone.utc)
     duration_seconds = (end_time - start_time).total_seconds()
 
     return metrics, duration_seconds

@@ -13,7 +13,7 @@ Usage:
 import logging
 import functools
 from typing import Optional, Any, Dict, Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def get_module_logger(name: str) -> logging.Logger:
@@ -222,12 +222,12 @@ def with_logging(operation: str, resource: str, id_param: Optional[str] = None) 
             if id_param and id_param in kwargs:
                 resource_id = kwargs[id_param]
 
-            start_time = datetime.now()
+            start_time = datetime.now(tz=timezone.utc)
 
             try:
                 result = func(*args, **kwargs)
 
-                duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+                duration_ms = (datetime.now(tz=timezone.utc) - start_time).total_seconds() * 1000
                 log_operation(
                     logger,
                     operation,

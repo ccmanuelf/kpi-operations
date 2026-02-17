@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from backend.database import get_db
@@ -495,7 +495,7 @@ def approve_qc(
         notes = approval_data.get("notes")
 
     # Apply QC approval
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
     work_order.qc_approved = True
     work_order.qc_approved_by = current_user.user_id
     work_order.qc_approved_date = now

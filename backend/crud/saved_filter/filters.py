@@ -5,7 +5,7 @@ SECURITY: All operations enforce user ownership - no filter sharing
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException
@@ -292,7 +292,7 @@ def apply_filter(db: Session, filter_id: int, user_id: str) -> SavedFilter:
 
     # Update usage statistics
     db_filter.usage_count = (db_filter.usage_count or 0) + 1
-    db_filter.last_used_at = datetime.utcnow()
+    db_filter.last_used_at = datetime.now(tz=timezone.utc)
 
     db.commit()
     db.refresh(db_filter)

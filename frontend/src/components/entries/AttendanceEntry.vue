@@ -53,6 +53,8 @@
             <v-select
               v-model="formData.status"
               :items="statuses"
+              item-title="title"
+              item-value="value"
               :label="`${$t('common.status')} *`"
               :rules="[rules.required]"
               variant="outlined"
@@ -66,6 +68,8 @@
             <v-select
               v-model="formData.absence_reason"
               :items="absenceReasons"
+              item-title="title"
+              item-value="value"
               :label="`${$t('downtime.reason')} *`"
               :rules="[rules.required]"
               variant="outlined"
@@ -150,6 +154,15 @@
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
+
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -170,17 +183,24 @@ const loading = ref(false)
 const initialLoading = ref(true)
 const shifts = ref([])
 const showConfirmDialog = ref(false)
+const snackbar = ref({ show: false, text: '', color: 'info' })
 
-const statuses = ['Present', 'Absent', 'Late', 'Half Day', 'Leave']
-const absenceReasons = [
-  'Sick Leave',
-  'Personal Leave',
-  'Family Emergency',
-  'Medical Appointment',
-  'No Show',
-  'Unauthorized',
-  'Other'
-]
+const statuses = computed(() => [
+  { title: t('attendance.statuses.present'), value: 'Present' },
+  { title: t('attendance.statuses.absent'), value: 'Absent' },
+  { title: t('attendance.statuses.late'), value: 'Late' },
+  { title: t('attendance.statuses.halfDay'), value: 'Half Day' },
+  { title: t('attendance.statuses.leave'), value: 'Leave' }
+])
+const absenceReasons = computed(() => [
+  { title: t('attendance.reasons.sickLeave'), value: 'Sick Leave' },
+  { title: t('attendance.reasons.personalLeave'), value: 'Personal Leave' },
+  { title: t('attendance.reasons.familyEmergency'), value: 'Family Emergency' },
+  { title: t('attendance.reasons.medicalAppointment'), value: 'Medical Appointment' },
+  { title: t('attendance.reasons.noShow'), value: 'No Show' },
+  { title: t('attendance.reasons.unauthorized'), value: 'Unauthorized' },
+  { title: t('attendance.reasons.other'), value: 'Other' }
+])
 
 const formData = ref({
   employee_id: '',
@@ -252,7 +272,11 @@ const onConfirmSave = async () => {
 
     emit('submitted')
   } catch (error) {
-    alert('Error creating attendance entry: ' + (error.response?.data?.detail || error.message))
+    snackbar.value = {
+      show: true,
+      text: t('attendance.errors.createEntry') + ': ' + (error.response?.data?.detail || error.message),
+      color: 'error'
+    }
   } finally {
     loading.value = false
   }

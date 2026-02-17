@@ -11,7 +11,7 @@ Enhanced with:
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import logging
 import time
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/health", tags=["Health"])
 _DB_PING_QUERY = text("SELECT 1")
 
 # Application start time for uptime calculation
-APP_START_TIME = datetime.utcnow()
+APP_START_TIME = datetime.now(tz=timezone.utc)
 
 
 @router.get("/", response_model=Dict[str, Any])
@@ -48,7 +48,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "KPI Operations API",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "version": "1.0.0",
     }
 
@@ -64,11 +64,11 @@ async def database_health(db: Session = Depends(get_db)):
         result = db.execute(_DB_PING_QUERY)
         result.fetchone()
 
-        return {"status": "healthy", "database": "connected", "timestamp": datetime.utcnow().isoformat()}
+        return {"status": "healthy", "database": "connected", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
     except Exception as e:
-        logger.error(f"Database health check failed: {str(e)}")
+        logger.exception("Health check failed: %s", e)
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"Database connection failed: {str(e)}"
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Health check failed"
         )
 
 
@@ -88,11 +88,11 @@ async def connection_pool_status():
     try:
         pool_stats = get_pool_status()
 
-        return {"status": "healthy", "timestamp": datetime.utcnow().isoformat(), "pool": pool_stats}
+        return {"status": "healthy", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "pool": pool_stats}
     except Exception as e:
-        logger.error(f"Pool status check failed: {str(e)}")
+        logger.exception("Failed to retrieve pool status: %s", e)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to retrieve pool status: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve pool status"
         )
 
 
@@ -117,7 +117,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
     checks = {}
 
     # Calculate uptime
-    uptime_seconds = (datetime.utcnow() - APP_START_TIME).total_seconds()
+    uptime_seconds = (datetime.now(tz=timezone.utc) - APP_START_TIME).total_seconds()
     uptime_formatted = _format_uptime(uptime_seconds)
 
     # Database connectivity test with latency measurement
@@ -237,7 +237,7 @@ async def detailed_health_check(db: Session = Depends(get_db)):
 
     return {
         "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "service": {
             "name": "KPI Operations API",
             "version": "1.0.0",
@@ -261,7 +261,7 @@ async def readiness_check(db: Session = Depends(get_db)):
         # Test database connection
         db.execute(_DB_PING_QUERY)
 
-        return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
+        return {"status": "ready", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready")
@@ -277,8 +277,8 @@ async def liveness_check():
     """
     return {
         "status": "alive",
-        "timestamp": datetime.utcnow().isoformat(),
-        "uptime_seconds": int((datetime.utcnow() - APP_START_TIME).total_seconds()),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "uptime_seconds": int((datetime.now(tz=timezone.utc) - APP_START_TIME).total_seconds()),
     }
 
 

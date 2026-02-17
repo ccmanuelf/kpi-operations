@@ -5,7 +5,7 @@ SECURITY: Multi-tenant client filtering enabled
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from backend.schemas.floating_pool import FloatingPool
@@ -64,7 +64,7 @@ def get_available_floating_pool_employees(
         List of available employees with their details
     """
     if as_of_date is None:
-        as_of_date = datetime.utcnow()
+        as_of_date = datetime.now(tz=timezone.utc)
 
     # Get unassigned floating pool entries
     available_entries = db.query(FloatingPool).filter(FloatingPool.current_assignment.is_(None)).all()

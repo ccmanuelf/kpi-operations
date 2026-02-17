@@ -16,7 +16,7 @@ Usage:
     query = get_active_query(db, Model)
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TypeVar, Optional, Type, Any, Callable
 from sqlalchemy.orm import Session, Query
 from sqlalchemy import Column, Boolean, DateTime, Integer
@@ -119,7 +119,7 @@ def soft_delete_with_timestamp(
 
         # Set timestamp if field exists
         if hasattr(entity, deleted_at_field):
-            setattr(entity, deleted_at_field, datetime.utcnow())
+            setattr(entity, deleted_at_field, datetime.now(tz=timezone.utc))
 
         # Set deleted_by if field exists and value provided
         if deleted_by_value is not None and hasattr(entity, deleted_by_field):

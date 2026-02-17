@@ -8,10 +8,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import case
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
+from backend.constants import DEFAULT_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 
 logger = get_module_logger(__name__)
 from backend.models.attendance import (
@@ -39,7 +40,7 @@ router = APIRouter(prefix="/api/attendance", tags=["Attendance Tracking"])
 @router.post("", response_model=AttendanceRecordResponse, status_code=status.HTTP_201_CREATED)
 def create_attendance(
     attendance: AttendanceRecordCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> AttendanceRecordResponse:
     """
     Create new attendance record
     SECURITY: Enforces client filtering through user authentication
@@ -70,7 +71,7 @@ def create_attendance(
 @router.get("", response_model=List[AttendanceRecordResponse])
 def list_attendance(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = DEFAULT_PAGE_SIZE,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     employee_id: Optional[int] = None,
@@ -79,7 +80,7 @@ def list_attendance(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[AttendanceRecordResponse]:
     """
     List attendance records with filters
     SECURITY: Returns only attendance for user's authorized clients
@@ -104,10 +105,10 @@ def get_attendance_by_employee(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[AttendanceRecordResponse]:
     """
     Get all attendance records for a specific employee
     SECURITY: Returns only attendance for user's authorized clients
@@ -128,10 +129,10 @@ def get_attendance_by_date_range(
     start_date: date,
     end_date: date,
     skip: int = 0,
-    limit: int = 100,
+    limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[AttendanceRecordResponse]:
     """
     Get attendance records within a date range
     SECURITY: Returns only attendance for user's authorized clients
@@ -149,7 +150,7 @@ def get_attendance_statistics(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> dict:
     """
     Get attendance statistics and summary for a date range
     SECURITY: Returns only data for user's authorized clients
@@ -197,12 +198,12 @@ def get_attendance_statistics(
             {"status": row.status, "count": row.count, "total_hours": float(row.total_hours) if row.total_hours else 0}
             for row in results
         ],
-        "calculation_timestamp": datetime.utcnow(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc),
     }
 
 
 @router.get("/{attendance_id}", response_model=AttendanceRecordResponse)
-def get_attendance(attendance_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_attendance(attendance_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> AttendanceRecordResponse:
     """
     Get attendance record by ID
     SECURITY: Verifies user has access to this attendance record
@@ -222,7 +223,7 @@ def update_attendance(
     attendance_update: AttendanceRecordUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> AttendanceRecordResponse:
     """
     Update attendance record
     SECURITY: Verifies user has access to this attendance record
@@ -243,7 +244,7 @@ def update_attendance(
 @router.delete("/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_attendance(
     attendance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """
     Delete attendance record (supervisor only)
     SECURITY: Supervisor/admin only, verifies client access
@@ -273,7 +274,7 @@ def calculate_absenteeism_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> dict:
     """
     Calculate absenteeism KPI for a shift and date range with client filtering
     Formula: (Total Hours Absent / Total Scheduled Hours) * 100
@@ -293,7 +294,7 @@ def calculate_absenteeism_kpi(
     if end_date is None:
         end_date = date.today()
     if start_date is None:
-        start_date = end_date - timedelta(days=30)
+        start_date = end_date - timedelta(days=LOOKBACK_MONTHLY_DAYS)
 
     # Determine effective client filter
     effective_client_id = client_id
@@ -446,7 +447,7 @@ def calculate_absenteeism_kpi(
         "absenteeism_rate": round(rate, 2),
         "total_employees": emp_count,
         "total_absences": absence_count,
-        "calculation_timestamp": datetime.utcnow().isoformat(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "by_reason": by_reason,
         "by_department": by_department,
         "high_absence_employees": high_absence_employees,
@@ -460,7 +461,7 @@ def get_absenteeism_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[dict]:
     """
     Get daily absenteeism trend data for charting
 
@@ -474,7 +475,7 @@ def get_absenteeism_trend(
     if end_date is None:
         end_date = date.today()
     if start_date is None:
-        start_date = end_date - timedelta(days=30)
+        start_date = end_date - timedelta(days=LOOKBACK_MONTHLY_DAYS)
 
     # Determine effective client filter
     effective_client_id = client_id
@@ -517,7 +518,7 @@ def get_bradford_factor(
     end_date: date,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> dict:
     """
     Calculate Bradford Factor for employee
     Formula: B = S² × D (where S = number of absences, D = total days absent)
@@ -544,5 +545,5 @@ def get_bradford_factor(
         "interpretation": interpretation,
         "start_date": start_date,
         "end_date": end_date,
-        "calculation_timestamp": datetime.utcnow(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc),
     }

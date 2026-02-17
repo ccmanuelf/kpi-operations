@@ -46,6 +46,15 @@
       @paste-end="handlePasteEnd"
       />
     </div>
+
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </div>
 </template>
 
@@ -146,6 +155,7 @@ const parsedPasteData = ref(null)
 const convertedPasteRows = ref([])
 const pasteValidationResult = ref(null)
 const pasteColumnMapping = ref(null)
+const snackbar = ref({ show: false, text: '', color: 'info' })
 
 // Calculate toolbar height (approximately 56px when visible including margin)
 const toolbarHeight = computed(() => props.enableExcelPaste ? 56 : 0)
@@ -324,7 +334,11 @@ const handlePasteFromExcel = async () => {
     const clipboardText = await readClipboard()
 
     if (!clipboardText || clipboardText.trim() === '') {
-      alert(t('paste.emptyClipboard'))
+      snackbar.value = {
+        show: true,
+        text: t('paste.emptyClipboard'),
+        color: 'warning'
+      }
       return
     }
 
@@ -332,7 +346,11 @@ const handlePasteFromExcel = async () => {
     const parsed = parseClipboardData(clipboardText)
 
     if (parsed.error || parsed.rows.length === 0) {
-      alert(t('paste.parseError'))
+      snackbar.value = {
+        show: true,
+        text: t('paste.parseError'),
+        color: 'error'
+      }
       return
     }
 
@@ -382,7 +400,11 @@ const handlePasteFromExcel = async () => {
 
   } catch (error) {
     console.error('Paste error:', error)
-    alert(t('paste.accessDenied'))
+    snackbar.value = {
+      show: true,
+      text: t('paste.accessDenied'),
+      color: 'error'
+    }
   } finally {
     pasteLoading.value = false
   }

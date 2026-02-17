@@ -344,30 +344,57 @@ Message 4: Write "file.js"
 
 Remember: **Claude Flow coordinates, Claude Code creates!**
 
-# Codebase Audit Status (Run 2)
-**Current Phase:** Phase 4 — Docker & Deployment Audit — NOT STARTED
-**Audit Prompt:** See _audit/ directory for all reports
-**Previous run:** Archived in `_audit/_history/run-1/`
+# Codebase Audit Status (Run 3)
+**Status:** COMPLETE — All phases (0-7) finished
+**Consolidation:** `_audit/PHASE-7-CONSOLIDATION.md` — 148 unique findings (5 CRIT, 29 HIGH, 62 MEDIUM, 48 LOW, 1 INFO, 3 DEFERRED)
+**Previous runs:** Archived in `_audit/_history/run-1/` (62 findings) and `_audit/_history/run-2/` (90 findings, 100% resolved)
 
 ### Completed Phases
 - Phase 0: Baseline — COMPLETE — see `_audit/PHASE-0-BASELINE.md`
-- Phase 1: Dead Code — COMPLETE — see `_audit/PHASE-1-DEAD-CODE.md`
-- Phase 2: Structure — COMPLETE — see `_audit/PHASE-2-STRUCTURE.md`
-- Phase 2.5: Config & Security — COMPLETE — see `_audit/PHASE-2.5-CONFIG-SECURITY.md`
-- Phase 3: Build & CI/CD — COMPLETE — see `_audit/PHASE-3-BUILD-CICD.md`
+- Phase 1: Dead Code — COMPLETE — see `_audit/PHASE-1-DEAD-CODE.md` (69 findings: 3 HIGH, 10 MEDIUM, 12 LOW)
+- Phase 2: Structure — COMPLETE — see `_audit/PHASE-2-STRUCTURE.md` (39 findings: 2 CRIT, 8 HIGH, 17 MEDIUM, 12 LOW)
+- Phase 2.5: Config & Security — COMPLETE — see `_audit/PHASE-2.5-CONFIG-SECURITY.md` (16 findings: 1 HIGH, 5 MEDIUM, 7 LOW, 3 DEFERRED; Grade B+)
+- Phase 3: Build & CI/CD — COMPLETE — see `_audit/PHASE-3-BUILD-CICD.md` (21 findings: 5 HIGH, 8 MEDIUM, 8 LOW)
+- Phase 4: Docker & Deployment — COMPLETE — see `_audit/PHASE-4-DOCKER-DEPLOY.md` (21 findings: 3 HIGH, 10 MEDIUM, 8 LOW)
+- Phase 5: Code Quality & Patterns — COMPLETE — see `_audit/PHASE-5-CODE-QUALITY.md` (25 findings: 3 CRIT, 7 HIGH, 11 MEDIUM, 4 LOW)
+- Phase 6: Documentation & Completeness — COMPLETE — see `_audit/PHASE-6-DOCUMENTATION.md` (22 findings: 7 HIGH, 10 MEDIUM, 5 LOW)
+- Phase 7: Consolidation — COMPLETE — see `_audit/PHASE-7-CONSOLIDATION.md` (148 unique findings after 9 dedup merges)
 
-### Key Cross-Phase Findings
-- Backend venv is stale (old package versions vs requirements.txt)
-- Simulation V1 + V2 both active (cannot remove V1 — floating_pool.py dependency)
-- 3 phantom backend services (employee, hold, work_order) — 602 lines dead
-- 3 unused Python packages (pandas, matplotlib, alembic)
-- Default SECRET_KEY hardcoded in config
-- coverage.xml is only tracked artifact that needs git rm --cached
-- 2 misplaced frontend test files (capacityPlanning specs beside source)
-- Duplicate backend venvs (.venv/ active, venv/ stale)
-- 33 security findings (7 CRITICAL, 11 HIGH) — mostly config defaults + missing hardening
-- V1 Simulation cannot be archived until floating_pool.py dependency decoupled
-- Python version mismatch: local 3.12.2 vs CI/Docker 3.11
+### Key Findings Summary (Run 3)
+- Backend .venv stale (pre-upgrade package versions, HIGH)
+- Docker NOT installed on dev machine
+- Python 3.12.2 local vs 3.11 CI/Docker
+- 1 intermittent E2E failure (webkit sim-v2 reset dialog)
+- Test baseline: 4277 BE + 1516 FE + 595 E2E = 6388 passing
+- 15 dead alerts API functions (component bypasses abstraction layer)
+- 4 dead DB backups (~6 MB), 6 dead generator scripts, 4 dead migration scripts
+- coverage.xml still tracked despite .gitignore (Run 2 fix may have been lost)
+- All 7 Run 2 CRITICAL security findings verified FIXED (security grade C → B+)
+- Error info disclosure in simulation.py (6 endpoints leak str(e) in 500 responses, HIGH)
+- Frontend Dockerfile LABEL before FROM (invalid syntax, works with BuildKit only, HIGH)
+- No HTTPS/TLS termination configured in nginx (HIGH)
+- No global exception handlers in main.py (HIGH)
+- In-memory cache + rate limiting break in multi-worker deployments
+- Audit logs to stdout only (lost on container restart)
+- 222 bare `except Exception` blocks across backend (CRITICAL pattern)
+- Alert routes + analytics endpoints completely missing authentication (CRITICAL)
+- Inconsistent datetime.now() vs datetime.utcnow() across 85+ files
+- Silent error failures in kpi.js API service (8 functions swallow errors)
+- alert() usage in 5 entry components (should use Snackbar)
+- CSP uses unsafe-inline/unsafe-eval in nginx.conf (MEDIUM)
+- Frontend package-lock.json NOT tracked in git — non-deterministic builds (HIGH)
+- CI security gates bypassed: mypy, bandit, npm audit all use `|| true` (HIGH)
+- No Docker build testing or deployment workflow in CI
+- Redundant test directories: root tests/, database/tests/ not integrated
+- Pydantic models missing Field(description=...) on ~85% of fields — OpenAPI schema undocumented (HIGH)
+- API_DOCUMENTATION.md covers only ~15 of 393 endpoints (HIGH)
+- 19+ hardcoded English strings bypass i18n system across 8 components (HIGH)
+- No frontend-specific README (HIGH)
+- QUICKSTART.md MariaDB paths reference non-existent files (HIGH)
+- ARCHITECTURE.md missing Capacity Planning, Event Bus, Simulation sections (HIGH)
+- docs/ directory: 151 files with no index or navigation (MEDIUM)
+- CONTRIBUTING.md extremely minimal (MEDIUM)
+- SECURITY.md missing threat model, incident response (MEDIUM)
 
 ### Audit Conventions
 - All audit reports are in `_audit/` directory

@@ -4,7 +4,11 @@ Provides endpoints for PDF and Excel report generation with multi-client support
 Also includes email report configuration endpoints
 """
 
-from datetime import date, datetime, timedelta
+import logging
+
+from datetime import date, datetime, timedelta, timezone
+
+logger = logging.getLogger(__name__)
 from typing import Optional, List
 from io import BytesIO
 from pydantic import BaseModel, EmailStr
@@ -76,7 +80,7 @@ router = APIRouter(prefix="/api/reports", tags=["reports"])
 def parse_date(date_str: Optional[str], default_days_ago: int = 30) -> date:
     """Parse date string or return default date"""
     if not date_str:
-        return (datetime.now() - timedelta(days=default_days_ago)).date()
+        return (datetime.now(tz=timezone.utc) - timedelta(days=default_days_ago)).date()
     try:
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
@@ -123,7 +127,7 @@ async def generate_production_pdf_report(
         )
 
         # Generate filename with timestamp
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"production_report_{start}_{end}{client_suffix}_{timestamp}.pdf"
 
@@ -134,14 +138,15 @@ async def generate_production_pdf_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "production",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat(),
+                "X-Generated-At": datetime.now(tz=timezone.utc).isoformat(),
             },
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating PDF report: {str(e)}")
+        logger.exception("Failed to generate production PDF report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 @router.get("/production/excel")
@@ -177,7 +182,7 @@ async def generate_production_excel_report(
         excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
         # Generate filename
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"production_report_{start}_{end}{client_suffix}_{timestamp}.xlsx"
 
@@ -188,14 +193,15 @@ async def generate_production_excel_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "production",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat(),
+                "X-Generated-At": datetime.now(tz=timezone.utc).isoformat(),
             },
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating Excel report: {str(e)}")
+        logger.exception("Failed to generate production Excel report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 # Quality Reports
@@ -237,7 +243,7 @@ async def generate_quality_pdf_report(
             client_id=client_id, start_date=start, end_date=end, kpis_to_include=quality_kpis
         )
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"quality_report_{start}_{end}{client_suffix}_{timestamp}.pdf"
 
@@ -254,7 +260,8 @@ async def generate_quality_pdf_report(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating quality PDF: {str(e)}")
+        logger.exception("Failed to generate quality PDF report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 @router.get("/quality/excel")
@@ -280,7 +287,7 @@ async def generate_quality_excel_report(
         excel_generator = ExcelReportGenerator(db)
         excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"quality_report_{start}_{end}{client_suffix}_{timestamp}.xlsx"
 
@@ -297,7 +304,8 @@ async def generate_quality_excel_report(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating quality Excel: {str(e)}")
+        logger.exception("Failed to generate quality Excel report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 # Attendance Reports
@@ -337,7 +345,7 @@ async def generate_attendance_pdf_report(
             client_id=client_id, start_date=start, end_date=end, kpis_to_include=attendance_kpis
         )
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"attendance_report_{start}_{end}{client_suffix}_{timestamp}.pdf"
 
@@ -354,7 +362,8 @@ async def generate_attendance_pdf_report(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating attendance PDF: {str(e)}")
+        logger.exception("Failed to generate attendance PDF report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 @router.get("/attendance/excel")
@@ -380,7 +389,7 @@ async def generate_attendance_excel_report(
         excel_generator = ExcelReportGenerator(db)
         excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"attendance_report_{start}_{end}{client_suffix}_{timestamp}.xlsx"
 
@@ -397,7 +406,8 @@ async def generate_attendance_excel_report(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating attendance Excel: {str(e)}")
+        logger.exception("Failed to generate attendance Excel report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 # Comprehensive Reports (All KPIs)
@@ -437,7 +447,7 @@ async def generate_comprehensive_pdf_report(
             client_id=client_id, start_date=start, end_date=end, kpis_to_include=None  # None = all KPIs
         )
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"comprehensive_report_{start}_{end}{client_suffix}_{timestamp}.pdf"
 
@@ -448,14 +458,15 @@ async def generate_comprehensive_pdf_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "comprehensive",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat(),
+                "X-Generated-At": datetime.now(tz=timezone.utc).isoformat(),
             },
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating comprehensive PDF: {str(e)}")
+        logger.exception("Failed to generate comprehensive PDF report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 @router.get("/comprehensive/excel")
@@ -491,7 +502,7 @@ async def generate_comprehensive_excel_report(
         excel_generator = ExcelReportGenerator(db)
         excel_buffer = excel_generator.generate_report(client_id=client_id, start_date=start, end_date=end)
 
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
         client_suffix = f"_client_{client_id}" if client_id else "_all_clients"
         filename = f"comprehensive_report_{start}_{end}{client_suffix}_{timestamp}.xlsx"
 
@@ -502,14 +513,15 @@ async def generate_comprehensive_excel_report(
                 "Content-Disposition": f'attachment; filename="{filename}"',
                 "X-Report-Type": "comprehensive",
                 "X-Generated-By": current_user.username,
-                "X-Generated-At": datetime.now().isoformat(),
+                "X-Generated-At": datetime.now(tz=timezone.utc).isoformat(),
             },
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating comprehensive Excel: {str(e)}")
+        logger.exception("Failed to generate comprehensive Excel report: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to generate report")
 
 
 # Report Metadata/Info Endpoint
@@ -634,8 +646,8 @@ async def save_email_report_config(config: EmailReportConfig, current_user: User
     config_key = config.client_id or f"user_{current_user.user_id}"
 
     config_dict = config.model_dump()
-    config_dict["updated_at"] = datetime.utcnow()
-    config_dict["created_at"] = _email_configs.get(config_key, {}).get("created_at", datetime.utcnow())
+    config_dict["updated_at"] = datetime.now(tz=timezone.utc)
+    config_dict["created_at"] = _email_configs.get(config_key, {}).get("created_at", datetime.now(tz=timezone.utc))
 
     _email_configs[config_key] = config_dict
 
@@ -663,8 +675,8 @@ async def update_email_report_config(config: EmailReportConfig, current_user: Us
         )
 
     config_dict = config.model_dump()
-    config_dict["updated_at"] = datetime.utcnow()
-    config_dict["created_at"] = _email_configs[config_key].get("created_at", datetime.utcnow())
+    config_dict["updated_at"] = datetime.now(tz=timezone.utc)
+    config_dict["created_at"] = _email_configs[config_key].get("created_at", datetime.now(tz=timezone.utc))
 
     _email_configs[config_key] = config_dict
 
@@ -700,8 +712,9 @@ async def send_test_email(request: TestEmailRequest, current_user: User = Depend
             "note": "Email service is not fully configured. In production, configure SMTP or SendGrid.",
         }
     except Exception as e:
+        logger.exception("Failed to send test email: %s", e)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to send test email: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to send test email"
         )
 
 
@@ -748,7 +761,7 @@ async def send_manual_report(
             result = email_service.send_kpi_report(
                 to_emails=request.recipient_emails,
                 client_name=client_name,
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
                 pdf_content=pdf_buffer.getvalue(),
                 additional_message="This is a manually requested KPI report.",
             )
@@ -777,6 +790,7 @@ async def send_manual_report(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception("Failed to generate/send manual report: %s", e)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to generate/send report: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate report"
         )

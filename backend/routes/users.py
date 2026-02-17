@@ -6,7 +6,7 @@ All user CRUD endpoints (admin only)
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from backend.database import get_db
@@ -60,8 +60,8 @@ def create_user(user_data: UserCreate, db: Session = Depends(get_db), current_us
         role=user_data.role,
         client_id_assigned=user_data.client_id_assigned,
         is_active=True,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=datetime.now(tz=timezone.utc),
+        updated_at=datetime.now(tz=timezone.utc),
     )
     db.add(new_user)
     db.commit()
@@ -88,7 +88,7 @@ def update_user(
         elif hasattr(user, field):
             setattr(user, field, value)
 
-    user.updated_at = datetime.utcnow()
+    user.updated_at = datetime.now(tz=timezone.utc)
     db.commit()
     db.refresh(user)
     return user

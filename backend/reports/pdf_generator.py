@@ -6,7 +6,7 @@ IBM Carbon Design System color palette applied for consistent branding.
 Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from pathlib import Path
@@ -192,7 +192,7 @@ class PDFReportGenerator:
         meta_data = [
             ["Client:", client_name],
             ["Report Period:", f"{start_date.strftime('%B %d, %Y')} - {end_date.strftime('%B %d, %Y')}"],
-            ["Generated On:", datetime.now().strftime("%B %d, %Y at %I:%M %p")],
+            ["Generated On:", datetime.now(tz=timezone.utc).strftime("%B %d, %Y at %I:%M %p")],
         ]
 
         meta_table = Table(meta_data, colWidths=[1.5 * inch, 4.5 * inch])

@@ -261,8 +261,8 @@ async def run_simulation_endpoint(
         )
 
     except Exception as e:
-        logger.exception(f"Simulation failed with error: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Simulation failed: {str(e)}")
+        logger.exception("Simulation failed: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Simulation failed")
 
 
 @router.get("/schema")

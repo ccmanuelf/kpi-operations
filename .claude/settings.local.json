@@ -173,7 +173,21 @@
       "WebFetch(domain:www.npmjs.com)",
       "Bash(npm ls:*)",
       "Bash(python:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git merge:*)",
+      "Bash(docker-compose:*)",
+      "Bash(/Users/mcampos.cerda/Documents/Programming/kpi-operations/backend/venv/bin/pip freeze)",
+      "Bash(/Users/mcampos.cerda/Documents/Programming/kpi-operations/.venv/bin/pip freeze:*)",
+      "Bash(PYTHONPATH=.. python3:*)",
+      "Bash(chflags:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/pip list:*)",
+      "Bash(PYTHONPATH=. .venv/bin/python -m pytest:*)",
+      "Bash(PYTHONPATH=. backend/.venv/bin/python -m pytest:*)",
+      "Bash(PYTHONPATH=. backend/.venv/bin/pip install:*)",
+      "Bash(backend/.venv/bin/pip install:*)",
+      "Bash(PYTHONPATH=. backend/.venv/bin/python:*)",
+      "Bash(backend/.venv/bin/pip list:*)"
     ],
     "deny": []
   }

@@ -223,7 +223,8 @@ async def start_migration(request: MigrationRequest, background_tasks: Backgroun
         raise
     except Exception as e:
         state_manager.release_migration_lock()
-        raise HTTPException(status_code=400, detail=f"Connection validation error: {str(e)}")
+        logger.exception("Connection validation failed: %s", e)
+        raise HTTPException(status_code=400, detail="Connection validation failed")
 
     # Start migration in background
     background_tasks.add_task(

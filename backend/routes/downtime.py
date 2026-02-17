@@ -6,7 +6,7 @@ All downtime CRUD and availability KPI endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
@@ -151,5 +151,5 @@ def calculate_availability_kpi(
         available_hours=scheduled - downtime,
         availability_percentage=availability,
         downtime_events=events,
-        calculation_timestamp=datetime.utcnow(),
+        calculation_timestamp=datetime.now(tz=timezone.utc),
     )

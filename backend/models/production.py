@@ -12,11 +12,11 @@ class ProductionEntryCreate(BaseModel):
     """Create production entry - aligned with PRODUCTION_ENTRY schema"""
 
     # Multi-tenant isolation - REQUIRED
-    client_id: str = Field(..., min_length=1, max_length=50)
+    client_id: str = Field(..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation")
 
     # References - REQUIRED
-    product_id: int = Field(..., gt=0)
-    shift_id: int = Field(..., gt=0)
+    product_id: int = Field(..., gt=0, description="Product being manufactured in this entry")
+    shift_id: int = Field(..., gt=0, description="Shift during which production occurred")
     work_order_id: Optional[str] = Field(None, max_length=50, description="Work order reference")
     job_id: Optional[str] = Field(None, max_length=50, description="Job ID for job-level tracking")
 
@@ -25,26 +25,26 @@ class ProductionEntryCreate(BaseModel):
     shift_date: date = Field(..., description="Shift date - REQUIRED for KPI calculations")
 
     # Production metrics - REQUIRED for KPI calculations
-    units_produced: int = Field(..., gt=0)
-    run_time_hours: Decimal = Field(..., gt=0, le=24)
-    employees_assigned: int = Field(..., gt=0, le=100)
+    units_produced: int = Field(..., gt=0, description="Total good units produced during this entry")
+    run_time_hours: Decimal = Field(..., gt=0, le=24, description="Actual machine run time in hours")
+    employees_assigned: int = Field(..., gt=0, le=100, description="Number of employees scheduled for the shift")
     employees_present: Optional[int] = Field(None, ge=0, le=100, description="Employees actually present")
 
     # Quality metrics
-    defect_count: int = Field(default=0, ge=0)
-    scrap_count: int = Field(default=0, ge=0)
-    rework_count: int = Field(default=0, ge=0)
+    defect_count: int = Field(default=0, ge=0, description="Number of defective units identified during production")
+    scrap_count: int = Field(default=0, ge=0, description="Number of units scrapped and not recoverable")
+    rework_count: int = Field(default=0, ge=0, description="Number of units requiring rework to meet specifications")
 
     # Time breakdown
-    setup_time_hours: Optional[Decimal] = Field(None, ge=0, le=24)
-    downtime_hours: Optional[Decimal] = Field(None, ge=0, le=24)
-    maintenance_hours: Optional[Decimal] = Field(None, ge=0, le=24)
+    setup_time_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Time spent on machine setup and changeover in hours")
+    downtime_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Unplanned downtime during the shift in hours")
+    maintenance_hours: Optional[Decimal] = Field(None, ge=0, le=24, description="Planned maintenance time during the shift in hours")
 
     # Performance calculation inputs
     ideal_cycle_time: Optional[Decimal] = Field(None, gt=0, description="Hours per unit")
 
     # Metadata
-    notes: Optional[str] = None
+    notes: Optional[str] = Field(None, description="Operator notes or comments about this production entry")
     entry_method: str = Field(default="MANUAL_ENTRY", description="MANUAL_ENTRY, CSV_UPLOAD, or API")
 
     @classmethod
@@ -83,51 +83,51 @@ class ProductionEntryCreate(BaseModel):
 class ProductionEntryUpdate(BaseModel):
     """Update production entry"""
 
-    units_produced: Optional[int] = Field(None, gt=0)
-    run_time_hours: Optional[Decimal] = Field(None, gt=0, le=24)
-    employees_assigned: Optional[int] = Field(None, gt=0, le=100)
-    employees_present: Optional[int] = Field(None, ge=0, le=100)
-    defect_count: Optional[int] = Field(None, ge=0)
-    scrap_count: Optional[int] = Field(None, ge=0)
-    notes: Optional[str] = None
-    confirmed_by: Optional[Union[str, int]] = None  # Can be user_id string or int
-    entry_method: Optional[str] = None
+    units_produced: Optional[int] = Field(None, gt=0, description="Updated count of good units produced")
+    run_time_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated machine run time in hours")
+    employees_assigned: Optional[int] = Field(None, gt=0, le=100, description="Updated number of employees scheduled")
+    employees_present: Optional[int] = Field(None, ge=0, le=100, description="Updated count of employees actually present")
+    defect_count: Optional[int] = Field(None, ge=0, description="Updated number of defective units")
+    scrap_count: Optional[int] = Field(None, ge=0, description="Updated number of scrapped units")
+    notes: Optional[str] = Field(None, description="Updated operator notes or comments")
+    confirmed_by: Optional[Union[str, int]] = Field(None, description="User ID of the supervisor who confirmed this entry")
+    entry_method: Optional[str] = Field(None, description="How this entry was created: MANUAL_ENTRY, CSV_UPLOAD, or API")
 
 
 class ProductionEntryResponse(BaseModel):
     """Production entry response - matches PRODUCTION_ENTRY schema"""
 
-    production_entry_id: str
-    client_id: str
-    product_id: int
-    shift_id: int
-    work_order_id: Optional[str] = None
-    job_id: Optional[str] = None
-    production_date: datetime
-    shift_date: datetime
-    units_produced: int
-    run_time_hours: Decimal
-    employees_assigned: int
-    employees_present: Optional[int] = None
-    defect_count: int
-    scrap_count: int
-    rework_count: Optional[int] = None
-    setup_time_hours: Optional[Decimal] = None
-    downtime_hours: Optional[Decimal] = None
-    maintenance_hours: Optional[Decimal] = None
-    ideal_cycle_time: Optional[Decimal] = None
-    actual_cycle_time: Optional[Decimal] = None
-    efficiency_percentage: Optional[Decimal] = None
-    performance_percentage: Optional[Decimal] = None
-    quality_rate: Optional[Decimal] = None
-    notes: Optional[str] = None
-    entered_by: Optional[Union[str, int]] = None  # Can be user_id string or int
-    confirmed_by: Optional[Union[str, int]] = None  # Can be user_id string or int
-    confirmation_timestamp: Optional[datetime] = None
-    entry_method: Optional[str] = None
-    updated_by: Optional[Union[str, int]] = None  # Can be user_id string or int
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    production_entry_id: str = Field(..., description="Unique identifier for this production entry")
+    client_id: str = Field(..., description="Tenant client identifier for data isolation")
+    product_id: int = Field(..., description="Product manufactured in this entry")
+    shift_id: int = Field(..., description="Shift during which production occurred")
+    work_order_id: Optional[str] = Field(None, description="Associated work order reference")
+    job_id: Optional[str] = Field(None, description="Job-level tracking identifier")
+    production_date: datetime = Field(..., description="Date when production took place")
+    shift_date: datetime = Field(..., description="Shift date used for KPI calculations")
+    units_produced: int = Field(..., description="Total good units produced")
+    run_time_hours: Decimal = Field(..., description="Actual machine run time in hours")
+    employees_assigned: int = Field(..., description="Number of employees scheduled for the shift")
+    employees_present: Optional[int] = Field(None, description="Number of employees actually present")
+    defect_count: int = Field(..., description="Number of defective units identified")
+    scrap_count: int = Field(..., description="Number of units scrapped")
+    rework_count: Optional[int] = Field(None, description="Number of units requiring rework")
+    setup_time_hours: Optional[Decimal] = Field(None, description="Machine setup and changeover time in hours")
+    downtime_hours: Optional[Decimal] = Field(None, description="Unplanned downtime during the shift in hours")
+    maintenance_hours: Optional[Decimal] = Field(None, description="Planned maintenance time in hours")
+    ideal_cycle_time: Optional[Decimal] = Field(None, description="Standard hours per unit for performance calculation")
+    actual_cycle_time: Optional[Decimal] = Field(None, description="Measured hours per unit from actual production")
+    efficiency_percentage: Optional[Decimal] = Field(None, description="Production efficiency as a percentage")
+    performance_percentage: Optional[Decimal] = Field(None, description="OEE performance component as a percentage")
+    quality_rate: Optional[Decimal] = Field(None, description="Quality rate: good units divided by total units produced")
+    notes: Optional[str] = Field(None, description="Operator notes or comments about this entry")
+    entered_by: Optional[Union[str, int]] = Field(None, description="User ID of the person who created this entry")
+    confirmed_by: Optional[Union[str, int]] = Field(None, description="User ID of the supervisor who confirmed this entry")
+    confirmation_timestamp: Optional[datetime] = Field(None, description="Timestamp when the entry was confirmed by a supervisor")
+    entry_method: Optional[str] = Field(None, description="How this entry was created: MANUAL_ENTRY, CSV_UPLOAD, or API")
+    updated_by: Optional[Union[str, int]] = Field(None, description="User ID of the person who last modified this entry")
+    created_at: Optional[datetime] = Field(None, description="Timestamp when the record was created")
+    updated_at: Optional[datetime] = Field(None, description="Timestamp of the last modification")
 
     class Config:
         from_attributes = True
@@ -136,15 +136,15 @@ class ProductionEntryResponse(BaseModel):
 class ProductionEntryWithKPIs(ProductionEntryResponse):
     """Production entry with detailed KPI breakdown"""
 
-    product_name: str
-    shift_name: str
-    ideal_cycle_time: Optional[Decimal]
-    inferred_cycle_time: bool = False
+    product_name: str = Field(..., description="Display name of the product manufactured")
+    shift_name: str = Field(..., description="Display name of the production shift")
+    ideal_cycle_time: Optional[Decimal] = Field(None, description="Standard hours per unit used in KPI calculation")
+    inferred_cycle_time: bool = Field(False, description="Whether the cycle time was inferred rather than explicitly set")
 
     # Calculated values
-    total_available_hours: Decimal
-    quality_rate: Decimal
-    oee: Optional[Decimal] = None
+    total_available_hours: Decimal = Field(..., description="Total available production hours after deducting downtime")
+    quality_rate: Decimal = Field(..., description="Quality rate: good units divided by total units produced")
+    oee: Optional[Decimal] = Field(None, description="Overall Equipment Effectiveness combining availability, performance, and quality")
 
 
 class InferenceMetadata(BaseModel):
@@ -166,13 +166,13 @@ class InferenceMetadata(BaseModel):
 class KPICalculationResponse(BaseModel):
     """KPI calculation result with inference metadata"""
 
-    entry_id: str  # production_entry_id is String
-    efficiency_percentage: Decimal
-    performance_percentage: Decimal
-    quality_rate: Decimal
-    ideal_cycle_time_used: Decimal
-    was_inferred: bool  # Kept for backward compatibility
-    calculation_timestamp: datetime
+    entry_id: str = Field(..., description="Production entry ID this calculation applies to")
+    efficiency_percentage: Decimal = Field(..., description="Production efficiency as a percentage")
+    performance_percentage: Decimal = Field(..., description="OEE performance component as a percentage")
+    quality_rate: Decimal = Field(..., description="Quality rate: good units divided by total units produced")
+    ideal_cycle_time_used: Decimal = Field(..., description="Ideal cycle time value used in this calculation (hours per unit)")
+    was_inferred: bool = Field(..., description="Whether the ideal cycle time was inferred rather than explicitly set")
+    calculation_timestamp: datetime = Field(..., description="Timestamp when this KPI calculation was performed")
     # ENHANCEMENT: Full inference metadata (ESTIMATED flag) per audit requirement
     inference: Optional[InferenceMetadata] = Field(default=None, description="Inference metadata for estimated values")
 
@@ -180,8 +180,8 @@ class KPICalculationResponse(BaseModel):
 class CSVUploadResponse(BaseModel):
     """CSV upload result"""
 
-    total_rows: int
-    successful: int
-    failed: int
-    errors: List[dict]
-    created_entries: List[str]  # production_entry_id is String
+    total_rows: int = Field(..., description="Total number of rows processed from the CSV file")
+    successful: int = Field(..., description="Number of rows successfully imported")
+    failed: int = Field(..., description="Number of rows that failed validation or import")
+    errors: List[dict] = Field(..., description="List of error details for each failed row")
+    created_entries: List[str] = Field(..., description="List of production entry IDs created from successful rows")

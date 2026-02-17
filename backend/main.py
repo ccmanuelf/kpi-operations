@@ -5,11 +5,8 @@ Main application with modular routes
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from datetime import datetime, date, timedelta
-from typing import List, Optional
-from pydantic import BaseModel
+from datetime import datetime, timezone
 
 from backend.config import settings
 from backend.database import get_db, engine, Base
@@ -91,6 +88,70 @@ app.add_middleware(AuditLogMiddleware)
 
 
 # ============================================================================
+# GLOBAL EXCEPTION HANDLERS
+# ============================================================================
+
+import logging
+
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
+from backend.exceptions.domain_exceptions import (
+    DomainException,
+    ResourceNotFoundError,
+    ValidationError as DomainValidationError,
+)
+
+_logger = logging.getLogger(__name__)
+
+
+@app.exception_handler(DomainValidationError)
+async def domain_validation_error_handler(request: Request, exc: DomainValidationError):
+    """Handle domain validation errors -> 400"""
+    return JSONResponse(
+        status_code=400,
+        content={"detail": exc.message, "code": exc.code},
+    )
+
+
+@app.exception_handler(ResourceNotFoundError)
+async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError):
+    """Handle resource not found -> 404"""
+    return JSONResponse(
+        status_code=404,
+        content={"detail": exc.message, "code": exc.code},
+    )
+
+
+@app.exception_handler(DomainException)
+async def domain_exception_handler(request: Request, exc: DomainException):
+    """Handle all other domain exceptions -> 400"""
+    return JSONResponse(
+        status_code=400,
+        content={"detail": exc.message, "code": exc.code},
+    )
+
+
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+    """Handle database errors -> 503"""
+    _logger.exception("Database error: %s", exc)
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "Database service temporarily unavailable"},
+    )
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected errors -> 500 with sanitized message"""
+    _logger.exception("Unhandled exception: %s", exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
+# ============================================================================
 # HEALTH CHECK
 # ============================================================================
 
@@ -102,7 +163,7 @@ def root():
         "status": "healthy",
         "service": "Manufacturing KPI Platform API",
         "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 

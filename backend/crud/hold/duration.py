@@ -5,7 +5,7 @@ P2-001: Hold Duration Auto-Calculation functions
 
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 
@@ -49,7 +49,7 @@ def resume_hold(
         )
 
     # Set resume date and status
-    resume_time = datetime.now()
+    resume_time = datetime.now(tz=timezone.utc)
     db_hold.resume_date = resume_time
     db_hold.resumed_by = resumed_by
     db_hold.hold_status = HoldStatus.RESUMED
@@ -60,6 +60,8 @@ def resume_hold(
             hold_start = db_hold.hold_date
         else:
             hold_start = datetime.combine(db_hold.hold_date, datetime.min.time())
+        if not hold_start.tzinfo:
+            hold_start = hold_start.replace(tzinfo=timezone.utc)
         delta = resume_time - hold_start
         db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
 
@@ -113,7 +115,9 @@ def get_total_hold_duration(
                     hold_start = hold.hold_date
                 else:
                     hold_start = datetime.combine(hold.hold_date, datetime.min.time())
-                delta = datetime.now() - hold_start
+                if not hold_start.tzinfo:
+                    hold_start = hold_start.replace(tzinfo=timezone.utc)
+                delta = datetime.now(tz=timezone.utc) - hold_start
                 total_duration += Decimal(str(delta.total_seconds() / 3600))
         else:
             # For completed holds, use stored duration
@@ -159,7 +163,7 @@ def release_hold(
     verify_client_access(current_user, db_hold.client_id)
 
     # Set release info
-    now = datetime.now()
+    now = datetime.now(tz=timezone.utc)
     db_hold.resume_date = now
     db_hold.hold_status = HoldStatus.RESUMED
 
@@ -170,6 +174,8 @@ def release_hold(
                 hold_start = db_hold.hold_date
             else:
                 hold_start = datetime.combine(db_hold.hold_date, datetime.min.time())
+            if not hold_start.tzinfo:
+                hold_start = hold_start.replace(tzinfo=timezone.utc)
             delta = now - hold_start
             db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
 

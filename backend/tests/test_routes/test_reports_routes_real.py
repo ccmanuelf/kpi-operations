@@ -470,7 +470,7 @@ class TestProductionPDFWithMock:
         response = client.get("/api/reports/production/pdf")
 
         assert response.status_code == 500
-        assert "error" in response.json()["detail"].lower()
+        assert "failed" in response.json()["detail"].lower()
 
 
 class TestProductionExcelWithMock:
@@ -507,7 +507,7 @@ class TestProductionExcelWithMock:
         response = client.get("/api/reports/production/excel")
 
         assert response.status_code == 500
-        assert "error" in response.json()["detail"].lower()
+        assert "failed" in response.json()["detail"].lower()
 
 
 class TestQualityPDFWithMock:

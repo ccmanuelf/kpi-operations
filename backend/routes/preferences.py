@@ -8,7 +8,7 @@ All endpoints require authentication via JWT token
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import logging
 
@@ -79,8 +79,8 @@ async def get_dashboard_preferences(
                 user_id=current_user.user_id,
                 preference_type="dashboard",
                 preferences=preferences,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(tz=timezone.utc),
+                updated_at=datetime.now(tz=timezone.utc),
             )
 
         return PreferenceResponse(
@@ -105,8 +105,8 @@ async def get_dashboard_preferences(
             user_id=current_user.user_id,
             preference_type="dashboard",
             preferences=default_prefs,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(tz=timezone.utc),
+            updated_at=datetime.now(tz=timezone.utc),
         )
 
 
@@ -162,8 +162,8 @@ async def save_dashboard_preferences(
         )
 
     except ValueError as e:
-        logger.warning(f"Validation error saving preferences: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.exception("Failed to save preferences: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to save preferences")
     except Exception as e:
         logger.error(f"Error saving dashboard preferences: {e}")
         raise HTTPException(
@@ -214,8 +214,8 @@ async def patch_dashboard_preferences(
         )
 
     except ValueError as e:
-        logger.warning(f"Validation error updating preferences: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.exception("Failed to save preferences: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to save preferences")
     except Exception as e:
         logger.error(f"Error updating dashboard preferences: {e}")
         raise HTTPException(

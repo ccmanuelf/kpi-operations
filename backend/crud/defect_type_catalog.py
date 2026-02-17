@@ -6,7 +6,7 @@ Supports both client-specific and global defect types
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 
 from backend.schemas.defect_type_catalog import DefectTypeCatalog
@@ -154,7 +154,7 @@ def update_defect_type(
     for field, value in update_data.items():
         setattr(db_defect_type, field, value)
 
-    db_defect_type.updated_at = datetime.utcnow()
+    db_defect_type.updated_at = datetime.now(tz=timezone.utc)
     db.commit()
     db.refresh(db_defect_type)
     return db_defect_type
@@ -175,7 +175,7 @@ def delete_defect_type(db: Session, defect_type_id: str, current_user: User) -> 
         verify_client_access(current_user, db_defect_type.client_id)
 
     db_defect_type.is_active = False
-    db_defect_type.updated_at = datetime.utcnow()
+    db_defect_type.updated_at = datetime.now(tz=timezone.utc)
     db.commit()
     return True
 
@@ -201,7 +201,7 @@ def bulk_create_defect_types(
     if replace_existing:
         # Deactivate all existing defect types for this client
         db.query(DefectTypeCatalog).filter(DefectTypeCatalog.client_id == client_id).update(
-            {"is_active": False, "updated_at": datetime.utcnow()}
+            {"is_active": False, "updated_at": datetime.now(tz=timezone.utc)}
         )
         db.commit()
 
@@ -228,7 +228,7 @@ def bulk_create_defect_types(
                     existing.industry_standard_code = dt.industry_standard_code
                     existing.sort_order = dt.sort_order
                     existing.is_active = True
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(tz=timezone.utc)
                     created += 1
                 else:
                     skipped += 1

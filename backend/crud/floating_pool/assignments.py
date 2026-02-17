@@ -5,7 +5,7 @@ SECURITY: Multi-tenant client filtering enabled
 """
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -145,7 +145,7 @@ def unassign_floating_pool_from_client(db: Session, pool_id: int, current_user: 
 
     # Clear assignment
     db_pool.current_assignment = None
-    db_pool.available_to = datetime.utcnow()
+    db_pool.available_to = datetime.now(tz=timezone.utc)
 
     db.commit()
     db.refresh(db_pool)

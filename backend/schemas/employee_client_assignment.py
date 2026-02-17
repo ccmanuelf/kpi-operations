@@ -9,6 +9,7 @@ Provides normalized employee-to-client relationship with assignment type support
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint, Enum as SQLEnum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from datetime import datetime, timezone
 from backend.database import Base
 import enum
 
@@ -206,7 +207,7 @@ def remove_employee_from_client(db, employee_id: int, client_id: str, removed_by
         return False
 
     assignment.is_active = False
-    assignment.deactivated_at = datetime.utcnow()
+    assignment.deactivated_at = datetime.now(tz=timezone.utc)
     assignment.deactivated_by = removed_by
 
     return True

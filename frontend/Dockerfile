@@ -1,9 +1,6 @@
 # Frontend Dockerfile for KPI Operations Platform
 # node:20.18-alpine3.20 — pin to digest for reproducible builds:
 # docker pull node:20.18-alpine3.20 && docker inspect --format='{{index .RepoDigests 0}}' node:20.18-alpine3.20
-LABEL maintainer="KPI Operations Team"
-LABEL version="1.0.4"
-LABEL description="KPI Operations Platform - Vue.js Frontend"
 
 FROM node:20.18-alpine3.20 AS builder
 
@@ -43,6 +40,10 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 # nginx:1.27-alpine — pin to digest for reproducible builds:
 # docker pull nginx:1.27-alpine && docker inspect --format='{{index .RepoDigests 0}}' nginx:1.27-alpine
 FROM nginx:1.27-alpine AS production
+
+LABEL maintainer="KPI Operations Team"
+LABEL version="1.0.4"
+LABEL description="KPI Operations Platform - Vue.js Frontend"
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html

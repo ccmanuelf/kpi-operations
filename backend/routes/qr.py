@@ -3,7 +3,11 @@ QR Code API Routes
 Provides QR code generation and lookup endpoints for work orders, products, jobs, and employees
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+logger = logging.getLogger(__name__)
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
@@ -96,7 +100,8 @@ async def qr_lookup(
         decoded_data = unquote(data)
         qr_data = QRService.decode_qr_string(decoded_data)
     except QRServiceError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        logger.exception("Failed to decode QR data: %s", e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid QR code data")
 
     entity_type = qr_data.type
     entity_id = qr_data.id
@@ -201,7 +206,8 @@ async def get_work_order_qr_image(
             headers={"Content-Disposition": f"inline; filename=qr_work_order_{work_order_id}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.exception("Failed to generate work order QR image: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process QR code")
 
 
 @router.get(
@@ -256,7 +262,8 @@ async def get_product_qr_image(
             headers={"Content-Disposition": f"inline; filename=qr_product_{qr_identifier}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.exception("Failed to generate product QR image: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process QR code")
 
 
 @router.get(
@@ -303,7 +310,8 @@ async def get_job_qr_image(
             headers={"Content-Disposition": f"inline; filename=qr_job_{job_id}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.exception("Failed to generate job QR image: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process QR code")
 
 
 @router.get(
@@ -355,7 +363,8 @@ async def get_employee_qr_image(
             headers={"Content-Disposition": f"inline; filename=qr_employee_{qr_identifier}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.exception("Failed to generate employee QR image: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process QR code")
 
 
 @router.post(
@@ -521,4 +530,5 @@ async def generate_qr_code_image(
             headers={"Content-Disposition": f"inline; filename=qr_{type_value}_{entity_id}.png"},
         )
     except QRServiceError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.exception("Failed to generate QR image: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to process QR code")

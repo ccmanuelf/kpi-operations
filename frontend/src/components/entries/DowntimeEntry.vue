@@ -78,7 +78,9 @@
             <v-select
               v-model="formData.category"
               :items="categories"
-              label="Category"
+              item-title="title"
+              item-value="value"
+              :label="$t('downtime.category')"
               variant="outlined"
               density="comfortable"
             />
@@ -100,10 +102,10 @@
         <v-row v-if="inferenceData">
           <v-col cols="12">
             <v-alert type="info" variant="tonal" class="mb-2">
-              <div class="text-subtitle-2">Inference Engine Suggestions</div>
+              <div class="text-subtitle-2">{{ $t('downtime.inferenceEngine') }}</div>
               <div class="text-caption">
-                Recommended Category: <strong>{{ inferenceData.category }}</strong>
-                (Confidence: {{ (inferenceData.confidence * 100).toFixed(1) }}%)
+                {{ $t('downtime.recommendedCategory') }}: <strong>{{ inferenceData.category }}</strong>
+                ({{ $t('downtime.confidence') }}: {{ (inferenceData.confidence * 100).toFixed(1) }}%)
               </div>
               <v-btn
                 size="small"
@@ -112,7 +114,7 @@
                 @click="applySuggestion"
                 class="mt-2"
               >
-                Apply Suggestion
+                {{ $t('downtime.applySuggestion') }}
               </v-btn>
             </v-alert>
           </v-col>
@@ -142,6 +144,15 @@
       @confirm="onConfirmSave"
       @cancel="onCancelSave"
     />
+
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -164,16 +175,17 @@ const equipmentList = ref([])
 const downtimeReasons = ref([])
 const inferenceData = ref(null)
 const showConfirmDialog = ref(false)
+const snackbar = ref({ show: false, text: '', color: 'info' })
 
-const categories = [
-  'Planned Maintenance',
-  'Unplanned Breakdown',
-  'Changeover',
-  'Material Shortage',
-  'Quality Issue',
-  'Operator Absence',
-  'Other'
-]
+const categories = computed(() => [
+  { title: t('downtime.categories.plannedMaintenance'), value: 'Planned Maintenance' },
+  { title: t('downtime.categories.unplannedBreakdown'), value: 'Unplanned Breakdown' },
+  { title: t('downtime.categories.changeover'), value: 'Changeover' },
+  { title: t('downtime.categories.materialShortage'), value: 'Material Shortage' },
+  { title: t('downtime.categories.qualityIssue'), value: 'Quality Issue' },
+  { title: t('downtime.categories.operatorAbsence'), value: 'Operator Absence' },
+  { title: t('downtime.categories.other'), value: 'Other' }
+])
 
 const formData = ref({
   equipment_id: null,
@@ -200,7 +212,7 @@ const confirmationFieldConfig = computed(() => {
     { key: 'start_time', label: t('downtime.startTime'), type: 'datetime' },
     { key: 'end_time', label: t('downtime.endTime'), type: 'datetime' },
     { key: 'duration_minutes', label: t('downtime.duration') + ' (' + t('downtime.minutes') + ')', type: 'number' },
-    { key: 'category', label: 'Category', type: 'text' },
+    { key: 'category', label: t('downtime.category'), type: 'text' },
     { key: 'notes', label: t('production.notes'), type: 'text' }
   ]
 })
@@ -269,7 +281,11 @@ const onConfirmSave = async () => {
 
     emit('submitted')
   } catch (error) {
-    alert('Error creating downtime entry: ' + (error.response?.data?.detail || error.message))
+    snackbar.value = {
+      show: true,
+      text: t('downtime.errors.createEntry') + ': ' + (error.response?.data?.detail || error.message),
+      color: 'error'
+    }
   } finally {
     loading.value = false
   }

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -224,7 +224,7 @@ def get_data_completeness(
             "status": get_status(hold_pct),
         },
         "overall": {"percentage": round(overall_pct, 1), "status": get_status(overall_pct)},
-        "calculation_timestamp": datetime.utcnow().isoformat(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 
@@ -281,7 +281,7 @@ def get_completeness_summary(
         "end_date": end_date.isoformat(),
         "average_completeness": round(avg_overall, 1),
         "daily": daily_completeness,
-        "calculation_timestamp": datetime.utcnow().isoformat(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 
@@ -354,5 +354,5 @@ def get_completeness_by_category(
         "date": target_date.isoformat(),
         "overall": completeness["overall"],
         "categories": categories,
-        "calculation_timestamp": datetime.utcnow().isoformat(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }

@@ -5,11 +5,14 @@ SECURITY: Multi-tenant client filtering enabled
 Phase 10: Integrated with Workflow State Machine
 """
 
+import logging
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 from backend.schemas.work_order import WorkOrder, WorkOrderStatus
 from backend.schemas.user import User
@@ -46,7 +49,7 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
 
     # Phase 10: Set received_date if not provided
     if "received_date" not in work_order_data or not work_order_data["received_date"]:
-        work_order_data["received_date"] = datetime.utcnow()
+        work_order_data["received_date"] = datetime.now(tz=timezone.utc)
 
     # Create work order
     db_work_order = WorkOrder(**work_order_data)
@@ -65,15 +68,15 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
             from_status=None,
             to_status=db_work_order.status,
             transitioned_by=current_user.user_id if current_user else None,
-            transitioned_at=datetime.utcnow(),
+            transitioned_at=datetime.now(tz=timezone.utc),
             notes="Initial creation",
             trigger_source="api",
         )
         db.add(initial_log)
         db.commit()
-    except Exception:
+    except Exception as e:
         # Don't fail creation if logging fails
-        pass
+        logger.exception("Failed to log initial status transition for work_order_id=%s", db_work_order.work_order_id)
 
     return db_work_order
 
@@ -214,7 +217,7 @@ def update_work_order(
             raise
         except Exception as e:
             # Log but don't fail the update
-            pass
+            logger.exception("Failed to execute status transition for work_order_id=%s", work_order_id)
 
     # Update remaining fields
     for field, value in work_order_update.items():

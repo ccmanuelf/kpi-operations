@@ -36,8 +36,8 @@ This guide covers deploying the KPI Operations Platform to production environmen
 
 | Software | Version | Purpose |
 |----------|---------|---------|
-| **Python** | 3.11+ | Backend runtime |
-| **Node.js** | 18+ LTS | Frontend build |
+| **Python** | 3.12+ | Backend runtime |
+| **Node.js** | 20+ LTS | Frontend build |
 | **MariaDB** | 10.11+ | Production database |
 | **Nginx** | 1.18+ | Reverse proxy |
 | **Git** | 2.30+ | Source control |
@@ -183,22 +183,16 @@ EXIT;
 ### 3. Initialize Schema
 
 ```bash
-cd /var/www/kpi-platform/database
+cd /var/www/kpi-platform
 
 # Run schema creation
-mysql -u kpi_user -p kpi_platform < schema/schema.sql
+mysql -u kpi_user -p kpi_platform < database/schema.sql
 
 # (Optional) Load demo data for testing
-mysql -u kpi_user -p kpi_platform < seed_data.sql
+mysql -u kpi_user -p kpi_platform < database/seed_data.sql
 ```
 
-### 4. Run Migrations (if using Alembic)
-
-```bash
-cd /var/www/kpi-platform/backend
-source venv/bin/activate
-alembic upgrade head
-```
+> **Note:** This project does not use Alembic or any migration tooling. Schema changes are applied by modifying `database/schema.sql` directly and re-running the schema creation command above. Demo data can be regenerated at any time with `python database/generators/generate_demo_data.py`.
 
 ---
 
@@ -219,7 +213,7 @@ git clone <repository-url> .
 cd /var/www/kpi-platform/backend
 
 # Create virtual environment
-python3.11 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
 # Upgrade pip

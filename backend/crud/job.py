@@ -5,6 +5,7 @@ SECURITY: All operations enforce client-based access control
 """
 
 from typing import List, Optional
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException
@@ -193,7 +194,7 @@ def complete_job(
     job.completed_quantity = completed_quantity
     job.actual_hours = actual_hours
     job.is_completed = 1
-    job.completed_date = datetime.now()
+    job.completed_date = datetime.now(tz=timezone.utc)
 
     db.commit()
     db.refresh(job)

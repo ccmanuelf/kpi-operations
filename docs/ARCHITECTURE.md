@@ -1,7 +1,7 @@
 # KPI Operations Platform - Architecture Documentation
 
 **Version**: 1.0.0
-**Last Updated**: 2026-01-25
+**Last Updated**: 2026-02-16
 **Architecture Grade**: B+ (Backend) / B+ (Frontend)
 
 ---
@@ -160,6 +160,10 @@ class InferredEmployees:
 | Reports | `/api/reports/*` | Protected |
 | Work Orders | `/api/work-orders/*` | Protected |
 | Jobs | `/api/jobs/*` | Protected |
+| Capacity Planning | `/api/capacity/*` | Protected |
+| Simulation V1 | `/api/simulation/*` | Protected (deprecated) |
+| Simulation V2 | `/api/v2/simulation/*` | Protected |
+| Floating Pool | `/api/floating-pool/*` | Protected |
 
 ---
 
@@ -303,6 +307,149 @@ ACTIVE → ON_HOLD → ACTIVE → COMPLETED
 | Input Validation | Pydantic with field constraints |
 | SQL Injection | Parameterized queries via SQLAlchemy |
 | Multi-Tenant | Client filter on all queries |
+
+---
+
+## Capacity Planning Architecture
+
+Capacity Planning follows a **13-worksheet workbook pattern** that mirrors a physical planning workbook. Each worksheet maps to a backend CRUD module and a frontend grid/panel component.
+
+### Worksheets
+
+| # | Worksheet | Purpose |
+|---|-----------|---------|
+| 1 | Master Calendar | Working days, shifts, holidays |
+| 2 | Production Lines | Line specifications and operator counts |
+| 3 | Orders | Planning orders with priority and status |
+| 4 | Production Standards | SAM (Standard Allowed Minutes) per style |
+| 5 | BOM | Bill of Materials headers and details |
+| 6 | Stock Snapshots | Current inventory positions |
+| 7 | Component Check | MRP explosion results |
+| 8 | Capacity Analysis | 12-step utilization calculation |
+| 9 | Schedules | Production schedule generation |
+| 10 | Scenarios | What-if analysis (8 types) |
+| 11 | KPI Commitments | Plan vs. actual variance tracking |
+| 12 | Dashboard Inputs | Aggregated planning inputs |
+| 13 | Instructions | User guide / reference |
+
+### Backend Services (7)
+
+All services live in `backend/services/capacity/` with a facade orchestrator:
+
+```
+CapacityPlanningService          (capacity_service.py)   - Orchestrator / unified API
+├── BOMService                   (bom_service.py)        - Single-level BOM explosion
+├── MRPService                   (mrp_service.py)        - Component availability / shortage detection
+├── CapacityAnalysisService      (analysis_service.py)   - 12-step capacity calculation
+├── SchedulingService            (scheduling_service.py) - Schedule generation & commitment
+├── ScenarioService              (scenario_service.py)   - What-if scenario engine
+└── KPIIntegrationService        (kpi_integration_service.py) - Commitment vs. actuals variance
+```
+
+`CapacityPlanningService` coordinates the others; individual services can also be used directly by routes.
+
+### Scenario Types (8)
+
+Defined via `ScenarioType` enum in `scenario_service.py`:
+
+| Type | Effect |
+|------|--------|
+| `OVERTIME` | +20% available hours |
+| `SETUP_REDUCTION` | -30% setup time |
+| `SUBCONTRACT` | Outsource 40% of cutting |
+| `NEW_LINE` | Add a sewing line |
+| `THREE_SHIFT` | Switch to 3-shift operation |
+| `LEAD_TIME_DELAY` | Simulate material delay |
+| `ABSENTEEISM_SPIKE` | +15% absenteeism |
+| `MULTI_CONSTRAINT` | Combined multi-factor scenario |
+
+Each type has default parameters. Scenarios are persisted and can be compared side-by-side, emitting `CapacityScenarioCreated` and `CapacityScenarioCompared` domain events.
+
+### API Surface
+
+All endpoints are under `/api/capacity/*` in `backend/routes/capacity.py` (~1,900 lines). Every endpoint enforces multi-tenant isolation via `client_id`.
+
+---
+
+## Event Bus
+
+The domain event infrastructure lives in `backend/events/` and provides loose coupling between modules.
+
+### Collect/Flush Pattern
+
+```
+Transaction Start
+  │  bus.collect(event)     ← events buffered, not dispatched
+  │  bus.collect(event)
+  │  db.commit()
+  │  bus.flush_collected()  ← all events dispatched after commit
+  │
+  │  On rollback:
+  │  bus.discard_collected() ← events thrown away
+```
+
+Events are collected during a transaction and only dispatched after a successful commit. On rollback, `discard_collected()` discards the buffer. This prevents side effects from failed transactions.
+
+### Key Components
+
+| Component | Location | Role |
+|-----------|----------|------|
+| `DomainEvent` | `events/base.py` | Immutable Pydantic base class (frozen model) |
+| `EventHandler` | `events/base.py` | Abstract handler with `can_handle()` filter and `priority` |
+| `EventBus` | `events/bus.py` | Singleton bus with subscribe, publish, collect/flush |
+| Domain events | `events/domain_events.py` | Concrete events (e.g., `ComponentShortageDetected`, `KPIVarianceAlert`) |
+
+### Features
+
+- **Priority-based dispatch**: handlers sorted by priority (lower = first).
+- **Async handlers**: flagged `is_async=True`, scheduled via `asyncio.create_task` to run after HTTP response.
+- **Wildcard subscription**: subscribing to `"*"` receives all event types.
+- **Error isolation**: handler failures are logged but do not block other handlers.
+- **Optional persistence**: `set_persistence_handler()` enables writing events to an event store.
+
+---
+
+## Simulation System
+
+Two simulation implementations coexist in the codebase.
+
+### V1 (Deprecated) - `calculations/simulation.py`
+
+- **Route**: `/api/simulation/*` (in `routes/simulation.py`)
+- Pure-function calculator for capacity requirements, staffing, efficiency, shift coverage, and floating pool optimization.
+- Tightly coupled to the **floating pool** module: `routes/floating_pool.py` imports `optimize_floating_pool_allocation` and `simulate_shift_coverage` from V1.
+- **Cannot be removed** until the floating pool dependency is decoupled.
+
+### V2 (Current) - `simulation_v2/`
+
+- **Route**: `/api/v2/simulation/*` (in `routes/simulation_v2.py`)
+- **SimPy-based** discrete-event simulation engine.
+- Stateless / ephemeral: no database persistence, operates as a pure calculator.
+- Capabilities beyond V1:
+  - Multi-product support (up to 5 products)
+  - Configurable variability (triangular / deterministic distributions)
+  - 8 output blocks with analytics
+  - Rebalancing suggestions and bottleneck detection
+
+### V1 vs V2 Comparison
+
+| Aspect | V1 | V2 |
+|--------|----|----|
+| Engine | Pure math functions | SimPy discrete-event |
+| Products | Single | Up to 5 |
+| Persistence | None | None (ephemeral) |
+| Floating pool | Yes (dependency) | No |
+| Status | Deprecated | Active |
+
+### Floating Pool Dependency
+
+`routes/floating_pool.py` imports three functions from `calculations/simulation.py` (V1):
+
+- `optimize_floating_pool_allocation`
+- `simulate_shift_coverage`
+- `run_staffing_simulation`
+
+This is the sole reason V1 cannot be archived. Decoupling requires extracting these functions into a dedicated module.
 
 ---
 

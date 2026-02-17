@@ -12,13 +12,22 @@ Provides calculations for:
 """
 
 from typing import Optional, Dict, List, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
 from backend.schemas.work_order import WorkOrder
 from backend.schemas.workflow import WorkflowTransitionLog
+
+
+def _ensure_tz_compatible(dt1: datetime, dt2: datetime) -> tuple:
+    """Normalize naive datetimes (from SQLite) to UTC for safe comparison."""
+    if dt1.tzinfo is None and dt2.tzinfo is not None:
+        dt1 = dt1.replace(tzinfo=timezone.utc)
+    elif dt1.tzinfo is not None and dt2.tzinfo is None:
+        dt2 = dt2.replace(tzinfo=timezone.utc)
+    return dt1, dt2
 
 
 def calculate_elapsed_hours(from_datetime: Optional[datetime], to_datetime: Optional[datetime]) -> Optional[int]:
@@ -36,8 +45,9 @@ def calculate_elapsed_hours(from_datetime: Optional[datetime], to_datetime: Opti
         return None
 
     if to_datetime is None:
-        to_datetime = datetime.utcnow()
+        to_datetime = datetime.now(tz=timezone.utc)
 
+    from_datetime, to_datetime = _ensure_tz_compatible(from_datetime, to_datetime)
     delta = to_datetime - from_datetime
     return int(delta.total_seconds() / 3600)
 
@@ -57,8 +67,9 @@ def calculate_elapsed_days(from_datetime: Optional[datetime], to_datetime: Optio
         return None
 
     if to_datetime is None:
-        to_datetime = datetime.utcnow()
+        to_datetime = datetime.now(tz=timezone.utc)
 
+    from_datetime, to_datetime = _ensure_tz_compatible(from_datetime, to_datetime)
     delta = to_datetime - from_datetime
     return round(delta.total_seconds() / 86400, 2)  # 86400 seconds in a day
 
@@ -85,7 +96,9 @@ def calculate_business_hours(
         return None
 
     if to_datetime is None:
-        to_datetime = datetime.utcnow()
+        to_datetime = datetime.now(tz=timezone.utc)
+
+    from_datetime, to_datetime = _ensure_tz_compatible(from_datetime, to_datetime)
 
     if working_days is None:
         working_days = [0, 1, 2, 3, 4]  # Monday to Friday
@@ -117,7 +130,7 @@ class WorkOrderElapsedTime:
             work_order: Work order instance
         """
         self.work_order = work_order
-        self._now = datetime.utcnow()
+        self._now = datetime.now(tz=timezone.utc)
 
     @property
     def total_lifecycle_hours(self) -> Optional[int]:
@@ -208,7 +221,8 @@ class WorkOrderElapsedTime:
         if self.work_order.expected_date is None:
             return None
 
-        delta = self.work_order.expected_date - self._now
+        expected, now = _ensure_tz_compatible(self.work_order.expected_date, self._now)
+        delta = expected - now
         return int(delta.total_seconds() / 3600)
 
     @property
@@ -225,7 +239,8 @@ class WorkOrderElapsedTime:
         if self.work_order.expected_date is None:
             return False
 
-        return self._now > self.work_order.expected_date
+        now, expected = _ensure_tz_compatible(self._now, self.work_order.expected_date)
+        return now > expected
 
     @property
     def days_early_or_late(self) -> Optional[int]:
@@ -239,7 +254,8 @@ class WorkOrderElapsedTime:
             return None
 
         actual_end = self.work_order.closure_date or self._now
-        delta = self.work_order.expected_date - actual_end
+        expected, end = _ensure_tz_compatible(self.work_order.expected_date, actual_end)
+        delta = expected - end
         return delta.days
 
     def get_all_metrics(self) -> Dict:

@@ -109,6 +109,7 @@
     "databaseConfig": "Config. Base de Datos",
     "alerts": "Alertas",
     "simulation": "Simulación",
+    "simulationV2": "Simulación v2",
     "tools": "Herramientas",
     "operationsHealth": "Salud de Operaciones"
   },
@@ -358,7 +359,34 @@
     "station": "Estación",
     "inspectionRecords": "Registros de Inspección de Calidad",
     "topDefectTypes": "Principales Tipos de Defecto",
-    "byProduct": "Calidad por Producto"
+    "byProduct": "Calidad por Producto",
+    "rejectedQty": "Cantidad Rechazada",
+    "primaryDefectType": "Tipo de Defecto Principal",
+    "severity": "Severidad",
+    "disposition": "Disposición",
+    "inspectorId": "ID del Inspector",
+    "defectDescription": "Descripción del Defecto",
+    "correctiveAction": "Acción Correctiva Tomada",
+    "calculatedMetrics": "Métricas Calculadas",
+    "defectRate": "Tasa de Defectos",
+    "passQty": "Cantidad Aprobada",
+    "selectClientFirst": "Seleccione un cliente primero",
+    "severities": {
+      "critical": "Crítico",
+      "major": "Mayor",
+      "minor": "Menor",
+      "cosmetic": "Cosmético"
+    },
+    "dispositions": {
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "rework": "Retrabajo",
+      "useAsIs": "Usar como está",
+      "returnToSupplier": "Devolver al Proveedor"
+    },
+    "errors": {
+      "createEntry": "Error al crear entrada de calidad"
+    }
   },
   "attendance": {
     "title": "Asistencia",
@@ -385,7 +413,26 @@
     "records": "Registros de Asistencia",
     "absenceReasons": "Razones de Ausencia",
     "byDepartment": "Ausentismo por Departamento",
-    "highAbsenceAlerts": "Alertas de Alta Ausencia"
+    "highAbsenceAlerts": "Alertas de Alta Ausencia",
+    "statuses": {
+      "present": "Presente",
+      "absent": "Ausente",
+      "late": "Tarde",
+      "halfDay": "Medio Día",
+      "leave": "Permiso"
+    },
+    "reasons": {
+      "sickLeave": "Incapacidad",
+      "personalLeave": "Permiso Personal",
+      "familyEmergency": "Emergencia Familiar",
+      "medicalAppointment": "Cita Médica",
+      "noShow": "No se presentó",
+      "unauthorized": "No Autorizado",
+      "other": "Otro"
+    },
+    "errors": {
+      "createEntry": "Error al crear entrada de asistencia"
+    }
   },
   "downtime": {
     "title": "Tiempo Muerto",
@@ -407,7 +454,24 @@
     "breakdown": "Avería",
     "other": "Otro",
     "topReasons": "Principales Razones de Paro",
-    "records": "Registros de Tiempo Muerto"
+    "records": "Registros de Tiempo Muerto",
+    "category": "Categoría",
+    "categories": {
+      "plannedMaintenance": "Mantenimiento Planeado",
+      "unplannedBreakdown": "Avería No Planeada",
+      "changeover": "Cambio de Modelo",
+      "materialShortage": "Escasez de Material",
+      "qualityIssue": "Problema de Calidad",
+      "operatorAbsence": "Ausencia del Operador",
+      "other": "Otro"
+    },
+    "inferenceEngine": "Sugerencias del Motor de Inferencia",
+    "recommendedCategory": "Categoría Recomendada",
+    "confidence": "Confianza",
+    "applySuggestion": "Aplicar Sugerencia",
+    "errors": {
+      "createEntry": "Error al crear entrada de tiempo muerto"
+    }
   },
   "holds": {
     "title": "Retenciones",
@@ -429,7 +493,47 @@
     "schedulingIssue": "Problema de Programación",
     "clientRequest": "Solicitud del Cliente",
     "engineeringChange": "Cambio de Ingeniería",
-    "history": "Historial de Retenciones"
+    "history": "Historial de Retenciones",
+    "severity": "Severidad",
+    "holdDescription": "Descripción de la Retención",
+    "requiredAction": "Acción Requerida para Liberación",
+    "initiatedBy": "Iniciado Por",
+    "customerNotificationRequired": "Notificación al Cliente Requerida",
+    "selectHoldToResume": "Seleccionar Retención a Reanudar",
+    "disposition": "Disposición",
+    "releasedQuantity": "Cantidad Liberada",
+    "resolutionNotes": "Notas de Resolución",
+    "customerNotified": "Cliente Notificado",
+    "holdInformation": "Información de la Retención",
+    "originalQuantity": "Cantidad Original",
+    "originalHoldReason": "Razón Original de Retención",
+    "reasons": {
+      "qualityIssue": "Problema de Calidad",
+      "materialDefect": "Defecto de Material",
+      "processNonConformance": "No Conformidad de Proceso",
+      "customerRequest": "Solicitud del Cliente",
+      "engineeringChange": "Cambio de Ingeniería",
+      "inspectionFailure": "Falla en Inspección",
+      "supplierIssue": "Problema con Proveedor",
+      "other": "Otro"
+    },
+    "severities": {
+      "critical": "Crítico",
+      "high": "Alto",
+      "medium": "Medio",
+      "low": "Bajo"
+    },
+    "dispositions": {
+      "release": "Liberar",
+      "rework": "Retrabajo",
+      "scrap": "Desperdicio",
+      "returnToSupplier": "Devolver al Proveedor",
+      "useAsIs": "Usar como está"
+    },
+    "errors": {
+      "createHold": "Error al crear retención",
+      "resumeHold": "Error al reanudar retención"
+    }
   },
   "workOrders": {
     "title": "Órdenes de Trabajo",
@@ -1605,6 +1709,125 @@
         "save": "Guardar y Salir",
         "discard": "Descartar"
       }
+    }
+  },
+  "capacityPlanningView": {
+    "title": "Planificación de Capacidad",
+    "subtitle": "Libro de planificación de producción con órdenes, BOM, análisis de capacidad y programación",
+    "worksheetCount": "13 Hojas de Cálculo",
+    "saveAllChanges": "Guardar Todos los Cambios",
+    "unsavedChangesIn": "Tiene cambios sin guardar en: {worksheets}",
+    "loadingWorkbook": "Cargando libro de trabajo...",
+    "selectClientPrompt": "Seleccione un cliente del menú superior para ver los datos de planificación de capacidad.",
+    "selectClient": "Seleccionar Cliente",
+    "undoTooltip": "Deshacer (Ctrl+Z)",
+    "redoTooltip": "Rehacer (Ctrl+Y)",
+    "tabs": {
+      "orders": "Órdenes",
+      "calendar": "Calendario",
+      "lines": "Líneas",
+      "standards": "Estándares",
+      "bom": "BOM",
+      "stock": "Inventario",
+      "componentCheck": "Verificación de Componentes",
+      "analysis": "Análisis",
+      "schedule": "Programación",
+      "scenarios": "Escenarios",
+      "kpiTracking": "Seguimiento KPI",
+      "dashboardInputs": "Entradas del Tablero",
+      "instructions": "Instrucciones"
+    },
+    "stats": {
+      "orders": "Órdenes",
+      "lines": "Líneas",
+      "boms": "BOMs",
+      "workingDays": "Días Hábiles",
+      "shortages": "Faltantes"
+    },
+    "actions": {
+      "runComponentCheck": "Verificar Componentes",
+      "runCapacityAnalysis": "Ejecutar Análisis de Capacidad",
+      "generateSchedule": "Generar Programación",
+      "export": "Exportar",
+      "import": "Importar",
+      "reset": "Restablecer"
+    },
+    "dialogs": {
+      "analysisTitle": "Ejecutar Análisis de Capacidad",
+      "runAnalysis": "Ejecutar Análisis",
+      "scheduleTitle": "Generar Programación de Producción",
+      "scheduleName": "Nombre de la Programación",
+      "generate": "Generar",
+      "exportTitle": "Exportar Libro de Trabajo",
+      "format": "Formato",
+      "importTitle": "Importar Datos",
+      "selectFile": "Seleccionar archivo",
+      "targetWorksheet": "Hoja de Destino",
+      "resetTitle": "Restablecer Libro de Trabajo",
+      "resetConfirmation": "¿Está seguro de que desea restablecer todos los datos? Esto descartará cualquier cambio sin guardar."
+    },
+    "mrpResults": {
+      "title": "Resultados de MRP / Verificación de Componentes",
+      "totalComponents": "Total de Componentes",
+      "available": "Disponibles",
+      "shortages": "Faltantes",
+      "shortageAlert": "{count} faltantes de componentes detectados.",
+      "shortageActionPrompt": "Revise los faltantes a continuación y tome medidas para resolverlos antes de la producción.",
+      "partialAvailability": "Disponibilidad Parcial",
+      "availableComponents": "Componentes Disponibles",
+      "required": "Requerido",
+      "short": "Faltante"
+    }
+  },
+  "simulationV2": {
+    "title": "Simulación de Línea de Producción v2.0",
+    "subtitle": "Simulación de eventos discretos para líneas de producción multi-producto con análisis de cuellos de botella y sugerencias de rebalanceo",
+    "simpyEngine": "Motor SimPy",
+    "howToUse": "Cómo Usar",
+    "stats": {
+      "products": "Productos",
+      "operations": "Operaciones",
+      "machines": "Máquinas",
+      "dailyHours": "Horas Diarias",
+      "horizon": "Horizonte"
+    },
+    "tabs": {
+      "operations": "Operaciones",
+      "schedule": "Horario",
+      "demand": "Demanda",
+      "breakdowns": "Averías"
+    },
+    "actions": {
+      "validateConfiguration": "Validar Configuración",
+      "runSimulation": "Ejecutar Simulación",
+      "importConfig": "Importar Config.",
+      "exportConfig": "Exportar Config.",
+      "reset": "Restablecer"
+    },
+    "guide": {
+      "title": "Guía de Simulación de Línea de Producción v2.0",
+      "quickStart": "Inicio Rápido",
+      "operationsGrid": "Cuadrícula de Operaciones",
+      "processingTimeFormula": "Fórmula de Tiempo de Procesamiento",
+      "outputBlocks": "Bloques de Resultados",
+      "bottleneckDetection": "Detección de Cuellos de Botella"
+    },
+    "importDialog": {
+      "title": "Importar Configuración",
+      "pasteJsonLabel": "Pegar configuración JSON"
+    },
+    "resetDialog": {
+      "title": "Restablecer Configuración",
+      "prompt": "Elija cómo desea restablecer la simulación:",
+      "clearAll": "Limpiar Todo",
+      "clearAllSubtitle": "Eliminar todos los datos y comenzar con configuración vacía",
+      "loadSampleData": "Cargar Datos de Muestra",
+      "loadSampleSubtitle": "Restablecer con ejemplo de manufactura de camisetas para aprendizaje"
+    },
+    "welcome": {
+      "title": "¡Bienvenido!",
+      "message": "Se han cargado datos de muestra de manufactura de camisetas para ayudarle a comenzar.",
+      "gotIt": "Entendido"
     }
   }
 }

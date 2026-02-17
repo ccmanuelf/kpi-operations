@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
 from backend.models.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
@@ -15,13 +15,14 @@ from backend.crud.hold import create_wip_hold, get_wip_hold, get_wip_holds, upda
 from backend.calculations.wip_aging import identify_chronic_holds
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
+from backend.constants import DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 
 
 router = APIRouter(prefix="/api/holds", tags=["WIP Holds"])
 
 
 @router.post("", response_model=WIPHoldResponse, status_code=status.HTTP_201_CREATED)
-def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WIPHoldResponse:
     """
     Create WIP hold record.
 
@@ -36,7 +37,7 @@ def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user
 @router.get("", response_model=List[WIPHoldResponse])
 def list_holds(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = DEFAULT_PAGE_SIZE,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     client_id: Optional[str] = None,
@@ -45,7 +46,7 @@ def list_holds(
     hold_reason_category: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[WIPHoldResponse]:
     """List WIP holds with filters - uses HOLD_ENTRY schema"""
     return get_wip_holds(
         db,
@@ -64,17 +65,17 @@ def list_holds(
 @router.get("/active", response_model=List[WIPHoldResponse])
 def list_active_holds(
     skip: int = 0,
-    limit: int = 100,
+    limit: int = DEFAULT_PAGE_SIZE,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[WIPHoldResponse]:
     """List all active (unreleased) WIP holds"""
     return get_wip_holds(db, current_user=current_user, skip=skip, limit=limit, client_id=client_id, released=False)
 
 
 @router.get("/{hold_id}", response_model=WIPHoldResponse)
-def get_hold(hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_hold(hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WIPHoldResponse:
     """
     Get WIP hold by ID.
 
@@ -94,7 +95,7 @@ def update_hold(
     hold_update: WIPHoldUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> WIPHoldResponse:
     """Update WIP hold record"""
     updated = update_wip_hold(db, hold_id, hold_update, current_user)
     if not updated:
@@ -105,7 +106,7 @@ def update_hold(
 @router.delete("/{hold_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_hold(
     hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """Delete WIP hold (supervisor only)"""
     success = delete_wip_hold(db, hold_id, current_user)
     if not success:
@@ -120,7 +121,7 @@ def delete_hold(
 @router.post("/{hold_id}/approve-hold", response_model=WIPHoldResponse)
 def approve_hold(
     hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> WIPHoldResponse:
     """
     Approve a pending hold request (supervisor only).
     Transitions hold from PENDING_HOLD_APPROVAL to ON_HOLD.
@@ -155,7 +156,7 @@ def approve_hold(
 
 
 @router.post("/{hold_id}/request-resume", response_model=WIPHoldResponse)
-def request_resume(hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def request_resume(hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WIPHoldResponse:
     """
     Request to resume a hold (any user can request).
     Transitions hold from ON_HOLD to PENDING_RESUME_APPROVAL.
@@ -192,7 +193,7 @@ def request_resume(hold_id: str, db: Session = Depends(get_db), current_user: Us
 @router.post("/{hold_id}/approve-resume", response_model=WIPHoldResponse)
 def approve_resume(
     hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> WIPHoldResponse:
     """
     Approve a resume request (supervisor only).
     Transitions hold from PENDING_RESUME_APPROVAL to RESUMED.
@@ -219,7 +220,7 @@ def approve_resume(
 
     # Approve the resume
     db_hold.hold_status = HoldStatus.RESUMED
-    db_hold.resume_date = datetime.utcnow()
+    db_hold.resume_date = datetime.now(tz=timezone.utc)
     db_hold.updated_by = current_user.user_id
 
     # Auto-calculate hold duration
@@ -230,7 +231,9 @@ def approve_resume(
         elif isinstance(hold_start, str):
             hold_start = datetime.strptime(hold_start.split()[0], "%Y-%m-%d")
 
-        delta = datetime.utcnow() - hold_start
+        if not hold_start.tzinfo:
+            hold_start = hold_start.replace(tzinfo=timezone.utc)
+        delta = datetime.now(tz=timezone.utc) - hold_start
         db_hold.total_hold_duration_hours = Decimal(str(delta.total_seconds() / 3600))
 
     db.commit()
@@ -244,7 +247,7 @@ def get_pending_approvals(
     approval_type: Optional[str] = None,  # "hold" or "resume"
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> list[WIPHoldResponse]:
     """
     Get all holds pending approval (supervisor only).
     Returns holds with PENDING_HOLD_APPROVAL or PENDING_RESUME_APPROVAL status.
@@ -284,7 +287,7 @@ def calculate_wip_aging_kpi(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> WIPAgingResponse:
     """
     Calculate WIP aging analysis with client filtering.
 
@@ -360,17 +363,17 @@ def calculate_wip_aging_kpi(
         aging_15_30_days=aging_15_30,
         aging_over_30_days=aging_over_30,
         total_hold_events=total_held,
-        calculation_timestamp=datetime.utcnow(),
+        calculation_timestamp=datetime.now(tz=timezone.utc),
     )
 
 
 @wip_aging_router.get("/wip-aging/top")
 def get_top_aging_items(
-    limit: int = 10,
+    limit: int = SMALL_PAGE_SIZE,
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[dict]:
     """Get top aging WIP items - for WIP Aging view table"""
     from backend.schemas.hold_entry import HoldEntry, HoldStatus
     from backend.schemas.work_order import WorkOrder
@@ -412,12 +415,12 @@ def get_wip_aging_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[dict]:
     """Get WIP aging trend data - for WIP Aging view chart"""
     from backend.schemas.hold_entry import HoldEntry, HoldStatus
 
     if not start_date:
-        start_date = date.today() - timedelta(days=30)
+        start_date = date.today() - timedelta(days=LOOKBACK_MONTHLY_DAYS)
     if not end_date:
         end_date = date.today()
 
@@ -452,7 +455,7 @@ def get_wip_aging_trend(
 @wip_aging_router.get("/chronic-holds")
 def get_chronic_holds(
     threshold_days: int = 30, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> list:
     """
     Identify chronic WIP holds.
 

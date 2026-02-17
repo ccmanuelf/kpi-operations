@@ -1,4 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
+import { login } from './helpers';
 
 /**
  * KPI Operations Platform - Simulation V2 E2E Tests
@@ -17,95 +18,6 @@ import { test, expect, Page } from '@playwright/test';
 
 // Increase default timeout for all tests
 test.setTimeout(90000);
-
-// Helper function to wait for backend to be ready
-async function waitForBackend(page: Page, timeout = 10000) {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeout) {
-    try {
-      const response = await page.request.get('http://localhost:8000/health/');
-      if (response.ok()) return true;
-    } catch {
-      // Backend not ready, wait and retry
-    }
-    await page.waitForTimeout(500);
-  }
-  return false;
-}
-
-// Helper function to login as admin with retry logic for stability
-async function login(page: Page, maxRetries = 5) {
-  // Ensure backend is ready before attempting login
-  await waitForBackend(page);
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    // Add delay between login attempts with exponential backoff
-    if (attempt > 1) {
-      await page.waitForTimeout(3000 * attempt);
-    }
-
-    // Clear cookies/storage to start fresh
-    await page.context().clearCookies();
-    await page.goto('/');
-
-    // Wait for the login form to be ready
-    await page.waitForSelector('input[type="text"]', { state: 'visible', timeout: 15000 });
-
-    // Dismiss any existing error alerts before filling form
-    const existingAlert = page.locator('.v-alert button:has-text("Close")');
-    if (await existingAlert.isVisible({ timeout: 500 }).catch(() => false)) {
-      await existingAlert.click();
-      await page.waitForTimeout(500);
-    }
-
-    // Clear any existing values and fill credentials
-    await page.locator('input[type="text"]').clear();
-    await page.locator('input[type="password"]').clear();
-    await page.waitForTimeout(200);
-    await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', 'admin123');
-    await page.waitForTimeout(200);
-
-    await page.click('button:has-text("Sign In")');
-
-    // Wait for response
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-
-    // Check if login failed
-    const loginFailed = page.locator('text=Login failed');
-    const isLoginFailed = await loginFailed.isVisible({ timeout: 2000 }).catch(() => false);
-
-    if (isLoginFailed) {
-      if (attempt < maxRetries) {
-        // Dismiss the error alert and retry
-        const closeButton = page.locator('.v-alert button:has-text("Close")');
-        if (await closeButton.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await closeButton.click();
-        }
-        continue;
-      } else {
-        throw new Error(`Login failed after ${maxRetries} attempts`);
-      }
-    }
-
-    // Wait for navigation drawer to confirm successful login
-    try {
-      await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 20000 });
-      return; // Success
-    } catch {
-      // Fallback: wait for any indication of successful login
-      try {
-        await page.waitForSelector('text=Dashboard', { state: 'visible', timeout: 10000 });
-        return; // Success
-      } catch {
-        if (attempt < maxRetries) {
-          continue;
-        }
-        throw new Error('Login succeeded but navigation not visible');
-      }
-    }
-  }
-}
 
 // Helper to navigate to simulation v2 with stability improvements
 async function navigateToSimulationV2(page: Page, clearSampleData = true) {

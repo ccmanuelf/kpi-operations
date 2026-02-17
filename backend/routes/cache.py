@@ -7,7 +7,7 @@ Supports the Capacity Planning Module caching infrastructure.
 
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.auth.jwt import get_current_user, get_current_admin
 from backend.schemas.user import User
@@ -39,7 +39,7 @@ async def get_cache_stats(current_user: User = Depends(get_current_user)) -> Dic
     cache = get_cache()
     stats = cache.get_stats()
 
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat(), "statistics": stats}
+    return {"status": "healthy", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "statistics": stats}
 
 
 @router.post("/clear", response_model=Dict[str, Any])
@@ -61,7 +61,7 @@ async def clear_cache(current_user: User = Depends(get_current_admin)) -> Dict[s
         "status": "success",
         "message": f"Cache cleared successfully",
         "entries_cleared": cleared_count,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 
@@ -92,7 +92,7 @@ async def invalidate_cache_pattern(pattern: str, current_user: User = Depends(ge
         "status": "success",
         "pattern": pattern,
         "entries_invalidated": invalidated_count,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 
@@ -125,9 +125,9 @@ async def cache_health() -> Dict[str, Any]:
 
         return {
             "status": status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "entries": stats.get("entries", 0),
             "hit_rate": hit_rate,
         }
     except Exception as e:
-        return {"status": "error", "timestamp": datetime.utcnow().isoformat(), "error": str(e)}
+        return {"status": "error", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "error": str(e)}

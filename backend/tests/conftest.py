@@ -402,15 +402,6 @@ def test_data_factory():
     return EnhancedFactory
 
 
-# Assertion Helpers
-def assert_decimal_equal(actual: Decimal, expected: float, tolerance: float = 0.01):
-    """Assert decimal values are equal within tolerance"""
-    assert abs(float(actual) - expected) <= tolerance, f"Expected {expected} ± {tolerance}, got {float(actual)}"
-
-
-def assert_percentage_equal(actual: float, expected: float, tolerance: float = 0.1):
-    """Assert percentage values are equal within tolerance"""
-    assert abs(actual - expected) <= tolerance, f"Expected {expected}% ± {tolerance}%, got {actual}%"
 
 
 # FastAPI Test Client Fixtures

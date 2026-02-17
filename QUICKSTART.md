@@ -4,8 +4,8 @@ Get the platform running in 5 minutes!
 
 ## Prerequisites
 
-- Python 3.11+
-- Node.js 18+
+- Python 3.12+ (see `.python-version`)
+- Node.js 20+ (see `.nvmrc`)
 - MariaDB 10.11+ (production) **OR** SQLite (demo/development — no install needed)
 
 ---
@@ -20,7 +20,7 @@ No database installation required. SQLite is included with Python.
 cd backend
 
 # Create virtual environment
-python3.11 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
@@ -69,7 +69,6 @@ FLUSH PRIVILEGES;
 EOF
 
 # Load schema and seed data
-cd .
 mysql -u kpi_user -p kpi_platform < database/schema.sql
 # Password: kpi_password_123
 
@@ -83,7 +82,7 @@ mysql -u kpi_user -p kpi_platform < database/seed_data.sql
 cd ./backend
 
 # Create virtual environment
-python3.11 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
@@ -92,13 +91,19 @@ pip install -r requirements.txt
 # Create .env file
 cat > .env << 'EOF'
 DATABASE_URL=mysql+pymysql://kpi_user:kpi_password_123@localhost:3306/kpi_platform
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=kpi_platform
+DB_USER=kpi_user
+DB_PASSWORD=kpi_password_123
 SECRET_KEY=dev-secret-key-change-in-production-min-32-chars-long
 DEBUG=True
 CORS_ORIGINS=http://localhost:3000
+ENVIRONMENT=development
 EOF
 
-# Start backend
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+# Start backend (PYTHONPATH required for module imports)
+PYTHONPATH=.. uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Backend will start at: **http://localhost:8000**
@@ -111,7 +116,7 @@ Open a new terminal:
 cd frontend
 
 # Install dependencies
-npm install
+npm install --legacy-peer-deps
 
 # Start development server
 npm run dev
@@ -141,6 +146,13 @@ curl http://localhost:8000/
 
 ### Check Database
 
+**SQLite (Option A):**
+```bash
+sqlite3 database/kpi_platform.db "SELECT COUNT(*) FROM production_entry;"
+# Should show sample entries (18+)
+```
+
+**MariaDB (Option B):**
 ```bash
 mysql -u kpi_user -p kpi_platform -e "SELECT COUNT(*) FROM production_entry;"
 # Should show sample entries (18+)
@@ -196,12 +208,15 @@ Visit: **http://localhost:8000/docs** for interactive Swagger UI
 
 ```bash
 # Check Python version
-python --version  # Should be 3.11+
+python --version  # Should be 3.12+
 
 # Check virtual environment
 which python  # Should point to venv/bin/python
 
-# Check database connection
+# Check database connection (SQLite - Option A)
+sqlite3 database/kpi_platform.db ".tables"
+
+# Check database connection (MariaDB - Option B)
 mysql -u kpi_user -p kpi_platform -e "SHOW TABLES;"
 ```
 
@@ -209,14 +224,25 @@ mysql -u kpi_user -p kpi_platform -e "SHOW TABLES;"
 
 ```bash
 # Check Node version
-node --version  # Should be 18+
+node --version  # Should be 20+
 
 # Clear cache and reinstall
 rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Database issues
+### Database issues (Option A - SQLite)
+
+```bash
+# Check the database file exists
+ls -la database/kpi_platform.db
+
+# Delete and regenerate if corrupted
+rm database/kpi_platform.db
+cd database && python init_sqlite_schema.py && python generators/generate_demo_data.py && python create_demo_users.py
+```
+
+### Database issues (Option B - MariaDB)
 
 ```bash
 # Verify MariaDB is running
@@ -237,7 +263,7 @@ mysql -u kpi_user -p kpi_platform < database/schema.sql
 
 # Stop frontend: Ctrl+C in frontend terminal
 
-# Stop MariaDB (if needed)
+# Stop MariaDB (Option B only, if needed)
 sudo systemctl stop mariadb  # Linux
 brew services stop mariadb   # macOS
 ```

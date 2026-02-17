@@ -5,7 +5,7 @@ All authentication endpoints: register, login, logout, password management
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 import uuid
 
@@ -43,7 +43,7 @@ def is_token_blacklisted(token: str) -> bool:
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
-def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)):
+def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
     """Register new user (rate limited: 10 requests/minute)"""
     client_ip = request.client.host if request.client else None
 
@@ -97,7 +97,7 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
 
 @router.post("/login", response_model=Token)
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
-def login(request: Request, user_credentials: UserLogin, db: Session = Depends(get_db)):
+def login(request: Request, user_credentials: UserLogin, db: Session = Depends(get_db)) -> Token:
     """User login (rate limited: 10 requests/minute)"""
     client_ip = request.client.host if request.client else None
     user = db.query(User).filter(User.username == user_credentials.username).first()
@@ -142,13 +142,13 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
 
 
 @router.get("/me", response_model=UserResponse)
-def get_current_user_info(current_user: User = Depends(get_current_user)):
+def get_current_user_info(current_user: User = Depends(get_current_user)) -> UserResponse:
     """Get current user information"""
     return current_user
 
 
 @router.post("/logout")
-def logout(request: Request, current_user: User = Depends(get_current_user), token: str = Depends(oauth2_scheme)):
+def logout(request: Request, current_user: User = Depends(get_current_user), token: str = Depends(oauth2_scheme)) -> dict:
     """
     Explicit logout endpoint (per audit requirement)
 
@@ -174,7 +174,7 @@ def logout(request: Request, current_user: User = Depends(get_current_user), tok
 
 @router.post("/forgot-password")
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
-def forgot_password(request: Request, reset_request: PasswordResetRequest, db: Session = Depends(get_db)):
+def forgot_password(request: Request, reset_request: PasswordResetRequest, db: Session = Depends(get_db)) -> dict:
     """
     Request password reset (rate limited: 10 requests/minute)
 
@@ -199,7 +199,7 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
 
 @router.post("/reset-password")
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
-def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Session = Depends(get_db)):
+def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Session = Depends(get_db)) -> dict:
     """
     Reset password using token (rate limited: 10 requests/minute)
     """
@@ -217,7 +217,7 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
 
         # Update password
         user.password_hash = get_password_hash(reset_confirm.new_password)
-        user.updated_at = datetime.utcnow()
+        user.updated_at = datetime.now(tz=timezone.utc)
         db.commit()
 
         return {"message": "Password has been reset successfully"}
@@ -229,7 +229,7 @@ def reset_password(request: Request, reset_confirm: PasswordResetConfirm, db: Se
 @router.post("/change-password")
 def change_password(
     password_data: PasswordChange, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> dict:
     """Change password for authenticated user"""
     if not verify_password(password_data.current_password, current_user.password_hash):
         log_security_event(
@@ -241,7 +241,7 @@ def change_password(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 
     current_user.password_hash = get_password_hash(password_data.new_password)
-    current_user.updated_at = datetime.utcnow()
+    current_user.updated_at = datetime.now(tz=timezone.utc)
     db.commit()
 
     log_security_event(logger, "PASSWORD_CHANGED", user_id=current_user.user_id)

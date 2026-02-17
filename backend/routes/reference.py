@@ -6,7 +6,7 @@ Products, shifts, and inference engine endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime, time
+from datetime import datetime, time, timezone
 
 from backend.database import get_db
 from backend.calculations.inference import InferenceEngine
@@ -61,7 +61,7 @@ def list_shifts(db: Session = Depends(get_db), current_user: User = Depends(get_
 @router.get("/shifts/active", response_model=Optional[dict])
 def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Get the currently active shift based on current time, filtered by client access"""
-    now = datetime.now().time()
+    now = datetime.now(tz=timezone.utc).time()
     query = db.query(Shift).filter(Shift.is_active == True)
     client_filter = build_client_filter_clause(current_user, Shift.client_id)
     if client_filter is not None:

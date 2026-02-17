@@ -15,7 +15,7 @@ export * from './qr'
 export * from './predictions'
 export * from './workOrders'
 export * from './myShift'
-export * from './alerts'
+// alerts.js exports removed (DC-05: 15 unused functions)
 export * from './workflow'
 export * from './simulation'
 export * as capacityPlanning from './capacityPlanning'
@@ -33,7 +33,7 @@ import * as qr from './qr'
 import * as predictions from './predictions'
 import * as workOrders from './workOrders'
 import * as myShift from './myShift'
-import * as alerts from './alerts'
+// alerts module cleared (DC-05)
 import * as workflow from './workflow'
 import * as simulation from './simulation'
 import * as capacityPlanning from './capacityPlanning'
@@ -61,7 +61,7 @@ export default {
   ...predictions,
   ...workOrders,
   ...myShift,
-  ...alerts,
+  // alerts functions removed (DC-05)
   ...workflow,
   ...simulation,
   // Capacity Planning module (namespaced to avoid conflicts)

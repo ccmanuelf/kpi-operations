@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { login } from './helpers';
 
 /**
  * KPI Operations Platform - Dashboard E2E Tests
@@ -6,69 +7,6 @@ import { test, expect, Page } from '@playwright/test';
 
 // Increase timeout for stability
 test.setTimeout(60000);
-
-async function waitForBackend(page: Page, timeout = 10000) {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeout) {
-    try {
-      const response = await page.request.get('http://localhost:8000/health/');
-      if (response.ok()) return true;
-    } catch {
-      // Backend not ready yet
-    }
-    await page.waitForTimeout(500);
-  }
-  return false;
-}
-
-// Helper function to login with retry logic
-async function login(page: Page, maxRetries = 3) {
-  await waitForBackend(page);
-
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    if (attempt > 1) {
-      await page.waitForTimeout(3000 * attempt);
-    }
-
-    await page.context().clearCookies();
-    await page.goto('/');
-    await page.waitForSelector('input[type="text"]', { state: 'visible', timeout: 15000 });
-
-    // Dismiss any existing error alerts first
-    const existingAlert = page.locator('.v-alert button:has-text("Close")');
-    if (await existingAlert.isVisible({ timeout: 500 }).catch(() => false)) {
-      await existingAlert.click();
-      await page.waitForTimeout(500);
-    }
-
-    await page.locator('input[type="text"]').clear();
-    await page.locator('input[type="password"]').clear();
-    await page.waitForTimeout(200);
-    await page.fill('input[type="text"]', 'admin');
-    await page.fill('input[type="password"]', 'admin123');
-    await page.waitForTimeout(200);
-
-    await page.click('button:has-text("Sign In")');
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-
-    // Check if login failed
-    const loginFailed = page.locator('text=Login failed');
-    if (await loginFailed.isVisible({ timeout: 3000 }).catch(() => false)) {
-      if (attempt < maxRetries) {
-        const closeBtn = page.locator('.v-alert button:has-text("Close")');
-        if (await closeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await closeBtn.click();
-        }
-        continue;
-      }
-      throw new Error(`Login failed after ${maxRetries} attempts`);
-    }
-
-    // Wait for navigation drawer to confirm successful login
-    await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 15000 });
-    return;
-  }
-}
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {

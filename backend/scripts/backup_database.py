@@ -22,7 +22,7 @@ import gzip
 import shutil
 import logging
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -126,7 +126,7 @@ def generate_backup_filename() -> str:
     Returns:
         Backup filename with timestamp (e.g., kpi_platform_backup_20260109_020000.db.gz)
     """
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
     return f"{BACKUP_PREFIX}_{timestamp}{BACKUP_EXTENSION}"
 
 
@@ -346,7 +346,7 @@ def run_backup(retention_days: int = DEFAULT_RETENTION_DAYS, backup_dir: Optiona
     logger.info("=" * 60)
 
     result = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "backup_dir": str(backup_path),
         "retention_days": retention_days,
         "success": False,

@@ -15,6 +15,7 @@ import statistics
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.middleware.client_auth import verify_client_access
 from backend.schemas.analytics import (
     TrendAnalysisResponse,
     TrendDataPoint,
@@ -164,6 +165,8 @@ async def get_kpi_trends(
     """
     GET /api/analytics/trends - KPI trend analysis with moving averages and anomaly detection
     """
+    verify_client_access(current_user, client_id)
+
     # Parse date range
     if start_date and end_date:
         pass  # Use provided dates
@@ -270,6 +273,8 @@ async def get_kpi_predictions(
     """
     GET /api/analytics/predictions - Predictive KPI forecasting with confidence intervals
     """
+    verify_client_access(current_user, client_id)
+
     # Calculate date range for historical data
     end_date = date.today()
     start_date = end_date - timedelta(days=historical_days)
@@ -497,6 +502,8 @@ async def get_performance_heatmap(
     """
     GET /api/analytics/heatmap - Performance heatmap by shift and date
     """
+    verify_client_access(current_user, client_id)
+
     # Parse date range
     if start_date and end_date:
         pass
@@ -613,6 +620,8 @@ async def get_defect_pareto_analysis(
     """
     GET /api/analytics/pareto - Defect Pareto analysis (80/20 rule)
     """
+    verify_client_access(current_user, client_id)
+
     # Parse date range
     if start_date and end_date:
         pass

@@ -9,7 +9,7 @@ Decouples routes from domain calculations for better testability.
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, cast, Date
 
@@ -472,7 +472,7 @@ class QualityKPIService:
                 "step_count": len(rty.step_details),
                 "interpretation": rty.interpretation,
             },
-            "calculated_at": datetime.utcnow().isoformat(),
+            "calculated_at": datetime.now(tz=timezone.utc).isoformat(),
         }
 
     # ========================================================================

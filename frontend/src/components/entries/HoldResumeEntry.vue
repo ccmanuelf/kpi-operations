@@ -52,6 +52,8 @@
                 <v-select
                   v-model="holdData.reason"
                   :items="holdReasons"
+                  item-title="title"
+                  item-value="value"
                   :label="`${$t('holds.holdReason')} *`"
                   :rules="[rules.required]"
                   variant="outlined"
@@ -62,7 +64,9 @@
                 <v-select
                   v-model="holdData.severity"
                   :items="severities"
-                  label="Severity *"
+                  item-title="title"
+                  item-value="value"
+                  :label="`${$t('holds.severity')} *`"
                   :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
@@ -74,7 +78,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="holdData.description"
-                  label="Hold Description *"
+                  :label="`${$t('holds.holdDescription')} *`"
                   :rules="[rules.required]"
                   rows="3"
                   variant="outlined"
@@ -87,7 +91,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="holdData.required_action"
-                  label="Required Action for Release"
+                  :label="$t('holds.requiredAction')"
                   rows="3"
                   variant="outlined"
                   density="comfortable"
@@ -99,7 +103,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="holdData.initiated_by"
-                  label="Initiated By"
+                  :label="$t('holds.initiatedBy')"
                   variant="outlined"
                   density="comfortable"
                 />
@@ -107,7 +111,7 @@
               <v-col cols="12" md="6">
                 <v-checkbox
                   v-model="holdData.customer_notification_required"
-                  label="Customer Notification Required"
+                  :label="$t('holds.customerNotificationRequired')"
                   density="comfortable"
                 />
               </v-col>
@@ -124,7 +128,7 @@
                 :items="activeHolds"
                 item-title="display"
                 item-value="id"
-                label="Select Hold to Resume *"
+                :label="`${$t('holds.selectHoldToResume')} *`"
                 variant="outlined"
                 density="comfortable"
                 @update:model-value="loadHoldDetails"
@@ -135,13 +139,13 @@
           <v-row v-if="selectedHold">
             <v-col cols="12">
               <v-alert type="warning" variant="tonal" class="mb-4">
-                <div class="text-subtitle-2">Hold Information</div>
+                <div class="text-subtitle-2">{{ $t('holds.holdInformation') }}</div>
                 <div class="text-caption mt-2">
-                  <strong>Work Order:</strong> {{ selectedHold.work_order }}<br>
-                  <strong>Quantity:</strong> {{ selectedHold.quantity }}<br>
-                  <strong>Reason:</strong> {{ selectedHold.reason }}<br>
-                  <strong>Description:</strong> {{ selectedHold.description }}<br>
-                  <strong>Hold Date:</strong> {{ formatDate(selectedHold.hold_date) }}
+                  <strong>{{ $t('production.workOrder') }}:</strong> {{ selectedHold.work_order }}<br>
+                  <strong>{{ $t('workOrders.quantity') }}:</strong> {{ selectedHold.quantity }}<br>
+                  <strong>{{ $t('holds.holdReason') }}:</strong> {{ selectedHold.reason }}<br>
+                  <strong>{{ $t('holds.holdDescription') }}:</strong> {{ selectedHold.description }}<br>
+                  <strong>{{ $t('holds.holdDate') }}:</strong> {{ formatDate(selectedHold.hold_date) }}
                 </div>
               </v-alert>
             </v-col>
@@ -153,7 +157,9 @@
                 <v-select
                   v-model="resumeData.disposition"
                   :items="dispositions"
-                  label="Disposition *"
+                  item-title="title"
+                  item-value="value"
+                  :label="`${$t('holds.disposition')} *`"
                   :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
@@ -163,7 +169,7 @@
                 <v-text-field
                   v-model.number="resumeData.released_quantity"
                   type="number"
-                  label="Released Quantity"
+                  :label="$t('holds.releasedQuantity')"
                   :max="selectedHold?.quantity"
                   variant="outlined"
                   density="comfortable"
@@ -175,7 +181,7 @@
               <v-col cols="12">
                 <v-textarea
                   v-model="resumeData.resolution_notes"
-                  label="Resolution Notes *"
+                  :label="`${$t('holds.resolutionNotes')} *`"
                   :rules="[rules.required]"
                   rows="3"
                   variant="outlined"
@@ -188,7 +194,7 @@
               <v-col cols="12" md="6">
                 <v-text-field
                   v-model="resumeData.approved_by"
-                  label="Approved By *"
+                  :label="`${$t('holds.approvedBy')} *`"
                   :rules="[rules.required]"
                   variant="outlined"
                   density="comfortable"
@@ -197,7 +203,7 @@
               <v-col cols="12" md="6">
                 <v-checkbox
                   v-model="resumeData.customer_notified"
-                  label="Customer Notified"
+                  :label="$t('holds.customerNotified')"
                   density="comfortable"
                 />
               </v-col>
@@ -251,6 +257,15 @@
       @confirm="onConfirmResume"
       @cancel="onCancelResume"
     />
+
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -279,20 +294,32 @@ const selectedHoldId = ref(null)
 const selectedHold = ref(null)
 const showHoldConfirmDialog = ref(false)
 const showResumeConfirmDialog = ref(false)
+const snackbar = ref({ show: false, text: '', color: 'info' })
 
-const holdReasons = [
-  'Quality Issue',
-  'Material Defect',
-  'Process Non-Conformance',
-  'Customer Request',
-  'Engineering Change',
-  'Inspection Failure',
-  'Supplier Issue',
-  'Other'
-]
+const holdReasons = computed(() => [
+  { title: t('holds.reasons.qualityIssue'), value: 'Quality Issue' },
+  { title: t('holds.reasons.materialDefect'), value: 'Material Defect' },
+  { title: t('holds.reasons.processNonConformance'), value: 'Process Non-Conformance' },
+  { title: t('holds.reasons.customerRequest'), value: 'Customer Request' },
+  { title: t('holds.reasons.engineeringChange'), value: 'Engineering Change' },
+  { title: t('holds.reasons.inspectionFailure'), value: 'Inspection Failure' },
+  { title: t('holds.reasons.supplierIssue'), value: 'Supplier Issue' },
+  { title: t('holds.reasons.other'), value: 'Other' }
+])
 
-const severities = ['Critical', 'High', 'Medium', 'Low']
-const dispositions = ['Release', 'Rework', 'Scrap', 'Return to Supplier', 'Use As Is']
+const severities = computed(() => [
+  { title: t('holds.severities.critical'), value: 'Critical' },
+  { title: t('holds.severities.high'), value: 'High' },
+  { title: t('holds.severities.medium'), value: 'Medium' },
+  { title: t('holds.severities.low'), value: 'Low' }
+])
+const dispositions = computed(() => [
+  { title: t('holds.dispositions.release'), value: 'Release' },
+  { title: t('holds.dispositions.rework'), value: 'Rework' },
+  { title: t('holds.dispositions.scrap'), value: 'Scrap' },
+  { title: t('holds.dispositions.returnToSupplier'), value: 'Return to Supplier' },
+  { title: t('holds.dispositions.useAsIs'), value: 'Use As Is' }
+])
 
 const holdData = ref({
   work_order_id: null,
@@ -326,11 +353,11 @@ const holdConfirmationFieldConfig = computed(() => {
     { key: 'work_order_id', label: t('production.workOrder'), type: 'text', displayValue: workOrderName },
     { key: 'quantity', label: t('workOrders.quantity'), type: 'number' },
     { key: 'reason', label: t('holds.holdReason'), type: 'text' },
-    { key: 'severity', label: 'Severity', type: 'text' },
-    { key: 'description', label: 'Hold Description', type: 'text' },
-    { key: 'required_action', label: 'Required Action', type: 'text' },
-    { key: 'initiated_by', label: 'Initiated By', type: 'text' },
-    { key: 'customer_notification_required', label: 'Customer Notification Required', type: 'boolean' }
+    { key: 'severity', label: t('holds.severity'), type: 'text' },
+    { key: 'description', label: t('holds.holdDescription'), type: 'text' },
+    { key: 'required_action', label: t('holds.requiredAction'), type: 'text' },
+    { key: 'initiated_by', label: t('holds.initiatedBy'), type: 'text' },
+    { key: 'customer_notification_required', label: t('holds.customerNotificationRequired'), type: 'boolean' }
   ]
 })
 
@@ -346,13 +373,13 @@ const resumeConfirmData = computed(() => ({
 const resumeConfirmationFieldConfig = computed(() => {
   return [
     { key: 'work_order', label: t('production.workOrder'), type: 'text' },
-    { key: 'original_quantity', label: 'Original Quantity', type: 'number' },
-    { key: 'hold_reason', label: 'Original Hold Reason', type: 'text' },
-    { key: 'disposition', label: 'Disposition', type: 'text' },
-    { key: 'released_quantity', label: 'Released Quantity', type: 'number' },
-    { key: 'resolution_notes', label: 'Resolution Notes', type: 'text' },
-    { key: 'approved_by', label: 'Approved By', type: 'text' },
-    { key: 'customer_notified', label: 'Customer Notified', type: 'boolean' }
+    { key: 'original_quantity', label: t('holds.originalQuantity'), type: 'number' },
+    { key: 'hold_reason', label: t('holds.originalHoldReason'), type: 'text' },
+    { key: 'disposition', label: t('holds.disposition'), type: 'text' },
+    { key: 'released_quantity', label: t('holds.releasedQuantity'), type: 'number' },
+    { key: 'resolution_notes', label: t('holds.resolutionNotes'), type: 'text' },
+    { key: 'approved_by', label: t('holds.approvedBy'), type: 'text' },
+    { key: 'customer_notified', label: t('holds.customerNotified'), type: 'boolean' }
   ]
 })
 
@@ -403,7 +430,11 @@ const onConfirmHold = async () => {
     await loadActiveHolds()
     emit('submitted')
   } catch (error) {
-    alert('Error creating hold: ' + (error.response?.data?.detail || error.message))
+    snackbar.value = {
+      show: true,
+      text: t('holds.errors.createHold') + ': ' + (error.response?.data?.detail || error.message),
+      color: 'error'
+    }
   } finally {
     loading.value = false
   }
@@ -442,7 +473,11 @@ const onConfirmResume = async () => {
     await loadActiveHolds()
     emit('submitted')
   } catch (error) {
-    alert('Error resuming hold: ' + (error.response?.data?.detail || error.message))
+    snackbar.value = {
+      show: true,
+      text: t('holds.errors.resumeHold') + ': ' + (error.response?.data?.detail || error.message),
+      color: 'error'
+    }
   } finally {
     loading.value = false
   }

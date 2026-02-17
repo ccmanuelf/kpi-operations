@@ -4,7 +4,7 @@ Implements Phase 10: Flexible Workflow Foundation - Transition logging
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -51,7 +51,7 @@ def create_transition_log(
         from_status=from_status,
         to_status=to_status,
         transitioned_by=user_id,
-        transitioned_at=datetime.utcnow(),
+        transitioned_at=datetime.now(tz=timezone.utc),
         notes=notes,
         trigger_source=trigger_source,
         elapsed_from_received_hours=elapsed_from_received_hours,

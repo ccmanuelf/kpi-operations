@@ -6,7 +6,7 @@ IBM Carbon Design System color palette applied for consistent branding.
 Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from io import BytesIO
@@ -100,7 +100,7 @@ class ExcelReportGenerator:
         ws["A3"] = "Report Period:"
         ws["B3"] = f"{start_date.strftime('%m/%d/%Y')} - {end_date.strftime('%m/%d/%Y')}"
         ws["A4"] = "Generated:"
-        ws["B4"] = datetime.now().strftime("%m/%d/%Y %I:%M %p")
+        ws["B4"] = datetime.now(tz=timezone.utc).strftime("%m/%d/%Y %I:%M %p")
 
         # Client info
         client_name = self._get_client_name(client_id)

@@ -5,7 +5,7 @@ SECURITY: All operations enforce user ownership
 """
 
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
@@ -85,7 +85,7 @@ def add_to_filter_history(db: Session, user_id: str, filter_config: FilterConfig
     """
     # Create history entry
     history_entry = FilterHistory(
-        user_id=user_id, filter_config=filter_config.to_json_string(), applied_at=datetime.utcnow()
+        user_id=user_id, filter_config=filter_config.to_json_string(), applied_at=datetime.now(tz=timezone.utc)
     )
 
     db.add(history_entry)

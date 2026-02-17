@@ -99,6 +99,15 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="3000"
+    >
+      {{ snackbar.text }}
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -112,6 +121,7 @@ const store = useSimulationV2Store()
 const gridApi = ref(null)
 const showImportDialog = ref(false)
 const csvText = ref('')
+const snackbar = ref({ show: false, text: '', color: 'info' })
 
 const getRowId = (params) => String(params.data._id)
 
@@ -297,7 +307,11 @@ const importCsv = () => {
     },
     error: (error) => {
       console.error('CSV parse error:', error)
-      alert('Failed to parse CSV data')
+      snackbar.value = {
+        show: true,
+        text: 'Failed to parse CSV data',
+        color: 'error'
+      }
     }
   })
 }

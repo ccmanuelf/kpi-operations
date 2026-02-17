@@ -8,7 +8,7 @@ KPI calculations are now handled by ProductionKPIService.
 """
 
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import uuid
@@ -176,7 +176,7 @@ def update_production_entry(
 
     # Handle confirmation
     if entry_update.confirmed_by is not None:
-        db_entry.confirmation_timestamp = datetime.utcnow()
+        db_entry.confirmation_timestamp = datetime.now(tz=timezone.utc)
 
     # Recalculate KPIs if metrics changed (using service layer)
     if recalc_needed:

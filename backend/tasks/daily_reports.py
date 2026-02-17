@@ -3,10 +3,9 @@ Scheduled Daily Reports Task
 Uses APScheduler for scheduling (Celery alternative for simplicity)
 """
 
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from typing import List
 import logging
-from pathlib import Path
 
 from sqlalchemy.orm import Session
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -70,7 +69,7 @@ class DailyReportScheduler:
 
             logger.info(f"Found {len(clients)} active clients")
 
-            report_date = datetime.now()
+            report_date = datetime.now(tz=timezone.utc)
             start_date = date.today() - timedelta(days=1)  # Yesterday
             end_date = date.today()
 
@@ -173,7 +172,7 @@ class DailyReportScheduler:
             result = self.email_service.send_kpi_report(
                 to_emails=recipient_emails,
                 client_name=client.client_name,
-                report_date=datetime.now(),
+                report_date=datetime.now(tz=timezone.utc),
                 pdf_content=pdf_buffer.getvalue(),
                 additional_message="This is a manually requested report.",
             )

@@ -6,12 +6,15 @@ Provides Mini-MRP functionality for component availability checking.
 Explodes BOMs, aggregates requirements, compares to stock, identifies shortages.
 """
 
+import logging
 from decimal import Decimal
 from typing import List, Dict, Optional
 from dataclasses import dataclass
 from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+
+logger = logging.getLogger(__name__)
 
 from backend.schemas.capacity.component_check import CapacityComponentCheck, ComponentStatus
 from backend.schemas.capacity.stock import CapacityStockSnapshot
@@ -125,8 +128,9 @@ class MRPService:
                 if order.style_code not in order_by_style:
                     order_by_style[order.style_code] = []
                 order_by_style[order.style_code].append(order.order_number)
-            except Exception:
+            except Exception as e:
                 # Skip orders without valid BOMs
+                logger.exception("BOM explosion failed for order %s", order.order_number)
                 continue
 
         # Aggregate requirements

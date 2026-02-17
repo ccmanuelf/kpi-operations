@@ -9,7 +9,7 @@ Tracks how long inventory sits in hold status
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 
@@ -288,7 +288,8 @@ def get_total_hold_duration_hours(db: Session, work_order_number: str) -> Decima
         if hold.hold_status == HoldStatus.ON_HOLD:
             # Active hold - calculate from hold_timestamp to now
             if hold.hold_date:
-                delta = datetime.now() - hold.hold_date
+                hold_date = hold.hold_date if hold.hold_date.tzinfo else hold.hold_date.replace(tzinfo=timezone.utc)
+                delta = datetime.now(tz=timezone.utc) - hold_date
                 total_duration += Decimal(str(delta.total_seconds() / 3600))
         else:
             # Completed hold - use stored duration
@@ -316,15 +317,10 @@ def calculate_wip_age_adjusted(db: Session, work_order_number: str, work_order_c
     # Get total hold duration for this work order
     total_hold_hours = get_total_hold_duration_hours(db, work_order_number)
 
-    # Calculate raw age in hours
-    now = datetime.now()
-    if work_order_created_at.tzinfo:
-        # Make timezone-aware comparison
-        from datetime import timezone
-
-        now = datetime.now(timezone.utc)
-
-    raw_age_seconds = (now - work_order_created_at).total_seconds()
+    # Calculate raw age in hours — normalize naive DB datetimes to UTC
+    now = datetime.now(tz=timezone.utc)
+    created_at = work_order_created_at if work_order_created_at.tzinfo else work_order_created_at.replace(tzinfo=timezone.utc)
+    raw_age_seconds = (now - created_at).total_seconds()
     raw_age_hours = Decimal(str(raw_age_seconds / 3600))
 
     # Subtract hold time for TRUE WIP age

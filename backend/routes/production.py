@@ -6,7 +6,7 @@ All production CRUD and CSV upload endpoints
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import io
 import csv
@@ -48,7 +48,7 @@ router = APIRouter(prefix="/api/production", tags=["Production"])
 @router.post("", response_model=ProductionEntryResponse, status_code=status.HTTP_201_CREATED)
 def create_entry(
     entry: ProductionEntryCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> ProductionEntryResponse:
     """Create new production entry"""
     # Verify product exists and belongs to the same client
     product = (
@@ -80,6 +80,7 @@ def create_entry(
         )
         return result
     except Exception as e:
+        db.rollback()
         log_error(logger, "CREATE", "production", e, user_id=current_user.user_id)
         raise
 
@@ -95,7 +96,7 @@ def list_entries(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[ProductionEntryResponse]:
     """List production entries with filters"""
     return get_production_entries(
         db,
@@ -111,7 +112,7 @@ def list_entries(
 
 
 @router.get("/{entry_id}", response_model=ProductionEntryWithKPIs)
-def get_entry(entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_entry(entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> ProductionEntryWithKPIs:
     """Get production entry with full KPI details"""
     entry = get_production_entry_with_details(db, entry_id, current_user)
     if not entry:
@@ -125,7 +126,7 @@ def update_entry(
     entry_update: ProductionEntryUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ProductionEntryResponse:
     """Update production entry"""
     try:
         updated_entry = update_production_entry(db, entry_id, entry_update, current_user)
@@ -136,6 +137,7 @@ def update_entry(
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         log_error(logger, "UPDATE", "production", e, resource_id=str(entry_id), user_id=current_user.user_id)
         raise
 
@@ -143,7 +145,7 @@ def update_entry(
 @router.delete("/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_entry(
     entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """Delete production entry (supervisor only)"""
     try:
         success = delete_production_entry(db, entry_id, current_user)
@@ -153,6 +155,7 @@ def delete_entry(
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         log_error(logger, "DELETE", "production", e, resource_id=str(entry_id), user_id=current_user.user_id)
         raise
 
@@ -160,7 +163,7 @@ def delete_entry(
 @router.post("/upload/csv", response_model=CSVUploadResponse)
 async def upload_csv(
     file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> CSVUploadResponse:
     """
     Upload production entries via CSV - ALIGNED WITH PRODUCTION_ENTRY SCHEMA
 
@@ -272,7 +275,7 @@ async def upload_csv(
 @router.post("/batch-import", response_model=BatchImportResponse)
 def batch_import_production(
     request: BatchImportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> BatchImportResponse:
     """
     Batch import production entries after frontend validation.
 
@@ -363,7 +366,7 @@ def batch_import_production(
         errors=errors[:100],  # Limit error list to first 100
         created_entries=created_entries,
         import_log_id=import_log_id,
-        import_timestamp=datetime.utcnow(),
+        import_timestamp=datetime.now(tz=timezone.utc),
     )
 
 
@@ -372,7 +375,7 @@ import_logs_router = APIRouter(prefix="/api/import-logs", tags=["Production"])
 
 
 @import_logs_router.get("")
-def get_import_logs(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_import_logs(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[dict]:
     """Get import logs for the current user"""
     from sqlalchemy import text
 

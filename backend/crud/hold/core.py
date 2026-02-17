@@ -6,7 +6,7 @@ PHASE 2 - Enhanced with P2-001: Hold Duration Auto-Calculation
 import uuid
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 
@@ -42,7 +42,7 @@ def create_wip_hold(db: Session, hold: WIPHoldCreate, current_user: User) -> WIP
         if isinstance(hd, date) and not isinstance(hd, datetime):
             hold_data["hold_date"] = datetime.combine(hd, datetime.min.time())
     else:
-        hold_data["hold_date"] = datetime.now()
+        hold_data["hold_date"] = datetime.now(tz=timezone.utc)
 
     # Convert expected_resolution_date if present
     if hold_data.get("expected_resolution_date") is not None:

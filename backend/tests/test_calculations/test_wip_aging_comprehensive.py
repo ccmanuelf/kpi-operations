@@ -4,7 +4,7 @@ Target: Increase wip_aging.py coverage from 36% to 60%+
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -607,7 +607,7 @@ class TestGetTotalHoldDurationHours:
             hold_entry_id="HOLD-DUR-001",
             client_id=client.client_id,
             work_order_id=work_order.work_order_id,
-            hold_date=datetime.now() - timedelta(hours=2),
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2),
             hold_status=HoldStatus.ON_HOLD,
             hold_reason_category="QUALITY",
         )

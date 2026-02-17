@@ -113,6 +113,7 @@
     "databaseConfig": "Database Config",
     "alerts": "Alerts",
     "simulation": "Simulation",
+    "simulationV2": "Simulation v2",
     "capacityPlanning": "Capacity Planning",
     "tools": "Tools",
     "operationsHealth": "Operations Health"
@@ -363,7 +364,34 @@
     "station": "Station",
     "inspectionRecords": "Quality Inspection Records",
     "topDefectTypes": "Top Defect Types",
-    "byProduct": "Quality by Product"
+    "byProduct": "Quality by Product",
+    "rejectedQty": "Rejected Quantity",
+    "primaryDefectType": "Primary Defect Type",
+    "severity": "Severity",
+    "disposition": "Disposition",
+    "inspectorId": "Inspector ID",
+    "defectDescription": "Defect Description",
+    "correctiveAction": "Corrective Action Taken",
+    "calculatedMetrics": "Calculated Metrics",
+    "defectRate": "Defect Rate",
+    "passQty": "Pass Qty",
+    "selectClientFirst": "Select a client first",
+    "severities": {
+      "critical": "Critical",
+      "major": "Major",
+      "minor": "Minor",
+      "cosmetic": "Cosmetic"
+    },
+    "dispositions": {
+      "accept": "Accept",
+      "reject": "Reject",
+      "rework": "Rework",
+      "useAsIs": "Use As Is",
+      "returnToSupplier": "Return to Supplier"
+    },
+    "errors": {
+      "createEntry": "Error creating quality entry"
+    }
   },
   "attendance": {
     "title": "Attendance",
@@ -390,7 +418,26 @@
     "records": "Attendance Records",
     "absenceReasons": "Absence Reasons",
     "byDepartment": "Absenteeism by Department",
-    "highAbsenceAlerts": "High Absence Alerts"
+    "highAbsenceAlerts": "High Absence Alerts",
+    "statuses": {
+      "present": "Present",
+      "absent": "Absent",
+      "late": "Late",
+      "halfDay": "Half Day",
+      "leave": "Leave"
+    },
+    "reasons": {
+      "sickLeave": "Sick Leave",
+      "personalLeave": "Personal Leave",
+      "familyEmergency": "Family Emergency",
+      "medicalAppointment": "Medical Appointment",
+      "noShow": "No Show",
+      "unauthorized": "Unauthorized",
+      "other": "Other"
+    },
+    "errors": {
+      "createEntry": "Error creating attendance entry"
+    }
   },
   "downtime": {
     "title": "Downtime",
@@ -412,7 +459,24 @@
     "breakdown": "Breakdown",
     "other": "Other",
     "topReasons": "Top Downtime Reasons",
-    "records": "Downtime Records"
+    "records": "Downtime Records",
+    "category": "Category",
+    "categories": {
+      "plannedMaintenance": "Planned Maintenance",
+      "unplannedBreakdown": "Unplanned Breakdown",
+      "changeover": "Changeover",
+      "materialShortage": "Material Shortage",
+      "qualityIssue": "Quality Issue",
+      "operatorAbsence": "Operator Absence",
+      "other": "Other"
+    },
+    "inferenceEngine": "Inference Engine Suggestions",
+    "recommendedCategory": "Recommended Category",
+    "confidence": "Confidence",
+    "applySuggestion": "Apply Suggestion",
+    "errors": {
+      "createEntry": "Error creating downtime entry"
+    }
   },
   "holds": {
     "title": "Holds",
@@ -434,7 +498,47 @@
     "schedulingIssue": "Scheduling Issue",
     "clientRequest": "Client Request",
     "engineeringChange": "Engineering Change",
-    "history": "Hold History"
+    "history": "Hold History",
+    "severity": "Severity",
+    "holdDescription": "Hold Description",
+    "requiredAction": "Required Action for Release",
+    "initiatedBy": "Initiated By",
+    "customerNotificationRequired": "Customer Notification Required",
+    "selectHoldToResume": "Select Hold to Resume",
+    "disposition": "Disposition",
+    "releasedQuantity": "Released Quantity",
+    "resolutionNotes": "Resolution Notes",
+    "customerNotified": "Customer Notified",
+    "holdInformation": "Hold Information",
+    "originalQuantity": "Original Quantity",
+    "originalHoldReason": "Original Hold Reason",
+    "reasons": {
+      "qualityIssue": "Quality Issue",
+      "materialDefect": "Material Defect",
+      "processNonConformance": "Process Non-Conformance",
+      "customerRequest": "Customer Request",
+      "engineeringChange": "Engineering Change",
+      "inspectionFailure": "Inspection Failure",
+      "supplierIssue": "Supplier Issue",
+      "other": "Other"
+    },
+    "severities": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "dispositions": {
+      "release": "Release",
+      "rework": "Rework",
+      "scrap": "Scrap",
+      "returnToSupplier": "Return to Supplier",
+      "useAsIs": "Use As Is"
+    },
+    "errors": {
+      "createHold": "Error creating hold",
+      "resumeHold": "Error resuming hold"
+    }
   },
   "workOrders": {
     "title": "Work Orders",
@@ -1521,6 +1625,125 @@
         "save": "Save & Leave",
         "discard": "Discard"
       }
+    }
+  },
+  "capacityPlanningView": {
+    "title": "Capacity Planning",
+    "subtitle": "Production planning workbook with orders, BOM, capacity analysis, and scheduling",
+    "worksheetCount": "13 Worksheets",
+    "saveAllChanges": "Save All Changes",
+    "unsavedChangesIn": "You have unsaved changes in: {worksheets}",
+    "loadingWorkbook": "Loading workbook...",
+    "selectClientPrompt": "Please select a client from the dropdown above to view capacity planning data.",
+    "selectClient": "Select Client",
+    "undoTooltip": "Undo (Ctrl+Z)",
+    "redoTooltip": "Redo (Ctrl+Y)",
+    "tabs": {
+      "orders": "Orders",
+      "calendar": "Calendar",
+      "lines": "Lines",
+      "standards": "Standards",
+      "bom": "BOM",
+      "stock": "Stock",
+      "componentCheck": "Component Check",
+      "analysis": "Analysis",
+      "schedule": "Schedule",
+      "scenarios": "Scenarios",
+      "kpiTracking": "KPI Tracking",
+      "dashboardInputs": "Dashboard Inputs",
+      "instructions": "Instructions"
+    },
+    "stats": {
+      "orders": "Orders",
+      "lines": "Lines",
+      "boms": "BOMs",
+      "workingDays": "Working Days",
+      "shortages": "Shortages"
+    },
+    "actions": {
+      "runComponentCheck": "Run Component Check",
+      "runCapacityAnalysis": "Run Capacity Analysis",
+      "generateSchedule": "Generate Schedule",
+      "export": "Export",
+      "import": "Import",
+      "reset": "Reset"
+    },
+    "dialogs": {
+      "analysisTitle": "Run Capacity Analysis",
+      "runAnalysis": "Run Analysis",
+      "scheduleTitle": "Generate Production Schedule",
+      "scheduleName": "Schedule Name",
+      "generate": "Generate",
+      "exportTitle": "Export Workbook",
+      "format": "Format",
+      "importTitle": "Import Data",
+      "selectFile": "Select file",
+      "targetWorksheet": "Target Worksheet",
+      "resetTitle": "Reset Workbook",
+      "resetConfirmation": "Are you sure you want to reset all data? This will discard any unsaved changes."
+    },
+    "mrpResults": {
+      "title": "MRP / Component Check Results",
+      "totalComponents": "Total Components",
+      "available": "Available",
+      "shortages": "Shortages",
+      "shortageAlert": "{count} component shortages detected.",
+      "shortageActionPrompt": "Review the shortages below and take action to resolve them before production.",
+      "partialAvailability": "Partial Availability",
+      "availableComponents": "Available Components",
+      "required": "Required",
+      "short": "Short"
+    }
+  },
+  "simulationV2": {
+    "title": "Production Line Simulation v2.0",
+    "subtitle": "Discrete-event simulation for multi-product production lines with bottleneck analysis and rebalancing suggestions",
+    "simpyEngine": "SimPy Engine",
+    "howToUse": "How to Use",
+    "stats": {
+      "products": "Products",
+      "operations": "Operations",
+      "machines": "Machines",
+      "dailyHours": "Daily Hours",
+      "horizon": "Horizon"
+    },
+    "tabs": {
+      "operations": "Operations",
+      "schedule": "Schedule",
+      "demand": "Demand",
+      "breakdowns": "Breakdowns"
+    },
+    "actions": {
+      "validateConfiguration": "Validate Configuration",
+      "runSimulation": "Run Simulation",
+      "importConfig": "Import Config",
+      "exportConfig": "Export Config",
+      "reset": "Reset"
+    },
+    "guide": {
+      "title": "Production Line Simulation v2.0 Guide",
+      "quickStart": "Quick Start",
+      "operationsGrid": "Operations Grid",
+      "processingTimeFormula": "Processing Time Formula",
+      "outputBlocks": "Output Blocks",
+      "bottleneckDetection": "Bottleneck Detection"
+    },
+    "importDialog": {
+      "title": "Import Configuration",
+      "pasteJsonLabel": "Paste JSON configuration"
+    },
+    "resetDialog": {
+      "title": "Reset Configuration",
+      "prompt": "Choose how you want to reset the simulation:",
+      "clearAll": "Clear All",
+      "clearAllSubtitle": "Remove all data and start with empty configuration",
+      "loadSampleData": "Load Sample Data",
+      "loadSampleSubtitle": "Reset with T-Shirt manufacturing example for learning"
+    },
+    "welcome": {
+      "title": "Welcome!",
+      "message": "Sample T-Shirt manufacturing data has been loaded to help you get started.",
+      "gotIt": "Got it"
     }
   }
 }

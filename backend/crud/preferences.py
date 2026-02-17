@@ -4,7 +4,7 @@ Dashboard customization and widget configuration management
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 import json
@@ -169,7 +169,7 @@ def save_user_dashboard_preferences(db: Session, user_id: str, preferences: Dash
         # Update existing preference
         existing.preference_value = pref_json
         existing.is_active = True
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(tz=timezone.utc)
         db.commit()
         db.refresh(existing)
         logger.info(f"Updated dashboard preferences for user {user_id}")
@@ -333,7 +333,7 @@ def delete_user_preferences(db: Session, user_id: str, preference_type: Optional
 
     for pref in preferences:
         pref.is_active = False
-        pref.updated_at = datetime.utcnow()
+        pref.updated_at = datetime.now(tz=timezone.utc)
         count += 1
 
     db.commit()

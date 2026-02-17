@@ -8,7 +8,7 @@ persistence for cross-process coordination.
 import os
 import json
 import fcntl
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, asdict, field
@@ -110,7 +110,7 @@ class ProviderStateManager:
         """
         state = self._load_state()
         state["current_provider"] = provider
-        state["last_migration"] = datetime.utcnow().isoformat()
+        state["last_migration"] = datetime.now(tz=timezone.utc).isoformat()
         self._save_state(state)
         logger.info(f"Provider set to: {provider}")
 
@@ -135,7 +135,7 @@ class ProviderStateManager:
         try:
             self._lock_fd = open(self.lock_file, "w")
             fcntl.flock(self._lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            self._lock_fd.write(f"locked_at: {datetime.utcnow().isoformat()}\n")
+            self._lock_fd.write(f"locked_at: {datetime.now(tz=timezone.utc).isoformat()}\n")
             self._lock_fd.flush()
             logger.info("Migration lock acquired")
             return True
@@ -224,7 +224,7 @@ class ProviderStateManager:
         history = state.get("migration_history", [])
         history.append(
             {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "source": source,
                 "target": target,
                 "success": success,

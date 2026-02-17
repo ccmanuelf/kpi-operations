@@ -46,8 +46,9 @@ def _get_clients_from_junction_table(db: Session, user_id: str) -> Optional[List
         if assignments:
             return [a.client_id for a in assignments]
         return None
-    except Exception:
+    except Exception as e:
         # Table doesn't exist yet or other error - fall back to legacy
+        logger.warning("Junction table lookup failed for user %s, falling back to legacy: %s", user_id, e)
         return None
 
 
@@ -175,12 +176,10 @@ def verify_client_access(user: User, resource_client_id: str, db: Session = None
     if jwt_client_ids is not None and db_client_ids is not None:
         if jwt_client_ids.strip() != db_client_ids.strip():
             logger.warning(
-                "JWT client_id freshness mismatch for user '%s': "
-                "jwt_client_ids='%s', db_client_ids='%s'. "
-                "User's client assignment may have changed since login.",
+                "JWT client_id freshness mismatch for user %s — JWT has [%s] but DB has [%s]. Token may be stale.",
                 user.username,
-                jwt_client_ids,
-                db_client_ids,
+                jwt_client_ids.strip(),
+                db_client_ids.strip(),
             )
 
     # Get user's authorized client list (always from DB record, not JWT)

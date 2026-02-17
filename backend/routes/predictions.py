@@ -14,12 +14,22 @@ All endpoints enforce client access control and multi-tenant isolation
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
+import logging
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.constants import (
+    LOOKBACK_WEEKLY_DAYS,
+    LOOKBACK_MONTHLY_DAYS,
+    LOOKBACK_QUARTERLY_DAYS,
+    MIN_FORECAST_DAYS,
+    MAX_FORECAST_DAYS,
+    MIN_HISTORICAL_DAYS,
+    MAX_HISTORICAL_DAYS,
+)
 from backend.schemas.analytics import (
     KPIType,
     ComprehensivePredictionResponse,
@@ -44,6 +54,8 @@ from backend.generators.sample_data_phase5 import (
     KPIHistoryGenerator,
     KPITypePhase5,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/predictions", tags=["predictions"])
 
@@ -98,8 +110,8 @@ def get_historical_kpi_data(
 
         if len(time_series) >= 7:
             return [{"date": d, "value": float(v), "is_anomaly": False} for d, v in time_series]
-    except Exception:
-        pass
+    except Exception as e:
+        logger.exception("Prediction failed: %s", e)
 
     # Fall back to generated demo data if insufficient real data
     days = (end_date - start_date).days + 1
@@ -247,7 +259,7 @@ def build_comprehensive_prediction(
         benchmark=benchmark,
         trend_continuation=trend_continuation,
         expected_change_percent=round(expected_change_percent, 2),
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(tz=timezone.utc),
         data_quality_score=round(data_quality_score, 1),
     )
 
@@ -289,8 +301,8 @@ def build_comprehensive_prediction(
 async def get_kpi_prediction(
     kpi_type: str,
     client_id: Optional[str] = Query(None, description="Client ID to forecast (defaults to user's client)"),
-    forecast_days: int = Query(7, ge=1, le=30, description="Forecast horizon (1-30 days)"),
-    historical_days: int = Query(30, ge=7, le=90, description="Historical data window (7-90 days)"),
+    forecast_days: int = Query(LOOKBACK_WEEKLY_DAYS, ge=MIN_FORECAST_DAYS, le=MAX_FORECAST_DAYS, description="Forecast horizon (1-30 days)"),
+    historical_days: int = Query(LOOKBACK_MONTHLY_DAYS, ge=MIN_HISTORICAL_DAYS, le=MAX_HISTORICAL_DAYS, description="Historical data window (7-90 days)"),
     method: Optional[str] = Query(None, pattern="^(auto|simple|double|linear)$", description="Forecasting method"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -365,8 +377,8 @@ async def get_kpi_prediction(
 )
 async def get_all_kpi_predictions(
     client_id: Optional[str] = Query(None, description="Client ID to forecast (defaults to user's client)"),
-    forecast_days: int = Query(7, ge=1, le=30, description="Forecast horizon (1-30 days)"),
-    historical_days: int = Query(30, ge=7, le=90, description="Historical data window (7-90 days)"),
+    forecast_days: int = Query(LOOKBACK_WEEKLY_DAYS, ge=MIN_FORECAST_DAYS, le=MAX_FORECAST_DAYS, description="Forecast horizon (1-30 days)"),
+    historical_days: int = Query(LOOKBACK_MONTHLY_DAYS, ge=MIN_HISTORICAL_DAYS, le=MAX_HISTORICAL_DAYS, description="Historical data window (7-90 days)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AllKPIPredictionsResponse:
@@ -437,7 +449,7 @@ async def get_all_kpi_predictions(
     return AllKPIPredictionsResponse(
         client_id=client_id,
         forecast_days=forecast_days,
-        generated_at=datetime.utcnow(),
+        generated_at=datetime.now(tz=timezone.utc),
         efficiency=kpi_predictions.get("efficiency"),
         performance=kpi_predictions.get("performance"),
         availability=kpi_predictions.get("availability"),
@@ -499,8 +511,9 @@ async def seed_demo_data(
         result = seed_demo_predictions(db, client_ids=[client_id], days=days)
         return {"message": "Demo data seeded successfully", **result}
     except Exception as e:
+        logger.exception("Prediction operation failed: %s", e)
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to seed demo data: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Prediction operation failed"
         )
 
 
@@ -551,5 +564,5 @@ async def get_kpi_health(
         "target": kpi_benchmark.get("target", 85.0),
         "current_vs_target": health_data["current_vs_target"],
         "recommendations": health_data["recommendations"],
-        "assessed_at": datetime.utcnow(),
+        "assessed_at": datetime.now(tz=timezone.utc),
     }

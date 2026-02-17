@@ -12,7 +12,7 @@ Provides:
 
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Optional, Tuple, Any
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from dataclasses import dataclass, field
 from enum import Enum
 from sqlalchemy.orm import Session
@@ -785,7 +785,7 @@ def run_capacity_simulation(db: Session, client_id: str, simulation_config: Dict
         recommendations.append("Current capacity meets target")
 
     return {
-        "simulation_date": datetime.utcnow().isoformat(),
+        "simulation_date": datetime.now(tz=timezone.utc).isoformat(),
         "client_id": client_id,
         "configuration": {
             "target_units": target_units,

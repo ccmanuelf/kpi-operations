@@ -18,7 +18,7 @@ import os
 import uuid
 import json
 import random
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 import random
 
@@ -1275,7 +1275,7 @@ def init_database():
                         created_by=supervisor_user.user_id,
                         hold_reason=reason,
                         hold_status=HoldStatus.ON_HOLD,
-                        hold_date=datetime.now() - timedelta(days=age),
+                        hold_date=datetime.now(tz=timezone.utc) - timedelta(days=age),
                     )
 
         print(f"  Created execution data for {len(clients)} clients")

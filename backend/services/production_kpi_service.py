@@ -9,12 +9,15 @@ Phase A.1: Added caching for reference data and daily summaries
 Phase A.2: Added batch calculation methods to eliminate N+1 query patterns
 """
 
+import logging
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_
+
+logger = logging.getLogger(__name__)
 
 from backend.schemas.production_entry import ProductionEntry
 from backend.schemas.product import Product
@@ -385,11 +388,13 @@ class ProductionKPIService:
                     results["successful"] += 1
 
                 except Exception as e:
-                    results["entries"].append({"entry_id": entry_id, "success": False, "error": str(e)})
+                    logger.exception("KPI calculation failed for entry_id=%s", entry_id)
+                    results["entries"].append({"entry_id": entry_id, "success": False, "error": "KPI calculation failed"})
                     results["failed"] += 1
 
         except Exception as e:
             # If batch calculation fails, fall back to individual processing
+            logger.exception("Batch KPI calculation failed, falling back to individual processing")
             for entry in entries:
                 try:
                     kpi_result = self.calculate_entry_kpis(
@@ -412,8 +417,9 @@ class ProductionKPIService:
                     results["successful"] += 1
 
                 except Exception as entry_error:
+                    logger.exception("Individual KPI calculation failed for entry_id=%s", entry.production_entry_id)
                     results["entries"].append(
-                        {"entry_id": entry.production_entry_id, "success": False, "error": str(entry_error)}
+                        {"entry_id": entry.production_entry_id, "success": False, "error": "KPI calculation failed"}
                     )
                     results["failed"] += 1
 
@@ -488,7 +494,8 @@ class ProductionKPIService:
             return {}
         try:
             return get_client_config_or_defaults(self.db, client_id)
-        except Exception:
+        except Exception as e:
+            logger.exception("Failed to get client config for client_id=%s", client_id)
             return {}
 
     def _calculate_efficiency(

@@ -6,7 +6,7 @@ Target: Increase calculations/alerts.py coverage from 11% to 85%+
 
 import pytest
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock
 
 from backend.calculations.alerts import (
@@ -86,7 +86,7 @@ class TestGenerateAlertId:
     def test_generate_alert_id_date_component(self):
         """Test alert ID contains current date."""
         alert_id = generate_alert_id()
-        expected_date = datetime.now().strftime("%Y%m%d")
+        expected_date = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
         assert expected_date in alert_id
 
 

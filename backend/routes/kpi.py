@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import Optional
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import uuid
 
 from backend.database import get_db
@@ -126,7 +126,7 @@ def update_kpi_thresholds(
                 existing.unit = values["unit"]
             if "higher_is_better" in values:
                 existing.higher_is_better = values["higher_is_better"]
-            existing.updated_at = datetime.utcnow()
+            existing.updated_at = datetime.now(tz=timezone.utc)
             updated.append(kpi_key)
         else:
             # Create new client-specific threshold
@@ -139,8 +139,8 @@ def update_kpi_thresholds(
                 critical_threshold=values.get("critical_threshold"),
                 unit=values.get("unit", "%"),
                 higher_is_better=values.get("higher_is_better", "Y"),
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                created_at=datetime.now(tz=timezone.utc),
+                updated_at=datetime.now(tz=timezone.utc),
             )
             db.add(new_threshold)
             updated.append(kpi_key)
@@ -208,7 +208,7 @@ def calculate_kpis(entry_id: str, db: Session = Depends(get_db), current_user: U
         quality_rate=quality,
         ideal_cycle_time_used=ideal_time,
         was_inferred=was_inferred,
-        calculation_timestamp=datetime.utcnow(),
+        calculation_timestamp=datetime.now(tz=timezone.utc),
     )
 
 
@@ -422,7 +422,7 @@ def calculate_otd_kpi(
         "otd_percentage": round(otd_percentage, 2),
         "on_time_count": on_time_count,
         "total_orders": total_orders,
-        "calculation_timestamp": datetime.utcnow(),
+        "calculation_timestamp": datetime.now(tz=timezone.utc),
     }
 
 

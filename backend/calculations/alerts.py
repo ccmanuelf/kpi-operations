@@ -5,7 +5,7 @@ Generates intelligent alerts based on predictions, thresholds, and patterns
 
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 import uuid
 
@@ -30,7 +30,7 @@ class AlertGenerationResult:
 
 def generate_alert_id() -> str:
     """Generate unique alert ID"""
-    return f"ALT-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+    return f"ALT-{datetime.now(tz=timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
 
 
 def check_threshold_breach(

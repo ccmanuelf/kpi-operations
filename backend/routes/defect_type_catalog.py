@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import csv
 import io
+import logging
 
 from backend.database import get_db
 from backend.models.defect_type_catalog import (
@@ -30,6 +31,8 @@ from backend.crud.defect_type_catalog import (
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/defect-types", tags=["Defect Type Catalog"])
 
@@ -55,7 +58,8 @@ def create_defect_type_endpoint(
     try:
         return create_defect_type(db, defect_type, current_user)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.exception("Failed to process defect type catalog: %s", e)
+        raise HTTPException(status_code=400, detail="Failed to process defect type catalog")
 
 
 @router.get("/global", response_model=List[DefectTypeCatalogResponse])
@@ -175,7 +179,8 @@ async def upload_defect_types_csv(
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="Invalid file encoding. Use UTF-8")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+        logger.exception("Failed to process defect type catalog: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to process defect type catalog")
 
 
 @router.get("/template/download")
