@@ -648,20 +648,27 @@ def init_database():
             db.flush()
 
             # 4f. Stock Snapshots (all unique components across all products)
+            # Some items intentionally LOW to demonstrate shortage detection
+            # in the Component Check tab (capacity planning).
+            # Required qty = qty_per * order_qty * (1 + waste%/100)
+            #   FABRIC-PIQUE:  0.7 * 2000 * 1.06 = 1484 M needed → 900 on hand (shortage ~584)
+            #   FABRIC-CREPE:  1.8 * 800  * 1.10 = 1584 M needed → 800 on hand (shortage ~784)
+            #   THREAD-HEAVY: (120*500*1.03)+(100*1500*1.03) = 216300 M → 150000 (shortage ~66300)
+            #   ZIPPER-INVIS:  1 * 800 * 1.01 = 808 EA needed   → 400 on hand (shortage ~408)
             stock_quantities = {
                 "FABRIC-JERSEY": Decimal("5000"),
-                "FABRIC-PIQUE": Decimal("3000"),
+                "FABRIC-PIQUE": Decimal("900"),       # LOW_STOCK: POLO-200 needs ~1484 M
                 "FABRIC-TWILL": Decimal("4000"),
-                "FABRIC-CREPE": Decimal("2000"),
+                "FABRIC-CREPE": Decimal("800"),        # LOW_STOCK: DRESS-500 needs ~1584 M
                 "THREAD-POLY": Decimal("500000"),
-                "THREAD-HEAVY": Decimal("300000"),
+                "THREAD-HEAVY": Decimal("150000"),     # LOW_STOCK: JACKET+PANTS need ~216300 M
                 "THREAD-FINE": Decimal("200000"),
                 "LABEL-CARE": Decimal("100000"),
                 "BUTTON-POLO": Decimal("20000"),
                 "BUTTON-METAL": Decimal("15000"),
                 "ZIPPER-MAIN": Decimal("5000"),
                 "ZIPPER-FLY": Decimal("8000"),
-                "ZIPPER-INVIS": Decimal("3000"),
+                "ZIPPER-INVIS": Decimal("400"),        # LOW_STOCK: DRESS-500 needs ~808 EA
             }
             stock_entries = []
             for comp_code, comp_info in _ALL_COMPONENTS.items():

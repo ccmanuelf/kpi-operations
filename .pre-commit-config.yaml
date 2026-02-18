@@ -43,3 +43,9 @@ repos:
         language: system
         files: ^frontend/src/.*\.(vue|js|jsx|cjs|mjs)$
         pass_filenames: false
+
+      # NOTE: Full frontend build verification (npm run build) is intentionally
+      # NOT included as a pre-commit hook because it takes 30-60s per commit.
+      # Build verification is enforced in CI (ci.yml frontend-lint-and-tests job)
+      # which runs `npm run build` BEFORE tests as the first quality gate.
+      # Enable branch protection to require CI to pass before merging to main.

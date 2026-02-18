@@ -26,14 +26,18 @@ class DataMigrator:
     """
 
     # Tables in dependency order (parents before children)
-    # This ensures foreign key constraints are satisfied
+    # This ensures foreign key constraints are satisfied during migration.
+    # IMPORTANT: Keep this list in sync with all ORM models in backend/schemas/
+    # and backend/models/. Any table missing here will still be migrated (the
+    # safety-net in migrate_all_data catches extra tables) but the ordering
+    # won't be guaranteed, which can break FK constraints.
     TABLE_ORDER = [
         # Tier 1: No dependencies
         "CLIENT",
         "USER",
         "SHIFT",
 
-        # Tier 2: Depends on CLIENT
+        # Tier 2: Depends on CLIENT and/or USER only
         "EMPLOYEE",
         "PRODUCT",
         "SAVED_FILTER",
@@ -42,11 +46,17 @@ class DataMigrator:
         "DEFECT_TYPE_CATALOG",
         "PART_OPPORTUNITIES",
         "KPI_THRESHOLD",
+        "CLIENT_CONFIG",            # depends on CLIENT
+        "ALERT_CONFIG",             # depends on CLIENT (nullable FK)
+        "import_log",               # depends on USER
 
-        # Tier 3: Depends on CLIENT, EMPLOYEE
+        # Tier 3: Depends on CLIENT + EMPLOYEE or CLIENT + USER
         "WORK_ORDER",
         "FLOATING_POOL",
         "FILTER_HISTORY",
+        "shift_coverage",           # depends on CLIENT, SHIFT, USER
+        "EMPLOYEE_CLIENT_ASSIGNMENT",  # depends on EMPLOYEE, CLIENT
+        "USER_CLIENT_ASSIGNMENT",   # depends on USER, CLIENT
 
         # Tier 4: Depends on WORK_ORDER
         "JOB",
@@ -63,21 +73,25 @@ class DataMigrator:
         # Tier 6: Depends on QUALITY_ENTRY
         "DEFECT_DETAIL",
 
-        # Tier 7: Domain events (no FK constraints, but logical dependency)
+        # Tier 7: Alerts (depends on CLIENT, WORK_ORDER, USER)
+        "ALERT",                    # depends on CLIENT, WORK_ORDER, USER
+        "ALERT_HISTORY",            # depends on ALERT
+
+        # Tier 8: Domain events (no FK constraints, but logical dependency)
         "EVENT_STORE",
 
-        # Tier 8: Capacity Planning - Base tables (depend on CLIENT only)
+        # Tier 9: Capacity Planning - Base tables (depend on CLIENT only)
         "capacity_calendar",
         "capacity_production_lines",
         "capacity_production_standards",
         "capacity_stock_snapshot",
 
-        # Tier 9: Capacity Planning - Orders and headers (depend on CLIENT only)
+        # Tier 10: Capacity Planning - Orders and headers (depend on CLIENT only)
         "capacity_orders",
         "capacity_bom_header",
         "capacity_schedule",
 
-        # Tier 10: Capacity Planning - Child tables with FK to parent capacity tables
+        # Tier 11: Capacity Planning - Child tables with FK to parent capacity tables
         "capacity_bom_detail",          # depends on capacity_bom_header
         "capacity_scenario",            # depends on capacity_schedule (optional FK)
         "capacity_component_check",     # depends on capacity_orders

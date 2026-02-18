@@ -303,3 +303,110 @@ class TestDemoDataSeeder:
 
         # Should have been called at least once
         assert len(callback_calls) >= 0  # May be 0 if seeding fails early
+
+
+class TestTableOrderCompleteness:
+    """Verify TABLE_ORDER in DataMigrator covers all ORM models.
+
+    This is a regression guard: any new ORM model must be added to TABLE_ORDER
+    so that data migration preserves it with correct FK ordering.
+    """
+
+    @staticmethod
+    def _get_all_registered_tables():
+        """Import all ORM modules and return the set of table names in Base.metadata."""
+        from backend.database import Base
+
+        # Import every module that registers tables on Base
+        import backend.schemas.client  # noqa: F401
+        import backend.schemas.user  # noqa: F401
+        import backend.schemas.shift  # noqa: F401
+        import backend.schemas.employee  # noqa: F401
+        import backend.schemas.product  # noqa: F401
+        import backend.schemas.saved_filter  # noqa: F401
+        import backend.schemas.user_preferences  # noqa: F401
+        import backend.schemas.defect_type_catalog  # noqa: F401
+        import backend.schemas.part_opportunities  # noqa: F401
+        import backend.schemas.kpi_threshold  # noqa: F401
+        import backend.schemas.client_config  # noqa: F401
+        import backend.schemas.work_order  # noqa: F401
+        import backend.schemas.floating_pool  # noqa: F401
+        import backend.schemas.job  # noqa: F401
+        import backend.schemas.workflow  # noqa: F401
+        import backend.schemas.production_entry  # noqa: F401
+        import backend.schemas.attendance_entry  # noqa: F401
+        import backend.schemas.downtime_entry  # noqa: F401
+        import backend.schemas.quality_entry  # noqa: F401
+        import backend.schemas.hold_entry  # noqa: F401
+        import backend.schemas.coverage_entry  # noqa: F401
+        import backend.schemas.defect_detail  # noqa: F401
+        import backend.schemas.event_store  # noqa: F401
+        import backend.schemas.coverage  # noqa: F401
+        import backend.schemas.import_log  # noqa: F401
+        import backend.schemas.employee_client_assignment  # noqa: F401
+        import backend.schemas.user_client_assignment  # noqa: F401
+        import backend.schemas.capacity.calendar  # noqa: F401
+        import backend.schemas.capacity.production_lines  # noqa: F401
+        import backend.schemas.capacity.standards  # noqa: F401
+        import backend.schemas.capacity.stock  # noqa: F401
+        import backend.schemas.capacity.orders  # noqa: F401
+        import backend.schemas.capacity.bom  # noqa: F401
+        import backend.schemas.capacity.schedule  # noqa: F401
+        import backend.schemas.capacity.scenario  # noqa: F401
+        import backend.schemas.capacity.component_check  # noqa: F401
+        import backend.schemas.capacity.analysis  # noqa: F401
+        import backend.schemas.capacity.kpi_commitment  # noqa: F401
+        import backend.models.alert  # noqa: F401
+
+        return set(Base.metadata.tables.keys())
+
+    def test_table_order_contains_all_models(self):
+        """Every ORM __tablename__ must appear in TABLE_ORDER."""
+        from backend.db.migrations.data_migrator import DataMigrator
+
+        registered = self._get_all_registered_tables()
+        table_order_set = set(DataMigrator.TABLE_ORDER)
+
+        missing = registered - table_order_set
+        assert missing == set(), (
+            f"Tables registered in ORM but MISSING from DataMigrator.TABLE_ORDER: {sorted(missing)}. "
+            f"Add them to TABLE_ORDER in the correct dependency tier."
+        )
+
+    def test_table_order_has_no_stale_entries(self):
+        """TABLE_ORDER must not reference tables that no longer exist as ORM models."""
+        from backend.db.migrations.data_migrator import DataMigrator
+
+        registered = self._get_all_registered_tables()
+        table_order_set = set(DataMigrator.TABLE_ORDER)
+
+        stale = table_order_set - registered
+        assert stale == set(), (
+            f"Entries in DataMigrator.TABLE_ORDER that have NO matching ORM model: {sorted(stale)}. "
+            f"Remove them from TABLE_ORDER."
+        )
+
+    def test_table_order_has_no_duplicates(self):
+        """TABLE_ORDER must not contain duplicate entries."""
+        from backend.db.migrations.data_migrator import DataMigrator
+
+        seen = set()
+        duplicates = []
+        for table in DataMigrator.TABLE_ORDER:
+            if table in seen:
+                duplicates.append(table)
+            seen.add(table)
+
+        assert duplicates == [], f"Duplicate entries in TABLE_ORDER: {duplicates}"
+
+    def test_table_order_count_matches_model_count(self):
+        """TABLE_ORDER length must equal the number of registered ORM tables."""
+        from backend.db.migrations.data_migrator import DataMigrator
+
+        registered = self._get_all_registered_tables()
+        assert len(DataMigrator.TABLE_ORDER) == len(registered), (
+            f"TABLE_ORDER has {len(DataMigrator.TABLE_ORDER)} entries but "
+            f"{len(registered)} tables are registered in ORM. "
+            f"Diff: ORDER-only={set(DataMigrator.TABLE_ORDER) - registered}, "
+            f"ORM-only={registered - set(DataMigrator.TABLE_ORDER)}"
+        )

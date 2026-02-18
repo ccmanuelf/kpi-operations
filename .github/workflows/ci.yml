@@ -1,3 +1,8 @@
+# IMPORTANT: Enable GitHub branch protection on 'main':
+# Settings > Branches > Add rule for 'main':
+# - Require status checks: backend-tests, frontend-lint-and-tests, docker-build
+# - Require branches to be up to date before merging
+# This ensures broken builds (e.g. unclosed Vue template tags) never reach main.
 name: CI
 
 on:
@@ -76,6 +81,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint -- --no-fix
 
+      - name: Build frontend
+        run: npm run build
+
       - name: Run unit tests with coverage
         run: npx vitest run --coverage
 
@@ -86,9 +94,6 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
           retention-days: 14
-
-      - name: Build frontend
-        run: npm run build
 
       - name: Security audit
         run: npm audit --audit-level=high
@@ -107,6 +112,7 @@ jobs:
 
       - name: Smoke test backend image
         run: |
+          set -e
           docker run -d --name backend-smoke -p 8000:8000 \
             -e DATABASE_URL=sqlite:///tmp/test.db \
             -e SECRET_KEY=ci-test-only \
