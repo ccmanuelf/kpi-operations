@@ -4,7 +4,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-calendar-clock</v-icon>
-        Shift Details
+        {{ $t('workflow.shiftDetails') }}
       </v-card-title>
       <v-card-text>
         <v-row>
@@ -12,17 +12,17 @@
             <v-select
               v-model="shiftDetails.shiftNumber"
               :items="shiftOptions"
-              label="Shift"
+              :label="$t('workflow.shift')"
               variant="outlined"
               density="compact"
-              :rules="[v => !!v || 'Shift is required']"
+              :rules="[v => !!v || $t('workflow.shiftRequired')]"
               @update:model-value="emitUpdate"
             />
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-model="shiftDetails.date"
-              label="Date"
+              :label="$t('common.date')"
               type="date"
               variant="outlined"
               density="compact"
@@ -32,18 +32,18 @@
           <v-col cols="12" md="6">
             <v-text-field
               v-model="shiftDetails.startTime"
-              label="Start Time"
+              :label="$t('workflow.startTime')"
               type="time"
               variant="outlined"
               density="compact"
-              :rules="[v => !!v || 'Start time is required']"
+              :rules="[v => !!v || $t('workflow.startTimeRequired')]"
               @update:model-value="emitUpdate"
             />
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-model="shiftDetails.supervisor"
-              label="Supervisor"
+              :label="$t('workflow.supervisor')"
               variant="outlined"
               density="compact"
               readonly
@@ -57,7 +57,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-clipboard-check</v-icon>
-        Pre-Start Checklist
+        {{ $t('workflow.preStartChecklist') }}
       </v-card-title>
       <v-card-text>
         <v-list density="compact">
@@ -81,8 +81,8 @@
     <!-- Shift Notes -->
     <v-textarea
       v-model="shiftDetails.notes"
-      label="Shift Start Notes (Optional)"
-      placeholder="Any notes or special instructions for this shift..."
+      :label="$t('workflow.shiftStartNotes')"
+      :placeholder="$t('workflow.shiftStartNotesPlaceholder')"
       variant="outlined"
       rows="3"
       class="mb-4"
@@ -95,20 +95,20 @@
       variant="tonal"
       class="mb-4"
     >
-      <v-alert-title>Ready to Start Shift</v-alert-title>
-      <p class="mb-2">Starting this shift will:</p>
+      <v-alert-title>{{ $t('workflow.readyToStartShift') }}</v-alert-title>
+      <p class="mb-2">{{ $t('workflow.startShiftDescription') }}</p>
       <ul class="mb-0">
-        <li>Create a new shift record for {{ formatDate(shiftDetails.date) }}</li>
-        <li>Log attendance for {{ attendanceCount }} employees</li>
-        <li>Set {{ workOrderCount }} work orders as active</li>
-        <li>Enable production tracking for this shift</li>
+        <li>{{ $t('workflow.createShiftRecord', { date: formatDate(shiftDetails.date) }) }}</li>
+        <li>{{ $t('workflow.logAttendance', { count: attendanceCount }) }}</li>
+        <li>{{ $t('workflow.setWorkOrdersActive', { count: workOrderCount }) }}</li>
+        <li>{{ $t('workflow.enableProductionTracking') }}</li>
       </ul>
     </v-alert>
 
     <v-checkbox
       v-model="confirmed"
       :disabled="!isFormValid"
-      label="I confirm all pre-start checks are complete and the shift is ready to begin"
+      :label="$t('workflow.startShiftConfirmLabel')"
       color="success"
       @update:model-value="handleConfirm"
     />
@@ -117,7 +117,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
+
+const { t } = useI18n()
 
 const props = defineProps({
   workflowData: {
@@ -150,33 +153,33 @@ const shiftOptions = [
 const checklistItems = computed(() => [
   {
     id: 'previous-shift',
-    title: 'Previous Shift Review',
+    title: t('workflow.previousShiftReview'),
     completed: !!props.workflowData['review-previous']?.isValid,
-    summary: props.workflowData['review-previous']?.isValid ? 'Reviewed and acknowledged' : 'Not reviewed'
+    summary: props.workflowData['review-previous']?.isValid ? t('workflow.reviewedAndAcknowledged') : t('workflow.notReviewed')
   },
   {
     id: 'attendance',
-    title: 'Attendance Confirmation',
+    title: t('workflow.attendanceConfirmation'),
     completed: !!props.workflowData['confirm-attendance']?.isValid,
     summary: props.workflowData['confirm-attendance']?.presentCount
-      ? `${props.workflowData['confirm-attendance'].presentCount} employees present`
-      : 'Not confirmed'
+      ? t('workflow.employeesPresent', { count: props.workflowData['confirm-attendance'].presentCount })
+      : t('workflow.notConfirmed')
   },
   {
     id: 'targets',
-    title: 'Production Targets Review',
+    title: t('workflow.productionTargetsReview'),
     completed: !!props.workflowData['review-targets']?.isValid,
     summary: props.workflowData['review-targets']?.totalUnits
-      ? `${props.workflowData['review-targets'].totalUnits} units scheduled`
-      : 'Not reviewed'
+      ? t('workflow.unitsScheduled', { count: props.workflowData['review-targets'].totalUnits })
+      : t('workflow.notReviewed')
   },
   {
     id: 'equipment',
-    title: 'Equipment Status Check',
+    title: t('workflow.equipmentStatusCheck'),
     completed: !!props.workflowData['check-equipment']?.isValid,
     summary: props.workflowData['check-equipment']?.operationalCount
-      ? `${props.workflowData['check-equipment'].operationalCount} machines operational`
-      : 'Not checked'
+      ? t('workflow.machinesOperational', { count: props.workflowData['check-equipment'].operationalCount })
+      : t('workflow.notChecked')
   }
 ])
 

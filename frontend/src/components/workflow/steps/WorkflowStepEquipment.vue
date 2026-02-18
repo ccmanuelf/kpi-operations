@@ -5,25 +5,25 @@
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-success">{{ operationalCount }}</div>
-          <div class="text-caption text-grey">Operational</div>
+          <div class="text-caption text-grey">{{ $t('workflow.operational') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-warning">{{ warningCount }}</div>
-          <div class="text-caption text-grey">Warnings</div>
+          <div class="text-caption text-grey">{{ $t('workflow.warnings') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-error">{{ downCount }}</div>
-          <div class="text-caption text-grey">Down</div>
+          <div class="text-caption text-grey">{{ $t('workflow.down') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-info">{{ pmDueCount }}</div>
-          <div class="text-caption text-grey">PM Due</div>
+          <div class="text-caption text-grey">{{ $t('workflow.pmDue') }}</div>
         </v-card>
       </v-col>
     </v-row>
@@ -32,7 +32,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-cog</v-icon>
-        Equipment Status
+        {{ $t('workflow.equipmentStatus') }}
         <v-spacer />
         <v-btn-toggle
           v-model="statusFilter"
@@ -40,8 +40,8 @@
           density="compact"
           variant="outlined"
         >
-          <v-btn value="all" size="small">All</v-btn>
-          <v-btn value="issues" size="small" color="warning">Issues</v-btn>
+          <v-btn value="all" size="small">{{ $t('common.all') }}</v-btn>
+          <v-btn value="issues" size="small" color="warning">{{ $t('workflow.issues') }}</v-btn>
         </v-btn-toggle>
       </v-card-title>
 
@@ -68,11 +68,11 @@
                 class="ml-2"
                 variant="flat"
               >
-                PM Due
+                {{ $t('workflow.pmDue') }}
               </v-chip>
             </v-list-item-title>
             <v-list-item-subtitle>
-              {{ equipment.location }} - Last check: {{ formatTime(equipment.lastCheck) }}
+              {{ equipment.location }} - {{ $t('workflow.lastCheck') }}: {{ formatTime(equipment.lastCheck) }}
             </v-list-item-subtitle>
 
             <template v-slot:append>
@@ -102,7 +102,7 @@
     >
       <v-card-title class="d-flex align-center bg-warning-lighten-4 py-2">
         <v-icon class="mr-2" size="20" color="warning">mdi-alert</v-icon>
-        Maintenance Alerts
+        {{ $t('workflow.maintenanceAlerts') }}
       </v-card-title>
       <v-card-text class="pa-0">
         <v-list density="compact">
@@ -124,7 +124,7 @@
                 color="primary"
                 @click="acknowledgeAlert(alert)"
               >
-                Acknowledge
+                {{ $t('workflow.acknowledge') }}
               </v-btn>
             </template>
           </v-list-item>
@@ -139,14 +139,14 @@
       variant="tonal"
       class="mb-4"
     >
-      <v-alert-title>Equipment Down</v-alert-title>
-      {{ downCount }} piece(s) of equipment are currently down. Production capacity may be affected.
+      <v-alert-title>{{ $t('workflow.equipmentDown') }}</v-alert-title>
+      {{ $t('workflow.equipmentDownAlert', { count: downCount }) }}
     </v-alert>
 
     <!-- Confirmation -->
     <v-checkbox
       v-model="confirmed"
-      label="I have reviewed the equipment status and acknowledge any alerts"
+      :label="$t('workflow.equipmentConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />

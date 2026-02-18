@@ -1,15 +1,15 @@
 <template>
   <v-card role="region" aria-labelledby="data-entry-title">
     <v-card-title class="d-flex align-center flex-wrap ga-3">
-      <span id="data-entry-title" class="text-h5">Production Data Entry</span>
+      <span id="data-entry-title" class="text-h5">{{ $t('dataEntry.productionDataEntry') }}</span>
       <v-spacer></v-spacer>
       <v-btn
         color="primary"
         @click="addNewEntry"
-        aria-label="Add new production entry"
+        :aria-label="$t('dataEntry.addNewProductionEntry')"
         prepend-icon="mdi-plus"
       >
-        Add Entry
+        {{ $t('dataEntry.addEntry') }}
       </v-btn>
     </v-card-title>
 
@@ -31,9 +31,9 @@
       <EmptyState
         v-else-if="!loading && entries.length === 0"
         variant="no-entries"
-        title="No production entries yet"
-        description="Start by adding your first production entry to track manufacturing output and efficiency metrics."
-        action-text="Add First Entry"
+        :title="$t('dataEntry.noProductionEntries')"
+        :description="$t('dataEntry.noProductionEntriesDesc')"
+        :action-text="$t('dataEntry.addFirstEntry')"
         action-icon="mdi-plus"
         @action="addNewEntry"
       />
@@ -46,7 +46,7 @@
         :loading="loading"
         class="elevation-1"
         item-key="entry_id"
-        aria-label="Production entries data table"
+        :aria-label="$t('dataEntry.productionEntriesTable')"
         hover
       >
         <template v-slot:item.production_date="{ item }">
@@ -56,7 +56,7 @@
             type="date"
             dense
             hide-details
-            :aria-label="`Production date for entry ${item.entry_id || 'new'}`"
+            :aria-label="$t('dataEntry.ariaProductionDate', { id: item.entry_id || $t('dataEntry.new') })"
           ></v-text-field>
           <span v-else>{{ formatDate(item.production_date) }}</span>
         </template>
@@ -70,7 +70,7 @@
             item-value="product_id"
             dense
             hide-details
-            :aria-label="`Select product for entry ${item.entry_id || 'new'}`"
+            :aria-label="$t('dataEntry.ariaSelectProduct', { id: item.entry_id || $t('dataEntry.new') })"
           ></v-select>
           <span v-else>{{ getProductName(item.product_id) }}</span>
         </template>
@@ -84,7 +84,7 @@
             item-value="shift_id"
             dense
             hide-details
-            :aria-label="`Select shift for entry ${item.entry_id || 'new'}`"
+            :aria-label="$t('dataEntry.ariaSelectShift', { id: item.entry_id || $t('dataEntry.new') })"
           ></v-select>
           <span v-else>{{ getShiftName(item.shift_id) }}</span>
         </template>
@@ -96,7 +96,7 @@
             type="number"
             dense
             hide-details
-            :aria-label="`Units produced for entry ${item.entry_id || 'new'}`"
+            :aria-label="$t('dataEntry.ariaUnitsProduced', { id: item.entry_id || $t('dataEntry.new') })"
           ></v-text-field>
           <span v-else>{{ item.units_produced }}</span>
         </template>
@@ -109,7 +109,7 @@
             step="0.1"
             dense
             hide-details
-            :aria-label="`Run time in hours for entry ${item.entry_id || 'new'}`"
+            :aria-label="$t('dataEntry.ariaRunTime', { id: item.entry_id || $t('dataEntry.new') })"
           ></v-text-field>
           <span v-else>{{ item.run_time_hours }}</span>
         </template>
@@ -121,19 +121,19 @@
             type="number"
             dense
             hide-details
-            :aria-label="`Employees assigned for entry ${item.entry_id || 'new'}`"
+            :aria-label="$t('dataEntry.ariaEmployees', { id: item.entry_id || $t('dataEntry.new') })"
           ></v-text-field>
           <span v-else>{{ item.employees_assigned }}</span>
         </template>
 
         <template v-slot:item.actions="{ item }">
-          <div v-if="item.editing" role="group" aria-label="Edit actions">
+          <div v-if="item.editing" role="group" :aria-label="$t('dataEntry.ariaEditActions')">
             <v-btn
               icon
               size="small"
               @click="saveEntry(item)"
               color="success"
-              :aria-label="`Save entry ${item.entry_id || 'new'}`"
+              :aria-label="$t('dataEntry.ariaSaveEntry', { id: item.entry_id || $t('dataEntry.new') })"
             >
               <v-icon aria-hidden="true">mdi-check</v-icon>
             </v-btn>
@@ -142,17 +142,17 @@
               size="small"
               @click="cancelEdit(item)"
               color="error"
-              :aria-label="`Cancel editing entry ${item.entry_id || 'new'}`"
+              :aria-label="$t('dataEntry.ariaCancelEdit', { id: item.entry_id || $t('dataEntry.new') })"
             >
               <v-icon aria-hidden="true">mdi-close</v-icon>
             </v-btn>
           </div>
-          <div v-else role="group" aria-label="Row actions">
+          <div v-else role="group" :aria-label="$t('dataEntry.ariaRowActions')">
             <v-btn
               icon
               size="small"
               @click="editEntry(item)"
-              :aria-label="`Edit entry ${item.entry_id}`"
+              :aria-label="$t('dataEntry.ariaEditEntry', { id: item.entry_id })"
             >
               <v-icon aria-hidden="true">mdi-pencil</v-icon>
             </v-btn>
@@ -161,7 +161,7 @@
               size="small"
               @click="deleteEntry(item)"
               color="error"
-              :aria-label="`Delete entry ${item.entry_id}`"
+              :aria-label="$t('dataEntry.ariaDeleteEntry', { id: item.entry_id })"
             >
               <v-icon aria-hidden="true">mdi-delete</v-icon>
             </v-btn>
@@ -174,6 +174,7 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -181,11 +182,12 @@ import TableSkeleton from '@/components/ui/TableSkeleton.vue'
 import { useUnsavedChanges } from '@/composables/useUnsavedChanges'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
+const { t } = useI18n()
 const kpiStore = useProductionDataStore()
 
 // Unsaved changes warning when rows are being edited
 const { hasUnsavedChanges, markDirty, markClean } = useUnsavedChanges({
-  message: 'You have unsaved changes in the production grid. Are you sure you want to leave?'
+  message: t('dataEntry.unsavedChangesWarning')
 })
 
 // Keyboard shortcuts (Ctrl+S to save, Escape to cancel)
@@ -211,7 +213,7 @@ const saveAllEditingRows = async () => {
   for (const item of editingRows) {
     await saveEntry(item)
   }
-  announceStatus(`Saved ${editingRows.length} entries`)
+  announceStatus(t('dataEntry.savedEntries', { count: editingRows.length }))
 }
 
 // Cancel all editing via Escape
@@ -239,15 +241,15 @@ const announceStatus = (message) => {
   }, 1000)
 }
 
-const headers = [
-  { title: 'Date', key: 'production_date', sortable: true },
-  { title: 'Product', key: 'product_id' },
-  { title: 'Shift', key: 'shift_id' },
-  { title: 'Units', key: 'units_produced' },
-  { title: 'Runtime (hrs)', key: 'run_time_hours' },
-  { title: 'Employees', key: 'employees_assigned' },
-  { title: 'Actions', key: 'actions', sortable: false }
-]
+const headers = computed(() => [
+  { title: t('grids.columns.date'), key: 'production_date', sortable: true },
+  { title: t('grids.columns.product'), key: 'product_id' },
+  { title: t('grids.columns.shift'), key: 'shift_id' },
+  { title: t('dataEntry.units'), key: 'units_produced' },
+  { title: t('grids.columns.runtimeHrs'), key: 'run_time_hours' },
+  { title: t('grids.columns.employees'), key: 'employees_assigned' },
+  { title: t('common.actions'), key: 'actions', sortable: false }
+])
 
 const formatDate = (date) => {
   return format(new Date(date), 'MMM dd, yyyy')
@@ -320,9 +322,9 @@ const saveEntry = async (item) => {
 }
 
 const deleteEntry = async (item) => {
-  if (confirm('Are you sure you want to delete this entry?')) {
+  if (confirm(t('dataEntry.confirmDeleteEntry'))) {
     await kpiStore.deleteProductionEntry(item.entry_id)
-    announceStatus(`Entry ${item.entry_id} deleted`)
+    announceStatus(t('dataEntry.entryDeleted', { id: item.entry_id }))
   }
 }
 

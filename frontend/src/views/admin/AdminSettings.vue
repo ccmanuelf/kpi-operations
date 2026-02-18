@@ -280,18 +280,18 @@ const clientOptions = computed(() => {
 })
 
 // KPI definitions
-const kpiList = [
-  { key: 'efficiency', label: 'Efficiency Target', icon: 'mdi-speedometer', unit: '%' },
-  { key: 'quality', label: 'Quality (FPY) Target', icon: 'mdi-star', unit: '%' },
-  { key: 'availability', label: 'Availability Target', icon: 'mdi-server', unit: '%' },
-  { key: 'performance', label: 'Performance Target', icon: 'mdi-gauge', unit: '%' },
-  { key: 'oee', label: 'OEE Target', icon: 'mdi-factory', unit: '%' },
-  { key: 'ppm', label: 'PPM Target', icon: 'mdi-alert-circle', unit: 'ppm' },
-  { key: 'absenteeism', label: 'Absenteeism Target', icon: 'mdi-account-alert', unit: '%' },
-  { key: 'otd', label: 'On-Time Delivery Target', icon: 'mdi-truck-delivery', unit: '%' },
-  { key: 'wip_aging', label: 'WIP Aging Target', icon: 'mdi-clock-alert', unit: 'days' },
-  { key: 'throughput', label: 'Throughput Time Target', icon: 'mdi-timer', unit: 'hrs' }
-]
+const kpiList = computed(() => [
+  { key: 'efficiency', label: t('admin.settings.kpi.efficiencyTarget'), icon: 'mdi-speedometer', unit: '%' },
+  { key: 'quality', label: t('admin.settings.kpi.qualityTarget'), icon: 'mdi-star', unit: '%' },
+  { key: 'availability', label: t('admin.settings.kpi.availabilityTarget'), icon: 'mdi-server', unit: '%' },
+  { key: 'performance', label: t('admin.settings.kpi.performanceTarget'), icon: 'mdi-gauge', unit: '%' },
+  { key: 'oee', label: t('admin.settings.kpi.oeeTarget'), icon: 'mdi-factory', unit: '%' },
+  { key: 'ppm', label: t('admin.settings.kpi.ppmTarget'), icon: 'mdi-alert-circle', unit: 'ppm' },
+  { key: 'absenteeism', label: t('admin.settings.kpi.absenteeismTarget'), icon: 'mdi-account-alert', unit: '%' },
+  { key: 'otd', label: t('admin.settings.kpi.otdTarget'), icon: 'mdi-truck-delivery', unit: '%' },
+  { key: 'wip_aging', label: t('admin.settings.kpi.wipAgingTarget'), icon: 'mdi-clock-alert', unit: t('common.days') },
+  { key: 'throughput', label: t('admin.settings.kpi.throughputTarget'), icon: 'mdi-timer', unit: t('admin.settings.kpi.hrs') }
+])
 
 // Thresholds state
 const thresholds = ref({})
@@ -315,7 +315,7 @@ const getThresholdHint = (key) => {
   const original = originalThresholds.value[key]
   if (!original) return ''
   if (selectedClientId.value && original.is_global) {
-    return `Global default: ${original.target_value}`
+    return `${t('admin.settings.globalDefault')}: ${original.target_value}`
   }
   return ''
 }
@@ -336,17 +336,23 @@ const settings = ref({
 })
 
 const dateFormats = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD-MMM-YYYY']
-const languages = [
-  { title: 'English', value: 'en' },
-  { title: 'Spanish', value: 'es' },
-  { title: 'French', value: 'fr' }
-]
-const retentionPeriods = ['6 months', '1 year', '2 years', '5 years', 'Forever']
-const backupFrequencies = [
-  { title: 'Daily', value: 'daily' },
-  { title: 'Weekly', value: 'weekly' },
-  { title: 'Monthly', value: 'monthly' }
-]
+const languages = computed(() => [
+  { title: t('admin.settings.langEnglish'), value: 'en' },
+  { title: t('admin.settings.langSpanish'), value: 'es' },
+  { title: t('admin.settings.langFrench'), value: 'fr' }
+])
+const retentionPeriods = computed(() => [
+  t('admin.settings.retention6Months'),
+  t('admin.settings.retention1Year'),
+  t('admin.settings.retention2Years'),
+  t('admin.settings.retention5Years'),
+  t('admin.settings.retentionForever')
+])
+const backupFrequencies = computed(() => [
+  { title: t('admin.settings.freqDaily'), value: 'daily' },
+  { title: t('admin.settings.freqWeekly'), value: 'weekly' },
+  { title: t('admin.settings.freqMonthly'), value: 'monthly' }
+])
 
 const showSnackbar = (message, color = 'success') => {
   snackbarMessage.value = message

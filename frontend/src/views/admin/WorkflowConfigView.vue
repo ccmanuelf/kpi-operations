@@ -2,18 +2,13 @@
   <v-container fluid>
     <v-row>
       <v-col cols="12">
-        <div class="d-flex align-center justify-space-between mb-4">
-          <h1 class="text-h4">
-            <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
-            {{ $t('admin.workflowConfig.title') }}
-          </h1>
-        </div>
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          {{ $t('admin.workflowConfig.description') }}
-        </p>
+        <h1 class="text-h4 mb-2">
+          <v-icon class="mr-2">mdi-swap-horizontal</v-icon>
+          {{ $t('admin.workflowConfig.title') }}
+        </h1>
+        <p class="text-body-2 text-medium-emphasis mb-4">{{ $t('admin.workflowConfig.description') }}</p>
       </v-col>
     </v-row>
-
     <!-- Templates Overview Card -->
     <v-row class="mb-4">
       <v-col cols="12">
@@ -62,7 +57,6 @@
         </v-card>
       </v-col>
     </v-row>
-
     <!-- Client Selector -->
     <v-row class="mb-4">
       <v-col cols="12" md="6">
@@ -126,7 +120,6 @@
         </v-menu>
       </v-col>
     </v-row>
-
     <!-- Client Workflow Config Display -->
     <v-row v-if="selectedClientId">
       <v-col cols="12">
@@ -169,7 +162,6 @@
                 </v-icon>
               </div>
             </div>
-
             <!-- Optional Statuses -->
             <div v-if="workflowConfig.workflow_optional_statuses?.length" class="mb-4">
               <span class="text-caption text-medium-emphasis mr-2">
@@ -186,9 +178,7 @@
                 {{ formatStatus(status) }}
               </v-chip>
             </div>
-
             <v-divider class="my-4" />
-
             <!-- Closure Trigger -->
             <h3 class="text-subtitle-1 font-weight-bold mb-3">
               <v-icon class="mr-1" size="small">mdi-archive</v-icon>
@@ -198,9 +188,7 @@
               <v-icon size="small" class="mr-1">{{ getClosureTriggerIcon(workflowConfig.workflow_closure_trigger) }}</v-icon>
               {{ formatClosureTrigger(workflowConfig.workflow_closure_trigger) }}
             </v-chip>
-
             <v-divider class="my-4" />
-
             <!-- Transition Rules -->
             <h3 class="text-subtitle-1 font-weight-bold mb-3">
               <v-icon class="mr-1" size="small">mdi-transit-connection-variant</v-icon>
@@ -245,103 +233,15 @@
         </v-card>
       </v-col>
     </v-row>
-
     <!-- Workflow Analytics -->
-    <v-row v-if="selectedClientId && workflowConfig" class="mt-4">
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2" size="small">mdi-chart-pie</v-icon>
-            {{ $t('admin.workflowConfig.statusDistribution') }}
-          </v-card-title>
-          <v-card-text>
-            <div v-if="loadingAnalytics" class="text-center py-4">
-              <v-progress-circular indeterminate size="32" />
-            </div>
-            <div v-else-if="statusDistribution">
-              <div
-                v-for="item in statusDistribution.by_status"
-                :key="item.status"
-                class="d-flex align-center justify-space-between mb-2"
-              >
-                <v-chip :color="getStatusColor(item.status)" size="small" variant="tonal">
-                  {{ formatStatus(item.status) }}
-                </v-chip>
-                <div class="d-flex align-center">
-                  <v-progress-linear
-                    :model-value="item.percentage"
-                    :color="getStatusColor(item.status)"
-                    height="8"
-                    rounded
-                    style="width: 100px;"
-                    class="mr-2"
-                  />
-                  <span class="text-body-2 font-weight-medium" style="min-width: 80px;">
-                    {{ item.count }} ({{ item.percentage.toFixed(1) }}%)
-                  </span>
-                </div>
-              </div>
-              <v-divider class="my-3" />
-              <div class="text-body-2 text-medium-emphasis">
-                {{ $t('admin.workflowConfig.totalOrders') }}: <strong>{{ statusDistribution.total_work_orders }}</strong>
-              </div>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-      <v-col cols="12" md="6">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2" size="small">mdi-clock-fast</v-icon>
-            {{ $t('admin.workflowConfig.averageTimes') }}
-          </v-card-title>
-          <v-card-text>
-            <div v-if="loadingAnalytics" class="text-center py-4">
-              <v-progress-circular indeterminate size="32" />
-            </div>
-            <div v-else-if="averageTimes">
-              <v-list density="compact" class="bg-transparent">
-                <v-list-item v-if="averageTimes.averages?.lifecycle_days != null">
-                  <template v-slot:prepend>
-                    <v-icon size="small" color="primary">mdi-calendar-range</v-icon>
-                  </template>
-                  <v-list-item-title>{{ $t('admin.workflowConfig.avgLifecycle') }}</v-list-item-title>
-                  <template v-slot:append>
-                    <span class="font-weight-bold">{{ averageTimes.averages.lifecycle_days.toFixed(1) }} {{ $t('common.days') }}</span>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="averageTimes.averages?.lead_time_hours != null">
-                  <template v-slot:prepend>
-                    <v-icon size="small" color="info">mdi-inbox</v-icon>
-                  </template>
-                  <v-list-item-title>{{ $t('admin.workflowConfig.avgLeadTime') }}</v-list-item-title>
-                  <template v-slot:append>
-                    <span class="font-weight-bold">{{ averageTimes.averages.lead_time_hours.toFixed(1) }} {{ $t('common.hours') }}</span>
-                  </template>
-                </v-list-item>
-                <v-list-item v-if="averageTimes.averages?.processing_time_hours != null">
-                  <template v-slot:prepend>
-                    <v-icon size="small" color="success">mdi-factory</v-icon>
-                  </template>
-                  <v-list-item-title>{{ $t('admin.workflowConfig.avgProcessing') }}</v-list-item-title>
-                  <template v-slot:append>
-                    <span class="font-weight-bold">{{ averageTimes.averages.processing_time_hours.toFixed(1) }} {{ $t('common.hours') }}</span>
-                  </template>
-                </v-list-item>
-              </v-list>
-              <v-divider class="my-3" />
-              <div class="text-body-2 text-medium-emphasis">
-                {{ $t('admin.workflowConfig.sampleSize') }}: <strong>{{ averageTimes.count }}</strong>
-              </div>
-            </div>
-            <v-alert v-else type="info" variant="tonal" density="compact">
-              {{ $t('admin.workflowConfig.noAnalyticsData') }}
-            </v-alert>
-          </v-card-text>
-        </v-card>
-      </v-col>
-    </v-row>
-
+    <WorkflowAnalyticsCards
+      v-if="selectedClientId && workflowConfig"
+      :loading="loadingAnalytics"
+      :status-distribution="statusDistribution"
+      :average-times="averageTimes"
+      :get-status-color="getStatusColor"
+      :format-status="formatStatus"
+    />
     <!-- Edit Dialog -->
     <v-dialog v-model="editDialog" max-width="900" persistent scrollable>
       <v-card>
@@ -375,9 +275,7 @@
                 {{ formatStatus(status) }}
               </v-chip>
             </v-chip-group>
-
             <v-divider class="my-4" />
-
             <!-- Optional Statuses -->
             <h3 class="text-subtitle-1 font-weight-bold mb-3">
               {{ $t('admin.workflowConfig.optionalStatuses') }}
@@ -402,9 +300,7 @@
                 {{ formatStatus(status) }}
               </v-chip>
             </v-chip-group>
-
             <v-divider class="my-4" />
-
             <!-- Closure Trigger -->
             <h3 class="text-subtitle-1 font-weight-bold mb-3">
               {{ $t('admin.workflowConfig.closureTrigger') }}
@@ -419,9 +315,7 @@
               :hint="getClosureTriggerHint(formData.workflow_closure_trigger)"
               persistent-hint
             />
-
             <v-divider class="my-4" />
-
             <!-- Transition Rules Editor -->
             <h3 class="text-subtitle-1 font-weight-bold mb-3">
               {{ $t('admin.workflowConfig.transitionRules') }}
@@ -475,7 +369,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
     <!-- Confirm Apply Template Dialog -->
     <v-dialog v-model="confirmTemplateDialog" max-width="500">
       <v-card>
@@ -503,7 +396,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
     <!-- Snackbar -->
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
       {{ snackbar.text }}
@@ -512,263 +404,74 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import api from '@/services/api'
-import {
-  getWorkflowConfig,
-  updateWorkflowConfig,
-  applyWorkflowTemplate,
-  getWorkflowTemplates,
-  getStatusDistribution,
-  getClientAverageTimes
-} from '@/services/api/workflow'
+import useWorkflowConfigData from '@/composables/useWorkflowConfigData'
+import useWorkflowConfigForms from '@/composables/useWorkflowConfigForms'
+import WorkflowAnalyticsCards from './components/WorkflowAnalyticsCards.vue'
 
 const { t } = useI18n()
 
-// All possible statuses
-const allStatuses = [
-  'RECEIVED', 'RELEASED', 'DEMOTED', 'ACTIVE', 'IN_PROGRESS',
-  'ON_HOLD', 'COMPLETED', 'SHIPPED', 'CLOSED', 'REJECTED', 'CANCELLED'
-]
+// Data composable
+const {
+  loadingClients,
+  loadingConfig,
+  loadingAnalytics,
+  clients,
+  selectedClientId,
+  workflowConfig,
+  templates,
+  statusDistribution,
+  averageTimes,
+  allStatuses,
+  closureTriggerOptions,
+  selectedClientName,
+  getStatusColor,
+  formatStatus,
+  formatClosureTrigger,
+  getClosureTriggerIcon,
+  getClosureTriggerHint,
+  loadClients,
+  loadTemplates,
+  loadClientConfig
+} = useWorkflowConfigData()
 
-// State
-const loadingClients = ref(false)
-const loadingConfig = ref(false)
-const loadingAnalytics = ref(false)
-const saving = ref(false)
-const applyingTemplate = ref(false)
+// Forms composable
+const {
+  editDialog,
+  confirmTemplateDialog,
+  selectedTemplate,
+  formValid,
+  configForm,
+  saving,
+  applyingTemplate,
+  formData,
+  snackbar,
+  showSnackbar,
+  openEditDialog,
+  saveConfig,
+  confirmApplyTemplate,
+  applyTemplate
+} = useWorkflowConfigForms(selectedClientId, workflowConfig, loadClientConfig)
 
-const clients = ref([])
-const selectedClientId = ref(null)
-const workflowConfig = ref(null)
-const templates = ref([])
-const statusDistribution = ref(null)
-const averageTimes = ref(null)
-
-const editDialog = ref(false)
-const confirmTemplateDialog = ref(false)
-const selectedTemplate = ref(null)
-const formValid = ref(true)
-const configForm = ref(null)
-
-const snackbar = ref({ show: false, text: '', color: 'success' })
-
-// Form data
-const formData = ref({
-  workflow_statuses: [],
-  workflow_transitions: {},
-  workflow_optional_statuses: [],
-  workflow_closure_trigger: 'at_shipment'
-})
-
-// Closure trigger options
-const closureTriggerOptions = [
-  { title: t('admin.workflowConfig.closureTriggers.atShipment'), value: 'at_shipment' },
-  { title: t('admin.workflowConfig.closureTriggers.atClientReceipt'), value: 'at_client_receipt' },
-  { title: t('admin.workflowConfig.closureTriggers.atCompletion'), value: 'at_completion' },
-  { title: t('admin.workflowConfig.closureTriggers.manual'), value: 'manual' }
-]
-
-// Computed
-const selectedClientName = computed(() => {
-  const client = clients.value.find(c => c.client_id === selectedClientId.value)
-  return client?.client_name || selectedClientId.value
-})
-
-// Methods
-const getStatusColor = (status) => {
-  const colors = {
-    RECEIVED: 'blue-grey',
-    RELEASED: 'cyan',
-    DEMOTED: 'orange',
-    ACTIVE: 'info',
-    IN_PROGRESS: 'indigo',
-    ON_HOLD: 'warning',
-    COMPLETED: 'success',
-    SHIPPED: 'purple',
-    CLOSED: 'grey',
-    REJECTED: 'error',
-    CANCELLED: 'grey-darken-1'
-  }
-  return colors[status] || 'grey'
-}
-
-const formatStatus = (status) => {
-  const labels = {
-    RECEIVED: t('workflow.status.received'),
-    RELEASED: t('workflow.status.released'),
-    DEMOTED: t('workflow.status.demoted'),
-    ACTIVE: t('workflow.status.active'),
-    IN_PROGRESS: t('workflow.status.in_wip'),
-    ON_HOLD: t('workflow.status.on_hold'),
-    COMPLETED: t('workflow.status.completed'),
-    SHIPPED: t('workflow.status.shipped'),
-    CLOSED: t('workflow.status.closed'),
-    REJECTED: t('workflow.status.rejected'),
-    CANCELLED: t('workflow.status.cancelled')
-  }
-  return labels[status] || status
-}
-
-const formatClosureTrigger = (trigger) => {
-  const labels = {
-    at_shipment: t('admin.workflowConfig.closureTriggers.atShipment'),
-    at_client_receipt: t('admin.workflowConfig.closureTriggers.atClientReceipt'),
-    at_completion: t('admin.workflowConfig.closureTriggers.atCompletion'),
-    manual: t('admin.workflowConfig.closureTriggers.manual')
-  }
-  return labels[trigger] || trigger
-}
-
-const getClosureTriggerIcon = (trigger) => {
-  const icons = {
-    at_shipment: 'mdi-truck-delivery',
-    at_client_receipt: 'mdi-package-variant-closed-check',
-    at_completion: 'mdi-check-circle',
-    manual: 'mdi-hand-pointing-right'
-  }
-  return icons[trigger] || 'mdi-help-circle'
-}
-
-const getClosureTriggerHint = (trigger) => {
-  const hints = {
-    at_shipment: t('admin.workflowConfig.closureHints.atShipment'),
-    at_client_receipt: t('admin.workflowConfig.closureHints.atClientReceipt'),
-    at_completion: t('admin.workflowConfig.closureHints.atCompletion'),
-    manual: t('admin.workflowConfig.closureHints.manual')
-  }
-  return hints[trigger] || ''
-}
-
-const loadClients = async () => {
-  loadingClients.value = true
+// Lifecycle — wrap loadClientConfig to route errors to snackbar
+const loadClientConfigSafe = async () => {
   try {
-    const response = await api.get('/clients')
-    clients.value = response.data
-  } catch (error) {
-    console.error('Failed to load clients:', error)
-    showSnackbar(t('admin.workflowConfig.errors.loadClients'), 'error')
-  } finally {
-    loadingClients.value = false
-  }
-}
-
-const loadTemplates = async () => {
-  try {
-    const response = await getWorkflowTemplates()
-    templates.value = response.data.templates || []
-  } catch (error) {
-    console.error('Failed to load templates:', error)
-  }
-}
-
-const loadClientConfig = async () => {
-  if (!selectedClientId.value) {
-    workflowConfig.value = null
-    statusDistribution.value = null
-    averageTimes.value = null
-    return
-  }
-
-  loadingConfig.value = true
-  try {
-    const response = await getWorkflowConfig(selectedClientId.value)
-    workflowConfig.value = response.data
-    await loadAnalytics()
-  } catch (error) {
-    console.error('Failed to load workflow config:', error)
+    await loadClientConfig()
+  } catch {
     showSnackbar(t('admin.workflowConfig.errors.loadConfig'), 'error')
-  } finally {
-    loadingConfig.value = false
   }
 }
 
-const loadAnalytics = async () => {
-  if (!selectedClientId.value) return
-
-  loadingAnalytics.value = true
-  try {
-    const [distResponse, timesResponse] = await Promise.all([
-      getStatusDistribution(selectedClientId.value),
-      getClientAverageTimes(selectedClientId.value)
-    ])
-    statusDistribution.value = distResponse.data
-    averageTimes.value = timesResponse.data
-  } catch (error) {
-    console.error('Failed to load analytics:', error)
-    statusDistribution.value = null
-    averageTimes.value = null
-  } finally {
-    loadingAnalytics.value = false
-  }
-}
-
-const openEditDialog = () => {
-  if (workflowConfig.value) {
-    formData.value = {
-      workflow_statuses: [...(workflowConfig.value.workflow_statuses || [])],
-      workflow_transitions: JSON.parse(JSON.stringify(workflowConfig.value.workflow_transitions || {})),
-      workflow_optional_statuses: [...(workflowConfig.value.workflow_optional_statuses || [])],
-      workflow_closure_trigger: workflowConfig.value.workflow_closure_trigger || 'at_shipment'
-    }
-  }
-  editDialog.value = true
-}
-
-const saveConfig = async () => {
-  saving.value = true
-  try {
-    await updateWorkflowConfig(selectedClientId.value, {
-      workflow_statuses: formData.value.workflow_statuses,
-      workflow_transitions: formData.value.workflow_transitions,
-      workflow_optional_statuses: formData.value.workflow_optional_statuses,
-      workflow_closure_trigger: formData.value.workflow_closure_trigger
-    })
-    showSnackbar(t('admin.workflowConfig.success.updated'), 'success')
-    editDialog.value = false
-    await loadClientConfig()
-  } catch (error) {
-    console.error('Failed to save config:', error)
-    showSnackbar(error.response?.data?.detail || t('admin.workflowConfig.errors.save'), 'error')
-  } finally {
-    saving.value = false
-  }
-}
-
-const confirmApplyTemplate = (template) => {
-  selectedTemplate.value = template
-  confirmTemplateDialog.value = true
-}
-
-const applyTemplate = async () => {
-  if (!selectedTemplate.value) return
-
-  applyingTemplate.value = true
-  try {
-    await applyWorkflowTemplate(selectedClientId.value, selectedTemplate.value.template_id)
-    showSnackbar(t('admin.workflowConfig.success.templateApplied'), 'success')
-    confirmTemplateDialog.value = false
-    await loadClientConfig()
-  } catch (error) {
-    console.error('Failed to apply template:', error)
-    showSnackbar(error.response?.data?.detail || t('admin.workflowConfig.errors.applyTemplate'), 'error')
-  } finally {
-    applyingTemplate.value = false
-  }
-}
-
-const showSnackbar = (text, color) => {
-  snackbar.value = { show: true, text, color }
-}
-
-// Lifecycle
 onMounted(async () => {
-  await Promise.all([loadClients(), loadTemplates()])
-  // Auto-select first client to show default workflow
+  try {
+    await Promise.all([loadClients(), loadTemplates()])
+  } catch {
+    showSnackbar(t('admin.workflowConfig.errors.loadClients'), 'error')
+  }
   if (clients.value.length > 0 && !selectedClientId.value) {
     selectedClientId.value = clients.value[0].client_id
-    await loadClientConfig()
+    await loadClientConfigSafe()
   }
 })
 </script>

@@ -2,15 +2,15 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-package-variant</v-icon>
-      Stock Snapshot
+      {{ t('capacityPlanning.stock.title') }}
       <v-spacer />
       <v-btn color="primary" size="small" variant="tonal" class="mr-2" @click="addRow">
         <v-icon start>mdi-plus</v-icon>
-        Add Item
+        {{ t('capacityPlanning.stock.addItem') }}
       </v-btn>
       <v-btn size="small" variant="outlined" @click="showImportDialog = true">
         <v-icon start>mdi-upload</v-icon>
-        Import Stock
+        {{ t('capacityPlanning.stock.importStock') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -33,7 +33,7 @@
           <v-card variant="tonal" color="primary">
             <v-card-text class="text-center">
               <div class="text-h6">{{ stock.length }}</div>
-              <div class="text-caption">Total Items</div>
+              <div class="text-caption">{{ t('capacityPlanning.stock.totalItems') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -41,7 +41,7 @@
           <v-card variant="tonal" color="success">
             <v-card-text class="text-center">
               <div class="text-h6">{{ totalOnHand.toLocaleString() }}</div>
-              <div class="text-caption">On Hand</div>
+              <div class="text-caption">{{ t('capacityPlanning.stock.onHand') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -49,7 +49,7 @@
           <v-card variant="tonal" color="warning">
             <v-card-text class="text-center">
               <div class="text-h6">{{ totalAllocated.toLocaleString() }}</div>
-              <div class="text-caption">Allocated</div>
+              <div class="text-caption">{{ t('capacityPlanning.stock.allocated') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -57,7 +57,7 @@
           <v-card variant="tonal" color="info">
             <v-card-text class="text-center">
               <div class="text-h6">{{ totalAvailable.toLocaleString() }}</div>
-              <div class="text-caption">Available</div>
+              <div class="text-caption">{{ t('capacityPlanning.stock.available') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -75,7 +75,7 @@
           <v-text-field
             v-model="searchTerm"
             prepend-inner-icon="mdi-magnify"
-            label="Search items..."
+            :label="t('capacityPlanning.stock.searchItems')"
             variant="outlined"
             density="compact"
             class="ma-2"
@@ -177,14 +177,14 @@
       </v-data-table>
 
       <div v-if="!stock.length" class="text-center pa-4 text-grey">
-        No stock data. Add items or import a stock snapshot.
+        {{ t('capacityPlanning.stock.noData') }}
       </div>
     </v-card-text>
 
     <!-- Import Dialog -->
     <v-dialog v-model="showImportDialog" max-width="600">
       <v-card>
-        <v-card-title>Import Stock Snapshot</v-card-title>
+        <v-card-title>{{ t('capacityPlanning.stock.importStockSnapshot') }}</v-card-title>
         <v-card-text>
           <v-textarea
             v-model="csvData"
@@ -196,8 +196,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showImportDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="importCSV">Import</v-btn>
+          <v-btn @click="showImportDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="primary" @click="importCSV">{{ t('common.import') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -228,17 +228,17 @@ const showImportDialog = ref(false)
 const csvData = ref('')
 const searchTerm = ref('')
 
-const headers = [
-  { title: 'Date', key: 'snapshot_date', width: '120px' },
-  { title: 'Item Code', key: 'item_code', width: '120px' },
-  { title: 'Description', key: 'item_description', width: '200px' },
-  { title: 'On Hand', key: 'on_hand_quantity', width: '100px' },
-  { title: 'Allocated', key: 'allocated_quantity', width: '100px' },
-  { title: 'On Order', key: 'on_order_quantity', width: '100px' },
-  { title: 'Available', key: 'available_quantity', width: '100px' },
-  { title: 'UOM', key: 'unit_of_measure', width: '80px' },
-  { title: 'Actions', key: 'actions', width: '80px', sortable: false }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanning.stock.headers.date'), key: 'snapshot_date', width: '120px' },
+  { title: t('capacityPlanning.stock.headers.itemCode'), key: 'item_code', width: '120px' },
+  { title: t('capacityPlanning.stock.headers.description'), key: 'item_description', width: '200px' },
+  { title: t('capacityPlanning.stock.headers.onHand'), key: 'on_hand_quantity', width: '100px' },
+  { title: t('capacityPlanning.stock.headers.allocated'), key: 'allocated_quantity', width: '100px' },
+  { title: t('capacityPlanning.stock.headers.onOrder'), key: 'on_order_quantity', width: '100px' },
+  { title: t('capacityPlanning.stock.headers.available'), key: 'available_quantity', width: '100px' },
+  { title: t('capacityPlanning.stock.headers.uom'), key: 'unit_of_measure', width: '80px' },
+  { title: t('capacityPlanning.stock.headers.actions'), key: 'actions', width: '80px', sortable: false }
+])
 
 const uomOptions = ['EA', 'M', 'YD', 'KG', 'LB', 'PC', 'SET']
 
@@ -256,7 +256,7 @@ const stalenessWarning = computed(() => {
   const mostRecent = new Date(Math.max(...dates))
   const daysSince = Math.floor((now - mostRecent) / (1000 * 60 * 60 * 24))
   if (daysSince > alertDays) {
-    return `Stock snapshots are ${daysSince} days old (last: ${mostRecent.toISOString().slice(0, 10)}). Consider updating stock data before running MRP.`
+    return t('capacityPlanning.stock.stalenessWarning', { days: daysSince, date: mostRecent.toISOString().slice(0, 10) })
   }
   return null
 })

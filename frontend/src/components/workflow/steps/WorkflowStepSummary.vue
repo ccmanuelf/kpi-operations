@@ -4,7 +4,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-primary text-white py-3">
         <v-icon class="mr-2" size="24">mdi-chart-box</v-icon>
-        Shift Performance Summary
+        {{ $t('workflow.shiftPerformanceSummary') }}
       </v-card-title>
       <v-card-text class="pt-4">
         <v-row>
@@ -18,9 +18,9 @@
               >
                 <span class="text-h6 font-weight-bold">{{ summary.efficiency }}%</span>
               </v-progress-circular>
-              <div class="text-caption text-grey mt-2">Efficiency</div>
+              <div class="text-caption text-grey mt-2">{{ $t('workflow.efficiency') }}</div>
               <div class="text-caption" :class="`text-${getEfficiencyColor(summary.efficiency)}`">
-                Target: 85%
+                {{ $t('workflow.targetEfficiency') }}
               </div>
             </div>
           </v-col>
@@ -34,9 +34,9 @@
               >
                 <span class="text-h6 font-weight-bold">{{ summary.quality }}%</span>
               </v-progress-circular>
-              <div class="text-caption text-grey mt-2">Quality (FPY)</div>
+              <div class="text-caption text-grey mt-2">{{ $t('workflow.qualityFPY') }}</div>
               <div class="text-caption" :class="`text-${getQualityColor(summary.quality)}`">
-                Target: 98%
+                {{ $t('workflow.targetQuality') }}
               </div>
             </div>
           </v-col>
@@ -50,9 +50,9 @@
               >
                 <span class="text-h6 font-weight-bold">{{ summary.availability }}%</span>
               </v-progress-circular>
-              <div class="text-caption text-grey mt-2">Availability</div>
+              <div class="text-caption text-grey mt-2">{{ $t('workflow.availability') }}</div>
               <div class="text-caption" :class="`text-${getAvailabilityColor(summary.availability)}`">
-                Target: 95%
+                {{ $t('workflow.targetAvailability') }}
               </div>
             </div>
           </v-col>
@@ -66,9 +66,9 @@
               >
                 <span class="text-h6 font-weight-bold">{{ summary.oee }}%</span>
               </v-progress-circular>
-              <div class="text-caption text-grey mt-2">OEE</div>
+              <div class="text-caption text-grey mt-2">{{ $t('workflow.oee') }}</div>
               <div class="text-caption" :class="`text-${getOEEColor(summary.oee)}`">
-                Target: 80%
+                {{ $t('workflow.targetOEE') }}
               </div>
             </div>
           </v-col>
@@ -82,24 +82,24 @@
         <v-card variant="outlined" class="h-100">
           <v-card-title class="bg-grey-lighten-4 py-2">
             <v-icon class="mr-2" size="20">mdi-factory</v-icon>
-            Production
+            {{ $t('workflow.production') }}
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
               <v-list-item>
-                <v-list-item-title>Units Produced</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.unitsProduced') }}</v-list-item-title>
                 <template v-slot:append>
                   <span class="font-weight-bold">{{ summary.unitsProduced.toLocaleString() }}</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Target</v-list-item-title>
+                <v-list-item-title>{{ $t('common.target') }}</v-list-item-title>
                 <template v-slot:append>
                   <span>{{ summary.unitsTarget.toLocaleString() }}</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Variance</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.variance') }}</v-list-item-title>
                 <template v-slot:append>
                   <span :class="summary.variance >= 0 ? 'text-success' : 'text-error'">
                     {{ summary.variance >= 0 ? '+' : '' }}{{ summary.variance.toLocaleString() }}
@@ -107,7 +107,7 @@
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Work Orders Completed</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.workOrdersCompleted') }}</v-list-item-title>
                 <template v-slot:append>
                   <span>{{ summary.workOrdersCompleted }} / {{ summary.workOrdersTotal }}</span>
                 </template>
@@ -121,24 +121,24 @@
         <v-card variant="outlined" class="h-100">
           <v-card-title class="bg-grey-lighten-4 py-2">
             <v-icon class="mr-2" size="20">mdi-clock-alert</v-icon>
-            Downtime
+            {{ $t('navigation.downtime') }}
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
               <v-list-item>
-                <v-list-item-title>Total Downtime</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.totalDowntime') }}</v-list-item-title>
                 <template v-slot:append>
                   <span class="font-weight-bold">{{ summary.downtimeMinutes }} min</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Incidents</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.incidents') }}</v-list-item-title>
                 <template v-slot:append>
                   <span>{{ summary.downtimeIncidents }}</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Top Reason</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.topReason') }}</v-list-item-title>
                 <template v-slot:append>
                   <span class="text-error">{{ summary.topDowntimeReason }}</span>
                 </template>
@@ -154,24 +154,24 @@
         <v-card variant="outlined" class="h-100">
           <v-card-title class="bg-grey-lighten-4 py-2">
             <v-icon class="mr-2" size="20">mdi-check-decagram</v-icon>
-            Quality
+            {{ $t('navigation.quality') }}
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
               <v-list-item>
-                <v-list-item-title>Defects</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.defects') }}</v-list-item-title>
                 <template v-slot:append>
                   <span class="font-weight-bold">{{ summary.defects }}</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>PPM</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.ppm') }}</v-list-item-title>
                 <template v-slot:append>
                   <span>{{ summary.ppm.toLocaleString() }}</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Active Holds</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.activeHolds') }}</v-list-item-title>
                 <template v-slot:append>
                   <span :class="summary.activeHolds > 0 ? 'text-warning' : ''">
                     {{ summary.activeHolds }}
@@ -187,24 +187,24 @@
         <v-card variant="outlined" class="h-100">
           <v-card-title class="bg-grey-lighten-4 py-2">
             <v-icon class="mr-2" size="20">mdi-account-group</v-icon>
-            Attendance
+            {{ $t('navigation.attendance') }}
           </v-card-title>
           <v-card-text>
             <v-list density="compact">
               <v-list-item>
-                <v-list-item-title>Present</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.present') }}</v-list-item-title>
                 <template v-slot:append>
                   <span class="font-weight-bold">{{ summary.attendancePresent }} / {{ summary.attendanceExpected }}</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Attendance Rate</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.attendanceRate') }}</v-list-item-title>
                 <template v-slot:append>
                   <span>{{ summary.attendanceRate }}%</span>
                 </template>
               </v-list-item>
               <v-list-item>
-                <v-list-item-title>Overtime Hours</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.overtimeHours') }}</v-list-item-title>
                 <template v-slot:append>
                   <span>{{ summary.overtimeHours }} hrs</span>
                 </template>
@@ -219,7 +219,7 @@
     <v-card variant="outlined" class="mt-4 mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-download</v-icon>
-        Export Summary
+        {{ $t('workflow.exportSummary') }}
       </v-card-title>
       <v-card-text>
         <div class="d-flex flex-wrap gap-2">
@@ -230,7 +230,7 @@
             :loading="exporting === 'pdf'"
           >
             <v-icon start>mdi-file-pdf-box</v-icon>
-            Export PDF
+            {{ $t('workflow.exportPDF') }}
           </v-btn>
           <v-btn
             variant="outlined"
@@ -239,7 +239,7 @@
             :loading="exporting === 'excel'"
           >
             <v-icon start>mdi-microsoft-excel</v-icon>
-            Export Excel
+            {{ $t('workflow.exportExcel') }}
           </v-btn>
           <v-btn
             variant="outlined"
@@ -247,7 +247,7 @@
             :loading="exporting === 'email'"
           >
             <v-icon start>mdi-email</v-icon>
-            Email Summary
+            {{ $t('workflow.emailSummary') }}
           </v-btn>
         </div>
       </v-card-text>
@@ -256,7 +256,7 @@
     <!-- Confirmation -->
     <v-checkbox
       v-model="confirmed"
-      label="I have reviewed the shift summary and it is accurate"
+      :label="$t('workflow.summaryConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />

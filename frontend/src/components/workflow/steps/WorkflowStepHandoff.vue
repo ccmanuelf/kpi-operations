@@ -4,18 +4,18 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-note-text</v-icon>
-        Shift Handoff Notes
+        {{ $t('workflow.shiftHandoffNotes') }}
       </v-card-title>
       <v-card-text>
         <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-          Document important information for the incoming shift supervisor.
+          {{ $t('workflow.handoffInfoAlert') }}
         </v-alert>
 
         <!-- Production Notes -->
         <v-textarea
           v-model="handoffNotes.production"
-          label="Production Notes"
-          placeholder="Any production-related issues, delays, or achievements..."
+          :label="$t('workflow.productionNotes')"
+          :placeholder="$t('workflow.productionNotesPlaceholder')"
           variant="outlined"
           rows="2"
           class="mb-3"
@@ -25,8 +25,8 @@
         <!-- Quality Notes -->
         <v-textarea
           v-model="handoffNotes.quality"
-          label="Quality Notes"
-          placeholder="Quality issues, holds, or inspection results..."
+          :label="$t('workflow.qualityNotes')"
+          :placeholder="$t('workflow.qualityNotesPlaceholder')"
           variant="outlined"
           rows="2"
           class="mb-3"
@@ -36,8 +36,8 @@
         <!-- Equipment Notes -->
         <v-textarea
           v-model="handoffNotes.equipment"
-          label="Equipment Notes"
-          placeholder="Equipment status, maintenance needs, or issues..."
+          :label="$t('workflow.equipmentNotes')"
+          :placeholder="$t('workflow.equipmentNotesPlaceholder')"
           variant="outlined"
           rows="2"
           class="mb-3"
@@ -47,8 +47,8 @@
         <!-- Personnel Notes -->
         <v-textarea
           v-model="handoffNotes.personnel"
-          label="Personnel Notes"
-          placeholder="Staffing issues, training needs, or team updates..."
+          :label="$t('workflow.personnelNotes')"
+          :placeholder="$t('workflow.personnelNotesPlaceholder')"
           variant="outlined"
           rows="2"
           class="mb-3"
@@ -58,8 +58,8 @@
         <!-- Safety Notes -->
         <v-textarea
           v-model="handoffNotes.safety"
-          label="Safety Notes"
-          placeholder="Safety incidents, near-misses, or hazards..."
+          :label="$t('workflow.safetyNotes')"
+          :placeholder="$t('workflow.safetyNotesPlaceholder')"
           variant="outlined"
           rows="2"
           class="mb-3"
@@ -69,8 +69,8 @@
         <!-- General Notes -->
         <v-textarea
           v-model="handoffNotes.general"
-          label="Additional Notes"
-          placeholder="Any other information the next shift should know..."
+          :label="$t('workflow.additionalNotes')"
+          :placeholder="$t('workflow.additionalNotesPlaceholder')"
           variant="outlined"
           rows="3"
           @update:model-value="emitUpdate"
@@ -82,7 +82,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-lightning-bolt</v-icon>
-        Quick Add Common Notes
+        {{ $t('workflow.quickAddCommonNotes') }}
       </v-card-title>
       <v-card-text>
         <div class="d-flex flex-wrap gap-2">
@@ -105,7 +105,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-flag</v-icon>
-        Priority Items for Next Shift
+        {{ $t('workflow.priorityItemsNextShift') }}
       </v-card-title>
       <v-card-text>
         <v-list density="compact">
@@ -131,7 +131,7 @@
             v-model="newPriorityItem"
             density="compact"
             variant="outlined"
-            placeholder="Add custom priority item..."
+            :placeholder="$t('workflow.addCustomPriorityPlaceholder')"
             hide-details
             @keyup.enter="addPriorityItem"
           />
@@ -154,7 +154,7 @@
       <v-expansion-panel>
         <v-expansion-panel-title>
           <v-icon class="mr-2">mdi-eye</v-icon>
-          Preview Handoff Summary
+          {{ $t('workflow.previewHandoffSummary') }}
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <div class="handoff-preview">
@@ -166,7 +166,7 @@
             </template>
 
             <div v-if="selectedPriorityItems.length > 0" class="mb-3">
-              <div class="text-caption text-grey text-uppercase">Priority Items</div>
+              <div class="text-caption text-grey text-uppercase">{{ $t('workflow.priorityItems') }}</div>
               <ul class="text-body-2 pl-4">
                 <li v-for="item in selectedPriorityItems" :key="item.text">{{ item.text }}</li>
               </ul>
@@ -178,7 +178,7 @@
               variant="tonal"
               density="compact"
             >
-              No handoff notes entered yet
+              {{ $t('workflow.noHandoffNotes') }}
             </v-alert>
           </div>
         </v-expansion-panel-text>
@@ -188,7 +188,7 @@
     <!-- Confirmation -->
     <v-checkbox
       v-model="confirmed"
-      label="Handoff notes have been reviewed and are ready for the next shift"
+      :label="$t('workflow.handoffConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />
@@ -197,6 +197,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['complete', 'update'])
 
@@ -240,12 +243,12 @@ const selectedPriorityItems = computed(() => {
 // Methods
 const formatLabel = (key) => {
   const labels = {
-    production: 'Production',
-    quality: 'Quality',
-    equipment: 'Equipment',
-    personnel: 'Personnel',
-    safety: 'Safety',
-    general: 'Additional Notes'
+    production: t('workflow.productionNotes'),
+    quality: t('workflow.qualityNotes'),
+    equipment: t('workflow.equipmentNotes'),
+    personnel: t('workflow.personnelNotes'),
+    safety: t('workflow.safetyNotes'),
+    general: t('workflow.additionalNotes')
   }
   return labels[key] || key
 }

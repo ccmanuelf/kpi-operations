@@ -4,45 +4,44 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-error text-white py-3">
         <v-icon class="mr-2" size="24">mdi-stop-circle</v-icon>
-        End Shift Confirmation
+        {{ $t('workflow.endShiftConfirmation') }}
       </v-card-title>
       <v-card-text class="pt-4">
         <v-alert type="warning" variant="tonal" class="mb-4">
-          <v-alert-title>Important</v-alert-title>
-          Ending the shift will finalize all data for this shift period.
-          Please ensure all entries are complete and accurate.
+          <v-alert-title>{{ $t('workflow.endShiftImportant') }}</v-alert-title>
+          {{ $t('workflow.endShiftWarning') }}
         </v-alert>
 
         <!-- Shift Details -->
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="bg-grey-lighten-4 py-2 text-body-1">
             <v-icon class="mr-2" size="20">mdi-calendar-clock</v-icon>
-            Shift Details
+            {{ $t('workflow.shiftDetails') }}
           </v-card-title>
           <v-card-text>
             <v-row>
               <v-col cols="6">
-                <div class="text-caption text-grey">Shift</div>
-                <div class="text-body-1">Shift {{ shiftDetails.shiftNumber }}</div>
+                <div class="text-caption text-grey">{{ $t('workflow.shift') }}</div>
+                <div class="text-body-1">{{ $t('workflow.shift') }} {{ shiftDetails.shiftNumber }}</div>
               </v-col>
               <v-col cols="6">
-                <div class="text-caption text-grey">Date</div>
+                <div class="text-caption text-grey">{{ $t('common.date') }}</div>
                 <div class="text-body-1">{{ formatDate(shiftDetails.date) }}</div>
               </v-col>
               <v-col cols="6">
-                <div class="text-caption text-grey">Start Time</div>
+                <div class="text-caption text-grey">{{ $t('workflow.startTime') }}</div>
                 <div class="text-body-1">{{ shiftDetails.startTime }}</div>
               </v-col>
               <v-col cols="6">
-                <div class="text-caption text-grey">End Time</div>
+                <div class="text-caption text-grey">{{ $t('workflow.endTime') }}</div>
                 <div class="text-body-1">{{ shiftDetails.endTime }}</div>
               </v-col>
               <v-col cols="6">
-                <div class="text-caption text-grey">Duration</div>
+                <div class="text-caption text-grey">{{ $t('workflow.duration') }}</div>
                 <div class="text-body-1">{{ shiftDetails.duration }}</div>
               </v-col>
               <v-col cols="6">
-                <div class="text-caption text-grey">Supervisor</div>
+                <div class="text-caption text-grey">{{ $t('workflow.supervisor') }}</div>
                 <div class="text-body-1">{{ shiftDetails.supervisor }}</div>
               </v-col>
             </v-row>
@@ -53,7 +52,7 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="bg-grey-lighten-4 py-2 text-body-1">
             <v-icon class="mr-2" size="20">mdi-clipboard-check</v-icon>
-            Pre-Close Checklist
+            {{ $t('workflow.preCloseChecklist') }}
           </v-card-title>
           <v-card-text class="pa-0">
             <v-list density="compact">
@@ -75,8 +74,8 @@
         <!-- End of Shift Notes -->
         <v-textarea
           v-model="endNotes"
-          label="End of Shift Notes (Optional)"
-          placeholder="Any final notes or comments..."
+          :label="$t('workflow.endOfShiftNotes')"
+          :placeholder="$t('workflow.endOfShiftPlaceholder')"
           variant="outlined"
           rows="3"
           class="mb-4"
@@ -86,7 +85,7 @@
         <!-- Notify Next Shift -->
         <v-checkbox
           v-model="notifyNextShift"
-          label="Send notification to incoming shift supervisor"
+          :label="$t('workflow.notifyNextShift')"
           color="primary"
           class="mb-2"
         />
@@ -95,7 +94,7 @@
         <v-checkbox
           v-model="confirmed"
           :disabled="!allChecksComplete"
-          label="I confirm all data has been entered and is accurate. I am ready to end this shift."
+          :label="$t('workflow.endShiftConfirmLabel')"
           color="error"
           @update:model-value="handleConfirm"
         />
@@ -107,7 +106,7 @@
           density="compact"
           class="mt-2"
         >
-          All checklist items must be completed before ending the shift.
+          {{ $t('workflow.allChecklistRequired') }}
         </v-alert>
       </v-card-text>
     </v-card>
@@ -116,8 +115,11 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkflowStore } from '@/stores/workflowStore'
+
+const { t } = useI18n()
 
 const props = defineProps({
   workflowData: {
@@ -149,43 +151,43 @@ const shiftDetails = ref({
 const checklistItems = computed(() => [
   {
     id: 'completeness',
-    title: 'Data Completeness Reviewed',
+    title: t('workflow.dataCompletenessReviewed'),
     completed: !!props.workflowData['review-completeness']?.isValid,
     summary: props.workflowData['review-completeness']?.completenessPercentage
-      ? `${props.workflowData['review-completeness'].completenessPercentage}% complete`
-      : 'Not reviewed'
+      ? t('workflow.percentComplete', { percent: props.workflowData['review-completeness'].completenessPercentage })
+      : t('workflow.notReviewed')
   },
   {
     id: 'production',
-    title: 'Production Entries Complete',
+    title: t('workflow.productionEntriesComplete'),
     completed: !!props.workflowData['complete-production']?.isValid,
     summary: props.workflowData['complete-production']?.totalProduced
-      ? `${props.workflowData['complete-production'].totalProduced} units produced`
-      : 'Pending entries'
+      ? t('workflow.unitsProducedSummary', { count: props.workflowData['complete-production'].totalProduced })
+      : t('workflow.pendingEntriesSummary')
   },
   {
     id: 'downtime',
-    title: 'Downtime Records Closed',
+    title: t('workflow.downtimeRecordsClosed'),
     completed: !!props.workflowData['close-downtime']?.isValid,
     summary: props.workflowData['close-downtime']?.openCount === 0
-      ? 'All incidents resolved'
-      : `${props.workflowData['close-downtime']?.openCount || '?'} open incidents`
+      ? t('workflow.allIncidentsResolved')
+      : t('workflow.openIncidents', { count: props.workflowData['close-downtime']?.openCount || '?' })
   },
   {
     id: 'handoff',
-    title: 'Handoff Notes Entered',
+    title: t('workflow.handoffNotesEntered'),
     completed: !!props.workflowData['enter-handoff']?.isValid,
     summary: props.workflowData['enter-handoff']?.isValid
-      ? 'Notes documented'
-      : 'Optional'
+      ? t('workflow.notesDocumented')
+      : t('common.optional')
   },
   {
     id: 'summary',
-    title: 'Shift Summary Reviewed',
+    title: t('workflow.shiftSummaryReviewed'),
     completed: !!props.workflowData['generate-summary']?.isValid,
     summary: props.workflowData['generate-summary']?.isValid
-      ? 'Summary approved'
-      : 'Not reviewed'
+      ? t('workflow.summaryApproved')
+      : t('workflow.notReviewed')
   }
 ])
 

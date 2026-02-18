@@ -2,11 +2,11 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-factory</v-icon>
-      Production Lines
+      {{ t('capacityPlanningGrids.productionLines.title') }}
       <v-spacer />
       <v-btn color="primary" size="small" variant="tonal" @click="addRow">
         <v-icon start>mdi-plus</v-icon>
-        Add Line
+        {{ t('capacityPlanningGrids.productionLines.addLine') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -108,7 +108,7 @@
       </v-data-table>
 
       <div v-if="!lines.length" class="text-center pa-4 text-grey">
-        No production lines configured. Click "Add Line" to create one.
+        {{ t('capacityPlanningGrids.productionLines.noLines') }}
       </div>
     </v-card-text>
   </v-card>
@@ -126,20 +126,22 @@
  * No props or emits -- all state managed via store.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
-const headers = [
-  { title: 'Code', key: 'line_code', width: '100px' },
-  { title: 'Name', key: 'line_name', width: '150px' },
-  { title: 'Department', key: 'department', width: '120px' },
-  { title: 'Capacity (units/hr)', key: 'standard_capacity_units_per_hour', width: '140px' },
-  { title: 'Max Operators', key: 'max_operators', width: '110px' },
-  { title: 'Efficiency', key: 'efficiency_factor', width: '100px' },
-  { title: 'Active', key: 'is_active', width: '80px' },
-  { title: 'Actions', key: 'actions', width: '100px', sortable: false }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanningGrids.productionLines.code'), key: 'line_code', width: '100px' },
+  { title: t('capacityPlanningGrids.productionLines.name'), key: 'line_name', width: '150px' },
+  { title: t('capacityPlanningGrids.productionLines.department'), key: 'department', width: '120px' },
+  { title: t('capacityPlanningGrids.productionLines.capacityUnitsPerHr'), key: 'standard_capacity_units_per_hour', width: '140px' },
+  { title: t('capacityPlanningGrids.productionLines.maxOperators'), key: 'max_operators', width: '110px' },
+  { title: t('capacityPlanningGrids.productionLines.efficiency'), key: 'efficiency_factor', width: '100px' },
+  { title: t('capacityPlanningGrids.productionLines.active'), key: 'is_active', width: '80px' },
+  { title: t('common.actions'), key: 'actions', width: '100px', sortable: false }
+])
 
 const lines = computed(() => store.worksheets.productionLines.data)
 

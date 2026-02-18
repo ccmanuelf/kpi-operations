@@ -6,13 +6,13 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="text-subtitle-1 bg-grey-lighten-4">
             <v-icon class="mr-2" size="20">mdi-chart-box</v-icon>
-            Previous Shift Performance
+            {{ $t('workflow.previousShiftPerformance') }}
           </v-card-title>
           <v-card-text>
             <v-skeleton-loader v-if="loading" type="list-item-three-line" />
             <template v-else>
               <div class="d-flex justify-space-between align-center mb-3">
-                <span class="text-body-2 text-grey">Production</span>
+                <span class="text-body-2 text-grey">{{ $t('workflow.production') }}</span>
                 <v-chip
                   :color="getPercentageColor(previousShift.productionPercent)"
                   size="small"
@@ -31,7 +31,7 @@
               />
 
               <div class="d-flex justify-space-between align-center mb-3">
-                <span class="text-body-2 text-grey">Efficiency</span>
+                <span class="text-body-2 text-grey">{{ $t('workflow.efficiency') }}</span>
                 <v-chip
                   :color="getPercentageColor(previousShift.efficiency)"
                   size="small"
@@ -49,7 +49,7 @@
               />
 
               <div class="d-flex justify-space-between align-center mb-3">
-                <span class="text-body-2 text-grey">Quality (FPY)</span>
+                <span class="text-body-2 text-grey">{{ $t('workflow.qualityFPY') }}</span>
                 <v-chip
                   :color="getPercentageColor(previousShift.quality)"
                   size="small"
@@ -74,7 +74,7 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-title class="text-subtitle-1 bg-grey-lighten-4">
             <v-icon class="mr-2" size="20">mdi-alert-circle-outline</v-icon>
-            Key Metrics
+            {{ $t('workflow.keyMetrics') }}
           </v-card-title>
           <v-card-text>
             <v-skeleton-loader v-if="loading" type="list-item-two-line@3" />
@@ -85,7 +85,7 @@
                     <v-icon size="18" color="white">mdi-clock-alert</v-icon>
                   </v-avatar>
                 </template>
-                <v-list-item-title>Downtime Incidents</v-list-item-title>
+                <v-list-item-title>{{ $t('workflow.downtimeIncidents') }}</v-list-item-title>
                 <v-list-item-subtitle>{{ previousShift.downtimeIncidents }} incidents ({{ previousShift.downtimeMinutes }} min)</v-list-item-subtitle>
               </v-list-item>
 
@@ -95,8 +95,8 @@
                     <v-icon size="18" color="white">mdi-pause-circle</v-icon>
                   </v-avatar>
                 </template>
-                <v-list-item-title>Quality Holds</v-list-item-title>
-                <v-list-item-subtitle>{{ previousShift.qualityHolds }} active holds</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('workflow.qualityHolds') }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('workflow.activeHoldsSummary', { count: previousShift.qualityHolds }) }}</v-list-item-subtitle>
               </v-list-item>
 
               <v-list-item>
@@ -105,7 +105,7 @@
                     <v-icon size="18" color="white">mdi-account-group</v-icon>
                   </v-avatar>
                 </template>
-                <v-list-item-title>Attendance</v-list-item-title>
+                <v-list-item-title>{{ $t('navigation.attendance') }}</v-list-item-title>
                 <v-list-item-subtitle>{{ previousShift.attendanceActual }} / {{ previousShift.attendanceExpected }} present</v-list-item-subtitle>
               </v-list-item>
             </v-list>
@@ -118,7 +118,7 @@
         <v-card variant="outlined">
           <v-card-title class="text-subtitle-1 bg-grey-lighten-4">
             <v-icon class="mr-2" size="20">mdi-note-text</v-icon>
-            Handoff Notes from Previous Shift
+            {{ $t('workflow.handoffNotesFromPrevious') }}
           </v-card-title>
           <v-card-text>
             <v-skeleton-loader v-if="loading" type="paragraph" />
@@ -129,11 +129,11 @@
                 variant="tonal"
                 density="compact"
               >
-                No handoff notes from previous shift
+                {{ $t('workflow.noHandoffFromPrevious') }}
               </v-alert>
               <div v-else class="handoff-notes">
                 <div class="text-caption text-grey mb-2">
-                  From {{ previousShift.supervisor }} - {{ formatTime(previousShift.endTime) }}
+                  {{ $t('workflow.from') }} {{ previousShift.supervisor }} - {{ formatTime(previousShift.endTime) }}
                 </div>
                 <p class="text-body-2">{{ previousShift.handoffNotes }}</p>
               </div>
@@ -146,7 +146,7 @@
     <!-- Acknowledgment -->
     <v-checkbox
       v-model="acknowledged"
-      label="I have reviewed the previous shift information"
+      :label="$t('workflow.previousShiftAcknowledge')"
       color="primary"
       class="mt-4"
       @update:model-value="handleAcknowledge"

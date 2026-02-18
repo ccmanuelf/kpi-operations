@@ -59,31 +59,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
-import { useI18n } from 'vue-i18n'
-import { useResponsive } from '@/composables/useResponsive'
-import {
-  parseClipboardData,
-  mapColumnsToGrid,
-  convertToGridRows,
-  validateRows,
-  readClipboard,
-  entrySchemas
-} from '@/utils/clipboardParser'
-
-// Responsive utilities
-const {
-  isMobile,
-  isTablet,
-  isDesktop,
-  getGridHeight,
-  getColumnWidth,
-  getRowHeight,
-  isTouchDevice
-} = useResponsive()
-
-const { t } = useI18n()
+import { useAGGridBase } from '@/composables/useAGGridBase'
 
 const props = defineProps({
   columnDefs: {
@@ -144,333 +121,31 @@ const emit = defineEmits([
   'rows-pasted'
 ])
 
-const gridApi = ref(null)
-const columnApi = ref(null)
-
-// Excel paste state
-const pasteLoading = ref(false)
-const lastPasteCount = ref(0)
-const showPasteDialog = ref(false)
-const parsedPasteData = ref(null)
-const convertedPasteRows = ref([])
-const pasteValidationResult = ref(null)
-const pasteColumnMapping = ref(null)
-const snackbar = ref({ show: false, text: '', color: 'info' })
-
-// Calculate toolbar height (approximately 56px when visible including margin)
-const toolbarHeight = computed(() => props.enableExcelPaste ? 56 : 0)
-
-// AG Grid requires explicit dimensions directly on the ag-grid-vue component
-// Setting height on a parent wrapper doesn't work reliably
-const gridStyle = computed(() => {
-  const totalHeight = props.height || getGridHeight()
-  // Parse the height value and subtract toolbar height
-  const heightValue = parseInt(totalHeight, 10) || 600
-  const gridHeight = heightValue - toolbarHeight.value
-
-  return {
-    width: '100%',
-    height: `${gridHeight}px`
-  }
-})
-
-// AG Grid v32.2+ requires object format for rowSelection
-// Convert string prop to new object format
-const rowSelectionConfig = computed(() => {
-  // If already an object, use as-is
-  if (typeof props.rowSelection === 'object') {
-    return props.rowSelection
-  }
-
-  // Convert legacy string values to new object format
-  const mode = props.rowSelection === 'single' ? 'singleRow' : 'multiRow'
-
-  return {
-    mode,
-    enableClickSelection: false, // Replaces suppressRowClickSelection
-    checkboxes: false,
-    headerCheckbox: false
-  }
-})
-
-// Default column configuration for Excel-like behavior with responsive adjustments
-const defaultColDef = computed(() => ({
-  sortable: true,
-  filter: true,
-  resizable: !isMobile.value, // Disable resize on mobile
-  editable: true,
-  minWidth: isMobile.value ? 80 : 100,
-  maxWidth: isMobile.value ? 200 : undefined,
-  cellStyle: {
-    fontFamily: 'Roboto, sans-serif',
-    fontSize: isMobile.value ? '13px' : isTablet.value ? '14px' : '14px'
-  },
-  // Enable copy/paste
-  enableCellChangeFlash: true,
-  suppressKeyboardEvent: (params) => {
-    // Allow Ctrl+C, Ctrl+V, Delete
-    const keyCode = params.event.keyCode
-    const ctrlPressed = params.event.ctrlKey || params.event.metaKey
-
-    // Allow copy/paste/delete
-    if (ctrlPressed && (keyCode === 67 || keyCode === 86)) return false
-    if (keyCode === 46) return false
-
-    return false
-  }
-}))
-
-// Merge user grid options with defaults and responsive settings
-const mergedGridOptions = computed(() => ({
-  ...props.gridOptions,
-  // Use legacy theme mode to work with CSS file themes (ag-grid.css)
-  // This fixes AG Grid error #239 about theme conflict
-  theme: 'legacy',
-  pagination: props.pagination,
-  paginationPageSize: props.paginationPageSize,
-
-  // Responsive row height
-  rowHeight: getRowHeight(),
-  headerHeight: isMobile.value ? 40 : isTablet.value ? 44 : 48,
-
-  // Touch gesture support for mobile
-  suppressTouch: false,
-  suppressContextMenu: isTouchDevice(),
-
-  // Enable horizontal scrolling on mobile
-  suppressHorizontalScroll: false,
-
-  // Adjust column virtualization for mobile
-  suppressColumnVirtualisation: isMobile.value,
-
-  // Mobile-friendly single click edit
-  singleClickEdit: isMobile.value || isTouchDevice(),
-
-  // Excel-like keyboard shortcuts
-  navigateToNextCell: (params) => {
-    const suggestedNextCell = params.nextCellPosition
-
-    // Tab navigation
-    if (params.key === 9) { // Tab key
-      return suggestedNextCell
-    }
-
-    // Enter moves down
-    if (params.key === 13) { // Enter key
-      return {
-        rowIndex: params.previousCellPosition.rowIndex + 1,
-        column: params.previousCellPosition.column
-      }
-    }
-
-    return suggestedNextCell
-  },
-
-  // Mobile-specific options
-  ...(isMobile.value && {
-    suppressMenuHide: false,
-    suppressMovableColumns: true,
-    suppressRowClickSelection: false
-  })
-}))
-
-const onGridReady = (params) => {
-  gridApi.value = params.api
-  columnApi.value = params.columnApi
-
-  // Auto-size columns based on screen size
-  if (isMobile.value) {
-    // On mobile, reduce column widths to fit more columns
-    params.api.sizeColumnsToFit()
-  } else if (isTablet.value) {
-    // On tablet, balance between content and fit
-    params.api.sizeColumnsToFit()
-  } else {
-    // On desktop, auto-size to content
-    params.api.sizeColumnsToFit()
-  }
-
-  // Enable touch scrolling for mobile
-  if (isTouchDevice()) {
-    const eGridDiv = params.api.getGridOptions().context?.eGridDiv
-    if (eGridDiv) {
-      eGridDiv.style.webkitOverflowScrolling = 'touch'
-    }
-  }
-
-  emit('grid-ready', params)
-}
-
-const handleCellValueChanged = (event) => {
-  emit('cell-value-changed', event)
-}
-
-const handleRowEditingStarted = (event) => {
-  emit('row-editing-started', event)
-}
-
-const handleRowEditingStopped = (event) => {
-  emit('row-editing-stopped', event)
-}
-
-const handleCellClicked = (event) => {
-  emit('cell-clicked', event)
-}
-
-const handlePasteStart = (event) => {
-  emit('paste-start', event)
-}
-
-const handlePasteEnd = (event) => {
-  emit('paste-end', event)
-}
-
-// Excel paste functionality
-const handlePasteFromExcel = async () => {
-  pasteLoading.value = true
-
-  try {
-    // Read clipboard
-    const clipboardText = await readClipboard()
-
-    if (!clipboardText || clipboardText.trim() === '') {
-      snackbar.value = {
-        show: true,
-        text: t('paste.emptyClipboard'),
-        color: 'warning'
-      }
-      return
-    }
-
-    // Parse clipboard data
-    const parsed = parseClipboardData(clipboardText)
-
-    if (parsed.error || parsed.rows.length === 0) {
-      snackbar.value = {
-        show: true,
-        text: t('paste.parseError'),
-        color: 'error'
-      }
-      return
-    }
-
-    parsedPasteData.value = parsed
-
-    // Map columns if headers detected
-    let columnMapping = { mapping: {}, unmappedClipboard: [], unmappedGrid: [] }
-
-    if (parsed.hasHeaders && parsed.headers.length > 0) {
-      columnMapping = mapColumnsToGrid(parsed.headers, props.columnDefs)
-    } else {
-      // Auto-map by column order if no headers
-      const editableColumns = props.columnDefs.filter(c => c.field && c.field !== 'actions')
-      editableColumns.forEach((col, idx) => {
-        if (idx < parsed.totalColumns) {
-          columnMapping.mapping[idx] = col.field
-        }
-      })
-    }
-
-    pasteColumnMapping.value = columnMapping
-
-    // Convert rows to grid format
-    const converted = convertToGridRows(parsed.rows, columnMapping.mapping, props.columnDefs)
-    convertedPasteRows.value = converted
-
-    // Validate rows
-    const schema = entrySchemas[props.entryType] || entrySchemas.production
-    const validation = validateRows(converted, schema)
-    pasteValidationResult.value = validation
-
-    // Emit event with paste data for parent to handle
-    emit('rows-pasted', {
-      parsedData: parsed,
-      convertedRows: converted,
-      validationResult: validation,
-      columnMapping,
-      gridColumns: props.columnDefs
-    })
-
-    // Show success feedback
-    if (validation.isValid) {
-      lastPasteCount.value = converted.length
-    } else {
-      lastPasteCount.value = validation.totalValid
-    }
-
-  } catch (error) {
-    console.error('Paste error:', error)
-    snackbar.value = {
-      show: true,
-      text: t('paste.accessDenied'),
-      color: 'error'
-    }
-  } finally {
-    pasteLoading.value = false
-  }
-}
-
-// Handle keyboard shortcut for paste
-const handleKeyboardPaste = (event) => {
-  // Check for Ctrl+Shift+V (custom paste from Excel)
-  if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'V') {
-    event.preventDefault()
-    handlePasteFromExcel()
-  }
-}
-
-// Set up keyboard listener
-onMounted(() => {
-  if (props.enableExcelPaste) {
-    document.addEventListener('keydown', handleKeyboardPaste)
-  }
-})
-
-onUnmounted(() => {
-  document.removeEventListener('keydown', handleKeyboardPaste)
-})
-
-// Public methods for parent components
-const exportToCsv = (filename = 'export.csv') => {
-  if (gridApi.value) {
-    gridApi.value.exportDataAsCsv({ fileName: filename })
-  }
-}
-
-const exportToExcel = (filename = 'export.xlsx') => {
-  if (gridApi.value) {
-    gridApi.value.exportDataAsExcel({ fileName: filename })
-  }
-}
-
-const clearSelection = () => {
-  if (gridApi.value) {
-    gridApi.value.deselectAll()
-  }
-}
-
-const getSelectedRows = () => {
-  if (gridApi.value) {
-    return gridApi.value.getSelectedRows()
-  }
-  return []
-}
-
-const refreshCells = () => {
-  if (gridApi.value) {
-    gridApi.value.refreshCells()
-  }
-}
-
-// Add rows to grid (for paste functionality)
-const addRowsToGrid = (rows) => {
-  if (gridApi.value && rows.length > 0) {
-    gridApi.value.applyTransaction({ add: rows, addIndex: 0 })
-    lastPasteCount.value = rows.length
-    return true
-  }
-  return false
-}
+const {
+  gridApi,
+  columnApi,
+  pasteLoading,
+  lastPasteCount,
+  snackbar,
+  gridStyle,
+  rowSelectionConfig,
+  defaultColDef,
+  mergedGridOptions,
+  onGridReady,
+  handleCellValueChanged,
+  handleRowEditingStarted,
+  handleRowEditingStopped,
+  handleCellClicked,
+  handlePasteStart,
+  handlePasteEnd,
+  handlePasteFromExcel,
+  exportToCsv,
+  exportToExcel,
+  clearSelection,
+  getSelectedRows,
+  refreshCells,
+  addRowsToGrid
+} = useAGGridBase(props, emit)
 
 // Expose grid API and helper methods for parent components
 defineExpose({

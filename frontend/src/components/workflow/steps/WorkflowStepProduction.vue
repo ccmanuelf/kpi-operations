@@ -5,19 +5,19 @@
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-primary">{{ totalProduced }}</div>
-          <div class="text-caption text-grey">Units Produced</div>
+          <div class="text-caption text-grey">{{ $t('workflow.unitsProduced') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-info">{{ totalTarget }}</div>
-          <div class="text-caption text-grey">Target Units</div>
+          <div class="text-caption text-grey">{{ $t('workflow.targetUnits') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4" :class="efficiencyColor">{{ efficiency }}%</div>
-          <div class="text-caption text-grey">Efficiency</div>
+          <div class="text-caption text-grey">{{ $t('workflow.efficiency') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
@@ -25,7 +25,7 @@
           <div class="text-h4" :class="pendingEntries > 0 ? 'text-warning' : 'text-success'">
             {{ pendingEntries }}
           </div>
-          <div class="text-caption text-grey">Pending Entries</div>
+          <div class="text-caption text-grey">{{ $t('workflow.pendingEntries') }}</div>
         </v-card>
       </v-col>
     </v-row>
@@ -34,7 +34,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-clipboard-list</v-icon>
-        Work Orders - Final Production Count
+        {{ $t('workflow.workOrdersFinalCount') }}
       </v-card-title>
 
       <v-card-text class="pa-0">
@@ -53,7 +53,7 @@
               size="x-small"
               variant="flat"
             >
-              {{ item.hasEntry ? 'Entered' : 'Pending' }}
+              {{ item.hasEntry ? $t('workflow.entered') : $t('common.pending') }}
             </v-chip>
           </template>
 
@@ -104,7 +104,7 @@
               @click="submitEntry(item)"
               :loading="item.submitting"
             >
-              Submit
+              {{ $t('common.submit') }}
             </v-btn>
             <v-icon v-else-if="item.hasEntry" color="success" size="20">
               mdi-check-circle
@@ -122,11 +122,11 @@
     >
       <v-card-title class="d-flex align-center bg-warning-lighten-4 py-2">
         <v-icon class="mr-2" size="20" color="warning">mdi-alert</v-icon>
-        Quick Entry for Pending Work Orders
+        {{ $t('workflow.quickEntryPending') }}
       </v-card-title>
       <v-card-text>
         <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          Enter production counts for remaining work orders or mark as zero if no production occurred.
+          {{ $t('workflow.quickEntryInfo') }}
         </v-alert>
 
         <v-btn
@@ -136,7 +136,7 @@
           :disabled="pendingWorkOrders.length === 0"
         >
           <v-icon start>mdi-numeric-0-circle</v-icon>
-          Mark Remaining as Zero Production
+          {{ $t('workflow.markRemainingZero') }}
         </v-btn>
       </v-card-text>
     </v-card>
@@ -145,7 +145,7 @@
     <v-checkbox
       v-model="confirmed"
       :disabled="pendingEntries > 0"
-      label="All production entries have been submitted for this shift"
+      :label="$t('workflow.productionConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />
@@ -157,14 +157,17 @@
       density="compact"
       class="mt-2"
     >
-      {{ pendingEntries }} work order(s) still need production entries before proceeding.
+      {{ $t('workflow.productionPendingAlert', { count: pendingEntries }) }}
     </v-alert>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['complete', 'update'])
 
@@ -174,15 +177,15 @@ const confirmed = ref(false)
 const workOrders = ref([])
 
 // Table headers
-const headers = [
-  { title: 'Work Order', key: 'id', width: '120px' },
-  { title: 'Product', key: 'product' },
-  { title: 'Status', key: 'status', width: '90px' },
-  { title: 'Produced', key: 'produced', width: '120px' },
-  { title: 'Defects', key: 'defects', width: '100px' },
-  { title: 'Efficiency', key: 'efficiency', width: '100px' },
+const headers = computed(() => [
+  { title: t('workflow.workOrder'), key: 'id', width: '120px' },
+  { title: t('workflow.product'), key: 'product' },
+  { title: t('common.status'), key: 'status', width: '90px' },
+  { title: t('workflow.produced'), key: 'produced', width: '120px' },
+  { title: t('workflow.defects'), key: 'defects', width: '100px' },
+  { title: t('workflow.efficiency'), key: 'efficiency', width: '100px' },
   { title: '', key: 'actions', width: '100px', sortable: false }
-]
+])
 
 // Computed
 const totalProduced = computed(() => {

@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-target</v-icon>
-      KPI Tracking & Commitments
+      {{ t('capacityPlanning.kpiTracking.title') }}
       <v-spacer />
       <v-btn
         color="primary"
@@ -11,7 +11,7 @@
         @click="addKPI"
       >
         <v-icon start>mdi-plus</v-icon>
-        Add KPI
+        {{ t('capacityPlanning.kpiTracking.addKpi') }}
       </v-btn>
       <v-btn
         color="info"
@@ -21,7 +21,7 @@
         @click="loadActuals"
       >
         <v-icon start>mdi-refresh</v-icon>
-        Load Actuals
+        {{ t('capacityPlanning.kpiTracking.loadActuals') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -31,7 +31,7 @@
           <v-card variant="tonal" color="primary">
             <v-card-text class="text-center">
               <div class="text-h4">{{ kpiData.length }}</div>
-              <div class="text-subtitle-1">Total KPIs</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.kpiTracking.totalKpis') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -39,7 +39,7 @@
           <v-card variant="tonal" color="success">
             <v-card-text class="text-center">
               <div class="text-h4">{{ onTargetCount }}</div>
-              <div class="text-subtitle-1">On Target</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.kpiTracking.onTarget') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -47,7 +47,7 @@
           <v-card variant="tonal" color="warning">
             <v-card-text class="text-center">
               <div class="text-h4">{{ offTargetCount }}</div>
-              <div class="text-subtitle-1">Off Target</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.kpiTracking.offTarget') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -55,7 +55,7 @@
           <v-card variant="tonal" color="error">
             <v-card-text class="text-center">
               <div class="text-h4">{{ criticalCount }}</div>
-              <div class="text-subtitle-1">Critical</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.kpiTracking.critical') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -141,9 +141,9 @@
       <!-- Empty State -->
       <div v-else class="text-center pa-8 text-grey">
         <v-icon size="64" color="grey-lighten-1">mdi-target</v-icon>
-        <div class="text-h6 mt-4">No KPI Commitments</div>
+        <div class="text-h6 mt-4">{{ t('capacityPlanning.kpiTracking.noCommitmentsTitle') }}</div>
         <div class="text-body-2 mt-2">
-          KPI commitments are created when you commit a production schedule. You can also add manual KPI targets.
+          {{ t('capacityPlanning.kpiTracking.noCommitmentsDescription') }}
         </div>
         <v-btn
           color="primary"
@@ -151,7 +151,7 @@
           class="mt-4"
           @click="addKPI"
         >
-          Add KPI
+          {{ t('capacityPlanning.kpiTracking.addKpi') }}
         </v-btn>
       </div>
     </v-card-text>
@@ -159,7 +159,7 @@
     <!-- Load Actuals Dialog -->
     <v-dialog v-model="showLoadActualsDialog" max-width="400">
       <v-card>
-        <v-card-title>Load KPI Actuals</v-card-title>
+        <v-card-title>{{ t('capacityPlanning.kpiTracking.loadKpiActuals') }}</v-card-title>
         <v-card-text>
           <v-select
             v-model="selectedPeriod"
@@ -170,8 +170,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showLoadActualsDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="doLoadActuals">Load</v-btn>
+          <v-btn @click="showLoadActualsDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="primary" @click="doLoadActuals">{{ t('capacityPlanning.kpiTracking.load') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -200,22 +200,22 @@ const store = useCapacityPlanningStore()
 const showLoadActualsDialog = ref(false)
 const selectedPeriod = ref('current_week')
 
-const headers = [
-  { title: 'KPI Name', key: 'kpi_name', width: '200px' },
-  { title: 'Target', key: 'target_value', width: '100px' },
-  { title: 'Actual', key: 'actual_value', width: '100px' },
-  { title: 'Variance', key: 'variance_percent', width: '100px' },
-  { title: 'Status', key: 'status', width: '100px' },
-  { title: 'Period', key: 'period', width: '180px' },
-  { title: 'Actions', key: 'actions', width: '80px', sortable: false }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanning.kpiTracking.headers.kpiName'), key: 'kpi_name', width: '200px' },
+  { title: t('capacityPlanning.kpiTracking.headers.target'), key: 'target_value', width: '100px' },
+  { title: t('capacityPlanning.kpiTracking.headers.actual'), key: 'actual_value', width: '100px' },
+  { title: t('capacityPlanning.kpiTracking.headers.variance'), key: 'variance_percent', width: '100px' },
+  { title: t('capacityPlanning.kpiTracking.headers.status'), key: 'status', width: '100px' },
+  { title: t('capacityPlanning.kpiTracking.headers.period'), key: 'period', width: '180px' },
+  { title: t('capacityPlanning.kpiTracking.headers.actions'), key: 'actions', width: '80px', sortable: false }
+])
 
-const periodOptions = [
-  { title: 'Current Week', value: 'current_week' },
-  { title: 'Last Week', value: 'last_week' },
-  { title: 'Current Month', value: 'current_month' },
-  { title: 'Last Month', value: 'last_month' }
-]
+const periodOptions = computed(() => [
+  { title: t('capacityPlanning.kpiTracking.periods.currentWeek'), value: 'current_week' },
+  { title: t('capacityPlanning.kpiTracking.periods.lastWeek'), value: 'last_week' },
+  { title: t('capacityPlanning.kpiTracking.periods.currentMonth'), value: 'current_month' },
+  { title: t('capacityPlanning.kpiTracking.periods.lastMonth'), value: 'last_month' }
+])
 
 const kpiData = computed(() => store.worksheets.kpiTracking.data)
 

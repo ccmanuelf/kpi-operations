@@ -4,32 +4,32 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-target</v-icon>
-        Shift Production Targets
+        {{ $t('workflow.shiftProductionTargets') }}
       </v-card-title>
       <v-card-text>
         <v-row>
           <v-col cols="6" md="3">
             <div class="text-center">
               <div class="text-h4 text-primary">{{ totalUnits }}</div>
-              <div class="text-caption text-grey">Total Units</div>
+              <div class="text-caption text-grey">{{ $t('workflow.totalUnits') }}</div>
             </div>
           </v-col>
           <v-col cols="6" md="3">
             <div class="text-center">
               <div class="text-h4 text-info">{{ workOrders.length }}</div>
-              <div class="text-caption text-grey">Work Orders</div>
+              <div class="text-caption text-grey">{{ $t('workflow.workOrders') }}</div>
             </div>
           </v-col>
           <v-col cols="6" md="3">
             <div class="text-center">
               <div class="text-h4 text-warning">{{ highPriorityCount }}</div>
-              <div class="text-caption text-grey">High Priority</div>
+              <div class="text-caption text-grey">{{ $t('workflow.highPriority') }}</div>
             </div>
           </v-col>
           <v-col cols="6" md="3">
             <div class="text-center">
               <div class="text-h4 text-success">{{ targetEfficiency }}%</div>
-              <div class="text-caption text-grey">Target Efficiency</div>
+              <div class="text-caption text-grey">{{ $t('workflow.targetEfficiencyPercent') }}</div>
             </div>
           </v-col>
         </v-row>
@@ -40,10 +40,10 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-clipboard-list</v-icon>
-        Work Orders for This Shift
+        {{ $t('workflow.workOrdersForShift') }}
         <v-spacer />
         <v-chip size="small" variant="tonal" color="primary">
-          {{ workOrders.length }} orders
+          {{ $t('workflow.orders', { count: workOrders.length }) }}
         </v-chip>
       </v-card-title>
 
@@ -105,7 +105,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-package-variant</v-icon>
-        Material Availability
+        {{ $t('workflow.materialAvailability') }}
       </v-card-title>
       <v-card-text>
         <v-alert
@@ -115,7 +115,7 @@
           density="compact"
         >
           <v-icon>mdi-check-circle</v-icon>
-          All materials available for scheduled work orders
+          {{ $t('workflow.allMaterialsAvailable') }}
         </v-alert>
 
         <v-list v-else density="compact">
@@ -139,8 +139,8 @@
     <!-- Notes -->
     <v-textarea
       v-model="notes"
-      label="Shift Planning Notes (Optional)"
-      placeholder="Any notes about production priorities or special instructions..."
+      :label="$t('workflow.shiftPlanningNotes')"
+      :placeholder="$t('workflow.shiftPlanningPlaceholder')"
       variant="outlined"
       rows="3"
       class="mb-4"
@@ -150,7 +150,7 @@
     <!-- Confirmation -->
     <v-checkbox
       v-model="confirmed"
-      label="I have reviewed the production targets and work order priorities"
+      :label="$t('workflow.targetsConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />
@@ -160,33 +160,33 @@
       <v-card v-if="selectedWorkOrder">
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2">mdi-clipboard-text</v-icon>
-          Work Order: {{ selectedWorkOrder.id }}
+          {{ $t('workflow.workOrder') }}: {{ selectedWorkOrder.id }}
         </v-card-title>
         <v-card-text>
           <v-simple-table density="compact">
             <tbody>
               <tr>
-                <td class="text-grey">Product</td>
+                <td class="text-grey">{{ $t('workflow.product') }}</td>
                 <td>{{ selectedWorkOrder.product }}</td>
               </tr>
               <tr>
-                <td class="text-grey">Customer</td>
+                <td class="text-grey">{{ $t('workflow.customer') }}</td>
                 <td>{{ selectedWorkOrder.customer }}</td>
               </tr>
               <tr>
-                <td class="text-grey">Target Quantity</td>
+                <td class="text-grey">{{ $t('workflow.targetQuantity') }}</td>
                 <td>{{ selectedWorkOrder.targetQuantity }}</td>
               </tr>
               <tr>
-                <td class="text-grey">Completed</td>
+                <td class="text-grey">{{ $t('workflow.completed') }}</td>
                 <td>{{ selectedWorkOrder.completedQuantity }}</td>
               </tr>
               <tr>
-                <td class="text-grey">Due Date</td>
+                <td class="text-grey">{{ $t('workflow.dueDate') }}</td>
                 <td>{{ formatDate(selectedWorkOrder.dueDate) }}</td>
               </tr>
               <tr>
-                <td class="text-grey">Priority</td>
+                <td class="text-grey">{{ $t('workflow.priority') }}</td>
                 <td>
                   <v-chip :color="getPriorityColor(selectedWorkOrder.priority)" size="small">
                     {{ selectedWorkOrder.priority }}
@@ -198,7 +198,7 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showDetailDialog = false">Close</v-btn>
+          <v-btn variant="text" @click="showDetailDialog = false">{{ $t('common.close') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -207,7 +207,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['complete', 'update'])
 
@@ -221,15 +224,15 @@ const showDetailDialog = ref(false)
 const selectedWorkOrder = ref(null)
 
 // Table headers
-const headers = [
-  { title: 'Work Order', key: 'id', width: '120px' },
-  { title: 'Product', key: 'product' },
-  { title: 'Priority', key: 'priority', width: '100px' },
-  { title: 'Target', key: 'targetQuantity', width: '80px' },
-  { title: 'Due Date', key: 'dueDate', width: '100px' },
-  { title: 'Progress', key: 'progress', width: '140px' },
+const headers = computed(() => [
+  { title: t('workflow.workOrder'), key: 'id', width: '120px' },
+  { title: t('workflow.product'), key: 'product' },
+  { title: t('workflow.priority'), key: 'priority', width: '100px' },
+  { title: t('common.target'), key: 'targetQuantity', width: '80px' },
+  { title: t('workflow.dueDate'), key: 'dueDate', width: '100px' },
+  { title: t('workflow.progress'), key: 'progress', width: '140px' },
   { title: '', key: 'actions', width: '50px', sortable: false }
-]
+])
 
 // Computed
 const totalUnits = computed(() => {

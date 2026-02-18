@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(performanceData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">Target: 95%</v-chip>
+        <v-chip color="grey-darken-2">{{ $t('kpi.targetPercent', { value: 95 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -65,15 +65,15 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.actualRate') }}</div>
-                <div class="text-h4 font-weight-bold">{{ performanceData?.actual_rate || 0 }} u/h</div>
+                <div class="text-h4 font-weight-bold">{{ performanceData?.actual_rate || 0 }} {{ $t('kpi.unitsPerHour') }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Actual Rate = Total Units / Production Hours</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Current production speed in units per hour. Compare against standard rate to identify performance gaps.</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.actualRateFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.actualRateMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -83,13 +83,13 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.standardRate') }}</div>
-                <div class="text-h4 font-weight-bold">{{ performanceData?.standard_rate || 0 }} u/h</div>
+                <div class="text-h4 font-weight-bold">{{ performanceData?.standard_rate || 0 }} {{ $t('kpi.unitsPerHour') }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Target production speed based on equipment design capacity and optimal conditions. This is the benchmark for performance measurement.</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.standardRateMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -104,8 +104,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of units produced within the selected period. This is the raw output measure before quality adjustments.</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.totalUnitsMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -115,13 +115,13 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.productionHours') }}</div>
-                <div class="text-h4 font-weight-bold">{{ performanceData?.production_hours || 0 }}h</div>
+                <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: performanceData?.production_hours || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total hours spent in active production (excluding downtime). Used to calculate actual production rate and performance efficiency.</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.productionHoursMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -169,29 +169,29 @@
         <v-card variant="outlined" class="border-purple">
           <v-card-title class="text-purple-darken-1">
             <v-icon start>mdi-crystal-ball</v-icon>
-            Prediction Summary
+            {{ $t('kpi.predictionSummary') }}
           </v-card-title>
           <v-card-text>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">Predicted Average:</span>
+              <span class="text-grey-darken-1">{{ $t('kpi.predictedAverage') }}</span>
               <span class="font-weight-bold">{{ predictionData.predicted_average?.toFixed(1) }}%</span>
             </div>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">Current Value:</span>
+              <span class="text-grey-darken-1">{{ $t('kpi.currentValue') }}</span>
               <span>{{ predictionData.current_value?.toFixed(1) }}%</span>
             </div>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">Expected Change:</span>
+              <span class="text-grey-darken-1">{{ $t('kpi.expectedChange') }}</span>
               <v-chip :color="predictionData.expected_change_percent >= 0 ? 'success' : 'error'" size="small">
                 {{ predictionData.expected_change_percent >= 0 ? '+' : '' }}{{ predictionData.expected_change_percent?.toFixed(1) }}%
               </v-chip>
             </div>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">Model Accuracy:</span>
+              <span class="text-grey-darken-1">{{ $t('kpi.modelAccuracy') }}</span>
               <span>{{ predictionData.model_accuracy?.toFixed(0) }}%</span>
             </div>
             <div class="d-flex justify-space-between">
-              <span class="text-grey-darken-1">Method:</span>
+              <span class="text-grey-darken-1">{{ $t('kpi.method') }}</span>
               <v-chip size="x-small" color="purple" variant="outlined">
                 {{ predictionData.prediction_method?.replace(/_/g, ' ') }}
               </v-chip>
@@ -204,7 +204,7 @@
         <v-card variant="outlined">
           <v-card-title>
             <v-icon start>mdi-heart-pulse</v-icon>
-            Health Assessment
+            {{ $t('kpi.healthAssessment') }}
           </v-card-title>
           <v-card-text v-if="predictionData.health_assessment">
             <div class="d-flex align-center mb-3">
@@ -217,7 +217,7 @@
                 {{ predictionData.health_assessment.health_score?.toFixed(0) }}
               </v-progress-circular>
               <div class="ml-3">
-                <div class="text-body-2 text-grey-darken-1">Health Score</div>
+                <div class="text-body-2 text-grey-darken-1">{{ $t('kpi.healthScore') }}</div>
                 <v-chip :color="getTrendColor(predictionData.health_assessment.trend)" size="small">
                   <v-icon start size="small">{{ getTrendIcon(predictionData.health_assessment.trend) }}</v-icon>
                   {{ predictionData.health_assessment.trend }}
@@ -235,7 +235,7 @@
         <v-card variant="outlined">
           <v-card-title>
             <v-icon start>mdi-lightbulb</v-icon>
-            Recommendations
+            {{ $t('kpi.recommendations') }}
           </v-card-title>
           <v-card-text v-if="predictionData.health_assessment?.recommendations">
             <v-list density="compact" class="pa-0">
@@ -348,308 +348,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted } from 'vue'
 import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { format } from 'date-fns'
-import { useKPIStore } from '@/stores/kpi'
-import api from '@/services/api'
+import usePerformanceData from '@/composables/usePerformanceData'
+import usePerformanceCharts from '@/composables/usePerformanceCharts'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+const {
+  loading, clients, selectedClient, startDate, endDate, tableSearch,
+  historicalData, showForecast, forecastDays, predictionData,
+  performanceData, statusColor,
+  shiftHeaders, productHeaders, historyHeaders,
+  formatValue, formatDate,
+  getPerformanceColor, getEfficiencyColor, getHealthColor, getTrendColor, getTrendIcon,
+  fetchPrediction, onForecastToggle, onClientChange, onDateChange, refreshData, initialize
+} = usePerformanceData()
 
-const { t } = useI18n()
-const kpiStore = useKPIStore()
-const loading = ref(false)
-const clients = ref([])
-const selectedClient = ref(null)
-const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-const endDate = ref(new Date().toISOString().split('T')[0])
-const tableSearch = ref('')
-const historicalData = ref([])
-const showForecast = ref(true)
-const forecastDays = ref(7)
-const predictionData = ref(null)
+const { chartData, chartOptions } = usePerformanceCharts({ showForecast, predictionData })
 
-const performanceData = computed(() => kpiStore.performance)
-
-const statusColor = computed(() => {
-  const perf = performanceData.value?.percentage || 0
-  if (perf >= 95) return 'success'
-  if (perf >= 85) return 'amber-darken-3'
-  return 'error'
-})
-
-const shiftHeaders = [
-  { title: 'Shift', key: 'shift_name', sortable: true },
-  { title: 'Units', key: 'units', sortable: true },
-  { title: 'Rate', key: 'rate', sortable: true },
-  { title: 'Performance', key: 'performance', sortable: true }
-]
-
-const productHeaders = [
-  { title: 'Product', key: 'product_name', sortable: true },
-  { title: 'Units', key: 'units', sortable: true },
-  { title: 'Rate', key: 'rate', sortable: true },
-  { title: 'Performance', key: 'performance', sortable: true }
-]
-
-const historyHeaders = [
-  { title: 'Date', key: 'date', sortable: true },
-  { title: 'Total Units', key: 'total_units', sortable: true },
-  { title: 'Performance %', key: 'avg_performance', sortable: true },
-  { title: 'Efficiency %', key: 'avg_efficiency', sortable: true },
-  { title: 'Entry Count', key: 'entry_count', sortable: true }
-]
-
-const chartData = computed(() => {
-  const trendLabels = kpiStore.trends.performance.map(d => format(new Date(d.date), 'MMM dd'))
-  const trendData = kpiStore.trends.performance.map(d => d.value)
-
-  const datasets = [
-    {
-      label: t('kpi.charts.performancePercent'),
-      data: trendData,
-      borderColor: '#0d47a1',
-      backgroundColor: 'rgba(13, 71, 161, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: t('kpi.charts.targetValue', { value: 95 }),
-      data: Array(trendLabels.length).fill(95),
-      borderColor: '#2e7d32',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-
-  // Add forecast data if available and enabled
-  if (showForecast.value && predictionData.value && predictionData.value.predictions) {
-    const forecastLabels = predictionData.value.predictions.map(p => {
-      const date = new Date(p.date)
-      return format(date, 'MMM dd')
-    })
-    const forecastValues = predictionData.value.predictions.map(p => p.predicted_value)
-    const upperBounds = predictionData.value.predictions.map(p => p.upper_bound)
-    const lowerBounds = predictionData.value.predictions.map(p => p.lower_bound)
-
-    // Combine labels (historical + forecast)
-    const allLabels = [...trendLabels, ...forecastLabels]
-
-    // Pad historical data with nulls for forecast period
-    const paddedTrendData = [...trendData, ...Array(forecastLabels.length).fill(null)]
-    const paddedTarget = Array(allLabels.length).fill(95)
-
-    // Pad forecast data with nulls for historical period
-    const lastHistoricalValue = trendData.length > 0 ? trendData[trendData.length - 1] : null
-    const paddedForecast = [...Array(trendLabels.length - 1).fill(null), lastHistoricalValue, ...forecastValues]
-    const paddedUpper = [...Array(trendLabels.length - 1).fill(null), lastHistoricalValue, ...upperBounds]
-    const paddedLower = [...Array(trendLabels.length - 1).fill(null), lastHistoricalValue, ...lowerBounds]
-
-    return {
-      labels: allLabels,
-      datasets: [
-        {
-          label: t('kpi.charts.performancePercent'),
-          data: paddedTrendData,
-          borderColor: '#0d47a1',
-          backgroundColor: 'rgba(13, 71, 161, 0.1)',
-          tension: 0.3,
-          fill: true
-        },
-        {
-          label: t('kpi.charts.targetValue', { value: 95 }),
-          data: paddedTarget,
-          borderColor: '#2e7d32',
-          borderDash: [5, 5],
-          pointRadius: 0
-        },
-        {
-          label: t('kpi.charts.forecast'),
-          data: paddedForecast,
-          borderColor: '#9c27b0',
-          backgroundColor: 'rgba(156, 39, 176, 0.1)',
-          borderDash: [6, 4],
-          tension: 0.3,
-          fill: false,
-          pointStyle: 'rectRot',
-          pointRadius: 4,
-          pointBackgroundColor: '#9c27b0'
-        },
-        {
-          label: t('kpi.charts.confidenceUpper'),
-          data: paddedUpper,
-          borderColor: 'rgba(156, 39, 176, 0.3)',
-          backgroundColor: 'rgba(156, 39, 176, 0.05)',
-          borderDash: [2, 2],
-          tension: 0.3,
-          fill: '+1',
-          pointRadius: 0
-        },
-        {
-          label: t('kpi.charts.confidenceLower'),
-          data: paddedLower,
-          borderColor: 'rgba(156, 39, 176, 0.3)',
-          backgroundColor: 'transparent',
-          borderDash: [2, 2],
-          tension: 0.3,
-          fill: false,
-          pointRadius: 0
-        }
-      ]
-    }
-  }
-
-  return { labels: trendLabels, datasets }
-})
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: { display: true, position: 'top' },
-    tooltip: { mode: 'index', intersect: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      max: 100,
-      ticks: { callback: (value) => `${value}%` }
-    }
-  }
-}
-
-const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(1) : t('common.na')
-}
-
-const formatDate = (dateStr) => {
-  try {
-    return format(new Date(dateStr), 'MMM dd, yyyy')
-  } catch {
-    return dateStr
-  }
-}
-
-const getPerformanceColor = (perf) => {
-  if (perf >= 95) return 'success'
-  if (perf >= 85) return 'amber-darken-3'
-  return 'error'
-}
-
-const getEfficiencyColor = (eff) => {
-  if (eff >= 85) return 'success'
-  if (eff >= 70) return 'amber-darken-3'
-  return 'error'
-}
-
-const getHealthColor = (score) => {
-  if (score >= 80) return 'success'
-  if (score >= 60) return 'warning'
-  return 'error'
-}
-
-const getTrendColor = (trend) => {
-  if (trend === 'improving') return 'success'
-  if (trend === 'declining') return 'error'
-  return 'grey'
-}
-
-const getTrendIcon = (trend) => {
-  if (trend === 'improving') return 'mdi-trending-up'
-  if (trend === 'declining') return 'mdi-trending-down'
-  return 'mdi-minus'
-}
-
-const fetchPrediction = async () => {
-  if (!showForecast.value) {
-    predictionData.value = null
-    return
-  }
-  try {
-    const params = {
-      forecast_days: forecastDays.value,
-      historical_days: 30,
-      method: 'auto'
-    }
-    if (selectedClient.value) {
-      params.client_id = selectedClient.value
-    }
-    const response = await api.getPrediction('performance', params)
-    predictionData.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch prediction:', error)
-    predictionData.value = null
-  }
-}
-
-const onForecastToggle = () => {
-  if (showForecast.value) {
-    fetchPrediction()
-  } else {
-    predictionData.value = null
-  }
-}
-
-const loadClients = async () => {
-  try {
-    const response = await api.getClients()
-    clients.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load clients:', error)
-  }
-}
-
-const onClientChange = () => {
-  kpiStore.setClient(selectedClient.value)
-  refreshData()
-}
-
-const onDateChange = () => {
-  kpiStore.setDateRange(startDate.value, endDate.value)
-  refreshData()
-}
-
-const refreshData = async () => {
-  loading.value = true
-  try {
-    const promises = [
-      kpiStore.fetchPerformance(),
-      kpiStore.fetchDashboard()
-    ]
-    if (showForecast.value) {
-      promises.push(fetchPrediction())
-    }
-    await Promise.all(promises)
-    historicalData.value = kpiStore.dashboard || []
-  } catch (error) {
-    console.error('Failed to refresh data:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await loadClients()
-    kpiStore.setDateRange(startDate.value, endDate.value)
-    await refreshData()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(() => initialize())
 </script>
 
 <style scoped>

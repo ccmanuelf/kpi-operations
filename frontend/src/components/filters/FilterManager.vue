@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-primary">
         <v-icon class="mr-2">mdi-filter-cog</v-icon>
-        <span class="text-h5">Manage Saved Filters</span>
+        <span class="text-h5">{{ t('filterManager.title') }}</span>
         <v-spacer></v-spacer>
         <v-btn icon variant="text" @click="close">
           <v-icon>mdi-close</v-icon>
@@ -15,7 +15,7 @@
         <v-text-field
           v-model="searchQuery"
           prepend-inner-icon="mdi-magnify"
-          placeholder="Search filters..."
+          :placeholder="t('filterManager.searchPlaceholder')"
           variant="outlined"
           density="compact"
           hide-details
@@ -33,7 +33,7 @@
           @click="confirmClearHistory"
         >
           <v-icon start size="small">mdi-history</v-icon>
-          Clear History
+          {{ t('filterManager.clearHistory') }}
         </v-btn>
       </div>
 
@@ -41,7 +41,7 @@
       <v-tabs v-model="activeTab" bg-color="grey-lighten-4" density="compact">
         <v-tab value="all">
           <v-icon start size="small">mdi-filter-multiple</v-icon>
-          All
+          {{ t('filterManager.all') }}
           <v-badge
             v-if="totalFiltersCount > 0"
             :content="totalFiltersCount"
@@ -96,7 +96,7 @@
                   variant="flat"
                   class="ml-2"
                 >
-                  Default
+                  {{ t('filterManager.default') }}
                 </v-chip>
               </v-list-item-title>
 
@@ -114,15 +114,15 @@
               <v-list-item-subtitle class="text-caption mt-1">
                 <span v-if="filter.usage_count" class="mr-3">
                   <v-icon size="x-small">mdi-chart-line</v-icon>
-                  Used {{ filter.usage_count }} time{{ filter.usage_count !== 1 ? 's' : '' }}
+                  {{ t('filterManager.usedCount', { count: filter.usage_count }) }}
                 </span>
                 <span v-if="filter.last_used_at">
                   <v-icon size="x-small">mdi-clock-outline</v-icon>
-                  Last used {{ formatTimeAgo(filter.last_used_at) }}
+                  {{ t('filterManager.lastUsed', { time: formatTimeAgo(filter.last_used_at) }) }}
                 </span>
                 <span v-else-if="filter.created_at">
                   <v-icon size="x-small">mdi-calendar-plus</v-icon>
-                  Created {{ formatTimeAgo(filter.created_at) }}
+                  {{ t('filterManager.created', { time: formatTimeAgo(filter.created_at) }) }}
                 </span>
               </v-list-item-subtitle>
 
@@ -137,7 +137,7 @@
                     @click="applyFilter(filter)"
                   >
                     <v-icon>mdi-play</v-icon>
-                    <v-tooltip activator="parent" location="top">Apply</v-tooltip>
+                    <v-tooltip activator="parent" location="top">{{ t('filterManager.apply') }}</v-tooltip>
                   </v-btn>
 
                   <!-- Actions Menu -->
@@ -157,14 +157,14 @@
                         <template #prepend>
                           <v-icon size="small">mdi-pencil</v-icon>
                         </template>
-                        <v-list-item-title>Edit</v-list-item-title>
+                        <v-list-item-title>{{ t('filterManager.edit') }}</v-list-item-title>
                       </v-list-item>
 
                       <v-list-item @click="duplicateFilter(filter)">
                         <template #prepend>
                           <v-icon size="small">mdi-content-copy</v-icon>
                         </template>
-                        <v-list-item-title>Duplicate</v-list-item-title>
+                        <v-list-item-title>{{ t('filterManager.duplicate') }}</v-list-item-title>
                       </v-list-item>
 
                       <v-list-item
@@ -174,7 +174,7 @@
                         <template #prepend>
                           <v-icon size="small">mdi-star</v-icon>
                         </template>
-                        <v-list-item-title>Set as Default</v-list-item-title>
+                        <v-list-item-title>{{ t('filterManager.setAsDefault') }}</v-list-item-title>
                       </v-list-item>
 
                       <v-list-item
@@ -184,7 +184,7 @@
                         <template #prepend>
                           <v-icon size="small">mdi-star-off</v-icon>
                         </template>
-                        <v-list-item-title>Remove Default</v-list-item-title>
+                        <v-list-item-title>{{ t('filterManager.removeDefault') }}</v-list-item-title>
                       </v-list-item>
 
                       <v-divider class="my-1"></v-divider>
@@ -196,7 +196,7 @@
                         <template #prepend>
                           <v-icon size="small" color="error">mdi-delete</v-icon>
                         </template>
-                        <v-list-item-title>Delete</v-list-item-title>
+                        <v-list-item-title>{{ t('common.delete') }}</v-list-item-title>
                       </v-list-item>
                     </v-list>
                   </v-menu>
@@ -210,9 +210,9 @@
         <!-- Empty State -->
         <div v-else class="pa-8 text-center">
           <v-icon size="80" color="grey-lighten-1">mdi-filter-off-outline</v-icon>
-          <h3 class="text-h6 text-grey mt-4">No Filters Found</h3>
+          <h3 class="text-h6 text-grey mt-4">{{ t('filterManager.noFiltersFound') }}</h3>
           <p class="text-body-2 text-medium-emphasis mt-2">
-            {{ searchQuery ? 'No filters match your search criteria.' : 'You haven\'t saved any filters yet.' }}
+            {{ searchQuery ? t('filterManager.noFiltersMatchSearch') : t('filterManager.noFiltersSaved') }}
           </p>
           <v-btn
             v-if="searchQuery"
@@ -221,7 +221,7 @@
             class="mt-4"
             @click="searchQuery = ''"
           >
-            Clear Search
+            {{ t('filterManager.clearSearch') }}
           </v-btn>
         </div>
       </v-card-text>
@@ -230,7 +230,7 @@
 
       <v-card-actions class="pa-4">
         <v-btn variant="text" @click="close">
-          Close
+          {{ t('common.close') }}
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn
@@ -239,7 +239,7 @@
           :disabled="!activeFilter"
           @click="close"
         >
-          Done
+          {{ t('filterManager.done') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -249,7 +249,7 @@
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
           <v-icon class="mr-2">mdi-pencil</v-icon>
-          Edit Filter
+          {{ t('filterManager.editFilter') }}
         </v-card-title>
 
         <v-card-text class="pa-4">
@@ -280,7 +280,7 @@
         </v-card-text>
 
         <v-card-actions class="pa-4">
-          <v-btn variant="text" @click="cancelEdit">Cancel</v-btn>
+          <v-btn variant="text" @click="cancelEdit">{{ t('common.cancel') }}</v-btn>
           <v-spacer></v-spacer>
           <v-btn
             color="primary"
@@ -288,7 +288,7 @@
             :loading="isSaving"
             @click="saveEdit"
           >
-            Save Changes
+            {{ t('filterManager.saveChanges') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -299,7 +299,7 @@
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
           <v-icon class="mr-2">mdi-content-copy</v-icon>
-          Duplicate Filter
+          {{ t('filterManager.duplicateFilter') }}
         </v-card-title>
 
         <v-card-text class="pa-4">
@@ -313,7 +313,7 @@
         </v-card-text>
 
         <v-card-actions class="pa-4">
-          <v-btn variant="text" @click="cancelDuplicate">Cancel</v-btn>
+          <v-btn variant="text" @click="cancelDuplicate">{{ t('common.cancel') }}</v-btn>
           <v-spacer></v-spacer>
           <v-btn
             color="primary"
@@ -322,7 +322,7 @@
             :disabled="!duplicateName"
             @click="saveDuplicate"
           >
-            Duplicate
+            {{ t('filterManager.duplicate') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -333,16 +333,16 @@
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
           <v-icon class="mr-2" color="error">mdi-delete-alert</v-icon>
-          Delete Filter
+          {{ t('filterManager.deleteFilter') }}
         </v-card-title>
 
         <v-card-text class="pa-4">
-          <p>Are you sure you want to delete <strong>{{ deletingFilter?.filter_name }}</strong>?</p>
-          <p class="text-caption text-medium-emphasis mt-2">This action cannot be undone.</p>
+          <p>{{ t('filterManager.deleteConfirm', { name: deletingFilter?.filter_name }) }}</p>
+          <p class="text-caption text-medium-emphasis mt-2">{{ t('filterManager.deleteWarning') }}</p>
         </v-card-text>
 
         <v-card-actions class="pa-4">
-          <v-btn variant="text" @click="cancelDelete">Cancel</v-btn>
+          <v-btn variant="text" @click="cancelDelete">{{ t('common.cancel') }}</v-btn>
           <v-spacer></v-spacer>
           <v-btn
             color="error"
@@ -350,7 +350,7 @@
             :loading="isDeleting"
             @click="executeDelete"
           >
-            Delete
+            {{ t('common.delete') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -361,26 +361,25 @@
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
           <v-icon class="mr-2" color="warning">mdi-history</v-icon>
-          Clear Filter History
+          {{ t('filterManager.clearFilterHistory') }}
         </v-card-title>
 
         <v-card-text class="pa-4">
-          <p>Are you sure you want to clear your filter history?</p>
+          <p>{{ t('filterManager.clearHistoryConfirm') }}</p>
           <p class="text-caption text-medium-emphasis mt-2">
-            This will remove {{ filterHistory.length }} recent filter(s) from your history.
-            Saved filters will not be affected.
+            {{ t('filterManager.clearHistoryDetail', { count: filterHistory.length }) }}
           </p>
         </v-card-text>
 
         <v-card-actions class="pa-4">
-          <v-btn variant="text" @click="showClearHistoryDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="showClearHistoryDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-spacer></v-spacer>
           <v-btn
             color="warning"
             variant="flat"
             @click="executeClearHistory"
           >
-            Clear History
+            {{ t('filterManager.clearHistory') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -392,7 +391,7 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
-import { formatDistanceToNow } from 'date-fns'
+import useFilterManagerActions from '@/composables/useFilterManagerActions'
 
 const { t } = useI18n()
 
@@ -407,60 +406,43 @@ const emit = defineEmits(['update:modelValue', 'filter-applied'])
 
 const filtersStore = useFiltersStore()
 
+// Actions composable (edit, duplicate, delete, clear-history, formatters)
+const {
+  showEditDialog, editingFilter,
+  showDuplicateDialog, duplicatingFilter, duplicateName,
+  showDeleteDialog, deletingFilter,
+  showClearHistoryDialog,
+  isSaving, isDeleting,
+  filterTypeOptions,
+  getTypeIcon, formatFilterSummary, formatTimeAgo,
+  applyFilter, editFilter, cancelEdit, saveEdit,
+  duplicateFilter, cancelDuplicate, saveDuplicate,
+  setAsDefault, removeDefault,
+  confirmDelete, cancelDelete, executeDelete,
+  confirmClearHistory, executeClearHistory
+} = useFilterManagerActions(emit)
+
 // Dialog state
 const isOpen = ref(props.modelValue)
 const activeTab = ref('all')
 const searchQuery = ref('')
 
-// Edit state
-const showEditDialog = ref(false)
-const editingFilter = ref({})
-const originalFilter = ref(null)
-
-// Duplicate state
-const showDuplicateDialog = ref(false)
-const duplicatingFilter = ref(null)
-const duplicateName = ref('')
-
-// Delete state
-const showDeleteDialog = ref(false)
-const deletingFilter = ref(null)
-
-// Clear history state
-const showClearHistoryDialog = ref(false)
-
-// Loading states
-const isSaving = ref(false)
-const isDeleting = ref(false)
-
-// Computed
+// Store-derived computed
 const activeFilter = computed(() => filtersStore.activeFilter)
 const filtersByType = computed(() => filtersStore.filtersByType)
 const filterHistory = computed(() => filtersStore.filterHistory)
 const savedFilters = computed(() => filtersStore.savedFilters)
-
 const totalFiltersCount = computed(() => savedFilters.value.length)
 
 const getTypeCount = (type) => {
   return filtersByType.value[type]?.length || 0
 }
 
-const filterTypeOptions = computed(() => {
-  return Object.entries(FILTER_TYPES).map(([value, label]) => ({
-    value,
-    label
-  }))
-})
-
 const filteredList = computed(() => {
   let filters = savedFilters.value
-
-  // Filter by tab
   if (activeTab.value !== 'all') {
     filters = filters.filter(f => f.filter_type === activeTab.value)
   }
-
-  // Filter by search
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filters = filters.filter(f =>
@@ -468,8 +450,6 @@ const filteredList = computed(() => {
       f.filter_type.toLowerCase().includes(query)
     )
   }
-
-  // Sort: defaults first, then by usage count, then by name
   return [...filters].sort((a, b) => {
     if (a.is_default && !b.is_default) return -1
     if (!a.is_default && b.is_default) return 1
@@ -480,181 +460,10 @@ const filteredList = computed(() => {
   })
 })
 
-// Methods
-const getTypeIcon = (type) => {
-  const icons = {
-    dashboard: 'mdi-view-dashboard',
-    production: 'mdi-factory',
-    quality: 'mdi-check-decagram',
-    attendance: 'mdi-account-clock',
-    downtime: 'mdi-clock-alert',
-    hold: 'mdi-pause-circle',
-    coverage: 'mdi-shield-check'
-  }
-  return icons[type] || 'mdi-filter'
-}
-
-const formatFilterSummary = (config) => {
-  const parts = []
-
-  if (config.date_range?.type === 'relative' && config.date_range.relative_days) {
-    parts.push(`Last ${config.date_range.relative_days} days`)
-  } else if (config.date_range?.type === 'absolute') {
-    parts.push('Custom date range')
-  }
-
-  if (config.client_id) {
-    parts.push('Specific client')
-  }
-
-  if (config.shift_ids?.length) {
-    parts.push(`${config.shift_ids.length} shift(s)`)
-  }
-
-  if (config.product_ids?.length) {
-    parts.push(`${config.product_ids.length} product(s)`)
-  }
-
-  return parts.length > 0 ? parts.join(' | ') : 'All data'
-}
-
-const formatTimeAgo = (dateString) => {
-  try {
-    return formatDistanceToNow(new Date(dateString), { addSuffix: true })
-  } catch {
-    return ''
-  }
-}
-
-const applyFilter = async (filter) => {
-  await filtersStore.applyFilter(filter)
-  emit('filter-applied', filter)
-}
-
-const editFilter = (filter) => {
-  originalFilter.value = filter
-  editingFilter.value = {
-    filter_name: filter.filter_name,
-    filter_type: filter.filter_type,
-    is_default: filter.is_default
-  }
-  showEditDialog.value = true
-}
-
-const cancelEdit = () => {
-  showEditDialog.value = false
-  editingFilter.value = {}
-  originalFilter.value = null
-}
-
-const saveEdit = async () => {
-  if (!originalFilter.value) return
-
-  isSaving.value = true
-  try {
-    await filtersStore.updateFilter(originalFilter.value.filter_id, {
-      filter_name: editingFilter.value.filter_name,
-      filter_type: editingFilter.value.filter_type,
-      is_default: editingFilter.value.is_default
-    })
-    showEditDialog.value = false
-    editingFilter.value = {}
-    originalFilter.value = null
-  } catch (e) {
-    console.error('Failed to update filter:', e)
-  } finally {
-    isSaving.value = false
-  }
-}
-
-const duplicateFilter = (filter) => {
-  duplicatingFilter.value = filter
-  duplicateName.value = `Copy of ${filter.filter_name}`
-  showDuplicateDialog.value = true
-}
-
-const cancelDuplicate = () => {
-  showDuplicateDialog.value = false
-  duplicatingFilter.value = null
-  duplicateName.value = ''
-}
-
-const saveDuplicate = async () => {
-  if (!duplicatingFilter.value || !duplicateName.value) return
-
-  isSaving.value = true
-  try {
-    await filtersStore.duplicateFilter(
-      duplicatingFilter.value.filter_id,
-      duplicateName.value
-    )
-    showDuplicateDialog.value = false
-    duplicatingFilter.value = null
-    duplicateName.value = ''
-  } catch (e) {
-    console.error('Failed to duplicate filter:', e)
-  } finally {
-    isSaving.value = false
-  }
-}
-
-const setAsDefault = async (filter) => {
-  try {
-    await filtersStore.setDefaultFilter(filter.filter_id, filter.filter_type)
-  } catch (e) {
-    console.error('Failed to set default filter:', e)
-  }
-}
-
-const removeDefault = async (filter) => {
-  try {
-    await filtersStore.updateFilter(filter.filter_id, {
-      is_default: false
-    })
-  } catch (e) {
-    console.error('Failed to remove default:', e)
-  }
-}
-
-const confirmDelete = (filter) => {
-  deletingFilter.value = filter
-  showDeleteDialog.value = true
-}
-
-const cancelDelete = () => {
-  showDeleteDialog.value = false
-  deletingFilter.value = null
-}
-
-const executeDelete = async () => {
-  if (!deletingFilter.value) return
-
-  isDeleting.value = true
-  try {
-    await filtersStore.deleteFilter(deletingFilter.value.filter_id)
-    showDeleteDialog.value = false
-    deletingFilter.value = null
-  } catch (e) {
-    console.error('Failed to delete filter:', e)
-  } finally {
-    isDeleting.value = false
-  }
-}
-
-const confirmClearHistory = () => {
-  showClearHistoryDialog.value = true
-}
-
-const executeClearHistory = async () => {
-  await filtersStore.clearHistory()
-  showClearHistoryDialog.value = false
-}
-
 const close = () => {
   isOpen.value = false
 }
 
-// Watch dialog visibility
 watch(() => props.modelValue, (newValue) => {
   isOpen.value = newValue
 })

@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(absenteeismData?.rate) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">Target: &lt; 5%</v-chip>
+        <v-chip color="grey-darken-2">{{ $t('kpi.targetLessThanPercent', { value: 5 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -70,8 +70,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of employees scheduled to work within the selected period. This is the workforce baseline for calculating absenteeism metrics.</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.totalEmployeesMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -86,8 +86,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of absence instances recorded. Each day an employee is absent counts as one absence, regardless of partial or full day.</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.totalAbsencesMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -97,15 +97,15 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('attendance.scheduledHours') }}</div>
-                <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_scheduled_hours || 0 }}h</div>
+                <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: absenteeismData?.total_scheduled_hours || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Scheduled Hours = Σ(Employee Hours × Working Days)</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total hours employees were scheduled to work. This is the denominator for calculating absenteeism rate percentage.</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.scheduledHoursFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.scheduledHoursMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -115,13 +115,13 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('attendance.absentHours') }}</div>
-                <div class="text-h4 font-weight-bold text-error">{{ absenteeismData?.total_hours_absent || 0 }}h</div>
+                <div class="text-h4 font-weight-bold text-error">{{ $t('kpi.hoursSuffix', { value: absenteeismData?.total_hours_absent || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total hours lost due to employee absences. Used to calculate the absenteeism rate and estimate productivity impact.</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.absentHoursMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -236,7 +236,7 @@
               density="compact"
             >
               <template v-slot:item.absence_count="{ item }">
-                <v-chip color="warning" size="small">{{ item.absence_count }} days</v-chip>
+                <v-chip color="warning" size="small">{{ $t('kpi.daysCount', { count: item.absence_count }) }}</v-chip>
               </template>
             </v-data-table>
           </v-card-text>
@@ -290,33 +290,33 @@ const statusColor = computed(() => {
   return 'error'
 })
 
-const reasonHeaders = [
-  { title: 'Reason', key: 'reason', sortable: true },
-  { title: 'Count', key: 'count', sortable: true },
-  { title: 'Percentage', key: 'percentage', sortable: true }
-]
+const reasonHeaders = computed(() => [
+  { title: t('kpi.headers.reason'), key: 'reason', sortable: true },
+  { title: t('kpi.headers.count'), key: 'count', sortable: true },
+  { title: t('kpi.headers.percentage'), key: 'percentage', sortable: true }
+])
 
-const deptHeaders = [
-  { title: 'Department', key: 'department', sortable: true },
-  { title: 'Workforce', key: 'workforce', sortable: true },
-  { title: 'Absences', key: 'absences', sortable: true },
-  { title: 'Rate', key: 'rate', sortable: true }
-]
+const deptHeaders = computed(() => [
+  { title: t('kpi.headers.department'), key: 'department', sortable: true },
+  { title: t('kpi.headers.workforce'), key: 'workforce', sortable: true },
+  { title: t('kpi.headers.absences'), key: 'absences', sortable: true },
+  { title: t('kpi.headers.rate'), key: 'rate', sortable: true }
+])
 
-const alertHeaders = [
-  { title: 'Employee ID', key: 'employee_id', sortable: true },
-  { title: 'Department', key: 'department', sortable: true },
-  { title: 'Absence Days', key: 'absence_count', sortable: true },
-  { title: 'Last Absence', key: 'last_absence', sortable: true }
-]
+const alertHeaders = computed(() => [
+  { title: t('kpi.headers.employeeId'), key: 'employee_id', sortable: true },
+  { title: t('kpi.headers.department'), key: 'department', sortable: true },
+  { title: t('kpi.headers.absenceDays'), key: 'absence_count', sortable: true },
+  { title: t('kpi.headers.lastAbsence'), key: 'last_absence', sortable: true }
+])
 
-const attendanceHistoryHeaders = [
-  { title: 'Date', key: 'shift_date', sortable: true },
-  { title: 'Employee ID', key: 'employee_id', sortable: true },
-  { title: 'Hours Scheduled', key: 'scheduled_hours', sortable: true },
-  { title: 'Hours Worked', key: 'actual_hours', sortable: true },
-  { title: 'Status', key: 'status', sortable: true }
-]
+const attendanceHistoryHeaders = computed(() => [
+  { title: t('kpi.headers.date'), key: 'shift_date', sortable: true },
+  { title: t('kpi.headers.employeeId'), key: 'employee_id', sortable: true },
+  { title: t('kpi.headers.hoursScheduled'), key: 'scheduled_hours', sortable: true },
+  { title: t('kpi.headers.hoursWorked'), key: 'actual_hours', sortable: true },
+  { title: t('kpi.headers.status'), key: 'status', sortable: true }
+])
 
 const chartData = computed(() => ({
   labels: kpiStore.trends.absenteeism.map(d => format(new Date(d.date), 'MMM dd')),

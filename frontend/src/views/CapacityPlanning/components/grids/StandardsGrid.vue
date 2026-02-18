@@ -2,11 +2,11 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-timer</v-icon>
-      Production Standards (SAM)
+      {{ t('capacityPlanningGrids.standards.title') }}
       <v-spacer />
       <v-btn color="primary" size="small" variant="tonal" @click="addRow">
         <v-icon start>mdi-plus</v-icon>
-        Add Standard
+        {{ t('capacityPlanningGrids.standards.addStandard') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -111,7 +111,7 @@
       </v-data-table>
 
       <div v-if="!standards.length" class="text-center pa-4 text-grey">
-        No production standards defined. Add SAM (Standard Allowed Minutes) data for your operations.
+        {{ t('capacityPlanningGrids.standards.noStandards') }}
       </div>
     </v-card-text>
   </v-card>
@@ -129,20 +129,22 @@
  * No props or emits -- all state managed via store.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
-const headers = [
-  { title: 'Style', key: 'style_code', width: '100px' },
-  { title: 'Op Code', key: 'operation_code', width: '100px' },
-  { title: 'Operation', key: 'operation_name', width: '180px' },
-  { title: 'Department', key: 'department', width: '120px' },
-  { title: 'SAM (min)', key: 'sam_minutes', width: '100px' },
-  { title: 'Setup (min)', key: 'setup_time_minutes', width: '100px' },
-  { title: 'Machine (min)', key: 'machine_time_minutes', width: '100px' },
-  { title: 'Actions', key: 'actions', width: '100px', sortable: false }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanningGrids.standards.style'), key: 'style_code', width: '100px' },
+  { title: t('capacityPlanningGrids.standards.opCode'), key: 'operation_code', width: '100px' },
+  { title: t('capacityPlanningGrids.standards.operation'), key: 'operation_name', width: '180px' },
+  { title: t('capacityPlanningGrids.standards.department'), key: 'department', width: '120px' },
+  { title: t('capacityPlanningGrids.standards.samMin'), key: 'sam_minutes', width: '100px' },
+  { title: t('capacityPlanningGrids.standards.setupMin'), key: 'setup_time_minutes', width: '100px' },
+  { title: t('capacityPlanningGrids.standards.machineMin'), key: 'machine_time_minutes', width: '100px' },
+  { title: t('common.actions'), key: 'actions', width: '100px', sortable: false }
+])
 
 const standards = computed(() => store.worksheets.productionStandards.data)
 

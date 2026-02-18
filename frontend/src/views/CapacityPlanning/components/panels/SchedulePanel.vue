@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-calendar-clock</v-icon>
-      Production Schedule
+      {{ t('capacityPlanning.schedule.title') }}
       <v-spacer />
       <v-chip
         v-if="store.activeSchedule"
@@ -20,7 +20,7 @@
         @click="showGenerateDialog = true"
       >
         <v-icon start>mdi-plus</v-icon>
-        Generate Schedule
+        {{ t('capacityPlanning.schedule.generateSchedule') }}
       </v-btn>
       <v-btn
         v-if="store.activeSchedule && store.activeSchedule.status !== 'COMMITTED'"
@@ -31,7 +31,7 @@
         @click="store.showScheduleCommitDialog = true"
       >
         <v-icon start>mdi-check</v-icon>
-        Commit Schedule
+        {{ t('capacityPlanning.schedule.commitSchedule') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -40,19 +40,19 @@
         <v-card-text>
           <v-row>
             <v-col cols="3">
-              <div class="text-caption text-grey">Schedule Name</div>
+              <div class="text-caption text-grey">{{ t('capacityPlanning.schedule.scheduleName') }}</div>
               <div class="text-subtitle-1 font-weight-bold">{{ store.activeSchedule.name }}</div>
             </v-col>
             <v-col cols="3">
-              <div class="text-caption text-grey">Start Date</div>
+              <div class="text-caption text-grey">{{ t('capacityPlanning.schedule.startDate') }}</div>
               <div class="text-subtitle-1">{{ store.activeSchedule.start_date }}</div>
             </v-col>
             <v-col cols="3">
-              <div class="text-caption text-grey">End Date</div>
+              <div class="text-caption text-grey">{{ t('capacityPlanning.schedule.endDate') }}</div>
               <div class="text-subtitle-1">{{ store.activeSchedule.end_date }}</div>
             </v-col>
             <v-col cols="3">
-              <div class="text-caption text-grey">Total Orders</div>
+              <div class="text-caption text-grey">{{ t('capacityPlanning.schedule.totalOrders') }}</div>
               <div class="text-subtitle-1">{{ schedule.length }}</div>
             </v-col>
           </v-row>
@@ -80,7 +80,7 @@
               />
               <strong>{{ formatDate(item.value) }}</strong>
               <v-chip size="small" class="ml-2">
-                {{ item.items.length }} orders
+                {{ item.items.length }} {{ t('capacityPlanning.schedule.ordersCount') }}
               </v-chip>
             </td>
           </tr>
@@ -124,9 +124,9 @@
       <!-- Empty State -->
       <div v-else class="text-center pa-8 text-grey">
         <v-icon size="64" color="grey-lighten-1">mdi-calendar-clock</v-icon>
-        <div class="text-h6 mt-4">No Production Schedule</div>
+        <div class="text-h6 mt-4">{{ t('capacityPlanning.schedule.noScheduleTitle') }}</div>
         <div class="text-body-2 mt-2">
-          Click "Generate Schedule" to create a production schedule based on your orders and capacity.
+          {{ t('capacityPlanning.schedule.noScheduleDescription') }}
         </div>
         <v-btn
           color="primary"
@@ -134,7 +134,7 @@
           class="mt-4"
           @click="showGenerateDialog = true"
         >
-          Generate Schedule
+          {{ t('capacityPlanning.schedule.generateSchedule') }}
         </v-btn>
       </div>
     </v-card-text>
@@ -142,7 +142,7 @@
     <!-- Generate Schedule Dialog -->
     <v-dialog v-model="showGenerateDialog" max-width="500">
       <v-card>
-        <v-card-title>Generate Production Schedule</v-card-title>
+        <v-card-title>{{ t('capacityPlanning.schedule.generateProductionSchedule') }}</v-card-title>
         <v-card-text>
           <v-text-field
             v-model="scheduleName"
@@ -176,13 +176,13 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showGenerateDialog = false">Cancel</v-btn>
+          <v-btn @click="showGenerateDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="store.isGeneratingSchedule"
             @click="generateSchedule"
           >
-            Generate
+            {{ t('capacityPlanning.workbookDialogs.generate') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -215,14 +215,14 @@ const startDate = ref('')
 const endDate = ref('')
 const includeAllOrders = ref(true)
 
-const headers = [
-  { title: 'Sequence', key: 'sequence_number', width: '100px' },
-  { title: 'Order #', key: 'order_number', width: '120px' },
-  { title: 'Line', key: 'line_code', width: '100px' },
-  { title: 'Date', key: 'scheduled_date', width: '120px' },
-  { title: 'Quantity', key: 'planned_quantity', width: '100px' },
-  { title: 'Status', key: 'status', width: '100px' }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanning.schedule.headers.sequence'), key: 'sequence_number', width: '100px' },
+  { title: t('capacityPlanning.schedule.headers.orderNumber'), key: 'order_number', width: '120px' },
+  { title: t('capacityPlanning.schedule.headers.line'), key: 'line_code', width: '100px' },
+  { title: t('capacityPlanning.schedule.headers.date'), key: 'scheduled_date', width: '120px' },
+  { title: t('capacityPlanning.schedule.headers.quantity'), key: 'planned_quantity', width: '100px' },
+  { title: t('capacityPlanning.schedule.headers.status'), key: 'status', width: '100px' }
+])
 
 const schedule = computed(() => store.worksheets.productionSchedule.data)
 

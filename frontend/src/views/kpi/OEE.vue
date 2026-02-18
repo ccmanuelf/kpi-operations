@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(oeeData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">Target: 85%</v-chip>
+        <v-chip color="grey-darken-2">{{ $t('kpi.targetPercent', { value: 85 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -62,7 +62,7 @@
       <v-col cols="12">
         <v-card color="primary" variant="tonal">
           <v-card-text class="text-center">
-            <div class="text-h6 mb-2">OEE = Availability x Performance x Quality</div>
+            <div class="text-h6 mb-2">{{ t('kpi.oeeFormula') }}</div>
             <div class="text-h4 font-weight-bold">
               {{ formatValue(components.availability) }}% x
               {{ formatValue(components.performance) }}% x
@@ -85,7 +85,7 @@
                   <div>
                     <div class="text-caption text-grey-darken-1">{{ $t('kpi.availability') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
-                    <div class="text-caption">Equipment uptime</div>
+                    <div class="text-caption">{{ t('kpi.equipmentUptime') }}</div>
                   </div>
                   <v-icon size="48" color="blue">mdi-server</v-icon>
                 </div>
@@ -93,10 +93,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Availability = (Uptime / Planned Time) × 100</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Percentage of scheduled time equipment is available for production. Accounts for breakdowns, changeovers, and unplanned stops. Target: 90%+</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.availabilityFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.availabilityMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -109,7 +109,7 @@
                   <div>
                     <div class="text-caption text-grey-darken-1">{{ $t('kpi.performance') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
-                    <div class="text-caption">Speed efficiency</div>
+                    <div class="text-caption">{{ t('kpi.speedEfficiency') }}</div>
                   </div>
                   <v-icon size="48" color="orange">mdi-speedometer</v-icon>
                 </div>
@@ -117,10 +117,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Performance = (Actual Rate / Ideal Rate) × 100</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Measures production speed relative to design capacity. Accounts for slow cycles, minor stops, and reduced speed. Target: 95%+</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.performanceFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.performanceMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -133,7 +133,7 @@
                   <div>
                     <div class="text-caption text-grey-darken-1">{{ $t('kpi.qualityFPY') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
-                    <div class="text-caption">First pass yield</div>
+                    <div class="text-caption">{{ t('kpi.firstPassYield') }}</div>
                   </div>
                   <v-icon size="48" color="green">mdi-star-circle</v-icon>
                 </div>
@@ -141,10 +141,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Quality = (Good Units / Total Units) × 100</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">First Pass Yield - percentage of units passing inspection without rework. Accounts for defects, scrap, and rework. Target: 99%+</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.qualityFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.qualityMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -259,13 +259,13 @@ const statusColor = computed(() => {
   return 'error'
 })
 
-const historyHeaders = [
-  { title: 'Date', key: 'date', sortable: true },
-  { title: 'Total Units', key: 'total_units', sortable: true },
-  { title: 'Efficiency %', key: 'avg_efficiency', sortable: true },
-  { title: 'Performance %', key: 'avg_performance', sortable: true },
-  { title: 'Entry Count', key: 'entry_count', sortable: true }
-]
+const historyHeaders = computed(() => [
+  { title: t('kpi.headers.date'), key: 'date', sortable: true },
+  { title: t('kpi.headers.totalUnits'), key: 'total_units', sortable: true },
+  { title: t('kpi.headers.efficiencyPercent'), key: 'avg_efficiency', sortable: true },
+  { title: t('kpi.headers.performancePercent'), key: 'avg_performance', sortable: true },
+  { title: t('kpi.headers.entryCount'), key: 'entry_count', sortable: true }
+])
 
 const chartData = computed(() => ({
   labels: kpiStore.trends.oee.map(d => format(new Date(d.date), 'MMM dd')),

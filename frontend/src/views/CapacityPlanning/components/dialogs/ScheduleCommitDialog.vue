@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="d-flex align-center bg-success text-white">
         <v-icon start>mdi-check-decagram</v-icon>
-        Commit Production Schedule
+        {{ t('capacityPlanning.scheduleCommit.title') }}
         <v-spacer />
         <v-btn
           icon="mdi-close"
@@ -23,17 +23,17 @@
           <v-card-text>
             <v-row>
               <v-col cols="4">
-                <div class="text-caption text-grey">Schedule</div>
+                <div class="text-caption text-grey">{{ t('capacityPlanning.scheduleCommit.schedule') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">{{ schedule.name }}</div>
               </v-col>
               <v-col cols="4">
-                <div class="text-caption text-grey">Period</div>
+                <div class="text-caption text-grey">{{ t('common.period') }}</div>
                 <div class="text-subtitle-1">
                   {{ formatDate(schedule.start_date) }} - {{ formatDate(schedule.end_date) }}
                 </div>
               </v-col>
               <v-col cols="4">
-                <div class="text-caption text-grey">Orders</div>
+                <div class="text-caption text-grey">{{ t('capacityPlanning.scheduleCommit.orders') }}</div>
                 <div class="text-subtitle-1">{{ schedule.order_count || 0 }}</div>
               </v-col>
             </v-row>
@@ -42,14 +42,14 @@
 
         <!-- Warning -->
         <v-alert type="warning" variant="tonal" class="mb-4">
-          <strong>Committing a schedule is a binding action.</strong>
-          Once committed, the schedule will be locked and KPI targets will be created for tracking.
+          <strong>{{ t('capacityPlanning.scheduleCommit.warningTitle') }}</strong>
+          {{ t('capacityPlanning.scheduleCommit.warningBody') }}
         </v-alert>
 
         <!-- KPI Commitments -->
-        <div class="text-subtitle-1 font-weight-bold mb-3">KPI Commitments</div>
+        <div class="text-subtitle-1 font-weight-bold mb-3">{{ t('capacityPlanning.scheduleCommit.kpiCommitments') }}</div>
         <p class="text-body-2 text-grey mb-3">
-          Set target values for key performance indicators. These will be tracked against actuals.
+          {{ t('capacityPlanning.scheduleCommit.kpiDescription') }}
         </p>
 
         <v-row v-for="(kpi, index) in kpiCommitments" :key="index" dense class="mb-2">
@@ -99,21 +99,21 @@
           @click="addKPI"
         >
           <v-icon start>mdi-plus</v-icon>
-          Add KPI
+          {{ t('capacityPlanning.scheduleCommit.addKpi') }}
         </v-btn>
 
         <!-- Notes -->
         <v-textarea
           v-model="commitNotes"
-          label="Commitment Notes (optional)"
+          :label="t('capacityPlanning.scheduleCommit.commitNotes')"
           variant="outlined"
           rows="3"
           class="mt-4"
-          placeholder="Add any notes about this schedule commitment..."
+          :placeholder="t('capacityPlanning.scheduleCommit.commitNotesPlaceholder')"
         />
       </v-card-text>
       <v-card-actions>
-        <v-btn variant="text" @click="$emit('close')">Cancel</v-btn>
+        <v-btn variant="text" @click="$emit('close')">{{ t('common.cancel') }}</v-btn>
         <v-spacer />
         <v-btn
           color="success"
@@ -122,7 +122,7 @@
           @click="commitSchedule"
         >
           <v-icon start>mdi-check</v-icon>
-          Commit Schedule
+          {{ t('capacityPlanning.scheduleCommit.commitSchedule') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -153,10 +153,10 @@ const commitNotes = ref('')
 
 // Default KPI commitments
 const kpiCommitments = reactive([
-  { name: 'On-Time Delivery', target: 95, unit: '%', readonly: true },
-  { name: 'Production Efficiency', target: 85, unit: '%', readonly: true },
-  { name: 'Quality (First Pass Yield)', target: 98, unit: '%', readonly: true },
-  { name: 'Capacity Utilization', target: 80, unit: '%', readonly: true }
+  { name: t('capacityPlanning.scheduleCommit.defaultKpi.onTimeDelivery'), target: 95, unit: '%', readonly: true },
+  { name: t('capacityPlanning.scheduleCommit.defaultKpi.productionEfficiency'), target: 85, unit: '%', readonly: true },
+  { name: t('capacityPlanning.scheduleCommit.defaultKpi.qualityFpy'), target: 98, unit: '%', readonly: true },
+  { name: t('capacityPlanning.scheduleCommit.defaultKpi.capacityUtilization'), target: 80, unit: '%', readonly: true }
 ])
 
 const formatDate = (date) => {

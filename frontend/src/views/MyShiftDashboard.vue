@@ -25,7 +25,7 @@
                       {{ shiftStatusText }}
                     </v-chip>
                     <span v-if="hasActiveShift" class="text-body-2 text-grey">
-                      Started {{ formatTime(activeShift?.start_time) }} ({{ shiftDuration }})
+                      {{ t('shifts.started') }} {{ formatTime(activeShift?.start_time) }} ({{ shiftDuration }})
                     </span>
                     <span v-else class="text-body-2 text-grey">
                       {{ currentDateFormatted }}
@@ -113,7 +113,7 @@
                       @click="openQuickLog(wo)"
                     >
                       <v-icon start size="18">mdi-plus</v-icon>
-                      Log
+                      {{ t('shifts.log') }}
                     </v-btn>
                   </template>
                 </v-list-item>
@@ -138,32 +138,11 @@
           </v-card-title>
           <v-card-text class="pa-4">
             <v-row>
-              <v-col cols="6" sm="3">
+              <v-col v-for="stat in statCards" :key="stat.key" cols="6" sm="3">
                 <div class="stat-card text-center pa-3">
-                  <v-icon color="primary" size="32" class="mb-2">mdi-package-variant</v-icon>
-                  <div class="text-h4 font-weight-bold text-primary">{{ myStats.unitsProduced }}</div>
-                  <div class="text-caption text-grey">{{ t('production.unitsProduced') }}</div>
-                </div>
-              </v-col>
-              <v-col cols="6" sm="3">
-                <div class="stat-card text-center pa-3">
-                  <v-icon color="success" size="32" class="mb-2">mdi-speedometer</v-icon>
-                  <div class="text-h4 font-weight-bold text-success">{{ myStats.efficiency }}%</div>
-                  <div class="text-caption text-grey">{{ t('kpi.efficiency') }}</div>
-                </div>
-              </v-col>
-              <v-col cols="6" sm="3">
-                <div class="stat-card text-center pa-3">
-                  <v-icon color="warning" size="32" class="mb-2">mdi-clock-alert</v-icon>
-                  <div class="text-h4 font-weight-bold text-warning">{{ myStats.downtimeIncidents }}</div>
-                  <div class="text-caption text-grey">{{ t('downtime.title') }}</div>
-                </div>
-              </v-col>
-              <v-col cols="6" sm="3">
-                <div class="stat-card text-center pa-3">
-                  <v-icon color="info" size="32" class="mb-2">mdi-check-decagram</v-icon>
-                  <div class="text-h4 font-weight-bold text-info">{{ myStats.qualityChecks }}</div>
-                  <div class="text-caption text-grey">{{ t('quality.title') }}</div>
+                  <v-icon :color="stat.color" size="32" class="mb-2">{{ stat.icon }}</v-icon>
+                  <div class="text-h4 font-weight-bold" :class="`text-${stat.color}`">{{ stat.value }}{{ stat.suffix || '' }}</div>
+                  <div class="text-caption text-grey">{{ t(stat.labelKey) }}</div>
                 </div>
               </v-col>
             </v-row>
@@ -241,66 +220,11 @@
           </v-card-title>
           <v-card-text class="pa-4">
             <v-row class="quick-actions-grid">
-              <!-- Log Production -->
-              <v-col cols="6">
-                <v-card
-                  class="quick-action-card elevation-1"
-                  color="primary"
-                  @click="openQuickProductionDialog"
-                  role="button"
-                  tabindex="0"
-                >
+              <v-col v-for="action in quickActions" :key="action.key" cols="6">
+                <v-card class="quick-action-card elevation-1" :color="action.color" @click="action.handler" role="button" tabindex="0">
                   <v-card-text class="text-center pa-4">
-                    <v-icon size="40" color="white" class="mb-2">mdi-package-variant-plus</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">{{ t('production.title') }}</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-
-              <!-- Report Downtime -->
-              <v-col cols="6">
-                <v-card
-                  class="quick-action-card elevation-1"
-                  color="warning"
-                  @click="openDowntimeDialog"
-                  role="button"
-                  tabindex="0"
-                >
-                  <v-card-text class="text-center pa-4">
-                    <v-icon size="40" color="white" class="mb-2">mdi-clock-alert</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">{{ t('downtime.title') }}</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-
-              <!-- Quality Check -->
-              <v-col cols="6">
-                <v-card
-                  class="quick-action-card elevation-1"
-                  color="success"
-                  @click="openQualityDialog"
-                  role="button"
-                  tabindex="0"
-                >
-                  <v-card-text class="text-center pa-4">
-                    <v-icon size="40" color="white" class="mb-2">mdi-check-decagram</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">{{ t('quality.title') }}</div>
-                  </v-card-text>
-                </v-card>
-              </v-col>
-
-              <!-- Request Help -->
-              <v-col cols="6">
-                <v-card
-                  class="quick-action-card elevation-1"
-                  color="error"
-                  @click="openHelpDialog"
-                  role="button"
-                  tabindex="0"
-                >
-                  <v-card-text class="text-center pa-4">
-                    <v-icon size="40" color="white" class="mb-2">mdi-hand-wave</v-icon>
-                    <div class="text-body-1 font-weight-medium text-white">{{ t('common.help') }}</div>
+                    <v-icon size="40" color="white" class="mb-2">{{ action.icon }}</v-icon>
+                    <div class="text-body-1 font-weight-medium text-white">{{ t(action.labelKey) }}</div>
                   </v-card-text>
                 </v-card>
               </v-col>
@@ -324,215 +248,34 @@
               </v-btn>
             </div>
             <p v-if="!selectedWorkOrder" class="text-caption text-grey text-center mt-2">
-              Select a work order above to use quick log
+              {{ t('shifts.selectWorkOrderForQuickLog') }}
             </p>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Quick Production Dialog -->
-    <v-dialog v-model="showProductionDialog" max-width="400" persistent>
-      <v-card>
-        <v-card-title class="bg-primary text-white d-flex align-center">
-          <v-icon class="mr-2">mdi-package-variant-plus</v-icon>
-          {{ t('production.title') }}
-        </v-card-title>
-        <v-card-text class="pa-4">
-          <v-select
-            v-model="productionForm.workOrderId"
-            :items="workOrderOptions"
-            item-title="text"
-            item-value="value"
-            :label="t('production.workOrder')"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-text-field
-            v-model.number="productionForm.quantity"
-            :label="t('production.unitsProduced')"
-            type="number"
-            variant="outlined"
-            min="1"
-            :rules="[v => v > 0 || t('common.required')]"
-          />
-          <div class="d-flex gap-2 justify-center mt-2">
-            <v-btn
-              v-for="preset in productionPresets"
-              :key="preset"
-              variant="outlined"
-              size="small"
-              @click="productionForm.quantity = preset"
-            >
-              {{ preset }}
-            </v-btn>
-          </div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showProductionDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn
-            color="primary"
-            variant="elevated"
-            :loading="isSubmitting"
-            :disabled="!productionForm.workOrderId || !productionForm.quantity"
-            @click="submitProduction"
-          >
-            {{ t('common.submit') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Downtime Dialog -->
-    <v-dialog v-model="showDowntimeDialog" max-width="450" persistent>
-      <v-card>
-        <v-card-title class="bg-warning text-white d-flex align-center">
-          <v-icon class="mr-2">mdi-clock-alert</v-icon>
-          {{ t('downtime.title') }}
-        </v-card-title>
-        <v-card-text class="pa-4">
-          <v-select
-            v-model="downtimeForm.workOrderId"
-            :items="workOrderOptions"
-            item-title="text"
-            item-value="value"
-            :label="t('production.workOrder')"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-select
-            v-model="downtimeForm.reason"
-            :items="downtimeReasons"
-            :label="t('downtime.reason')"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-text-field
-            v-model.number="downtimeForm.minutes"
-            :label="t('downtime.duration')"
-            type="number"
-            variant="outlined"
-            min="1"
-          />
-          <v-textarea
-            v-model="downtimeForm.notes"
-            :label="t('production.notes')"
-            variant="outlined"
-            rows="2"
-            class="mt-3"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showDowntimeDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn
-            color="warning"
-            variant="elevated"
-            :loading="isSubmitting"
-            :disabled="!downtimeForm.workOrderId || !downtimeForm.reason"
-            @click="submitDowntime"
-          >
-            {{ t('common.submit') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Quality Check Dialog -->
-    <v-dialog v-model="showQualityDialog" max-width="450" persistent>
-      <v-card>
-        <v-card-title class="bg-success text-white d-flex align-center">
-          <v-icon class="mr-2">mdi-check-decagram</v-icon>
-          {{ t('quality.title') }}
-        </v-card-title>
-        <v-card-text class="pa-4">
-          <v-select
-            v-model="qualityForm.workOrderId"
-            :items="workOrderOptions"
-            item-title="text"
-            item-value="value"
-            :label="t('production.workOrder')"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-text-field
-            v-model.number="qualityForm.inspectedQty"
-            :label="t('quality.inspectedQty')"
-            type="number"
-            variant="outlined"
-            min="1"
-            class="mb-3"
-          />
-          <v-text-field
-            v-model.number="qualityForm.defectQty"
-            :label="t('quality.defectQty')"
-            type="number"
-            variant="outlined"
-            min="0"
-          />
-          <v-select
-            v-if="qualityForm.defectQty > 0"
-            v-model="qualityForm.defectType"
-            :items="defectTypes"
-            :label="t('quality.defectType')"
-            variant="outlined"
-            class="mt-3"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showQualityDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn
-            color="success"
-            variant="elevated"
-            :loading="isSubmitting"
-            :disabled="!qualityForm.workOrderId || !qualityForm.inspectedQty"
-            @click="submitQuality"
-          >
-            {{ t('common.submit') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Request Help Dialog -->
-    <v-dialog v-model="showHelpDialog" max-width="400" persistent>
-      <v-card>
-        <v-card-title class="bg-error text-white d-flex align-center">
-          <v-icon class="mr-2">mdi-hand-wave</v-icon>
-          {{ t('common.help') }}
-        </v-card-title>
-        <v-card-text class="pa-4">
-          <v-select
-            v-model="helpForm.type"
-            :items="helpTypes"
-            :label="t('common.select')"
-            variant="outlined"
-            class="mb-3"
-          />
-          <v-textarea
-            v-model="helpForm.description"
-            :label="t('common.details')"
-            variant="outlined"
-            rows="3"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showHelpDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn
-            color="error"
-            variant="elevated"
-            :loading="isSubmitting"
-            :disabled="!helpForm.type || !helpForm.description"
-            @click="submitHelpRequest"
-          >
-            {{ t('common.submit') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Dialogs (extracted sub-component) -->
+    <ShiftDashboardDialogs
+      v-model:show-production-dialog="showProductionDialog"
+      v-model:show-downtime-dialog="showDowntimeDialog"
+      v-model:show-quality-dialog="showQualityDialog"
+      v-model:show-help-dialog="showHelpDialog"
+      :is-submitting="isSubmitting"
+      :production-form="productionForm"
+      :downtime-form="downtimeForm"
+      :quality-form="qualityForm"
+      :help-form="helpForm"
+      :work-order-options="workOrderOptions"
+      :production-presets="productionPresets"
+      :downtime-reasons="downtimeReasons"
+      :defect-types="defectTypes"
+      :help-types="helpTypes"
+      @submit-production="submitProduction"
+      @submit-downtime="submitDowntime"
+      @submit-quality="submitQuality"
+      @submit-help-request="submitHelpRequest"
+    />
 
     <!-- Success Snackbar -->
     <v-snackbar
@@ -550,11 +293,12 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import DataCompletenessIndicator from '@/components/DataCompletenessIndicator.vue'
+import ShiftDashboardDialogs from '@/components/dialogs/ShiftDashboardDialogs.vue'
 
 // Composables
 import { useShiftDashboardData } from '@/composables/useShiftDashboardData'
@@ -624,6 +368,21 @@ const {
   fetchMyShiftData
 )
 
+// Data-driven template helpers
+const quickActions = [
+  { key: 'production', color: 'primary', icon: 'mdi-package-variant-plus', labelKey: 'production.title', handler: openQuickProductionDialog },
+  { key: 'downtime', color: 'warning', icon: 'mdi-clock-alert', labelKey: 'downtime.title', handler: openDowntimeDialog },
+  { key: 'quality', color: 'success', icon: 'mdi-check-decagram', labelKey: 'quality.title', handler: openQualityDialog },
+  { key: 'help', color: 'error', icon: 'mdi-hand-wave', labelKey: 'common.help', handler: openHelpDialog }
+]
+
+const statCards = computed(() => [
+  { key: 'units', color: 'primary', icon: 'mdi-package-variant', value: myStats.value.unitsProduced, labelKey: 'production.unitsProduced' },
+  { key: 'efficiency', color: 'success', icon: 'mdi-speedometer', value: myStats.value.efficiency, suffix: '%', labelKey: 'kpi.efficiency' },
+  { key: 'downtime', color: 'warning', icon: 'mdi-clock-alert', value: myStats.value.downtimeIncidents, labelKey: 'downtime.title' },
+  { key: 'quality', color: 'info', icon: 'mdi-check-decagram', value: myStats.value.qualityChecks, labelKey: 'quality.title' }
+])
+
 // Shift workflow actions
 const handleStartShift = () => {
   workflowStore.startWorkflow('shift-start')
@@ -667,35 +426,17 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.my-shift-dashboard {
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.shift-header-card {
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
-  color: white;
-}
-
-.shift-header-card .v-card-text {
-  color: white !important;
-}
-
-.stat-card {
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 12px;
-}
-
-/* Touch-friendly targets for mobile */
-.touch-target {
-  min-height: 48px !important;
-  min-width: 48px !important;
-}
-
-.touch-target-small {
-  min-height: 44px !important;
-  min-width: 44px !important;
-}
+.my-shift-dashboard { max-width: 1400px; margin: 0 auto; }
+.shift-header-card { background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); color: white; }
+.shift-header-card .v-card-text { color: white !important; }
+.stat-card { background: rgba(0, 0, 0, 0.03); border-radius: 12px; }
+.touch-target { min-height: 48px !important; min-width: 48px !important; }
+.touch-target-small { min-height: 44px !important; min-width: 44px !important; }
+.preset-btn { min-width: 64px !important; font-weight: bold; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.text-h4.font-weight-bold { letter-spacing: -0.5px; }
+.v-btn, .v-list-item, .quick-action-card { -webkit-tap-highlight-color: transparent; }
 
 .quick-action-card {
   cursor: pointer;
@@ -706,76 +447,20 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
-
-.quick-action-card:hover,
-.quick-action-card:focus {
+.quick-action-card:hover, .quick-action-card:focus {
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
 }
+.quick-action-card:active { transform: translateY(0); }
 
-.quick-action-card:active {
-  transform: translateY(0);
-}
-
-.preset-btn {
-  min-width: 64px !important;
-  font-weight: bold;
-}
-
-.gap-2 {
-  gap: 8px;
-}
-
-.gap-3 {
-  gap: 12px;
-}
-
-/* Mobile optimizations */
 @media (max-width: 600px) {
-  .my-shift-dashboard {
-    padding: 0 8px;
-  }
-
-  .v-card-title {
-    font-size: 1rem;
-    padding: 12px 16px !important;
-  }
-
-  .quick-action-card {
-    min-height: 100px;
-  }
-
-  .quick-action-card .v-icon {
-    font-size: 32px !important;
-  }
-
-  .quick-action-card .text-body-1 {
-    font-size: 0.875rem !important;
-  }
-
-  .stat-card {
-    padding: 8px !important;
-  }
-
-  .stat-card .text-h4 {
-    font-size: 1.5rem !important;
-  }
-
-  .preset-btn {
-    min-width: 56px !important;
-    padding: 0 12px !important;
-  }
-}
-
-/* High contrast for factory floor visibility */
-.text-h4.font-weight-bold {
-  letter-spacing: -0.5px;
-}
-
-/* Ensure good tap targets on all interactive elements */
-.v-btn,
-.v-list-item,
-.quick-action-card {
-  -webkit-tap-highlight-color: transparent;
+  .my-shift-dashboard { padding: 0 8px; }
+  .v-card-title { font-size: 1rem; padding: 12px 16px !important; }
+  .quick-action-card { min-height: 100px; }
+  .quick-action-card .v-icon { font-size: 32px !important; }
+  .quick-action-card .text-body-1 { font-size: 0.875rem !important; }
+  .stat-card { padding: 8px !important; }
+  .stat-card .text-h4 { font-size: 1.5rem !important; }
+  .preset-btn { min-width: 56px !important; padding: 0 12px !important; }
 }
 </style>

@@ -175,9 +175,9 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="clientDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="clientDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn color="primary" @click="saveClient" :loading="saving" :disabled="!formValid">
-            {{ editingClient ? 'Update' : 'Create' }}
+            {{ editingClient ? t('common.update') : t('admin.clients.createClient') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -196,57 +196,57 @@
               <template v-slot:prepend>
                 <v-icon>mdi-identifier</v-icon>
               </template>
-              <v-list-item-title>Client ID</v-list-item-title>
+              <v-list-item-title>{{ t('admin.clients.clientId') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.client_id }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="selectedClient.contact_name">
               <template v-slot:prepend>
                 <v-icon>mdi-account</v-icon>
               </template>
-              <v-list-item-title>Contact</v-list-item-title>
+              <v-list-item-title>{{ t('admin.clients.contactName') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.contact_name }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="selectedClient.contact_email">
               <template v-slot:prepend>
                 <v-icon>mdi-email</v-icon>
               </template>
-              <v-list-item-title>Email</v-list-item-title>
+              <v-list-item-title>{{ t('admin.clients.contactEmail') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.contact_email }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="selectedClient.contact_phone">
               <template v-slot:prepend>
                 <v-icon>mdi-phone</v-icon>
               </template>
-              <v-list-item-title>Phone</v-list-item-title>
+              <v-list-item-title>{{ t('admin.clients.contactPhone') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.contact_phone }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="selectedClient.industry">
               <template v-slot:prepend>
                 <v-icon>mdi-factory</v-icon>
               </template>
-              <v-list-item-title>Industry</v-list-item-title>
+              <v-list-item-title>{{ t('admin.clients.industry') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.industry }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="selectedClient.address">
               <template v-slot:prepend>
                 <v-icon>mdi-map-marker</v-icon>
               </template>
-              <v-list-item-title>Address</v-list-item-title>
+              <v-list-item-title>{{ t('common.address') }}</v-list-item-title>
               <v-list-item-subtitle>{{ selectedClient.address }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item>
               <template v-slot:prepend>
                 <v-icon>mdi-calendar</v-icon>
               </template>
-              <v-list-item-title>Created</v-list-item-title>
+              <v-list-item-title>{{ t('admin.clients.created') }}</v-list-item-title>
               <v-list-item-subtitle>{{ formatDate(selectedClient.created_at) }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="viewDialog = false">Close</v-btn>
-          <v-btn color="primary" @click="viewDialog = false; editClient(selectedClient)">Edit</v-btn>
+          <v-btn variant="text" @click="viewDialog = false">{{ t('common.close') }}</v-btn>
+          <v-btn color="primary" @click="viewDialog = false; editClient(selectedClient)">{{ t('common.edit') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -256,16 +256,15 @@
       <v-card>
         <v-card-title class="text-h6">
           <v-icon color="error" class="mr-2">mdi-alert</v-icon>
-          Confirm Delete
+          {{ t('common.confirmDelete') }}
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete client <strong>{{ clientToDelete?.client_name }}</strong>?
-          This will also remove all associated data.
+          {{ t('admin.clients.confirmDeleteMessage', { client: clientToDelete?.client_name }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteClient" :loading="deleting">Delete</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="error" @click="deleteClient" :loading="deleting">{{ t('common.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -314,25 +313,25 @@ const clientFormData = ref({
   notes: ''
 })
 
-const headers = [
-  { title: 'Client ID', key: 'client_id', sortable: true },
-  { title: 'Client Name', key: 'client_name', sortable: true },
-  { title: 'Contact', key: 'contact_name', sortable: true },
-  { title: 'Email', key: 'contact_email', sortable: true },
-  { title: 'Industry', key: 'industry', sortable: true },
-  { title: 'Status', key: 'is_active', sortable: true },
-  { title: 'Created', key: 'created_at', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'center' }
-]
+const headers = computed(() => [
+  { title: t('admin.clients.clientId'), key: 'client_id', sortable: true },
+  { title: t('admin.clients.clientName'), key: 'client_name', sortable: true },
+  { title: t('admin.clients.contactName'), key: 'contact_name', sortable: true },
+  { title: t('admin.clients.contactEmail'), key: 'contact_email', sortable: true },
+  { title: t('admin.clients.industry'), key: 'industry', sortable: true },
+  { title: t('common.status'), key: 'is_active', sortable: true },
+  { title: t('admin.clients.created'), key: 'created_at', sortable: true },
+  { title: t('common.actions'), key: 'actions', sortable: false, align: 'center' }
+])
 
-const statusOptions = [
-  { title: 'Active', value: true },
-  { title: 'Inactive', value: false }
-]
+const statusOptions = computed(() => [
+  { title: t('admin.users.active'), value: true },
+  { title: t('admin.users.inactive'), value: false }
+])
 
 const rules = {
-  required: v => !!v || 'This field is required',
-  email: v => !v || /.+@.+\..+/.test(v) || 'Invalid email address'
+  required: v => !!v || t('admin.clients.fieldRequired'),
+  email: v => !v || /.+@.+\..+/.test(v) || t('admin.clients.invalidEmail')
 }
 
 const filteredClients = computed(() => {
@@ -361,7 +360,7 @@ const refreshClients = async () => {
     clients.value = response.data || []
   } catch (error) {
     console.error('Failed to load clients:', error)
-    showSnackbar('Failed to load clients', 'error')
+    showSnackbar(t('admin.clients.failedToLoadClients'), 'error')
   } finally {
     loading.value = false
   }
@@ -407,15 +406,15 @@ const saveClient = async () => {
   try {
     if (editingClient.value) {
       await api.updateClient(editingClient.value.client_id, clientFormData.value)
-      showSnackbar('Client updated successfully')
+      showSnackbar(t('admin.clients.clientUpdated'))
     } else {
       await api.createClient(clientFormData.value)
-      showSnackbar('Client created successfully')
+      showSnackbar(t('admin.clients.clientCreated'))
     }
     clientDialog.value = false
     refreshClients()
   } catch (error) {
-    showSnackbar(error.response?.data?.detail || 'Failed to save client', 'error')
+    showSnackbar(error.response?.data?.detail || t('admin.clients.failedToSaveClient'), 'error')
   } finally {
     saving.value = false
   }
@@ -424,10 +423,10 @@ const saveClient = async () => {
 const toggleClientStatus = async (client) => {
   try {
     await api.updateClient(client.client_id, { is_active: !client.is_active })
-    showSnackbar(`Client ${client.is_active ? 'deactivated' : 'activated'} successfully`)
+    showSnackbar(client.is_active ? t('admin.clients.clientDeactivated') : t('admin.clients.clientActivated'))
     refreshClients()
   } catch (error) {
-    showSnackbar('Failed to update client status', 'error')
+    showSnackbar(t('admin.clients.failedToUpdateStatus'), 'error')
   }
 }
 
@@ -440,11 +439,11 @@ const deleteClient = async () => {
   deleting.value = true
   try {
     await api.deleteClient(clientToDelete.value.client_id)
-    showSnackbar('Client deleted successfully')
+    showSnackbar(t('admin.clients.clientDeleted'))
     deleteDialog.value = false
     refreshClients()
   } catch (error) {
-    showSnackbar('Failed to delete client', 'error')
+    showSnackbar(t('admin.clients.failedToDeleteClient'), 'error')
   } finally {
     deleting.value = false
   }

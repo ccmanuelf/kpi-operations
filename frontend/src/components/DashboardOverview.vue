@@ -353,13 +353,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import axios from 'axios'
-
-const { t } = useI18n()
-
 // Import Dashboard Widgets
 import DowntimeImpactWidget from './widgets/DowntimeImpactWidget.vue'
 import BradfordFactorWidget from './widgets/BradfordFactorWidget.vue'
@@ -368,141 +361,27 @@ import ReworkByOperationWidget from './widgets/ReworkByOperationWidget.vue'
 import AbsenteeismAlert from './alerts/AbsenteeismAlert.vue'
 import DataCompletenessIndicator from './DataCompletenessIndicator.vue'
 import ShiftStatusBanner from './workflow/ShiftStatusBanner.vue'
-import { useWorkflowStore } from '@/stores/workflowStore'
-
-const router = useRouter()
-const workflowStore = useWorkflowStore()
+import { useDashboardOverviewData } from '@/composables/useDashboardOverviewData'
 
 const props = defineProps<{
   dateRange: string
 }>()
 
-// Computed date range
-const startDate = computed(() => {
-  const today = new Date()
-  const days = props.dateRange === '7d' ? 7 : props.dateRange === '90d' ? 90 : 30
-  const start = new Date(today.getTime() - days * 24 * 60 * 60 * 1000)
-  return start.toISOString().split('T')[0]
-})
-
-const endDate = computed(() => {
-  return new Date().toISOString().split('T')[0]
-})
-
-const kpiData = ref({
-  efficiency: 0,
-  performance: 0,
-  wipAging: 0,
-  otd: 0,
-  availability: 0,
-  absenteeism: 0,
-  ppm: 0,
-  dpmo: 0,
-  fpy: 0,
-  rty: 0
-})
-
-const fetchKPIData = async () => {
-  try {
-    // Fetch all 10 KPIs from backend
-    const [
-      efficiencyRes,
-      performanceRes,
-      wipRes,
-      otdRes,
-      availabilityRes,
-      absenteeismRes,
-      ppmRes,
-      dpmoRes,
-      fpyRes,
-      rtyRes
-    ] = await Promise.all([
-      axios.get('/api/kpi/efficiency/trend'),
-      axios.get('/api/kpi/performance/trend'),
-      axios.get('/api/kpi/wip-aging'),
-      axios.get('/api/kpi/otd'),
-      axios.get('/api/kpi/availability'),
-      axios.get('/api/attendance/kpi/absenteeism'),
-      axios.get('/api/quality/kpi/ppm'),
-      axios.get('/api/quality/kpi/dpmo'),
-      axios.get('/api/quality/kpi/fpy-rty'),
-      axios.get('/api/quality/kpi/fpy-rty')
-    ])
-
-    kpiData.value = {
-      efficiency: parseFloat(efficiencyRes.data.value.toFixed(1)),
-      performance: parseFloat(performanceRes.data.value.toFixed(1)),
-      wipAging: parseFloat(wipRes.data.average_aging_days.toFixed(1)),
-      otd: parseFloat(otdRes.data.otd_percentage.toFixed(1)),
-      availability: parseFloat(availabilityRes.data.average_availability.toFixed(1)),
-      absenteeism: parseFloat(absenteeismRes.data.absenteeism_rate.toFixed(1)),
-      ppm: parseInt(ppmRes.data.ppm),
-      dpmo: parseInt(dpmoRes.data.dpmo),
-      fpy: parseFloat(fpyRes.data.fpy.toFixed(1)),
-      rty: parseFloat(rtyRes.data.rty.toFixed(1))
-    }
-  } catch (error) {
-    console.error('Error fetching KPI data:', error)
-  }
-}
-
-onMounted(() => {
-  fetchKPIData()
-})
-
-// Navigation methods for widget events
-const navigateToAbsenteeism = () => {
-  router.push('/kpi/absenteeism')
-}
-
-const navigateToDowntimeAnalysis = () => {
-  router.push('/kpi/availability')
-}
-
-const navigateToAttendance = () => {
-  router.push('/kpi/absenteeism')
-}
-
-const navigateToQualityTrends = () => {
-  router.push('/kpi/quality')
-}
-
-const navigateToReworkAnalysis = () => {
-  router.push('/kpi/quality')
-}
-
-// Action handlers
-const openScheduleDialog = () => {
-  console.log('Opening schedule review dialog')
-  // Implementation: Open modal for scheduling attendance review
-}
-
-const handleAbsenteeismAction = (actionId: string) => {
-  console.log('Handling absenteeism action:', actionId)
-  // Implementation: Handle specific actions like notify-supervisors, activate-floating-pool, etc.
-}
-
-const exportQualityReport = () => {
-  console.log('Exporting quality by operator report')
-  // Implementation: Generate and download CSV/PDF report
-}
-
-const openActionDialog = () => {
-  console.log('Opening corrective action dialog')
-  // Implementation: Open modal for creating corrective action items
-}
-
-const handleCompletenessNavigate = (categoryId: string, route: string) => {
-  console.log(`Navigating to ${categoryId} at ${route}`)
-  // Navigation is handled by the component itself
-}
-
-// Shift workflow handlers
-const handleStartShift = () => {
-  workflowStore.startWorkflow('shift-start')
-}
-
-const handleEndShift = () => {
-  workflowStore.startWorkflow('shift-end')
-}
+const {
+  startDate,
+  endDate,
+  kpiData,
+  navigateToAbsenteeism,
+  navigateToDowntimeAnalysis,
+  navigateToAttendance,
+  navigateToQualityTrends,
+  navigateToReworkAnalysis,
+  openScheduleDialog,
+  handleAbsenteeismAction,
+  exportQualityReport,
+  openActionDialog,
+  handleCompletenessNavigate,
+  handleStartShift,
+  handleEndShift
+} = useDashboardOverviewData(props)
 </script>

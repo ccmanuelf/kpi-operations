@@ -239,31 +239,31 @@ const userFormData = ref({
   client_id_assigned: null
 })
 
-const headers = [
-  { title: 'Username', key: 'username', sortable: true },
-  { title: 'Email', key: 'email', sortable: true },
-  { title: 'Full Name', key: 'full_name', sortable: true },
-  { title: 'Role', key: 'role', sortable: true },
-  { title: 'Status', key: 'is_active', sortable: true },
-  { title: 'Created', key: 'created_at', sortable: true },
-  { title: 'Actions', key: 'actions', sortable: false, align: 'center' }
-]
+const headers = computed(() => [
+  { title: t('admin.users.username'), key: 'username', sortable: true },
+  { title: t('admin.users.email'), key: 'email', sortable: true },
+  { title: t('admin.users.fullName'), key: 'full_name', sortable: true },
+  { title: t('common.role'), key: 'role', sortable: true },
+  { title: t('common.status'), key: 'is_active', sortable: true },
+  { title: t('admin.users.created'), key: 'created_at', sortable: true },
+  { title: t('common.actions'), key: 'actions', sortable: false, align: 'center' }
+])
 
-const roleOptions = [
-  { title: 'Admin', value: 'admin' },
-  { title: 'Supervisor', value: 'poweruser' },
-  { title: 'Operator', value: 'operator' }
-]
+const roleOptions = computed(() => [
+  { title: t('admin.users.roleAdmin'), value: 'admin' },
+  { title: t('admin.users.roleSupervisor'), value: 'poweruser' },
+  { title: t('admin.users.roleOperator'), value: 'operator' }
+])
 
-const statusOptions = [
-  { title: 'Active', value: true },
-  { title: 'Inactive', value: false }
-]
+const statusOptions = computed(() => [
+  { title: t('admin.users.active'), value: true },
+  { title: t('admin.users.inactive'), value: false }
+])
 
 const rules = {
-  required: v => !!v || 'This field is required',
-  email: v => /.+@.+\..+/.test(v) || 'Invalid email address',
-  password: v => (v && v.length >= 8) || 'Password must be at least 8 characters'
+  required: v => !!v || t('admin.users.fieldRequired'),
+  email: v => /.+@.+\..+/.test(v) || t('admin.users.invalidEmail'),
+  password: v => (v && v.length >= 8) || t('admin.users.passwordMinLength')
 }
 
 const filteredUsers = computed(() => {
@@ -289,7 +289,7 @@ const getRoleColor = (role) => {
 }
 
 const formatRole = (role) => {
-  const labels = { admin: 'Admin', poweruser: 'Supervisor', operator: 'Operator' }
+  const labels = { admin: t('admin.users.roleAdmin'), poweruser: t('admin.users.roleSupervisor'), operator: t('admin.users.roleOperator') }
   return labels[role] || role
 }
 
@@ -305,7 +305,7 @@ const refreshUsers = async () => {
     users.value = response.data || []
   } catch (error) {
     console.error('Failed to load users:', error)
-    showSnackbar('Failed to load users', 'error')
+    showSnackbar(t('admin.users.failedToLoadUsers'), 'error')
   } finally {
     loading.value = false
   }
@@ -351,15 +351,15 @@ const saveUser = async () => {
   try {
     if (editingUser.value) {
       await api.updateUser(editingUser.value.user_id, userFormData.value)
-      showSnackbar('User updated successfully')
+      showSnackbar(t('admin.users.userUpdated'))
     } else {
       await api.createUser(userFormData.value)
-      showSnackbar('User created successfully')
+      showSnackbar(t('admin.users.userCreated'))
     }
     userDialog.value = false
     refreshUsers()
   } catch (error) {
-    showSnackbar(error.response?.data?.detail || 'Failed to save user', 'error')
+    showSnackbar(error.response?.data?.detail || t('admin.users.failedToSaveUser'), 'error')
   } finally {
     saving.value = false
   }
@@ -368,10 +368,10 @@ const saveUser = async () => {
 const toggleUserStatus = async (user) => {
   try {
     await api.updateUser(user.user_id, { is_active: !user.is_active })
-    showSnackbar(`User ${user.is_active ? 'deactivated' : 'activated'} successfully`)
+    showSnackbar(user.is_active ? t('admin.users.userDeactivated') : t('admin.users.userActivated'))
     refreshUsers()
   } catch (error) {
-    showSnackbar('Failed to update user status', 'error')
+    showSnackbar(t('admin.users.failedToUpdateStatus'), 'error')
   }
 }
 
@@ -384,11 +384,11 @@ const deleteUser = async () => {
   deleting.value = true
   try {
     await api.deleteUser(userToDelete.value.user_id)
-    showSnackbar('User deleted successfully')
+    showSnackbar(t('admin.users.userDeleted'))
     deleteDialog.value = false
     refreshUsers()
   } catch (error) {
-    showSnackbar('Failed to delete user', 'error')
+    showSnackbar(t('admin.users.failedToDeleteUser'), 'error')
   } finally {
     deleting.value = false
   }

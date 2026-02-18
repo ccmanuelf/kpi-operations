@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start color="primary">mdi-email-outline</v-icon>
-        Email Report Configuration
+        {{ $t('reports.emailReportConfiguration') }}
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" @click="close" />
       </v-card-title>
@@ -36,7 +36,7 @@
         <!-- Enable/Disable Toggle -->
         <v-switch
           v-model="config.enabled"
-          label="Enable Automated Email Reports"
+          :label="$t('reports.enableAutomatedEmailReports')"
           color="primary"
           hide-details
           class="mb-4"
@@ -50,7 +50,7 @@
               :items="frequencyOptions"
               item-title="text"
               item-value="value"
-              label="Report Frequency"
+              :label="$t('reports.reportFrequency')"
               variant="outlined"
               density="comfortable"
               class="mb-4"
@@ -60,27 +60,27 @@
             <v-text-field
               v-model="config.report_time"
               type="time"
-              label="Report Delivery Time"
+              :label="$t('reports.reportDeliveryTime')"
               variant="outlined"
               density="comfortable"
-              hint="Time when reports will be sent"
+              :hint="$t('reports.deliveryTimeHint')"
               persistent-hint
               class="mb-4"
             />
 
             <!-- Email Recipients -->
-            <v-label class="text-body-2 mb-2">Email Recipients</v-label>
+            <v-label class="text-body-2 mb-2">{{ $t('reports.emailRecipients') }}</v-label>
             <v-combobox
               v-model="config.recipients"
               :items="suggestedEmails"
-              label="Add email addresses"
+              :label="$t('reports.addEmailAddresses')"
               variant="outlined"
               density="comfortable"
               multiple
               chips
               closable-chips
               :rules="[validateEmails]"
-              hint="Press Enter to add each email address"
+              :hint="$t('reports.pressEnterToAdd')"
               persistent-hint
               class="mb-4"
             >
@@ -95,40 +95,40 @@
             <v-divider class="my-4" />
 
             <!-- Report Content Options -->
-            <v-label class="text-body-2 mb-2">Report Content</v-label>
+            <v-label class="text-body-2 mb-2">{{ $t('reports.reportContent') }}</v-label>
             <v-checkbox
               v-model="config.include_executive_summary"
-              label="Executive Summary"
+              :label="$t('reports.executiveSummary')"
               hide-details
               density="compact"
             />
             <v-checkbox
               v-model="config.include_efficiency"
-              label="Production Efficiency"
+              :label="$t('reports.productionEfficiency')"
               hide-details
               density="compact"
             />
             <v-checkbox
               v-model="config.include_quality"
-              label="Quality Metrics (FPY, PPM, DPMO)"
+              :label="$t('reports.qualityMetrics')"
               hide-details
               density="compact"
             />
             <v-checkbox
               v-model="config.include_availability"
-              label="Equipment Availability"
+              :label="$t('reports.equipmentAvailability')"
               hide-details
               density="compact"
             />
             <v-checkbox
               v-model="config.include_attendance"
-              label="Attendance & Absenteeism"
+              :label="$t('reports.attendanceAbsenteeism')"
               hide-details
               density="compact"
             />
             <v-checkbox
               v-model="config.include_predictions"
-              label="Forecasts & Predictions"
+              :label="$t('reports.forecastsPredictions')"
               hide-details
               density="compact"
               class="mb-4"
@@ -142,7 +142,7 @@
         <div class="d-flex align-center">
           <v-text-field
             v-model="testEmail"
-            label="Test Email Address"
+            :label="$t('reports.testEmailAddress')"
             variant="outlined"
             density="compact"
             hide-details
@@ -157,18 +157,18 @@
             @click="sendTestEmail"
           >
             <v-icon start>mdi-send</v-icon>
-            Send Test
+            {{ $t('reports.sendTest') }}
           </v-btn>
         </div>
         <div class="text-caption text-grey-darken-1 mt-1">
-          Send a test email to verify your configuration
+          {{ $t('reports.sendTestDescription') }}
         </div>
       </v-card-text>
 
       <v-divider />
 
       <v-card-actions class="pa-4">
-        <v-btn variant="text" @click="close">Cancel</v-btn>
+        <v-btn variant="text" @click="close">{{ $t('common.cancel') }}</v-btn>
         <v-spacer />
         <v-btn
           color="primary"
@@ -177,7 +177,7 @@
           @click="saveConfig"
         >
           <v-icon start>mdi-content-save</v-icon>
-          Save Configuration
+          {{ $t('reports.saveConfiguration') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -186,7 +186,10 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {
@@ -219,11 +222,11 @@ const config = ref({
   include_predictions: true
 })
 
-const frequencyOptions = [
-  { text: 'Daily', value: 'daily' },
-  { text: 'Weekly (Monday)', value: 'weekly' },
-  { text: 'Monthly (1st of month)', value: 'monthly' }
-]
+const frequencyOptions = computed(() => [
+  { text: t('reports.frequencyDaily'), value: 'daily' },
+  { text: t('reports.frequencyWeekly'), value: 'weekly' },
+  { text: t('reports.frequencyMonthly'), value: 'monthly' }
+])
 
 const suggestedEmails = ref([])
 const testEmail = ref('')
@@ -263,7 +266,7 @@ const validateEmails = (emails) => {
   if (!emails || emails.length === 0) return true
   const invalidEmails = emails.filter(e => !isValidEmail(e))
   if (invalidEmails.length > 0) {
-    return `Invalid email(s): ${invalidEmails.join(', ')}`
+    return t('reports.invalidEmails', { emails: invalidEmails.join(', ') })
   }
   return true
 }
@@ -276,7 +279,7 @@ const saveConfig = async () => {
   try {
     // Validate recipients if enabled
     if (config.value.enabled && config.value.recipients.length === 0) {
-      errorMessage.value = 'Please add at least one email recipient'
+      errorMessage.value = t('reports.addAtLeastOneRecipient')
       saving.value = false
       return
     }
@@ -287,7 +290,7 @@ const saveConfig = async () => {
     }
 
     await api.saveEmailReportConfig(payload)
-    successMessage.value = 'Email report configuration saved successfully!'
+    successMessage.value = t('reports.configSavedSuccessfully')
     emit('saved', config.value)
 
     // Close after short delay
@@ -296,7 +299,7 @@ const saveConfig = async () => {
     }, 1500)
   } catch (error) {
     console.error('Failed to save email config:', error)
-    errorMessage.value = error.response?.data?.detail || 'Failed to save configuration. Please try again.'
+    errorMessage.value = error.response?.data?.detail || t('reports.configSaveFailed')
   } finally {
     saving.value = false
   }
@@ -309,10 +312,10 @@ const sendTestEmail = async () => {
 
   try {
     await api.sendTestEmail(testEmail.value)
-    successMessage.value = `Test email sent to ${testEmail.value}`
+    successMessage.value = t('reports.testEmailSentTo', { email: testEmail.value })
   } catch (error) {
     console.error('Failed to send test email:', error)
-    errorMessage.value = error.response?.data?.detail || 'Failed to send test email. Check your email configuration.'
+    errorMessage.value = error.response?.data?.detail || t('reports.testEmailFailed')
   } finally {
     sendingTest.value = false
   }

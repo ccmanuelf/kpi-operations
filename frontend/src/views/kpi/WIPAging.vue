@@ -9,9 +9,9 @@
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
-          {{ formatValue(wipData?.average_days) }} days avg
+          {{ formatValue(wipData?.average_days) }} {{ t('kpi.daysAvg') }}
         </v-chip>
-        <v-chip color="grey-darken-2">Target: 7 days</v-chip>
+        <v-chip color="grey-darken-2">{{ t('kpi.targetDaysValue', { value: 7 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -70,8 +70,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of units currently in work-in-process status. These are items that have started production but are not yet complete.</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.totalWipMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -81,15 +81,15 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.averageAge') }}</div>
-                <div class="text-h4 font-weight-bold">{{ formatValue(wipData?.average_days) }} days</div>
+                <div class="text-h4 font-weight-bold">{{ t('kpi.daysCount', { count: formatValue(wipData?.average_days) }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Avg Age = Sum of All WIP Ages / Total WIP Items</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Average number of days items have been in WIP status. Lower values indicate faster throughput and more efficient production flow.</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.averageAgeFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.averageAgeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -99,13 +99,13 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.oldestItem') }}</div>
-                <div class="text-h4 font-weight-bold">{{ wipData?.max_days || 0 }} days</div>
+                <div class="text-h4 font-weight-bold">{{ t('kpi.daysCount', { count: wipData?.max_days || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Age of the oldest item currently in WIP. High values may indicate production bottlenecks, quality holds, or material shortages requiring immediate attention.</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.oldestItemMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -120,8 +120,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Number of WIP items aged over 14 days. These require urgent attention as they impact delivery schedules and tie up working capital.</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.criticalItemsMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -191,22 +191,22 @@
                 <template v-slot:prepend>
                   <v-icon color="success">mdi-check-circle</v-icon>
                 </template>
-                <v-list-item-title>0-7 days (On Track)</v-list-item-title>
-                <v-list-item-subtitle>{{ wipData?.age_0_7 || 0 }} units</v-list-item-subtitle>
+                <v-list-item-title>{{ t('kpi.ageDays0to7', { status: t('kpi.onTrack') }) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ t('kpi.unitsCount', { count: wipData?.age_0_7 || 0 }) }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
                   <v-icon color="warning">mdi-alert-circle</v-icon>
                 </template>
-                <v-list-item-title>8-14 days (At Risk)</v-list-item-title>
-                <v-list-item-subtitle>{{ wipData?.age_8_14 || 0 }} units</v-list-item-subtitle>
+                <v-list-item-title>{{ t('kpi.ageDays8to14', { status: t('kpi.atRisk') }) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ t('kpi.unitsCount', { count: wipData?.age_8_14 || 0 }) }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
                   <v-icon color="error">mdi-close-circle</v-icon>
                 </template>
-                <v-list-item-title>15+ days (Critical)</v-list-item-title>
-                <v-list-item-subtitle>{{ wipData?.age_15_plus || 0 }} units</v-list-item-subtitle>
+                <v-list-item-title>{{ t('kpi.ageDays15plus', { status: t('kpi.critical') }) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ t('kpi.unitsCount', { count: wipData?.age_15_plus || 0 }) }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-card-text>
@@ -226,7 +226,7 @@
             >
               <template v-slot:item.age="{ item }">
                 <v-chip :color="getAgeColor(item.age)" size="small">
-                  {{ item.age }} days
+                  {{ t('kpi.daysCount', { count: item.age }) }}
                 </v-chip>
               </template>
             </v-data-table>
@@ -281,20 +281,20 @@ const statusColor = computed(() => {
   return 'error'
 })
 
-const agingHeaders = [
-  { title: 'Work Order', key: 'work_order', sortable: true },
-  { title: 'Product', key: 'product', sortable: true },
-  { title: 'Age', key: 'age', sortable: true },
-  { title: 'Quantity', key: 'quantity', sortable: true }
-]
+const agingHeaders = computed(() => [
+  { title: t('kpi.headers.workOrder'), key: 'work_order', sortable: true },
+  { title: t('kpi.headers.product'), key: 'product', sortable: true },
+  { title: t('kpi.headers.age'), key: 'age', sortable: true },
+  { title: t('kpi.headers.quantity'), key: 'quantity', sortable: true }
+])
 
-const historyHeaders = [
-  { title: 'Hold Date', key: 'hold_date', sortable: true },
-  { title: 'Work Order', key: 'work_order_id', sortable: true },
-  { title: 'Category', key: 'hold_reason_category', sortable: true },
-  { title: 'Reason', key: 'hold_reason_description', sortable: true },
-  { title: 'Status', key: 'hold_status', sortable: true }
-]
+const historyHeaders = computed(() => [
+  { title: t('kpi.headers.holdDate'), key: 'hold_date', sortable: true },
+  { title: t('kpi.headers.workOrder'), key: 'work_order_id', sortable: true },
+  { title: t('kpi.headers.category'), key: 'hold_reason_category', sortable: true },
+  { title: t('kpi.headers.reason'), key: 'hold_reason_description', sortable: true },
+  { title: t('kpi.headers.status'), key: 'hold_status', sortable: true }
+])
 
 const chartData = computed(() => ({
   labels: kpiStore.trends.wipAging.map(d => format(new Date(d.date), 'MMM dd')),

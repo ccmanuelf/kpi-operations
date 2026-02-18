@@ -81,15 +81,15 @@
         <v-list-item prepend-icon="mdi-speedometer" :title="$t('kpi.performance')" value="performance" to="/kpi/performance" />
         <v-list-item prepend-icon="mdi-star" :title="$t('navigation.quality')" value="quality-kpi" to="/kpi/quality" />
         <v-list-item prepend-icon="mdi-account-off" :title="$t('kpi.absenteeism')" value="absenteeism" to="/kpi/absenteeism" />
-        <v-list-item prepend-icon="mdi-gauge" title="OEE" value="oee" to="/kpi/oee" />
+        <v-list-item prepend-icon="mdi-gauge" :title="$t('navigation.oee')" value="oee" to="/kpi/oee" />
 
         <v-divider class="my-2" role="separator"></v-divider>
         <v-list-subheader v-if="!rail" id="tools-nav">{{ $t('navigation.tools').toUpperCase() }}</v-list-subheader>
 
         <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
         <v-list-item prepend-icon="mdi-calculator-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
-        <v-list-item prepend-icon="mdi-chart-timeline-variant" title="Simulation v2" value="simulation-v2" to="/simulation-v2" />
-        <v-list-item prepend-icon="mdi-calendar-clock" title="Capacity Planning" value="capacity-planning" to="/capacity-planning" />
+        <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulationV2')" value="simulation-v2" to="/simulation-v2" />
+        <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
 
         <v-divider class="my-2" role="separator"></v-divider>
         <v-list-subheader v-if="!rail" id="admin-nav">{{ $t('navigation.admin').toUpperCase() }}</v-list-subheader>
@@ -209,13 +209,13 @@ const notify = (message) => {
 }
 
 const setupShortcutListeners = () => {
-  window.addEventListener('keyboard-shortcut:save', () => notify('Save triggered'))
-  window.addEventListener('keyboard-shortcut:new', () => notify('New entry triggered'))
+  window.addEventListener('keyboard-shortcut:save', () => notify(t('notifications.saveTriggered')))
+  window.addEventListener('keyboard-shortcut:new', () => notify(t('notifications.newEntryTriggered')))
   window.addEventListener('keyboard-shortcut:escape', () => {
     if (isHelpModalOpen.value) toggleHelpModal()
   })
   window.addEventListener('keyboard-shortcut:refresh', () => {
-    notify('Refreshing data...')
+    notify(t('notifications.refreshingData'))
     window.dispatchEvent(new CustomEvent('data-refresh'))
   })
 }

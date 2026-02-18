@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(availabilityData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">Target: 90%</v-chip>
+        <v-chip color="grey-darken-2">{{ $t('kpi.targetPercent', { value: 90 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -70,10 +70,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Uptime = Total Time - Downtime</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total hours equipment was operational and available for production. Higher uptime directly correlates with increased production capacity.</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.uptimeFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.uptimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -88,8 +88,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total hours equipment was unavailable due to breakdowns, maintenance, changeovers, or other stoppages. Target is to minimize this value.</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.downtimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -99,15 +99,15 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalTime') }}</div>
-                <div class="text-h4 font-weight-bold">{{ availabilityData?.total_time || 0 }}h</div>
+                <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: availabilityData?.total_time || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Total Time = Uptime + Downtime</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total scheduled production hours within the selected period. This represents the maximum potential operating time.</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.totalTimeFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.totalTimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -117,15 +117,15 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-grey-darken-1">{{ $t('kpi.mtbf') }}</div>
-                <div class="text-h4 font-weight-bold">{{ availabilityData?.mtbf || 0 }}h</div>
+                <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: availabilityData?.mtbf || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">MTBF = Total Uptime / Number of Failures</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Mean Time Between Failures - average operating time between equipment breakdowns. Higher MTBF indicates more reliable equipment.</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.mtbfFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.mtbfMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -175,7 +175,7 @@
               </template>
               <template v-slot:item.downtime_duration_minutes="{ item }">
                 <v-chip color="error" size="small">
-                  {{ item.downtime_duration_minutes }} min
+                  {{ $t('kpi.minutesSuffix', { value: item.downtime_duration_minutes }) }}
                 </v-chip>
               </template>
             </v-data-table>
@@ -196,7 +196,7 @@
               density="compact"
             >
               <template v-slot:item.hours="{ item }">
-                <v-chip color="error" size="small">{{ item.hours }}h</v-chip>
+                <v-chip color="error" size="small">{{ $t('kpi.hoursSuffix', { value: item.hours }) }}</v-chip>
               </template>
               <template v-slot:item.percentage="{ item }">
                 <v-progress-linear :model-value="item.percentage" color="error" height="20">
@@ -274,25 +274,25 @@ const statusColor = computed(() => {
   return 'error'
 })
 
-const downtimeHeaders = [
-  { title: 'Reason', key: 'reason', sortable: true },
-  { title: 'Hours', key: 'hours', sortable: true },
-  { title: 'Percentage', key: 'percentage', sortable: true }
-]
+const downtimeHeaders = computed(() => [
+  { title: t('kpi.headers.reason'), key: 'reason', sortable: true },
+  { title: t('kpi.headers.hours'), key: 'hours', sortable: true },
+  { title: t('kpi.headers.percentage'), key: 'percentage', sortable: true }
+])
 
-const equipmentHeaders = [
-  { title: 'Equipment', key: 'equipment_name', sortable: true },
-  { title: 'Uptime', key: 'uptime', sortable: true },
-  { title: 'Downtime', key: 'downtime', sortable: true },
-  { title: 'Availability', key: 'availability', sortable: true }
-]
+const equipmentHeaders = computed(() => [
+  { title: t('kpi.headers.equipment'), key: 'equipment_name', sortable: true },
+  { title: t('kpi.headers.uptime'), key: 'uptime', sortable: true },
+  { title: t('kpi.headers.downtime'), key: 'downtime', sortable: true },
+  { title: t('kpi.headers.availability'), key: 'availability', sortable: true }
+])
 
-const downtimeHistoryHeaders = [
-  { title: 'Date', key: 'shift_date', sortable: true },
-  { title: 'Reason', key: 'downtime_reason', sortable: true },
-  { title: 'Duration', key: 'downtime_duration_minutes', sortable: true },
-  { title: 'Notes', key: 'notes', sortable: true }
-]
+const downtimeHistoryHeaders = computed(() => [
+  { title: t('kpi.headers.date'), key: 'shift_date', sortable: true },
+  { title: t('kpi.headers.reason'), key: 'downtime_reason', sortable: true },
+  { title: t('kpi.headers.duration'), key: 'downtime_duration_minutes', sortable: true },
+  { title: t('kpi.headers.notes'), key: 'notes', sortable: true }
+])
 
 const chartData = computed(() => ({
   labels: kpiStore.trends.availability.map(d => format(new Date(d.date), 'MMM dd')),

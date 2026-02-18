@@ -170,7 +170,7 @@ describe('DashboardInputsPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Dashboard Inputs')
+    expect(wrapper.text()).toContain('capacityPlanning.dashboardInputs.title')
   })
 
   it('does not show unsaved changes chip when not dirty', () => {
@@ -180,7 +180,7 @@ describe('DashboardInputsPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).not.toContain('Unsaved changes')
+    expect(wrapper.text()).not.toContain('capacityPlanning.dashboardInputs.unsavedChanges')
   })
 
   it('shows unsaved changes chip when dirty', () => {
@@ -190,7 +190,7 @@ describe('DashboardInputsPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Unsaved changes')
+    expect(wrapper.text()).toContain('capacityPlanning.dashboardInputs.unsavedChanges')
   })
 
   it('renders input fields for planning parameters', () => {

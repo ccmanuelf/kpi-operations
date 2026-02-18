@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-check-decagram</v-icon>
-      Component Requirements Check (MRP)
+      {{ t('capacityPlanning.componentCheck.title') }}
       <v-spacer />
       <v-btn
         color="primary"
@@ -12,7 +12,7 @@
         @click="runCheck"
       >
         <v-icon start>mdi-play</v-icon>
-        Run Component Check
+        {{ t('capacityPlanning.componentCheck.runComponentCheck') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -22,7 +22,7 @@
           <v-card variant="tonal" color="success">
             <v-card-text class="text-center">
               <div class="text-h4">{{ availableCount }}</div>
-              <div class="text-subtitle-1">Available</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.stock.available') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -30,7 +30,7 @@
           <v-card variant="tonal" color="warning">
             <v-card-text class="text-center">
               <div class="text-h4">{{ partialCount }}</div>
-              <div class="text-subtitle-1">Partial</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.componentCheck.partial') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -38,7 +38,7 @@
           <v-card variant="tonal" color="error">
             <v-card-text class="text-center">
               <div class="text-h4">{{ shortageCount }}</div>
-              <div class="text-subtitle-1">Shortage</div>
+              <div class="text-subtitle-1">{{ t('capacityPlanning.componentCheck.shortage') }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -64,7 +64,7 @@
             <v-text-field
               v-model="searchTerm"
               prepend-inner-icon="mdi-magnify"
-              label="Search components..."
+              :label="t('capacityPlanning.componentCheck.searchComponents')"
               variant="outlined"
               density="compact"
               style="max-width: 300px"
@@ -72,9 +72,9 @@
             />
             <v-spacer />
             <v-btn-toggle v-model="statusFilter" color="primary" variant="outlined" density="compact">
-              <v-btn value="all">All</v-btn>
-              <v-btn value="SHORTAGE" color="error">Shortages</v-btn>
-              <v-btn value="PARTIAL" color="warning">Partial</v-btn>
+              <v-btn value="all">{{ t('common.all') }}</v-btn>
+              <v-btn value="SHORTAGE" color="error">{{ t('capacityPlanning.componentCheck.filters.shortages') }}</v-btn>
+              <v-btn value="PARTIAL" color="warning">{{ t('capacityPlanning.componentCheck.filters.partial') }}</v-btn>
             </v-btn-toggle>
           </div>
         </template>
@@ -109,7 +109,7 @@
             variant="plain"
             density="compact"
             hide-details
-            placeholder="Add note..."
+            :placeholder="t('capacityPlanning.componentCheck.addNote')"
             @update:modelValue="(val) => updatePlannerNote(item, val)"
           />
         </template>
@@ -118,9 +118,9 @@
       <!-- Empty State -->
       <div v-else class="text-center pa-8 text-grey">
         <v-icon size="64" color="grey-lighten-1">mdi-check-decagram-outline</v-icon>
-        <div class="text-h6 mt-4">No Component Check Results</div>
+        <div class="text-h6 mt-4">{{ t('capacityPlanning.componentCheck.noResultsTitle') }}</div>
         <div class="text-body-2 mt-2">
-          Click "Run Component Check" to analyze material requirements for your orders.
+          {{ t('capacityPlanning.componentCheck.noResultsDescription') }}
         </div>
         <v-btn
           color="primary"
@@ -129,7 +129,7 @@
           :loading="store.isRunningMRP"
           @click="runCheck"
         >
-          Run Component Check
+          {{ t('capacityPlanning.componentCheck.runComponentCheck') }}
         </v-btn>
       </div>
     </v-card-text>
@@ -150,23 +150,25 @@
  * No props or emits -- all state managed via store.
  */
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const searchTerm = ref('')
 const statusFilter = ref('all')
 
-const headers = [
-  { title: 'Order #', key: 'order_number', width: '120px' },
-  { title: 'Component Code', key: 'component_item_code', width: '150px' },
-  { title: 'Description', key: 'component_description', width: '200px' },
-  { title: 'Required', key: 'required_quantity', width: '100px' },
-  { title: 'Available', key: 'available_quantity', width: '100px' },
-  { title: 'Shortage', key: 'shortage_quantity', width: '100px' },
-  { title: 'Status', key: 'status', width: '100px' },
-  { title: 'Planner Notes', key: 'planner_notes', width: '200px' }
-]
+const headers = computed(() => [
+  { title: t('capacityPlanning.componentCheck.headers.orderNumber'), key: 'order_number', width: '120px' },
+  { title: t('capacityPlanning.componentCheck.headers.componentCode'), key: 'component_item_code', width: '150px' },
+  { title: t('capacityPlanning.componentCheck.headers.description'), key: 'component_description', width: '200px' },
+  { title: t('capacityPlanning.componentCheck.headers.required'), key: 'required_quantity', width: '100px' },
+  { title: t('capacityPlanning.componentCheck.headers.available'), key: 'available_quantity', width: '100px' },
+  { title: t('capacityPlanning.componentCheck.headers.shortage'), key: 'shortage_quantity', width: '100px' },
+  { title: t('capacityPlanning.componentCheck.headers.status'), key: 'status', width: '100px' },
+  { title: t('capacityPlanning.componentCheck.headers.plannerNotes'), key: 'planner_notes', width: '200px' }
+])
 
 const components = computed(() => {
   const data = store.worksheets.componentCheck.data

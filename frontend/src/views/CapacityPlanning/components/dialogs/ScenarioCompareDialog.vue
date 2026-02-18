@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="d-flex align-center bg-info text-white">
         <v-icon start>mdi-compare</v-icon>
-        Scenario Comparison
+        {{ t('capacityPlanning.compare.title') }}
         <v-spacer />
         <v-btn
           icon="mdi-close"
@@ -22,7 +22,7 @@
         <v-table v-if="results.scenarios?.length" density="compact">
           <thead>
             <tr>
-              <th>Metric</th>
+              <th>{{ t('capacityPlanning.compare.metric') }}</th>
               <th
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -34,7 +34,7 @@
           </thead>
           <tbody>
             <tr>
-              <td class="font-weight-bold">Total Output</td>
+              <td class="font-weight-bold">{{ t('capacityPlanning.compare.totalOutput') }}</td>
               <td
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -46,7 +46,7 @@
               </td>
             </tr>
             <tr>
-              <td class="font-weight-bold">Avg Utilization</td>
+              <td class="font-weight-bold">{{ t('capacityPlanning.compare.avgUtilization') }}</td>
               <td
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -58,7 +58,7 @@
               </td>
             </tr>
             <tr>
-              <td class="font-weight-bold">On-Time Delivery</td>
+              <td class="font-weight-bold">{{ t('capacityPlanning.compare.onTimeDelivery') }}</td>
               <td
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -70,7 +70,7 @@
               </td>
             </tr>
             <tr>
-              <td class="font-weight-bold">Total Hours</td>
+              <td class="font-weight-bold">{{ t('capacityPlanning.compare.totalHours') }}</td>
               <td
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -80,7 +80,7 @@
               </td>
             </tr>
             <tr>
-              <td class="font-weight-bold">Overtime Hours</td>
+              <td class="font-weight-bold">{{ t('capacityPlanning.compare.overtimeHours') }}</td>
               <td
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -90,7 +90,7 @@
               </td>
             </tr>
             <tr>
-              <td class="font-weight-bold">Estimated Cost</td>
+              <td class="font-weight-bold">{{ t('capacityPlanning.compare.estimatedCost') }}</td>
               <td
                 v-for="scenario in results.scenarios"
                 :key="scenario.id"
@@ -111,12 +111,12 @@
           variant="tonal"
           class="mt-4"
         >
-          <strong>Recommendation:</strong> {{ results.recommendation }}
+          <strong>{{ t('capacityPlanning.compare.recommendation') }}</strong> {{ results.recommendation }}
         </v-alert>
 
         <!-- Chart Placeholder -->
         <v-card variant="outlined" class="mt-4">
-          <v-card-title class="text-subtitle-1">Visual Comparison</v-card-title>
+          <v-card-title class="text-subtitle-1">{{ t('capacityPlanning.compare.visualComparison') }}</v-card-title>
           <v-card-text>
             <div class="d-flex justify-space-around align-end" style="height: 200px">
               <div
@@ -142,15 +142,15 @@
         </v-card>
       </v-card-text>
       <v-card-text v-else class="text-center pa-8 text-grey">
-        No comparison results available.
+        {{ t('capacityPlanning.compare.noResults') }}
       </v-card-text>
       <v-card-actions>
         <v-btn variant="tonal" @click="exportComparison">
           <v-icon start>mdi-download</v-icon>
-          Export Comparison
+          {{ t('capacityPlanning.compare.exportComparison') }}
         </v-btn>
         <v-spacer />
-        <v-btn color="primary" @click="$emit('close')">Close</v-btn>
+        <v-btn color="primary" @click="$emit('close')">{{ t('common.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

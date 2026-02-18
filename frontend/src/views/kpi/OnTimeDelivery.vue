@@ -11,7 +11,7 @@
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
           {{ formatValue(otdData?.percentage) }}%
         </v-chip>
-        <v-chip color="grey-darken-2">Target: 95%</v-chip>
+        <v-chip color="grey-darken-2">{{ $t('kpi.targetPercent', { value: 95 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -70,8 +70,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Total number of deliveries scheduled or completed within the selected date range. This is the base for OTD percentage calculation.</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.totalDeliveriesMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -86,8 +86,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Number of deliveries completed on or before the promised delivery date. Higher numbers indicate better planning and execution.</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.onTimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -102,10 +102,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">Late = Total Deliveries - On Time Deliveries</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Number of deliveries that missed the promised date. Analyze root causes to improve future performance.</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.lateFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.lateMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -120,10 +120,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">Formula:</div>
-            <div class="tooltip-formula">OTD % = (On Time / Total Deliveries) × 100</div>
-            <div class="tooltip-title">Meaning:</div>
-            <div class="tooltip-meaning">Percentage of orders delivered by the promised date. Target is 95%. Critical for customer satisfaction and contract compliance.</div>
+            <div class="tooltip-title">{{ t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ t('kpi.tooltips.otdRateFormula') }}</div>
+            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ t('kpi.tooltips.otdRateMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -216,7 +216,7 @@
             >
               <template v-slot:item.delay_hours="{ item }">
                 <v-chip color="error" size="small">
-                  {{ item.delay_hours }}h late
+                  {{ t('kpi.hLate', { hours: item.delay_hours }) }}
                 </v-chip>
               </template>
             </v-data-table>
@@ -271,26 +271,26 @@ const statusColor = computed(() => {
   return 'error'
 })
 
-const clientHeaders = [
-  { title: 'Client', key: 'client_name', sortable: true },
-  { title: 'Total', key: 'total_deliveries', sortable: true },
-  { title: 'On Time', key: 'on_time', sortable: true },
-  { title: 'OTD %', key: 'otd_percentage', sortable: true }
-]
+const clientHeaders = computed(() => [
+  { title: t('kpi.headers.client'), key: 'client_name', sortable: true },
+  { title: t('kpi.headers.total'), key: 'total_deliveries', sortable: true },
+  { title: t('kpi.headers.onTime'), key: 'on_time', sortable: true },
+  { title: t('kpi.headers.otdPercent'), key: 'otd_percentage', sortable: true }
+])
 
-const lateHeaders = [
-  { title: 'Date', key: 'delivery_date', sortable: true },
-  { title: 'Work Order', key: 'work_order', sortable: true },
-  { title: 'Client', key: 'client', sortable: true },
-  { title: 'Delay', key: 'delay_hours', sortable: true }
-]
+const lateHeaders = computed(() => [
+  { title: t('kpi.headers.date'), key: 'delivery_date', sortable: true },
+  { title: t('kpi.headers.workOrder'), key: 'work_order', sortable: true },
+  { title: t('kpi.headers.client'), key: 'client', sortable: true },
+  { title: t('kpi.headers.delay'), key: 'delay_hours', sortable: true }
+])
 
-const historyHeaders = [
-  { title: 'Date', key: 'date', sortable: true },
-  { title: 'Total Units', key: 'total_units', sortable: true },
-  { title: 'Efficiency %', key: 'avg_efficiency', sortable: true },
-  { title: 'Entry Count', key: 'entry_count', sortable: true }
-]
+const historyHeaders = computed(() => [
+  { title: t('kpi.headers.date'), key: 'date', sortable: true },
+  { title: t('kpi.headers.totalUnits'), key: 'total_units', sortable: true },
+  { title: t('kpi.headers.efficiencyPercent'), key: 'avg_efficiency', sortable: true },
+  { title: t('kpi.headers.entryCount'), key: 'entry_count', sortable: true }
+])
 
 const chartData = computed(() => ({
   labels: kpiStore.trends.onTimeDelivery.map(d => format(new Date(d.date), 'MMM dd')),

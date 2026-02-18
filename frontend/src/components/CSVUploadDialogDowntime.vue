@@ -2,13 +2,13 @@
   <v-dialog v-model="dialog" max-width="1000px" persistent scrollable>
     <template v-slot:activator="{ props }">
       <v-btn color="primary" v-bind="props" prepend-icon="mdi-file-upload">
-        Import CSV
+        {{ $t('csv.importCsv') }}
       </v-btn>
     </template>
 
     <v-card>
       <v-card-title class="bg-primary text-white d-flex justify-space-between align-center">
-        <span class="text-h5">CSV Import - Downtime Events</span>
+        <span class="text-h5">{{ $t('csv.importTitleDowntime') }}</span>
         <v-btn icon variant="text" @click="closeDialog">
           <v-icon color="white">mdi-close</v-icon>
         </v-btn>
@@ -21,14 +21,14 @@
             <v-card flat>
               <v-card-text>
                 <v-alert type="info" variant="tonal" class="mb-4">
-                  <strong>Step 1: Upload & Validate</strong><br>
-                  Select a CSV file with downtime events. We'll validate the data before importing.
+                  <strong>{{ $t('csv.stepUploadValidate') }}</strong><br>
+                  {{ $t('csv.stepUploadDescDowntime') }}
                 </v-alert>
 
                 <v-file-input
                   v-model="file"
                   accept=".csv"
-                  label="Select CSV File"
+                  :label="$t('csv.selectFile')"
                   prepend-icon="mdi-file-delimited"
                   @change="handleFileUpload"
                   :loading="validating"
@@ -38,31 +38,31 @@
                 ></v-file-input>
 
                 <v-btn text @click="downloadTemplate" class="mb-4" prepend-icon="mdi-download">
-                  Download CSV Template
+                  {{ $t('csv.downloadCsvTemplate') }}
                 </v-btn>
 
                 <v-alert v-if="validationErrors.length > 0" type="error" class="mt-4">
-                  <strong>Validation Errors:</strong>
+                  <strong>{{ $t('csv.validationErrors') }}</strong>
                   <ul>
                     <li v-for="(error, idx) in validationErrors.slice(0, 10)" :key="idx">{{ error }}</li>
-                    <li v-if="validationErrors.length > 10">... and {{ validationErrors.length - 10 }} more errors</li>
+                    <li v-if="validationErrors.length > 10">{{ $t('csv.andMoreErrors', { count: validationErrors.length - 10 }) }}</li>
                   </ul>
                 </v-alert>
 
                 <v-alert v-if="validationSummary" type="success" variant="tonal" class="mt-4">
-                  <strong>Validation Summary:</strong>
+                  <strong>{{ $t('csv.validationSummary') }}</strong>
                   <ul>
-                    <li>Total Rows: {{ validationSummary.totalRows }}</li>
-                    <li>Valid Rows: {{ validationSummary.validRows }}</li>
-                    <li>Invalid Rows: {{ validationSummary.invalidRows }}</li>
+                    <li>{{ $t('csv.totalRows', { count: validationSummary.totalRows }) }}</li>
+                    <li>{{ $t('csv.validRows', { count: validationSummary.validRows }) }}</li>
+                    <li>{{ $t('csv.invalidRows', { count: validationSummary.invalidRows }) }}</li>
                   </ul>
                 </v-alert>
               </v-card-text>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn @click="closeDialog">Cancel</v-btn>
+                <v-btn @click="closeDialog">{{ $t('common.cancel') }}</v-btn>
                 <v-btn color="primary" @click="nextStep" :disabled="!parsedData.length || validating">
-                  Next: Preview Data
+                  {{ $t('csv.nextPreviewData') }}
                 </v-btn>
               </v-card-actions>
             </v-card>
@@ -73,15 +73,15 @@
             <v-card flat>
               <v-card-text>
                 <v-alert type="info" variant="tonal" class="mb-4">
-                  <strong>Step 2: Preview & Edit</strong><br>
-                  Review the data below. You can edit cells inline to fix errors before importing.
+                  <strong>{{ $t('csv.stepPreviewEdit') }}</strong><br>
+                  {{ $t('csv.stepPreviewDescription') }}
                 </v-alert>
 
                 <v-alert v-if="previewSummary" type="info" variant="outlined" class="mb-4">
                   <v-row>
-                    <v-col cols="4">Total Rows: {{ previewSummary.total }}</v-col>
-                    <v-col cols="4">Valid: <span class="text-success">{{ previewSummary.valid }}</span></v-col>
-                    <v-col cols="4">Invalid: <span class="text-error">{{ previewSummary.invalid }}</span></v-col>
+                    <v-col cols="4">{{ $t('csv.totalRowsLabel', { count: previewSummary.total }) }}</v-col>
+                    <v-col cols="4">{{ $t('csv.validLabel', { count: previewSummary.valid }) }}</v-col>
+                    <v-col cols="4">{{ $t('csv.invalidLabel', { count: previewSummary.invalid }) }}</v-col>
                   </v-row>
                 </v-alert>
 
@@ -100,11 +100,11 @@
                 </div>
               </v-card-text>
               <v-card-actions>
-                <v-btn @click="previousStep">Back</v-btn>
+                <v-btn @click="previousStep">{{ $t('common.back') }}</v-btn>
                 <v-spacer></v-spacer>
-                <v-btn @click="closeDialog">Cancel</v-btn>
+                <v-btn @click="closeDialog">{{ $t('common.cancel') }}</v-btn>
                 <v-btn color="primary" @click="nextStep" :disabled="validRowCount === 0">
-                  Next: Confirm Import
+                  {{ $t('csv.nextConfirmImport') }}
                 </v-btn>
               </v-card-actions>
             </v-card>
@@ -115,8 +115,8 @@
             <v-card flat>
               <v-card-text>
                 <v-alert type="warning" variant="tonal" class="mb-4">
-                  <strong>Step 3: Final Confirmation</strong><br>
-                  Please review the summary below and confirm the import.
+                  <strong>{{ $t('csv.stepFinalConfirmation') }}</strong><br>
+                  {{ $t('csv.stepConfirmDescription') }}
                 </v-alert>
 
                 <v-card variant="outlined" class="mb-4">
@@ -124,15 +124,15 @@
                     <v-row>
                       <v-col cols="4" class="text-center">
                         <div class="text-h4 text-success">{{ validRowCount }}</div>
-                        <div class="text-caption">Rows to Import</div>
+                        <div class="text-caption">{{ $t('csv.rowsToImport') }}</div>
                       </v-col>
                       <v-col cols="4" class="text-center">
                         <div class="text-h4 text-error">{{ invalidRowCount }}</div>
-                        <div class="text-caption">Rows to Skip</div>
+                        <div class="text-caption">{{ $t('csv.rowsToSkip') }}</div>
                       </v-col>
                       <v-col cols="4" class="text-center">
                         <div class="text-h4 text-info">{{ totalRowCount }}</div>
-                        <div class="text-caption">Total Rows</div>
+                        <div class="text-caption">{{ $t('csv.totalRowsCaption') }}</div>
                       </v-col>
                     </v-row>
                   </v-card-text>
@@ -148,16 +148,16 @@
                   <strong>{{ importResult.message }}</strong>
                   <div v-if="importResult.details" class="mt-2">
                     <ul>
-                      <li>Successfully Imported: {{ importResult.details.successful }}</li>
-                      <li>Failed: {{ importResult.details.failed }}</li>
+                      <li>{{ $t('csv.successfullyImported', { count: importResult.details.successful }) }}</li>
+                      <li>{{ $t('csv.failedCount', { count: importResult.details.failed }) }}</li>
                     </ul>
                   </div>
                 </v-alert>
               </v-card-text>
               <v-card-actions>
-                <v-btn @click="previousStep" :disabled="importing">Back</v-btn>
+                <v-btn @click="previousStep" :disabled="importing">{{ $t('common.back') }}</v-btn>
                 <v-spacer></v-spacer>
-                <v-btn @click="closeDialog" :disabled="importing">Cancel</v-btn>
+                <v-btn @click="closeDialog" :disabled="importing">{{ $t('common.cancel') }}</v-btn>
                 <v-btn
                   color="success"
                   @click="confirmImport"
@@ -165,7 +165,7 @@
                   :disabled="importing || validRowCount === 0"
                   prepend-icon="mdi-check"
                 >
-                  Confirm & Import {{ validRowCount }} Rows
+                  {{ $t('csv.confirmAndImportRows', { count: validRowCount }) }}
                 </v-btn>
               </v-card-actions>
             </v-card>
@@ -178,12 +178,14 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AgGridVue } from 'ag-grid-vue3'
 import * as Papa from 'papaparse'
 import api from '@/services/api'
 import 'ag-grid-community/styles/ag-grid.css'
 import 'ag-grid-community/styles/ag-theme-material.css'
 
+const { t } = useI18n()
 const emit = defineEmits(['imported'])
 
 const dialog = ref(false)
@@ -198,11 +200,11 @@ const importProgress = ref(null)
 const importResult = ref(null)
 const previewGrid = ref(null)
 
-const steps = [
-  { title: 'Upload', value: 1 },
-  { title: 'Preview', value: 2 },
-  { title: 'Confirm', value: 3 }
-]
+const steps = computed(() => [
+  { title: t('csv.stepUpload'), value: 1 },
+  { title: t('csv.stepPreview'), value: 2 },
+  { title: t('csv.stepConfirm'), value: 3 }
+])
 
 // Required CSV columns for downtime - aligned with backend/schemas/downtime_entry.py
 const requiredColumns = [
@@ -220,9 +222,9 @@ const columnDefs = ref([
     field: '_validationStatus',
     width: 90,
     cellRenderer: (params) => {
-      return params.value === 'valid' 
-        ? '<span style="color: green;">✓</span>' 
-        : '<span style="color: red;">✗</span>'
+      return params.value === 'valid'
+        ? '<span style="color: green;">&#10003;</span>'
+        : '<span style="color: red;">&#10007;</span>'
     }
   },
   { headerName: 'Client ID', field: 'client_id', editable: true, width: 110 },
@@ -267,12 +269,12 @@ const handleFileUpload = async () => {
         validating.value = false
       },
       error: (error) => {
-        validationErrors.value.push(`CSV parsing error: ${error.message}`)
+        validationErrors.value.push(t('csv.csvParsingError', { error: error.message }))
         validating.value = false
       }
     })
   } catch (error) {
-    validationErrors.value.push(`File read error: ${error.message}`)
+    validationErrors.value.push(t('csv.fileReadError', { error: error.message }))
     validating.value = false
   }
 }
@@ -367,7 +369,7 @@ const previousStep = () => { if (step.value > 1) step.value-- }
 
 const confirmImport = async () => {
   importing.value = true
-  importProgress.value = { percentage: 0, message: 'Preparing import...' }
+  importProgress.value = { percentage: 0, message: t('csv.preparingImport') }
   importResult.value = null
 
   try {
@@ -385,7 +387,7 @@ const confirmImport = async () => {
       notes: row.notes || ''
     })))
 
-    importProgress.value = { percentage: 30, message: 'Uploading data...' }
+    importProgress.value = { percentage: 30, message: t('csv.uploadingData') }
 
     const formData = new FormData()
     const blob = new Blob([csvContent], { type: 'text/csv' })
@@ -395,11 +397,11 @@ const confirmImport = async () => {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    importProgress.value = { percentage: 100, message: 'Import complete!' }
+    importProgress.value = { percentage: 100, message: t('csv.importComplete') }
 
     importResult.value = {
       type: 'success',
-      message: 'Import completed successfully!',
+      message: t('csv.importCompletedSuccessfully'),
       details: { successful: response.data.successful, failed: response.data.failed }
     }
 
@@ -408,7 +410,7 @@ const confirmImport = async () => {
   } catch (error) {
     importResult.value = {
       type: 'error',
-      message: `Import error: ${error.response?.data?.detail || error.message}`,
+      message: t('csv.importError', { error: error.response?.data?.detail || error.message }),
       details: null
     }
   } finally {

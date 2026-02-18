@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-primary">
         <v-icon class="mr-2">mdi-content-save-plus</v-icon>
-        <span class="text-h6">Save Filter</span>
+        <span class="text-h6">{{ t('saveFilterDialog.title') }}</span>
         <v-spacer></v-spacer>
         <v-btn icon variant="text" @click="cancel">
           <v-icon>mdi-close</v-icon>
@@ -16,7 +16,7 @@
           <v-text-field
             v-model="filterName"
             :label="t('filters.filterName')"
-            placeholder="e.g., Q1 Production Overview"
+            :placeholder="t('saveFilterDialog.namePlaceholder')"
             variant="outlined"
             density="comfortable"
             :rules="nameRules"
@@ -38,7 +38,7 @@
             :label="t('filters.filterType')"
             variant="outlined"
             density="comfortable"
-            :rules="[(v) => !!v || 'Filter type is required']"
+            :rules="[(v) => !!v || t('saveFilterDialog.filterTypeRequired')]"
             class="mb-4"
           >
             <template #prepend-inner>
@@ -62,9 +62,9 @@
           >
             <template #label>
               <div>
-                <span>Set as default for {{ FILTER_TYPES[filterType] || 'this type' }}</span>
+                <span>{{ t('saveFilterDialog.setAsDefaultLabel', { type: FILTER_TYPES[filterType] || 'this type' }) }}</span>
                 <div class="text-caption text-medium-emphasis">
-                  This filter will be automatically applied when you visit this section
+                  {{ t('saveFilterDialog.setAsDefaultHint') }}
                 </div>
               </div>
             </template>
@@ -75,7 +75,7 @@
             <v-expansion-panel>
               <v-expansion-panel-title>
                 <v-icon start size="small">mdi-eye-outline</v-icon>
-                Filter Configuration Preview
+                {{ t('saveFilterDialog.configPreview') }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div class="filter-preview pa-3 rounded bg-grey-lighten-4">
@@ -86,7 +86,7 @@
                         <v-icon size="small" color="primary">mdi-domain</v-icon>
                       </template>
                       <v-list-item-title class="text-body-2">
-                        Client: {{ getClientName(filterConfig.client_id) }}
+                        {{ t('saveFilterDialog.clientLabel', { name: getClientName(filterConfig.client_id) }) }}
                       </v-list-item-title>
                     </v-list-item>
 
@@ -104,7 +104,7 @@
                         <v-icon size="small" color="warning">mdi-clock-outline</v-icon>
                       </template>
                       <v-list-item-title class="text-body-2">
-                        {{ filterConfig.shift_ids.length }} Shift(s) selected
+                        {{ t('saveFilterDialog.shiftsSelected', { count: filterConfig.shift_ids.length }) }}
                       </v-list-item-title>
                     </v-list-item>
 
@@ -113,7 +113,7 @@
                         <v-icon size="small" color="info">mdi-package-variant</v-icon>
                       </template>
                       <v-list-item-title class="text-body-2">
-                        {{ filterConfig.product_ids.length }} Product(s) selected
+                        {{ t('saveFilterDialog.productsSelected', { count: filterConfig.product_ids.length }) }}
                       </v-list-item-title>
                     </v-list-item>
 
@@ -122,7 +122,7 @@
                         <v-icon size="small" color="grey">mdi-information-outline</v-icon>
                       </template>
                       <v-list-item-title class="text-body-2 text-medium-emphasis">
-                        No specific filters configured (shows all data)
+                        {{ t('saveFilterDialog.noFiltersConfigured') }}
                       </v-list-item-title>
                     </v-list-item>
                   </v-list>
@@ -134,7 +134,7 @@
                     class="mt-2"
                     @click="showRawJson = !showRawJson"
                   >
-                    {{ showRawJson ? 'Hide' : 'Show' }} Raw JSON
+                    {{ showRawJson ? t('saveFilterDialog.hideRawJson') : t('saveFilterDialog.showRawJson') }}
                   </v-btn>
 
                   <v-expand-transition>
@@ -154,7 +154,7 @@
           variant="text"
           @click="cancel"
         >
-          Cancel
+          {{ t('common.cancel') }}
         </v-btn>
         <v-spacer></v-spacer>
         <v-btn
@@ -165,7 +165,7 @@
           @click="save"
         >
           <v-icon start>mdi-content-save</v-icon>
-          Save Filter
+          {{ t('saveFilterDialog.saveFilter') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -214,9 +214,9 @@ const isOpen = ref(props.modelValue)
 
 // Validation rules
 const nameRules = [
-  (v) => !!v || 'Filter name is required',
-  (v) => (v && v.length >= 2) || 'Name must be at least 2 characters',
-  (v) => (v && v.length <= 100) || 'Name must be less than 100 characters'
+  (v) => !!v || t('saveFilterDialog.filterNameRequired'),
+  (v) => (v && v.length >= 2) || t('saveFilterDialog.filterNameMin'),
+  (v) => (v && v.length <= 100) || t('saveFilterDialog.filterNameMax')
 ]
 
 // Filter type options for select
@@ -301,7 +301,7 @@ const save = async () => {
     if (error.response?.data?.detail) {
       nameError.value = error.response.data.detail
     } else {
-      nameError.value = 'Failed to save filter. Please try again.'
+      nameError.value = t('saveFilterDialog.saveFailed')
     }
   } finally {
     isSaving.value = false

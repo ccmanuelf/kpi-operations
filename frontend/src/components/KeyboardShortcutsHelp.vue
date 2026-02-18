@@ -10,9 +10,9 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-primary">
         <v-icon class="mr-2" aria-hidden="true">mdi-keyboard</v-icon>
-        <span id="shortcuts-dialog-title" class="text-h5">Keyboard Shortcuts</span>
+        <span id="shortcuts-dialog-title" class="text-h5">{{ t('keyboard.title') }}</span>
         <v-spacer></v-spacer>
-        <v-btn icon variant="text" @click="close" aria-label="Close keyboard shortcuts dialog">
+        <v-btn icon variant="text" @click="close" :aria-label="t('common.close')">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-card-title>
@@ -23,12 +23,12 @@
           <v-text-field
             v-model="searchQuery"
             prepend-inner-icon="mdi-magnify"
-            placeholder="Search shortcuts..."
+            :placeholder="t('keyboard.searchPlaceholder')"
             variant="outlined"
             density="compact"
             hide-details
             clearable
-            aria-label="Search keyboard shortcuts"
+            :aria-label="t('keyboard.searchPlaceholder')"
           ></v-text-field>
         </div>
 
@@ -36,7 +36,7 @@
         <div class="pa-3 bg-grey-lighten-4 text-center">
           <v-chip size="small" color="primary" variant="tonal">
             <v-icon start>{{ platformIcon }}</v-icon>
-            {{ platformName }} Shortcuts
+            {{ t('keyboard.platformShortcuts', { platform: platformName }) }}
           </v-chip>
         </div>
 
@@ -84,7 +84,7 @@
                     variant="tonal"
                     aria-label="This shortcut is disabled"
                   >
-                    Disabled
+                    {{ t('keyboard.disabled') }}
                   </v-chip>
                 </template>
               </v-list-item>
@@ -94,7 +94,7 @@
           <!-- No results -->
           <div v-if="Object.keys(filteredShortcuts).length === 0" class="text-center py-8">
             <v-icon size="64" color="grey-lighten-1">mdi-keyboard-off</v-icon>
-            <p class="text-grey mt-4">No shortcuts found matching "{{ searchQuery }}"</p>
+            <p class="text-grey mt-4">{{ t('keyboard.noResults', { query: searchQuery }) }}</p>
           </div>
         </div>
       </v-card-text>
@@ -108,7 +108,7 @@
           variant="flat"
           @click="close"
         >
-          Close
+          {{ t('common.close') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -117,7 +117,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {

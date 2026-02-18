@@ -5,13 +5,13 @@
       <v-col cols="4">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-primary">{{ expectedCount }}</div>
-          <div class="text-caption text-grey">Expected</div>
+          <div class="text-caption text-grey">{{ $t('workflow.expected') }}</div>
         </v-card>
       </v-col>
       <v-col cols="4">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-success">{{ presentCount }}</div>
-          <div class="text-caption text-grey">Present</div>
+          <div class="text-caption text-grey">{{ $t('workflow.present') }}</div>
         </v-card>
       </v-col>
       <v-col cols="4">
@@ -19,7 +19,7 @@
           <div class="text-h4" :class="absentCount > 0 ? 'text-error' : 'text-grey'">
             {{ absentCount }}
           </div>
-          <div class="text-caption text-grey">Absent</div>
+          <div class="text-caption text-grey">{{ $t('workflow.absent') }}</div>
         </v-card>
       </v-col>
     </v-row>
@@ -28,7 +28,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-account-group</v-icon>
-        Employee Attendance
+        {{ $t('workflow.employeeAttendance') }}
         <v-spacer />
         <v-text-field
           v-model="searchQuery"
@@ -63,7 +63,7 @@
 
             <v-list-item-title>{{ employee.name }}</v-list-item-title>
             <v-list-item-subtitle>
-              {{ employee.role }} - {{ employee.station || 'Unassigned' }}
+              {{ employee.role }} - {{ employee.station || $t('workflow.unassigned') }}
             </v-list-item-subtitle>
 
             <template v-slot:append>
@@ -90,7 +90,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-account-hard-hat</v-icon>
-        Station Assignments
+        {{ $t('workflow.stationAssignments') }}
         <v-spacer />
         <v-btn
           variant="text"
@@ -100,7 +100,7 @@
           :disabled="loading"
         >
           <v-icon start size="16">mdi-auto-fix</v-icon>
-          Auto-Assign
+          {{ $t('workflow.autoAssign') }}
         </v-btn>
       </v-card-title>
 
@@ -129,7 +129,7 @@
                   item-value="id"
                   density="compact"
                   variant="outlined"
-                  placeholder="Select operator"
+                  :placeholder="$t('workflow.selectOperator')"
                   hide-details
                   clearable
                   @update:model-value="updateAssignment(station)"
@@ -148,11 +148,11 @@
       variant="tonal"
       class="mb-4"
     >
-      <v-alert-title>Coverage Issue</v-alert-title>
+      <v-alert-title>{{ $t('workflow.coverageIssue') }}</v-alert-title>
       {{ coverageMessage }}
       <template v-slot:append>
         <v-btn variant="text" size="small" @click="requestFloatingPool">
-          Request Coverage
+          {{ $t('workflow.requestCoverage') }}
         </v-btn>
       </template>
     </v-alert>
@@ -161,7 +161,7 @@
     <v-checkbox
       v-model="confirmed"
       :disabled="!isValid"
-      label="I confirm the attendance and station assignments are correct"
+      :label="$t('workflow.attendanceConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />

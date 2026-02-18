@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-tune</v-icon>
-      Dashboard Inputs
+      {{ t('capacityPlanning.dashboardInputs.title') }}
       <v-spacer />
       <v-chip
         v-if="isDirty"
@@ -11,7 +11,7 @@
         variant="tonal"
         prepend-icon="mdi-circle-medium"
       >
-        Unsaved changes
+        {{ t('capacityPlanning.dashboardInputs.unsavedChanges') }}
       </v-chip>
     </v-card-title>
     <v-card-text>
@@ -20,13 +20,13 @@
         <v-col cols="12" md="6">
           <v-text-field
             :model-value="inputs.planning_horizon_days"
-            label="Planning Horizon (days)"
+            :label="t('capacityPlanning.dashboardInputs.planningHorizon')"
             type="number"
             :min="1"
             :max="365"
             variant="outlined"
             density="comfortable"
-            hint="Number of days to plan ahead"
+            :hint="t('capacityPlanning.dashboardInputs.planningHorizonHint')"
             persistent-hint
             prepend-inner-icon="mdi-calendar-range"
             @update:modelValue="update('planning_horizon_days', Number($event))"
@@ -37,13 +37,13 @@
         <v-col cols="12" md="6">
           <v-text-field
             :model-value="inputs.shortage_alert_days"
-            label="Stock Staleness Alert (days)"
+            :label="t('capacityPlanning.dashboardInputs.stalenessAlert')"
             type="number"
             :min="1"
             :max="30"
             variant="outlined"
             density="comfortable"
-            hint="Warn when stock snapshots older than this"
+            :hint="t('capacityPlanning.dashboardInputs.stalenessAlertHint')"
             persistent-hint
             prepend-inner-icon="mdi-alert-clock-outline"
             @update:modelValue="update('shortage_alert_days', Number($event))"
@@ -52,7 +52,7 @@
 
         <!-- Default Efficiency Slider -->
         <v-col cols="12" md="6">
-          <div class="text-subtitle-2 mb-1">Default Efficiency (%)</div>
+          <div class="text-subtitle-2 mb-1">{{ t('capacityPlanning.dashboardInputs.defaultEfficiency') }}</div>
           <v-slider
             :model-value="inputs.default_efficiency"
             :min="50"
@@ -82,7 +82,7 @@
 
         <!-- Bottleneck Threshold Slider -->
         <v-col cols="12" md="6">
-          <div class="text-subtitle-2 mb-1">Bottleneck Threshold (%)</div>
+          <div class="text-subtitle-2 mb-1">{{ t('capacityPlanning.dashboardInputs.bottleneckThreshold') }}</div>
           <v-slider
             :model-value="inputs.bottleneck_threshold"
             :min="50"
@@ -109,7 +109,7 @@
             </template>
           </v-slider>
           <div class="text-caption text-grey mt-1">
-            Lines above this utilization are flagged
+            {{ t('capacityPlanning.dashboardInputs.bottleneckThresholdHint') }}
           </div>
         </v-col>
 
@@ -117,9 +117,9 @@
         <v-col cols="12">
           <v-switch
             :model-value="inputs.auto_schedule_enabled"
-            label="Auto-Schedule"
+            :label="t('capacityPlanning.dashboardInputs.autoSchedule')"
             color="primary"
-            hint="Automatically generate schedules when orders change"
+            :hint="t('capacityPlanning.dashboardInputs.autoScheduleHint')"
             persistent-hint
             @update:modelValue="update('auto_schedule_enabled', $event)"
           />
@@ -142,8 +142,10 @@
  * No props or emits -- all state managed via store.
  */
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
+const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const inputs = computed(() => store.worksheets.dashboardInputs.data)

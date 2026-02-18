@@ -5,13 +5,13 @@
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-primary">{{ totalIncidents }}</div>
-          <div class="text-caption text-grey">Total Incidents</div>
+          <div class="text-caption text-grey">{{ $t('workflow.totalIncidents') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-success">{{ resolvedCount }}</div>
-          <div class="text-caption text-grey">Resolved</div>
+          <div class="text-caption text-grey">{{ $t('workflow.resolved') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
@@ -19,13 +19,13 @@
           <div class="text-h4" :class="openCount > 0 ? 'text-error' : 'text-grey'">
             {{ openCount }}
           </div>
-          <div class="text-caption text-grey">Open</div>
+          <div class="text-caption text-grey">{{ $t('workflow.open') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
           <div class="text-h4 text-warning">{{ totalMinutes }}</div>
-          <div class="text-caption text-grey">Total Minutes</div>
+          <div class="text-caption text-grey">{{ $t('workflow.totalMinutes') }}</div>
         </v-card>
       </v-col>
     </v-row>
@@ -38,9 +38,9 @@
     >
       <v-card-title class="d-flex align-center bg-red-lighten-4 py-2">
         <v-icon class="mr-2" size="20" color="error">mdi-alert-circle</v-icon>
-        Open Downtime Incidents
+        {{ $t('workflow.openDowntimeIncidents') }}
         <v-chip size="small" color="error" class="ml-2">
-          {{ openIncidents.length }} to resolve
+          {{ $t('workflow.toResolve', { count: openIncidents.length }) }}
         </v-chip>
       </v-card-title>
 
@@ -61,8 +61,8 @@
               {{ incident.machine }}
             </v-list-item-title>
             <v-list-item-subtitle>
-              Started: {{ formatTime(incident.startTime) }} |
-              Duration: {{ incident.duration }} min |
+              {{ $t('workflow.started') }}: {{ formatTime(incident.startTime) }} |
+              {{ $t('workflow.duration') }}: {{ incident.duration }} min |
               {{ incident.reason }}
             </v-list-item-subtitle>
 
@@ -74,7 +74,7 @@
                 @click="openResolveDialog(incident)"
               >
                 <v-icon start size="16">mdi-check</v-icon>
-                Resolve
+                {{ $t('workflow.resolve') }}
               </v-btn>
             </template>
           </v-list-item>
@@ -86,7 +86,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-clipboard-check</v-icon>
-        Resolved Incidents This Shift
+        {{ $t('workflow.resolvedIncidentsThisShift') }}
       </v-card-title>
 
       <v-card-text class="pa-0">
@@ -97,7 +97,7 @@
           variant="tonal"
           class="ma-3"
         >
-          No resolved downtime incidents this shift
+          {{ $t('workflow.noResolvedIncidents') }}
         </v-alert>
         <v-list v-else density="compact">
           <v-list-item
@@ -129,7 +129,7 @@
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-chart-pie</v-icon>
-        Downtime by Category
+        {{ $t('workflow.downtimeByCategory') }}
       </v-card-title>
       <v-card-text>
         <div v-for="category in downtimeByCategory" :key="category.name" class="mb-3">
@@ -151,7 +151,7 @@
     <v-checkbox
       v-model="confirmed"
       :disabled="openCount > 0"
-      label="All downtime incidents have been resolved and documented"
+      :label="$t('workflow.downtimeConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />
@@ -163,7 +163,7 @@
       density="compact"
       class="mt-2"
     >
-      {{ openCount }} downtime incident(s) must be resolved before proceeding.
+      {{ $t('workflow.downtimeMustResolve', { count: openCount }) }}
     </v-alert>
 
     <!-- Resolve Dialog -->
@@ -171,14 +171,14 @@
       <v-card v-if="selectedIncident">
         <v-card-title class="d-flex align-center">
           <v-icon class="mr-2" color="success">mdi-check-circle</v-icon>
-          Resolve Downtime
+          {{ $t('workflow.resolveDowntime') }}
         </v-card-title>
         <v-card-text>
           <div class="text-subtitle-1 mb-3">{{ selectedIncident.machine }}</div>
 
           <v-text-field
             v-model="resolveForm.endTime"
-            label="End Time"
+            :label="$t('workflow.endTime')"
             type="time"
             variant="outlined"
             density="compact"
@@ -188,7 +188,7 @@
           <v-select
             v-model="resolveForm.rootCause"
             :items="rootCauseOptions"
-            label="Root Cause"
+            :label="$t('workflow.rootCause')"
             variant="outlined"
             density="compact"
             class="mb-3"
@@ -196,16 +196,16 @@
 
           <v-textarea
             v-model="resolveForm.resolution"
-            label="Resolution Notes"
+            :label="$t('workflow.resolutionNotes')"
             variant="outlined"
             density="compact"
             rows="3"
-            placeholder="Describe what was done to resolve the issue..."
+            :placeholder="$t('workflow.resolutionPlaceholder')"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="resolveDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="resolveDialog = false">{{ $t('common.cancel') }}</v-btn>
           <v-btn
             color="success"
             variant="elevated"
@@ -213,7 +213,7 @@
             :disabled="!resolveForm.rootCause"
             @click="resolveIncident"
           >
-            Resolve
+            {{ $t('workflow.resolve') }}
           </v-btn>
         </v-card-actions>
       </v-card>

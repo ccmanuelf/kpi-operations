@@ -2,11 +2,11 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-file-tree</v-icon>
-      Bill of Materials (BOM)
+      {{ t('capacityPlanning.bom.title') }}
       <v-spacer />
       <v-btn color="primary" size="small" variant="tonal" @click="addBOM">
         <v-icon start>mdi-plus</v-icon>
-        Add BOM
+        {{ t('capacityPlanning.bom.addBom') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -19,11 +19,11 @@
           <v-expansion-panel-title>
             <div class="d-flex align-center w-100">
               <v-icon start>mdi-package-variant</v-icon>
-              <strong class="mr-2">{{ bom.parent_item_code || '(New BOM)' }}</strong>
+              <strong class="mr-2">{{ bom.parent_item_code || t('capacityPlanning.bom.newBom') }}</strong>
               <span class="text-grey">{{ bom.parent_item_description }}</span>
               <v-spacer />
               <v-chip size="small" variant="tonal" class="mr-2">
-                {{ bom.components?.length || 0 }} components
+                {{ bom.components?.length || 0 }} {{ t('capacityPlanning.bom.componentsCount') }}
               </v-chip>
               <v-chip
                 v-if="bom.is_active"
@@ -31,7 +31,7 @@
                 color="success"
                 variant="tonal"
               >
-                Active
+                {{ t('common.active') }}
               </v-chip>
             </div>
           </v-expansion-panel-title>
@@ -41,7 +41,7 @@
               <v-col cols="3">
                 <v-text-field
                   v-model="bom.parent_item_code"
-                  label="Parent Item Code"
+                  :label="t('capacityPlanning.bom.parentItemCode')"
                   variant="outlined"
                   density="compact"
                   @update:modelValue="markDirty"
@@ -59,7 +59,7 @@
               <v-col cols="2">
                 <v-text-field
                   v-model="bom.style_code"
-                  label="Style Code"
+                  :label="t('capacityPlanning.bom.styleCode')"
                   variant="outlined"
                   density="compact"
                   @update:modelValue="markDirty"
@@ -68,7 +68,7 @@
               <v-col cols="2">
                 <v-text-field
                   v-model="bom.revision"
-                  label="Revision"
+                  :label="t('capacityPlanning.bom.revision')"
                   variant="outlined"
                   density="compact"
                   @update:modelValue="markDirty"
@@ -166,7 +166,7 @@
                 @click="addComponent(bomIndex)"
               >
                 <v-icon start>mdi-plus</v-icon>
-                Add Component
+                {{ t('capacityPlanning.bom.addComponent') }}
               </v-btn>
               <v-btn
                 size="small"
@@ -175,7 +175,7 @@
                 @click="removeBOM(bomIndex)"
               >
                 <v-icon start>mdi-delete</v-icon>
-                Delete BOM
+                {{ t('capacityPlanning.bom.deleteBom') }}
               </v-btn>
             </div>
           </v-expansion-panel-text>
@@ -183,7 +183,7 @@
       </v-expansion-panels>
 
       <div v-else class="text-center pa-4 text-grey">
-        No Bill of Materials defined. Click "Add BOM" to create one.
+        {{ t('capacityPlanning.bom.noData') }}
       </div>
     </v-card-text>
   </v-card>
@@ -208,14 +208,14 @@ import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
-const componentHeaders = [
-  { title: 'Component Code', key: 'component_item_code', width: '150px' },
-  { title: 'Description', key: 'component_description', width: '200px' },
-  { title: 'Qty Per', key: 'quantity_per', width: '100px' },
-  { title: 'UOM', key: 'unit_of_measure', width: '100px' },
-  { title: 'Waste %', key: 'waste_percentage', width: '100px' },
-  { title: 'Actions', key: 'actions', width: '80px', sortable: false }
-]
+const componentHeaders = computed(() => [
+  { title: t('capacityPlanning.bom.headers.componentCode'), key: 'component_item_code', width: '150px' },
+  { title: t('capacityPlanning.bom.headers.description'), key: 'component_description', width: '200px' },
+  { title: t('capacityPlanning.bom.headers.qtyPer'), key: 'quantity_per', width: '100px' },
+  { title: t('capacityPlanning.bom.headers.uom'), key: 'unit_of_measure', width: '100px' },
+  { title: t('capacityPlanning.bom.headers.wastePercent'), key: 'waste_percentage', width: '100px' },
+  { title: t('capacityPlanning.bom.headers.actions'), key: 'actions', width: '80px', sortable: false }
+])
 
 const uomOptions = ['EA', 'M', 'YD', 'KG', 'LB', 'PC', 'SET']
 

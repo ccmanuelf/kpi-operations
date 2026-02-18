@@ -6,7 +6,6 @@
       class="mb-4"
     />
     <template v-else>
-      <!-- Header -->
       <v-row class="mb-4">
         <v-col cols="12">
           <div class="d-flex justify-space-between align-center flex-wrap ga-2">
@@ -20,16 +19,14 @@
               color="primary"
               prepend-icon="mdi-plus"
               @click="openCreateDialog"
-              aria-label="Create new work order"
+              :aria-label="t('workOrders.ariaCreateNew')"
             >
               {{ t('common.add') }} {{ t('production.workOrder') }}
             </v-btn>
           </div>
         </v-col>
       </v-row>
-
-      <!-- Summary Cards -->
-      <v-row class="mb-4" role="region" aria-label="Work order statistics summary">
+      <v-row class="mb-4" role="region" :aria-label="t('workOrders.ariaStatsSummary')">
         <v-col cols="12" sm="6" md="3">
           <v-card class="pa-4" variant="tonal" color="primary" role="article" aria-labelledby="stat-total-label">
             <div class="d-flex align-center">
@@ -83,9 +80,7 @@
           </v-card>
         </v-col>
       </v-row>
-
-      <!-- Filters -->
-      <v-card class="mb-4" role="search" aria-label="Work order filters">
+      <v-card class="mb-4" role="search" :aria-label="t('workOrders.ariaFilters')">
         <v-card-text>
           <v-row align="center">
             <v-col cols="12" md="3">
@@ -93,12 +88,9 @@
                 v-model="filters.search"
                 prepend-inner-icon="mdi-magnify"
                 :label="t('common.search')"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
+                variant="outlined" density="compact" hide-details clearable
                 @update:model-value="debouncedSearch"
-                aria-label="Search work orders by ID or description"
+                :aria-label="t('workOrders.ariaSearchWo')"
               />
             </v-col>
             <v-col cols="12" md="2">
@@ -106,10 +98,7 @@
                 v-model="filters.status"
                 :items="statusOptions"
                 :label="t('common.status')"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
+                variant="outlined" density="compact" hide-details clearable
                 @update:model-value="loadWorkOrders"
               />
             </v-col>
@@ -118,10 +107,7 @@
                 v-model="filters.priority"
                 :items="priorityOptions"
                 :label="t('workOrders.priority')"
-                variant="outlined"
-                density="compact"
-                hide-details
-                clearable
+                variant="outlined" density="compact" hide-details clearable
                 @update:model-value="loadWorkOrders"
               />
             </v-col>
@@ -130,9 +116,7 @@
                 v-model="filters.startDate"
                 type="date"
                 :label="t('filters.startDate')"
-                variant="outlined"
-                density="compact"
-                hide-details
+                variant="outlined" density="compact" hide-details
                 @update:model-value="loadWorkOrders"
               />
             </v-col>
@@ -141,27 +125,18 @@
                 v-model="filters.endDate"
                 type="date"
                 :label="t('filters.endDate')"
-                variant="outlined"
-                density="compact"
-                hide-details
+                variant="outlined" density="compact" hide-details
                 @update:model-value="loadWorkOrders"
               />
             </v-col>
             <v-col cols="12" md="1">
-              <v-btn
-                variant="text"
-                color="primary"
-                @click="resetFilters"
-                aria-label="Reset all filters"
-              >
+              <v-btn variant="text" color="primary" @click="resetFilters" :aria-label="t('workOrders.ariaResetFilters')">
                 {{ t('common.reset') }}
               </v-btn>
             </v-col>
           </v-row>
         </v-card-text>
       </v-card>
-
-      <!-- Work Orders Table -->
       <v-card>
         <v-data-table
           :headers="headers"
@@ -173,42 +148,27 @@
           hover
           @click:row="onRowClick"
         >
-          <!-- Work Order ID -->
           <template v-slot:item.work_order_id="{ item }">
-            <div class="font-weight-medium text-primary">
-              {{ item.work_order_id }}
-            </div>
+            <div class="font-weight-medium text-primary">{{ item.work_order_id }}</div>
           </template>
-
-          <!-- Style/Model -->
           <template v-slot:item.style_model="{ item }">
             <div class="text-body-2">{{ item.style_model }}</div>
           </template>
-
-          <!-- Progress -->
           <template v-slot:item.progress="{ item }">
             <div class="d-flex align-center" style="min-width: 150px;">
               <v-progress-linear
                 :model-value="calculateProgress(item)"
                 :color="getProgressColor(item)"
-                height="8"
-                rounded
-                class="mr-2"
+                height="8" rounded class="mr-2"
               />
               <span class="text-body-2 text-no-wrap">
                 {{ item.actual_quantity }} / {{ item.planned_quantity }}
               </span>
             </div>
           </template>
-
-          <!-- Progress Percentage -->
           <template v-slot:item.progress_pct="{ item }">
-            <span class="font-weight-medium">
-              {{ calculateProgress(item).toFixed(1) }}%
-            </span>
+            <span class="font-weight-medium">{{ calculateProgress(item).toFixed(1) }}%</span>
           </template>
-
-          <!-- Status -->
           <template v-slot:item.status="{ item }">
             <WorkOrderStatusChip
               :work-order-id="item.work_order_id"
@@ -219,29 +179,19 @@
               @click.stop
             />
           </template>
-
-          <!-- Priority -->
           <template v-slot:item.priority="{ item }">
             <v-chip
               v-if="item.priority"
               :color="getPriorityColor(item.priority)"
-              size="small"
-              variant="outlined"
+              size="small" variant="outlined"
             >
               {{ item.priority }}
             </v-chip>
             <span v-else class="text-medium-emphasis">-</span>
           </template>
-
-          <!-- Due Date -->
           <template v-slot:item.planned_ship_date="{ item }">
             <div v-if="item.planned_ship_date" class="d-flex align-center">
-              <v-icon
-                v-if="isOverdue(item)"
-                color="error"
-                size="small"
-                class="mr-1"
-              >
+              <v-icon v-if="isOverdue(item)" color="error" size="small" class="mr-1">
                 mdi-alert-circle
               </v-icon>
               <span :class="{ 'text-error': isOverdue(item) }">
@@ -250,71 +200,36 @@
             </div>
             <span v-else class="text-medium-emphasis">{{ $t('common.notSet') }}</span>
           </template>
-
-          <!-- Actions -->
           <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon
-              size="small"
-              variant="text"
-              @click.stop="openDetailDrawer(item)"
-              :aria-label="`View details for work order ${item.work_order_id}`"
-            >
+            <v-btn icon size="small" variant="text" @click.stop="openDetailDrawer(item)"
+              :aria-label="t('workOrders.ariaViewDetails', { id: item.work_order_id })"
               <v-icon aria-hidden="true">mdi-eye</v-icon>
               <v-tooltip activator="parent">{{ $t('workOrders.viewDetails') }}</v-tooltip>
             </v-btn>
-            <v-btn
-              icon
-              size="small"
-              variant="text"
-              @click.stop="openEditDialog(item)"
-              :aria-label="`Edit work order ${item.work_order_id}`"
-            >
+            <v-btn icon size="small" variant="text" @click.stop="openEditDialog(item)"
+              :aria-label="t('workOrders.ariaEditWo', { id: item.work_order_id })"
               <v-icon aria-hidden="true">mdi-pencil</v-icon>
               <v-tooltip activator="parent">{{ $t('workOrders.edit') }}</v-tooltip>
             </v-btn>
             <v-menu>
               <template v-slot:activator="{ props }">
-                <v-btn
-                  icon
-                  size="small"
-                  variant="text"
-                  v-bind="props"
-                  @click.stop
-                  :aria-label="`More actions for work order ${item.work_order_id}`"
-                  aria-haspopup="menu"
-                >
+                <v-btn icon size="small" variant="text" v-bind="props" @click.stop
+                  :aria-label="t('workOrders.ariaMoreActions', { id: item.work_order_id })" aria-haspopup="menu">
                   <v-icon aria-hidden="true">mdi-dots-vertical</v-icon>
                 </v-btn>
               </template>
               <v-list density="compact">
-                <v-list-item
-                  v-if="item.status === 'ACTIVE'"
-                  prepend-icon="mdi-pause"
-                  @click="updateStatus(item, 'ON_HOLD')"
-                >
+                <v-list-item v-if="item.status === 'ACTIVE'" prepend-icon="mdi-pause" @click="updateStatus(item, 'ON_HOLD')">
                   <v-list-item-title>{{ t('holds.onHold') }}</v-list-item-title>
                 </v-list-item>
-                <v-list-item
-                  v-if="item.status === 'ON_HOLD'"
-                  prepend-icon="mdi-play"
-                  @click="updateStatus(item, 'ACTIVE')"
-                >
+                <v-list-item v-if="item.status === 'ON_HOLD'" prepend-icon="mdi-play" @click="updateStatus(item, 'ACTIVE')">
                   <v-list-item-title>{{ t('holds.resumed') }}</v-list-item-title>
                 </v-list-item>
-                <v-list-item
-                  v-if="item.status === 'ACTIVE'"
-                  prepend-icon="mdi-check"
-                  @click="updateStatus(item, 'COMPLETED')"
-                >
+                <v-list-item v-if="item.status === 'ACTIVE'" prepend-icon="mdi-check" @click="updateStatus(item, 'COMPLETED')">
                   <v-list-item-title>{{ t('workOrders.completed') }}</v-list-item-title>
                 </v-list-item>
                 <v-divider />
-                <v-list-item
-                  prepend-icon="mdi-delete"
-                  base-color="error"
-                  @click="confirmDelete(item)"
-                >
+                <v-list-item prepend-icon="mdi-delete" base-color="error" @click="confirmDelete(item)">
                   <v-list-item-title>{{ t('common.delete') }}</v-list-item-title>
                 </v-list-item>
               </v-list>
@@ -323,22 +238,15 @@
         </v-data-table>
       </v-card>
     </template>
-
-    <!-- Work Order Detail Drawer -->
     <WorkOrderDetailDrawer
       v-model="detailDrawerOpen"
       :work-order="selectedWorkOrder"
       @update="loadWorkOrders"
       @edit="openEditDialog"
     />
-
-    <!-- Create/Edit Dialog -->
     <v-dialog
-      v-model="formDialog"
-      max-width="700"
-      persistent
-      role="dialog"
-      aria-modal="true"
+      v-model="formDialog" max-width="700" persistent
+      role="dialog" aria-modal="true"
       :aria-labelledby="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'"
     >
       <v-card>
@@ -346,12 +254,7 @@
           <span :id="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'">
             {{ editingWorkOrder ? t('common.edit') + ' ' + t('production.workOrder') : t('common.add') + ' ' + t('production.workOrder') }}
           </span>
-          <v-btn
-            icon
-            variant="text"
-            @click="formDialog = false"
-            aria-label="Close dialog"
-          >
+          <v-btn icon variant="text" @click="formDialog = false" :aria-label="t('workOrders.ariaCloseDialog')">
             <v-icon aria-hidden="true">mdi-close</v-icon>
           </v-btn>
         </v-card-title>
@@ -359,107 +262,58 @@
           <v-form ref="formRef" v-model="formValid">
             <v-row>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.work_order_id"
-                  :label="t('workOrders.workOrderId') + ' *'"
-                  variant="outlined"
-                  :rules="[rules.required]"
-                  :disabled="!!editingWorkOrder"
-                />
+                <v-text-field v-model="formData.work_order_id" :label="t('workOrders.workOrderId') + ' *'"
+                  variant="outlined" :rules="[rules.required]" :disabled="!!editingWorkOrder" />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.style_model"
-                  :label="t('production.style') + ' *'"
-                  variant="outlined"
-                  :rules="[rules.required]"
-                />
+                <v-text-field v-model="formData.style_model" :label="t('production.style') + ' *'"
+                  variant="outlined" :rules="[rules.required]" />
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model.number="formData.planned_quantity"
-                  type="number"
-                  :label="t('workOrders.quantityOrdered') + ' *'"
-                  variant="outlined"
-                  :rules="[rules.required, rules.positive]"
-                />
+                <v-text-field v-model.number="formData.planned_quantity" type="number"
+                  :label="t('workOrders.quantityOrdered') + ' *'" variant="outlined" :rules="[rules.required, rules.positive]" />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model.number="formData.actual_quantity"
-                  type="number"
-                  :label="t('workOrders.quantityCompleted')"
-                  variant="outlined"
-                  :rules="[rules.nonNegative]"
-                />
+                <v-text-field v-model.number="formData.actual_quantity" type="number"
+                  :label="t('workOrders.quantityCompleted')" variant="outlined" :rules="[rules.nonNegative]" />
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="12" md="6">
-                <v-select
-                  v-model="formData.status"
-                  :items="statusOptions"
-                  :label="t('common.status') + ' *'"
-                  variant="outlined"
-                  :rules="[rules.required]"
-                />
+                <v-select v-model="formData.status" :items="statusOptions"
+                  :label="t('common.status') + ' *'" variant="outlined" :rules="[rules.required]" />
               </v-col>
               <v-col cols="12" md="6">
-                <v-select
-                  v-model="formData.priority"
-                  :items="priorityOptions"
-                  :label="t('workOrders.priority')"
-                  variant="outlined"
-                  clearable
-                />
+                <v-select v-model="formData.priority" :items="priorityOptions"
+                  :label="t('workOrders.priority')" variant="outlined" clearable />
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.planned_start_date"
-                  type="date"
-                  :label="t('workOrders.plannedStart')"
-                  variant="outlined"
-                />
+                <v-text-field v-model="formData.planned_start_date" type="date"
+                  :label="t('workOrders.plannedStart')" variant="outlined" />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.planned_ship_date"
-                  type="date"
-                  :label="t('workOrders.plannedEnd')"
-                  variant="outlined"
-                />
+                <v-text-field v-model="formData.planned_ship_date" type="date"
+                  :label="t('workOrders.plannedEnd')" variant="outlined" />
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.customer_po_number"
-                  :label="t('production.workOrder')"
-                  variant="outlined"
-                />
+                <v-text-field v-model="formData.customer_po_number"
+                  :label="t('production.workOrder')" variant="outlined" />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field
-                  v-model.number="formData.ideal_cycle_time"
-                  type="number"
-                  step="0.01"
-                  :label="t('production.cycleTime')"
-                  variant="outlined"
-                />
+                <v-text-field v-model.number="formData.ideal_cycle_time" type="number" step="0.01"
+                  :label="t('production.cycleTime')" variant="outlined" />
               </v-col>
             </v-row>
             <v-row>
               <v-col cols="12">
-                <v-textarea
-                  v-model="formData.notes"
-                  :label="t('production.notes')"
-                  variant="outlined"
-                  rows="3"
-                />
+                <v-textarea v-model="formData.notes" :label="t('production.notes')"
+                  variant="outlined" rows="3" />
               </v-col>
             </v-row>
           </v-form>
@@ -467,26 +321,16 @@
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="formDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn
-            color="primary"
-            :loading="saving"
-            :disabled="!formValid"
-            @click="saveWorkOrder"
-          >
+          <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="saveWorkOrder">
             {{ editingWorkOrder ? t('common.update') : t('common.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <!-- Delete Confirmation Dialog -->
     <v-dialog
-      v-model="deleteDialog"
-      max-width="400"
-      role="alertdialog"
-      aria-modal="true"
-      aria-labelledby="delete-dialog-title"
-      aria-describedby="delete-dialog-desc"
+      v-model="deleteDialog" max-width="400"
+      role="alertdialog" aria-modal="true"
+      aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-desc"
     >
       <v-card>
         <v-card-title id="delete-dialog-title" class="text-h6">{{ t('common.confirmDelete') }}</v-card-title>
@@ -496,13 +340,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false" aria-label="Cancel deletion">{{ t('common.cancel') }}</v-btn>
-          <v-btn
-            color="error"
-            :loading="deleting"
-            @click="deleteWorkOrder"
-            aria-label="Confirm delete work order"
-          >
+          <v-btn variant="text" @click="deleteDialog = false" :aria-label="t('workOrders.ariaCancelDeletion')">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="error" :loading="deleting" @click="deleteWorkOrder" :aria-label="t('workOrders.ariaConfirmDelete')">
             {{ t('common.delete') }}
           </v-btn>
         </v-card-actions>
@@ -512,341 +351,31 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { format, parseISO, isAfter, startOfDay } from 'date-fns'
-import api from '@/services/api'
-import { transitionWorkOrder } from '@/services/api/workflow'
-import { useNotificationStore } from '@/stores/notificationStore'
 import WorkOrderDetailDrawer from '@/components/WorkOrderDetailDrawer.vue'
 import WorkOrderStatusChip from '@/components/workflow/WorkOrderStatusChip.vue'
+import { useWorkOrderData } from '@/composables/useWorkOrderData'
+import { useWorkOrderForms } from '@/composables/useWorkOrderForms'
 
 const { t } = useI18n()
 
-// Simple debounce utility
-const debounce = (fn, delay) => {
-  let timeoutId
-  return (...args) => {
-    clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn(...args), delay)
-  }
-}
+const {
+  initialLoading, loading, workOrders, selectedWorkOrder, detailDrawerOpen,
+  filters, statusOptions, priorityOptions, headers, summaryStats,
+  loadWorkOrders, debouncedSearch, resetFilters,
+  calculateProgress, getProgressColor, formatStatus,
+  getPriorityColor, formatDate, isOverdue,
+  onRowClick, openDetailDrawer
+} = useWorkOrderData()
 
-const notificationStore = useNotificationStore()
+const {
+  formDialog, deleteDialog, editingWorkOrder, workOrderToDelete,
+  formRef, formValid, saving, deleting, formData, rules,
+  openCreateDialog, openEditDialog, saveWorkOrder,
+  updateStatus, onStatusTransitioned, confirmDelete, deleteWorkOrder
+} = useWorkOrderForms(loadWorkOrders, formatStatus)
 
-// State
-const initialLoading = ref(true)
-const loading = ref(false)
-const saving = ref(false)
-const deleting = ref(false)
-const workOrders = ref([])
-const selectedWorkOrder = ref(null)
-const detailDrawerOpen = ref(false)
-const formDialog = ref(false)
-const deleteDialog = ref(false)
-const editingWorkOrder = ref(null)
-const workOrderToDelete = ref(null)
-const formRef = ref(null)
-const formValid = ref(false)
-
-// Filters
-const filters = ref({
-  search: '',
-  status: null,
-  priority: null,
-  startDate: '',
-  endDate: ''
-})
-
-// Form data
-const formData = ref({
-  work_order_id: '',
-  client_id: 'CLIENT001', // Default client
-  style_model: '',
-  planned_quantity: null,
-  actual_quantity: 0,
-  status: 'ACTIVE',
-  priority: null,
-  planned_start_date: '',
-  planned_ship_date: '',
-  customer_po_number: '',
-  ideal_cycle_time: null,
-  notes: ''
-})
-
-// Options
-const statusOptions = [
-  { title: 'Active', value: 'ACTIVE' },
-  { title: 'On Hold', value: 'ON_HOLD' },
-  { title: 'Completed', value: 'COMPLETED' },
-  { title: 'Rejected', value: 'REJECTED' },
-  { title: 'Cancelled', value: 'CANCELLED' }
-]
-
-const priorityOptions = [
-  { title: 'High', value: 'HIGH' },
-  { title: 'Medium', value: 'MEDIUM' },
-  { title: 'Low', value: 'LOW' }
-]
-
-// Validation rules
-const rules = {
-  required: v => !!v || 'Required',
-  positive: v => (v && v > 0) || 'Must be greater than 0',
-  nonNegative: v => v === null || v === '' || v >= 0 || 'Cannot be negative'
-}
-
-// Table headers
-const headers = computed(() => [
-  { title: t('workOrders.workOrderId'), key: 'work_order_id', sortable: true },
-  { title: t('production.style'), key: 'style_model', sortable: true },
-  { title: t('jobs.progress'), key: 'progress', sortable: false, width: '200px' },
-  { title: '%', key: 'progress_pct', sortable: true, width: '80px' },
-  { title: t('common.status'), key: 'status', sortable: true },
-  { title: t('workOrders.priority'), key: 'priority', sortable: true },
-  { title: t('workOrders.dueDate'), key: 'planned_ship_date', sortable: true },
-  { title: t('common.actions'), key: 'actions', sortable: false, width: '140px' }
-])
-
-// Computed
-const summaryStats = computed(() => {
-  const stats = {
-    total: workOrders.value.length,
-    active: 0,
-    onHold: 0,
-    completed: 0
-  }
-  workOrders.value.forEach(wo => {
-    if (wo.status === 'ACTIVE') stats.active++
-    else if (wo.status === 'ON_HOLD') stats.onHold++
-    else if (wo.status === 'COMPLETED') stats.completed++
-  })
-  return stats
-})
-
-// Methods
-const loadWorkOrders = async () => {
-  loading.value = true
-  try {
-    const params = {}
-    if (filters.value.status) params.status_filter = filters.value.status
-    if (filters.value.search) params.style_model = filters.value.search
-
-    const response = await api.getWorkOrders(params)
-    workOrders.value = response.data || []
-  } catch (error) {
-    console.error('Error loading work orders:', error)
-    notificationStore.showError('Failed to load work orders')
-  } finally {
-    loading.value = false
-    initialLoading.value = false
-  }
-}
-
-const debouncedSearch = debounce(() => {
-  loadWorkOrders()
-}, 300)
-
-const resetFilters = () => {
-  filters.value = {
-    search: '',
-    status: null,
-    priority: null,
-    startDate: '',
-    endDate: ''
-  }
-  loadWorkOrders()
-}
-
-const calculateProgress = (item) => {
-  if (!item.planned_quantity || item.planned_quantity === 0) return 0
-  return (item.actual_quantity / item.planned_quantity) * 100
-}
-
-const getProgressColor = (item) => {
-  const progress = calculateProgress(item)
-  if (progress >= 100) return 'success'
-  if (progress >= 75) return 'info'
-  if (progress >= 50) return 'warning'
-  return 'error'
-}
-
-const getStatusColor = (status) => {
-  const colors = {
-    ACTIVE: 'info',
-    ON_HOLD: 'warning',
-    COMPLETED: 'success',
-    REJECTED: 'error',
-    CANCELLED: 'grey'
-  }
-  return colors[status] || 'grey'
-}
-
-const formatStatus = (status) => {
-  const labels = {
-    ACTIVE: 'Active',
-    ON_HOLD: 'On Hold',
-    COMPLETED: 'Completed',
-    REJECTED: 'Rejected',
-    CANCELLED: 'Cancelled'
-  }
-  return labels[status] || status
-}
-
-const getPriorityColor = (priority) => {
-  const colors = {
-    HIGH: 'error',
-    MEDIUM: 'warning',
-    LOW: 'success'
-  }
-  return colors[priority] || 'grey'
-}
-
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  try {
-    return format(parseISO(dateStr), 'MMM dd, yyyy')
-  } catch {
-    return dateStr
-  }
-}
-
-const isOverdue = (item) => {
-  if (!item.planned_ship_date || item.status === 'COMPLETED') return false
-  const dueDate = parseISO(item.planned_ship_date)
-  return isAfter(startOfDay(new Date()), dueDate)
-}
-
-const onRowClick = (event, { item }) => {
-  openDetailDrawer(item)
-}
-
-const openDetailDrawer = (workOrder) => {
-  selectedWorkOrder.value = workOrder
-  detailDrawerOpen.value = true
-}
-
-const openCreateDialog = () => {
-  editingWorkOrder.value = null
-  formData.value = {
-    work_order_id: '',
-    client_id: 'CLIENT001',
-    style_model: '',
-    planned_quantity: null,
-    actual_quantity: 0,
-    status: 'ACTIVE',
-    priority: null,
-    planned_start_date: '',
-    planned_ship_date: '',
-    customer_po_number: '',
-    ideal_cycle_time: null,
-    notes: ''
-  }
-  formDialog.value = true
-}
-
-const openEditDialog = (workOrder) => {
-  editingWorkOrder.value = workOrder
-  formData.value = {
-    work_order_id: workOrder.work_order_id,
-    client_id: workOrder.client_id,
-    style_model: workOrder.style_model,
-    planned_quantity: workOrder.planned_quantity,
-    actual_quantity: workOrder.actual_quantity,
-    status: workOrder.status,
-    priority: workOrder.priority,
-    planned_start_date: workOrder.planned_start_date?.split('T')[0] || '',
-    planned_ship_date: workOrder.planned_ship_date?.split('T')[0] || '',
-    customer_po_number: workOrder.customer_po_number || '',
-    ideal_cycle_time: workOrder.ideal_cycle_time,
-    notes: workOrder.notes || ''
-  }
-  formDialog.value = true
-}
-
-const saveWorkOrder = async () => {
-  const { valid } = await formRef.value.validate()
-  if (!valid) return
-
-  saving.value = true
-  try {
-    // Prepare data, removing empty date strings
-    const data = { ...formData.value }
-    if (!data.planned_start_date) delete data.planned_start_date
-    if (!data.planned_ship_date) delete data.planned_ship_date
-    if (!data.ideal_cycle_time) delete data.ideal_cycle_time
-    if (!data.priority) delete data.priority
-
-    if (editingWorkOrder.value) {
-      await api.updateWorkOrder(editingWorkOrder.value.work_order_id, data)
-      notificationStore.showSuccess('Work order updated successfully')
-    } else {
-      await api.createWorkOrder(data)
-      notificationStore.showSuccess('Work order created successfully')
-    }
-
-    formDialog.value = false
-    await loadWorkOrders()
-  } catch (error) {
-    console.error('Error saving work order:', error)
-    notificationStore.showError(
-      error.response?.data?.detail || 'Failed to save work order'
-    )
-  } finally {
-    saving.value = false
-  }
-}
-
-// Handle status transition from WorkOrderStatusChip
-const onStatusTransitioned = () => {
-  loadWorkOrders()
-}
-
-const updateStatus = async (workOrder, newStatus) => {
-  try {
-    // Use workflow API for proper transition logging
-    await transitionWorkOrder(workOrder.work_order_id, newStatus)
-    notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
-    await loadWorkOrders()
-  } catch (error) {
-    console.error('Error updating status:', error)
-    // Fallback to direct update if workflow API fails
-    try {
-      await api.updateWorkOrder(workOrder.work_order_id, { status: newStatus })
-      notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
-      await loadWorkOrders()
-    } catch (fallbackError) {
-      notificationStore.showError('Failed to update status')
-    }
-  }
-}
-
-const confirmDelete = (workOrder) => {
-  workOrderToDelete.value = workOrder
-  deleteDialog.value = true
-}
-
-const deleteWorkOrder = async () => {
-  if (!workOrderToDelete.value) return
-
-  deleting.value = true
-  try {
-    await api.deleteWorkOrder(workOrderToDelete.value.work_order_id)
-    notificationStore.showSuccess('Work order deleted successfully')
-    deleteDialog.value = false
-    workOrderToDelete.value = null
-    await loadWorkOrders()
-  } catch (error) {
-    console.error('Error deleting work order:', error)
-    notificationStore.showError(
-      error.response?.data?.detail || 'Failed to delete work order'
-    )
-  } finally {
-    deleting.value = false
-  }
-}
-
-// Lifecycle
 onMounted(() => {
   loadWorkOrders()
 })
@@ -856,7 +385,6 @@ onMounted(() => {
 .v-data-table :deep(tbody tr) {
   cursor: pointer;
 }
-
 .v-data-table :deep(tbody tr:hover) {
   background-color: rgba(var(--v-theme-primary), 0.04) !important;
 }
