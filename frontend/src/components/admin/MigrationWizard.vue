@@ -33,7 +33,7 @@
 
           <v-text-field
             v-model="targetUrl"
-            label="Database Connection URL"
+            :label="t('migration.dbConnectionUrl')"
             :placeholder="urlPlaceholder"
             :hint="urlHint"
             persistent-hint
@@ -114,7 +114,7 @@
 
           <v-text-field
             v-model="confirmationText"
-            label="Type MIGRATE to confirm"
+            :label="t('migration.typeToConfirm')"
             variant="outlined"
             :rules="[v => v === 'MIGRATE' || 'You must type MIGRATE exactly']"
             class="mb-4"
@@ -147,6 +147,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({

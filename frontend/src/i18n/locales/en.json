@@ -967,7 +967,12 @@
       "role": "Role",
       "active": "Active",
       "inactive": "Inactive",
-      "confirmDeleteUser": "Are you sure you want to delete this user?"
+      "confirmDeleteUser": "Are you sure you want to delete this user?",
+      "assignedClient": "Assigned Client (optional)",
+      "confirmDeleteTitle": "Confirm Delete",
+      "confirmDeleteText": "Are you sure you want to delete user {username}? This action cannot be undone.",
+      "saveUser": "Update",
+      "createUserBtn": "Create"
     },
     "roles": "Roles",
     "permissions": "Permissions",
@@ -1866,6 +1871,24 @@
       "title": "Welcome!",
       "message": "Sample T-Shirt manufacturing data has been loaded to help you get started.",
       "gotIt": "Got it"
+    },
+    "schedule": {
+      "shift1Hours": "Shift 1 Hours",
+      "shift2Hours": "Shift 2 Hours",
+      "shift3Hours": "Shift 3 Hours",
+      "enableOvertime": "Enable Overtime",
+      "weekdayOtHours": "Weekday OT Hours (per day)",
+      "weekendOtDays": "Weekend OT Days",
+      "weekendOtHours": "Weekend OT Hours"
+    },
+    "demand": {
+      "demandMode": "Demand Mode",
+      "totalDailyDemand": "Total Daily Demand (pieces)",
+      "simulationHorizon": "Simulation Horizon (days)"
     }
+  },
+  "migration": {
+    "dbConnectionUrl": "Database Connection URL",
+    "typeToConfirm": "Type MIGRATE to confirm"
   }
 }

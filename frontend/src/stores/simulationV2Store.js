@@ -307,6 +307,7 @@ export const useSimulationV2Store = defineStore('simulationV2', {
       } catch (error) {
         console.error('Validation failed:', error)
         this.error = error.response?.data?.detail || error.message
+        useNotificationStore().showError(this.error || 'Validation failed. Please check your configuration.')
         throw error
       } finally {
         this.isValidating = false
@@ -341,6 +342,7 @@ export const useSimulationV2Store = defineStore('simulationV2', {
       } catch (error) {
         console.error('Simulation failed:', error)
         this.error = error.response?.data?.detail || error.message
+        useNotificationStore().showError(this.error || 'Simulation failed. Please try again.')
         throw error
       } finally {
         this.isRunning = false

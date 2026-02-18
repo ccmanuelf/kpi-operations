@@ -16,7 +16,9 @@ from backend.calculations.wip_aging import identify_chronic_holds
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 from backend.constants import DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
+from backend.utils.logging_utils import get_module_logger
 
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/holds", tags=["WIP Holds"])
 

@@ -7,6 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
 import { useAuthStore } from './authStore'
+import { useNotificationStore } from './notificationStore'
 
 const STORAGE_KEY = 'kpi-saved-filters'
 const HISTORY_KEY = 'kpi-filter-history'
@@ -98,6 +99,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to load filters from API:', e)
+      useNotificationStore().showError('Failed to load saved filters. Using local settings.')
     } finally {
       isLoading.value = false
     }
@@ -123,6 +125,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to create filter:', e)
+      useNotificationStore().showError('Failed to create filter. Please try again.')
       return null
     } finally {
       isLoading.value = false
@@ -144,6 +147,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to update filter:', e)
+      useNotificationStore().showError('Failed to update filter. Please try again.')
       return null
     } finally {
       isLoading.value = false
@@ -164,6 +168,7 @@ export const useFiltersStore = defineStore('filters', () => {
       return true
     } catch (e) {
       console.error('Failed to delete filter:', e)
+      useNotificationStore().showError('Failed to delete filter. Please try again.')
       return false
     } finally {
       isLoading.value = false
@@ -225,6 +230,7 @@ export const useFiltersStore = defineStore('filters', () => {
       return true
     } catch (e) {
       console.error('Failed to set default filter:', e)
+      useNotificationStore().showError('Failed to set default filter. Please try again.')
       return false
     } finally {
       isLoading.value = false
@@ -274,6 +280,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to duplicate filter:', e)
+      useNotificationStore().showError('Failed to duplicate filter. Please try again.')
       return null
     } finally {
       isLoading.value = false

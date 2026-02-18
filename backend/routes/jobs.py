@@ -16,7 +16,9 @@ from backend.crud.job import create_job, get_job, get_jobs, get_jobs_by_work_ord
 from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
 
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 

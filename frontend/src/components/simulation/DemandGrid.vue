@@ -22,7 +22,7 @@
             :items="modeOptions"
             item-title="title"
             item-value="value"
-            label="Demand Mode"
+            :label="t('simulationV2.demand.demandMode')"
             variant="outlined"
             density="compact"
             hide-details
@@ -31,7 +31,7 @@
         <v-col v-if="store.mode === 'mix-driven'" cols="12" md="4">
           <v-text-field
             v-model.number="store.totalDemand"
-            label="Total Daily Demand (pieces)"
+            :label="t('simulationV2.demand.totalDailyDemand')"
             type="number"
             variant="outlined"
             density="compact"
@@ -42,7 +42,7 @@
           <v-select
             v-model.number="store.horizonDays"
             :items="[1, 2, 3, 5, 7]"
-            label="Simulation Horizon (days)"
+            :label="t('simulationV2.demand.simulationHorizon')"
             variant="outlined"
             density="compact"
             hide-details
@@ -95,9 +95,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AgGridVue } from 'ag-grid-vue3'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 
+const { t } = useI18n()
 const store = useSimulationV2Store()
 const gridApi = ref(null)
 

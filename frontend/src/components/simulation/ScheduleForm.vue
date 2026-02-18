@@ -33,7 +33,7 @@
                 <v-col cols="12">
                   <v-text-field
                     v-model.number="store.schedule.shift1_hours"
-                    label="Shift 1 Hours"
+                    :label="t('simulationV2.schedule.shift1Hours')"
                     type="number"
                     :min="1"
                     :max="12"
@@ -46,7 +46,7 @@
                 <v-col cols="12" v-if="store.schedule.shifts_enabled >= 2">
                   <v-text-field
                     v-model.number="store.schedule.shift2_hours"
-                    label="Shift 2 Hours"
+                    :label="t('simulationV2.schedule.shift2Hours')"
                     type="number"
                     :min="0"
                     :max="12"
@@ -59,7 +59,7 @@
                 <v-col cols="12" v-if="store.schedule.shifts_enabled >= 3">
                   <v-text-field
                     v-model.number="store.schedule.shift3_hours"
-                    label="Shift 3 Hours"
+                    :label="t('simulationV2.schedule.shift3Hours')"
                     type="number"
                     :min="0"
                     :max="12"
@@ -96,7 +96,7 @@
 
               <v-switch
                 v-model="store.schedule.ot_enabled"
-                label="Enable Overtime"
+                :label="t('simulationV2.schedule.enableOvertime')"
                 color="primary"
                 density="compact"
                 hide-details
@@ -108,7 +108,7 @@
                   <v-col cols="12">
                     <v-text-field
                       v-model.number="store.schedule.weekday_ot_hours"
-                      label="Weekday OT Hours (per day)"
+                      :label="t('simulationV2.schedule.weekdayOtHours')"
                       type="number"
                       :min="0"
                       :max="8"
@@ -121,7 +121,7 @@
                   <v-col cols="6">
                     <v-text-field
                       v-model.number="store.schedule.weekend_ot_days"
-                      label="Weekend OT Days"
+                      :label="t('simulationV2.schedule.weekendOtDays')"
                       type="number"
                       :min="0"
                       :max="2"
@@ -133,7 +133,7 @@
                   <v-col cols="6">
                     <v-text-field
                       v-model.number="store.schedule.weekend_ot_hours"
-                      label="Weekend OT Hours"
+                      :label="t('simulationV2.schedule.weekendOtHours')"
                       type="number"
                       :min="0"
                       :max="12"
@@ -189,8 +189,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 
+const { t } = useI18n()
 const store = useSimulationV2Store()
 
 const totalShiftHours = computed(() => {

@@ -6,6 +6,11 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DemandGrid from '../DemandGrid.vue'
 
+// Mock vue-i18n
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key })
+}))
+
 // Mock AG Grid
 vi.mock('ag-grid-vue3', () => ({
   AgGridVue: {

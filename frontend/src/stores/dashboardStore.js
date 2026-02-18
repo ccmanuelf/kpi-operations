@@ -7,6 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import api from '@/services/api'
 import { useAuthStore } from './authStore'
+import { useNotificationStore } from './notificationStore'
 
 const STORAGE_KEY = 'kpi-dashboard-preferences'
 
@@ -152,6 +153,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       }
     } catch (e) {
       console.error('Failed to load dashboard preferences from API:', e)
+      useNotificationStore().showError('Failed to load dashboard preferences. Using local settings.')
     } finally {
       isLoading.value = false
     }
@@ -172,6 +174,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       return true
     } catch (e) {
       console.error('Failed to save dashboard preferences to API:', e)
+      useNotificationStore().showError('Failed to save dashboard preferences. Please try again.')
       return false
     } finally {
       isLoading.value = false
@@ -210,6 +213,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         isSynced.value = true
       } catch (e) {
         console.error('Failed to reset preferences on server:', e)
+        useNotificationStore().showError('Failed to reset preferences on server. Local defaults applied.')
       }
     }
   }

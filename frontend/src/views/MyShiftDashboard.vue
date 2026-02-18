@@ -550,205 +550,81 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflowStore'
-import { useAuthStore } from '@/stores/authStore'
-import { useNotificationStore } from '@/stores/notificationStore'
 import DataCompletenessIndicator from '@/components/DataCompletenessIndicator.vue'
-import api from '@/services/api'
+
+// Composables
+import { useShiftDashboardData } from '@/composables/useShiftDashboardData'
+import { useShiftForms } from '@/composables/useShiftForms'
 
 const { t } = useI18n()
 const router = useRouter()
 const workflowStore = useWorkflowStore()
-const authStore = useAuthStore()
-const notificationStore = useNotificationStore()
 
-// Refs for time updates
-const currentTime = ref(new Date())
-let timeInterval = null
+// Data, timer, and display logic
+const {
+  assignedWorkOrders,
+  recentActivity,
+  myStats,
+  activeShift,
+  hasActiveShift,
+  currentDate,
+  currentDateFormatted,
+  shiftStatusColor,
+  shiftStatusIcon,
+  shiftStatusText,
+  shiftDuration,
+  workOrderOptions,
+  formatTime,
+  formatRelativeTime,
+  getProgressPercent,
+  getProgressColor,
+  getActivityColor,
+  getActivityIcon,
+  fetchMyShiftData,
+  initialize,
+  cleanup
+} = useShiftDashboardData()
 
-// Dialog states
-const showProductionDialog = ref(false)
-const showDowntimeDialog = ref(false)
-const showQualityDialog = ref(false)
-const showHelpDialog = ref(false)
-const isSubmitting = ref(false)
-const showSuccess = ref(false)
-const successMessage = ref('')
+// Form and submission logic
+const {
+  showProductionDialog,
+  showDowntimeDialog,
+  showQualityDialog,
+  showHelpDialog,
+  isSubmitting,
+  showSuccess,
+  successMessage,
+  selectedWorkOrder,
+  productionForm,
+  downtimeForm,
+  qualityForm,
+  helpForm,
+  productionPresets,
+  downtimeReasons,
+  defectTypes,
+  helpTypes,
+  openQuickLog,
+  openQuickProductionDialog,
+  openDowntimeDialog,
+  openQualityDialog,
+  openHelpDialog,
+  quickLogProduction,
+  submitProduction,
+  submitDowntime,
+  submitQuality,
+  submitHelpRequest
+} = useShiftForms(
+  () => activeShift.value,
+  () => currentDate.value,
+  () => assignedWorkOrders.value,
+  fetchMyShiftData
+)
 
-// Data states
-const assignedWorkOrders = ref([])
-const recentActivity = ref([])
-const myStats = ref({
-  unitsProduced: 0,
-  efficiency: 0,
-  downtimeIncidents: 0,
-  qualityChecks: 0
-})
-
-// Form states
-const selectedWorkOrder = ref(null)
-const productionForm = ref({
-  workOrderId: null,
-  quantity: 10
-})
-const downtimeForm = ref({
-  workOrderId: null,
-  reason: null,
-  minutes: 15,
-  notes: ''
-})
-const qualityForm = ref({
-  workOrderId: null,
-  inspectedQty: 100,
-  defectQty: 0,
-  defectType: null
-})
-const helpForm = ref({
-  type: null,
-  description: ''
-})
-
-// Constants
-const productionPresets = [10, 25, 50, 100]
-const downtimeReasons = [
-  'Equipment Breakdown',
-  'Material Shortage',
-  'Changeover',
-  'Scheduled Maintenance',
-  'Quality Issue',
-  'Waiting for Inspection',
-  'Other'
-]
-const defectTypes = [
-  'Dimensional',
-  'Visual',
-  'Functional',
-  'Packaging',
-  'Documentation',
-  'Other'
-]
-const helpTypes = [
-  'Equipment Issue',
-  'Material Issue',
-  'Quality Issue',
-  'Safety Concern',
-  'Training Needed',
-  'Supervisor Request',
-  'Other'
-]
-
-// Computed
-const activeShift = computed(() => workflowStore.activeShift)
-const hasActiveShift = computed(() => workflowStore.hasActiveShift)
-
-const currentDate = computed(() => new Date().toISOString().split('T')[0])
-const currentDateFormatted = computed(() => {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric'
-  })
-})
-
-const shiftStatusColor = computed(() => {
-  if (!hasActiveShift.value) return 'grey'
-  return 'success'
-})
-
-const shiftStatusIcon = computed(() => {
-  if (!hasActiveShift.value) return 'mdi-clock-outline'
-  return 'mdi-play-circle'
-})
-
-const shiftStatusText = computed(() => {
-  if (!hasActiveShift.value) return 'Not Started'
-  return 'Active'
-})
-
-const shiftDuration = computed(() => {
-  if (!activeShift.value?.start_time) return ''
-  const start = new Date(activeShift.value.start_time)
-  // Handle invalid date
-  if (isNaN(start.getTime())) return ''
-  const diff = currentTime.value - start
-  if (diff < 0) return '' // Future date edge case
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-  if (hours === 0) return `${minutes}m`
-  return `${hours}h ${minutes}m`
-})
-
-const workOrderOptions = computed(() => {
-  return assignedWorkOrders.value.map(wo => ({
-    text: `${wo.work_order_id} - ${wo.product_name}`,
-    value: wo.id
-  }))
-})
-
-// Methods
-const formatTime = (timeString) => {
-  if (!timeString) return ''
-  const date = new Date(timeString)
-  // Handle invalid date
-  if (isNaN(date.getTime())) return ''
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const formatRelativeTime = (timestamp) => {
-  if (!timestamp) return ''
-  const date = new Date(timestamp)
-  // Handle invalid date
-  if (isNaN(date.getTime())) return ''
-  const now = new Date()
-  const diff = now - date
-  const minutes = Math.floor(diff / (1000 * 60))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  if (hours < 24) return `${hours}h ago`
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-const getProgressPercent = (wo) => {
-  if (!wo.target_qty || wo.target_qty === 0) return 0
-  return Math.min(Math.round((wo.produced || 0) / wo.target_qty * 100), 100)
-}
-
-const getProgressColor = (wo) => {
-  const percent = getProgressPercent(wo)
-  if (percent >= 100) return 'success'
-  if (percent >= 75) return 'primary'
-  if (percent >= 50) return 'warning'
-  return 'error'
-}
-
-const getActivityColor = (type) => {
-  const colors = {
-    production: 'primary',
-    downtime: 'warning',
-    quality: 'success',
-    hold: 'error'
-  }
-  return colors[type] || 'grey'
-}
-
-const getActivityIcon = (type) => {
-  const icons = {
-    production: 'mdi-package-variant',
-    downtime: 'mdi-clock-alert',
-    quality: 'mdi-check-decagram',
-    hold: 'mdi-pause-circle'
-  }
-  return icons[type] || 'mdi-information'
-}
-
+// Shift workflow actions
 const handleStartShift = () => {
   workflowStore.startWorkflow('shift-start')
 }
@@ -757,6 +633,7 @@ const handleEndShift = () => {
   workflowStore.startWorkflow('shift-end')
 }
 
+// Navigation
 const handleCompletenessNavigate = (categoryId, route) => {
   router.push(route)
 }
@@ -765,155 +642,11 @@ const goToWorkOrders = () => {
   router.push('/work-orders')
 }
 
-const openQuickLog = (wo) => {
-  selectedWorkOrder.value = wo
-  productionForm.value.workOrderId = wo.id
-  showProductionDialog.value = true
-}
-
-const openQuickProductionDialog = () => {
-  if (assignedWorkOrders.value.length > 0) {
-    productionForm.value.workOrderId = assignedWorkOrders.value[0].id
-  }
-  showProductionDialog.value = true
-}
-
-const openDowntimeDialog = () => {
-  if (assignedWorkOrders.value.length > 0) {
-    downtimeForm.value.workOrderId = assignedWorkOrders.value[0].id
-  }
-  showDowntimeDialog.value = true
-}
-
-const openQualityDialog = () => {
-  if (assignedWorkOrders.value.length > 0) {
-    qualityForm.value.workOrderId = assignedWorkOrders.value[0].id
-  }
-  showQualityDialog.value = true
-}
-
-const openHelpDialog = () => {
-  showHelpDialog.value = true
-}
-
-const quickLogProduction = async (quantity) => {
-  if (!selectedWorkOrder.value) return
-
-  isSubmitting.value = true
-  try {
-    await api.createProductionEntry({
-      work_order_id: selectedWorkOrder.value.work_order_id,
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number || 1,
-      units_produced: quantity,
-      runtime_hours: 1
-    })
-
-    successMessage.value = `Logged ${quantity} units for ${selectedWorkOrder.value.work_order_id}`
-    showSuccess.value = true
-    await fetchMyShiftData()
-  } catch (error) {
-    notificationStore.error(error.response?.data?.detail || 'Failed to log production')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const submitProduction = async () => {
-  isSubmitting.value = true
-  try {
-    const wo = assignedWorkOrders.value.find(w => w.id === productionForm.value.workOrderId)
-    await api.createProductionEntry({
-      work_order_id: wo.work_order_id,
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number || 1,
-      units_produced: productionForm.value.quantity,
-      runtime_hours: 1
-    })
-
-    successMessage.value = `Logged ${productionForm.value.quantity} units`
-    showSuccess.value = true
-    showProductionDialog.value = false
-    productionForm.value.quantity = 10
-    await fetchMyShiftData()
-  } catch (error) {
-    notificationStore.error(error.response?.data?.detail || 'Failed to log production')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const submitDowntime = async () => {
-  isSubmitting.value = true
-  try {
-    const wo = assignedWorkOrders.value.find(w => w.id === downtimeForm.value.workOrderId)
-    await api.createDowntimeEntry({
-      work_order_id: wo.work_order_id,
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number || 1,
-      downtime_minutes: downtimeForm.value.minutes,
-      reason: downtimeForm.value.reason,
-      notes: downtimeForm.value.notes
-    })
-
-    successMessage.value = 'Downtime reported successfully'
-    showSuccess.value = true
-    showDowntimeDialog.value = false
-    downtimeForm.value = { workOrderId: null, reason: null, minutes: 15, notes: '' }
-    await fetchMyShiftData()
-  } catch (error) {
-    notificationStore.error(error.response?.data?.detail || 'Failed to report downtime')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const submitQuality = async () => {
-  isSubmitting.value = true
-  try {
-    const wo = assignedWorkOrders.value.find(w => w.id === qualityForm.value.workOrderId)
-    await api.createQualityEntry({
-      work_order_id: wo.work_order_id,
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number || 1,
-      inspected_quantity: qualityForm.value.inspectedQty,
-      defect_quantity: qualityForm.value.defectQty,
-      defect_type: qualityForm.value.defectType
-    })
-
-    successMessage.value = 'Quality check recorded'
-    showSuccess.value = true
-    showQualityDialog.value = false
-    qualityForm.value = { workOrderId: null, inspectedQty: 100, defectQty: 0, defectType: null }
-    await fetchMyShiftData()
-  } catch (error) {
-    notificationStore.error(error.response?.data?.detail || 'Failed to record quality check')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-const submitHelpRequest = async () => {
-  isSubmitting.value = true
-  try {
-    // For now, just show success - in production this would notify supervisors
-    successMessage.value = 'Help request sent to supervisor'
-    showSuccess.value = true
-    showHelpDialog.value = false
-    helpForm.value = { type: null, description: '' }
-  } catch (error) {
-    notificationStore.error('Failed to send help request')
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
 const refreshActivity = () => {
   fetchMyShiftData()
 }
 
 const editActivity = (activity) => {
-  // Navigate to appropriate entry page for editing
   const routes = {
     production: '/production-entry',
     downtime: '/data-entry/downtime',
@@ -923,124 +656,13 @@ const editActivity = (activity) => {
   router.push(routes[activity.type] || '/')
 }
 
-const fetchMyShiftData = async () => {
-  try {
-    // Fetch assigned work orders
-    const woResponse = await api.getWorkOrders({
-      status: 'in_progress',
-      date: currentDate.value
-    })
-    assignedWorkOrders.value = woResponse.data?.items || woResponse.data || []
-
-    // Fetch production entries for today
-    const prodResponse = await api.getProductionEntries({
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number
-    })
-    const productions = prodResponse.data?.items || prodResponse.data || []
-
-    // Calculate stats
-    let totalUnits = 0
-    let totalTarget = 0
-    productions.forEach(p => {
-      totalUnits += p.units_produced || 0
-      totalTarget += p.target_production || p.units_produced || 0
-    })
-
-    // Fetch downtime entries
-    const downResponse = await api.getDowntimeEntries({
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number
-    })
-    const downtimes = downResponse.data?.items || downResponse.data || []
-
-    // Fetch quality entries
-    const qualityResponse = await api.getQualityEntries({
-      date: currentDate.value,
-      shift: activeShift.value?.shift_number
-    })
-    const qualities = qualityResponse.data?.items || qualityResponse.data || []
-
-    // Update stats
-    myStats.value = {
-      unitsProduced: totalUnits,
-      efficiency: totalTarget > 0 ? Math.round((totalUnits / totalTarget) * 100) : 0,
-      downtimeIncidents: downtimes.length,
-      qualityChecks: qualities.length
-    }
-
-    // Build recent activity (last 5 entries)
-    const allActivities = [
-      ...productions.map(p => ({
-        id: `prod-${p.id}`,
-        type: 'production',
-        description: `Logged ${p.units_produced} units for ${p.work_order_id}`,
-        timestamp: p.created_at || p.date
-      })),
-      ...downtimes.map(d => ({
-        id: `down-${d.id}`,
-        type: 'downtime',
-        description: `${d.reason}: ${d.downtime_minutes} min downtime`,
-        timestamp: d.created_at || d.date
-      })),
-      ...qualities.map(q => ({
-        id: `qual-${q.id}`,
-        type: 'quality',
-        description: `Quality check: ${q.inspected_quantity} inspected, ${q.defect_quantity} defects`,
-        timestamp: q.created_at || q.date
-      }))
-    ]
-
-    // Sort by timestamp descending and take top 5
-    allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    recentActivity.value = allActivities.slice(0, 5)
-
-    // Update work order progress with production data
-    assignedWorkOrders.value = assignedWorkOrders.value.map(wo => {
-      const woProductions = productions.filter(p => p.work_order_id === wo.work_order_id)
-      const produced = woProductions.reduce((sum, p) => sum + (p.units_produced || 0), 0)
-      return { ...wo, produced }
-    })
-
-  } catch (error) {
-    console.error('Failed to fetch shift data:', error)
-    // Set mock data for demonstration if API fails
-    assignedWorkOrders.value = [
-      { id: 1, work_order_id: 'WO-2024-001', product_name: 'Widget A', target_qty: 1000, produced: 450 },
-      { id: 2, work_order_id: 'WO-2024-002', product_name: 'Widget B', target_qty: 500, produced: 320 },
-      { id: 3, work_order_id: 'WO-2024-003', product_name: 'Component X', target_qty: 750, produced: 600 }
-    ]
-    myStats.value = {
-      unitsProduced: 1370,
-      efficiency: 85,
-      downtimeIncidents: 2,
-      qualityChecks: 5
-    }
-    recentActivity.value = [
-      { id: '1', type: 'production', description: 'Logged 50 units for WO-2024-001', timestamp: new Date(Date.now() - 15 * 60000).toISOString() },
-      { id: '2', type: 'quality', description: 'Quality check: 100 inspected, 1 defect', timestamp: new Date(Date.now() - 45 * 60000).toISOString() },
-      { id: '3', type: 'downtime', description: 'Equipment Breakdown: 15 min downtime', timestamp: new Date(Date.now() - 90 * 60000).toISOString() },
-      { id: '4', type: 'production', description: 'Logged 100 units for WO-2024-002', timestamp: new Date(Date.now() - 120 * 60000).toISOString() },
-      { id: '5', type: 'production', description: 'Logged 75 units for WO-2024-003', timestamp: new Date(Date.now() - 180 * 60000).toISOString() }
-    ]
-  }
-}
-
 // Lifecycle
 onMounted(async () => {
-  await workflowStore.initialize()
-  await fetchMyShiftData()
-
-  // Update time every minute
-  timeInterval = setInterval(() => {
-    currentTime.value = new Date()
-  }, 60000)
+  await initialize()
 })
 
 onUnmounted(() => {
-  if (timeInterval) {
-    clearInterval(timeInterval)
-  }
+  cleanup()
 })
 </script>
 

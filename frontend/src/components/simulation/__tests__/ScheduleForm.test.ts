@@ -6,6 +6,11 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ScheduleForm from '../ScheduleForm.vue'
 
+// Mock vue-i18n
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key })
+}))
+
 // Mock the store
 vi.mock('@/stores/simulationV2Store', () => ({
   useSimulationV2Store: vi.fn(() => ({

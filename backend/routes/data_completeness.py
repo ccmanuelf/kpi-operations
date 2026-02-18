@@ -13,6 +13,9 @@ from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
 from backend.middleware.client_auth import build_client_filter_clause
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/data-completeness", tags=["Data Completeness"])
 

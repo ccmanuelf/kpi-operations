@@ -53,7 +53,9 @@ from backend.calculations.elapsed_time import (
     calculate_stage_duration_summary,
 )
 from backend.schemas.work_order import WorkOrder
+from backend.utils.logging_utils import get_module_logger
 
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/workflow", tags=["Workflow"])
 

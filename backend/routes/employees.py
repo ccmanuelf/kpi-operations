@@ -30,7 +30,9 @@ from backend.crud.employee import (
 )
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
 
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/employees", tags=["Employees"])
 

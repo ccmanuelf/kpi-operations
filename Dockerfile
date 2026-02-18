@@ -1,9 +1,8 @@
 # Multi-stage Dockerfile for KPI Operations Platform
 
 # Stage 1: Build stage
-# python:3.11.11-slim-bookworm — pin to digest for reproducible builds:
+# Production: pin to @sha256: digest from docker.io for reproducible builds
 # docker pull python:3.11.11-slim-bookworm && docker inspect --format='{{index .RepoDigests 0}}' python:3.11.11-slim-bookworm
-# TODO: Pin to @sha256: digest for production reproducibility
 FROM python:3.11.11-slim-bookworm as builder
 
 WORKDIR /app
@@ -20,7 +19,7 @@ COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir --prefix=/usr/local -r backend/requirements.txt
 
 # Stage 2: Production stage (same base as builder for consistency)
-# TODO: Pin to @sha256: digest for production reproducibility
+# Production: pin to @sha256: digest from docker.io for reproducible builds
 FROM python:3.11.11-slim-bookworm as production
 
 LABEL maintainer="KPI Operations Team"

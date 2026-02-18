@@ -93,6 +93,7 @@ export const useDatabaseConfigStore = defineStore('databaseConfig', () => {
     } catch (e) {
       error.value = e.response?.data?.detail || 'Failed to fetch database status'
       console.error('Error fetching database status:', e)
+      useNotificationStore().showError(error.value)
     } finally {
       isLoading.value = false
     }

@@ -19,6 +19,9 @@ from backend.models.client_config import (
     GlobalDefaults,
 )
 from backend.crud import client_config as crud
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 router = APIRouter(
     prefix="/api/client-config", tags=["Client Configuration"], responses={404: {"description": "Not found"}}

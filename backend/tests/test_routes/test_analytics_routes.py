@@ -1073,7 +1073,7 @@ class TestAnalyticsResponseStructure:
 class TestAnalyticsWithMockedCRUD:
     """Integration tests with mocked CRUD operations"""
 
-    @patch("backend.routes.analytics.get_kpi_time_series_data")
+    @patch("backend.routes.analytics.trends.get_kpi_time_series_data")
     def test_trends_with_mock_data(self, mock_get_data, authenticated_client):
         """Test trends endpoint with mocked data"""
         # Setup mock return value
@@ -1087,7 +1087,7 @@ class TestAnalyticsWithMockedCRUD:
         # Response depends on whether mock is properly applied
         assert response.status_code in [200, 403, 404]
 
-    @patch("backend.routes.analytics.get_defect_pareto_data")
+    @patch("backend.routes.analytics.comparisons.get_defect_pareto_data")
     def test_pareto_with_mock_data(self, mock_get_data, authenticated_client):
         """Test pareto endpoint with mocked defect data"""
         # Setup mock return value - typical Pareto distribution

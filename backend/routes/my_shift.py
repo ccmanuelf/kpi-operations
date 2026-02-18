@@ -18,6 +18,9 @@ from backend.schemas.attendance_entry import AttendanceEntry
 from backend.schemas.work_order import WorkOrder
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/my-shift", tags=["my-shift"])
 

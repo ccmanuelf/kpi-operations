@@ -765,6 +765,9 @@ import {
   runProductionLineSimulation,
   compareProductionScenarios
 } from '@/services/api/simulation'
+import { useNotificationStore } from '@/stores/notificationStore'
+
+const notificationStore = useNotificationStore()
 
 const { t } = useI18n()
 
@@ -814,6 +817,7 @@ onMounted(async () => {
     guide.value = response.data
   } catch (error) {
     console.error('Failed to load guide:', error)
+    notificationStore.showError('Failed to load simulation guide. Please refresh the page.')
   }
 })
 
@@ -824,6 +828,7 @@ async function calculateCapacity() {
     capacityResult.value = response.data
   } catch (error) {
     console.error('Failed to calculate capacity:', error)
+    notificationStore.showError('Failed to calculate capacity requirements. Please try again.')
   } finally {
     loading.value = false
   }
@@ -836,6 +841,7 @@ async function loadDefaultConfig() {
     productionLineConfig.value = response.data
   } catch (error) {
     console.error('Failed to load config:', error)
+    notificationStore.showError('Failed to load production line configuration. Please try again.')
   } finally {
     loading.value = false
   }
@@ -850,6 +856,7 @@ async function runSimulation() {
     simulationResult.value = response.data
   } catch (error) {
     console.error('Failed to run simulation:', error)
+    notificationStore.showError('Failed to run simulation. Please try again.')
   } finally {
     loading.value = false
   }
@@ -879,6 +886,7 @@ async function compareScenarios() {
     comparisonResult.value = response.data
   } catch (error) {
     console.error('Failed to compare scenarios:', error)
+    notificationStore.showError('Failed to compare scenarios. Please try again.')
   } finally {
     loading.value = false
   }

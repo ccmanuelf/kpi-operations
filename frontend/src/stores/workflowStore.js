@@ -7,6 +7,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from './authStore'
 import api from '@/services/api'
+import { useNotificationStore } from './notificationStore'
 
 const STORAGE_KEY = 'kpi-workflow-progress'
 
@@ -357,6 +358,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       const status = e.response?.status
       if (status !== 404 && status !== 401 && status !== 403) {
         console.error('Failed to fetch active shift:', e)
+        useNotificationStore().showError('Failed to fetch active shift. Please refresh the page.')
       }
       activeShift.value = null
     } finally {

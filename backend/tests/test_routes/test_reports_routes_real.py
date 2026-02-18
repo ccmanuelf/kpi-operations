@@ -423,7 +423,7 @@ class TestManualReport:
 class TestProductionPDFWithMock:
     """Tests for production PDF generation with mocked generator."""
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.production_reports.PDFReportGenerator")
     def test_production_pdf_success(self, mock_pdf_class, supervisor_client):
         """Test successful production PDF generation."""
         client, setup = supervisor_client
@@ -444,7 +444,7 @@ class TestProductionPDFWithMock:
         assert "attachment" in response.headers["content-disposition"]
         assert "production_report" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.production_reports.PDFReportGenerator")
     def test_production_pdf_all_clients(self, mock_pdf_class, supervisor_client):
         """Test production PDF for all clients (admin)."""
         client, setup = supervisor_client
@@ -458,7 +458,7 @@ class TestProductionPDFWithMock:
         assert response.status_code == 200
         assert "all_clients" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.production_reports.PDFReportGenerator")
     def test_production_pdf_generator_error(self, mock_pdf_class, supervisor_client):
         """Test PDF generation error handling."""
         client, setup = supervisor_client
@@ -476,7 +476,7 @@ class TestProductionPDFWithMock:
 class TestProductionExcelWithMock:
     """Tests for production Excel generation with mocked generator."""
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.production_reports.ExcelReportGenerator")
     def test_production_excel_success(self, mock_excel_class, supervisor_client):
         """Test successful production Excel generation."""
         client, setup = supervisor_client
@@ -495,7 +495,7 @@ class TestProductionExcelWithMock:
         assert "spreadsheetml" in response.headers["content-type"]
         assert ".xlsx" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.production_reports.ExcelReportGenerator")
     def test_production_excel_generator_error(self, mock_excel_class, supervisor_client):
         """Test Excel generation error handling."""
         client, setup = supervisor_client
@@ -513,7 +513,7 @@ class TestProductionExcelWithMock:
 class TestQualityPDFWithMock:
     """Tests for quality PDF generation with mocked generator."""
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.PDFReportGenerator")
     def test_quality_pdf_success(self, mock_pdf_class, supervisor_client):
         """Test successful quality PDF generation."""
         client, setup = supervisor_client
@@ -528,7 +528,7 @@ class TestQualityPDFWithMock:
         assert response.headers["content-type"] == "application/pdf"
         assert "quality_report" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.PDFReportGenerator")
     def test_quality_pdf_with_client(self, mock_pdf_class, supervisor_client):
         """Test quality PDF for specific client."""
         client, setup = supervisor_client
@@ -547,7 +547,7 @@ class TestQualityPDFWithMock:
 class TestQualityExcelWithMock:
     """Tests for quality Excel generation with mocked generator."""
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.ExcelReportGenerator")
     def test_quality_excel_success(self, mock_excel_class, supervisor_client):
         """Test successful quality Excel generation."""
         client, setup = supervisor_client
@@ -566,7 +566,7 @@ class TestQualityExcelWithMock:
 class TestAttendancePDFWithMock:
     """Tests for attendance PDF generation with mocked generator."""
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.PDFReportGenerator")
     def test_attendance_pdf_success(self, mock_pdf_class, supervisor_client):
         """Test successful attendance PDF generation."""
         client, setup = supervisor_client
@@ -581,7 +581,7 @@ class TestAttendancePDFWithMock:
         assert response.headers["content-type"] == "application/pdf"
         assert "attendance_report" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.PDFReportGenerator")
     def test_attendance_pdf_date_range(self, mock_pdf_class, supervisor_client):
         """Test attendance PDF with date range."""
         client, setup = supervisor_client
@@ -603,7 +603,7 @@ class TestAttendancePDFWithMock:
 class TestAttendanceExcelWithMock:
     """Tests for attendance Excel generation with mocked generator."""
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.ExcelReportGenerator")
     def test_attendance_excel_success(self, mock_excel_class, supervisor_client):
         """Test successful attendance Excel generation."""
         client, setup = supervisor_client
@@ -618,7 +618,7 @@ class TestAttendanceExcelWithMock:
         assert "spreadsheetml" in response.headers["content-type"]
         assert "attendance_report" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.ExcelReportGenerator")
     def test_attendance_excel_start_after_end(self, mock_excel_class, supervisor_client):
         """Test attendance Excel with invalid date range."""
         client, setup = supervisor_client
@@ -672,7 +672,7 @@ class TestMonthlyFrequencyConfig:
 class TestComprehensivePDFWithMock:
     """Tests for comprehensive PDF generation with mocked generator."""
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.comprehensive_reports.PDFReportGenerator")
     def test_comprehensive_pdf_success(self, mock_pdf_class, supervisor_client):
         """Test successful comprehensive PDF generation."""
         client, setup = supervisor_client
@@ -687,7 +687,7 @@ class TestComprehensivePDFWithMock:
         assert response.headers["content-type"] == "application/pdf"
         assert "comprehensive_report" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.comprehensive_reports.PDFReportGenerator")
     def test_comprehensive_pdf_with_client(self, mock_pdf_class, supervisor_client):
         """Test comprehensive PDF for specific client."""
         client, setup = supervisor_client
@@ -706,7 +706,7 @@ class TestComprehensivePDFWithMock:
 class TestComprehensiveExcelWithMock:
     """Tests for comprehensive Excel generation with mocked generator."""
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.comprehensive_reports.ExcelReportGenerator")
     def test_comprehensive_excel_success(self, mock_excel_class, supervisor_client):
         """Test successful comprehensive Excel generation."""
         client, setup = supervisor_client
@@ -721,7 +721,7 @@ class TestComprehensiveExcelWithMock:
         assert "spreadsheetml" in response.headers["content-type"]
         assert "comprehensive_report" in response.headers["content-disposition"]
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.comprehensive_reports.ExcelReportGenerator")
     def test_comprehensive_excel_invalid_date_range(self, mock_excel_class, supervisor_client):
         """Test comprehensive Excel with invalid date range."""
         client, setup = supervisor_client
@@ -756,7 +756,7 @@ class TestQualityExcelValidation:
 
         assert response.status_code == 400
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.ExcelReportGenerator")
     def test_quality_excel_error_handling(self, mock_excel_class, supervisor_client):
         """Test quality Excel error handling."""
         client, setup = supervisor_client
@@ -773,7 +773,7 @@ class TestQualityExcelValidation:
 class TestAttendanceErrorHandling:
     """Tests for attendance report error handling."""
 
-    @patch("backend.routes.reports.PDFReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.PDFReportGenerator")
     def test_attendance_pdf_error_handling(self, mock_pdf_class, supervisor_client):
         """Test attendance PDF error handling."""
         client, setup = supervisor_client
@@ -786,7 +786,7 @@ class TestAttendanceErrorHandling:
 
         assert response.status_code == 500
 
-    @patch("backend.routes.reports.ExcelReportGenerator")
+    @patch("backend.routes.reports.kpi_reports.ExcelReportGenerator")
     def test_attendance_excel_error_handling(self, mock_excel_class, supervisor_client):
         """Test attendance Excel error handling."""
         client, setup = supervisor_client

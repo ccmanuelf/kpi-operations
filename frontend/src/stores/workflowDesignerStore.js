@@ -9,6 +9,7 @@ import { useVueFlow } from '@vue-flow/core'
 import { getWorkflowConfig, updateWorkflowConfig, getWorkflowTemplates, applyWorkflowTemplate } from '@/services/api/workflow'
 import { configToVueFlow, vueFlowToConfig, configToMermaid, mermaidToConfig } from '@/utils/workflow/mermaidConverter'
 import { validateWorkflow } from '@/utils/workflow/workflowValidator'
+import { useNotificationStore } from './notificationStore'
 
 // Maximum history stack size
 const MAX_HISTORY_SIZE = 50
@@ -116,6 +117,7 @@ export const useWorkflowDesignerStore = defineStore('workflowDesigner', () => {
     } catch (e) {
       error.value = e.response?.data?.detail || 'Failed to load workflow configuration'
       console.error('Failed to load workflow config:', e)
+      useNotificationStore().showError(error.value)
     } finally {
       isLoading.value = false
     }
@@ -166,6 +168,7 @@ export const useWorkflowDesignerStore = defineStore('workflowDesigner', () => {
       templates.value = response.data || []
     } catch (e) {
       console.error('Failed to load templates:', e)
+      useNotificationStore().showError('Failed to load workflow templates. Please try again.')
     }
   }
 

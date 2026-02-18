@@ -38,7 +38,9 @@ from backend.crud.floating_pool import (
 )
 from backend.auth.jwt import get_current_user
 from backend.schemas.user import User
+from backend.utils.logging_utils import get_module_logger
 
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/floating-pool", tags=["Floating Pool"])
 
@@ -270,6 +272,7 @@ def get_floating_pool_simulation_insights(
         )
         simulation_results = result.get("scenario_results", [])
     except Exception:
+        logger.warning("run_staffing_simulation failed, using fallback", exc_info=True)
         simulation_results = [
             {
                 "scenario": "Current",
@@ -374,6 +377,7 @@ def optimize_floating_pool_allocation_endpoint(
         )
         return result
     except Exception:
+        logger.warning("optimize_floating_pool_allocation failed, using fallback", exc_info=True)
         # Fallback simple allocation
         total_shortage = sum(max(0, sr.get("required", 0) - sr.get("current", 0)) for sr in shift_requirements)
         allocations = []
@@ -453,6 +457,7 @@ def simulate_shift_coverage_endpoint(
         )
         return result
     except Exception:
+        logger.warning("simulate_shift_coverage failed, using fallback", exc_info=True)
         # Fallback calculation
         shortage = max(0, required_employees - regular_employees)
         pool_needed = min(shortage, floating_pool_available)

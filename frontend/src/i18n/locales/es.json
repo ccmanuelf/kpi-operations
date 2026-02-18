@@ -962,7 +962,12 @@
       "role": "Rol",
       "active": "Activo",
       "inactive": "Inactivo",
-      "confirmDeleteUser": "¿Está seguro que desea eliminar este usuario?"
+      "confirmDeleteUser": "¿Está seguro que desea eliminar este usuario?",
+      "assignedClient": "Cliente Asignado (opcional)",
+      "confirmDeleteTitle": "Confirmar Eliminación",
+      "confirmDeleteText": "¿Está seguro que desea eliminar al usuario {username}? Esta acción no se puede deshacer.",
+      "saveUser": "Actualizar",
+      "createUserBtn": "Crear"
     },
     "roles": "Roles",
     "permissions": "Permisos",
@@ -1932,6 +1937,24 @@
       "title": "¡Bienvenido!",
       "message": "Se han cargado datos de muestra de manufactura de camisetas para ayudarle a comenzar.",
       "gotIt": "Entendido"
+    },
+    "schedule": {
+      "shift1Hours": "Horas Turno 1",
+      "shift2Hours": "Horas Turno 2",
+      "shift3Hours": "Horas Turno 3",
+      "enableOvertime": "Habilitar Horas Extra",
+      "weekdayOtHours": "Horas Extra Entre Semana (por día)",
+      "weekendOtDays": "Días Extra de Fin de Semana",
+      "weekendOtHours": "Horas Extra de Fin de Semana"
+    },
+    "demand": {
+      "demandMode": "Modo de Demanda",
+      "totalDailyDemand": "Demanda Diaria Total (piezas)",
+      "simulationHorizon": "Horizonte de Simulación (días)"
     }
+  },
+  "migration": {
+    "dbConnectionUrl": "URL de Conexión a Base de Datos",
+    "typeToConfirm": "Escribe MIGRATE para confirmar"
   }
 }

@@ -15,7 +15,9 @@ from backend.schemas.user import User
 from backend.schemas.product import Product
 from backend.schemas.shift import Shift
 from backend.middleware.client_auth import build_client_filter_clause
+from backend.utils.logging_utils import get_module_logger
 
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Reference Data"])
 

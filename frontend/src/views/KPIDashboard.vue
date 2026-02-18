@@ -568,17 +568,19 @@ import {
 } from 'chart.js'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
-import { useDashboardStore } from '@/stores/dashboardStore'
-import { useFiltersStore } from '@/stores/filtersStore'
-import api from '@/services/api'
 
-// New components for custom dashboards and filters
+// Components
 import FilterBar from '@/components/filters/FilterBar.vue'
 import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer.vue'
 import FilterManager from '@/components/filters/FilterManager.vue'
 import QRCodeScanner from '@/components/QRCodeScanner.vue'
-// Phase 7.3: Inference indicator component
 import InferenceIndicator from '@/components/kpi/InferenceIndicator.vue'
+
+// Composables
+import { useKPIDashboardData } from '@/composables/useKPIDashboardData'
+import { useKPIReports } from '@/composables/useKPIReports'
+import { useKPIFilters } from '@/composables/useKPIFilters'
+import { useKPIChartData } from '@/composables/useKPIChartData'
 
 ChartJS.register(
   CategoryScale,
@@ -594,52 +596,80 @@ ChartJS.register(
 const { t } = useI18n()
 const router = useRouter()
 const kpiStore = useKPIStore()
-const dashboardStore = useDashboardStore()
-const filtersStore = useFiltersStore()
 
-// State
-const loading = ref(false)
-const selectedClient = ref(null)
-const dateRange = ref([
-  new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-  new Date()
-])
-const trendPeriod = ref('30')
-const clients = ref([
-  { id: null, name: 'All Clients' }
-])
-
-// New feature dialogs
-const showCustomizer = ref(false)
-const showFilterManager = ref(false)
-const showQRScanner = ref(false)
-
-// Save filter dialog state
-const showSaveFilterDialog = ref(false)
-const saveFilterForm = ref(null)
-const saveFilterFormValid = ref(false)
-const newFilterName = ref('')
-const newFilterType = ref('dashboard')
-const newFilterIsDefault = ref(false)
-const savingFilter = ref(false)
-const filterTypeOptions = [
-  { title: 'Dashboard', value: 'dashboard' },
-  { title: 'Production', value: 'production' },
-  { title: 'Quality', value: 'quality' },
-  { title: 'Attendance', value: 'attendance' },
-  { title: 'Downtime', value: 'downtime' }
-]
-
-// Report functionality
-const downloadingPDF = ref(false)
-const downloadingExcel = ref(false)
-const emailDialog = ref(false)
-const emailRecipients = ref([])
-const emailFormValid = ref(false)
-const sendingEmail = ref(false)
+// Snackbar state (shared across composables)
 const snackbar = ref(false)
 const snackbarMessage = ref('')
 const snackbarColor = ref('success')
+const showSnackbar = (message, color = 'success') => {
+  snackbarMessage.value = message
+  snackbarColor.value = color
+  snackbar.value = true
+}
+
+// Data & filter composable
+const {
+  loading,
+  selectedClient,
+  dateRange,
+  trendPeriod,
+  clients,
+  filtersStore,
+  refreshData,
+  handleFilterChange,
+  initialize
+} = useKPIDashboardData(showSnackbar)
+
+// Report composable
+const {
+  downloadingPDF,
+  downloadingExcel,
+  emailDialog,
+  emailRecipients,
+  emailFormValid,
+  sendingEmail,
+  downloadPDF,
+  downloadExcel,
+  sendEmailReport
+} = useKPIReports(
+  showSnackbar,
+  () => selectedClient.value,
+  () => dateRange.value
+)
+
+// Filter management composable
+const {
+  showSaveFilterDialog,
+  saveFilterForm,
+  saveFilterFormValid,
+  newFilterName,
+  newFilterType,
+  newFilterIsDefault,
+  savingFilter,
+  filterTypeOptions,
+  showFilterManager,
+  applyQuickSavedFilter,
+  saveCurrentFilter
+} = useKPIFilters(
+  showSnackbar,
+  handleFilterChange,
+  () => selectedClient.value,
+  () => dateRange.value
+)
+
+// Chart data composable
+const {
+  chartOptions,
+  efficiencyChartData,
+  qualityChartData,
+  availabilityChartData,
+  oeeChartData
+} = useKPIChartData()
+
+// Local UI state
+const showCustomizer = ref(false)
+const showQRScanner = ref(false)
+const emailForm = ref(null)
 
 // Computed
 const dateRangeText = computed(() => {
@@ -671,129 +701,14 @@ const summaryItems = computed(() => {
   }))
 })
 
-// Chart data
-const efficiencyChartData = computed(() => ({
-  labels: kpiStore.trends.efficiency.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: 'Efficiency %',
-      data: kpiStore.trends.efficiency.map(d => d.value),
-      borderColor: '#2e7d32',
-      backgroundColor: 'rgba(46, 125, 50, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: 'Target',
-      data: Array(kpiStore.trends.efficiency.length).fill(85),
-      borderColor: '#f57c00',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const qualityChartData = computed(() => ({
-  labels: kpiStore.trends.quality.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: 'FPY %',
-      data: kpiStore.trends.quality.map(d => d.value),
-      borderColor: '#1976d2',
-      backgroundColor: 'rgba(25, 118, 210, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: 'Target',
-      data: Array(kpiStore.trends.quality.length).fill(99),
-      borderColor: '#f57c00',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const availabilityChartData = computed(() => ({
-  labels: kpiStore.trends.availability.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: 'Availability %',
-      data: kpiStore.trends.availability.map(d => d.value),
-      borderColor: '#7b1fa2',
-      backgroundColor: 'rgba(123, 31, 162, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: 'Target',
-      data: Array(kpiStore.trends.availability.length).fill(90),
-      borderColor: '#f57c00',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const oeeChartData = computed(() => ({
-  labels: kpiStore.trends.oee.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: 'OEE %',
-      data: kpiStore.trends.oee.map(d => d.value),
-      borderColor: '#d32f2f',
-      backgroundColor: 'rgba(211, 47, 47, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: 'Target',
-      data: Array(kpiStore.trends.oee.length).fill(85),
-      borderColor: '#f57c00',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: {
-      display: true,
-      position: 'top'
-    },
-    tooltip: {
-      mode: 'index',
-      intersect: false
-    }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      max: 100,
-      ticks: {
-        callback: (value) => `${value}%`
-      }
-    }
-  },
-  interaction: {
-    mode: 'nearest',
-    axis: 'x',
-    intersect: false
-  }
-}
-
-// Methods
+// KPI display helpers
 const formatValue = (value, unit) => {
   if (value === null || value === undefined) return t('common.na')
   return `${Number(value).toFixed(1)}${unit}`
 }
 
 const getCardColor = (kpi) => {
-  const status = kpiStore.kpiStatus(kpi.value, kpi.target, kpi.higherBetter)
-  return status === 'success' ? 'surface' : status === 'warning' ? 'surface' : 'surface'
+  return 'surface'
 }
 
 const getStatusColor = (kpi) => {
@@ -812,7 +727,6 @@ const getProgress = (kpi) => {
 }
 
 const getTrendIcon = (kpi) => {
-  // This would ideally calculate from historical data
   return 'mdi-trending-up'
 }
 
@@ -820,7 +734,6 @@ const getTrendColor = (kpi) => {
   return 'success'
 }
 
-// Phase 7.3: Get color based on confidence score
 const getConfidenceColor = (confidence) => {
   if (confidence >= 0.8) return 'success'
   if (confidence >= 0.5) return 'warning'
@@ -893,183 +806,6 @@ const navigateToDetail = (route) => {
   router.push(route)
 }
 
-const handleClientChange = () => {
-  kpiStore.setClient(selectedClient.value)
-  refreshData()
-}
-
-const handleDateChange = () => {
-  if (dateRange.value && dateRange.value.length === 2) {
-    kpiStore.setDateRange(
-      format(dateRange.value[0], 'yyyy-MM-dd'),
-      format(dateRange.value[1], 'yyyy-MM-dd')
-    )
-    refreshData()
-  }
-}
-
-const refreshData = async () => {
-  loading.value = true
-  try {
-    await kpiStore.fetchAllKPIs()
-  } catch (error) {
-    console.error('Error refreshing data:', error)
-    showSnackbar(t('errors.refreshFailed') || 'Failed to refresh data', 'error')
-  } finally {
-    loading.value = false
-  }
-}
-
-const loadClients = async () => {
-  try {
-    const response = await api.getClients()
-    clients.value = [
-      { id: null, name: 'All Clients' },
-      ...response.data
-    ]
-  } catch (error) {
-    console.error('Error loading clients:', error)
-    showSnackbar(t('errors.loadClientsFailed') || 'Failed to load clients', 'error')
-  }
-}
-
-const downloadPDF = async () => {
-  downloadingPDF.value = true
-  try {
-    const params = new URLSearchParams()
-    if (selectedClient.value) params.append('client_id', selectedClient.value)
-    if (dateRange.value && dateRange.value.length === 2) {
-      params.append('start_date', format(dateRange.value[0], 'yyyy-MM-dd'))
-      params.append('end_date', format(dateRange.value[1], 'yyyy-MM-dd'))
-    }
-
-    const response = await api.get(`/reports/pdf?${params.toString()}`, {
-      responseType: 'blob'
-    })
-
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `KPI_Report_${format(new Date(), 'yyyyMMdd')}.pdf`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-
-    showSnackbar(t('success.pdfDownloaded'), 'success')
-  } catch (error) {
-    console.error('Error downloading PDF:', error)
-    showSnackbar(t('success.pdfDownloadFailed'), 'error')
-  } finally {
-    downloadingPDF.value = false
-  }
-}
-
-const downloadExcel = async () => {
-  downloadingExcel.value = true
-  try {
-    const params = new URLSearchParams()
-    if (selectedClient.value) params.append('client_id', selectedClient.value)
-    if (dateRange.value && dateRange.value.length === 2) {
-      params.append('start_date', format(dateRange.value[0], 'yyyy-MM-dd'))
-      params.append('end_date', format(dateRange.value[1], 'yyyy-MM-dd'))
-    }
-
-    const response = await api.get(`/reports/excel?${params.toString()}`, {
-      responseType: 'blob'
-    })
-
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `KPI_Report_${format(new Date(), 'yyyyMMdd')}.xlsx`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-
-    showSnackbar(t('success.excelDownloaded'), 'success')
-  } catch (error) {
-    console.error('Error downloading Excel:', error)
-    showSnackbar(t('success.excelDownloadFailed'), 'error')
-  } finally {
-    downloadingExcel.value = false
-  }
-}
-
-const sendEmailReport = async () => {
-  if (!emailFormValid.value || emailRecipients.value.length === 0) {
-    showSnackbar(t('success.pleaseAddRecipient'), 'warning')
-    return
-  }
-
-  sendingEmail.value = true
-  try {
-    const payload = {
-      client_id: selectedClient.value || null,
-      start_date: dateRange.value && dateRange.value.length === 2
-        ? format(dateRange.value[0], 'yyyy-MM-dd')
-        : format(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-      end_date: dateRange.value && dateRange.value.length === 2
-        ? format(dateRange.value[1], 'yyyy-MM-dd')
-        : format(new Date(), 'yyyy-MM-dd'),
-      recipient_emails: emailRecipients.value,
-      include_excel: false
-    }
-
-    await api.post('/reports/email', payload)
-
-    showSnackbar(t('success.reportSent'), 'success')
-    emailDialog.value = false
-    emailRecipients.value = []
-  } catch (error) {
-    console.error('Error sending email:', error)
-    showSnackbar(t('success.reportSendFailed'), 'error')
-  } finally {
-    sendingEmail.value = false
-  }
-}
-
-const showSnackbar = (message, color = 'success') => {
-  snackbarMessage.value = message
-  snackbarColor.value = color
-  snackbar.value = true
-}
-
-// New feature handlers
-const handleFilterChange = (filterParams) => {
-  // Apply client filter
-  if (filterParams.client_id !== undefined) {
-    selectedClient.value = filterParams.client_id
-    kpiStore.setClient(filterParams.client_id)
-  }
-
-  // Apply date range filter - handle both nested and flat formats
-  if (filterParams.date_range) {
-    const filterDateRange = filterParams.date_range
-    if (filterDateRange.type === 'absolute' && filterDateRange.start_date && filterDateRange.end_date) {
-      kpiStore.setDateRange(filterDateRange.start_date, filterDateRange.end_date)
-      dateRange.value = [new Date(filterDateRange.start_date), new Date(filterDateRange.end_date)]
-    } else if (filterDateRange.type === 'relative' && filterDateRange.relative_days !== undefined) {
-      const end = new Date()
-      const start = new Date()
-      start.setDate(start.getDate() - filterDateRange.relative_days)
-      const startStr = format(start, 'yyyy-MM-dd')
-      const endStr = format(end, 'yyyy-MM-dd')
-      kpiStore.setDateRange(startStr, endStr)
-      dateRange.value = [start, end]
-    }
-  } else if (filterParams.start_date && filterParams.end_date) {
-    // Fallback for flat date format
-    kpiStore.setDateRange(filterParams.start_date, filterParams.end_date)
-    dateRange.value = [new Date(filterParams.start_date), new Date(filterParams.end_date)]
-  }
-
-  refreshData()
-}
-
 const onCustomizerSaved = () => {
   showSnackbar(t('success.dashboardPreferencesSaved'), 'success')
 }
@@ -1082,7 +818,6 @@ const handleQRScanned = (data) => {
 const handleQRAutoFill = (data) => {
   showQRScanner.value = false
   showSnackbar(`Auto-filled form data for ${data.entity_type}`, 'success')
-  // Navigate to appropriate entry form based on entity type
   if (data.entity_type === 'work_order') {
     router.push({ name: 'production-entry', query: { work_order_id: data.entity_data?.id } })
   } else if (data.entity_type === 'product') {
@@ -1090,65 +825,8 @@ const handleQRAutoFill = (data) => {
   }
 }
 
-// Saved filter handlers
-const applyQuickSavedFilter = async (filter) => {
-  try {
-    const filterConfig = await filtersStore.applyFilter(filter)
-    handleFilterChange(filterConfig)
-    showSnackbar(`${t('success.filterApplied')}: ${filter.filter_name}`, 'success')
-  } catch (error) {
-    console.error('Error applying filter:', error)
-    showSnackbar(t('success.filterApplyFailed'), 'error')
-  }
-}
-
-const saveCurrentFilter = async () => {
-  if (!saveFilterFormValid.value || !newFilterName.value) {
-    showSnackbar(t('success.pleaseEnterFilterName'), 'warning')
-    return
-  }
-
-  savingFilter.value = true
-  try {
-    // Build filter config from current state
-    const filterConfig = filtersStore.createFilterConfig({
-      client_id: selectedClient.value,
-      date_range: dateRange.value && dateRange.value.length === 2 ? {
-        type: 'absolute',
-        start_date: format(dateRange.value[0], 'yyyy-MM-dd'),
-        end_date: format(dateRange.value[1], 'yyyy-MM-dd')
-      } : { type: 'relative', relative_days: 30 }
-    })
-
-    const newFilter = await filtersStore.createFilter({
-      filter_name: newFilterName.value,
-      filter_type: newFilterType.value,
-      filter_config: filterConfig,
-      is_default: newFilterIsDefault.value
-    })
-
-    if (newFilter) {
-      showSnackbar(`"${newFilterName.value}" ${t('success.filterSaved')}`, 'success')
-      showSaveFilterDialog.value = false
-      // Reset form
-      newFilterName.value = ''
-      newFilterIsDefault.value = false
-    } else {
-      showSnackbar(t('success.filterSaveFailed'), 'error')
-    }
-  } catch (error) {
-    console.error('Error saving filter:', error)
-    showSnackbar(t('success.filterSaveFailed'), 'error')
-  } finally {
-    savingFilter.value = false
-  }
-}
-
 onMounted(async () => {
-  await loadClients()
-  await dashboardStore.initializePreferences()
-  await filtersStore.initializeFilters()
-  await refreshData()
+  await initialize()
 })
 </script>
 

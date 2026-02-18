@@ -160,7 +160,7 @@
               :items="clients"
               item-title="client_name"
               item-value="client_id"
-              label="Assigned Client (optional)"
+              :label="t('admin.users.assignedClient')"
               prepend-icon="mdi-domain"
               variant="outlined"
               density="comfortable"
@@ -170,9 +170,9 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="userDialog = false">Cancel</v-btn>
+          <v-btn variant="text" @click="userDialog = false">{{ t('common.cancel') }}</v-btn>
           <v-btn color="primary" @click="saveUser" :loading="saving" :disabled="!formValid">
-            {{ editingUser ? 'Update' : 'Create' }}
+            {{ editingUser ? t('admin.users.saveUser') : t('admin.users.createUserBtn') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -183,16 +183,15 @@
       <v-card>
         <v-card-title class="text-h6">
           <v-icon color="error" class="mr-2">mdi-alert</v-icon>
-          Confirm Delete
+          {{ t('admin.users.confirmDeleteTitle') }}
         </v-card-title>
         <v-card-text>
-          Are you sure you want to delete user <strong>{{ userToDelete?.username }}</strong>?
-          This action cannot be undone.
+          {{ t('admin.users.confirmDeleteText', { username: userToDelete?.username }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>
-          <v-btn color="error" @click="deleteUser" :loading="deleting">Delete</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="error" @click="deleteUser" :loading="deleting">{{ t('common.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
