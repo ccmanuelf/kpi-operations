@@ -202,12 +202,12 @@
           </template>
           <template v-slot:item.actions="{ item }">
             <v-btn icon size="small" variant="text" @click.stop="openDetailDrawer(item)"
-              :aria-label="t('workOrders.ariaViewDetails', { id: item.work_order_id })"
+              :aria-label="t('workOrders.ariaViewDetails', { id: item.work_order_id })">
               <v-icon aria-hidden="true">mdi-eye</v-icon>
               <v-tooltip activator="parent">{{ $t('workOrders.viewDetails') }}</v-tooltip>
             </v-btn>
             <v-btn icon size="small" variant="text" @click.stop="openEditDialog(item)"
-              :aria-label="t('workOrders.ariaEditWo', { id: item.work_order_id })"
+              :aria-label="t('workOrders.ariaEditWo', { id: item.work_order_id })">
               <v-icon aria-hidden="true">mdi-pencil</v-icon>
               <v-tooltip activator="parent">{{ $t('workOrders.edit') }}</v-tooltip>
             </v-btn>
