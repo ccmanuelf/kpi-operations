@@ -17,6 +17,78 @@ The goal is to ensure production-grade quality across the full stack: code + dat
 
 ---
 
+## PHASE 0: Credential Bootstrap (Immediately After Migration)
+
+This phase runs right after the MariaDB migration completes and before the client's team starts using the system. Demo users are preserved as inactive references — useful for the new admin to study roles, permissions, and test workflows before onboarding real staff.
+
+### 0.1 Rotate SECRET_KEY
+
+- [ ] Generate a new production `SECRET_KEY` (minimum 64 characters, cryptographically random):
+  ```bash
+  python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+  ```
+- [ ] Set the new key in the production `.env` or secret manager
+- [ ] Restart the application — all existing demo JWTs are now invalid (forced re-login)
+- [ ] Verify `validate_production_config()` accepts the new key (not in `DEFAULT_INSECURE_VALUES`)
+
+### 0.2 Deactivate Demo Users
+
+All seeded demo users have known passwords (visible in `init_demo_database.py` and `demo_seeder.py`). Mark them inactive so they cannot authenticate, but preserve them for reference:
+
+- [ ] Mark all demo users as `is_active = False` via admin API or direct SQL:
+  ```sql
+  UPDATE USER SET is_active = 0
+  WHERE username IN ('admin', 'supervisor1', 'supervisor2', 'supervisor3',
+    'supervisor4', 'supervisor5', 'operator1', 'operator2', 'operator3',
+    'operator4', 'operator5', 'operator6', 'leader1', 'poweruser',
+    'e2e_admin', 'e2e_supervisor', 'e2e_operator');
+  ```
+- [ ] Verify no demo user can log in after deactivation
+- [ ] Demo users remain visible in Admin > Users for the new admin to review role structures
+
+### 0.3 Create Production Admin Account
+
+- [ ] Create a new admin user with a strong generated password:
+  - Username: client-specific (e.g., `acme_admin`, not generic `admin`)
+  - Password: minimum 16 characters, generated (not chosen)
+  - Role: `admin`
+  - Associated to the client's `client_id`
+- [ ] Deliver credentials securely to the client admin (not via email — use a secure channel)
+- [ ] Client admin logs in, verifies access, changes password on first use
+
+### 0.4 Client Onboards Real Users
+
+The production admin creates the client's actual team through the Admin UI:
+
+- [ ] Create supervisor accounts for each shift lead (real names, role-appropriate permissions)
+- [ ] Create operator accounts for floor staff
+- [ ] Assign users to correct `client_id` and shifts
+- [ ] Each user logs in and changes their initial password
+- [ ] Verify role-based access: operators see My Shift, supervisors see dashboards, admin sees settings
+
+### 0.5 Deactivate Demo Clients
+
+- [ ] Mark demo clients as `is_active = False`:
+  ```sql
+  UPDATE CLIENT SET is_active = 0
+  WHERE client_id IN ('ACME-MFG', 'TEXTILE-PRO', 'FASHION-WORKS',
+    'QUALITY-STITCH', 'GLOBAL-APPAREL', 'DEMO-001', 'TEST-001', 'SAMPLE-001');
+  ```
+- [ ] Create the client's production `client_id` and `client_name` via Admin UI
+- [ ] Verify demo client data is invisible in all views (filtered by `is_active` and `client_id`)
+- [ ] Demo clients remain in the database for reference but don't appear in dropdowns or queries
+
+### 0.6 Verification
+
+- [ ] No demo user can authenticate (all inactive)
+- [ ] No demo client appears in client selectors (all inactive)
+- [ ] Production admin can log in and manage users
+- [ ] At least one real operator can log in and submit a production entry
+- [ ] Audit log shows the new admin's user_id (not demo user IDs)
+- [ ] `SECRET_KEY` is rotated (no demo JWT can be reused)
+
+---
+
 ## PHASE 1: MariaDB Migration Hardening
 
 ### 1.1 Pre-Migration Validation
@@ -223,14 +295,15 @@ Before go-live, establish performance baselines:
 
 | Phase | Blocks | Dependency |
 |-------|--------|------------|
-| Phase 1 (MariaDB) | Go-live | Client provides MariaDB credentials |
+| Phase 0 (Credentials) | Go-live | Phase 1 complete (migration done) |
+| Phase 1 (MariaDB) | Phase 0 | Client provides MariaDB credentials |
 | Phase 2 (Redis) | Go-live | Redis instance provisioned |
 | Phase 3 (Observability) | Parallel | Can start immediately |
 | Phase 4 (Backup) | Go-live | MariaDB + Redis configured |
 | Phase 5 (Deployment) | Go-live | All infrastructure ready |
 | Phase 6 (Performance) | Go-live | Application deployed to staging |
 
-**Critical path:** Phase 1 → Phase 2 → Phase 5 → Phase 6 → Go-live
+**Critical path:** Phase 1 → Phase 0 → Phase 2 → Phase 5 → Phase 6 → Go-live
 **Parallel track:** Phase 3 + Phase 4 (can run alongside Phases 1-2)
 
 ---
@@ -239,6 +312,9 @@ Before go-live, establish performance baselines:
 
 The application is production-ready when ALL of these are true:
 
+- [ ] All demo users and demo clients marked inactive (no known credentials active)
+- [ ] Production admin account created with strong credentials
+- [ ] SECRET_KEY rotated (all demo JWTs invalidated)
 - [ ] MariaDB migration verified on staging (row counts match, no data loss)
 - [ ] Redis token blacklist + rate limiting functional
 - [ ] Error tracking capturing and alerting on unhandled exceptions
