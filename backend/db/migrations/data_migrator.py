@@ -44,6 +44,8 @@ class DataMigrator:
         "USER_PREFERENCES",
         "DASHBOARD_WIDGET_DEFAULTS",
         "DEFECT_TYPE_CATALOG",
+        "HOLD_STATUS_CATALOG",
+        "HOLD_REASON_CATALOG",
         "PART_OPPORTUNITIES",
         "KPI_THRESHOLD",
         "CLIENT_CONFIG",            # depends on CLIENT

@@ -17,9 +17,9 @@
         class="elevation-1"
         density="compact"
       >
-        <template v-slot:item.style_code="{ item, index }">
+        <template v-slot:item.style_model="{ item, index }">
           <v-text-field
-            v-model="item.style_code"
+            v-model="item.style_model"
             density="compact"
             variant="plain"
             hide-details
@@ -136,7 +136,7 @@ const { t } = useI18n()
 const store = useCapacityPlanningStore()
 
 const headers = computed(() => [
-  { title: t('capacityPlanningGrids.standards.style'), key: 'style_code', width: '100px' },
+  { title: t('capacityPlanningGrids.standards.style'), key: 'style_model', width: '100px' },
   { title: t('capacityPlanningGrids.standards.opCode'), key: 'operation_code', width: '100px' },
   { title: t('capacityPlanningGrids.standards.operation'), key: 'operation_name', width: '180px' },
   { title: t('capacityPlanningGrids.standards.department'), key: 'department', width: '120px' },

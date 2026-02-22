@@ -398,12 +398,15 @@ class TestDataFactory:
 
         hold_id = TestDataFactory._next_id("HOLD")
 
+        # hold_reason is now a plain String(50) column; use the string directly
+        resolved_reason = hold_reason if hold_reason in HoldReason.__members__ else HoldReason.QUALITY_ISSUE
+
         hold = HoldEntry(
             hold_entry_id=hold_id,
             work_order_id=work_order_id,
             client_id=client_id,
             hold_initiated_by=created_by,
-            hold_reason=HoldReason[hold_reason] if hold_reason in HoldReason.__members__ else HoldReason.QUALITY_ISSUE,
+            hold_reason=resolved_reason,
             hold_reason_category=kwargs.get("hold_reason_category", "QUALITY"),
             hold_status=hold_status,
             hold_date=kwargs.get("hold_date", datetime.now(tz=timezone.utc)),

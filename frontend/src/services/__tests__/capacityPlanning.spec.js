@@ -377,7 +377,7 @@ describe('Capacity Planning API Service', () => {
     })
 
     it('createOrder calls POST with body and client_id param', async () => {
-      const order = { style_code: 'POLO', quantity: 5000 }
+      const order = { style_model: 'POLO', quantity: 5000 }
       api.post.mockResolvedValue({ data: { id: 10, ...order } })
 
       const result = await createOrder(5, order)
@@ -441,13 +441,13 @@ describe('Capacity Planning API Service', () => {
       expect(result).toEqual([{ id: 1, operation: 'Sewing' }])
     })
 
-    it('getStandards includes style_code filter when provided', async () => {
+    it('getStandards includes style_model filter when provided', async () => {
       api.get.mockResolvedValue({ data: [] })
 
       await getStandards(5, 'POLO-001')
 
       expect(api.get).toHaveBeenCalledWith('/capacity/standards', {
-        params: { client_id: 5, style_code: 'POLO-001' },
+        params: { client_id: 5, style_model: 'POLO-001' },
       })
     })
 
@@ -517,17 +517,17 @@ describe('Capacity Planning API Service', () => {
 
   describe('BOM Operations', () => {
     it('getBOMHeaders calls GET with client_id and active_only params', async () => {
-      api.get.mockResolvedValue({ data: [{ id: 1, style_code: 'POLO' }] })
+      api.get.mockResolvedValue({ data: [{ id: 1, style_model: 'POLO' }] })
 
       const result = await getBOMHeaders(5)
 
       expect(api.get).toHaveBeenCalledWith('/capacity/bom', {
         params: { client_id: 5, active_only: true },
       })
-      expect(result).toEqual([{ id: 1, style_code: 'POLO' }])
+      expect(result).toEqual([{ id: 1, style_model: 'POLO' }])
     })
 
-    it('getBOMHeaders includes style_code filter and activeOnly override', async () => {
+    it('getBOMHeaders includes style_model filter and activeOnly override', async () => {
       api.get.mockResolvedValue({ data: [] })
 
       await getBOMHeaders(5, 'TSHIRT-001', false)
@@ -536,7 +536,7 @@ describe('Capacity Planning API Service', () => {
         params: {
           client_id: 5,
           active_only: false,
-          style_code: 'TSHIRT-001',
+          style_model: 'TSHIRT-001',
         },
       })
     })
@@ -554,7 +554,7 @@ describe('Capacity Planning API Service', () => {
     })
 
     it('createBOMHeader calls POST with body and client_id param', async () => {
-      const header = { style_code: 'POLO', version: 1 }
+      const header = { style_model: 'POLO', version: 1 }
       api.post.mockResolvedValue({ data: { id: 20, ...header } })
 
       const result = await createBOMHeader(5, header)

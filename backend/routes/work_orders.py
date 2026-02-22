@@ -5,11 +5,9 @@ All work order CRUD endpoints with progress tracking and timeline
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-from decimal import Decimal
 
 from backend.utils.logging_utils import get_module_logger
 
@@ -30,6 +28,11 @@ from backend.crud.work_order import (
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
 from backend.schemas.work_order import WorkOrder
+from backend.schemas.production_entry import ProductionEntry
+from backend.schemas.product import Product
+from backend.schemas.shift import Shift
+from backend.schemas.quality_entry import QualityEntry
+from backend.schemas.hold_entry import HoldEntry
 
 
 router = APIRouter(prefix="/api/work-orders", tags=["Work Orders"])
@@ -130,111 +133,112 @@ def get_work_order_progress(
     # Get production entries for this work order
     production_entries = []
     try:
-        result = db.execute(
-            text(
-                """
-            SELECT
-                pe.production_entry_id,
-                pe.production_date,
-                pe.units_produced,
-                pe.run_time_hours,
-                pe.employees_assigned,
-                pe.defect_count,
-                pe.scrap_count,
-                s.shift_name,
-                p.product_name
-            FROM PRODUCTION_ENTRY pe
-            LEFT JOIN SHIFT s ON pe.shift_id = s.shift_id
-            LEFT JOIN PRODUCT p ON pe.product_id = p.product_id
-            WHERE pe.work_order_id = :work_order_id
-            ORDER BY pe.production_date DESC
-            LIMIT 50
-            """
-            ),
-            {"work_order_id": work_order_id},
+        rows = (
+            db.query(
+                ProductionEntry.production_entry_id,
+                ProductionEntry.production_date,
+                ProductionEntry.units_produced,
+                ProductionEntry.run_time_hours,
+                ProductionEntry.employees_assigned,
+                ProductionEntry.defect_count,
+                ProductionEntry.scrap_count,
+                Shift.shift_name,
+                Product.product_name,
+            )
+            .outerjoin(Shift, ProductionEntry.shift_id == Shift.shift_id)
+            .outerjoin(Product, ProductionEntry.product_id == Product.product_id)
+            .filter(
+                ProductionEntry.work_order_id == work_order_id,
+                ProductionEntry.client_id == work_order.client_id,
+            )
+            .order_by(ProductionEntry.production_date.desc())
+            .limit(50)
+            .all()
         )
-        for row in result:
+        for row in rows:
             production_entries.append(
                 {
-                    "production_entry_id": row[0],
-                    "production_date": row[1].isoformat() if row[1] else None,
-                    "units_produced": row[2],
-                    "run_time_hours": float(row[3]) if row[3] else None,
-                    "employees_assigned": row[4],
-                    "defect_count": row[5] or 0,
-                    "scrap_count": row[6] or 0,
-                    "shift_name": row[7],
-                    "product_name": row[8],
+                    "production_entry_id": row.production_entry_id,
+                    "production_date": row.production_date.isoformat() if row.production_date else None,
+                    "units_produced": row.units_produced,
+                    "run_time_hours": float(row.run_time_hours) if row.run_time_hours else None,
+                    "employees_assigned": row.employees_assigned,
+                    "defect_count": row.defect_count or 0,
+                    "scrap_count": row.scrap_count or 0,
+                    "shift_name": row.shift_name,
+                    "product_name": row.product_name,
                 }
             )
     except SQLAlchemyError as e:
         logger.warning("Could not fetch production entries for work order %s", work_order_id, exc_info=True)
 
-    # Get quality inspections for this work order
+    # Get quality inspections for this work order (from QUALITY_ENTRY table)
     quality_inspections = []
     try:
-        result = db.execute(
-            text(
-                """
-            SELECT
-                qi.inspection_id,
-                qi.inspection_date,
-                qi.inspection_type,
-                qi.result,
-                qi.defects_found,
-                qi.notes
-            FROM QUALITY_INSPECTION qi
-            WHERE qi.work_order_id = :work_order_id
-            ORDER BY qi.inspection_date DESC
-            LIMIT 20
-            """
-            ),
-            {"work_order_id": work_order_id},
+        rows = (
+            db.query(
+                QualityEntry.quality_entry_id,
+                QualityEntry.inspection_date,
+                QualityEntry.inspection_stage,
+                QualityEntry.units_passed,
+                QualityEntry.units_inspected,
+                QualityEntry.total_defects_count,
+                QualityEntry.notes,
+            )
+            .filter(
+                QualityEntry.work_order_id == work_order_id,
+                QualityEntry.client_id == work_order.client_id,
+            )
+            .order_by(QualityEntry.inspection_date.desc())
+            .limit(20)
+            .all()
         )
-        for row in result:
+        for row in rows:
+            # Derive result from pass/inspect ratio for backward compatibility
+            result_str = None
+            if row.units_inspected and row.units_inspected > 0:
+                result_str = "PASS" if row.units_passed == row.units_inspected else "FAIL"
             quality_inspections.append(
                 {
-                    "inspection_id": row[0],
-                    "inspection_date": row[1].isoformat() if row[1] else None,
-                    "inspection_type": row[2],
-                    "result": row[3],
-                    "defects_found": row[4] or 0,
-                    "notes": row[5],
+                    "inspection_id": row.quality_entry_id,
+                    "inspection_date": row.inspection_date.isoformat() if row.inspection_date else None,
+                    "inspection_type": row.inspection_stage,
+                    "result": result_str,
+                    "defects_found": row.total_defects_count or 0,
+                    "notes": row.notes,
                 }
             )
     except SQLAlchemyError as e:
         logger.warning("Could not fetch quality inspections for work order %s", work_order_id, exc_info=True)
 
-    # Get hold history
+    # Get hold history (from HOLD_ENTRY table)
     hold_history = []
     try:
-        result = db.execute(
-            text(
-                """
-            SELECT
-                wh.hold_id,
-                wh.hold_date,
-                wh.resume_date,
-                wh.reason,
-                wh.quantity,
-                wh.status
-            FROM WIP_HOLD wh
-            WHERE wh.work_order_id = :work_order_id
-            ORDER BY wh.hold_date DESC
-            LIMIT 20
-            """
-            ),
-            {"work_order_id": work_order_id},
+        rows = (
+            db.query(
+                HoldEntry.hold_entry_id,
+                HoldEntry.hold_date,
+                HoldEntry.resume_date,
+                HoldEntry.hold_reason_description,
+                HoldEntry.hold_status,
+            )
+            .filter(
+                HoldEntry.work_order_id == work_order_id,
+                HoldEntry.client_id == work_order.client_id,
+            )
+            .order_by(HoldEntry.hold_date.desc())
+            .limit(20)
+            .all()
         )
-        for row in result:
+        for row in rows:
             hold_history.append(
                 {
-                    "hold_id": row[0],
-                    "hold_date": row[1].isoformat() if row[1] else None,
-                    "resume_date": row[2].isoformat() if row[2] else None,
-                    "reason": row[3],
-                    "quantity": row[4],
-                    "status": row[5],
+                    "hold_id": row.hold_entry_id,
+                    "hold_date": row.hold_date.isoformat() if row.hold_date else None,
+                    "resume_date": row.resume_date.isoformat() if row.resume_date else None,
+                    "reason": row.hold_reason_description,
+                    "quantity": None,
+                    "status": row.hold_status.value if hasattr(row.hold_status, "value") else row.hold_status,
                 }
             )
     except SQLAlchemyError as e:
@@ -338,39 +342,40 @@ def get_work_order_timeline(
             }
         )
 
-    # Get hold/resume events
+    # Get hold/resume events (from HOLD_ENTRY table)
     try:
-        result = db.execute(
-            text(
-                """
-            SELECT
-                hold_date, resume_date, reason, quantity
-            FROM WIP_HOLD
-            WHERE work_order_id = :work_order_id
-            ORDER BY hold_date ASC
-            """
-            ),
-            {"work_order_id": work_order_id},
+        rows = (
+            db.query(
+                HoldEntry.hold_date,
+                HoldEntry.resume_date,
+                HoldEntry.hold_reason_description,
+            )
+            .filter(
+                HoldEntry.work_order_id == work_order_id,
+                HoldEntry.client_id == work_order.client_id,
+            )
+            .order_by(HoldEntry.hold_date.asc())
+            .all()
         )
-        for row in result:
-            if row[0]:  # hold_date
+        for row in rows:
+            if row.hold_date:
                 timeline_events.append(
                     {
                         "event_type": "hold",
                         "title": "Put On Hold",
-                        "description": f"Reason: {row[2] or 'Not specified'} ({row[3] or 0} units)",
-                        "timestamp": row[0].isoformat(),
+                        "description": f"Reason: {row.hold_reason_description or 'Not specified'}",
+                        "timestamp": row.hold_date.isoformat(),
                         "icon": "mdi-pause-circle",
                         "color": "warning",
                     }
                 )
-            if row[1]:  # resume_date
+            if row.resume_date:
                 timeline_events.append(
                     {
                         "event_type": "resume",
                         "title": "Resumed from Hold",
-                        "description": f"Production resumed ({row[3] or 0} units)",
-                        "timestamp": row[1].isoformat(),
+                        "description": "Production resumed",
+                        "timestamp": row.resume_date.isoformat(),
                         "icon": "mdi-play-circle",
                         "color": "info",
                     }

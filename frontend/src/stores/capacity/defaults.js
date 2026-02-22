@@ -31,7 +31,7 @@ export const getDefaultProductionLine = () => ({
 export const getDefaultOrder = () => ({
   order_number: '',
   customer_name: '',
-  style_code: '',
+  style_model: '',
   style_description: '',
   order_quantity: 0,
   completed_quantity: 0,
@@ -46,7 +46,7 @@ export const getDefaultOrder = () => ({
 })
 
 export const getDefaultStandard = () => ({
-  style_code: '',
+  style_model: '',
   operation_code: '',
   operation_name: '',
   department: '',
@@ -60,7 +60,7 @@ export const getDefaultStandard = () => ({
 export const getDefaultBOMHeader = () => ({
   parent_item_code: '',
   parent_item_description: '',
-  style_code: '',
+  style_model: '',
   revision: '1.0',
   is_active: true,
   notes: null,

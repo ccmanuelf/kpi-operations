@@ -404,8 +404,8 @@ class CapacityAnalysisService:
             )
 
         # Get SAM data for style codes
-        style_codes = list(set(d.style_code for d in details if d.style_code))
-        sam_by_style = self._get_sam_by_style(client_id, style_codes)
+        style_models = list(set(d.style_model for d in details if d.style_model))
+        sam_by_style = self._get_sam_by_style(client_id, style_models)
 
         # Calculate demand per line
         for detail in details:
@@ -416,7 +416,7 @@ class CapacityAnalysisService:
                 demand_by_line[detail.line_id] = {"hours": Decimal("0"), "units": 0}
 
             units = detail.scheduled_quantity or 0
-            sam_minutes = sam_by_style.get(detail.style_code, Decimal("0"))
+            sam_minutes = sam_by_style.get(detail.style_model, Decimal("0"))
             hours = (Decimal(str(units)) * sam_minutes) / Decimal("60")
 
             demand_by_line[detail.line_id]["hours"] += hours
@@ -424,26 +424,26 @@ class CapacityAnalysisService:
 
         return demand_by_line
 
-    def _get_sam_by_style(self, client_id: str, style_codes: List[str]) -> Dict[str, Decimal]:
+    def _get_sam_by_style(self, client_id: str, style_models: List[str]) -> Dict[str, Decimal]:
         """Get total SAM by style code."""
-        if not style_codes:
+        if not style_models:
             return {}
 
         # Aggregate SAM per style (sum of all operations)
         results = (
             self.db.query(
-                CapacityProductionStandard.style_code,
+                CapacityProductionStandard.style_model,
                 func.sum(CapacityProductionStandard.sam_minutes).label("total_sam"),
             )
             .filter(
                 CapacityProductionStandard.client_id == client_id,
-                CapacityProductionStandard.style_code.in_(style_codes),
+                CapacityProductionStandard.style_model.in_(style_models),
             )
-            .group_by(CapacityProductionStandard.style_code)
+            .group_by(CapacityProductionStandard.style_model)
             .all()
         )
 
-        return {r.style_code: Decimal(str(r.total_sam or 0)) for r in results}
+        return {r.style_model: Decimal(str(r.total_sam or 0)) for r in results}
 
     def _analyze_line(
         self,

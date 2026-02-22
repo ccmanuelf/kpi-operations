@@ -246,9 +246,9 @@ class DemoDataSeeder:
         Each client gets the same product catalog with their own product IDs.
         These product codes are used across:
         - Work Orders (style_model)
-        - Capacity Orders (style_code)
-        - BOM Headers (style_code)
-        - Production Standards (style_code)
+        - Capacity Orders (style_model)
+        - BOM Headers (style_model)
+        - Production Standards (style_model)
         """
         from backend.schemas.product import Product
         from backend.schemas.client import Client
@@ -1013,7 +1013,7 @@ class DemoDataSeeder:
         - Stock snapshots for all BOM components
 
         LINKAGE POINTS:
-        - style_code matches Product.product_code
+        - style_model matches Product.product_code
         - Capacity Orders for styles that have active Work Orders
         - Production Standards match Job operations
         """
@@ -1131,7 +1131,7 @@ class DemoDataSeeder:
                 client_id=client_id,
                 order_number=order["num"],
                 customer_name=order["cust"],
-                style_code=order["style"],
+                style_model=order["style"],
                 style_description=f"Standard {order['style']} product line",
                 order_quantity=order["qty"],
                 required_date=today + timedelta(days=order["days"]),
@@ -1174,7 +1174,7 @@ class DemoDataSeeder:
         for std in standards_data:
             std_entry = CapacityProductionStandard(
                 client_id=client_id,
-                style_code=std["style"],
+                style_model=std["style"],
                 operation_code=std["op"],
                 operation_name=std["name"],
                 department=std["dept"],
@@ -1254,7 +1254,7 @@ class DemoDataSeeder:
                 client_id=client_id,
                 parent_item_code=bom["item"],
                 parent_item_description=bom["desc"],
-                style_code=bom["item"],
+                style_model=bom["item"],
                 revision="1.0",
                 is_active=True
             )

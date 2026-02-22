@@ -133,7 +133,7 @@ class CapacityScheduleDetail(Base):
     # What to produce (indexed via composite index in __table_args__)
     order_id = Column(Integer, ForeignKey("capacity_orders.id"), nullable=True)
     order_number = Column(String(50), nullable=True)  # Denormalized for reporting
-    style_code = Column(String(50), nullable=True)  # Denormalized for reporting
+    style_model = Column(String(100), nullable=True)  # Denormalized for reporting
 
     # Where and when (indexed via composite indexes in __table_args__)
     line_id = Column(Integer, ForeignKey("capacity_production_lines.id"), nullable=True)

@@ -29,7 +29,7 @@ class ScheduleLineItem:
 
     order_id: int
     order_number: str
-    style_code: str
+    style_model: str
     line_id: int
     line_code: str
     scheduled_date: date
@@ -149,8 +149,8 @@ class SchedulingService:
             )
 
         # Get SAM data for styles
-        style_codes = list(set(o.style_code for o in orders))
-        sam_by_style = self._get_sam_by_style(client_id, style_codes)
+        style_models = list(set(o.style_model for o in orders))
+        sam_by_style = self._get_sam_by_style(client_id, style_models)
 
         # Get working days in period
         working_days = self._get_working_days(client_id, period_start, period_end)
@@ -219,7 +219,7 @@ class SchedulingService:
                 client_id=client_id,
                 order_id=item.get("order_id"),
                 order_number=item.get("order_number"),
-                style_code=item.get("style_code"),
+                style_model=item.get("style_model"),
                 line_id=item.get("line_id"),
                 line_code=item.get("line_code"),
                 scheduled_date=item.get("scheduled_date"),
@@ -437,25 +437,25 @@ class SchedulingService:
 
         return query.all()
 
-    def _get_sam_by_style(self, client_id: str, style_codes: List[str]) -> Dict[str, Decimal]:
+    def _get_sam_by_style(self, client_id: str, style_models: List[str]) -> Dict[str, Decimal]:
         """Get total SAM by style code."""
-        if not style_codes:
+        if not style_models:
             return {}
 
         results = (
             self.db.query(
-                CapacityProductionStandard.style_code,
+                CapacityProductionStandard.style_model,
                 func.sum(CapacityProductionStandard.sam_minutes).label("total_sam"),
             )
             .filter(
                 CapacityProductionStandard.client_id == client_id,
-                CapacityProductionStandard.style_code.in_(style_codes),
+                CapacityProductionStandard.style_model.in_(style_models),
             )
-            .group_by(CapacityProductionStandard.style_code)
+            .group_by(CapacityProductionStandard.style_model)
             .all()
         )
 
-        return {r.style_code: Decimal(str(r.total_sam or 0)) for r in results}
+        return {r.style_model: Decimal(str(r.total_sam or 0)) for r in results}
 
     def _get_working_days(self, client_id: str, period_start: date, period_end: date) -> List[date]:
         """Get working days in period."""
@@ -519,7 +519,7 @@ class SchedulingService:
         line_day_sequence: Dict[Tuple[int, date], int] = {}
 
         for order in orders:
-            sam = sam_by_style.get(order.style_code, Decimal("1.0"))
+            sam = sam_by_style.get(order.style_model, Decimal("1.0"))
             order_hours = (Decimal(str(order.order_quantity)) * sam) / Decimal("60")
 
             # Find best line with capacity
@@ -538,7 +538,7 @@ class SchedulingService:
                                 ScheduleLineItem(
                                     order_id=order.id,
                                     order_number=order.order_number,
-                                    style_code=order.style_code,
+                                    style_model=order.style_model,
                                     line_id=line.id,
                                     line_code=line.line_code,
                                     scheduled_date=work_date,
@@ -562,7 +562,7 @@ class SchedulingService:
         """Calculate total demand hours from schedule items."""
         total = Decimal("0")
         for item in items:
-            sam = sam_by_style.get(item.style_code, Decimal("1.0"))
+            sam = sam_by_style.get(item.style_model, Decimal("1.0"))
             hours = (Decimal(str(item.scheduled_quantity)) * sam) / Decimal("60")
             total += hours
         return total

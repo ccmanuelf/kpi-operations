@@ -26,7 +26,7 @@ class CapacityProductionStandard(Base):
 
     __tablename__ = "capacity_production_standards"
     __table_args__ = (
-        Index("ix_capacity_standards_style_op", "client_id", "style_code", "operation_code"),
+        Index("ix_capacity_standards_style_op", "client_id", "style_model", "operation_code"),
         {"extend_existing": True},
     )
 
@@ -37,7 +37,7 @@ class CapacityProductionStandard(Base):
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Style and operation identification (indexed via composite index in __table_args__)
-    style_code = Column(String(50), nullable=False)
+    style_model = Column(String(100), nullable=False)
     operation_code = Column(String(50), nullable=False)
     operation_name = Column(String(100), nullable=True)
     department = Column(String(50), nullable=True)  # CUTTING, SEWING, FINISHING, etc.
@@ -76,5 +76,5 @@ class CapacityProductionStandard(Base):
 
     def __repr__(self):
         return (
-            f"<CapacityProductionStandard(style={self.style_code}, op={self.operation_code}, sam={self.sam_minutes})>"
+            f"<CapacityProductionStandard(style={self.style_model}, op={self.operation_code}, sam={self.sam_minutes})>"
         )

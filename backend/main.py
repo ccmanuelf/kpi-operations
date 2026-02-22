@@ -1,6 +1,13 @@
 """
 Manufacturing KPI Platform - FastAPI Backend
 Main application with modular routes
+
+API Versioning:
+  The canonical API prefix is /api/v1/. A path-rewriting middleware
+  strips the /v1 segment so existing route handlers (mounted at /api/)
+  continue to work unchanged.  Clients may use either prefix:
+    - /api/v1/health/live  (canonical, versioned)
+    - /api/health/live     (legacy, backward-compatible)
 """
 
 from contextlib import asynccontextmanager
@@ -47,6 +54,30 @@ class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
                 "for enhanced SimPy-based simulation with multi-product support."
             )
 
+        return response
+
+
+# =============================================================================
+# API Version Path-Rewrite Middleware
+# =============================================================================
+
+
+class APIVersionMiddleware(BaseHTTPMiddleware):
+    """
+    Rewrites /api/v1/... paths to /api/... so that versioned requests
+    are handled by the existing route handlers without any route changes.
+
+    Both /api/v1/<path> and /api/<path> resolve to the same handler.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.scope["path"]
+        if path.startswith("/api/v1/"):
+            # Strip the /v1 segment: "/api/v1/foo" -> "/api/foo"
+            request.scope["path"] = "/api/" + path[8:]
+        elif path == "/api/v1":
+            request.scope["path"] = "/api"
+        response = await call_next(request)
         return response
 
 
@@ -327,6 +358,11 @@ configure_rate_limiting(app)
 # Audit logging middleware — logs POST/PUT/PATCH/DELETE on /api/ paths
 app.add_middleware(AuditLogMiddleware)
 
+# API version path-rewrite middleware — rewrites /api/v1/... to /api/...
+# Added before CORS so that CORS (outermost) runs first, then this middleware
+# rewrites the path before it reaches rate limiting, audit, and route handlers.
+app.add_middleware(APIVersionMiddleware)
+
 # CORS middleware — added last so it runs first (outermost in LIFO order),
 # ensuring CORS preflight OPTIONS requests are handled before rate limiting
 # and audit logging middleware process them.
@@ -465,6 +501,9 @@ from backend.routes import (
 # Import defect type catalog router
 from backend.routes.defect_type_catalog import router as defect_type_catalog_router
 
+# Import hold catalog router (Sprint 0 Task 0.5)
+from backend.routes.hold_catalogs import router as hold_catalogs_router
+
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
 
@@ -506,6 +545,7 @@ app.include_router(availability_router)
 # ============================================================================
 app.include_router(holds_router)
 app.include_router(wip_aging_router)
+app.include_router(hold_catalogs_router)
 
 # ============================================================================
 # Register job routes

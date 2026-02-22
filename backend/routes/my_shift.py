@@ -112,6 +112,9 @@ def get_my_shift_summary(
 
     # Query production entries for this shift
     production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         production_query = production_query.filter(ProductionEntry.shift == shift_number)
     if operator_id:
@@ -126,6 +129,9 @@ def get_my_shift_summary(
 
     # Query downtime entries
     downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
@@ -135,6 +141,9 @@ def get_my_shift_summary(
 
     # Query quality entries
     quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
@@ -309,6 +318,9 @@ def get_my_shift_stats(
         func.sum(ProductionEntry.target_production).label("total_target"),
         func.count(ProductionEntry.id).label("entry_count"),
     ).filter(func.date(ProductionEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         production_query = production_query.filter(ProductionEntry.shift == shift_number)
     if operator_id:
@@ -320,6 +332,9 @@ def get_my_shift_stats(
     downtime_query = db.query(
         func.count(DowntimeEntry.id).label("incidents"), func.sum(DowntimeEntry.downtime_minutes).label("total_minutes")
     ).filter(func.date(DowntimeEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
@@ -329,6 +344,9 @@ def get_my_shift_stats(
     quality_query = db.query(
         func.count(QualityEntry.id).label("checks"), func.sum(QualityEntry.defect_quantity).label("defects")
     ).filter(func.date(QualityEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
@@ -369,6 +387,9 @@ def get_my_recent_activity(
 
     # Query production entries
     production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         production_query = production_query.filter(ProductionEntry.shift == shift_number)
 
@@ -386,6 +407,9 @@ def get_my_recent_activity(
 
     # Query downtime entries
     downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
@@ -403,6 +427,9 @@ def get_my_recent_activity(
 
     # Query quality entries
     quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.date) == target_date)
+    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    if current_user.role != "admin" and current_user.client_id_assigned:
+        quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
     if shift_number:
         quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 

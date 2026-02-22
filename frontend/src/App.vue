@@ -87,8 +87,7 @@
         <v-list-subheader v-if="!rail" id="tools-nav">{{ $t('navigation.tools').toUpperCase() }}</v-list-subheader>
 
         <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
-        <v-list-item prepend-icon="mdi-calculator-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
-        <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulationV2')" value="simulation-v2" to="/simulation-v2" />
+        <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
         <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
 
         <v-divider class="my-2" role="separator"></v-divider>

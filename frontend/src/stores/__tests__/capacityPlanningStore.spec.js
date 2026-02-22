@@ -515,16 +515,16 @@ describe('Capacity Planning Store', () => {
   // =========================================================================
   describe('Getters - BOM', () => {
     it('bomCount returns number of BOM entries', () => {
-      store.worksheets.bom.data = [{ style_code: 'S1' }, { style_code: 'S2' }]
+      store.worksheets.bom.data = [{ style_model: 'S1' }, { style_model: 'S2' }]
       expect(store.bomCount).toBe(2)
     })
 
     it('stylesWithBOM returns unique style codes', () => {
       store.worksheets.bom.data = [
-        { style_code: 'S1' },
-        { style_code: 'S1' },
-        { style_code: 'S2' },
-        { style_code: '' }
+        { style_model: 'S1' },
+        { style_model: 'S1' },
+        { style_model: 'S2' },
+        { style_model: '' }
       ]
       expect(store.stylesWithBOM).toEqual(['S1', 'S2'])
     })

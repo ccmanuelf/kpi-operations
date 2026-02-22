@@ -329,7 +329,7 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
   const bomCount = computed(() => _wsOps().worksheets.bom.data.length)
 
   const stylesWithBOM = computed(() =>
-    [...new Set(_wsOps().worksheets.bom.data.map(b => b.style_code))].filter(Boolean)
+    [...new Set(_wsOps().worksheets.bom.data.map(b => b.style_model))].filter(Boolean)
   )
 
   // ========================================

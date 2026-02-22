@@ -136,7 +136,7 @@ def _create_order(client, order_number=None, **overrides):
     """Helper to POST an order and return the response."""
     payload = {
         "order_number": order_number or "ORD-001",
-        "style_code": "STYLE-A",
+        "style_model": "STYLE-A",
         "order_quantity": 500,
         "required_date": (date.today() + timedelta(days=30)).isoformat(),
         "customer_name": "Acme Corp",
@@ -150,10 +150,10 @@ def _create_order(client, order_number=None, **overrides):
     return client.post(f"/api/capacity/orders?client_id={CLIENT_ID}", json=payload)
 
 
-def _create_standard(client, style_code=None, operation_code=None, **overrides):
+def _create_standard(client, style_model=None, operation_code=None, **overrides):
     """Helper to POST a standard and return the response."""
     payload = {
-        "style_code": style_code or "STYLE-A",
+        "style_model": style_model or "STYLE-A",
         "operation_code": operation_code or "OP-10",
         "sam_minutes": 2.5,
         "operation_name": "Front Stitch",
@@ -739,11 +739,11 @@ class TestStandardCreate:
 
     def test_create_standard_success(self, cap_client):
         client, _ = cap_client
-        resp = _create_standard(client, style_code="STY-01", operation_code="OP-10")
+        resp = _create_standard(client, style_model="STY-01", operation_code="OP-10")
         assert resp.status_code == 201
         data = resp.json()
         assert data["client_id"] == CLIENT_ID
-        assert data["style_code"] == "STY-01"
+        assert data["style_model"] == "STY-01"
         assert data["operation_code"] == "OP-10"
         assert data["sam_minutes"] == 2.5
         assert data["department"] == "SEWING"
@@ -753,7 +753,7 @@ class TestStandardCreate:
         resp = client.post(
             f"/api/capacity/standards?client_id={CLIENT_ID}",
             json={
-                "style_code": "STY-MIN",
+                "style_model": "STY-MIN",
                 "operation_code": "OP-MIN",
                 "sam_minutes": 1.0,
             },
@@ -768,7 +768,7 @@ class TestStandardCreate:
         client, _ = cap_client
         resp = client.post(
             f"/api/capacity/standards?client_id={CLIENT_ID}",
-            json={"style_code": "STY-X", "operation_code": "OP-X"},
+            json={"style_model": "STY-X", "operation_code": "OP-X"},
         )
         assert resp.status_code == 422
 
@@ -784,9 +784,9 @@ class TestStandardList:
 
     def test_list_standards_with_data(self, cap_client):
         client, _ = cap_client
-        _create_standard(client, style_code="S1", operation_code="O1")
-        _create_standard(client, style_code="S1", operation_code="O2")
-        _create_standard(client, style_code="S2", operation_code="O1")
+        _create_standard(client, style_model="S1", operation_code="O1")
+        _create_standard(client, style_model="S1", operation_code="O2")
+        _create_standard(client, style_model="S2", operation_code="O1")
 
         resp = client.get(f"/api/capacity/standards?client_id={CLIENT_ID}")
         assert resp.status_code == 200
@@ -794,8 +794,8 @@ class TestStandardList:
 
     def test_list_standards_department_filter(self, cap_client):
         client, _ = cap_client
-        _create_standard(client, style_code="SD1", operation_code="OD1", department="SEWING")
-        _create_standard(client, style_code="SD2", operation_code="OD2", department="CUTTING")
+        _create_standard(client, style_model="SD1", operation_code="OD1", department="SEWING")
+        _create_standard(client, style_model="SD2", operation_code="OD2", department="CUTTING")
 
         resp = client.get(f"/api/capacity/standards?client_id={CLIENT_ID}&department=CUTTING")
         assert resp.status_code == 200
@@ -809,12 +809,12 @@ class TestStandardGetSingle:
 
     def test_get_standard_success(self, cap_client):
         client, _ = cap_client
-        created = _create_standard(client, style_code="SG-1", operation_code="OG-1").json()
+        created = _create_standard(client, style_model="SG-1", operation_code="OG-1").json()
         standard_id = created["id"]
 
         resp = client.get(f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}")
         assert resp.status_code == 200
-        assert resp.json()["style_code"] == "SG-1"
+        assert resp.json()["style_model"] == "SG-1"
 
     def test_get_standard_not_found(self, cap_client):
         client, _ = cap_client
@@ -823,19 +823,19 @@ class TestStandardGetSingle:
 
 
 class TestStandardByStyle:
-    """GET /api/capacity/standards/style/{style_code}"""
+    """GET /api/capacity/standards/style/{style_model}"""
 
     def test_get_standards_by_style(self, cap_client):
         client, _ = cap_client
-        _create_standard(client, style_code="MATCH-STY", operation_code="OP-A")
-        _create_standard(client, style_code="MATCH-STY", operation_code="OP-B")
-        _create_standard(client, style_code="OTHER-STY", operation_code="OP-C")
+        _create_standard(client, style_model="MATCH-STY", operation_code="OP-A")
+        _create_standard(client, style_model="MATCH-STY", operation_code="OP-B")
+        _create_standard(client, style_model="OTHER-STY", operation_code="OP-C")
 
         resp = client.get(f"/api/capacity/standards/style/MATCH-STY?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         data = resp.json()
         assert len(data) == 2
-        assert all(s["style_code"] == "MATCH-STY" for s in data)
+        assert all(s["style_model"] == "MATCH-STY" for s in data)
 
     def test_get_standards_by_style_empty(self, cap_client):
         client, _ = cap_client
@@ -845,25 +845,25 @@ class TestStandardByStyle:
 
 
 class TestStandardTotalSAM:
-    """GET /api/capacity/standards/style/{style_code}/total-sam"""
+    """GET /api/capacity/standards/style/{style_model}/total-sam"""
 
     def test_total_sam_returns_sum(self, cap_client):
         """Total SAM endpoint sums all operations for a style."""
         client, _ = cap_client
-        _create_standard(client, style_code="SAM-STY", operation_code="OP-1", sam_minutes=3.0)
-        _create_standard(client, style_code="SAM-STY", operation_code="OP-2", sam_minutes=4.5)
+        _create_standard(client, style_model="SAM-STY", operation_code="OP-1", sam_minutes=3.0)
+        _create_standard(client, style_model="SAM-STY", operation_code="OP-2", sam_minutes=4.5)
 
         resp = client.get(f"/api/capacity/standards/style/SAM-STY/total-sam?client_id={CLIENT_ID}")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["style_code"] == "SAM-STY"
+        assert data["style_model"] == "SAM-STY"
         assert data["total_sam_minutes"] == 7.5
 
     def test_total_sam_with_department_filter(self, cap_client):
         """Total SAM endpoint filters by department when provided."""
         client, _ = cap_client
-        _create_standard(client, style_code="SAM-DEP", operation_code="OP-1", sam_minutes=3.0, department="SEWING")
-        _create_standard(client, style_code="SAM-DEP", operation_code="OP-2", sam_minutes=4.0, department="CUTTING")
+        _create_standard(client, style_model="SAM-DEP", operation_code="OP-1", sam_minutes=3.0, department="SEWING")
+        _create_standard(client, style_model="SAM-DEP", operation_code="OP-2", sam_minutes=4.0, department="CUTTING")
 
         resp = client.get(f"/api/capacity/standards/style/SAM-DEP/total-sam?client_id={CLIENT_ID}&department=SEWING")
         assert resp.status_code == 200
@@ -882,7 +882,7 @@ class TestStandardUpdate:
 
     def test_update_standard_success(self, cap_client):
         client, _ = cap_client
-        created = _create_standard(client, style_code="SU-1", operation_code="OU-1").json()
+        created = _create_standard(client, style_model="SU-1", operation_code="OU-1").json()
         standard_id = created["id"]
 
         resp = client.put(
@@ -904,7 +904,7 @@ class TestStandardUpdate:
 
     def test_update_standard_partial(self, cap_client):
         client, _ = cap_client
-        created = _create_standard(client, style_code="SP-1", operation_code="OP-P1", sam_minutes=3.0).json()
+        created = _create_standard(client, style_model="SP-1", operation_code="OP-P1", sam_minutes=3.0).json()
         standard_id = created["id"]
 
         resp = client.put(
@@ -922,7 +922,7 @@ class TestStandardDelete:
 
     def test_delete_standard_success(self, cap_client):
         client, _ = cap_client
-        created = _create_standard(client, style_code="DEL-S", operation_code="DEL-O").json()
+        created = _create_standard(client, style_model="DEL-S", operation_code="DEL-O").json()
         standard_id = created["id"]
 
         resp = client.delete(f"/api/capacity/standards/{standard_id}?client_id={CLIENT_ID}")
@@ -994,7 +994,7 @@ class TestMultiTenantIsolation:
             "/api/capacity/orders?client_id=ISO-A",
             json={
                 "order_number": "ORD-ISO-001",
-                "style_code": "STY-ISO",
+                "style_model": "STY-ISO",
                 "order_quantity": 100,
                 "required_date": (date.today() + timedelta(days=30)).isoformat(),
             },
@@ -1039,7 +1039,7 @@ class TestMultiTenantIsolation:
         tc.post(
             "/api/capacity/standards?client_id=STD-A",
             json={
-                "style_code": "ISO-STY",
+                "style_model": "ISO-STY",
                 "operation_code": "ISO-OP",
                 "sam_minutes": 2.0,
             },
@@ -1117,7 +1117,7 @@ class TestEdgeCases:
         client, _ = cap_client
         resp = _create_standard(
             client,
-            style_code="ZERO-STY",
+            style_model="ZERO-STY",
             operation_code="ZERO-OP",
             sam_minutes=0.0,
         )

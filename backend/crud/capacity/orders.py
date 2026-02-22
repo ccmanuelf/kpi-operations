@@ -21,7 +21,7 @@ def create_order(
     db: Session,
     client_id: str,
     order_number: str,
-    style_code: str,
+    style_model: str,
     order_quantity: int,
     required_date: date,
     customer_name: Optional[str] = None,
@@ -41,7 +41,7 @@ def create_order(
         db: Database session
         client_id: Client identifier for multi-tenant isolation
         order_number: Unique order number
-        style_code: Style/product code
+        style_model: Style/product code
         order_quantity: Quantity ordered
         required_date: Customer need date
         customer_name: Customer name
@@ -63,7 +63,7 @@ def create_order(
         client_id=client_id,
         order_number=order_number,
         customer_name=customer_name,
-        style_code=style_code,
+        style_model=style_model,
         style_description=style_description,
         order_quantity=order_quantity,
         completed_quantity=0,
@@ -251,14 +251,14 @@ def get_orders_by_status(db: Session, client_id: str, status: OrderStatus) -> Li
     )
 
 
-def get_orders_by_style(db: Session, client_id: str, style_code: str) -> List[CapacityOrder]:
+def get_orders_by_style(db: Session, client_id: str, style_model: str) -> List[CapacityOrder]:
     """
     Get orders by style code.
 
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style code to filter by
+        style_model: Style code to filter by
 
     Returns:
         List of CapacityOrder entries for the style
@@ -266,7 +266,7 @@ def get_orders_by_style(db: Session, client_id: str, style_code: str) -> List[Ca
     ensure_client_id(client_id, "orders by style query")
     return (
         db.query(CapacityOrder)
-        .filter(and_(CapacityOrder.client_id == client_id, CapacityOrder.style_code == style_code))
+        .filter(and_(CapacityOrder.client_id == client_id, CapacityOrder.style_model == style_model))
         .order_by(CapacityOrder.required_date)
         .all()
     )

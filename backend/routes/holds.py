@@ -12,6 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 from backend.database import get_db
 from backend.models.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
 from backend.crud.hold import create_wip_hold, get_wip_hold, get_wip_holds, update_wip_hold, delete_wip_hold
+from backend.crud.hold_catalog import validate_hold_status_for_client, validate_hold_reason_for_client
 from backend.calculations.wip_aging import identify_chronic_holds
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.schemas.user import User
@@ -30,9 +31,17 @@ def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user
 
     Creates a new hold entry for a work order, recording the hold reason
     and initiating the approval workflow.
+    Validates hold_status and hold_reason against the client's catalog.
 
     SECURITY: Requires authentication; client access verified in CRUD layer.
     """
+    # Validate hold_reason against catalog (if provided)
+    if hold.hold_reason and not validate_hold_reason_for_client(db, hold.client_id, hold.hold_reason):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Reason '{hold.hold_reason}' not found in client catalog",
+        )
+
     return create_wip_hold(db, hold, current_user)
 
 
@@ -98,7 +107,17 @@ def update_hold(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WIPHoldResponse:
-    """Update WIP hold record"""
+    """Update WIP hold record. Validates hold_reason against catalog if provided."""
+    # Validate hold_reason against catalog when updating
+    if hold_update.hold_reason:
+        # Need to resolve client_id from the existing hold
+        existing = get_wip_hold(db, hold_id, current_user)
+        if existing and not validate_hold_reason_for_client(db, existing.client_id, hold_update.hold_reason):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Reason '{hold_update.hold_reason}' not found in client catalog",
+            )
+
     updated = update_wip_hold(db, hold_id, hold_update, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="WIP hold not found")
@@ -143,7 +162,7 @@ def approve_hold(
     if db_hold.hold_status != HoldStatus.PENDING_HOLD_APPROVAL:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot approve hold with status {db_hold.hold_status.value}. Only PENDING_HOLD_APPROVAL can be approved.",
+            detail=f"Cannot approve hold with status {db_hold.hold_status}. Only PENDING_HOLD_APPROVAL can be approved.",
         )
 
     # Approve the hold
@@ -178,7 +197,7 @@ def request_resume(hold_id: str, db: Session = Depends(get_db), current_user: Us
     if db_hold.hold_status != HoldStatus.ON_HOLD:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot request resume for hold with status {db_hold.hold_status.value}. Only ON_HOLD can be resumed.",
+            detail=f"Cannot request resume for hold with status {db_hold.hold_status}. Only ON_HOLD can be resumed.",
         )
 
     # Request resume
@@ -217,7 +236,7 @@ def approve_resume(
     if db_hold.hold_status != HoldStatus.PENDING_RESUME_APPROVAL:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot approve resume for hold with status {db_hold.hold_status.value}. Only PENDING_RESUME_APPROVAL can be approved.",
+            detail=f"Cannot approve resume for hold with status {db_hold.hold_status}. Only PENDING_RESUME_APPROVAL can be approved.",
         )
 
     # Approve the resume

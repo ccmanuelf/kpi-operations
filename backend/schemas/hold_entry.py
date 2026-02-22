@@ -2,26 +2,56 @@
 HOLD_ENTRY table ORM schema (SQLAlchemy)
 Complete implementation for KPI #1 WIP Aging calculation
 Source: 03-Phase2_Downtime_WIP_Inventory.csv lines 20-38
+
+Migration note (Task 0.5): hold_status and hold_reason columns changed from
+SQLAlchemy Enum to String(50) so values are driven by HOLD_STATUS_CATALOG and
+HOLD_REASON_CATALOG tables.  HoldStatus / HoldReason are kept as plain
+string-constant classes so that all existing comparison code
+(e.g. ``db_hold.hold_status == HoldStatus.ON_HOLD``) continues to work.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from backend.database import Base
-import enum
 
 
-class HoldStatus(str, enum.Enum):
-    """Hold status tracking with approval workflow"""
+class HoldStatus:
+    """
+    Hold status string constants.
 
-    PENDING_HOLD_APPROVAL = "PENDING_HOLD_APPROVAL"  # Operator requested hold, awaiting supervisor approval
-    ON_HOLD = "ON_HOLD"  # Hold approved and active
-    PENDING_RESUME_APPROVAL = "PENDING_RESUME_APPROVAL"  # Resume requested, awaiting supervisor approval
-    RESUMED = "RESUMED"  # Resume approved and completed
+    No longer a Python enum — values are now driven by HOLD_STATUS_CATALOG.
+    This class is kept for backward-compatible symbolic constants used in
+    comparisons throughout the codebase.
+    """
+
+    PENDING_HOLD_APPROVAL = "PENDING_HOLD_APPROVAL"
+    ON_HOLD = "ON_HOLD"
+    PENDING_RESUME_APPROVAL = "PENDING_RESUME_APPROVAL"
+    RESUMED = "RESUMED"
     CANCELLED = "CANCELLED"
+    RELEASED = "RELEASED"
+    SCRAPPED = "SCRAPPED"
+
+    # Expose __members__ for backward compatibility with code that checks
+    # ``HoldStatus.__members__`` (e.g. factory fixtures).
+    __members__ = {
+        "PENDING_HOLD_APPROVAL": "PENDING_HOLD_APPROVAL",
+        "ON_HOLD": "ON_HOLD",
+        "PENDING_RESUME_APPROVAL": "PENDING_RESUME_APPROVAL",
+        "RESUMED": "RESUMED",
+        "CANCELLED": "CANCELLED",
+        "RELEASED": "RELEASED",
+        "SCRAPPED": "SCRAPPED",
+    }
 
 
-class HoldReason(str, enum.Enum):
-    """Hold reason classification - strict validation"""
+class HoldReason:
+    """
+    Hold reason string constants.
+
+    No longer a Python enum — values are now driven by HOLD_REASON_CATALOG.
+    This class is kept for backward-compatible symbolic constants.
+    """
 
     MATERIAL_INSPECTION = "MATERIAL_INSPECTION"
     MATERIAL_SHORTAGE = "MATERIAL_SHORTAGE"
@@ -34,6 +64,20 @@ class HoldReason(str, enum.Enum):
     CAPACITY_CONSTRAINT = "CAPACITY_CONSTRAINT"
     PENDING_APPROVAL = "PENDING_APPROVAL"
     OTHER = "OTHER"
+
+    __members__ = {
+        "MATERIAL_INSPECTION": "MATERIAL_INSPECTION",
+        "MATERIAL_SHORTAGE": "MATERIAL_SHORTAGE",
+        "QUALITY_ISSUE": "QUALITY_ISSUE",
+        "ENGINEERING_REVIEW": "ENGINEERING_REVIEW",
+        "ENGINEERING_CHANGE": "ENGINEERING_CHANGE",
+        "CUSTOMER_REQUEST": "CUSTOMER_REQUEST",
+        "MISSING_SPECIFICATION": "MISSING_SPECIFICATION",
+        "EQUIPMENT_UNAVAILABLE": "EQUIPMENT_UNAVAILABLE",
+        "CAPACITY_CONSTRAINT": "CAPACITY_CONSTRAINT",
+        "PENDING_APPROVAL": "PENDING_APPROVAL",
+        "OTHER": "OTHER",
+    }
 
 
 class HoldEntry(Base):
@@ -52,8 +96,8 @@ class HoldEntry(Base):
     work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)
     job_id = Column(String(50), ForeignKey("JOB.job_id"), index=True)  # Job-level tracking
 
-    # Hold tracking
-    hold_status = Column(SQLEnum(HoldStatus), nullable=False, default=HoldStatus.ON_HOLD, index=True)
+    # Hold tracking — String(50) backed by HOLD_STATUS_CATALOG
+    hold_status = Column(String(50), nullable=False, default=HoldStatus.ON_HOLD, index=True)
     hold_date = Column(DateTime, index=True)
     resume_date = Column(DateTime)
 
@@ -61,9 +105,9 @@ class HoldEntry(Base):
     # Excludes this time from aging: Net Aging = Total Days - (Hold Hours / 24)
     total_hold_duration_hours = Column(Numeric(10, 2), default=0)
 
-    # Hold reason details
+    # Hold reason details — String(50) backed by HOLD_REASON_CATALOG
     hold_reason_category = Column(String(100))  # Kept for backward compatibility
-    hold_reason = Column(SQLEnum(HoldReason))  # Enum-based hold reason
+    hold_reason = Column(String(50))  # Now catalog-driven (was SQLEnum)
     hold_reason_description = Column(Text)
 
     # Quality hold specifics

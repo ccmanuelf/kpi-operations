@@ -579,7 +579,7 @@ def init_database():
                     client_id=client_id,
                     order_number=f"CPO-{client_id[:4]}-{idx+1:03d}",
                     customer_name=clients[client_id].client_name,
-                    style_code=mp["code"],
+                    style_model=mp["code"],
                     style_description=mp["name"],
                     order_quantity=order_quantities[idx],
                     required_date=today + timedelta(days=21 + idx * 7),
@@ -608,7 +608,7 @@ def init_database():
                 for op_code, sam_val in mp["sam"].items():
                     std_entry = CapacityProductionStandard(
                         client_id=client_id,
-                        style_code=mp["code"],
+                        style_model=mp["code"],
                         operation_code=op_code,
                         operation_name=f"{op_code} - {op_labels[op_code]}",
                         department=op_depts[op_code],
@@ -625,7 +625,7 @@ def init_database():
                     client_id=client_id,
                     parent_item_code=mp["code"],
                     parent_item_description=f"BOM for {mp['name']}",
-                    style_code=mp["code"],
+                    style_model=mp["code"],
                     revision="1.0",
                     is_active=True,
                 )
@@ -724,7 +724,7 @@ def init_database():
 
             # 5a. Component Check - explode BOMs, compare vs stock
             for order in cap_orders:
-                mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_code)
+                mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_model)
                 for comp in mp["bom"]:
                     waste_mult = 1 + float(comp["waste"]) / 100
                     required = float(comp["qty"]) * order.order_quantity * waste_mult
@@ -751,7 +751,7 @@ def init_database():
             # Calculate demand by department across all orders
             dept_demand_minutes = {"CUTTING": 0, "SEWING": 0, "FINISHING": 0, "PRESSING": 0, "QC": 0}
             for order in cap_orders:
-                mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_code)
+                mp = next(m for m in MASTER_PRODUCTS if m["code"] == order.style_model)
                 for dept_key, sam_key in [
                     ("CUTTING", "CUT"),
                     ("SEWING", "SEW"),
@@ -865,7 +865,7 @@ def init_database():
                             client_id=client_id,
                             order_id=order.id,
                             order_number=order.order_number,
-                            style_code=order.style_code,
+                            style_model=order.style_model,
                             line_id=primary_line.id,
                             line_code=primary_line.line_code,
                             scheduled_date=sched_date,

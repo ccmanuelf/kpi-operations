@@ -320,32 +320,21 @@ def batch_import_production(
     # Create import log entry
     import_log_id = None
     try:
+        from backend.schemas.import_log import ImportLog
+
         error_json = json.dumps(errors) if errors else None
 
-        # Insert into import_log table
-        from sqlalchemy import text
-
-        result = db.execute(
-            text(
-                """
-            INSERT INTO import_log
-            (user_id, rows_attempted, rows_succeeded, rows_failed, error_details, import_type)
-            VALUES (:user_id, :attempted, :succeeded, :failed, :errors, 'batch_import')
-            RETURNING log_id
-            """
-            ),
-            {
-                "user_id": current_user.user_id,
-                "attempted": total_rows,
-                "succeeded": successful,
-                "failed": failed,
-                "errors": error_json,
-            },
+        log_entry = ImportLog(
+            user_id=current_user.user_id,
+            rows_attempted=total_rows,
+            rows_succeeded=successful,
+            rows_failed=failed,
+            error_details=error_json,
+            import_type="batch_import",
         )
-
-        log_row = result.fetchone()
-        if log_row:
-            import_log_id = log_row[0]
+        db.add(log_entry)
+        db.flush()
+        import_log_id = log_entry.log_id
 
         db.commit()
 
@@ -380,37 +369,27 @@ import_logs_router = APIRouter(prefix="/api/import-logs", tags=["Production"])
 @import_logs_router.get("")
 def get_import_logs(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[dict]:
     """Get import logs for the current user"""
-    from sqlalchemy import text
+    from backend.schemas.import_log import ImportLog
 
-    result = db.execute(
-        text(
-            """
-        SELECT log_id, user_id, import_timestamp, file_name,
-               rows_attempted, rows_succeeded, rows_failed,
-               error_details, import_type
-        FROM import_log
-        WHERE user_id = :user_id
-        ORDER BY import_timestamp DESC
-        LIMIT :limit
-        """
-        ),
-        {"user_id": current_user.user_id, "limit": limit},
+    rows = (
+        db.query(ImportLog)
+        .filter(ImportLog.user_id == current_user.user_id)
+        .order_by(ImportLog.import_timestamp.desc())
+        .limit(limit)
+        .all()
     )
 
-    logs = []
-    for row in result:
-        logs.append(
-            {
-                "log_id": row[0],
-                "user_id": row[1],
-                "import_timestamp": row[2],
-                "file_name": row[3],
-                "rows_attempted": row[4],
-                "rows_succeeded": row[5],
-                "rows_failed": row[6],
-                "error_details": row[7],
-                "import_type": row[8],
-            }
-        )
-
-    return logs
+    return [
+        {
+            "log_id": row.log_id,
+            "user_id": row.user_id,
+            "import_timestamp": row.import_timestamp,
+            "file_name": row.file_name,
+            "rows_attempted": row.rows_attempted,
+            "rows_succeeded": row.rows_succeeded,
+            "rows_failed": row.rows_failed,
+            "error_details": row.error_details,
+            "import_type": row.import_type,
+        }
+        for row in rows
+    ]

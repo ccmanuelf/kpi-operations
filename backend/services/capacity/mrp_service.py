@@ -122,13 +122,13 @@ class MRPService:
         for order in orders:
             try:
                 result = self.bom_service.explode_bom(
-                    client_id, order.style_code, Decimal(str(order.order_quantity)), emit_event=False
+                    client_id, order.style_model, Decimal(str(order.order_quantity)), emit_event=False
                 )
                 explosion_results.append(result)
 
-                if order.style_code not in order_by_style:
-                    order_by_style[order.style_code] = []
-                order_by_style[order.style_code].append(order.order_number)
+                if order.style_model not in order_by_style:
+                    order_by_style[order.style_model] = []
+                order_by_style[order.style_model].append(order.order_number)
             except (SQLAlchemyError, ValueError, KeyError) as e:
                 # Skip orders without valid BOMs
                 logger.exception("BOM explosion failed for order %s", order.order_number)
@@ -310,7 +310,7 @@ class MRPService:
         Args:
             item_code: Component item code
             explosion_results: List of BOM explosion results
-            order_by_style: Dict of style_code -> order_numbers
+            order_by_style: Dict of style_model -> order_numbers
 
         Returns:
             List of affected order numbers

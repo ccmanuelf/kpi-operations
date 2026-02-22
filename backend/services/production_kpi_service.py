@@ -79,6 +79,7 @@ class OEEResult:
     performance: Decimal
     quality: Decimal
     is_estimated: bool
+    availability_estimated: bool = False
 
 
 @dataclass
@@ -219,7 +220,7 @@ class ProductionKPIService:
         efficiency = self._calculate_efficiency(entry, product, shift, client_config)
         performance = self._calculate_performance(entry, product, client_config)
         quality = self._calculate_quality_rate(entry)
-        oee = self._calculate_oee(efficiency, performance, quality)
+        oee = self._calculate_oee(efficiency, performance, quality, entry=entry)
 
         return ProductionKPIResult(
             efficiency=efficiency, performance=performance, quality=quality, oee=oee, entry_id=entry.production_entry_id
@@ -313,7 +314,7 @@ class ProductionKPIService:
             efficiency = self._calculate_efficiency(entry, product, shift, client_config)
             performance = self._calculate_performance(entry, product, client_config)
             quality = self._calculate_quality_rate(entry)
-            oee = self._calculate_oee(efficiency, performance, quality)
+            oee = self._calculate_oee(efficiency, performance, quality, entry=entry)
 
             results[entry.production_entry_id] = ProductionKPIResult(
                 efficiency=efficiency,
@@ -638,20 +639,58 @@ class ProductionKPIService:
         )
 
     def _calculate_oee(
-        self, efficiency: EfficiencyResult, performance: PerformanceResult, quality: QualityRateResult
+        self,
+        efficiency: EfficiencyResult,
+        performance: PerformanceResult,
+        quality: QualityRateResult,
+        entry: Optional[ProductionEntry] = None,
     ) -> OEEResult:
         """
         Calculate OEE from component values.
 
         OEE = Availability x Performance x Quality
 
-        Note: For Phase 1, we assume 100% availability.
-        Full availability tracking requires downtime integration (Phase 2).
+        Phase 2: Queries real downtime data via calculate_availability when a
+        production entry with a work_order_id is provided.  Falls back to 100 %
+        availability (flagged as estimated) when no downtime records exist or
+        when the entry lacks a work_order_id.
+
+        Args:
+            efficiency: Efficiency calculation result
+            performance: Performance calculation result
+            quality: Quality rate calculation result
+            entry: Optional production entry used to look up downtime records
         """
         from backend.calculations.performance import calculate_oee_pure
+        from backend.calculations.availability import calculate_availability
 
-        # Assume 100% availability for now (requires downtime tracking for actual)
         availability = Decimal("100")
+        availability_estimated = True
+
+        # Attempt real availability calculation when we have a work order
+        if entry is not None and getattr(entry, "work_order_id", None):
+            try:
+                target_date = entry.shift_date.date() if hasattr(entry.shift_date, "date") else entry.shift_date
+                client_id = getattr(entry, "client_id", None)
+
+                availability_pct, _scheduled, _downtime, event_count = calculate_availability(
+                    db=self.db,
+                    work_order_id=entry.work_order_id,
+                    target_date=target_date,
+                    client_id=client_id,
+                )
+
+                if event_count > 0:
+                    # Real downtime data exists — use calculated availability
+                    availability = availability_pct
+                    availability_estimated = False
+                # else: no downtime records — keep 100% with estimated flag
+            except Exception:
+                logger.warning(
+                    "Failed to calculate real availability for entry %s; defaulting to 100%%",
+                    getattr(entry, "production_entry_id", "?"),
+                    exc_info=True,
+                )
 
         oee = calculate_oee_pure(
             availability=availability, performance=performance.performance_percentage, quality=quality.quality_rate
@@ -662,7 +701,8 @@ class ProductionKPIService:
             availability=availability,
             performance=performance.performance_percentage,
             quality=quality.quality_rate,
-            is_estimated=performance.is_estimated or efficiency.is_estimated,
+            is_estimated=performance.is_estimated or efficiency.is_estimated or availability_estimated,
+            availability_estimated=availability_estimated,
         )
 
 

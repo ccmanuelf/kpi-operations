@@ -348,35 +348,34 @@ def calculate_absenteeism_kpi(
     # Additional breakdown data for tables
     # ========================================
 
-    # 1. Absence by reason/type - use raw SQL to avoid enum issues
-    from sqlalchemy import text
+    # 1. Absence by reason/type - using ORM with func.coalesce for enum handling
+    from sqlalchemy import func as sa_func
 
-    reason_sql = """
-        SELECT
-            COALESCE(absence_type, 'Unspecified') as reason,
-            COUNT(*) as count
-        FROM ATTENDANCE_ENTRY
-        WHERE shift_date >= :start_date
-          AND shift_date <= :end_date
-          AND is_absent = 1
-    """
+    absence_type_label = sa_func.coalesce(
+        AttendanceEntry.absence_type, "Unspecified"
+    ).label("reason")
+
+    reason_query = (
+        db.query(
+            absence_type_label,
+            sa_func.count().label("count"),
+        )
+        .filter(
+            AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+            AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+            AttendanceEntry.is_absent == 1,
+        )
+    )
+
     if effective_client_id:
-        reason_sql += " AND client_id = :client_id"
-    reason_sql += " GROUP BY COALESCE(absence_type, 'Unspecified')"
+        reason_query = reason_query.filter(AttendanceEntry.client_id == effective_client_id)
 
-    reason_params = {
-        "start_date": datetime.combine(start_date, datetime.min.time()),
-        "end_date": datetime.combine(end_date, datetime.max.time()),
-    }
-    if effective_client_id:
-        reason_params["client_id"] = effective_client_id
-
-    reason_results = db.execute(text(reason_sql), reason_params).fetchall()
+    reason_results = reason_query.group_by(absence_type_label).all()
 
     total_absences_for_pct = sum(r.count for r in reason_results) or 1
     by_reason = [
         {
-            "reason": r.reason or "Unspecified",
+            "reason": str(r.reason) if r.reason else "Unspecified",
             "count": r.count,
             "percentage": round((r.count / total_absences_for_pct) * 100, 1),
         }

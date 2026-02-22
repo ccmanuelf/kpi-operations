@@ -135,7 +135,7 @@ class TestBOMEndpoints:
         body = {
             "parent_item_code": "ITEM-001",
             "parent_item_description": "Test Parent Item",
-            "style_code": "STYLE-A",
+            "style_model": "STYLE-A",
             "revision": "1.0",
             "is_active": True,
             "notes": "Test BOM header",
@@ -1068,7 +1068,7 @@ class TestWorkbookEndpoints:
         client, db = cap_client_with_data
         resp = client.put(
             f"/api/capacity/workbook/{CLIENT_ID}/orders",
-            json=[{"order_number": "ORD-001", "style_code": "S1", "quantity": 100}],
+            json=[{"order_number": "ORD-001", "style_model": "S1", "quantity": 100}],
         )
         assert resp.status_code == 200
         assert "saved" in resp.json()["message"].lower()

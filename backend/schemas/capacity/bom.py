@@ -26,7 +26,7 @@ class CapacityBOMHeader(Base):
     __tablename__ = "capacity_bom_header"
     __table_args__ = (
         Index("ix_capacity_bom_header_parent", "client_id", "parent_item_code"),
-        Index("ix_capacity_bom_header_style", "client_id", "style_code"),
+        Index("ix_capacity_bom_header_style", "client_id", "style_model"),
         {"extend_existing": True},
     )
 
@@ -41,7 +41,7 @@ class CapacityBOMHeader(Base):
     parent_item_description = Column(String(200), nullable=True)
 
     # Link to style (indexed via composite index in __table_args__)
-    style_code = Column(String(50), nullable=True)
+    style_model = Column(String(100), nullable=True)
 
     # Revision tracking
     revision = Column(String(20), default="1.0")

@@ -74,7 +74,7 @@ def create_bom_header(
         client_id,
         header.parent_item_code,
         header.parent_item_description,
-        header.style_code,
+        header.style_model,
         header.revision,
         header.is_active,
         header.notes,

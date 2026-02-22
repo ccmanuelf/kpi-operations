@@ -56,7 +56,7 @@ def create_standard(
     return standards.create_standard(
         db,
         client_id,
-        standard.style_code,
+        standard.style_model,
         standard.operation_code,
         standard.sam_minutes,
         standard.operation_name,
@@ -68,21 +68,21 @@ def create_standard(
     )
 
 
-@standards_router.get("/standards/style/{style_code}", response_model=List[StandardResponse])
+@standards_router.get("/standards/style/{style_model}", response_model=List[StandardResponse])
 def get_standards_by_style(
-    style_code: str,
+    style_model: str,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get all standards for a specific style."""
     verify_client_access(current_user, client_id, db)
-    return standards.get_standards_by_style(db, client_id, style_code)
+    return standards.get_standards_by_style(db, client_id, style_model)
 
 
-@standards_router.get("/standards/style/{style_code}/total-sam", response_model=TotalSAMResponse)
+@standards_router.get("/standards/style/{style_model}/total-sam", response_model=TotalSAMResponse)
 def get_total_sam_for_style(
-    style_code: str,
+    style_model: str,
     client_id: str = Query(..., description="Client ID"),
     department: Optional[str] = None,
     db: Session = Depends(get_db),
@@ -90,8 +90,8 @@ def get_total_sam_for_style(
 ):
     """Get total SAM minutes for a style."""
     verify_client_access(current_user, client_id, db)
-    total = standards.get_total_sam_for_style(db, client_id, style_code, department)
-    return {"style_code": style_code, "total_sam_minutes": total, "department": department}
+    total = standards.get_total_sam_for_style(db, client_id, style_model, department)
+    return {"style_model": style_model, "total_sam_minutes": total, "department": department}
 
 
 @standards_router.get("/standards/{standard_id}", response_model=StandardResponse, responses={404: {"description": "Standard not found"}})

@@ -26,7 +26,7 @@ def create_bom_header(
     client_id: str,
     parent_item_code: str,
     parent_item_description: Optional[str] = None,
-    style_code: Optional[str] = None,
+    style_model: Optional[str] = None,
     revision: str = "1.0",
     is_active: bool = True,
     notes: Optional[str] = None,
@@ -39,7 +39,7 @@ def create_bom_header(
         client_id: Client identifier for multi-tenant isolation
         parent_item_code: Parent item code
         parent_item_description: Parent item description
-        style_code: Linked style code
+        style_model: Linked style code
         revision: BOM revision number
         is_active: Whether BOM is active
         notes: Additional notes
@@ -53,7 +53,7 @@ def create_bom_header(
         client_id=client_id,
         parent_item_code=parent_item_code,
         parent_item_description=parent_item_description,
-        style_code=style_code,
+        style_model=style_model,
         revision=revision,
         is_active=is_active,
         notes=notes,
@@ -189,14 +189,14 @@ def delete_bom_header(db: Session, client_id: str, header_id: int, soft_delete: 
     return True
 
 
-def get_bom_for_style(db: Session, client_id: str, style_code: str) -> Optional[CapacityBOMHeader]:
+def get_bom_for_style(db: Session, client_id: str, style_model: str) -> Optional[CapacityBOMHeader]:
     """
     Get active BOM for a style.
 
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style code
+        style_model: Style code
 
     Returns:
         CapacityBOMHeader or None if not found
@@ -207,7 +207,7 @@ def get_bom_for_style(db: Session, client_id: str, style_code: str) -> Optional[
         .filter(
             and_(
                 CapacityBOMHeader.client_id == client_id,
-                CapacityBOMHeader.style_code == style_code,
+                CapacityBOMHeader.style_model == style_model,
                 CapacityBOMHeader.is_active == True,
             )
         )

@@ -19,7 +19,7 @@ from backend.utils.tenant_guard import ensure_client_id
 def create_standard(
     db: Session,
     client_id: str,
-    style_code: str,
+    style_model: str,
     operation_code: str,
     sam_minutes: float,
     operation_name: Optional[str] = None,
@@ -35,7 +35,7 @@ def create_standard(
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style/product code
+        style_model: Style/product code
         operation_code: Operation code
         sam_minutes: Standard Allowed Minutes (total)
         operation_name: Human-readable operation name
@@ -52,7 +52,7 @@ def create_standard(
 
     standard = CapacityProductionStandard(
         client_id=client_id,
-        style_code=style_code,
+        style_model=style_model,
         operation_code=operation_code,
         operation_name=operation_name,
         department=department,
@@ -89,7 +89,7 @@ def get_standards(
     if department:
         query = query.filter(CapacityProductionStandard.department == department)
     return (
-        query.order_by(CapacityProductionStandard.style_code, CapacityProductionStandard.operation_code)
+        query.order_by(CapacityProductionStandard.style_model, CapacityProductionStandard.operation_code)
         .offset(skip)
         .limit(limit)
         .all()
@@ -117,7 +117,7 @@ def get_standard(db: Session, client_id: str, standard_id: int) -> Optional[Capa
 
 
 def get_standard_by_style_operation(
-    db: Session, client_id: str, style_code: str, operation_code: str
+    db: Session, client_id: str, style_model: str, operation_code: str
 ) -> Optional[CapacityProductionStandard]:
     """
     Get a specific standard by style and operation codes.
@@ -125,7 +125,7 @@ def get_standard_by_style_operation(
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style code
+        style_model: Style code
         operation_code: Operation code
 
     Returns:
@@ -137,7 +137,7 @@ def get_standard_by_style_operation(
         .filter(
             and_(
                 CapacityProductionStandard.client_id == client_id,
-                CapacityProductionStandard.style_code == style_code,
+                CapacityProductionStandard.style_model == style_model,
                 CapacityProductionStandard.operation_code == operation_code,
             )
         )
@@ -196,14 +196,14 @@ def delete_standard(db: Session, client_id: str, standard_id: int) -> bool:
     return True
 
 
-def get_standards_by_style(db: Session, client_id: str, style_code: str) -> List[CapacityProductionStandard]:
+def get_standards_by_style(db: Session, client_id: str, style_model: str) -> List[CapacityProductionStandard]:
     """
     Get all production standards for a style.
 
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style code to filter by
+        style_model: Style code to filter by
 
     Returns:
         List of CapacityProductionStandard entries for the style
@@ -212,7 +212,7 @@ def get_standards_by_style(db: Session, client_id: str, style_code: str) -> List
     return (
         db.query(CapacityProductionStandard)
         .filter(
-            and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_code == style_code)
+            and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model)
         )
         .order_by(CapacityProductionStandard.operation_code)
         .all()
@@ -237,19 +237,19 @@ def get_standards_by_department(db: Session, client_id: str, department: str) ->
         .filter(
             and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.department == department)
         )
-        .order_by(CapacityProductionStandard.style_code, CapacityProductionStandard.operation_code)
+        .order_by(CapacityProductionStandard.style_model, CapacityProductionStandard.operation_code)
         .all()
     )
 
 
-def get_total_sam_for_style(db: Session, client_id: str, style_code: str, department: Optional[str] = None) -> float:
+def get_total_sam_for_style(db: Session, client_id: str, style_model: str, department: Optional[str] = None) -> float:
     """
     Calculate total SAM for a style (sum of all operations).
 
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style code
+        style_model: Style code
         department: Optional department filter
 
     Returns:
@@ -257,7 +257,7 @@ def get_total_sam_for_style(db: Session, client_id: str, style_code: str, depart
     """
     ensure_client_id(client_id, "total SAM query")
 
-    filters = [CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_code == style_code]
+    filters = [CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model]
     if department:
         filters.append(CapacityProductionStandard.department == department)
 
@@ -266,14 +266,14 @@ def get_total_sam_for_style(db: Session, client_id: str, style_code: str, depart
     return float(result) if result else 0.0
 
 
-def get_sam_by_department_for_style(db: Session, client_id: str, style_code: str) -> dict:
+def get_sam_by_department_for_style(db: Session, client_id: str, style_model: str) -> dict:
     """
     Get SAM breakdown by department for a style.
 
     Args:
         db: Database session
         client_id: Client identifier for multi-tenant isolation
-        style_code: Style code
+        style_model: Style code
 
     Returns:
         Dictionary mapping department to total SAM
@@ -285,7 +285,7 @@ def get_sam_by_department_for_style(db: Session, client_id: str, style_code: str
             CapacityProductionStandard.department, func.sum(CapacityProductionStandard.sam_minutes).label("total_sam")
         )
         .filter(
-            and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_code == style_code)
+            and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model)
         )
         .group_by(CapacityProductionStandard.department)
         .all()
@@ -341,7 +341,7 @@ def get_unique_styles(db: Session, client_id: str) -> List[str]:
     ensure_client_id(client_id, "unique styles query")
 
     results = (
-        db.query(CapacityProductionStandard.style_code)
+        db.query(CapacityProductionStandard.style_model)
         .filter(CapacityProductionStandard.client_id == client_id)
         .distinct()
         .all()

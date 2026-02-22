@@ -54,6 +54,9 @@ from backend.schemas import (
     QualityEntry,
     DefectDetail,
     DefectType,
+    # Task 0.5: Hold Catalogs
+    HoldStatusCatalog,
+    HoldReasonCatalog,
 )
 
 # Import log for batch imports

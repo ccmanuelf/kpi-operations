@@ -45,11 +45,8 @@ from backend.calculations.predictions import (
     ForecastResult,
 )
 from backend.generators.sample_data_phase5 import (
-    generate_kpi_history,
-    generate_all_kpi_histories,
     get_kpi_benchmarks,
     calculate_kpi_health_score,
-    KPIHistoryGenerator,
     KPITypePhase5,
 )
 from backend.utils.logging_utils import get_module_logger
@@ -81,10 +78,12 @@ def get_historical_kpi_data(
     db: Session, client_id: str, kpi_type: str, start_date: date, end_date: date, current_user: User
 ) -> List[dict]:
     """
-    Get historical KPI data for a client
+    Get historical KPI data for a client from the database.
 
-    This function first attempts to retrieve data from the database.
-    If insufficient data exists, it generates realistic demo data.
+    Returns only real production data. If insufficient data exists
+    (fewer than 30 days), returns whatever real data is available
+    and lets the caller decide how to handle it. No synthetic data
+    fallback — predictions built on generated data are misleading.
 
     Args:
         db: Database session
@@ -95,7 +94,7 @@ def get_historical_kpi_data(
         current_user: Current user for access control
 
     Returns:
-        List of historical data points
+        List of historical data points (may be empty)
     """
     from backend.middleware.client_auth import verify_client_access
     from backend.crud.analytics import get_kpi_time_series_data
@@ -103,37 +102,13 @@ def get_historical_kpi_data(
     # Verify client access
     verify_client_access(current_user, client_id)
 
-    # Try to get real data from database
+    # Get real data from database — no synthetic fallback
     try:
         time_series = get_kpi_time_series_data(db, client_id, kpi_type, start_date, end_date, current_user)
-
-        if len(time_series) >= 7:
-            return [{"date": d, "value": float(v), "is_anomaly": False} for d, v in time_series]
+        return [{"date": d, "value": float(v), "is_anomaly": False} for d, v in time_series]
     except Exception as e:
-        logger.exception("Prediction failed: %s", e)
-
-    # Fall back to generated demo data if insufficient real data
-    days = (end_date - start_date).days + 1
-    generator = KPIHistoryGenerator(seed=hash(f"{client_id}_{kpi_type}") % 10000)
-
-    # Map to Phase5 KPI type if needed
-    phase5_kpi = kpi_type
-    if kpi_type == "quality":
-        phase5_kpi = "fpy"  # Use FPY as proxy for quality
-    elif kpi_type == "defect_rate":
-        phase5_kpi = "ppm"  # Use PPM as proxy for defect_rate
-    elif kpi_type == "attendance":
-        phase5_kpi = "absenteeism"
-
-    try:
-        history = generator.generate_single_kpi(kpi_type=phase5_kpi, days=days, end_date=end_date, client_id=client_id)
-        return history
-    except ValueError:
-        # Final fallback: generate efficiency data
-        history = generator.generate_single_kpi(
-            kpi_type="efficiency", days=days, end_date=end_date, client_id=client_id
-        )
-        return history
+        logger.exception("Failed to retrieve KPI time series: %s", e)
+        return []
 
 
 def build_comprehensive_prediction(
@@ -292,7 +267,7 @@ def build_comprehensive_prediction(
     """,
     responses={
         200: {"description": "Prediction generated successfully"},
-        400: {"description": "Invalid parameters or insufficient data"},
+        400: {"description": "Insufficient data (fewer than 30 days of production data)"},
         403: {"description": "Access denied to client data"},
         404: {"description": "KPI type not found"},
     },
@@ -326,13 +301,22 @@ async def get_kpi_prediction(
     end_date = date.today()
     start_date = end_date - timedelta(days=historical_days)
 
-    # Get historical data
+    # Get historical data (real production data only, no synthetic fallback)
     historical_data = get_historical_kpi_data(db, client_id, kpi_type, start_date, end_date, current_user)
 
-    if len(historical_data) < 7:
+    if len(historical_data) < 30:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Insufficient historical data. Need at least 7 days, found {len(historical_data)}",
+            detail={
+                "predictions": [],
+                "message": (
+                    f"Predictions require at least 30 days of production data. "
+                    f"You currently have {len(historical_data)} days."
+                ),
+                "data_days": len(historical_data),
+                "required_days": 30,
+                "status": "insufficient_data",
+            },
         )
 
     # Build comprehensive prediction
@@ -409,7 +393,7 @@ async def get_all_kpi_predictions(
         try:
             historical_data = get_historical_kpi_data(db, client_id, kpi.value, start_date, end_date, current_user)
 
-            if len(historical_data) >= 7:
+            if len(historical_data) >= 30:
                 prediction = build_comprehensive_prediction(
                     client_id=client_id,
                     kpi_type=kpi.value,

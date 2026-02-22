@@ -263,7 +263,7 @@ export const deleteOrder = async (clientId, orderId) => {
  */
 export const getStandards = async (clientId, styleCode = null) => {
   const params = { client_id: clientId }
-  if (styleCode) params.style_code = styleCode
+  if (styleCode) params.style_model = styleCode
 
   const response = await api.get('/capacity/standards', { params })
   return response.data
@@ -348,7 +348,7 @@ export const deleteStandard = async (clientId, standardId) => {
  */
 export const getBOMHeaders = async (clientId, styleCode = null, activeOnly = true) => {
   const params = { client_id: clientId, active_only: activeOnly }
-  if (styleCode) params.style_code = styleCode
+  if (styleCode) params.style_model = styleCode
 
   const response = await api.get('/capacity/bom', { params })
   return response.data

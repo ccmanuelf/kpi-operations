@@ -149,26 +149,26 @@ class BOMService:
         return result
 
     def explode_multiple_orders(
-        self, client_id: str, orders: List[Dict]  # [{"style_code": "X", "quantity": 100}, ...]
+        self, client_id: str, orders: List[Dict]  # [{"style_model": "X", "quantity": 100}, ...]
     ) -> Dict[str, BOMExplosionResult]:
         """
         Explode BOMs for multiple orders.
 
         Args:
             client_id: Client ID for tenant isolation
-            orders: List of orders with style_code and quantity
+            orders: List of orders with style_model and quantity
 
         Returns:
-            Dict of style_code -> BOMExplosionResult
+            Dict of style_model -> BOMExplosionResult
         """
         results = {}
         for order in orders:
-            style_code = order.get("style_code")
+            style_model = order.get("style_model")
             quantity = Decimal(str(order.get("quantity", 0)))
 
             try:
-                result = self.explode_bom(client_id, style_code, quantity, emit_event=False)
-                results[style_code] = result
+                result = self.explode_bom(client_id, style_model, quantity, emit_event=False)
+                results[style_model] = result
             except BOMExplosionError:
                 # Skip orders without BOMs
                 continue
@@ -229,7 +229,7 @@ class BOMService:
             "id": header.id,
             "parent_item_code": header.parent_item_code,
             "parent_item_description": header.parent_item_description,
-            "style_code": header.style_code,
+            "style_model": header.style_model,
             "revision": header.revision,
             "is_active": header.is_active,
             "components": [

@@ -53,7 +53,7 @@ class CapacityScenario(Base):
     # Example structures by type:
     # OVERTIME: {"overtime_percent": 20, "affected_lines": ["LINE1", "LINE2"], "days": ["MON", "TUE"]}
     # SETUP_REDUCTION: {"reduction_percent": 15, "affected_operations": ["OP1", "OP2"]}
-    # SUBCONTRACT: {"quantity": 1000, "style_code": "STYLE1", "cost_per_unit": 5.50}
+    # SUBCONTRACT: {"quantity": 1000, "style_model": "STYLE1", "cost_per_unit": 5.50}
     # SHIFT_ADD: {"shift_number": 2, "hours": 8, "affected_lines": ["LINE1"]}
     # EFFICIENCY_IMPROVEMENT: {"target_efficiency": 90, "investment_cost": 10000}
     # LABOR_ADD: {"operators": 5, "affected_lines": ["LINE1", "LINE2"], "cost_per_operator": 150}

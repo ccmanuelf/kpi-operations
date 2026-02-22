@@ -41,9 +41,9 @@
           />
         </template>
 
-        <template v-slot:item.style_code="{ item, index }">
+        <template v-slot:item.style_model="{ item, index }">
           <v-text-field
-            v-model="item.style_code"
+            v-model="item.style_model"
             density="compact"
             variant="plain"
             hide-details
@@ -126,7 +126,7 @@
             :label="t('capacityPlanning.orders.pasteCsvData')"
             rows="10"
             variant="outlined"
-            placeholder="order_number,customer_name,style_code,order_quantity,required_date"
+            placeholder="order_number,customer_name,style_model,order_quantity,required_date"
           />
         </v-card-text>
         <v-card-actions>
@@ -164,7 +164,7 @@ const csvData = ref('')
 const headers = computed(() => [
   { title: t('capacityPlanning.orders.headers.orderNumber'), key: 'order_number', width: '120px' },
   { title: t('capacityPlanning.orders.headers.customer'), key: 'customer_name', width: '150px' },
-  { title: t('capacityPlanning.orders.headers.style'), key: 'style_code', width: '100px' },
+  { title: t('capacityPlanning.orders.headers.style'), key: 'style_model', width: '100px' },
   { title: t('capacityPlanning.orders.headers.quantity'), key: 'order_quantity', width: '100px' },
   { title: t('capacityPlanning.orders.headers.requiredDate'), key: 'required_date', width: '140px' },
   { title: t('capacityPlanning.orders.headers.priority'), key: 'priority', width: '120px' },

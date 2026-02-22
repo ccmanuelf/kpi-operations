@@ -58,7 +58,7 @@ def create_order(
         db,
         client_id,
         order.order_number,
-        order.style_code,
+        order.style_model,
         order.order_quantity,
         order.required_date,
         order.customer_name,

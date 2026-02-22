@@ -2,35 +2,25 @@
 WIP hold tracking models (Pydantic)
 PHASE 2: Work-in-process aging tracking
 Enhanced with P2-001: Hold Duration Auto-Calculation
+
+Migration note (Task 0.5): HoldStatusEnum and HoldReasonEnum removed.
+Status and reason values are now free-form strings validated against
+HOLD_STATUS_CATALOG / HOLD_REASON_CATALOG at the route level.
+Legacy aliases kept for backward compatibility of imports.
 """
 
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
 
 
-class HoldStatusEnum(str, Enum):
-    """Hold status enum for API"""
-
-    ON_HOLD = "ON_HOLD"
-    RESUMED = "RESUMED"
-    RELEASED = "RELEASED"
-    SCRAPPED = "SCRAPPED"
-
-
-class HoldReasonEnum(str, Enum):
-    """Hold reason enum for strict validation"""
-
-    MATERIAL_INSPECTION = "MATERIAL_INSPECTION"
-    QUALITY_ISSUE = "QUALITY_ISSUE"
-    ENGINEERING_REVIEW = "ENGINEERING_REVIEW"
-    CUSTOMER_REQUEST = "CUSTOMER_REQUEST"
-    MISSING_SPECIFICATION = "MISSING_SPECIFICATION"
-    EQUIPMENT_UNAVAILABLE = "EQUIPMENT_UNAVAILABLE"
-    CAPACITY_CONSTRAINT = "CAPACITY_CONSTRAINT"
-    OTHER = "OTHER"
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases so ``from backend.models.hold import
+# HoldStatusEnum`` still resolves (returns the constants class from ORM).
+# ---------------------------------------------------------------------------
+from backend.schemas.hold_entry import HoldStatus as HoldStatusEnum  # noqa: F401
+from backend.schemas.hold_entry import HoldReason as HoldReasonEnum  # noqa: F401
 
 
 class WIPHoldCreate(BaseModel):
@@ -43,13 +33,13 @@ class WIPHoldCreate(BaseModel):
     work_order_id: str = Field(..., min_length=1, max_length=50)
     job_id: Optional[str] = Field(None, max_length=50, description="Job ID for job-level tracking")
 
-    # Hold tracking - hold_status is REQUIRED
-    hold_status: HoldStatusEnum = Field(default=HoldStatusEnum.ON_HOLD, description="Hold status - defaults to ON_HOLD")
+    # Hold tracking — free-form string validated against catalog at route level
+    hold_status: str = Field(default="ON_HOLD", max_length=50, description="Hold status - defaults to ON_HOLD")
     hold_date: Optional[date] = Field(None, description="Hold date")
 
-    # Hold reason details
+    # Hold reason details — free-form string validated against catalog at route level
     hold_reason_category: Optional[str] = Field(None, max_length=100, description="Hold reason category")
-    hold_reason: Optional[HoldReasonEnum] = Field(None, description="Enum-based hold reason")
+    hold_reason: Optional[str] = Field(None, max_length=50, description="Hold reason code from catalog")
     hold_reason_description: Optional[str] = Field(None, description="Detailed hold description")
 
     # Quality hold specifics
@@ -62,35 +52,35 @@ class WIPHoldCreate(BaseModel):
     @classmethod
     def from_legacy_csv(cls, data: dict) -> "WIPHoldCreate":
         """Create from legacy CSV format with field mapping"""
-        # Map legacy hold_reason string to enum
+        # Map legacy hold_reason string to canonical reason codes
         reason_mapping = {
-            "MATERIAL": HoldReasonEnum.MATERIAL_INSPECTION,
-            "MATERIAL_INSPECTION": HoldReasonEnum.MATERIAL_INSPECTION,
-            "QUALITY": HoldReasonEnum.QUALITY_ISSUE,
-            "QUALITY_ISSUE": HoldReasonEnum.QUALITY_ISSUE,
-            "ENGINEERING": HoldReasonEnum.ENGINEERING_REVIEW,
-            "ENGINEERING_REVIEW": HoldReasonEnum.ENGINEERING_REVIEW,
-            "CUSTOMER": HoldReasonEnum.CUSTOMER_REQUEST,
-            "CUSTOMER_REQUEST": HoldReasonEnum.CUSTOMER_REQUEST,
-            "MISSING_SPEC": HoldReasonEnum.MISSING_SPECIFICATION,
-            "MISSING_SPECIFICATION": HoldReasonEnum.MISSING_SPECIFICATION,
-            "EQUIPMENT": HoldReasonEnum.EQUIPMENT_UNAVAILABLE,
-            "EQUIPMENT_UNAVAILABLE": HoldReasonEnum.EQUIPMENT_UNAVAILABLE,
-            "CAPACITY": HoldReasonEnum.CAPACITY_CONSTRAINT,
-            "CAPACITY_CONSTRAINT": HoldReasonEnum.CAPACITY_CONSTRAINT,
+            "MATERIAL": "MATERIAL_INSPECTION",
+            "MATERIAL_INSPECTION": "MATERIAL_INSPECTION",
+            "QUALITY": "QUALITY_ISSUE",
+            "QUALITY_ISSUE": "QUALITY_ISSUE",
+            "ENGINEERING": "ENGINEERING_REVIEW",
+            "ENGINEERING_REVIEW": "ENGINEERING_REVIEW",
+            "CUSTOMER": "CUSTOMER_REQUEST",
+            "CUSTOMER_REQUEST": "CUSTOMER_REQUEST",
+            "MISSING_SPEC": "MISSING_SPECIFICATION",
+            "MISSING_SPECIFICATION": "MISSING_SPECIFICATION",
+            "EQUIPMENT": "EQUIPMENT_UNAVAILABLE",
+            "EQUIPMENT_UNAVAILABLE": "EQUIPMENT_UNAVAILABLE",
+            "CAPACITY": "CAPACITY_CONSTRAINT",
+            "CAPACITY_CONSTRAINT": "CAPACITY_CONSTRAINT",
         }
 
         raw_reason = (data.get("hold_category") or data.get("hold_reason") or "OTHER").upper()
-        reason_enum = reason_mapping.get(raw_reason, HoldReasonEnum.OTHER)
+        reason_code = reason_mapping.get(raw_reason, "OTHER")
 
         return cls(
             client_id=data.get("client_id", ""),
             work_order_id=data.get("work_order_number") or data.get("work_order_id", ""),
             job_id=data.get("job_id"),
-            hold_status=HoldStatusEnum.ON_HOLD,
+            hold_status="ON_HOLD",
             hold_date=data.get("hold_date"),
             hold_reason_category=data.get("hold_category") or data.get("hold_reason_category"),
-            hold_reason=reason_enum,
+            hold_reason=reason_code,
             hold_reason_description=data.get("hold_reason") or data.get("hold_reason_description"),
             quality_issue_type=data.get("quality_issue_type"),
             expected_resolution_date=data.get("expected_resolution_date"),
@@ -110,8 +100,8 @@ class WIPHoldUpdate(BaseModel):
     quantity_released: Optional[int] = Field(None, ge=0)
     quantity_scrapped: Optional[int] = Field(None, ge=0)
     notes: Optional[str] = None
-    # P2-001: Status can be updated
-    status: Optional[HoldStatusEnum] = None
+    # P2-001: Status can be updated (now a free-form string)
+    status: Optional[str] = Field(None, max_length=50)
 
 
 class WIPHoldResumeRequest(BaseModel):

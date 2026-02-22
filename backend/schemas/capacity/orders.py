@@ -57,7 +57,7 @@ class CapacityOrder(Base):
     __table_args__ = (
         Index("ix_capacity_orders_client_status", "client_id", "status"),
         Index("ix_capacity_orders_client_required_date", "client_id", "required_date"),
-        Index("ix_capacity_orders_style", "client_id", "style_code"),
+        Index("ix_capacity_orders_style", "client_id", "style_model"),
         {"extend_existing": True},
     )
 
@@ -71,8 +71,8 @@ class CapacityOrder(Base):
     order_number = Column(String(50), nullable=False, index=True)
     customer_name = Column(String(100), nullable=True)
 
-    # Style/product details (style_code indexed via composite index in __table_args__)
-    style_code = Column(String(50), nullable=False)
+    # Style/product details (style_model indexed via composite index in __table_args__)
+    style_model = Column(String(100), nullable=False)
     style_description = Column(String(200), nullable=True)
 
     # Quantities
@@ -111,4 +111,4 @@ class CapacityOrder(Base):
         return min(100.0, (self.completed_quantity or 0) / self.order_quantity * 100)
 
     def __repr__(self):
-        return f"<CapacityOrder(client_id={self.client_id}, order={self.order_number}, style={self.style_code})>"
+        return f"<CapacityOrder(client_id={self.client_id}, order={self.order_number}, style={self.style_model})>"

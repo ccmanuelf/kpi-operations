@@ -173,7 +173,7 @@ def _seed_orders(db, count: int = 3) -> list:
             client_id=CLIENT_ID,
             order_number=f"ORD-{i + 1:03d}",
             customer_name=f"Customer {i + 1}",
-            style_code=f"STYLE-{chr(65 + i)}",
+            style_model=f"STYLE-{chr(65 + i)}",
             order_quantity=500 * (i + 1),
             completed_quantity=0,
             order_date=TODAY,
@@ -187,10 +187,10 @@ def _seed_orders(db, count: int = 3) -> list:
     return orders
 
 
-def _seed_standards(db, style_codes: list) -> list:
+def _seed_standards(db, style_models: list) -> list:
     """Seed production standards (SAM) for given style codes."""
     stds = []
-    for style in style_codes:
+    for style in style_models:
         for op_code, op_name, sam in [
             ("CUT", "Cutting", 2.0),
             ("SEW", "Sewing", 5.5),
@@ -198,7 +198,7 @@ def _seed_standards(db, style_codes: list) -> list:
         ]:
             std = CapacityProductionStandard(
                 client_id=CLIENT_ID,
-                style_code=style,
+                style_model=style,
                 operation_code=op_code,
                 operation_name=op_name,
                 department=op_name.upper(),
@@ -210,13 +210,13 @@ def _seed_standards(db, style_codes: list) -> list:
     return stds
 
 
-def _seed_bom(db, parent_item_code: str, style_code: str) -> CapacityBOMHeader:
+def _seed_bom(db, parent_item_code: str, style_model: str) -> CapacityBOMHeader:
     """Seed a BOM header with 3 component details."""
     header = CapacityBOMHeader(
         client_id=CLIENT_ID,
         parent_item_code=parent_item_code,
         parent_item_description=f"Finished {parent_item_code}",
-        style_code=style_code,
+        style_model=style_model,
         revision="1.0",
         is_active=True,
     )
@@ -275,9 +275,9 @@ def _seed_full_capacity_data(db):
     calendar = _seed_calendar(db)
     lines = _seed_production_lines(db)
     orders = _seed_orders(db)
-    style_codes = [o.style_code for o in orders]
-    standards = _seed_standards(db, style_codes)
-    bom_header = _seed_bom(db, parent_item_code="STYLE-A", style_code="STYLE-A")
+    style_models = [o.style_model for o in orders]
+    standards = _seed_standards(db, style_models)
+    bom_header = _seed_bom(db, parent_item_code="STYLE-A", style_model="STYLE-A")
     stocks = _seed_stock(db)
     db.commit()
     return {
@@ -287,7 +287,7 @@ def _seed_full_capacity_data(db):
         "standards": standards,
         "bom_header": bom_header,
         "stocks": stocks,
-        "style_codes": style_codes,
+        "style_models": style_models,
     }
 
 
@@ -420,8 +420,8 @@ class TestBOMService:
 
         svc = BOMService(cap_db)
         orders = [
-            {"style_code": "MULTI-A", "quantity": 100},
-            {"style_code": "NONEXISTENT", "quantity": 50},
+            {"style_model": "MULTI-A", "quantity": 100},
+            {"style_model": "NONEXISTENT", "quantity": 50},
         ]
         results = svc.explode_multiple_orders(CLIENT_ID, orders)
 
@@ -474,7 +474,7 @@ class TestMRPService:
 
         svc = MRPService(cap_db)
         # Only check order for STYLE-A which has a BOM
-        order_a = next(o for o in data["orders"] if o.style_code == "STYLE-A")
+        order_a = next(o for o in data["orders"] if o.style_model == "STYLE-A")
         result = svc.run_component_check(CLIENT_ID, order_ids=[order_a.id])
 
         assert isinstance(result, MRPRunResult)
@@ -516,7 +516,7 @@ class TestMRPService:
         order = CapacityOrder(
             client_id=CLIENT_ID,
             order_number="ORD-LARGE",
-            style_code="STYLE-A",
+            style_model="STYLE-A",
             order_quantity=10000,
             required_date=TODAY + timedelta(days=14),
             status=OrderStatus.CONFIRMED,
@@ -558,7 +558,7 @@ class TestMRPService:
         order = CapacityOrder(
             client_id=CLIENT_ID,
             order_number="ORD-SMALL",
-            style_code="STYLE-A",
+            style_model="STYLE-A",
             order_quantity=1,
             required_date=TODAY + timedelta(days=14),
             status=OrderStatus.CONFIRMED,
@@ -682,7 +682,7 @@ class TestCapacityAnalysisService:
             client_id=CLIENT_ID,
             order_id=data["orders"][0].id,
             order_number="ORD-001",
-            style_code="STYLE-A",
+            style_model="STYLE-A",
             line_id=lines[0].id,
             line_code="SEW-01",
             scheduled_date=PERIOD_START + timedelta(days=1),
@@ -843,7 +843,7 @@ class TestSchedulingService:
                 {
                     "order_id": orders[0].id,
                     "order_number": orders[0].order_number,
-                    "style_code": orders[0].style_code,
+                    "style_model": orders[0].style_model,
                     "line_id": lines[0].id,
                     "line_code": lines[0].line_code,
                     "scheduled_date": PERIOD_START + timedelta(days=1),
@@ -922,7 +922,7 @@ class TestSchedulingService:
                 {
                     "order_id": orders[0].id,
                     "order_number": orders[0].order_number,
-                    "style_code": orders[0].style_code,
+                    "style_model": orders[0].style_model,
                     "line_id": lines[0].id,
                     "line_code": lines[0].line_code,
                     "scheduled_date": PERIOD_START + timedelta(days=1),
@@ -1725,7 +1725,7 @@ class TestCrossServiceIntegration:
         assert explosion.total_components == 3
 
         # Run MRP check for the same style
-        order_a = next(o for o in data["orders"] if o.style_code == "STYLE-A")
+        order_a = next(o for o in data["orders"] if o.style_model == "STYLE-A")
         mrp_result = mrp_svc.run_component_check(CLIENT_ID, [order_a.id])
         assert mrp_result.total_components_checked == 3
 

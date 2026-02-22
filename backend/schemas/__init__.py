@@ -34,6 +34,10 @@ from .defect_detail import DefectDetail, DefectType
 # Phase 9: Client-specific Defect Type Catalog
 from .defect_type_catalog import DefectTypeCatalog
 
+# Task 0.5: Client-configurable Hold Catalogs
+from .hold_status_catalog import HoldStatusCatalog
+from .hold_reason_catalog import HoldReasonCatalog
+
 # Phase 6: User Preferences
 from .user_preferences import UserPreferences, DashboardWidgetDefaults
 
@@ -74,6 +78,9 @@ __all__ = [
     "DefectType",
     # Phase 9
     "DefectTypeCatalog",
+    # Task 0.5
+    "HoldStatusCatalog",
+    "HoldReasonCatalog",
     # Phase 6
     "UserPreferences",
     "DashboardWidgetDefaults",

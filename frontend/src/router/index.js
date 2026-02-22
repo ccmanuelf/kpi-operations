@@ -119,19 +119,17 @@ const router = createRouter({
       component: () => import('@/views/AlertsView.vue'),
       meta: { requiresAuth: true }
     },
-    // Simulation & Capacity Planning - Phase 11
+    // Simulation - SimPy-based discrete-event simulation (V2)
     {
       path: '/simulation',
       name: 'simulation',
-      component: () => import('@/views/SimulationView.vue'),
-      meta: { requiresAuth: true }
-    },
-    // Simulation v2.0 - SimPy-based discrete-event simulation
-    {
-      path: '/simulation-v2',
-      name: 'simulation-v2',
       component: () => import('@/views/SimulationV2View.vue'),
       meta: { requiresAuth: true }
+    },
+    // Redirect old V2 bookmarks to canonical path
+    {
+      path: '/simulation-v2',
+      redirect: '/simulation'
     },
     // Capacity Planning Module - Phase B
     {

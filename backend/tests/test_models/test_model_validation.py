@@ -146,16 +146,18 @@ class TestHoldEntryORM:
         )
         assert fetched.total_hold_duration_hours == 0
 
-    def test_hold_status_enum_values(self):
-        """HoldStatus enum contains expected workflow states."""
-        assert HoldStatus.PENDING_HOLD_APPROVAL.value == "PENDING_HOLD_APPROVAL"
-        assert HoldStatus.ON_HOLD.value == "ON_HOLD"
-        assert HoldStatus.PENDING_RESUME_APPROVAL.value == "PENDING_RESUME_APPROVAL"
-        assert HoldStatus.RESUMED.value == "RESUMED"
-        assert HoldStatus.CANCELLED.value == "CANCELLED"
+    def test_hold_status_constant_values(self):
+        """HoldStatus constants contain expected workflow states."""
+        assert HoldStatus.PENDING_HOLD_APPROVAL == "PENDING_HOLD_APPROVAL"
+        assert HoldStatus.ON_HOLD == "ON_HOLD"
+        assert HoldStatus.PENDING_RESUME_APPROVAL == "PENDING_RESUME_APPROVAL"
+        assert HoldStatus.RESUMED == "RESUMED"
+        assert HoldStatus.CANCELLED == "CANCELLED"
+        assert HoldStatus.RELEASED == "RELEASED"
+        assert HoldStatus.SCRAPPED == "SCRAPPED"
 
-    def test_hold_reason_enum_values(self):
-        """HoldReason enum covers all reason categories."""
+    def test_hold_reason_constant_values(self):
+        """HoldReason __members__ covers all reason categories."""
         expected = {
             "MATERIAL_INSPECTION",
             "MATERIAL_SHORTAGE",
@@ -169,7 +171,7 @@ class TestHoldEntryORM:
             "PENDING_APPROVAL",
             "OTHER",
         }
-        actual = {member.value for member in HoldReason}
+        actual = set(HoldReason.__members__.keys())
         assert actual == expected
 
     def test_hold_entry_factory(self, transactional_db):

@@ -126,7 +126,7 @@ class ProductionLineResponse(BaseModel):
 
 class OrderCreate(BaseModel):
     order_number: str = Field(description="Unique order reference number")
-    style_code: str = Field(description="Product style code linked to production standards")
+    style_model: str = Field(description="Product style/model linked to production standards")
     order_quantity: int = Field(description="Total units ordered")
     required_date: date = Field(description="Customer-required delivery date")
     customer_name: Optional[str] = Field(default=None, description="Customer or buyer name")
@@ -159,7 +159,7 @@ class OrderResponse(BaseModel):
     client_id: str = Field(description="Tenant identifier")
     order_number: str = Field(description="Unique order reference number")
     customer_name: Optional[str] = Field(description="Customer or buyer name")
-    style_code: str = Field(description="Product style code linked to production standards")
+    style_model: str = Field(description="Product style/model linked to production standards")
     style_description: Optional[str] = Field(description="Descriptive name for the style")
     order_quantity: int = Field(description="Total units ordered")
     completed_quantity: int = Field(description="Units completed so far")
@@ -182,7 +182,7 @@ class OrderResponse(BaseModel):
 
 
 class StandardCreate(BaseModel):
-    style_code: str = Field(description="Style code this standard applies to")
+    style_model: str = Field(description="Style/model this standard applies to")
     operation_code: str = Field(description="Unique operation code within the style")
     sam_minutes: float = Field(description="Standard Allowed Minutes for this operation")
     operation_name: Optional[str] = Field(default=None, description="Human-readable operation name")
@@ -206,7 +206,7 @@ class StandardUpdate(BaseModel):
 class StandardResponse(BaseModel):
     id: int = Field(description="Unique record identifier")
     client_id: str = Field(description="Tenant identifier")
-    style_code: str = Field(description="Style code this standard applies to")
+    style_model: str = Field(description="Style/model this standard applies to")
     operation_code: str = Field(description="Unique operation code within the style")
     operation_name: Optional[str] = Field(description="Human-readable operation name")
     department: Optional[str] = Field(description="Department performing this operation")
@@ -223,7 +223,7 @@ class StandardResponse(BaseModel):
 class TotalSAMResponse(BaseModel):
     """Response for total SAM lookup by style."""
 
-    style_code: str = Field(description="Style code queried")
+    style_model: str = Field(description="Style/model queried")
     total_sam_minutes: float = Field(description="Sum of SAM minutes for all operations")
     department: Optional[str] = Field(description="Department filter applied, if any")
 
@@ -236,7 +236,7 @@ class TotalSAMResponse(BaseModel):
 class BOMHeaderCreate(BaseModel):
     parent_item_code: str = Field(description="Top-level item code for the bill of materials")
     parent_item_description: Optional[str] = Field(default=None, description="Description of the parent item")
-    style_code: Optional[str] = Field(default=None, description="Associated style code")
+    style_model: Optional[str] = Field(default=None, description="Associated style/model")
     revision: str = Field(default="1.0", description="BOM revision number")
     is_active: bool = Field(default=True, description="Whether this BOM revision is active")
     notes: Optional[str] = Field(default=None, description="Free-text notes")
@@ -244,7 +244,7 @@ class BOMHeaderCreate(BaseModel):
 
 class BOMHeaderUpdate(BaseModel):
     parent_item_description: Optional[str] = Field(default=None, description="Description of the parent item")
-    style_code: Optional[str] = Field(default=None, description="Associated style code")
+    style_model: Optional[str] = Field(default=None, description="Associated style/model")
     revision: Optional[str] = Field(default=None, description="BOM revision number")
     is_active: Optional[bool] = Field(default=None, description="Whether this BOM revision is active")
     notes: Optional[str] = Field(default=None, description="Free-text notes")
@@ -274,7 +274,7 @@ class BOMHeaderResponse(BaseModel):
     client_id: str = Field(description="Tenant identifier")
     parent_item_code: str = Field(description="Top-level item code for the bill of materials")
     parent_item_description: Optional[str] = Field(description="Description of the parent item")
-    style_code: Optional[str] = Field(description="Associated style code")
+    style_model: Optional[str] = Field(description="Associated style/model")
     revision: str = Field(description="BOM revision number")
     is_active: bool = Field(description="Whether this BOM revision is active")
     notes: Optional[str] = Field(description="Free-text notes")

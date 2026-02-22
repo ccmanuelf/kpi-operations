@@ -58,7 +58,7 @@
               </v-col>
               <v-col cols="2">
                 <v-text-field
-                  v-model="bom.style_code"
+                  v-model="bom.style_model"
                   :label="t('capacityPlanning.bom.styleCode')"
                   variant="outlined"
                   density="compact"

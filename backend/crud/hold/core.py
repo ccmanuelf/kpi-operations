@@ -10,7 +10,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus, HoldReason
+from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
 from backend.models.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
@@ -61,15 +61,12 @@ def create_wip_hold(db: Session, hold: WIPHoldCreate, current_user: User) -> WIP
         hold_data["hold_status"] = HoldStatus.PENDING_HOLD_APPROVAL
         hold_data["hold_approved_by"] = None  # Pending approval
 
-    # Convert Pydantic HoldReasonEnum to ORM HoldReason
+    # Normalize hold_reason to a plain string (catalog-driven, no enum conversion)
     if hold_data.get("hold_reason") is not None:
         reason_val = hold_data["hold_reason"]
         if hasattr(reason_val, "value"):
             reason_val = reason_val.value
-        try:
-            hold_data["hold_reason"] = HoldReason(reason_val)
-        except (ValueError, KeyError):
-            hold_data["hold_reason"] = None
+        hold_data["hold_reason"] = str(reason_val)
 
     hold_data["hold_initiated_by"] = current_user.user_id
 
