@@ -30,6 +30,7 @@ class DowntimeEventCreate(BaseModel):
 
     # Work order reference - REQUIRED (replaces product_id/shift_id)
     work_order_id: str = Field(..., min_length=1, max_length=50, description="Work order affected by this downtime event")
+    line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
 
     # Date tracking - shift_date is REQUIRED
     shift_date: date = Field(..., description="Shift date - REQUIRED for Availability KPI")
@@ -94,6 +95,7 @@ class DowntimeEventCreate(BaseModel):
 class DowntimeEventUpdate(BaseModel):
     """Update downtime event"""
 
+    line_id: Optional[int] = Field(None, description="Updated production line ID")
     downtime_category: Optional[str] = Field(None, max_length=50, description="Updated downtime classification category")
     downtime_reason: Optional[str] = Field(None, max_length=255, description="Updated detailed reason for the downtime")
     duration_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated downtime duration in hours")
@@ -107,6 +109,7 @@ class DowntimeEventResponse(BaseModel):
     downtime_entry_id: str = Field(..., description="Unique identifier for this downtime entry")
     client_id: str = Field(..., description="Tenant client identifier for data isolation")
     work_order_id: str = Field(..., description="Work order affected by this downtime event")
+    line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
     shift_date: datetime = Field(..., description="Shift date when the downtime occurred")
     downtime_reason: str = Field(..., description="Category or reason for the downtime")
     downtime_duration_minutes: int = Field(..., description="Total downtime duration in minutes")

@@ -59,8 +59,13 @@ from backend.schemas import (
     HoldReasonCatalog,
 )
 
-# Break Time ORM model — imported directly (not yet in schemas/__init__.py)
+# Break Time ORM model
 from backend.schemas.break_time import BreakTime  # noqa: F401
+
+# Sprint 2: Production Line Topology ORM models
+from backend.schemas.production_line import ProductionLine  # noqa: F401
+from backend.schemas.equipment import Equipment  # noqa: F401
+from backend.schemas.employee_line_assignment import EmployeeLineAssignment  # noqa: F401
 
 # Import log for batch imports
 from backend.schemas.import_log import ImportLog

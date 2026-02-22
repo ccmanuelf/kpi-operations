@@ -37,6 +37,7 @@ class AttendanceEntry(Base):
 
     # Multi-tenant isolation - CRITICAL
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True)
 
     # Employee reference
     employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"), nullable=False, index=True)

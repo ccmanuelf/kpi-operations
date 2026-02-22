@@ -20,6 +20,7 @@ class DowntimeEntry(Base):
 
     # Multi-tenant isolation - CRITICAL
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True)
 
     # Work order reference
     work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)

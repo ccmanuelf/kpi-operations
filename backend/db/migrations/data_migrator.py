@@ -47,6 +47,8 @@ class DataMigrator:
         "HOLD_STATUS_CATALOG",
         "HOLD_REASON_CATALOG",
         "BREAK_TIME",               # depends on SHIFT, CLIENT
+        "PRODUCTION_LINE",          # depends on CLIENT (self-referential parent_line_id)
+        "EQUIPMENT",                # depends on CLIENT, PRODUCTION_LINE
         "PART_OPPORTUNITIES",
         "KPI_THRESHOLD",
         "CLIENT_CONFIG",            # depends on CLIENT
@@ -59,6 +61,7 @@ class DataMigrator:
         "FILTER_HISTORY",
         "shift_coverage",           # depends on CLIENT, SHIFT, USER
         "EMPLOYEE_CLIENT_ASSIGNMENT",  # depends on EMPLOYEE, CLIENT
+        "EMPLOYEE_LINE_ASSIGNMENT", # depends on EMPLOYEE, PRODUCTION_LINE, CLIENT
         "USER_CLIENT_ASSIGNMENT",   # depends on USER, CLIENT
 
         # Tier 4: Depends on WORK_ORDER

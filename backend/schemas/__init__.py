@@ -41,6 +41,11 @@ from .hold_reason_catalog import HoldReasonCatalog
 # Sprint 1: Break Times
 from .break_time import BreakTime
 
+# Sprint 2: Production Line Topology
+from .production_line import ProductionLine
+from .equipment import Equipment
+from .employee_line_assignment import EmployeeLineAssignment
+
 # Phase 6: User Preferences
 from .user_preferences import UserPreferences, DashboardWidgetDefaults
 
@@ -86,6 +91,10 @@ __all__ = [
     "HoldReasonCatalog",
     # Sprint 1
     "BreakTime",
+    # Sprint 2
+    "ProductionLine",
+    "Equipment",
+    "EmployeeLineAssignment",
     # Phase 6
     "UserPreferences",
     "DashboardWidgetDefaults",

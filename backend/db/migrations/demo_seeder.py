@@ -449,6 +449,8 @@ class DemoDataSeeder:
                     defect_count=defects,
                     scrap_count=scrap,
                     entered_by=1,  # Admin user
+                    # TODO: Assign line_id after PRODUCTION_LINE demo data is seeded
+                    line_id=None,
                 )
                 entries.append(entry)
                 entry_num += 1
@@ -484,6 +486,8 @@ class DemoDataSeeder:
                 downtime_duration_minutes=random.randint(15, 120),
                 machine_id=f"MACHINE-{random.randint(1, 5):02d}",
                 reported_by=1,  # Admin user
+                # TODO: Assign line_id after PRODUCTION_LINE demo data is seeded
+                line_id=None,
             )
             entries.append(entry)
 
@@ -529,6 +533,8 @@ class DemoDataSeeder:
                     is_absent=is_absent,
                     absence_type=absence_type,
                     entered_by=1,  # Admin user
+                    # TODO: Assign line_id after PRODUCTION_LINE demo data is seeded
+                    line_id=None,
                 )
                 entries.append(entry)
                 entry_num += 1

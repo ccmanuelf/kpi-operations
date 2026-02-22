@@ -31,6 +31,7 @@ class ProductionEntry(Base):
 
     # Multi-tenant isolation - CRITICAL
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True)
 
     # References
     product_id = Column(Integer, ForeignKey("PRODUCT.product_id"), nullable=False, index=True)

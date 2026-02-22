@@ -509,6 +509,11 @@ from backend.routes.shifts import router as shifts_router
 from backend.routes.break_times import router as break_times_router
 from backend.routes.calendar import router as calendar_router
 
+# Sprint 2: Production line topology routers
+from backend.routes.production_lines import router as production_lines_router
+from backend.routes.equipment import router as equipment_router
+from backend.routes.employee_line_assignments import router as employee_line_assignments_router
+
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
 
@@ -545,6 +550,13 @@ app.include_router(kpi_thresholds_router)
 app.include_router(shifts_router)
 app.include_router(break_times_router)
 app.include_router(calendar_router)
+
+# ============================================================================
+# Register production line topology routes
+# ============================================================================
+app.include_router(production_lines_router)
+app.include_router(equipment_router)
+app.include_router(employee_line_assignments_router)
 
 # ============================================================================
 # Register downtime routes

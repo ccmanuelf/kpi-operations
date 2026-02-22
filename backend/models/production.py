@@ -19,6 +19,7 @@ class ProductionEntryCreate(BaseModel):
     shift_id: int = Field(..., gt=0, description="Shift during which production occurred")
     work_order_id: Optional[str] = Field(None, max_length=50, description="Work order reference")
     job_id: Optional[str] = Field(None, max_length=50, description="Job ID for job-level tracking")
+    line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
 
     # Date tracking
     production_date: date = Field(..., description="Production date")
@@ -92,6 +93,7 @@ class ProductionEntryCreate(BaseModel):
 class ProductionEntryUpdate(BaseModel):
     """Update production entry"""
 
+    line_id: Optional[int] = Field(None, description="Updated production line ID")
     units_produced: Optional[int] = Field(None, gt=0, description="Updated count of good units produced")
     run_time_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated machine run time in hours")
     employees_assigned: Optional[int] = Field(None, gt=0, le=100, description="Updated number of employees scheduled")
@@ -112,6 +114,7 @@ class ProductionEntryResponse(BaseModel):
     shift_id: int = Field(..., description="Shift during which production occurred")
     work_order_id: Optional[str] = Field(None, description="Associated work order reference")
     job_id: Optional[str] = Field(None, description="Job-level tracking identifier")
+    line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
     production_date: datetime = Field(..., description="Date when production took place")
     shift_date: datetime = Field(..., description="Shift date used for KPI calculations")
     units_produced: int = Field(..., description="Total good units produced")

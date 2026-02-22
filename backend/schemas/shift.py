@@ -18,6 +18,7 @@ class Shift(Base):
 
     shift_id = Column(Integer, primary_key=True, autoincrement=True)
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True)
     shift_name = Column(String(50), nullable=False, index=True)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)

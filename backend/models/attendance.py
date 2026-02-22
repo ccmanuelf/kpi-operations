@@ -27,6 +27,7 @@ class AttendanceRecordCreate(BaseModel):
 
     # Employee reference - REQUIRED
     employee_id: int = Field(..., gt=0)
+    line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
 
     # Date tracking - shift_date is REQUIRED
     shift_date: date = Field(..., description="Shift date - REQUIRED for Absenteeism KPI")
@@ -103,6 +104,7 @@ class AttendanceRecordCreate(BaseModel):
 class AttendanceRecordUpdate(BaseModel):
     """Update attendance record"""
 
+    line_id: Optional[int] = Field(None, description="Updated production line ID")
     status: Optional[str] = Field(None, max_length=20)
     actual_hours_worked: Optional[Decimal] = Field(None, ge=0, le=24)
     absence_reason: Optional[str] = Field(None, max_length=100)
@@ -117,6 +119,7 @@ class AttendanceRecordResponse(BaseModel):
     attendance_entry_id: str
     client_id: str
     employee_id: int
+    line_id: Optional[int] = None
     shift_date: datetime
     shift_id: Optional[int] = None
     scheduled_hours: Decimal
