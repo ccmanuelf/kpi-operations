@@ -2,7 +2,7 @@
 Production entry models (Pydantic)
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List, Union, Any
 from datetime import date, datetime
 from decimal import Decimal
@@ -20,9 +20,18 @@ class ProductionEntryCreate(BaseModel):
     work_order_id: Optional[str] = Field(None, max_length=50, description="Work order reference")
     job_id: Optional[str] = Field(None, max_length=50, description="Job ID for job-level tracking")
 
-    # Date tracking - both REQUIRED
+    # Date tracking
     production_date: date = Field(..., description="Production date")
-    shift_date: date = Field(..., description="Shift date - REQUIRED for KPI calculations")
+    shift_date: Optional[date] = Field(None, description="Shift date for KPI calculations. Auto-defaults to production_date if not provided.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def default_shift_date_from_production_date(cls, data: Any) -> Any:
+        """Auto-default shift_date to production_date when not explicitly provided."""
+        if isinstance(data, dict):
+            if not data.get("shift_date") and data.get("production_date"):
+                data["shift_date"] = data["production_date"]
+        return data
 
     # Production metrics - REQUIRED for KPI calculations
     units_produced: int = Field(..., gt=0, description="Total good units produced during this entry")

@@ -46,6 +46,7 @@ class DataMigrator:
         "DEFECT_TYPE_CATALOG",
         "HOLD_STATUS_CATALOG",
         "HOLD_REASON_CATALOG",
+        "BREAK_TIME",               # depends on SHIFT, CLIENT
         "PART_OPPORTUNITIES",
         "KPI_THRESHOLD",
         "CLIENT_CONFIG",            # depends on CLIENT

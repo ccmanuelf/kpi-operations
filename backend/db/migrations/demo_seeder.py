@@ -288,9 +288,9 @@ class DemoDataSeeder:
         from datetime import time as dt_time
 
         shifts_data = [
-            ("Day Shift", dt_time(6, 0, 0), dt_time(14, 0, 0)),
-            ("Swing Shift", dt_time(14, 0, 0), dt_time(22, 0, 0)),
-            ("Night Shift", dt_time(22, 0, 0), dt_time(6, 0, 0)),
+            ("1st", dt_time(6, 0, 0), dt_time(14, 0, 0)),
+            ("2nd", dt_time(14, 0, 0), dt_time(22, 0, 0)),
+            ("3rd", dt_time(22, 0, 0), dt_time(6, 0, 0)),
         ]
 
         clients = self.session.query(Client).all()
@@ -498,11 +498,11 @@ class DemoDataSeeder:
         from backend.schemas.attendance_entry import AttendanceEntry, AbsenceType
         from backend.schemas.shift import Shift
 
-        # Look up DEMO-001's Day Shift
+        # Look up DEMO-001's 1st shift
         client_id = "DEMO-001"
         day_shift = self.session.query(Shift).filter(
             Shift.client_id == client_id,
-            Shift.shift_name == "Day Shift"
+            Shift.shift_name == "1st"
         ).first()
         day_shift_id = day_shift.shift_id if day_shift else 1
 

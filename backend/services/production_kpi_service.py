@@ -548,6 +548,11 @@ class ProductionKPIService:
             scheduled_hours = DEFAULT_SHIFT_HOURS
             hours_inferred = True
 
+        # Subtract configured break time from available hours
+        scheduled_hours = self._subtract_break_time(
+            scheduled_hours, entry, shift
+        )
+
         inference_sources["scheduled_hours"] = InferenceMetadata(
             is_inferred=hours_inferred,
             source="shift_times" if not hours_inferred else "default",
@@ -583,6 +588,54 @@ class ProductionKPIService:
             is_estimated=any_inferred,
             inference_sources=inference_sources,
         )
+
+    def _subtract_break_time(
+        self,
+        scheduled_hours: Decimal,
+        entry: ProductionEntry,
+        shift: Optional[Shift],
+    ) -> Decimal:
+        """
+        Subtract configured break minutes from scheduled hours.
+
+        Queries BREAK_TIME table for the entry's shift and client. If no
+        break records exist the original scheduled_hours is returned unchanged
+        (graceful fallback).
+
+        Args:
+            scheduled_hours: Raw scheduled hours from shift times
+            entry: Production entry (provides client_id)
+            shift: Shift object (provides shift_id)
+
+        Returns:
+            Adjusted scheduled hours after subtracting breaks
+        """
+        if shift is None:
+            return scheduled_hours
+
+        shift_id = getattr(shift, "shift_id", None)
+        client_id = getattr(entry, "client_id", None)
+        if not shift_id or not client_id:
+            return scheduled_hours
+
+        try:
+            from backend.crud.break_time import get_total_break_minutes
+
+            break_mins = get_total_break_minutes(self.db, shift_id, client_id)
+            if break_mins > 0:
+                break_hours = Decimal(str(break_mins)) / Decimal("60")
+                adjusted = scheduled_hours - break_hours
+                # Never go below zero
+                return max(adjusted, Decimal("0.01"))
+        except Exception:
+            logger.debug(
+                "Could not query break times for shift_id=%s client_id=%s; "
+                "using full scheduled hours",
+                shift_id,
+                client_id,
+                exc_info=True,
+            )
+        return scheduled_hours
 
     def _calculate_performance(
         self, entry: ProductionEntry, product: Optional[Product], client_config: Dict[str, Any]

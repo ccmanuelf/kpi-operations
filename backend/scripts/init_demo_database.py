@@ -430,9 +430,9 @@ def init_database():
         print("\n[3/10] Creating per-client products and shifts...")
 
         shifts_data = [
-            ("Morning Shift", "06:00:00", "14:00:00"),
-            ("Afternoon Shift", "14:00:00", "22:00:00"),
-            ("Night Shift", "22:00:00", "06:00:00"),
+            ("1st", "06:00:00", "14:00:00"),
+            ("2nd", "14:00:00", "22:00:00"),
+            ("3rd", "22:00:00", "06:00:00"),
         ]
 
         all_products = {}  # client_id -> list of Product

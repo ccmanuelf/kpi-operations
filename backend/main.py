@@ -504,6 +504,11 @@ from backend.routes.defect_type_catalog import router as defect_type_catalog_rou
 # Import hold catalog router (Sprint 0 Task 0.5)
 from backend.routes.hold_catalogs import router as hold_catalogs_router
 
+# Sprint 1: Shift management routers
+from backend.routes.shifts import router as shifts_router
+from backend.routes.break_times import router as break_times_router
+from backend.routes.calendar import router as calendar_router
+
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
 
@@ -533,6 +538,13 @@ app.include_router(import_logs_router)
 # ============================================================================
 app.include_router(kpi_router)
 app.include_router(kpi_thresholds_router)
+
+# ============================================================================
+# Register shift management routes
+# ============================================================================
+app.include_router(shifts_router)
+app.include_router(break_times_router)
+app.include_router(calendar_router)
 
 # ============================================================================
 # Register downtime routes

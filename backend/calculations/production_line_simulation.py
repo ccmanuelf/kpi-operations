@@ -64,14 +64,23 @@ class WorkStation:
 
 @dataclass
 class ProductionLineConfig:
-    """Configuration for production line simulation"""
+    """Configuration for production line simulation.
+
+    Args:
+        break_duration_minutes: Duration of each break in minutes.
+            Accepts caller-provided values; defaults to 30 for backward
+            compatibility when no break-time data is available.
+        breaks_per_shift: Number of breaks per shift.
+            Accepts caller-provided values; defaults to 2 for backward
+            compatibility when no break-time data is available.
+    """
 
     line_id: str
     name: str
     stations: List[WorkStation]
     shift_duration_hours: float = 8.0
-    break_duration_minutes: float = 30
-    breaks_per_shift: int = 2
+    break_duration_minutes: float = 30  # default — overridden by BREAK_TIME table data
+    breaks_per_shift: int = 2  # default — overridden by BREAK_TIME table data
     workers_per_station: int = 1
     floating_pool_size: int = 0
 

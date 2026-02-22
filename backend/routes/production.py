@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List, Optional
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 import io
 import csv
@@ -68,6 +68,29 @@ def create_entry(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Shift ID {entry.shift_id} not found for client {entry.client_id}",
         )
+
+    # Midnight-crossing logic: if the shift crosses midnight (end_time < start_time)
+    # and the current time falls between 00:00 and shift.end_time, the shift_date
+    # should be the previous calendar date (the date the shift actually started).
+    #
+    # NOTE: The production entry does not carry an explicit entry time field, so we
+    # use the current server time as a proxy when the entry is created during the
+    # shift in question. This heuristic is only applied when:
+    #   1. The shift crosses midnight (end_time < start_time), AND
+    #   2. shift_date == production_date (i.e. the auto-default was used or user
+    #      provided the same value — meaning no explicit override), AND
+    #   3. The current server time is between midnight and the shift's end_time.
+    if shift.start_time and shift.end_time and shift.end_time < shift.start_time:
+        now_time = datetime.now(tz=timezone.utc).time()
+        midnight = time(0, 0, 0)
+        if entry.shift_date == entry.production_date:
+            if midnight <= now_time <= shift.end_time:
+                entry.shift_date = entry.production_date - timedelta(days=1)
+                logger.info(
+                    "Midnight-crossing adjustment applied: shift_date set to %s for shift %s",
+                    entry.shift_date,
+                    shift.shift_name,
+                )
 
     try:
         result = create_production_entry(db, entry, current_user)

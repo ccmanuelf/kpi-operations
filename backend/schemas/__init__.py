@@ -38,6 +38,9 @@ from .defect_type_catalog import DefectTypeCatalog
 from .hold_status_catalog import HoldStatusCatalog
 from .hold_reason_catalog import HoldReasonCatalog
 
+# Sprint 1: Break Times
+from .break_time import BreakTime
+
 # Phase 6: User Preferences
 from .user_preferences import UserPreferences, DashboardWidgetDefaults
 
@@ -81,6 +84,8 @@ __all__ = [
     # Task 0.5
     "HoldStatusCatalog",
     "HoldReasonCatalog",
+    # Sprint 1
+    "BreakTime",
     # Phase 6
     "UserPreferences",
     "DashboardWidgetDefaults",

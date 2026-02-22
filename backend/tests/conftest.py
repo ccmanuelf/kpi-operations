@@ -59,6 +59,9 @@ from backend.schemas import (
     HoldReasonCatalog,
 )
 
+# Break Time ORM model — imported directly (not yet in schemas/__init__.py)
+from backend.schemas.break_time import BreakTime  # noqa: F401
+
 # Import log for batch imports
 from backend.schemas.import_log import ImportLog
 
