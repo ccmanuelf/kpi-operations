@@ -86,6 +86,8 @@ class DemoDataSeeder:
             ("event_store", self._seed_event_store),
             # Phase C.2: Capacity Planning Demo Data
             ("capacity_planning", self._seed_capacity_planning),
+            # Task 3.1: Link Work Orders to Capacity Orders (post-processing)
+            ("wo_capacity_links", self._link_work_orders_to_capacity_orders),
         ]
 
         logger.info(f"Starting demo data seeding ({len(seeders)} entities)")
@@ -1342,6 +1344,45 @@ class DemoDataSeeder:
 
         logger.info(f"Capacity planning demo data seeded: {total_entries} records")
         return total_entries
+
+    def _link_work_orders_to_capacity_orders(self) -> int:
+        """Link first 3 work orders to their corresponding capacity orders.
+
+        Task 3.1: Post-processing step that runs after both work orders and
+        capacity orders have been seeded. Links WO-0001..WO-0003 to
+        CPL-WO-0001..CPL-WO-0003 and sets origin='PLANNED'.
+        """
+        from backend.schemas.work_order import WorkOrder
+        from backend.schemas.capacity.orders import CapacityOrder
+
+        links = [
+            ("WO-0001", "CPL-WO-0001"),
+            ("WO-0002", "CPL-WO-0002"),
+            ("WO-0003", "CPL-WO-0003"),
+        ]
+
+        linked_count = 0
+        for wo_id, cap_order_num in links:
+            work_order = (
+                self.session.query(WorkOrder)
+                .filter(WorkOrder.work_order_id == wo_id)
+                .first()
+            )
+            cap_order = (
+                self.session.query(CapacityOrder)
+                .filter(CapacityOrder.order_number == cap_order_num)
+                .first()
+            )
+            if work_order and cap_order:
+                work_order.capacity_order_id = cap_order.id
+                work_order.origin = "PLANNED"
+                linked_count += 1
+                logger.debug(f"Linked {wo_id} -> {cap_order_num} (capacity_order.id={cap_order.id})")
+            else:
+                logger.warning(f"Could not link {wo_id} -> {cap_order_num}: WO={work_order}, CO={cap_order}")
+
+        logger.info(f"Linked {linked_count} work orders to capacity orders")
+        return linked_count
 
     def get_seeded_counts(self) -> dict:
         """Get counts of seeded records.

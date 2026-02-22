@@ -25,6 +25,7 @@ from .bom_stock import bom_stock_router
 from .analysis import analysis_router
 from .scenarios import scenarios_router
 from .kpi_workbook import kpi_workbook_router
+from .work_order_bridge import work_order_bridge_router
 
 router = APIRouter(
     prefix="/api/capacity",
@@ -40,3 +41,4 @@ router.include_router(bom_stock_router)
 router.include_router(analysis_router)
 router.include_router(scenarios_router)
 router.include_router(kpi_workbook_router)
+router.include_router(work_order_bridge_router)

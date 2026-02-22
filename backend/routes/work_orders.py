@@ -539,6 +539,67 @@ def approve_qc(
     }
 
 
+# ============================================================================
+# Cross-Reference: Work Orders <-> Capacity Orders (Task 3.1)
+# ============================================================================
+
+
+@router.get("/{work_order_id}/capacity-order")
+def get_work_order_capacity_order(
+    work_order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """Get the capacity order linked to this work order."""
+    from backend.crud.work_order import get_capacity_order_for_work_order
+
+    cap_order = get_capacity_order_for_work_order(db, work_order_id, current_user)
+    if not cap_order:
+        return {"linked": False, "capacity_order": None}
+    return {
+        "linked": True,
+        "capacity_order": {
+            "id": cap_order.id,
+            "order_number": cap_order.order_number,
+            "customer_name": cap_order.customer_name,
+            "style_model": cap_order.style_model,
+            "order_quantity": cap_order.order_quantity,
+            "completed_quantity": cap_order.completed_quantity,
+            "required_date": cap_order.required_date.isoformat() if cap_order.required_date else None,
+            "status": cap_order.status.value if hasattr(cap_order.status, "value") else cap_order.status,
+            "priority": cap_order.priority.value if hasattr(cap_order.priority, "value") else cap_order.priority,
+        },
+    }
+
+
+@router.post("/{work_order_id}/link-capacity", response_model=WorkOrderResponse)
+def link_to_capacity_order(
+    work_order_id: str,
+    link_data: Dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Link a work order to a capacity order."""
+    from backend.crud.work_order import link_work_order_to_capacity
+
+    capacity_order_id = link_data.get("capacity_order_id")
+    if not capacity_order_id:
+        raise HTTPException(status_code=400, detail="capacity_order_id is required")
+    return link_work_order_to_capacity(db, work_order_id, capacity_order_id, current_user)
+
+
+@router.post("/{work_order_id}/unlink-capacity", response_model=WorkOrderResponse)
+def unlink_from_capacity_order(
+    work_order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Unlink a work order from its capacity order."""
+    from backend.crud.work_order import unlink_work_order_from_capacity
+
+    return unlink_work_order_from_capacity(db, work_order_id, current_user)
+
+
 @router.delete("/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_work_order_endpoint(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)

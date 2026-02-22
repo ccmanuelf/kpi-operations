@@ -131,6 +131,13 @@ const router = createRouter({
       path: '/simulation-v2',
       redirect: '/simulation'
     },
+    // Plan vs Actual — variance dashboard
+    {
+      path: '/plan-vs-actual',
+      name: 'plan-vs-actual',
+      component: () => import('@/views/PlanVsActualView.vue'),
+      meta: { requiresAuth: true }
+    },
     // Capacity Planning Module - Phase B
     {
       path: '/capacity-planning',

@@ -88,6 +88,7 @@
 
         <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
         <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
+        <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.planVsActual')" value="plan-vs-actual" to="/plan-vs-actual" />
         <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
 
         <v-divider class="my-2" role="separator"></v-divider>

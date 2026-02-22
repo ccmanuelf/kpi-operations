@@ -19,6 +19,7 @@ export * from './myShift'
 export * from './workflow'
 export * from './simulation'
 export * from './productionLines'
+export * from './planVsActual'
 export * as capacityPlanning from './capacityPlanning'
 
 // Import all modules for default export object
@@ -38,6 +39,7 @@ import * as myShift from './myShift'
 import * as workflow from './workflow'
 import * as simulation from './simulation'
 import * as productionLines from './productionLines'
+import * as planVsActual from './planVsActual'
 import * as capacityPlanning from './capacityPlanning'
 
 // Default export object with all methods for backward compatibility
@@ -67,6 +69,7 @@ export default {
   ...workflow,
   ...simulation,
   ...productionLines,
+  ...planVsActual,
   // Capacity Planning module (namespaced to avoid conflicts)
   capacityPlanning
 }

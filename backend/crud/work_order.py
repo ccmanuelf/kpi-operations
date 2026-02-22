@@ -350,3 +350,61 @@ def get_work_orders_by_date_range(
         query = query.filter(client_filter)
 
     return query.order_by(WorkOrder.planned_ship_date).offset(skip).limit(limit).all()
+
+
+# ============================================================================
+# Cross-Reference: Work Orders <-> Capacity Orders (Task 3.1)
+# ============================================================================
+
+
+def get_work_orders_by_capacity_order(
+    db: Session, capacity_order_id: int, current_user: User, skip: int = 0, limit: int = 100
+) -> List[WorkOrder]:
+    """Get all work orders linked to a specific capacity order."""
+    query = db.query(WorkOrder).filter(WorkOrder.capacity_order_id == capacity_order_id)
+    client_filter = build_client_filter_clause(current_user, WorkOrder.client_id)
+    if client_filter is not None:
+        query = query.filter(client_filter)
+    return query.order_by(WorkOrder.created_at.desc()).offset(skip).limit(limit).all()
+
+
+def get_capacity_order_for_work_order(db: Session, work_order_id: str, current_user: User):
+    """Get the capacity order linked to a work order. Returns None if no link."""
+    from backend.schemas.capacity.orders import CapacityOrder
+
+    work_order = get_work_order(db, work_order_id, current_user)
+    if not work_order or not work_order.capacity_order_id:
+        return None
+    return db.query(CapacityOrder).filter(CapacityOrder.id == work_order.capacity_order_id).first()
+
+
+def link_work_order_to_capacity(
+    db: Session, work_order_id: str, capacity_order_id: int, current_user: User
+) -> WorkOrder:
+    """Link a work order to a capacity order. Sets origin to PLANNED."""
+    work_order = get_work_order(db, work_order_id, current_user)
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    # Verify capacity order exists
+    from backend.schemas.capacity.orders import CapacityOrder
+
+    cap_order = db.query(CapacityOrder).filter(CapacityOrder.id == capacity_order_id).first()
+    if not cap_order:
+        raise HTTPException(status_code=404, detail="Capacity order not found")
+    work_order.capacity_order_id = capacity_order_id
+    work_order.origin = "PLANNED"
+    db.commit()
+    db.refresh(work_order)
+    return work_order
+
+
+def unlink_work_order_from_capacity(db: Session, work_order_id: str, current_user: User) -> WorkOrder:
+    """Unlink a work order from its capacity order. Sets origin to AD_HOC."""
+    work_order = get_work_order(db, work_order_id, current_user)
+    if not work_order:
+        raise HTTPException(status_code=404, detail="Work order not found")
+    work_order.capacity_order_id = None
+    work_order.origin = "AD_HOC"
+    db.commit()
+    db.refresh(work_order)
+    return work_order
