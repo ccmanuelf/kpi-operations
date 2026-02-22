@@ -37,6 +37,7 @@ export default function useProductionGridData() {
   const dateFilter = ref(null)
   const productFilter = ref(null)
   const shiftFilter = ref(null)
+  const lineFilter = ref(null)
 
   const entries = computed(() => kpiStore.productionEntries)
   const products = computed(() => kpiStore.products)
@@ -397,6 +398,9 @@ export default function useProductionGridData() {
     if (shiftFilter.value) {
       filtered = filtered.filter(e => e.shift_id === shiftFilter.value)
     }
+    if (lineFilter.value) {
+      filtered = filtered.filter(e => e.line_id === lineFilter.value)
+    }
 
     filteredEntries.value = filtered
   }
@@ -485,6 +489,7 @@ export default function useProductionGridData() {
     dateFilter,
     productFilter,
     shiftFilter,
+    lineFilter,
     products,
     shifts,
     // Data

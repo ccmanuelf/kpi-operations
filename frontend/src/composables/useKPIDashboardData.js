@@ -19,6 +19,7 @@ export function useKPIDashboardData(showSnackbar) {
   // State
   const loading = ref(false)
   const selectedClient = ref(null)
+  const selectedLineId = ref(null)
   const dateRange = ref([
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
     new Date()
@@ -42,13 +43,22 @@ export function useKPIDashboardData(showSnackbar) {
   const refreshData = async () => {
     loading.value = true
     try {
-      await kpiStore.fetchAllKPIs()
+      const params = {}
+      if (selectedLineId.value) {
+        params.line_id = selectedLineId.value
+      }
+      await kpiStore.fetchAllKPIs(params)
     } catch (error) {
       console.error('Error refreshing data:', error)
       showSnackbar(t('errors.refreshFailed') || 'Failed to refresh data', 'error')
     } finally {
       loading.value = false
     }
+  }
+
+  const onLineFilterChange = (lineId) => {
+    selectedLineId.value = lineId
+    refreshData()
   }
 
   const handleClientChange = () => {
@@ -105,6 +115,7 @@ export function useKPIDashboardData(showSnackbar) {
     // State
     loading,
     selectedClient,
+    selectedLineId,
     dateRange,
     trendPeriod,
     clients,
@@ -118,6 +129,7 @@ export function useKPIDashboardData(showSnackbar) {
     handleClientChange,
     handleDateChange,
     handleFilterChange,
+    onLineFilterChange,
     initialize
   }
 }

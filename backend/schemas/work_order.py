@@ -116,6 +116,16 @@ class WorkOrder(Base):
     customer_po_number = Column(String(100))
     internal_notes = Column(Text)
 
+    # Bridge to Capacity Planning: links work order to a capacity order.
+    # NULL means ad-hoc work order (prove-in, test run, calibration, rework).
+    capacity_order_id = Column(
+        Integer,
+        ForeignKey("capacity_orders.id"),
+        nullable=True,
+    )
+    # Origin distinguishes planned WOs (from Capacity Planning) from ad-hoc ones (from Ops).
+    origin = Column(String(20), nullable=False, default="AD_HOC")
+
     # Timestamps
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

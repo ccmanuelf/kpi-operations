@@ -1,13 +1,15 @@
 """
 CRUD operations for Production Lines.
-Supports per-client line management with soft-delete, hierarchy, and configurable limits.
+Supports per-client line management with soft-delete, hierarchy, configurable limits,
+and bridging to Capacity Planning production lines.
 """
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from backend.schemas.production_line import ProductionLine
+from backend.schemas.capacity.production_lines import CapacityProductionLine
 from backend.models.production_line import ProductionLineCreate, ProductionLineUpdate
 from backend.utils.logging_utils import get_module_logger
 
@@ -89,6 +91,7 @@ def create_production_line(
         line_type=data.line_type,
         parent_line_id=data.parent_line_id,
         max_operators=data.max_operators,
+        capacity_line_id=data.capacity_line_id,
         is_active=True,
     )
     try:
@@ -238,3 +241,176 @@ def deactivate_production_line(db: Session, line_id: int) -> bool:
         deactivated_children,
     )
     return True
+
+
+# ============================================================================
+# Capacity Planning Bridge Functions
+# ============================================================================
+
+
+def link_to_capacity_line(
+    db: Session, line_id: int, capacity_line_id: int
+) -> Optional[ProductionLine]:
+    """Manually link an operational production line to a capacity planning line.
+
+    Args:
+        db: Database session.
+        line_id: PK of the operational production line.
+        capacity_line_id: PK of the CapacityProductionLine to link to.
+
+    Returns:
+        Updated ProductionLine or None if the operational line was not found.
+
+    Raises:
+        ValueError: If the capacity line does not exist.
+    """
+    db_entry = (
+        db.query(ProductionLine).filter(ProductionLine.line_id == line_id).first()
+    )
+    if not db_entry:
+        return None
+
+    # Validate that the capacity line exists
+    cap_line = (
+        db.query(CapacityProductionLine)
+        .filter(CapacityProductionLine.id == capacity_line_id)
+        .first()
+    )
+    if not cap_line:
+        raise ValueError(
+            f"CapacityProductionLine with id={capacity_line_id} does not exist"
+        )
+
+    db_entry.capacity_line_id = capacity_line_id
+    db.commit()
+    db.refresh(db_entry)
+    logger.info(
+        "Linked operational line_id=%d to capacity line id=%d",
+        line_id,
+        capacity_line_id,
+    )
+    return db_entry
+
+
+def unlink_from_capacity_line(db: Session, line_id: int) -> Optional[ProductionLine]:
+    """Remove the capacity planning link from an operational production line.
+
+    Args:
+        db: Database session.
+        line_id: PK of the operational production line.
+
+    Returns:
+        Updated ProductionLine (with capacity_line_id=NULL), or None if not found.
+    """
+    db_entry = (
+        db.query(ProductionLine).filter(ProductionLine.line_id == line_id).first()
+    )
+    if not db_entry:
+        return None
+
+    previous = db_entry.capacity_line_id
+    db_entry.capacity_line_id = None
+    db.commit()
+    db.refresh(db_entry)
+    logger.info(
+        "Unlinked operational line_id=%d from capacity line id=%s",
+        line_id,
+        previous,
+    )
+    return db_entry
+
+
+def auto_sync_lines(
+    db: Session, client_id: str
+) -> Dict[str, list]:
+    """Automatically link operational lines to capacity lines by matching line_code.
+
+    Only matches within the same client_id. Already-linked lines are skipped.
+
+    Args:
+        db: Database session.
+        client_id: Client scope for matching.
+
+    Returns:
+        Dict with keys:
+            - ``matched``: list of dicts with ``line_id``, ``capacity_line_id``, ``line_code``
+            - ``unmatched``: list of dicts with ``line_id``, ``line_code`` (no capacity match)
+    """
+    # Get all active, unlinked operational lines for this client
+    ops_lines = (
+        db.query(ProductionLine)
+        .filter(
+            ProductionLine.client_id == client_id,
+            ProductionLine.is_active == True,  # noqa: E712
+            ProductionLine.capacity_line_id.is_(None),
+        )
+        .all()
+    )
+
+    # Get all active capacity lines for this client, indexed by line_code
+    cap_lines = (
+        db.query(CapacityProductionLine)
+        .filter(
+            CapacityProductionLine.client_id == client_id,
+            CapacityProductionLine.is_active == True,  # noqa: E712
+        )
+        .all()
+    )
+    cap_by_code: Dict[str, CapacityProductionLine] = {
+        cl.line_code: cl for cl in cap_lines
+    }
+
+    matched = []
+    unmatched = []
+
+    for ops_line in ops_lines:
+        cap_match = cap_by_code.get(ops_line.line_code)
+        if cap_match:
+            ops_line.capacity_line_id = cap_match.id
+            matched.append(
+                {
+                    "line_id": ops_line.line_id,
+                    "capacity_line_id": cap_match.id,
+                    "line_code": ops_line.line_code,
+                }
+            )
+        else:
+            unmatched.append(
+                {
+                    "line_id": ops_line.line_id,
+                    "line_code": ops_line.line_code,
+                }
+            )
+
+    if matched:
+        db.commit()
+
+    logger.info(
+        "Auto-sync for client '%s': %d matched, %d unmatched",
+        client_id,
+        len(matched),
+        len(unmatched),
+    )
+    return {"matched": matched, "unmatched": unmatched}
+
+
+def get_unlinked_lines(db: Session, client_id: str) -> List[ProductionLine]:
+    """Return active operational lines that have no capacity line link.
+
+    Args:
+        db: Database session.
+        client_id: Client to filter by.
+
+    Returns:
+        List of ProductionLine ORM objects with capacity_line_id IS NULL.
+    """
+    return (
+        db.query(ProductionLine)
+        .filter(
+            ProductionLine.client_id == client_id,
+            ProductionLine.is_active == True,  # noqa: E712
+            ProductionLine.capacity_line_id.is_(None),
+        )
+        .order_by(ProductionLine.line_code)
+        .all()
+    )

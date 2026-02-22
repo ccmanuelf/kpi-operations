@@ -60,7 +60,7 @@
             hide-details
           />
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-select
             v-model="shiftFilter"
             :items="shifts"
@@ -73,7 +73,13 @@
             hide-details
           />
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
+          <LineSelector
+            v-model="lineFilter"
+            :label="$t('productionLines.filterByLine')"
+          />
+        </v-col>
+        <v-col cols="12" md="2">
           <v-btn color="primary" @click="applyFilters" block>
             <v-icon left>mdi-filter</v-icon>
             {{ $t('filters.apply') }}
@@ -178,6 +184,7 @@
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
+import LineSelector from '@/components/common/LineSelector.vue'
 import useProductionGridData from '@/composables/useProductionGridData'
 
 const {
@@ -197,6 +204,7 @@ const {
   dateFilter,
   productFilter,
   shiftFilter,
+  lineFilter,
   products,
   shifts,
   filteredEntries,

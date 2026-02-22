@@ -90,8 +90,16 @@
 
     <!-- Filter Bar -->
     <v-row class="mb-4">
-      <v-col cols="12">
+      <v-col cols="12" md="9">
         <FilterBar filter-type="dashboard" :clients="clients" @filter-change="handleFilterChange" />
+      </v-col>
+      <v-col cols="12" md="3">
+        <LineSelector
+          v-model="selectedLineId"
+          :client-id="selectedClient"
+          :label="t('productionLines.filterByLine')"
+          @update:model-value="onLineFilterChange"
+        />
       </v-col>
     </v-row>
 
@@ -322,6 +330,7 @@ import DashboardCustomizer from '@/components/dashboard/DashboardCustomizer.vue'
 import FilterManager from '@/components/filters/FilterManager.vue'
 import QRCodeScanner from '@/components/QRCodeScanner.vue'
 import InferenceIndicator from '@/components/kpi/InferenceIndicator.vue'
+import LineSelector from '@/components/common/LineSelector.vue'
 
 // Composables
 import { useKPIDashboardData } from '@/composables/useKPIDashboardData'
@@ -349,8 +358,8 @@ const {
 
 // Data & filter composable
 const {
-  loading, selectedClient, dateRange, trendPeriod, clients,
-  filtersStore, refreshData, handleFilterChange, initialize
+  loading, selectedClient, selectedLineId, dateRange, trendPeriod, clients,
+  filtersStore, refreshData, handleFilterChange, onLineFilterChange, initialize
 } = useKPIDashboardData(showSnackbar)
 
 // Report composable

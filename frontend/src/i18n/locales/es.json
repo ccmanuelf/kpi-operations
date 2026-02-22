@@ -3067,5 +3067,12 @@
       "itemCode": "Codigo de Articulo",
       "onOrder": "En Pedido"
     }
+  },
+  "productionLines": {
+    "label": "Linea de Produccion",
+    "allLines": "Todas las Lineas",
+    "selectLine": "Seleccionar Linea",
+    "noLines": "No hay lineas de produccion configuradas",
+    "filterByLine": "Filtrar por Linea"
   }
 }

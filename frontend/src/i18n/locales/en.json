@@ -3083,5 +3083,12 @@
       "itemCode": "Item Code",
       "onOrder": "On Order"
     }
+  },
+  "productionLines": {
+    "label": "Production Line",
+    "allLines": "All Lines",
+    "selectLine": "Select Line",
+    "noLines": "No production lines configured",
+    "filterByLine": "Filter by Line"
   }
 }

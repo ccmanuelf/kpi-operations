@@ -79,6 +79,14 @@ class WorkOrderCreate(BaseModel):
     customer_po_number: Optional[str] = Field(None, max_length=100)
     internal_notes: Optional[str] = None
 
+    # Bridge to Capacity Planning
+    capacity_order_id: Optional[int] = Field(None, description="FK to capacity_orders. NULL for ad-hoc WOs")
+    origin: Optional[str] = Field(
+        default="AD_HOC",
+        pattern=r"^(PLANNED|AD_HOC)$",
+        description="PLANNED (from Capacity Planning) or AD_HOC (from Operations)",
+    )
+
 
 class WorkOrderUpdate(BaseModel):
     """Work order update model (all fields optional)"""
@@ -122,6 +130,14 @@ class WorkOrderUpdate(BaseModel):
     notes: Optional[str] = None
     customer_po_number: Optional[str] = Field(None, max_length=100)
     internal_notes: Optional[str] = None
+
+    # Bridge to Capacity Planning
+    capacity_order_id: Optional[int] = Field(None, description="FK to capacity_orders. NULL for ad-hoc WOs")
+    origin: Optional[str] = Field(
+        None,
+        pattern=r"^(PLANNED|AD_HOC)$",
+        description="PLANNED (from Capacity Planning) or AD_HOC (from Operations)",
+    )
 
 
 class WorkOrderResponse(BaseModel):
@@ -168,6 +184,11 @@ class WorkOrderResponse(BaseModel):
     notes: Optional[str] = None
     customer_po_number: Optional[str] = None
     internal_notes: Optional[str] = None
+
+    # Bridge to Capacity Planning
+    capacity_order_id: Optional[int] = None
+    origin: Optional[str] = None
+
     created_at: datetime
     updated_at: Optional[datetime] = None
 

@@ -47,7 +47,7 @@
             hide-details
           />
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-select
             v-model="categoryFilter"
             :items="categories"
@@ -58,7 +58,7 @@
             hide-details
           />
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-select
             v-model="statusFilter"
             :items="['Resolved', 'Unresolved']"
@@ -70,6 +70,12 @@
           />
         </v-col>
         <v-col cols="12" md="3">
+          <LineSelector
+            v-model="lineFilter"
+            :label="$t('productionLines.filterByLine')"
+          />
+        </v-col>
+        <v-col cols="12" md="2">
           <v-btn color="primary" @click="applyFilters" block>
             <v-icon left>mdi-filter</v-icon>
             {{ $t('grids.applyFilters') }}
@@ -163,6 +169,7 @@
 import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
+import LineSelector from '@/components/common/LineSelector.vue'
 import useDowntimeGridData from '@/composables/useDowntimeGridData'
 
 const {
@@ -182,6 +189,7 @@ const {
   dateFilter,
   categoryFilter,
   statusFilter,
+  lineFilter,
   categories,
   filteredEntries,
   hasUnsavedChanges,

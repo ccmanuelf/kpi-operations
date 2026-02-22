@@ -8,7 +8,7 @@
     </v-card-title>
 
     <v-card-text>
-      <!-- Date and Shift Selector -->
+      <!-- Date, Shift, and Line Selector -->
       <v-row class="mb-3">
         <v-col cols="12" md="3">
           <v-text-field
@@ -20,7 +20,7 @@
             :disabled="loading"
           />
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-select
             v-model="selectedShift"
             :items="shifts"
@@ -29,6 +29,13 @@
             :label="$t('filters.shift')"
             variant="outlined"
             density="compact"
+            :disabled="loading"
+          />
+        </v-col>
+        <v-col cols="12" md="2">
+          <LineSelector
+            v-model="selectedLine"
+            :label="$t('productionLines.selectLine')"
             :disabled="loading"
           />
         </v-col>
@@ -44,7 +51,7 @@
             {{ $t('grids.attendance.loadEmployees') }}
           </v-btn>
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="2">
           <v-btn
             color="success"
             @click="bulkSetStatus"
@@ -166,12 +173,14 @@ import AGGridBase from './AGGridBase.vue'
 import ReadBackConfirmation from '@/components/dialogs/ReadBackConfirmation.vue'
 import PastePreviewDialog from '@/components/dialogs/PastePreviewDialog.vue'
 import TimePickerCellEditor from './editors/TimePickerCellEditor.vue'
+import LineSelector from '@/components/common/LineSelector.vue'
 import useAttendanceGridData from '@/composables/useAttendanceGridData'
 
 const {
   gridRef,
   selectedDate,
   selectedShift,
+  selectedLine,
   shifts,
   attendanceData,
   loading,

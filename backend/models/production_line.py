@@ -17,6 +17,7 @@ class ProductionLineCreate(BaseModel):
     line_type: str = Field(default="DEDICATED", pattern=r"^(DEDICATED|SHARED|SECTION)$")
     parent_line_id: Optional[int] = None
     max_operators: Optional[int] = Field(None, ge=1)
+    capacity_line_id: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -45,6 +46,7 @@ class ProductionLineResponse(BaseModel):
     line_type: str
     parent_line_id: Optional[int] = None
     max_operators: Optional[int] = None
+    capacity_line_id: Optional[int] = None
     is_active: bool
     created_at: datetime
 

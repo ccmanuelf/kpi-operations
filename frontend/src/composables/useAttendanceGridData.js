@@ -18,6 +18,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
   const gridRef = ref(null)
   const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
   const selectedShift = ref(null)
+  const selectedLine = ref(null)
   const shifts = ref([])
   const attendanceData = ref([])
   const loading = ref(false)
@@ -434,6 +435,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     gridRef,
     selectedDate,
     selectedShift,
+    selectedLine,
     shifts,
     attendanceData,
     loading,

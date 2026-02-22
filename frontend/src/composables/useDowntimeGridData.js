@@ -38,6 +38,7 @@ export default function useDowntimeGridData() {
   const dateFilter = ref(null)
   const categoryFilter = ref(null)
   const statusFilter = ref(null)
+  const lineFilter = ref(null)
 
   const categories = [
     'Planned Maintenance',
@@ -398,6 +399,9 @@ export default function useDowntimeGridData() {
       const isResolved = statusFilter.value === 'Resolved'
       filtered = filtered.filter(e => e.is_resolved === isResolved)
     }
+    if (lineFilter.value) {
+      filtered = filtered.filter(e => e.line_id === lineFilter.value)
+    }
 
     filteredEntries.value = filtered
   }
@@ -479,6 +483,7 @@ export default function useDowntimeGridData() {
     dateFilter,
     categoryFilter,
     statusFilter,
+    lineFilter,
     categories,
     // Data
     filteredEntries,

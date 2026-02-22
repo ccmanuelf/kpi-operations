@@ -53,6 +53,15 @@ class ProductionLine(Base):
         Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True
     )
     max_operators = Column(Integer, nullable=True)
+
+    # Bridge to Capacity Planning: links operational line to its capacity counterpart.
+    # NULL means the line exists only in the operational context.
+    capacity_line_id = Column(
+        Integer,
+        ForeignKey("capacity_production_lines.id"),
+        nullable=True,
+    )
+
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 

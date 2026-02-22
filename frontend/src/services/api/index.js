@@ -18,6 +18,7 @@ export * from './myShift'
 // alerts.js exports removed (DC-05: 15 unused functions)
 export * from './workflow'
 export * from './simulation'
+export * from './productionLines'
 export * as capacityPlanning from './capacityPlanning'
 
 // Import all modules for default export object
@@ -36,6 +37,7 @@ import * as myShift from './myShift'
 // alerts module cleared (DC-05)
 import * as workflow from './workflow'
 import * as simulation from './simulation'
+import * as productionLines from './productionLines'
 import * as capacityPlanning from './capacityPlanning'
 
 // Default export object with all methods for backward compatibility
@@ -64,6 +66,7 @@ export default {
   // alerts functions removed (DC-05)
   ...workflow,
   ...simulation,
+  ...productionLines,
   // Capacity Planning module (namespaced to avoid conflicts)
   capacityPlanning
 }
