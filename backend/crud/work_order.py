@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.schemas.work_order import WorkOrder, WorkOrderStatus
-from backend.schemas.user import User
+from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
-from backend.services.workflow_service import WorkflowStateMachine, execute_transition
+from backend.calculations.workflow_engine import WorkflowStateMachine, execute_transition
 
 
 def create_work_order(db: Session, work_order_data: dict, current_user: User) -> WorkOrder:
@@ -62,7 +62,7 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
 
     # Phase 10: Log initial status transition
     try:
-        from backend.schemas.workflow import WorkflowTransitionLog
+        from backend.orm.workflow import WorkflowTransitionLog
 
         initial_log = WorkflowTransitionLog(
             work_order_id=db_work_order.work_order_id,
@@ -370,7 +370,7 @@ def get_work_orders_by_capacity_order(
 
 def get_capacity_order_for_work_order(db: Session, work_order_id: str, current_user: User):
     """Get the capacity order linked to a work order. Returns None if no link."""
-    from backend.schemas.capacity.orders import CapacityOrder
+    from backend.orm.capacity.orders import CapacityOrder
 
     work_order = get_work_order(db, work_order_id, current_user)
     if not work_order or not work_order.capacity_order_id:
@@ -386,7 +386,7 @@ def link_work_order_to_capacity(
     if not work_order:
         raise HTTPException(status_code=404, detail="Work order not found")
     # Verify capacity order exists
-    from backend.schemas.capacity.orders import CapacityOrder
+    from backend.orm.capacity.orders import CapacityOrder
 
     cap_order = db.query(CapacityOrder).filter(CapacityOrder.id == capacity_order_id).first()
     if not cap_order:

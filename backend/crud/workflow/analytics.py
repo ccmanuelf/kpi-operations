@@ -7,9 +7,9 @@ from typing import Dict
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from backend.schemas.workflow import WorkflowTransitionLog
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.user import User
+from backend.orm.workflow import WorkflowTransitionLog
+from backend.orm.work_order import WorkOrder
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 
 

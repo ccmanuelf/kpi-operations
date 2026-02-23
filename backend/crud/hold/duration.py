@@ -9,10 +9,10 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
-from backend.models.hold import WIPHoldResponse, TotalHoldDurationResponse
+from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus
+from backend.schemas.hold import WIPHoldResponse, TotalHoldDurationResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 
 
 def resume_hold(

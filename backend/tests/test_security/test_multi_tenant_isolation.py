@@ -17,7 +17,7 @@ from backend.middleware.client_auth import (
     build_client_filter_clause,
     ClientAccessError,
 )
-from backend.schemas.user import UserRole
+from backend.orm.user import UserRole
 
 
 class TestClientFilterGeneration:
@@ -53,7 +53,7 @@ class TestClientFilterGeneration:
     def test_user_without_client_assignment_raises_error(self):
         """Test that user without client assignment raises error"""
         # Given: User without client assignment
-        from backend.schemas.user import User
+        from backend.orm.user import User
 
         user = User(
             user_id=99,
@@ -73,7 +73,7 @@ class TestClientFilterGeneration:
     def test_user_with_empty_client_assignment_raises_error(self):
         """Test that user with empty string assignment raises error"""
         # Given: User with empty assignment
-        from backend.schemas.user import User
+        from backend.orm.user import User
 
         user = User(
             user_id=99,
@@ -189,7 +189,7 @@ class TestCRUDIsolation:
     def test_read_filters_by_client(self, db_session, operator_user_client_a, operator_user_client_b):
         """Test that READ operations only return user's client data"""
         # Given: Data for both clients
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
         from datetime import datetime
 
         prod_date = datetime(2024, 1, 15, 8, 0, 0)
@@ -250,7 +250,7 @@ class TestCRUDIsolation:
     def test_update_prevents_cross_client_modification(self, db_session, operator_user_client_a):
         """Test that UPDATE operations cannot modify other client's data"""
         # Given: Entry for CLIENT-B
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
         from datetime import datetime
 
         prod_date = datetime(2024, 1, 15, 8, 0, 0)
@@ -285,7 +285,7 @@ class TestCRUDIsolation:
     def test_delete_prevents_cross_client_deletion(self, db_session, operator_user_client_a):
         """Test that DELETE operations cannot delete other client's data"""
         # Given: Entries for both clients
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
         from datetime import datetime
 
         prod_date = datetime(2024, 1, 15, 8, 0, 0)
@@ -347,7 +347,7 @@ class TestRealWorldIsolationScenarios:
         test_data_factory.create_production_entries(db_session, 10, client_id="CLIENT-B")
 
         # When: Operator A queries production entries
-        from backend.schemas.user import User
+        from backend.orm.user import User
 
         operator_a = User(
             user_id=2,
@@ -358,7 +358,7 @@ class TestRealWorldIsolationScenarios:
             is_active=True,
         )
 
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         query = db_session.query(ProductionEntry)
         filter_clause = build_client_filter_clause(operator_a, ProductionEntry.client_id)
@@ -379,7 +379,7 @@ class TestRealWorldIsolationScenarios:
         test_data_factory.create_quality_inspections(db_session, 5, client_id="CLIENT-B", defect_rate=0.05)
 
         # When: Calculate KPIs for CLIENT-A operator
-        from backend.schemas.user import User
+        from backend.orm.user import User
 
         operator_a = User(
             user_id=2,
@@ -390,7 +390,7 @@ class TestRealWorldIsolationScenarios:
             is_active=True,
         )
 
-        from backend.schemas.quality_entry import QualityEntry
+        from backend.orm.quality_entry import QualityEntry
 
         query = db_session.query(QualityEntry)
         filter_clause = build_client_filter_clause(operator_a, QualityEntry.client_id)
@@ -419,7 +419,7 @@ class TestRealWorldIsolationScenarios:
         test_data_factory.create_production_entries(db_session, 5, client_id="CLIENT-C")
 
         # When: Leader with CLIENT-A and CLIENT-B access queries
-        from backend.schemas.user import User
+        from backend.orm.user import User
 
         leader = User(
             user_id=4,
@@ -430,7 +430,7 @@ class TestRealWorldIsolationScenarios:
             is_active=True,
         )
 
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         query = db_session.query(ProductionEntry)
         filter_clause = build_client_filter_clause(leader, ProductionEntry.client_id)

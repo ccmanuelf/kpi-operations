@@ -11,9 +11,9 @@ from datetime import date
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.user import User
-from backend.models.production import ProductionEntryCreate, ProductionEntryUpdate, ProductionEntryWithKPIs
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.user import User
+from backend.schemas.production import ProductionEntryCreate, ProductionEntryUpdate, ProductionEntryWithKPIs
 from backend.crud.production import (
     create_production_entry,
     get_production_entry,

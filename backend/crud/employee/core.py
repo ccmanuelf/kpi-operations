@@ -8,8 +8,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from backend.schemas.employee import Employee
-from backend.schemas.user import User
+from backend.orm.employee import Employee
+from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 
 

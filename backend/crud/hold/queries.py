@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 from typing import Optional, List
 from datetime import date
 
-from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
-from backend.models.hold import WIPHoldResponse
+from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus
+from backend.schemas.hold import WIPHoldResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 
 
 def get_wip_holds(

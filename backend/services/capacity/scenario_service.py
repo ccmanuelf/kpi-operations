@@ -21,10 +21,10 @@ from enum import Enum
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from backend.schemas.capacity.scenario import CapacityScenario
-from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
-from backend.schemas.capacity.production_lines import CapacityProductionLine
-from backend.schemas.capacity.analysis import CapacityAnalysis
+from backend.orm.capacity.scenario import CapacityScenario
+from backend.orm.capacity.schedule import CapacitySchedule, ScheduleStatus
+from backend.orm.capacity.production_lines import CapacityProductionLine
+from backend.orm.capacity.analysis import CapacityAnalysis
 from backend.services.capacity.analysis_service import CapacityAnalysisService, CapacityAnalysisResult
 from backend.events.bus import event_bus
 from backend.events.domain_events import CapacityScenarioCreated, CapacityScenarioCompared

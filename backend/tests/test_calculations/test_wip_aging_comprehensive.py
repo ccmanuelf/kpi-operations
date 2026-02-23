@@ -278,9 +278,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
-from backend.schemas import ClientType
-from backend.schemas.hold_entry import HoldEntry, HoldStatus, HoldReason
-from backend.schemas.work_order import WorkOrder
+from backend.orm import ClientType
+from backend.orm.hold_entry import HoldEntry, HoldStatus, HoldReason
+from backend.orm.work_order import WorkOrder
 from backend.tests.fixtures.factories import TestDataFactory
 
 

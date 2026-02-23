@@ -16,13 +16,13 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.schemas.client import Client, ClientType
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
-from backend.schemas.work_order import WorkOrder, WorkOrderStatus
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.user import User, UserRole
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
+from backend.orm.client import Client, ClientType
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
+from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.user import User, UserRole
+from backend.orm.product import Product
+from backend.orm.shift import Shift
 from backend.auth.jwt import get_current_user
 from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 from backend.tests.fixtures.factories import TestDataFactory

@@ -9,11 +9,11 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 
 from backend.utils.logging_utils import get_module_logger
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.production_entry import ProductionEntry
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus
+from backend.orm.work_order import WorkOrder
+from backend.orm.production_entry import ProductionEntry
 from backend.middleware.client_auth import build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 

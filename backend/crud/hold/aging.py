@@ -6,9 +6,9 @@ Batch aging updates and maintenance
 from sqlalchemy.orm import Session
 from datetime import date, datetime
 
-from backend.schemas.hold_entry import HoldEntry as WIPHold
+from backend.orm.hold_entry import HoldEntry as WIPHold
 from backend.middleware.client_auth import build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 
 
 def bulk_update_aging(db: Session, current_user: User) -> int:

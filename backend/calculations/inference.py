@@ -9,9 +9,9 @@ from typing import Tuple, Optional
 from datetime import date, timedelta
 from decimal import Decimal
 
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.production_entry import ProductionEntry
 
 
 class InferenceEngine:

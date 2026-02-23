@@ -9,14 +9,14 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from sqlalchemy import func
 
-from backend.schemas import (
+from backend.orm import (
     AttendanceEntry,
     User,
     UserRole,
 )
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.crud.attendance import bulk_create_attendance_records, mark_all_present
-from backend.models.attendance import AttendanceRecordCreate
+from backend.schemas.attendance import AttendanceRecordCreate
 
 
 # ---------------------------------------------------------------------------

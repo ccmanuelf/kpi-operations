@@ -10,14 +10,14 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.hold_entry import HoldEntry as WIPHold, HoldStatus
-from backend.models.hold import (
+from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus
+from backend.schemas.hold import (
     WIPHoldCreate,
     WIPHoldUpdate,
     WIPHoldResponse,
 )
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 
 

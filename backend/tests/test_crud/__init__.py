@@ -15,8 +15,8 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
 from backend.database import Base
-from backend.schemas.client import Client, ClientType
-from backend.schemas.user import User, UserRole
+from backend.orm.client import Client, ClientType
+from backend.orm.user import User, UserRole
 
 
 @pytest.fixture(scope="function")

@@ -10,7 +10,7 @@ from unittest.mock import Mock, patch, MagicMock
 from fastapi.testclient import TestClient
 
 from backend.database import get_db
-from backend.schemas.user import User
+from backend.orm.user import User
 
 
 @pytest.fixture(scope="module")

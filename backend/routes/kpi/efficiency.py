@@ -13,7 +13,7 @@ from datetime import date, datetime, timedelta, timezone
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 
@@ -36,8 +36,8 @@ def get_efficiency_by_shift(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.shift import Shift
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.shift import Shift
 
     if not start_date:
         start_date = date.today() - timedelta(days=30)
@@ -90,8 +90,8 @@ def get_efficiency_by_product(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.product import Product
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.product import Product
 
     if not start_date:
         start_date = date.today() - timedelta(days=30)
@@ -147,7 +147,7 @@ def get_efficiency_trend(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.production_entry import ProductionEntry
+    from backend.orm.production_entry import ProductionEntry
 
     if end_date is None:
         end_date = date.today()

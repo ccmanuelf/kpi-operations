@@ -1,29 +1,59 @@
 """
-PART_OPPORTUNITIES table ORM schema (SQLAlchemy)
-Defines opportunities per unit for DPMO calculation (KPI #5)
-Source: 01-Core_DataEntities_Inventory.csv lines 71-75
+Pydantic models for PART_OPPORTUNITIES API requests/responses
+Used for DPMO (Defects Per Million Opportunities) calculations
 """
 
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
-from backend.database import Base
+from pydantic import BaseModel, Field
+from typing import Optional, List
 
 
-class PartOpportunities(Base):
-    """PART_OPPORTUNITIES table - DPMO calculation metadata"""
+class PartOpportunityBase(BaseModel):
+    """Base part opportunity fields"""
 
-    __tablename__ = "PART_OPPORTUNITIES"
-    __table_args__ = {"extend_existing": True}
+    client_id_fk: str = Field(..., description="Client ID for multi-tenant isolation")
+    opportunities_per_unit: int = Field(..., gt=0, description="Number of opportunities per unit for DPMO calculation")
+    part_description: Optional[str] = Field(None, description="Part description")
+    part_category: Optional[str] = Field(None, description="Part category for grouping")
+    notes: Optional[str] = Field(None, description="Additional notes")
 
-    # Primary key
-    part_number = Column(String(100), primary_key=True, index=True)
 
-    # Multi-tenant isolation (MEDIUM SECURITY FIX)
-    client_id_fk = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+class PartOpportunityCreate(PartOpportunityBase):
+    """Create new part opportunity"""
 
-    # DPMO calculation
-    opportunities_per_unit = Column(Integer, nullable=False)
+    part_number: str = Field(..., min_length=1, max_length=100, description="Unique part number (primary key)")
 
-    # Metadata
-    part_description = Column(String(255))
-    part_category = Column(String(100))
-    notes = Column(Text)
+
+class PartOpportunityUpdate(BaseModel):
+    """Update existing part opportunity (all fields optional except part_number)"""
+
+    opportunities_per_unit: Optional[int] = Field(None, gt=0, description="Number of opportunities per unit")
+    part_description: Optional[str] = None
+    part_category: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class PartOpportunityResponse(PartOpportunityBase):
+    """Part opportunity response with all fields"""
+
+    part_number: str
+
+    class Config:
+        from_attributes = True
+
+
+class BulkImportRequest(BaseModel):
+    """Bulk import request for CSV uploads"""
+
+    opportunities: List[PartOpportunityCreate] = Field(..., description="List of part opportunities to import")
+
+
+class BulkImportResponse(BaseModel):
+    """Bulk import response with success/failure counts"""
+
+    success_count: int = Field(..., description="Number of successfully imported records")
+    failure_count: int = Field(..., description="Number of failed imports")
+    errors: List[str] = Field(default_factory=list, description="List of error messages (first 10)")
+    total_processed: int = Field(..., description="Total records processed")
+
+    class Config:
+        from_attributes = True

@@ -7,10 +7,10 @@ from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.user import User
+from backend.orm.work_order import WorkOrder
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.services.workflow_service import (
+from backend.calculations.workflow_engine import (
     WorkflowStateMachine,
     execute_transition,
     bulk_transition as service_bulk_transition,

@@ -13,9 +13,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from backend.database import get_db
-from backend.models.alert import Alert
-from backend.schemas.kpi_threshold import KPIThreshold
-from backend.schemas.alert import (
+from backend.schemas.alert import Alert
+from backend.orm.kpi_threshold import KPIThreshold
+from backend.orm.alert import (
     AlertResponse,
     AlertCategory,
 )
@@ -191,7 +191,7 @@ def _check_efficiency_alerts(db: Session, client_id: Optional[str], thresholds: 
 
 def _check_otd_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
     """Check OTD risk on pending work orders"""
-    from backend.schemas.work_order import WorkOrder, WorkOrderStatus
+    from backend.orm.work_order import WorkOrder, WorkOrderStatus
 
     alerts = []
 
@@ -285,7 +285,7 @@ def _check_quality_alerts(db: Session, client_id: Optional[str], thresholds: dic
 
 def _check_hold_alerts(db: Session, client_id: Optional[str]) -> List[Alert]:
     """Check for pending hold approvals"""
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
 
     query = db.query(HoldEntry).filter(
         HoldEntry.hold_status.in_([HoldStatus.PENDING_HOLD_APPROVAL, HoldStatus.PENDING_RESUME_APPROVAL])

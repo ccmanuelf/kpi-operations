@@ -11,25 +11,25 @@ from typing import Dict, List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
-from backend.models.production_line import (
+from backend.schemas.production_line import (
     ProductionLineCreate,
     ProductionLineUpdate,
     ProductionLineResponse,
     ProductionLineTreeResponse,
 )
-from backend.crud.production_line import (
-    create_production_line,
-    list_production_lines,
-    get_production_line,
-    get_production_line_tree,
-    update_production_line,
-    deactivate_production_line,
-    link_to_capacity_line,
-    unlink_from_capacity_line,
-    auto_sync_lines,
-    get_unlinked_lines,
+from backend.services.production_line_service import (
+    create_line as create_production_line,
+    list_lines as list_production_lines,
+    get_line as get_production_line,
+    get_line_tree as get_production_line_tree,
+    update_line as update_production_line,
+    deactivate_line as deactivate_production_line,
+    link_line_to_capacity as link_to_capacity_line,
+    unlink_line_from_capacity as unlink_from_capacity_line,
+    auto_sync_capacity_lines as auto_sync_lines,
+    list_unlinked_lines as get_unlinked_lines,
 )
 
 logger = get_module_logger(__name__)

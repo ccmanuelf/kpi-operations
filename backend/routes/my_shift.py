@@ -11,13 +11,13 @@ from typing import Optional, List
 from pydantic import BaseModel
 
 from backend.database import get_db
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.downtime_entry import DowntimeEntry
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.attendance_entry import AttendanceEntry
-from backend.schemas.work_order import WorkOrder
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.work_order import WorkOrder
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

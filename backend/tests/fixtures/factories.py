@@ -11,7 +11,7 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 
 # Import all schemas
-from backend.schemas import (
+from backend.orm import (
     Client,
     ClientType,
     User,
@@ -39,7 +39,7 @@ from backend.schemas import (
     FilterHistory,
     WorkflowTransitionLog,
 )
-from backend.schemas.coverage import ShiftCoverage
+from backend.orm.coverage import ShiftCoverage
 from backend.auth.jwt import get_password_hash
 
 
@@ -394,7 +394,7 @@ class TestDataFactory:
         **kwargs,
     ) -> HoldEntry:
         """Create a hold entry"""
-        from backend.schemas.hold_entry import HoldReason
+        from backend.orm.hold_entry import HoldReason
 
         hold_id = TestDataFactory._next_id("HOLD")
 
@@ -709,28 +709,28 @@ class TestDataFactory:
         Creates required dependencies (product, shift, user) automatically.
         """
         # Ensure we have a client
-        from backend.schemas import Client, ClientType
+        from backend.orm import Client, ClientType
 
         client = db.query(Client).filter(Client.client_id == client_id).first()
         if not client:
             client = cls.create_client(db, client_id=client_id)
 
         # Create or get product for this client
-        from backend.schemas import Product
+        from backend.orm import Product
 
         product = db.query(Product).filter(Product.client_id == client_id).first()
         if not product:
             product = cls.create_product(db, client_id=client_id)
 
         # Create or get shift for this client
-        from backend.schemas import Shift
+        from backend.orm import Shift
 
         shift = db.query(Shift).filter(Shift.client_id == client_id).first()
         if not shift:
             shift = cls.create_shift(db, client_id=client_id)
 
         # Create or get user
-        from backend.schemas import User
+        from backend.orm import User
 
         user = db.query(User).filter(User.client_id_assigned == client_id).first()
         if not user:
@@ -795,21 +795,21 @@ class TestDataFactory:
         Uses EXACT defect rate (no variation) for test predictability.
         """
         # Ensure we have a client
-        from backend.schemas import Client, ClientType
+        from backend.orm import Client, ClientType
 
         client = db.query(Client).filter(Client.client_id == client_id).first()
         if not client:
             client = cls.create_client(db, client_id=client_id)
 
         # Create or get user
-        from backend.schemas import User
+        from backend.orm import User
 
         user = db.query(User).filter(User.client_id_assigned == client_id).first()
         if not user:
             user = cls.create_user(db, client_id=client_id, role="supervisor")
 
         # Create or get work order
-        from backend.schemas import WorkOrder
+        from backend.orm import WorkOrder
 
         work_order = db.query(WorkOrder).filter(WorkOrder.client_id == client_id).first()
         if not work_order:

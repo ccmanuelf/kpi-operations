@@ -1,58 +1,74 @@
 """
-JOB table ORM schema (SQLAlchemy)
-Line items within work orders for detailed tracking
-Source: 01-Core_DataEntities_Inventory.csv lines 34-51
+Pydantic models for JOB (Work Order Line Items) API requests/responses
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey
-from sqlalchemy.sql import func
-from backend.database import Base
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
+from decimal import Decimal
 
 
-class Job(Base):
-    """JOB table - Work order line items with part-level detail"""
+class JobBase(BaseModel):
+    """Base job fields"""
 
-    __tablename__ = "JOB"
-    __table_args__ = {"extend_existing": True}
+    work_order_id: str = Field(..., description="Parent work order ID")
+    client_id_fk: str = Field(..., description="Client ID for multi-tenant isolation")
+    operation_name: str = Field(..., description="Operation name")
+    operation_code: Optional[str] = Field(None, description="Operation code")
+    sequence_number: int = Field(..., description="Order within work order")
+    part_number: Optional[str] = Field(None, description="Part number")
+    part_description: Optional[str] = Field(None, description="Part description")
+    planned_quantity: Optional[int] = Field(None, description="Planned quantity")
+    completed_quantity: Optional[int] = Field(0, description="Completed quantity")
+    quantity_scrapped: Optional[int] = Field(0, description="Quantity scrapped for quality metrics")
+    planned_hours: Optional[Decimal] = Field(None, description="Planned hours")
+    actual_hours: Optional[Decimal] = Field(None, description="Actual hours")
+    is_completed: int = Field(0, description="Completion status (0/1)")
+    completed_date: Optional[datetime] = Field(None, description="Completion date")
+    assigned_employee_id: Optional[int] = Field(None, description="Assigned employee ID")
+    assigned_shift_id: Optional[int] = Field(None, description="Assigned shift ID")
+    notes: Optional[str] = Field(None, description="Additional notes")
 
-    # Primary key
-    job_id = Column(String(50), primary_key=True, index=True)
 
-    # Parent work order
-    work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)
+class JobCreate(JobBase):
+    """Create new job"""
 
-    # Multi-tenant isolation (CRITICAL SECURITY FIX)
-    client_id_fk = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    job_id: str = Field(..., description="Unique job identifier")
 
-    # Operation details
-    operation_name = Column(String(255), nullable=False)
-    operation_code = Column(String(50))
-    sequence_number = Column(Integer, nullable=False)  # Order within work order
 
-    # Part details (for quality DPMO calculation)
-    part_number = Column(String(100), index=True)
-    part_description = Column(String(255))
+class JobUpdate(BaseModel):
+    """Update existing job (all fields optional)"""
 
-    # Quantity tracking
-    planned_quantity = Column(Integer)
-    completed_quantity = Column(Integer, default=0)
-    quantity_scrapped = Column(Integer, default=0)  # Scrap tracking for quality metrics
+    operation_name: Optional[str] = None
+    operation_code: Optional[str] = None
+    sequence_number: Optional[int] = None
+    part_number: Optional[str] = None
+    part_description: Optional[str] = None
+    planned_quantity: Optional[int] = None
+    completed_quantity: Optional[int] = None
+    quantity_scrapped: Optional[int] = None
+    planned_hours: Optional[Decimal] = None
+    actual_hours: Optional[Decimal] = None
+    is_completed: Optional[int] = None
+    completed_date: Optional[datetime] = None
+    assigned_employee_id: Optional[int] = None
+    assigned_shift_id: Optional[int] = None
+    notes: Optional[str] = None
 
-    # Time tracking
-    planned_hours = Column(Numeric(10, 2))
-    actual_hours = Column(Numeric(10, 2))
 
-    # Status
-    is_completed = Column(Integer, default=0)  # Boolean
-    completed_date = Column(DateTime)
+class JobComplete(BaseModel):
+    """Complete a job with actual quantities and hours"""
 
-    # Assigned resources
-    assigned_employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"))
-    assigned_shift_id = Column(Integer)
+    completed_quantity: int = Field(..., description="Actual quantity completed")
+    actual_hours: Decimal = Field(..., description="Actual hours spent")
 
-    # Metadata
-    notes = Column(Text)
 
-    # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+class JobResponse(JobBase):
+    """Job response with all fields"""
+
+    job_id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

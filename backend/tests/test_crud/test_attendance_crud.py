@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func
 
-from backend.schemas import (
+from backend.orm import (
     Client,
     ClientType,
     User,

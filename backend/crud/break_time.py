@@ -8,9 +8,9 @@ from sqlalchemy import func
 from typing import List, Optional
 from fastapi import HTTPException
 
-from backend.schemas.break_time import BreakTime
-from backend.schemas.shift import Shift
-from backend.models.break_time import BreakTimeCreate, BreakTimeUpdate
+from backend.orm.break_time import BreakTime
+from backend.orm.shift import Shift
+from backend.schemas.break_time import BreakTimeCreate, BreakTimeUpdate
 
 
 def create_break_time(db: Session, data: BreakTimeCreate) -> BreakTime:

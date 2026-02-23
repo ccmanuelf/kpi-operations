@@ -7,7 +7,7 @@ import pytest
 from datetime import time
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.shift import Shift
+from backend.orm.shift import Shift
 from backend.crud.shift import (
     create_shift,
     list_shifts,
@@ -15,7 +15,7 @@ from backend.crud.shift import (
     update_shift,
     deactivate_shift,
 )
-from backend.models.shift import ShiftCreate, ShiftUpdate
+from backend.schemas.shift import ShiftCreate, ShiftUpdate
 
 
 # ---------------------------------------------------------------------------

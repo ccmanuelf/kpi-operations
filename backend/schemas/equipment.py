@@ -1,51 +1,60 @@
 """
-Equipment ORM schema (SQLAlchemy)
-Machine/Equipment master registry for the production floor.
-Equipment can be assigned to a production line or marked as shared (common resource).
+Pydantic models for Equipment API request/response validation.
 """
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    Date,
-    DateTime,
-    ForeignKey,
-    UniqueConstraint,
-    CheckConstraint,
-)
-from sqlalchemy.sql import func
-from backend.database import Base
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime, date
 
 
-class Equipment(Base):
-    """EQUIPMENT table ORM - Machine/Equipment master registry."""
+class EquipmentCreate(BaseModel):
+    """Create a new equipment entry for a client."""
 
-    __tablename__ = "EQUIPMENT"
-    __table_args__ = (
-        UniqueConstraint("client_id", "equipment_code", name="uq_equipment_client_code"),
-        CheckConstraint(
-            "status IN ('ACTIVE', 'MAINTENANCE', 'RETIRED')",
-            name="ck_equipment_status",
-        ),
-        {"extend_existing": True},
-    )
+    client_id: str = Field(..., min_length=1, max_length=50, description="Client this equipment belongs to")
+    line_id: Optional[int] = Field(None, description="Production line ID (NULL for shared equipment)")
+    equipment_code: str = Field(..., min_length=1, max_length=50, description="Unique equipment code, e.g. MCH-001")
+    equipment_name: str = Field(..., min_length=1, max_length=100, description="Equipment display name")
+    equipment_type: Optional[str] = Field(None, max_length=50, description="Equipment category, e.g. Sewing Machine")
+    is_shared: bool = Field(default=False, description="True = common resource across lines")
+    status: str = Field(default="ACTIVE", pattern="^(ACTIVE|MAINTENANCE|RETIRED)$", description="Equipment status")
+    last_maintenance_date: Optional[date] = None
+    next_maintenance_date: Optional[date] = None
+    notes: Optional[str] = Field(None, max_length=500)
 
-    equipment_id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(
-        String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True
-    )
-    line_id = Column(
-        Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True
-    )  # NULL for shared equipment
-    equipment_code = Column(String(50), nullable=False)  # e.g., "MCH-001"
-    equipment_name = Column(String(100), nullable=False)  # e.g., "Brother Industrial Sewing Machine"
-    equipment_type = Column(String(50), nullable=True)  # e.g., "Sewing Machine", "Cutting Table", "Press"
-    is_shared = Column(Boolean, default=False, nullable=False)  # True = common resource across lines
-    status = Column(String(20), nullable=False, default="ACTIVE")  # ACTIVE, MAINTENANCE, RETIRED
-    last_maintenance_date = Column(Date, nullable=True)
-    next_maintenance_date = Column(Date, nullable=True)
-    notes = Column(String(500), nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    model_config = {"from_attributes": True}
+
+
+class EquipmentUpdate(BaseModel):
+    """Update an equipment entry (partial update)."""
+
+    line_id: Optional[int] = None
+    equipment_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    equipment_type: Optional[str] = Field(None, max_length=50)
+    is_shared: Optional[bool] = None
+    status: Optional[str] = Field(None, pattern="^(ACTIVE|MAINTENANCE|RETIRED)$")
+    last_maintenance_date: Optional[date] = None
+    next_maintenance_date: Optional[date] = None
+    notes: Optional[str] = Field(None, max_length=500)
+    is_active: Optional[bool] = None
+
+    model_config = {"from_attributes": True}
+
+
+class EquipmentResponse(BaseModel):
+    """Response schema for an equipment entry."""
+
+    equipment_id: int
+    client_id: str
+    line_id: Optional[int]
+    equipment_code: str
+    equipment_name: str
+    equipment_type: Optional[str]
+    is_shared: bool
+    status: str
+    last_maintenance_date: Optional[date]
+    next_maintenance_date: Optional[date]
+    notes: Optional[str]
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

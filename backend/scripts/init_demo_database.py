@@ -28,35 +28,35 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from backend.database import engine, Base, SessionLocal
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas import ClientType, WorkOrderStatus, HoldStatus
+from backend.orm import ClientType, WorkOrderStatus, HoldStatus
 
 # Import all models to ensure they're registered with Base
-from backend.schemas.client import Client
-from backend.schemas.user import User
-from backend.schemas.employee import Employee
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.job import Job
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.attendance_entry import AttendanceEntry
-from backend.schemas.downtime_entry import DowntimeEntry
-from backend.schemas.hold_entry import HoldEntry
-from backend.schemas.defect_type_catalog import DefectTypeCatalog
-from backend.schemas.defect_detail import DefectDetail
-from backend.schemas.part_opportunities import PartOpportunities
-from backend.schemas.floating_pool import FloatingPool
-from backend.schemas.coverage_entry import CoverageEntry
-from backend.schemas.saved_filter import SavedFilter, FilterHistory
-from backend.schemas.workflow import WorkflowTransitionLog
-from backend.schemas.user_preferences import UserPreferences, DashboardWidgetDefaults
-from backend.models.alert import Alert, AlertConfig, AlertHistory
-from backend.schemas.client_config import ClientConfig, OTDMode
-from backend.schemas.kpi_threshold import KPIThreshold
+from backend.orm.client import Client
+from backend.orm.user import User
+from backend.orm.employee import Employee
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.work_order import WorkOrder
+from backend.orm.job import Job
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.hold_entry import HoldEntry
+from backend.orm.defect_type_catalog import DefectTypeCatalog
+from backend.orm.defect_detail import DefectDetail
+from backend.orm.part_opportunities import PartOpportunities
+from backend.orm.floating_pool import FloatingPool
+from backend.orm.coverage_entry import CoverageEntry
+from backend.orm.saved_filter import SavedFilter, FilterHistory
+from backend.orm.workflow import WorkflowTransitionLog
+from backend.orm.user_preferences import UserPreferences, DashboardWidgetDefaults
+from backend.schemas.alert import Alert, AlertConfig, AlertHistory
+from backend.orm.client_config import ClientConfig, OTDMode
+from backend.orm.kpi_threshold import KPIThreshold
 
 # Import ALL capacity planning models
-from backend.schemas.capacity import (
+from backend.orm.capacity import (
     CapacityCalendar,
     CapacityProductionLine,
     CapacityOrder,

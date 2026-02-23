@@ -15,16 +15,16 @@ from urllib.parse import unquote
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.models.qr import QRCodeData, QREntityType, QRGenerateRequest, QRLookupResponse, QRCodeResponse
+from backend.schemas.qr import QRCodeData, QREntityType, QRGenerateRequest, QRLookupResponse, QRCodeResponse
 from backend.services.qr_service import QRService, QRServiceError
 
 # Import ORM schemas for database queries
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.product import Product
-from backend.schemas.job import Job
-from backend.schemas.employee import Employee
+from backend.orm.work_order import WorkOrder
+from backend.orm.product import Product
+from backend.orm.job import Job
+from backend.orm.employee import Employee
 
 router = APIRouter(prefix="/api/qr", tags=["qr"])
 

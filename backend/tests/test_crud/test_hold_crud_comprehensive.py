@@ -9,7 +9,7 @@ from decimal import Decimal
 from unittest.mock import patch
 from fastapi import HTTPException
 
-from backend.schemas.hold_entry import HoldEntry, HoldStatus
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.tests.fixtures.factories import TestDataFactory
 
 
@@ -54,7 +54,7 @@ class TestCreateWIPHold:
         client, user, wo = _seed_hold_prereqs(db)
 
         from backend.crud.hold import create_wip_hold
-        from backend.models.hold import WIPHoldCreate
+        from backend.schemas.hold import WIPHoldCreate
 
         hold_data = WIPHoldCreate(
             client_id=client.client_id,
@@ -195,7 +195,7 @@ class TestUpdateWIPHold:
         client, user, _ = _seed_hold_prereqs(db)
 
         from backend.crud.hold import update_wip_hold
-        from backend.models.hold import WIPHoldUpdate
+        from backend.schemas.hold import WIPHoldUpdate
 
         update_data = WIPHoldUpdate(notes="Updated notes")
 

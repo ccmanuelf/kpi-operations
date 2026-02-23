@@ -16,9 +16,9 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User, UserRole
+from backend.orm.user import User, UserRole
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory
 

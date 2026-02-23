@@ -13,10 +13,10 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.quality_entry import QualityEntry
-from backend.models.quality import QualityInspectionCreate, QualityInspectionUpdate, QualityInspectionResponse
+from backend.orm.quality_entry import QualityEntry
+from backend.schemas.quality import QualityInspectionCreate, QualityInspectionUpdate, QualityInspectionResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 
 

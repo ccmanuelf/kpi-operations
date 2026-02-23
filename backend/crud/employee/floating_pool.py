@@ -8,8 +8,8 @@ from typing import List
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from backend.schemas.employee import Employee
-from backend.schemas.user import User
+from backend.orm.employee import Employee
+from backend.orm.user import User
 
 
 def get_floating_pool_employees(db: Session, current_user: User, skip: int = 0, limit: int = 100) -> List[Employee]:

@@ -13,7 +13,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from backend.schemas.quality_entry import QualityEntry
+from backend.orm.quality_entry import QualityEntry
 
 
 # =============================================================================

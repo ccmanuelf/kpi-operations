@@ -13,15 +13,15 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
-from backend.schemas.defect_type_catalog import DefectTypeCatalog
-from backend.models.defect_type_catalog import (
+from backend.orm.defect_type_catalog import DefectTypeCatalog
+from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCreate,
     DefectTypeCatalogUpdate,
     DefectTypeCatalogResponse,
     DefectTypeCatalogCSVRow,
 )
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.user import User
+from backend.orm.user import User
 
 # Reserved client_id for global defect types available to all clients
 GLOBAL_CLIENT_ID = "GLOBAL"

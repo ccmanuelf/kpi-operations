@@ -12,7 +12,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from backend.schemas.capacity.calendar import CapacityCalendar
+from backend.orm.capacity.calendar import CapacityCalendar
 from backend.utils.tenant_guard import ensure_client_id
 
 

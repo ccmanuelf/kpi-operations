@@ -24,20 +24,20 @@ from backend.scripts.migrate_database import (
 # We need all models imported so Base.metadata knows about every table.
 # The conftest.py at backend/tests/ already does this, but we import
 # explicitly here for clarity.
-import backend.schemas  # noqa: F401
-import backend.schemas.capacity  # noqa: F401
-import backend.schemas.client_config  # noqa: F401
-import backend.schemas.event_store  # noqa: F401
-import backend.schemas.import_log  # noqa: F401
-import backend.schemas.kpi_threshold  # noqa: F401
+import backend.orm  # noqa: F401
+import backend.orm.capacity  # noqa: F401
+import backend.orm.client_config  # noqa: F401
+import backend.orm.event_store  # noqa: F401
+import backend.orm.import_log  # noqa: F401
+import backend.orm.kpi_threshold  # noqa: F401
 
 try:
-    import backend.schemas.coverage  # noqa: F401
+    import backend.orm.coverage  # noqa: F401
 except ImportError:
     pass
 
 try:
-    import backend.models.alert  # noqa: F401
+    import backend.schemas.alert  # noqa: F401
 except ImportError:
     pass
 
@@ -61,7 +61,7 @@ def _session(engine):
 
 def _seed_client(session: Session, client_id: str, client_name: str = "Test Co"):
     """Insert a CLIENT row directly via raw SQL for maximum portability."""
-    from backend.schemas.client import Client, ClientType
+    from backend.orm.client import Client, ClientType
 
     client = Client(
         client_id=client_id,
@@ -76,7 +76,7 @@ def _seed_client(session: Session, client_id: str, client_name: str = "Test Co")
 
 def _seed_user(session: Session, user_id: str, username: str, client_id: str = None):
     """Insert a USER row."""
-    from backend.schemas.user import User, UserRole
+    from backend.orm.user import User, UserRole
 
     user = User(
         user_id=user_id,
@@ -94,7 +94,7 @@ def _seed_user(session: Session, user_id: str, username: str, client_id: str = N
 
 def _seed_product(session: Session, client_id: str, product_code: str = "PROD-001"):
     """Insert a PRODUCT row."""
-    from backend.schemas.product import Product
+    from backend.orm.product import Product
 
     product = Product(
         client_id=client_id,

@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 
@@ -37,7 +37,7 @@ def get_performance_trend(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.production_entry import ProductionEntry
+    from backend.orm.production_entry import ProductionEntry
 
     if end_date is None:
         end_date = date.today()
@@ -82,8 +82,8 @@ def get_performance_by_shift(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.shift import Shift
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.shift import Shift
 
     if not start_date:
         start_date = date.today() - timedelta(days=30)
@@ -148,8 +148,8 @@ def get_performance_by_product(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.product import Product
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.product import Product
 
     if not start_date:
         start_date = date.today() - timedelta(days=30)
@@ -207,7 +207,7 @@ def get_quality_trend(
     current_user: User = Depends(get_current_user),
 ):
     """Get daily quality (FPY) trend data"""
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.quality_entry import QualityEntry
 
     if end_date is None:
         end_date = date.today()
@@ -250,8 +250,8 @@ def get_availability_trend(
     current_user: User = Depends(get_current_user),
 ):
     """Get daily availability trend data (calculated from downtime)"""
-    from backend.schemas.downtime_entry import DowntimeEntry
-    from backend.schemas.production_entry import ProductionEntry
+    from backend.orm.downtime_entry import DowntimeEntry
+    from backend.orm.production_entry import ProductionEntry
 
     if end_date is None:
         end_date = date.today()
@@ -311,9 +311,9 @@ def get_oee_trend(
     current_user: User = Depends(get_current_user),
 ):
     """Get daily OEE trend data (Availability x Performance x Quality)"""
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.quality_entry import QualityEntry
-    from backend.schemas.downtime_entry import DowntimeEntry
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.quality_entry import QualityEntry
+    from backend.orm.downtime_entry import DowntimeEntry
 
     if end_date is None:
         end_date = date.today()
@@ -394,7 +394,7 @@ def get_otd_trend(
     current_user: User = Depends(get_current_user),
 ):
     """Get daily On-Time Delivery trend data"""
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.work_order import WorkOrder
 
     if end_date is None:
         end_date = date.today()
@@ -435,7 +435,7 @@ def get_absenteeism_trend(
     current_user: User = Depends(get_current_user),
 ):
     """Get daily absenteeism trend data"""
-    from backend.schemas.attendance_entry import AttendanceEntry
+    from backend.orm.attendance_entry import AttendanceEntry
 
     if end_date is None:
         end_date = date.today()

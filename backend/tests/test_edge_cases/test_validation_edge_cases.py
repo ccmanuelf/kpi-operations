@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 
 
@@ -107,7 +107,7 @@ class TestNumericBoundaries:
     def test_units_produced_zero(self, edge_setup):
         """Test zero units produced edge case."""
         from backend.calculations.performance import calculate_quality_rate
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -134,7 +134,7 @@ class TestNumericBoundaries:
     def test_run_time_zero_performance(self, edge_setup):
         """Test zero run time in performance calculation."""
         from backend.calculations.performance import calculate_performance
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -163,7 +163,7 @@ class TestNumericBoundaries:
     def test_performance_capped_at_150(self, edge_setup):
         """Test performance is capped at 150%."""
         from backend.calculations.performance import calculate_performance
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -193,7 +193,7 @@ class TestNumericBoundaries:
     def test_quality_rate_negative_good_units(self, edge_setup):
         """Test quality rate when defects+scrap > units_produced."""
         from backend.calculations.performance import calculate_quality_rate
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -223,8 +223,8 @@ class TestNumericBoundaries:
     def test_decimal_precision_in_calculations(self, edge_setup):
         """Test decimal precision is maintained in calculations."""
         from backend.calculations.performance import calculate_performance
-        from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.product import Product
+        from backend.orm.production_entry import ProductionEntry
+        from backend.orm.product import Product
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -293,7 +293,7 @@ class TestDateBoundaries:
 
     def test_production_date_in_future(self, edge_setup):
         """Test production entry with future date."""
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -334,7 +334,7 @@ class TestOEEEdgeCases:
     def test_oee_all_zero(self, edge_setup):
         """Test OEE with all zero values."""
         from backend.calculations.performance import calculate_oee
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -366,7 +366,7 @@ class TestOEEEdgeCases:
     def test_oee_perfect_quality_no_defects(self, edge_setup):
         """Test OEE with perfect quality (no defects)."""
         from backend.calculations.performance import calculate_oee
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -488,7 +488,7 @@ class TestEfficiencyEdgeCases:
     def test_efficiency_zero_employees(self, edge_setup):
         """Test efficiency with inference chain for employees."""
         from backend.calculations.efficiency import calculate_efficiency
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -556,7 +556,7 @@ class TestInferenceChainEdgeCases:
     def test_infer_employees_no_historical_data(self, edge_setup):
         """Test employee inference with no historical data."""
         from backend.calculations.efficiency import infer_employees_count
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = edge_setup["db"]
         client = edge_setup["client"]
@@ -589,7 +589,7 @@ class TestInferenceChainEdgeCases:
     def test_infer_cycle_time_no_product(self, edge_setup):
         """Test cycle time inference when product has no ideal_cycle_time."""
         from backend.calculations.efficiency import infer_ideal_cycle_time
-        from backend.schemas.product import Product
+        from backend.orm.product import Product
 
         db = edge_setup["db"]
 
@@ -652,7 +652,7 @@ class TestUniqueConstraints:
 
     def test_duplicate_production_entry_id(self, edge_setup):
         """Test creating duplicate production entry ID."""
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
         from sqlalchemy.exc import IntegrityError
         import warnings
 
@@ -702,7 +702,7 @@ class TestUniqueConstraints:
 
     def test_duplicate_work_order_id(self, edge_setup):
         """Test creating duplicate work order ID."""
-        from backend.schemas.work_order import WorkOrder, WorkOrderStatus
+        from backend.orm.work_order import WorkOrder, WorkOrderStatus
         from sqlalchemy.exc import IntegrityError
 
         db = edge_setup["db"]

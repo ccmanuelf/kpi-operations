@@ -10,9 +10,9 @@ from decimal import Decimal
 import json
 
 from backend.database import get_db
-from backend.schemas.import_log import BatchImportRequest, BatchImportResponse
-from backend.schemas.production import ProductionEntryCreate
-from backend.schemas.user import User
+from backend.orm.import_log import BatchImportRequest, BatchImportResponse
+from backend.orm.production import ProductionEntryCreate
+from backend.orm.user import User
 from backend.auth.jwt import get_current_user
 from backend.crud.production import create_production_entry
 

@@ -12,9 +12,9 @@ from decimal import Decimal
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.analytics import (
+from backend.orm.analytics import (
     PredictionResponse,
     PredictionDataPoint,
     KPIType,
@@ -25,7 +25,7 @@ from backend.calculations.predictions import (
     double_exponential_smoothing,
     linear_trend_extrapolation,
 )
-from backend.crud.analytics import get_kpi_time_series_data
+from backend.services.analytics_crud_service import get_time_series as get_kpi_time_series_data
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

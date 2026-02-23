@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime
 from pydantic import ValidationError
 
-from backend.models.kpi_threshold import (
+from backend.schemas.kpi_threshold import (
     KPIThresholdBase,
     KPIThresholdCreate,
     KPIThresholdUpdate,

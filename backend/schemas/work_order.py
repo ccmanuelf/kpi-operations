@@ -1,131 +1,205 @@
 """
-WORK_ORDER table ORM schema (SQLAlchemy)
-Core entity for WIP tracking, OTD, and quality metrics
-Source: 01-Core_DataEntities_Inventory.csv lines 16-42
+Work Order Pydantic models for request/response validation
+Implements Phase 10: Flexible Workflow Foundation
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum, Index
-from sqlalchemy.sql import func
-from backend.database import Base
-import enum
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
 
 
-class WorkOrderStatus(str, enum.Enum):
-    """
-    Work order status - Flexible workflow states
+class WorkOrderStatusEnum(str, Enum):
+    """Work order status options for validation"""
 
-    Workflow lifecycle (configurable per client):
-    RECEIVED → RELEASED → IN_PROGRESS → COMPLETED → SHIPPED → CLOSED
-
-    Optional branches:
-    - Any → ON_HOLD → (previous state)
-    - Any → CANCELLED
-    - RELEASED → DEMOTED → RECEIVED
-    """
-
-    # Initial states
-    RECEIVED = "RECEIVED"  # Order acknowledged/received
-
-    # Pre-production states
-    RELEASED = "RELEASED"  # Released/dispatched to shopfloor
-    DEMOTED = "DEMOTED"  # Priority lowered, pushed back
-
-    # Production states (legacy + new)
-    ACTIVE = "ACTIVE"  # Legacy: In active production (alias for IN_PROGRESS)
-    IN_PROGRESS = "IN_PROGRESS"  # Currently being worked on
-    ON_HOLD = "ON_HOLD"  # Paused/held
-
-    # Completion states
-    COMPLETED = "COMPLETED"  # Production completed
-
-    # Post-production states
-    SHIPPED = "SHIPPED"  # Shipped to client
-    CLOSED = "CLOSED"  # Formally closed (terminal)
-
-    # Termination states
-    REJECTED = "REJECTED"  # QC rejection (terminal)
-    CANCELLED = "CANCELLED"  # Order cancelled (terminal)
+    RECEIVED = "RECEIVED"
+    RELEASED = "RELEASED"
+    DEMOTED = "DEMOTED"
+    ACTIVE = "ACTIVE"  # Legacy alias for IN_PROGRESS
+    IN_PROGRESS = "IN_PROGRESS"
+    ON_HOLD = "ON_HOLD"
+    COMPLETED = "COMPLETED"
+    SHIPPED = "SHIPPED"
+    CLOSED = "CLOSED"
+    REJECTED = "REJECTED"
+    CANCELLED = "CANCELLED"
 
 
-class WorkOrder(Base):
-    """WORK_ORDER table - Central entity for all phases"""
+# Valid status pattern for regex validation
+VALID_STATUS_PATTERN = (
+    "^(RECEIVED|RELEASED|DEMOTED|ACTIVE|IN_PROGRESS|ON_HOLD|COMPLETED|SHIPPED|CLOSED|REJECTED|CANCELLED)$"
+)
 
-    __tablename__ = "WORK_ORDER"
-    __table_args__ = (
-        # Composite indexes for query performance (per audit requirement)
-        Index("ix_workorder_client_status", "client_id", "status"),  # Active work orders by client
-        Index("ix_workorder_client_ship_date", "client_id", "planned_ship_date"),  # OTD queries
-        Index("ix_workorder_status_ship_date", "status", "planned_ship_date"),  # Delivery reports
-        {"extend_existing": True},
+
+class WorkOrderCreate(BaseModel):
+    """Work order creation model"""
+
+    work_order_id: str = Field(..., min_length=1, max_length=50, description="Unique work order ID")
+    client_id: str = Field(..., min_length=1, max_length=50, description="Client ID")
+    style_model: str = Field(..., min_length=1, max_length=100, description="Style/Model designation")
+    planned_quantity: int = Field(..., gt=0, description="Planned production quantity")
+    actual_quantity: Optional[int] = Field(default=0, ge=0, description="Actual quantity produced")
+
+    # Workflow lifecycle dates (Phase 10)
+    received_date: Optional[datetime] = Field(None, description="When order was received/acknowledged")
+    planned_date: Optional[datetime] = Field(None, description="When work is planned to start")
+    expected_date: Optional[datetime] = Field(None, description="Expected completion date")
+    dispatch_date: Optional[datetime] = Field(None, description="When released/dispatched to shopfloor")
+    shipped_date: Optional[datetime] = Field(None, description="When shipped to client")
+    closure_date: Optional[datetime] = Field(None, description="When formally closed")
+    closed_by: Optional[int] = Field(None, description="User ID who closed the order")
+
+    # Legacy date fields (OTD calculation)
+    planned_start_date: Optional[datetime] = None
+    actual_start_date: Optional[datetime] = None
+    planned_ship_date: Optional[datetime] = Field(None, description="Required for OTD calculation")
+    required_date: Optional[datetime] = None
+    actual_delivery_date: Optional[datetime] = Field(None, description="Required for OTD calculation")
+
+    ideal_cycle_time: Optional[Decimal] = Field(None, ge=0, description="Ideal cycle time in hours")
+    calculated_cycle_time: Optional[Decimal] = Field(None, ge=0, description="Calculated from production")
+
+    # Status with expanded options (Phase 10)
+    status: Optional[str] = Field(default="RECEIVED", pattern=VALID_STATUS_PATTERN)
+    previous_status: Optional[str] = Field(
+        None, pattern=VALID_STATUS_PATTERN, description="For ON_HOLD resume tracking"
+    )
+    priority: Optional[str] = Field(None, pattern="^(HIGH|MEDIUM|LOW)$")
+
+    qc_approved: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=not approved, 1=approved")
+    qc_approved_by: Optional[int] = None
+    qc_approved_date: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    rejected_by: Optional[int] = None
+    rejected_date: Optional[datetime] = None
+    total_run_time_hours: Optional[Decimal] = Field(None, ge=0)
+    total_employees_assigned: Optional[int] = Field(None, ge=0)
+    notes: Optional[str] = None
+    customer_po_number: Optional[str] = Field(None, max_length=100)
+    internal_notes: Optional[str] = None
+
+    # Bridge to Capacity Planning
+    capacity_order_id: Optional[int] = Field(None, description="FK to capacity_orders. NULL for ad-hoc WOs")
+    origin: Optional[str] = Field(
+        default="AD_HOC",
+        pattern=r"^(PLANNED|AD_HOC)$",
+        description="PLANNED (from Capacity Planning) or AD_HOC (from Operations)",
     )
 
-    # Primary key
-    work_order_id = Column(String(50), primary_key=True, index=True)
 
-    # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+class WorkOrderUpdate(BaseModel):
+    """Work order update model (all fields optional)"""
 
-    # Order details
-    style_model = Column(String(100), nullable=False, index=True)
-    planned_quantity = Column(Integer, nullable=False)
-    actual_quantity = Column(Integer, default=0)
+    style_model: Optional[str] = Field(None, min_length=1, max_length=100)
+    planned_quantity: Optional[int] = Field(None, gt=0)
+    actual_quantity: Optional[int] = Field(None, ge=0)
 
-    # Workflow lifecycle dates
-    received_date = Column(DateTime, index=True)  # When order was received/acknowledged
-    planned_date = Column(DateTime)  # When work is planned to start
-    expected_date = Column(DateTime)  # Expected completion date
-    dispatch_date = Column(DateTime, index=True)  # When released/dispatched to shopfloor
-    shipped_date = Column(DateTime)  # When shipped to client
-    closure_date = Column(DateTime)  # When formally closed
-    closed_by = Column(Integer)  # USER.user_id who closed the order
+    # Workflow lifecycle dates (Phase 10)
+    received_date: Optional[datetime] = None
+    planned_date: Optional[datetime] = None
+    expected_date: Optional[datetime] = None
+    dispatch_date: Optional[datetime] = None
+    shipped_date: Optional[datetime] = None
+    closure_date: Optional[datetime] = None
+    closed_by: Optional[int] = None
 
-    # Date tracking for OTD calculation (legacy + enhanced)
-    planned_start_date = Column(DateTime)
-    actual_start_date = Column(DateTime, index=True)
-    planned_ship_date = Column(DateTime, index=True)  # REQUIRED for OTD
-    required_date = Column(DateTime)
-    actual_delivery_date = Column(DateTime)  # REQUIRED for OTD
+    # Legacy date fields
+    planned_start_date: Optional[datetime] = None
+    actual_start_date: Optional[datetime] = None
+    planned_ship_date: Optional[datetime] = None
+    required_date: Optional[datetime] = None
+    actual_delivery_date: Optional[datetime] = None
 
-    # Workflow state tracking
-    previous_status = Column(String(20))  # For ON_HOLD resume tracking
+    ideal_cycle_time: Optional[Decimal] = Field(None, ge=0)
+    calculated_cycle_time: Optional[Decimal] = Field(None, ge=0)
 
-    # Performance calculation
-    ideal_cycle_time = Column(Numeric(10, 4))  # Decimal hours (0.25 = 15 min)
-    calculated_cycle_time = Column(Numeric(10, 4))  # From production data
+    # Status with expanded options (Phase 10)
+    status: Optional[str] = Field(None, pattern=VALID_STATUS_PATTERN)
+    previous_status: Optional[str] = Field(None, pattern=VALID_STATUS_PATTERN)
+    priority: Optional[str] = Field(None, pattern="^(HIGH|MEDIUM|LOW)$")
 
-    # Status tracking
-    status = Column(SQLEnum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.ACTIVE, index=True)
-    priority = Column(String(20))  # HIGH, MEDIUM, LOW
+    qc_approved: Optional[int] = Field(None, ge=0, le=1)
+    qc_approved_by: Optional[int] = None
+    qc_approved_date: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    rejected_by: Optional[int] = None
+    rejected_date: Optional[datetime] = None
+    total_run_time_hours: Optional[Decimal] = Field(None, ge=0)
+    total_employees_assigned: Optional[int] = Field(None, ge=0)
+    notes: Optional[str] = None
+    customer_po_number: Optional[str] = Field(None, max_length=100)
+    internal_notes: Optional[str] = None
 
-    # Quality gates
-    qc_approved = Column(Integer, default=0)  # Boolean
-    qc_approved_by = Column(Integer)  # USER.user_id
-    qc_approved_date = Column(DateTime)
-
-    # Rejection tracking
-    rejection_reason = Column(Text)
-    rejected_by = Column(Integer)  # USER.user_id
-    rejected_date = Column(DateTime)
-
-    # Production tracking
-    total_run_time_hours = Column(Numeric(10, 2))
-    total_employees_assigned = Column(Integer)
-
-    # Additional metadata
-    notes = Column(Text)
-    customer_po_number = Column(String(100))
-    internal_notes = Column(Text)
-
-    # Bridge to Capacity Planning: links work order to a capacity order.
-    # NULL means ad-hoc work order (prove-in, test run, calibration, rework).
-    capacity_order_id = Column(
-        Integer,
-        ForeignKey("capacity_orders.id"),
-        nullable=True,
+    # Bridge to Capacity Planning
+    capacity_order_id: Optional[int] = Field(None, description="FK to capacity_orders. NULL for ad-hoc WOs")
+    origin: Optional[str] = Field(
+        None,
+        pattern=r"^(PLANNED|AD_HOC)$",
+        description="PLANNED (from Capacity Planning) or AD_HOC (from Operations)",
     )
-    # Origin distinguishes planned WOs (from Capacity Planning) from ad-hoc ones (from Ops).
-    origin = Column(String(20), nullable=False, default="AD_HOC")
 
-    # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class WorkOrderResponse(BaseModel):
+    """Work order response model"""
+
+    work_order_id: str
+    client_id: str
+    style_model: str
+    planned_quantity: int
+    actual_quantity: int
+
+    # Workflow lifecycle dates (Phase 10)
+    received_date: Optional[datetime] = None
+    planned_date: Optional[datetime] = None
+    expected_date: Optional[datetime] = None
+    dispatch_date: Optional[datetime] = None
+    shipped_date: Optional[datetime] = None
+    closure_date: Optional[datetime] = None
+    closed_by: Optional[int] = None
+
+    # Legacy date fields
+    planned_start_date: Optional[datetime] = None
+    actual_start_date: Optional[datetime] = None
+    planned_ship_date: Optional[datetime] = None
+    required_date: Optional[datetime] = None
+    actual_delivery_date: Optional[datetime] = None
+
+    ideal_cycle_time: Optional[Decimal] = None
+    calculated_cycle_time: Optional[Decimal] = None
+
+    # Status fields (Phase 10)
+    status: str
+    previous_status: Optional[str] = None
+    priority: Optional[str] = None
+
+    qc_approved: Optional[int] = 0
+    qc_approved_by: Optional[int] = None
+    qc_approved_date: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
+    rejected_by: Optional[int] = None
+    rejected_date: Optional[datetime] = None
+    total_run_time_hours: Optional[Decimal] = None
+    total_employees_assigned: Optional[int] = None
+    notes: Optional[str] = None
+    customer_po_number: Optional[str] = None
+    internal_notes: Optional[str] = None
+
+    # Bridge to Capacity Planning
+    capacity_order_id: Optional[int] = None
+    origin: Optional[str] = None
+
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class WorkOrderWithMetrics(WorkOrderResponse):
+    """Work order with calculated OTD and performance metrics"""
+
+    is_on_time: Optional[bool] = None
+    days_early_late: Optional[int] = None
+    completion_percentage: Optional[float] = None
+    efficiency_percentage: Optional[Decimal] = None

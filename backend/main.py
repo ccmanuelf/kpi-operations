@@ -83,7 +83,7 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
 
 # Domain Events Infrastructure (Phase 3)
 from backend.events import register_all_handlers, get_event_bus
-from backend.schemas.event_store import create_event_persistence_handler
+from backend.orm.event_store import create_event_persistence_handler
 from backend.middleware.rate_limit import limiter, configure_rate_limiting, RateLimitConfig
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.middleware.audit_log import AuditLogMiddleware
@@ -150,7 +150,7 @@ async def lifespan(app: FastAPI):
     # Auto-seed demo data if database is empty
     try:
         from backend.database import SessionLocal
-        from backend.schemas.client import Client
+        from backend.orm.client import Client
 
         db = SessionLocal()
         try:

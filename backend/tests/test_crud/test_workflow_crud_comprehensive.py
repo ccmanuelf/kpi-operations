@@ -13,8 +13,8 @@ from fastapi import HTTPException
 
 from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas import Client, ClientType, User, WorkOrder, WorkOrderStatus, WorkflowTransitionLog
-from backend.schemas.client_config import ClientConfig
+from backend.orm import Client, ClientType, User, WorkOrder, WorkOrderStatus, WorkflowTransitionLog
+from backend.orm.client_config import ClientConfig
 
 
 @pytest.fixture(scope="function")

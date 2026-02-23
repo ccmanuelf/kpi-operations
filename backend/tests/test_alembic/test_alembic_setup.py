@@ -68,11 +68,11 @@ class TestModelMetadata:
     """Verify that importing env.py registers all expected tables."""
 
     def test_base_metadata_has_core_tables(self):
-        """Core tables created by backend.schemas must be in Base.metadata."""
+        """Core tables created by backend.orm must be in Base.metadata."""
         from backend.database import Base
 
-        import backend.schemas  # noqa: F401
-        import backend.schemas.capacity  # noqa: F401
+        import backend.orm  # noqa: F401
+        import backend.orm.capacity  # noqa: F401
 
         table_names = set(Base.metadata.tables.keys())
 
@@ -98,7 +98,7 @@ class TestModelMetadata:
         """Capacity planning tables must be in Base.metadata."""
         from backend.database import Base
 
-        import backend.schemas.capacity  # noqa: F401
+        import backend.orm.capacity  # noqa: F401
 
         table_names = set(Base.metadata.tables.keys())
 
@@ -124,8 +124,8 @@ class TestModelMetadata:
         """Sanity check — we expect at least 25 tables total."""
         from backend.database import Base
 
-        import backend.schemas  # noqa: F401
-        import backend.schemas.capacity  # noqa: F401
+        import backend.orm  # noqa: F401
+        import backend.orm.capacity  # noqa: F401
 
         assert len(Base.metadata.tables) >= 25, (
             f"Expected >= 25 tables, got {len(Base.metadata.tables)}"

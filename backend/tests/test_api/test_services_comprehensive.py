@@ -20,12 +20,12 @@ class TestEmailServiceInit:
     def test_email_service_init_with_sendgrid(self):
         """Test EmailService initializes with SendGrid when available"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", True),
-            patch("services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", True),
+            patch("backend.services.email_service.settings") as mock_settings,
         ):
             mock_settings.SENDGRID_API_KEY = "test_api_key"
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -35,15 +35,15 @@ class TestEmailServiceInit:
     def test_email_service_init_without_sendgrid(self):
         """Test EmailService initializes with SMTP when SendGrid unavailable"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
             mock_settings.SMTP_USER = "test@test.com"
             mock_settings.SMTP_PASSWORD = "password"
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -54,14 +54,14 @@ class TestEmailServiceInit:
     def test_email_service_init_smtp_defaults(self):
         """Test EmailService uses SMTP defaults"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
         ):
             # Remove SMTP settings to use defaults
             del mock_settings.SMTP_HOST
             del mock_settings.SMTP_PORT
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -75,12 +75,12 @@ class TestSendKPIReport:
     def test_send_kpi_report_via_sendgrid(self):
         """Test sending KPI report via SendGrid"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", True),
-            patch("services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", True),
+            patch("backend.services.email_service.settings") as mock_settings,
         ):
             mock_settings.SENDGRID_API_KEY = "test_api_key"
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
             service._send_via_sendgrid = MagicMock(return_value={"success": True})
@@ -97,15 +97,15 @@ class TestSendKPIReport:
     def test_send_kpi_report_via_smtp(self):
         """Test sending KPI report via SMTP"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
             mock_settings.SMTP_USER = ""
             mock_settings.SMTP_PASSWORD = ""
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
             service._send_via_smtp = MagicMock(return_value={"success": True})
@@ -122,15 +122,15 @@ class TestSendKPIReport:
     def test_send_kpi_report_custom_subject(self):
         """Test sending KPI report with custom subject"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
             mock_settings.SMTP_USER = ""
             mock_settings.SMTP_PASSWORD = ""
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
             service._send_via_smtp = MagicMock(return_value={"success": True})
@@ -154,14 +154,14 @@ class TestSendViaSendGrid:
         """Test successful SendGrid send"""
         # Skip test if SendGrid is not installed
         try:
-            from services.email_service import SENDGRID_AVAILABLE
+            from backend.services.email_service import SENDGRID_AVAILABLE
 
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
-        from services.email_service import EmailService
+        from backend.services.email_service import EmailService
 
         service = EmailService()
         service.use_sendgrid = True
@@ -185,14 +185,14 @@ class TestSendViaSendGrid:
         """Test SendGrid send failure"""
         # Skip test if SendGrid is not installed
         try:
-            from services.email_service import SENDGRID_AVAILABLE
+            from backend.services.email_service import SENDGRID_AVAILABLE
 
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
-        from services.email_service import EmailService
+        from backend.services.email_service import EmailService
 
         service = EmailService()
         service.use_sendgrid = True
@@ -219,9 +219,9 @@ class TestSendViaSMTP:
     def test_send_via_smtp_success(self):
         """Test successful SMTP send"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
-            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.smtplib.SMTP") as mock_smtp,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
@@ -229,7 +229,7 @@ class TestSendViaSMTP:
             mock_settings.SMTP_PASSWORD = "password"
             mock_settings.REPORT_FROM_EMAIL = "reports@test.com"
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -246,9 +246,9 @@ class TestSendViaSMTP:
     def test_send_via_smtp_failure(self):
         """Test SMTP send failure"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
-            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.smtplib.SMTP") as mock_smtp,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
@@ -257,7 +257,7 @@ class TestSendViaSMTP:
 
             mock_smtp.return_value.__enter__.side_effect = smtplib.SMTPException("SMTP error")
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -278,8 +278,8 @@ class TestGenerateEmailTemplate:
 
     def test_generate_email_template_basic(self):
         """Test email template generation"""
-        with patch("services.email_service.SENDGRID_AVAILABLE", False), patch("services.email_service.settings"):
-            from services.email_service import EmailService
+        with patch("backend.services.email_service.SENDGRID_AVAILABLE", False), patch("backend.services.email_service.settings"):
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -291,8 +291,8 @@ class TestGenerateEmailTemplate:
 
     def test_generate_email_template_with_message(self):
         """Test email template with additional message"""
-        with patch("services.email_service.SENDGRID_AVAILABLE", False), patch("services.email_service.settings"):
-            from services.email_service import EmailService
+        with patch("backend.services.email_service.SENDGRID_AVAILABLE", False), patch("backend.services.email_service.settings"):
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -312,14 +312,14 @@ class TestSendTestEmail:
         """Test sending test email via SendGrid"""
         # Skip test if SendGrid is not installed
         try:
-            from services.email_service import SENDGRID_AVAILABLE
+            from backend.services.email_service import SENDGRID_AVAILABLE
 
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
-        from services.email_service import EmailService
+        from backend.services.email_service import EmailService
 
         service = EmailService()
         service.use_sendgrid = True
@@ -337,14 +337,14 @@ class TestSendTestEmail:
         """Test test email failure via SendGrid"""
         # Skip test if SendGrid is not installed
         try:
-            from services.email_service import SENDGRID_AVAILABLE
+            from backend.services.email_service import SENDGRID_AVAILABLE
 
             if not SENDGRID_AVAILABLE:
                 pytest.skip("SendGrid not available")
         except ImportError:
             pytest.skip("SendGrid not available")
 
-        from services.email_service import EmailService
+        from backend.services.email_service import EmailService
 
         service = EmailService()
         service.use_sendgrid = True
@@ -360,9 +360,9 @@ class TestSendTestEmail:
     def test_send_test_email_via_smtp(self):
         """Test sending test email via SMTP"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
-            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.smtplib.SMTP") as mock_smtp,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
@@ -370,7 +370,7 @@ class TestSendTestEmail:
             mock_settings.SMTP_PASSWORD = "password"
             mock_settings.REPORT_FROM_EMAIL = "reports@test.com"
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -381,9 +381,9 @@ class TestSendTestEmail:
     def test_send_test_email_via_smtp_failure(self):
         """Test test email failure via SMTP"""
         with (
-            patch("services.email_service.SENDGRID_AVAILABLE", False),
-            patch("services.email_service.settings") as mock_settings,
-            patch("services.email_service.smtplib.SMTP") as mock_smtp,
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings") as mock_settings,
+            patch("backend.services.email_service.smtplib.SMTP") as mock_smtp,
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
@@ -392,7 +392,7 @@ class TestSendTestEmail:
 
             mock_smtp.return_value.__enter__.side_effect = smtplib.SMTPException("SMTP error")
 
-            from services.email_service import EmailService
+            from backend.services.email_service import EmailService
 
             service = EmailService()
 
@@ -410,7 +410,7 @@ class TestQRServiceError:
 
     def test_qr_service_error_message(self):
         """Test QRServiceError carries message"""
-        from services.qr_service import QRServiceError
+        from backend.services.qr_service import QRServiceError
 
         error = QRServiceError("Test error message")
         assert str(error) == "Test error message"
@@ -421,8 +421,8 @@ class TestQRServiceGenerateImage:
 
     def test_generate_qr_image_basic(self):
         """Test basic QR code generation"""
-        from services.qr_service import QRService
-        from models.qr import QRCodeData
+        from backend.services.qr_service import QRService
+        from backend.schemas.qr import QRCodeData
 
         data = QRCodeData(type="work_order", id="WO-001", version="1.0")
 
@@ -434,8 +434,8 @@ class TestQRServiceGenerateImage:
 
     def test_generate_qr_image_custom_size(self):
         """Test QR code generation with custom size"""
-        from services.qr_service import QRService
-        from models.qr import QRCodeData
+        from backend.services.qr_service import QRService
+        from backend.schemas.qr import QRCodeData
 
         data = QRCodeData(type="product", id="PROD-001", version="1.0")
 
@@ -445,8 +445,8 @@ class TestQRServiceGenerateImage:
 
     def test_generate_qr_image_all_entity_types(self):
         """Test QR code generation for all entity types"""
-        from services.qr_service import QRService
-        from models.qr import QRCodeData
+        from backend.services.qr_service import QRService
+        from backend.schemas.qr import QRCodeData
 
         entity_types = ["work_order", "product", "job", "employee"]
 
@@ -461,7 +461,7 @@ class TestQRServiceCreateQRData:
 
     def test_create_qr_data_work_order(self):
         """Test creating QR data for work order"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         result = QRService.create_qr_data("work_order", "WO-001")
 
@@ -471,7 +471,7 @@ class TestQRServiceCreateQRData:
 
     def test_create_qr_data_product(self):
         """Test creating QR data for product"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         result = QRService.create_qr_data("product", "PROD-001")
 
@@ -480,7 +480,7 @@ class TestQRServiceCreateQRData:
 
     def test_create_qr_data_invalid_type(self):
         """Test creating QR data with invalid type"""
-        from services.qr_service import QRService, QRServiceError
+        from backend.services.qr_service import QRService, QRServiceError
 
         with pytest.raises(QRServiceError) as exc_info:
             QRService.create_qr_data("invalid_type", "ID-001")
@@ -493,7 +493,7 @@ class TestQRServiceDecodeString:
 
     def test_decode_qr_string_valid(self):
         """Test decoding valid QR string"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         qr_string = '{"type": "work_order", "id": "WO-001", "version": "1.0"}'
 
@@ -504,7 +504,7 @@ class TestQRServiceDecodeString:
 
     def test_decode_qr_string_invalid_json(self):
         """Test decoding invalid JSON"""
-        from services.qr_service import QRService, QRServiceError
+        from backend.services.qr_service import QRService, QRServiceError
 
         with pytest.raises(QRServiceError) as exc_info:
             QRService.decode_qr_string("not valid json")
@@ -513,7 +513,7 @@ class TestQRServiceDecodeString:
 
     def test_decode_qr_string_invalid_data(self):
         """Test decoding valid JSON but invalid data"""
-        from services.qr_service import QRService, QRServiceError
+        from backend.services.qr_service import QRService, QRServiceError
 
         qr_string = '{"type": "invalid", "id": "ID-001"}'
 
@@ -528,7 +528,7 @@ class TestQRServiceAutoFillFields:
 
     def test_auto_fill_fields_work_order(self):
         """Test auto-fill fields for work order"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         entity_data = {
             "work_order_id": "WO-001",
@@ -549,7 +549,7 @@ class TestQRServiceAutoFillFields:
 
     def test_auto_fill_fields_product(self):
         """Test auto-fill fields for product"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         entity_data = {
             "product_id": 1,
@@ -566,7 +566,7 @@ class TestQRServiceAutoFillFields:
 
     def test_auto_fill_fields_job(self):
         """Test auto-fill fields for job"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         entity_data = {
             "job_id": 1,
@@ -589,7 +589,7 @@ class TestQRServiceAutoFillFields:
 
     def test_auto_fill_fields_employee(self):
         """Test auto-fill fields for employee"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         entity_data = {
             "employee_id": 1,
@@ -610,7 +610,7 @@ class TestQRServiceAutoFillFields:
 
     def test_auto_fill_fields_removes_none(self):
         """Test that None values are removed from auto-fill"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         entity_data = {"product_id": 1, "product_code": None, "product_name": "Test Product"}
 
@@ -625,7 +625,7 @@ class TestQRServiceValidateEntityType:
 
     def test_validate_entity_type_valid(self):
         """Test validation of valid entity types"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         assert QRService.validate_entity_type("work_order") is True
         assert QRService.validate_entity_type("product") is True
@@ -634,7 +634,7 @@ class TestQRServiceValidateEntityType:
 
     def test_validate_entity_type_invalid(self):
         """Test validation of invalid entity type"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
 
         assert QRService.validate_entity_type("invalid_type") is False
         assert QRService.validate_entity_type("") is False
@@ -645,7 +645,7 @@ class TestQRServiceGetDataString:
 
     def test_get_qr_data_string(self):
         """Test generating QR data string"""
-        from services.qr_service import QRService
+        from backend.services.qr_service import QRService
         import json
 
         result = QRService.get_qr_data_string("work_order", "WO-001")

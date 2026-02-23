@@ -16,10 +16,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User, UserRole
-from backend.schemas.capacity.calendar import CapacityCalendar
+from backend.orm.user import User, UserRole
+from backend.orm.capacity.calendar import CapacityCalendar
 from backend.routes.calendar import router as calendar_router
 from backend.tests.fixtures.factories import TestDataFactory
 

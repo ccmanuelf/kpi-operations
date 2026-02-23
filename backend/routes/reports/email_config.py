@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.utils.logging_utils import get_module_logger
 from ._models import EmailReportConfig, EmailReportConfigResponse, TestEmailRequest, ManualReportRequest
@@ -218,7 +218,7 @@ async def send_manual_report(
         # Send email
         try:
             from backend.services.email_service import EmailService
-            from backend.schemas.client import Client
+            from backend.orm.client import Client
 
             email_service = EmailService()
 

@@ -17,9 +17,9 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User, UserRole
-from backend.schemas.equipment import Equipment
-from backend.schemas.production_line import ProductionLine  # noqa: F401 — register table for Base.metadata
+from backend.orm.user import User, UserRole
+from backend.orm.equipment import Equipment
+from backend.orm.production_line import ProductionLine  # noqa: F401 — register table for Base.metadata
 from backend.routes.equipment import router as equipment_router
 from backend.tests.fixtures.factories import TestDataFactory
 

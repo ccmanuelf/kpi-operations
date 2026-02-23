@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import json
 
-from backend.schemas.client_config import ClientConfig
-from backend.schemas.user import User
+from backend.orm.client_config import ClientConfig
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.services.workflow_service import get_workflow_config, apply_workflow_template as service_apply_template
+from backend.calculations.workflow_engine import get_workflow_config, apply_workflow_template as service_apply_template
 
 
 def get_workflow_configuration(db: Session, client_id: str, current_user: User) -> Dict:

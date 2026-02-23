@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
 
 from backend.auth.jwt import create_access_token, get_password_hash
-from backend.schemas.user import User
+from backend.orm.user import User
 
 
 def create_test_user(

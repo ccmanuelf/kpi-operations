@@ -11,7 +11,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
-from backend.schemas.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
+from backend.orm.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
 from backend.exceptions.domain_exceptions import BOMExplosionError
 from backend.events.bus import event_bus
 from backend.events.domain_events import BOMExploded

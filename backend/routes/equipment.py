@@ -9,16 +9,16 @@ from typing import List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
-from backend.models.equipment import EquipmentCreate, EquipmentUpdate, EquipmentResponse
-from backend.crud.equipment import (
-    create_equipment,
-    list_equipment,
-    list_shared_equipment,
-    get_equipment,
-    update_equipment,
-    deactivate_equipment,
+from backend.schemas.equipment import EquipmentCreate, EquipmentUpdate, EquipmentResponse
+from backend.services.equipment_service import (
+    create_equipment_record as create_equipment,
+    list_equipment_records as list_equipment,
+    list_shared_equipment_records as list_shared_equipment,
+    get_equipment_by_id as get_equipment,
+    update_equipment_record as update_equipment,
+    deactivate_equipment_record as deactivate_equipment,
 )
 
 logger = get_module_logger(__name__)

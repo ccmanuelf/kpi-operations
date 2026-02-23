@@ -18,10 +18,10 @@ from typing import Optional, Tuple
 import logging
 import math
 
-from backend.schemas.quality_entry import QualityEntry
+from backend.orm.quality_entry import QualityEntry
 
 logger = logging.getLogger(__name__)
-from backend.schemas.part_opportunities import PartOpportunities
+from backend.orm.part_opportunities import PartOpportunities
 from backend.crud.client_config import get_client_config_or_defaults
 
 
@@ -299,8 +299,8 @@ def calculate_dpmo_with_part_lookup(
     Returns:
         Dictionary with DPMO breakdown by part and overall metrics
     """
-    from backend.schemas.quality_entry import QualityEntry
-    from backend.schemas.job import Job
+    from backend.orm.quality_entry import QualityEntry
+    from backend.orm.job import Job
     from datetime import datetime
 
     start_datetime = datetime.combine(start_date, datetime.min.time())

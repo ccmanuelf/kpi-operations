@@ -9,8 +9,8 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from backend.schemas.saved_filter import FilterHistory
-from backend.models.filters import FilterConfig
+from backend.orm.saved_filter import FilterHistory
+from backend.schemas.filters import FilterConfig
 
 
 def _cleanup_old_history(db: Session, user_id: str, max_entries: int = 50) -> None:

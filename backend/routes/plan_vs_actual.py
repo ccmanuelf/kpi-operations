@@ -11,7 +11,7 @@ from datetime import date
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.services.plan_vs_actual_service import (
     get_plan_vs_actual,
     get_plan_vs_actual_summary,

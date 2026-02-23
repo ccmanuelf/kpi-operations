@@ -16,9 +16,9 @@ from decimal import Decimal
 from typing import Optional, List
 import math
 
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.job import Job
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.job import Job
 
 
 # =============================================================================

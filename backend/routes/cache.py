@@ -10,7 +10,7 @@ from typing import Dict, Any
 from datetime import datetime, timezone
 
 from backend.auth.jwt import get_current_user, get_current_admin
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.cache import get_cache
 from backend.utils.logging_utils import get_module_logger
 

@@ -13,9 +13,9 @@ from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.work_order import WorkOrder
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.work_order import WorkOrder
 
 
 @dataclass

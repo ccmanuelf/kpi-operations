@@ -10,25 +10,25 @@ import csv
 import io
 
 from backend.database import get_db
-from backend.models.defect_type_catalog import (
+from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCreate,
     DefectTypeCatalogUpdate,
     DefectTypeCatalogResponse,
     DefectTypeCatalogCSVRow,
 )
-from backend.crud.defect_type_catalog import (
-    create_defect_type,
-    get_defect_type,
-    get_defect_types_by_client,
-    get_global_defect_types,
-    update_defect_type,
-    delete_defect_type,
-    bulk_create_defect_types,
+from backend.services.defect_type_catalog_service import (
+    create_defect_type_record as create_defect_type,
+    get_defect_type_by_id as get_defect_type,
+    list_defect_types_by_client as get_defect_types_by_client,
+    list_global_defect_types as get_global_defect_types,
+    update_defect_type_record as update_defect_type,
+    delete_defect_type_record as delete_defect_type,
+    bulk_create_defect_type_records as bulk_create_defect_types,
     GLOBAL_CLIENT_ID,
     is_global_client,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

@@ -8,8 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_
 from typing import List, Optional
 
-from backend.schemas.shift import Shift
-from backend.models.shift import ShiftCreate, ShiftUpdate
+from backend.orm.shift import Shift
+from backend.schemas.shift import ShiftCreate, ShiftUpdate
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

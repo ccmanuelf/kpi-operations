@@ -7,9 +7,9 @@ import pytest
 from datetime import date, datetime, timezone
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
-from backend.schemas.user import User, UserRole
+from backend.orm.work_order import WorkOrder
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
+from backend.orm.user import User, UserRole
 from backend.crud.work_order import (
     get_work_orders_by_capacity_order,
     get_capacity_order_for_work_order,

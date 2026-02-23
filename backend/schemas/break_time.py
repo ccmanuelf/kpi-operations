@@ -1,29 +1,49 @@
 """
-Break Time ORM schema (SQLAlchemy)
-Configurable break periods associated with shifts for accurate KPI calculation.
+Break Time Pydantic models
+Validation schemas for break time CRUD operations.
 """
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
-from sqlalchemy.orm import relationship
-from backend.database import Base
-from datetime import datetime, timezone
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
 
 
-class BreakTime(Base):
-    """Break Time table ORM — stores configurable break periods per shift."""
+class BreakTimeCreate(BaseModel):
+    """Create a new break time entry for a shift."""
 
-    __tablename__ = "BREAK_TIME"
-    __table_args__ = {"extend_existing": True}
+    shift_id: int
+    client_id: str = Field(..., max_length=50)
+    break_name: str = Field(..., max_length=100)
+    start_offset_minutes: int = Field(..., ge=0, le=1440)
+    duration_minutes: int = Field(..., ge=1, le=480)
+    applies_to: str = Field(default="ALL", pattern="^(ALL|EMPLOYEE|LINE)$")
 
-    break_id = Column(Integer, primary_key=True, autoincrement=True)
-    shift_id = Column(Integer, ForeignKey("SHIFT.shift_id"), nullable=False, index=True)
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
-    break_name = Column(String(100), nullable=False)  # e.g., "Morning Break", "Lunch"
-    start_offset_minutes = Column(Integer, nullable=False)  # minutes from shift start
-    duration_minutes = Column(Integer, nullable=False)  # break duration in minutes
-    applies_to = Column(String(20), nullable=False, default="ALL")  # ALL, EMPLOYEE, LINE
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    model_config = {"from_attributes": True}
 
-    # Relationships
-    shift = relationship("Shift", backref="break_times")
+
+class BreakTimeUpdate(BaseModel):
+    """Update an existing break time entry (partial)."""
+
+    break_name: Optional[str] = Field(None, max_length=100)
+    start_offset_minutes: Optional[int] = Field(None, ge=0, le=1440)
+    duration_minutes: Optional[int] = Field(None, ge=1, le=480)
+    applies_to: Optional[str] = Field(None, pattern="^(ALL|EMPLOYEE|LINE)$")
+    is_active: Optional[bool] = None
+
+    model_config = {"from_attributes": True}
+
+
+class BreakTimeResponse(BaseModel):
+    """Response model for a break time entry."""
+
+    break_id: int
+    shift_id: int
+    client_id: str
+    break_name: str
+    start_offset_minutes: int
+    duration_minutes: int
+    applies_to: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

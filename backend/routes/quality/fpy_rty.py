@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
-from backend.models.quality import FPYRTYCalculationResponse, InferenceMetadata
+from backend.orm.user import User
+from backend.schemas.quality import FPYRTYCalculationResponse, InferenceMetadata
 from backend.calculations.fpy_rty import (
     calculate_quality_score,
     calculate_fpy_with_repair_breakdown,
@@ -44,7 +44,7 @@ def calculate_fpy_rty_kpi(
     Parameters are optional - defaults to all products and last 30 days
     """
     from datetime import timedelta
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.quality_entry import QualityEntry
     from sqlalchemy import func
 
     if end_date is None:

@@ -9,9 +9,9 @@ from typing import List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
-from backend.models.hold_catalog import (
+from backend.schemas.hold_catalog import (
     HoldStatusCatalogCreate,
     HoldStatusCatalogUpdate,
     HoldStatusCatalogResponse,
@@ -19,16 +19,16 @@ from backend.models.hold_catalog import (
     HoldReasonCatalogUpdate,
     HoldReasonCatalogResponse,
 )
-from backend.crud.hold_catalog import (
-    create_hold_status,
-    list_hold_statuses,
-    update_hold_status,
-    deactivate_hold_status,
-    create_hold_reason,
-    list_hold_reasons,
-    update_hold_reason,
-    deactivate_hold_reason,
-    seed_defaults,
+from backend.services.hold_catalog_service import (
+    create_hold_status_record as create_hold_status,
+    list_hold_status_records as list_hold_statuses,
+    update_hold_status_record as update_hold_status,
+    deactivate_hold_status_record as deactivate_hold_status,
+    create_hold_reason_record as create_hold_reason,
+    list_hold_reason_records as list_hold_reasons,
+    update_hold_reason_record as update_hold_reason,
+    deactivate_hold_reason_record as deactivate_hold_reason,
+    seed_default_catalogs as seed_defaults,
 )
 
 logger = get_module_logger(__name__)

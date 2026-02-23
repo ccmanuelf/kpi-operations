@@ -9,24 +9,24 @@ from typing import List, Optional
 from datetime import date
 
 from backend.database import get_db
-from backend.models.part_opportunities import (
+from backend.schemas.part_opportunities import (
     PartOpportunityCreate,
     PartOpportunityUpdate,
     PartOpportunityResponse,
     BulkImportRequest,
     BulkImportResponse,
 )
-from backend.crud.part_opportunities import (
-    create_part_opportunity,
-    get_part_opportunity,
-    get_part_opportunities,
-    get_part_opportunities_by_category,
-    update_part_opportunity,
-    delete_part_opportunity,
-    bulk_import_opportunities,
+from backend.services.part_opportunity_service import (
+    create_opportunity as create_part_opportunity,
+    get_opportunity as get_part_opportunity,
+    list_opportunities as get_part_opportunities,
+    list_opportunities_by_category as get_part_opportunities_by_category,
+    update_opportunity as update_part_opportunity,
+    delete_opportunity as delete_part_opportunity,
+    bulk_import as bulk_import_opportunities,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

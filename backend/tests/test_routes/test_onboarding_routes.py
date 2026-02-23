@@ -13,8 +13,8 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
+from backend.orm.user import User
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.routes.onboarding import router as onboarding_router
 from backend.tests.fixtures.factories import TestDataFactory
 

@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
-from backend.schemas.saved_filter import SavedFilter
+from backend.orm.saved_filter import SavedFilter
 from backend.crud.saved_filter.filters import get_saved_filter
 
 

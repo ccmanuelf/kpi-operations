@@ -337,9 +337,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
-from backend.schemas import ClientType
-from backend.schemas.product import Product
-from backend.schemas.production_entry import ProductionEntry
+from backend.orm import ClientType
+from backend.orm.product import Product
+from backend.orm.production_entry import ProductionEntry
 from backend.tests.fixtures.factories import TestDataFactory
 
 

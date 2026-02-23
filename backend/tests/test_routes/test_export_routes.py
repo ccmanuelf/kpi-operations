@@ -19,17 +19,17 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base, get_db
-from backend.schemas.client import Client, ClientType
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.work_order import WorkOrder, WorkOrderStatus
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.downtime_entry import DowntimeEntry
-from backend.schemas.attendance_entry import AttendanceEntry
-from backend.schemas.employee import Employee
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.hold_entry import HoldEntry, HoldStatus
-from backend.schemas.user import User, UserRole
+from backend.orm.client import Client, ClientType
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.employee import Employee
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.user import User, UserRole
 from backend.auth.jwt import get_current_user
 from backend.routes.export import router as export_router
 from backend.tests.fixtures.factories import TestDataFactory

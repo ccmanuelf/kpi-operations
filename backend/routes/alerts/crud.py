@@ -11,8 +11,8 @@ from datetime import datetime, timedelta, timezone
 import uuid
 
 from backend.database import get_db
-from backend.models.alert import Alert, AlertHistory
-from backend.schemas.alert import (
+from backend.schemas.alert import Alert, AlertHistory
+from backend.orm.alert import (
     AlertCreate,
     AlertResponse,
     AlertAcknowledge,

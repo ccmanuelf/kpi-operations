@@ -14,7 +14,7 @@ from apscheduler.triggers.cron import CronTrigger
 from backend.database import get_db
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.services.email_service import EmailService
-from backend.schemas.client import Client
+from backend.orm.client import Client
 from backend.config import settings
 
 # Setup logging
@@ -138,7 +138,7 @@ class DailyReportScheduler:
         # This should query the User table for admins of this client
         # For now, return a placeholder
 
-        from backend.schemas.user import User
+        from backend.orm.user import User
 
         admins = (
             db.query(User)

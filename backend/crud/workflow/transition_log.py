@@ -8,11 +8,11 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from backend.schemas.workflow import WorkflowTransitionLog
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.user import User
+from backend.orm.workflow import WorkflowTransitionLog
+from backend.orm.work_order import WorkOrder
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.services.workflow_service import get_transition_history
+from backend.calculations.workflow_engine import get_transition_history
 
 
 def create_transition_log(

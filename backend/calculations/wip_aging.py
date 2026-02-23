@@ -14,8 +14,8 @@ from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
 import logging
 
-from backend.schemas.hold_entry import HoldEntry, HoldStatus
-from backend.schemas.work_order import WorkOrder
+from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.work_order import WorkOrder
 from backend.crud.client_config import get_client_config_or_defaults
 
 logger = logging.getLogger(__name__)

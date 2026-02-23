@@ -9,9 +9,9 @@ from sqlalchemy import and_
 from typing import List, Optional
 from datetime import datetime, timezone
 
-from backend.schemas.hold_status_catalog import HoldStatusCatalog
-from backend.schemas.hold_reason_catalog import HoldReasonCatalog
-from backend.models.hold_catalog import (
+from backend.orm.hold_status_catalog import HoldStatusCatalog
+from backend.orm.hold_reason_catalog import HoldReasonCatalog
+from backend.schemas.hold_catalog import (
     HoldStatusCatalogCreate,
     HoldStatusCatalogUpdate,
     HoldReasonCatalogCreate,

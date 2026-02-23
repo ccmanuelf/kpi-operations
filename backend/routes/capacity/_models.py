@@ -10,8 +10,8 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 from backend.constants import DEFAULT_MAX_OPERATORS
-from backend.schemas.capacity.orders import OrderPriority, OrderStatus
-from backend.schemas.capacity.schedule import ScheduleStatus
+from backend.orm.capacity.orders import OrderPriority, OrderStatus
+from backend.orm.capacity.schedule import ScheduleStatus
 
 
 # =============================================================================

@@ -8,8 +8,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from backend.schemas.client import Client
-from backend.schemas.user import User
+from backend.orm.client import Client
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 
 

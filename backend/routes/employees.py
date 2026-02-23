@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from backend.database import get_db
-from backend.models.employee import (
+from backend.schemas.employee import (
     EmployeeCreate,
     EmployeeUpdate,
     EmployeeResponse,
@@ -16,20 +16,20 @@ from backend.models.employee import (
     EmployeeAssignmentRequest,
     FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest,
 )
-from backend.crud.employee import (
-    create_employee,
-    get_employee,
-    get_employees,
-    update_employee,
-    delete_employee,
-    get_employees_by_client,
-    get_floating_pool_employees,
-    assign_to_floating_pool,
-    remove_from_floating_pool,
-    assign_employee_to_client,
+from backend.services.employee_service import (
+    create_employee_record as create_employee,
+    get_employee_by_id as get_employee,
+    list_employees as get_employees,
+    update_employee_record as update_employee,
+    delete_employee_record as delete_employee,
+    list_employees_by_client as get_employees_by_client,
+    list_floating_pool_employees as get_floating_pool_employees,
+    assign_employee_to_pool as assign_to_floating_pool,
+    remove_employee_from_pool as remove_from_floating_pool,
+    assign_employee_client as assign_employee_to_client,
 )
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

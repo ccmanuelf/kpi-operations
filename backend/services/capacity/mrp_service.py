@@ -17,9 +17,9 @@ from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
-from backend.schemas.capacity.component_check import CapacityComponentCheck, ComponentStatus
-from backend.schemas.capacity.stock import CapacityStockSnapshot
-from backend.schemas.capacity.orders import CapacityOrder
+from backend.orm.capacity.component_check import CapacityComponentCheck, ComponentStatus
+from backend.orm.capacity.stock import CapacityStockSnapshot
+from backend.orm.capacity.orders import CapacityOrder
 from backend.services.capacity.bom_service import BOMService, BOMExplosionResult
 from backend.events.bus import event_bus
 from backend.events.domain_events import ComponentShortageDetected

@@ -30,7 +30,7 @@ from backend.services.workflow_service import (
     apply_workflow_template,
 )
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.work_order import WorkOrderStatus
+from backend.orm.work_order import WorkOrderStatus
 
 
 # ============================================================================

@@ -10,23 +10,23 @@ from typing import List, Optional
 from datetime import date
 
 from backend.database import get_db
-from backend.models.defect_detail import (
+from backend.schemas.defect_detail import (
     DefectDetailCreate,
     DefectDetailUpdate,
     DefectDetailResponse,
     DefectSummaryResponse,
 )
-from backend.crud.defect_detail import (
-    create_defect_detail,
-    get_defect_detail,
-    get_defect_details,
-    get_defect_details_by_quality_entry,
-    update_defect_detail,
-    delete_defect_detail,
-    get_defect_summary_by_type,
+from backend.services.defect_service import (
+    create_defect as create_defect_detail,
+    get_defect as get_defect_detail,
+    list_defects as get_defect_details,
+    list_defects_by_quality_entry as get_defect_details_by_quality_entry,
+    update_defect as update_defect_detail,
+    delete_defect as delete_defect_detail,
+    get_summary_by_type as get_defect_summary_by_type,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

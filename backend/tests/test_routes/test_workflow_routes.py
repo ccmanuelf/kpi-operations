@@ -46,7 +46,7 @@ class TestTransitionWorkOrder:
     def test_transition_work_order_success(self):
         """Test successful work order transition"""
         from backend.routes.workflow import transition_work_order_status
-        from backend.models.workflow import WorkflowTransitionCreate, WorkflowStatusEnum
+        from backend.schemas.workflow import WorkflowTransitionCreate, WorkflowStatusEnum
 
         mock_db = Mock()
         mock_user = create_mock_user()
@@ -158,7 +158,7 @@ class TestBulkTransition:
     def test_bulk_transition_success(self):
         """Test bulk transition endpoint"""
         from backend.routes.workflow import bulk_transition_work_orders_endpoint
-        from backend.models.workflow import BulkTransitionRequest, WorkflowStatusEnum
+        from backend.schemas.workflow import BulkTransitionRequest, WorkflowStatusEnum
 
         mock_db = Mock()
         mock_user = create_mock_supervisor_user()
@@ -442,6 +442,7 @@ class TestStatisticsEndpoints:
     def test_get_client_all_transitions(self):
         """Test GET /api/workflow/transitions/{client_id}"""
         from backend.routes.workflow import get_client_all_transitions
+        from backend.dependencies import PaginationParams
 
         mock_db = Mock()
         mock_user = create_mock_user()
@@ -450,13 +451,15 @@ class TestStatisticsEndpoints:
             mock_transitions = [Mock() for _ in range(5)]
             mock_func.return_value = mock_transitions
 
-            result = get_client_all_transitions(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
+            pagination = PaginationParams(skip=0, limit=100)
+            result = get_client_all_transitions(client_id="CLIENT-001", pagination=pagination, db=mock_db, current_user=mock_user)
 
             assert len(result) == 5
 
     def test_get_client_transitions_with_filters(self):
         """Test transitions endpoint with filters"""
         from backend.routes.workflow import get_client_all_transitions
+        from backend.dependencies import PaginationParams
 
         mock_db = Mock()
         mock_user = create_mock_user()
@@ -464,10 +467,10 @@ class TestStatisticsEndpoints:
         with patch("backend.routes.workflow.get_client_transitions") as mock_func:
             mock_func.return_value = []
 
+            pagination = PaginationParams(skip=10, limit=50)
             result = get_client_all_transitions(
                 client_id="CLIENT-001",
-                skip=10,
-                limit=50,
+                pagination=pagination,
                 from_status="RECEIVED",
                 to_status="RELEASED",
                 trigger_source="manual",
@@ -488,7 +491,7 @@ class TestWorkflowTemplatesContent:
 
     def test_templates_have_required_fields(self):
         """Test all templates have required fields"""
-        from backend.models.workflow import WORKFLOW_TEMPLATES
+        from backend.schemas.workflow import WORKFLOW_TEMPLATES
 
         required_fields = [
             "template_id",
@@ -506,7 +509,7 @@ class TestWorkflowTemplatesContent:
 
     def test_standard_template_has_full_flow(self):
         """Test standard template has complete workflow"""
-        from backend.models.workflow import WORKFLOW_TEMPLATES
+        from backend.schemas.workflow import WORKFLOW_TEMPLATES
 
         standard = WORKFLOW_TEMPLATES.get("standard")
         assert standard is not None
@@ -518,7 +521,7 @@ class TestWorkflowTemplatesContent:
 
     def test_simple_template_is_simplified(self):
         """Test simple template has fewer statuses"""
-        from backend.models.workflow import WORKFLOW_TEMPLATES
+        from backend.schemas.workflow import WORKFLOW_TEMPLATES
 
         simple = WORKFLOW_TEMPLATES.get("simple")
         if simple:
@@ -528,7 +531,7 @@ class TestWorkflowTemplatesContent:
 
     def test_express_template_closure_trigger(self):
         """Test express template closes at completion"""
-        from backend.models.workflow import WORKFLOW_TEMPLATES
+        from backend.schemas.workflow import WORKFLOW_TEMPLATES
 
         express = WORKFLOW_TEMPLATES.get("express")
         if express:

@@ -14,7 +14,7 @@ from backend.calculations.simulation import (
     simulate_shift_coverage,
     run_staffing_simulation,
 )
-from backend.models.floating_pool import (
+from backend.schemas.floating_pool import (
     FloatingPoolCreate,
     FloatingPoolUpdate,
     FloatingPoolResponse,
@@ -23,21 +23,21 @@ from backend.models.floating_pool import (
     FloatingPoolAvailability,
     FloatingPoolSummary,
 )
-from backend.crud.floating_pool import (
-    create_floating_pool_entry,
-    get_floating_pool_entry,
-    get_floating_pool_entries,
-    update_floating_pool_entry,
-    delete_floating_pool_entry,
-    assign_floating_pool_to_client,
-    unassign_floating_pool_from_client,
-    get_available_floating_pool_employees,
-    get_floating_pool_assignments_by_client,
-    is_employee_available_for_assignment,
-    get_floating_pool_summary,
+from backend.services.floating_pool_service import (
+    create_pool_entry as create_floating_pool_entry,
+    get_pool_entry as get_floating_pool_entry,
+    list_pool_entries as get_floating_pool_entries,
+    update_pool_entry as update_floating_pool_entry,
+    delete_pool_entry as delete_floating_pool_entry,
+    assign_to_client as assign_floating_pool_to_client,
+    unassign_from_client as unassign_floating_pool_from_client,
+    list_available_employees as get_available_floating_pool_employees,
+    list_client_assignments as get_floating_pool_assignments_by_client,
+    check_employee_availability as is_employee_available_for_assignment,
+    get_pool_summary as get_floating_pool_summary,
 )
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

@@ -11,7 +11,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.crud.downtime import (
     create_downtime_event,
     get_downtime_event,

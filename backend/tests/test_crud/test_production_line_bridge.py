@@ -6,9 +6,9 @@ Uses real database sessions -- no mocks for DB layer.
 import pytest
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.production_line import ProductionLine
-from backend.schemas.capacity.production_lines import CapacityProductionLine
-from backend.schemas.work_order import WorkOrder
+from backend.orm.production_line import ProductionLine
+from backend.orm.capacity.production_lines import CapacityProductionLine
+from backend.orm.work_order import WorkOrder
 from backend.crud.production_line import (
     create_production_line,
     link_to_capacity_line,
@@ -16,7 +16,7 @@ from backend.crud.production_line import (
     auto_sync_lines,
     get_unlinked_lines,
 )
-from backend.models.production_line import ProductionLineCreate
+from backend.schemas.production_line import ProductionLineCreate
 
 
 # ---------------------------------------------------------------------------
@@ -388,7 +388,7 @@ class TestWorkOrderCapacityBridge:
         """Work order can be created with capacity_order_id (planned)."""
         db = transactional_db
         from datetime import date as date_type
-        from backend.schemas.capacity.orders import CapacityOrder
+        from backend.orm.capacity.orders import CapacityOrder
 
         _seed_client(db, "WO-BRG-2")
 

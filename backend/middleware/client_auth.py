@@ -11,7 +11,7 @@ import logging
 from typing import Optional, List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
-from backend.schemas.user import User, UserRole
+from backend.orm.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _get_clients_from_junction_table(db: Session, user_id: str) -> Optional[List
         List of client IDs or None if no assignments found
     """
     try:
-        from backend.schemas.user_client_assignment import UserClientAssignment
+        from backend.orm.user_client_assignment import UserClientAssignment
 
         assignments = (
             db.query(UserClientAssignment.client_id)

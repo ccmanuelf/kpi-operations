@@ -11,9 +11,9 @@ from datetime import datetime, time, timezone
 from backend.database import get_db
 from backend.calculations.inference import InferenceEngine
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
+from backend.orm.user import User
+from backend.orm.product import Product
+from backend.orm.shift import Shift
 from backend.middleware.client_auth import build_client_filter_clause
 from backend.utils.logging_utils import get_module_logger
 

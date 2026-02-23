@@ -21,29 +21,29 @@ from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.client import Client, ClientType
-from backend.schemas.capacity.calendar import CapacityCalendar
-from backend.schemas.capacity.production_lines import CapacityProductionLine
-from backend.schemas.capacity.orders import (
+from backend.orm.client import Client, ClientType
+from backend.orm.capacity.calendar import CapacityCalendar
+from backend.orm.capacity.production_lines import CapacityProductionLine
+from backend.orm.capacity.orders import (
     CapacityOrder,
     OrderPriority,
     OrderStatus,
 )
-from backend.schemas.capacity.standards import CapacityProductionStandard
-from backend.schemas.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
-from backend.schemas.capacity.stock import CapacityStockSnapshot
-from backend.schemas.capacity.component_check import (
+from backend.orm.capacity.standards import CapacityProductionStandard
+from backend.orm.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
+from backend.orm.capacity.stock import CapacityStockSnapshot
+from backend.orm.capacity.component_check import (
     CapacityComponentCheck,
     ComponentStatus,
 )
-from backend.schemas.capacity.analysis import CapacityAnalysis
-from backend.schemas.capacity.schedule import (
+from backend.orm.capacity.analysis import CapacityAnalysis
+from backend.orm.capacity.schedule import (
     CapacitySchedule,
     CapacityScheduleDetail,
     ScheduleStatus,
 )
-from backend.schemas.capacity.scenario import CapacityScenario
-from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
+from backend.orm.capacity.scenario import CapacityScenario
+from backend.orm.capacity.kpi_commitment import CapacityKPICommitment
 
 from backend.services.capacity.bom_service import BOMService, BOMExplosionResult
 from backend.services.capacity.mrp_service import MRPService, MRPRunResult

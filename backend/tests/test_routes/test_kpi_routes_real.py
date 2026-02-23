@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.routes.kpi import router as kpi_router, thresholds_router
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -89,7 +89,7 @@ def kpi_setup(kpi_db):
     db.flush()
 
     # Create production entries for trend data
-    from backend.schemas.production_entry import ProductionEntry
+    from backend.orm.production_entry import ProductionEntry
 
     for i in range(10):
         entry_date = datetime.combine(date.today() - timedelta(days=i), datetime.min.time())
@@ -112,8 +112,8 @@ def kpi_setup(kpi_db):
         db.add(entry)
 
     # Create work orders for OTD testing
-    from backend.schemas.work_order import WorkOrder
-    from backend.schemas import WorkOrderStatus
+    from backend.orm.work_order import WorkOrder
+    from backend.orm import WorkOrderStatus
 
     # On-time work order
     on_time_wo = WorkOrder(
@@ -457,7 +457,7 @@ class TestKPICalculation:
         db = setup["db"]
 
         # Get entry ID from database
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         entry = db.query(ProductionEntry).first()
 

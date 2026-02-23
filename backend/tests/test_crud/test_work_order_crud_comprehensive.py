@@ -13,7 +13,7 @@ from sqlalchemy.pool import StaticPool
 from fastapi import HTTPException
 
 from backend.database import Base
-from backend.schemas import WorkOrderStatus, ClientType
+from backend.orm import WorkOrderStatus, ClientType
 from backend.crud import work_order as work_order_crud
 from backend.tests.fixtures.factories import TestDataFactory
 

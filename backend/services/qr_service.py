@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)
 
-from backend.models.qr import QRCodeData, QREntityType
+from backend.schemas.qr import QRCodeData, QREntityType
 
 
 class QRServiceError(Exception):

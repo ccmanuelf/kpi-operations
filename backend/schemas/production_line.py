@@ -1,79 +1,59 @@
 """
-ProductionLine ORM schema (SQLAlchemy)
-Operational production line entity for factory topology management.
-Distinct from CapacityProductionLine which is used for capacity planning.
+Pydantic models for Production Line API request/response validation.
 """
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    DateTime,
-    ForeignKey,
-    CheckConstraint,
-    UniqueConstraint,
-)
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from backend.database import Base
+from pydantic import BaseModel, Field
+from typing import Optional, List
+from datetime import datetime
 
 
-class ProductionLine(Base):
-    """
-    PRODUCTION_LINE table - Operational production line entity.
+class ProductionLineCreate(BaseModel):
+    """Create a new production line for a client."""
 
-    Purpose:
-    - Track factory areas (cutting, kitting, embroidery, sewing, inspection, packaging)
-    - Support self-referential hierarchy (parent sections with child sub-lines)
-    - Soft-delete via is_active flag
+    client_id: str = Field(..., min_length=1, max_length=50)
+    line_code: str = Field(..., min_length=1, max_length=50)
+    line_name: str = Field(..., min_length=1, max_length=100)
+    department: Optional[str] = Field(None, max_length=50)
+    line_type: str = Field(default="DEDICATED", pattern=r"^(DEDICATED|SHARED|SECTION)$")
+    parent_line_id: Optional[int] = None
+    max_operators: Optional[int] = Field(None, ge=1)
+    capacity_line_id: Optional[int] = None
 
-    Multi-tenant: All records isolated by client_id.
-    """
+    model_config = {"from_attributes": True}
 
-    __tablename__ = "PRODUCTION_LINE"
-    __table_args__ = (
-        UniqueConstraint("client_id", "line_code", name="uq_production_line_client_code"),
-        CheckConstraint(
-            "line_type IN ('DEDICATED', 'SHARED', 'SECTION')",
-            name="ck_production_line_type",
-        ),
-        {"extend_existing": True},
-    )
 
-    line_id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(
-        String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True
-    )
-    line_code = Column(String(50), nullable=False)  # e.g., "SEW-01", "CUT-01"
-    line_name = Column(String(100), nullable=False)  # e.g., "Sewing Line 1"
-    department = Column(String(50), nullable=True)  # CUTTING, SEWING, FINISHING, etc.
-    line_type = Column(String(20), nullable=False, default="DEDICATED")
-    parent_line_id = Column(
-        Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True
-    )
-    max_operators = Column(Integer, nullable=True)
+class ProductionLineUpdate(BaseModel):
+    """Update a production line entry (partial update)."""
 
-    # Bridge to Capacity Planning: links operational line to its capacity counterpart.
-    # NULL means the line exists only in the operational context.
-    capacity_line_id = Column(
-        Integer,
-        ForeignKey("capacity_production_lines.id"),
-        nullable=True,
-    )
+    line_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    department: Optional[str] = Field(None, max_length=50)
+    line_type: Optional[str] = Field(None, pattern=r"^(DEDICATED|SHARED|SECTION)$")
+    parent_line_id: Optional[int] = None
+    max_operators: Optional[int] = Field(None, ge=1)
+    is_active: Optional[bool] = None
 
-    is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    model_config = {"from_attributes": True}
 
-    # Self-referential: remote_side points to the "one" side (parent's PK)
-    parent = relationship(
-        "ProductionLine",
-        remote_side=[line_id],
-        backref="children",
-    )
 
-    def __repr__(self):
-        return (
-            f"<ProductionLine(line_id={self.line_id}, client_id={self.client_id}, "
-            f"code={self.line_code}, dept={self.department})>"
-        )
+class ProductionLineResponse(BaseModel):
+    """Response schema for a production line."""
+
+    line_id: int
+    client_id: str
+    line_code: str
+    line_name: str
+    department: Optional[str] = None
+    line_type: str
+    parent_line_id: Optional[int] = None
+    max_operators: Optional[int] = None
+    capacity_line_id: Optional[int] = None
+    is_active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ProductionLineTreeResponse(ProductionLineResponse):
+    """Response schema for a production line with nested children."""
+
+    children: List["ProductionLineTreeResponse"] = []

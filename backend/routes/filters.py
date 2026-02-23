@@ -11,11 +11,12 @@ from datetime import datetime
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
+from backend.dependencies import PaginationParams
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
-from backend.models.filters import (
+from backend.schemas.filters import (
     SavedFilterCreate,
     SavedFilterUpdate,
     SavedFilterResponse,
@@ -25,21 +26,21 @@ from backend.models.filters import (
     SetDefaultResponse,
     FilterType,
 )
-from backend.crud.saved_filter import (
-    create_saved_filter,
-    get_saved_filters,
-    get_saved_filter,
-    get_default_filter,
-    update_saved_filter,
-    delete_saved_filter,
-    apply_filter,
-    set_default_filter,
-    unset_default_filter,
-    get_filter_history,
-    add_to_filter_history,
-    clear_filter_history,
-    get_filter_statistics,
-    duplicate_filter,
+from backend.services.filter_service import (
+    create_filter as create_saved_filter,
+    list_filters as get_saved_filters,
+    get_filter as get_saved_filter,
+    get_user_default_filter as get_default_filter,
+    update_filter as update_saved_filter,
+    delete_filter as delete_saved_filter,
+    apply_saved_filter as apply_filter,
+    set_filter_as_default as set_default_filter,
+    unset_filter_as_default as unset_default_filter,
+    get_user_filter_history as get_filter_history,
+    add_filter_to_history as add_to_filter_history,
+    clear_user_filter_history as clear_filter_history,
+    get_user_filter_statistics as get_filter_statistics,
+    duplicate_saved_filter as duplicate_filter,
 )
 
 
@@ -57,8 +58,7 @@ def list_saved_filters(
         None,
         description="Filter by type (dashboard, production, quality, attendance, downtime, hold, coverage, custom)",
     ),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(100, ge=1, le=500, description="Maximum records to return"),
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -73,7 +73,7 @@ def list_saved_filters(
     3. Alphabetically by name
     """
     try:
-        filters = get_saved_filters(db, user_id=current_user.user_id, filter_type=filter_type, skip=skip, limit=limit)
+        filters = get_saved_filters(db, user_id=current_user.user_id, filter_type=filter_type, skip=pagination.skip, limit=pagination.limit)
 
         # Transform to response model with parsed config
         return [_to_filter_response(f) for f in filters]

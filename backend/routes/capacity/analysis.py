@@ -13,10 +13,10 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
-from backend.schemas.capacity.component_check import ComponentStatus
+from backend.orm.capacity.component_check import ComponentStatus
 
 from ._models import (
     ComponentCheckRequest,
@@ -104,7 +104,7 @@ def get_component_shortages(
     """Get component shortages from the most recent check run."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.component_check import CapacityComponentCheck, ComponentStatus
+    from backend.orm.capacity.component_check import CapacityComponentCheck, ComponentStatus
 
     query = db.query(CapacityComponentCheck).filter(
         CapacityComponentCheck.client_id == client_id, CapacityComponentCheck.status != ComponentStatus.OK
@@ -194,7 +194,7 @@ def get_bottleneck_lines(
     """Get lines identified as bottlenecks."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.analysis import CapacityAnalysis
+    from backend.orm.capacity.analysis import CapacityAnalysis
 
     query = db.query(CapacityAnalysis).filter(
         CapacityAnalysis.client_id == client_id, CapacityAnalysis.is_bottleneck == True
@@ -239,7 +239,7 @@ def list_schedules(
     """Get schedules for a client."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.schedule import CapacitySchedule
+    from backend.orm.capacity.schedule import CapacitySchedule
 
     query = db.query(CapacitySchedule).filter(CapacitySchedule.client_id == client_id)
 
@@ -259,7 +259,7 @@ def create_schedule(
     """Create a new schedule."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
+    from backend.orm.capacity.schedule import CapacitySchedule, ScheduleStatus
 
     new_schedule = CapacitySchedule(
         client_id=client_id,
@@ -285,7 +285,7 @@ def get_schedule(
     """Get a specific schedule."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.schedule import CapacitySchedule
+    from backend.orm.capacity.schedule import CapacitySchedule
 
     schedule = (
         db.query(CapacitySchedule)
@@ -342,7 +342,7 @@ def commit_schedule(
     """Commit a schedule, locking KPI targets."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
+    from backend.orm.capacity.schedule import CapacitySchedule, ScheduleStatus
     from datetime import date as date_type
 
     schedule = (

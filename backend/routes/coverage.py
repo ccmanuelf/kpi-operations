@@ -10,16 +10,16 @@ from typing import List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
-from backend.models.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, ShiftCoverageResponse
-from backend.crud.coverage import (
-    create_shift_coverage,
-    get_shift_coverage,
-    get_shift_coverages,
-    update_shift_coverage,
-    delete_shift_coverage,
+from backend.schemas.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, ShiftCoverageResponse
+from backend.services.coverage_service import (
+    create_coverage as create_shift_coverage,
+    get_coverage as get_shift_coverage,
+    list_coverages as get_shift_coverages,
+    update_coverage as update_shift_coverage,
+    delete_coverage as delete_shift_coverage,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

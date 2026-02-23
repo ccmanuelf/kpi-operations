@@ -13,11 +13,11 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from backend.schemas.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
-from backend.schemas.capacity.production_lines import CapacityProductionLine
-from backend.schemas.capacity.standards import CapacityProductionStandard
-from backend.schemas.capacity.calendar import CapacityCalendar
+from backend.orm.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
+from backend.orm.capacity.production_lines import CapacityProductionLine
+from backend.orm.capacity.standards import CapacityProductionStandard
+from backend.orm.capacity.calendar import CapacityCalendar
 from backend.exceptions.domain_exceptions import SchedulingError, ValidationError
 from backend.events.bus import event_bus
 from backend.events.domain_events import OrderScheduled, ScheduleCommitted

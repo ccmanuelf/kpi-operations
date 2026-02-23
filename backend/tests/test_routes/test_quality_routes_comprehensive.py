@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.routes.quality import router as quality_router
 from backend.tests.fixtures.factories import TestDataFactory
 

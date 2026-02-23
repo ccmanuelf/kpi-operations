@@ -351,10 +351,10 @@ class TestEfficiencyDatabaseIntegration:
     @pytest.mark.integration
     def test_calculate_efficiency_with_mock_db(self, db_session):
         """Test calculate_efficiency function with mock database"""
-        from backend.schemas.client import Client, ClientType
-        from backend.schemas.product import Product
-        from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.shift import Shift
+        from backend.orm.client import Client, ClientType
+        from backend.orm.product import Product
+        from backend.orm.production_entry import ProductionEntry
+        from backend.orm.shift import Shift
 
         # Create client first (required FK for product and shift)
         client = Client(

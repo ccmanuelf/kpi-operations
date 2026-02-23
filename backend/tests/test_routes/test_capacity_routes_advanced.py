@@ -17,8 +17,8 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas import ClientType
-from backend.schemas.user import User, UserRole
+from backend.orm import ClientType
+from backend.orm.user import User, UserRole
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -82,7 +82,7 @@ def cap_client(cap_db):
 @pytest.fixture(scope="function")
 def cap_client_with_data(cap_db):
     """Client fixture with a pre-seeded client entity in the DB."""
-    from backend.schemas.client import Client
+    from backend.orm.client import Client
 
     client = Client(
         client_id="TEST-CAP-001",
@@ -102,7 +102,7 @@ CLIENT_ID = "TEST-CAP-001"
 
 def _seed_client(db):
     """Ensure the test client exists in DB."""
-    from backend.schemas.client import Client
+    from backend.orm.client import Client
 
     existing = db.query(Client).filter(Client.client_id == CLIENT_ID).first()
     if not existing:

@@ -14,8 +14,8 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI, HTTPException
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType
-from backend.schemas.user import User
+from backend.orm import ClientType
+from backend.orm.user import User
 from backend.tests.fixtures.factories import TestDataFactory
 
 
@@ -239,7 +239,7 @@ class TestMultiTenantIsolation:
 
     def test_production_entry_client_isolation(self, auth_setup):
         """Test production entries are isolated by client."""
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = auth_setup["db"]
         client_a = auth_setup["client_a"]
@@ -313,7 +313,7 @@ class TestMultiTenantIsolation:
 
     def test_work_order_client_isolation(self, auth_setup):
         """Test work orders are isolated by client."""
-        from backend.schemas.work_order import WorkOrder, WorkOrderStatus
+        from backend.orm.work_order import WorkOrder, WorkOrderStatus
 
         db = auth_setup["db"]
         client_a = auth_setup["client_a"]
@@ -479,7 +479,7 @@ class TestCrossClientAccess:
 
     def test_cannot_create_entry_for_other_client(self, auth_setup):
         """Test user cannot create production entry for another client."""
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = auth_setup["db"]
         client_b = auth_setup["client_b"]
@@ -527,7 +527,7 @@ class TestCrossClientAccess:
 
     def test_query_respects_client_filter(self, auth_setup):
         """Test queries respect client filter."""
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
         from backend.middleware.client_auth import get_user_client_filter
 
         db = auth_setup["db"]

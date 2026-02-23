@@ -20,7 +20,7 @@ try:
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
     from backend.tasks.daily_reports import DailyReportScheduler, scheduler
-    from backend.schemas.client import Client
+    from backend.orm.client import Client
 
     MODULE_AVAILABLE = True
 except ImportError as e:

@@ -16,21 +16,21 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause
 from backend.services.csv_export_service import stream_csv_export
 from backend.utils.logging_utils import get_module_logger
 
 # ORM models (in schemas/ per project convention)
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.downtime_entry import DowntimeEntry
-from backend.schemas.attendance_entry import AttendanceEntry
-from backend.schemas.employee import Employee
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.hold_entry import HoldEntry
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.work_order import WorkOrder
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.employee import Employee
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.hold_entry import HoldEntry
 
 logger = get_module_logger(__name__)
 

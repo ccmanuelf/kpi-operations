@@ -11,7 +11,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.services.quality_kpi_service import QualityKPIService
 from backend.database import get_db
 

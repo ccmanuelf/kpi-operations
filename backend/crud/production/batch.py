@@ -9,9 +9,9 @@ from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.user import User
-from backend.models.production import ProductionEntryCreate
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.user import User
+from backend.schemas.production import ProductionEntryCreate
 from backend.crud.production.core import create_production_entry
 
 logger = logging.getLogger(__name__)

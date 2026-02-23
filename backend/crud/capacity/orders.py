@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.utils.tenant_guard import ensure_client_id
 
 

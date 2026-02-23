@@ -14,7 +14,7 @@ from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.calculations.otd import identify_late_orders
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 
@@ -35,7 +35,7 @@ def calculate_otd_kpi(
     Uses required_date as the due date and actual_delivery_date for completion.
     Parameters are optional - defaults to last 30 days.
     """
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.work_order import WorkOrder
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -125,8 +125,8 @@ def get_otd_by_client(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.work_order import WorkOrder
-    from backend.schemas.client import Client
+    from backend.orm.work_order import WorkOrder
+    from backend.orm.client import Client
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -194,8 +194,8 @@ def get_late_deliveries(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.work_order import WorkOrder
-    from backend.schemas.client import Client
+    from backend.orm.work_order import WorkOrder
+    from backend.orm.client import Client
 
     # Default to last 30 days if dates not provided
     if end_date is None:

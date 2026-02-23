@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.reports.excel_generator import ExcelReportGenerator
 from backend.middleware.client_auth import verify_client_access

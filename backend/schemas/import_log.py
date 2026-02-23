@@ -1,25 +1,42 @@
 """
-Import Log ORM schema (SQLAlchemy)
-Tracks CSV and batch import operations for auditing
+Import Log models for tracking CSV and batch imports
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
-from sqlalchemy.sql import func
-from backend.database import Base
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
 
 
-class ImportLog(Base):
-    """Import Log table for tracking all import operations"""
+class BatchImportRequest(BaseModel):
+    """Request body for batch import"""
 
-    __tablename__ = "import_log"
-    __table_args__ = {"extend_existing": True}
+    entries: List[dict]
 
-    log_id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("USER.user_id"), nullable=False, index=True)
-    import_timestamp = Column(DateTime, nullable=False, server_default=func.now(), index=True)
-    file_name = Column(String(255))
-    rows_attempted = Column(Integer, nullable=False, default=0)
-    rows_succeeded = Column(Integer, nullable=False, default=0)
-    rows_failed = Column(Integer, nullable=False, default=0)
-    error_details = Column(Text)  # JSON string of error details
-    import_type = Column(String(50), nullable=False)  # 'csv_upload' or 'batch_import'
+
+class BatchImportResponse(BaseModel):
+    """Batch import result with logging"""
+
+    total_rows: int
+    successful: int
+    failed: int
+    errors: List[dict]
+    created_entries: List[int]
+    import_log_id: Optional[int] = None
+    import_timestamp: datetime
+
+
+class ImportLogResponse(BaseModel):
+    """Import log entry response"""
+
+    log_id: int
+    user_id: int
+    import_timestamp: datetime
+    file_name: Optional[str]
+    rows_attempted: int
+    rows_succeeded: int
+    rows_failed: int
+    error_details: Optional[str]
+    import_type: str  # 'csv_upload' or 'batch_import'
+
+    class Config:
+        from_attributes = True

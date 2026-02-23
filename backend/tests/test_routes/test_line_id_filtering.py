@@ -19,28 +19,28 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
-from backend.schemas.production_line import ProductionLine
-from backend.schemas.client import Client, ClientType
-from backend.schemas.user import User, UserRole
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.downtime_entry import DowntimeEntry
-from backend.schemas.attendance_entry import AttendanceEntry
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.employee import Employee
+from backend.orm.production_line import ProductionLine
+from backend.orm.client import Client, ClientType
+from backend.orm.user import User, UserRole
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.downtime_entry import DowntimeEntry
+from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.work_order import WorkOrder
+from backend.orm.employee import Employee
 
-from backend.models.production import (
+from backend.schemas.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryResponse,
 )
-from backend.models.downtime import (
+from backend.schemas.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse,
 )
-from backend.models.attendance import (
+from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,

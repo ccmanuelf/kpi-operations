@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException
 
-from backend.schemas.saved_filter import SavedFilter
-from backend.models.filters import (
+from backend.orm.saved_filter import SavedFilter
+from backend.schemas.filters import (
     SavedFilterCreate,
     SavedFilterUpdate,
 )

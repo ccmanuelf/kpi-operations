@@ -18,8 +18,8 @@ from decimal import Decimal
 from typing import Optional, Dict, Tuple, NamedTuple
 from dataclasses import dataclass
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.work_order import WorkOrder, WorkOrderStatus
 
 
 # =============================================================================

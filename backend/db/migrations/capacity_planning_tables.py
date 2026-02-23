@@ -28,7 +28,7 @@ import logging
 from backend.database import engine, Base
 
 # Import all capacity models to register them with Base.metadata
-from backend.schemas.capacity import (
+from backend.orm.capacity import (
     CapacityCalendar,
     CapacityProductionLine,
     CapacityOrder,

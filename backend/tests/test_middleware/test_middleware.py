@@ -34,8 +34,8 @@ from backend.middleware.client_auth import (
     build_client_filter_clause,
     _get_clients_from_legacy_field,
 )
-from backend.schemas.user import User, UserRole
-from backend.schemas.work_order import WorkOrder
+from backend.orm.user import User, UserRole
+from backend.orm.work_order import WorkOrder
 from backend.tests.fixtures.factories import TestDataFactory
 
 

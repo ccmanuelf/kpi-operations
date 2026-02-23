@@ -29,8 +29,8 @@ from backend.services.capacity.analysis_service import (
 from backend.services.capacity.scheduling_service import SchedulingService, GeneratedSchedule, ScheduleSummary
 from backend.services.capacity.scenario_service import ScenarioService, ScenarioResult, ScenarioComparison
 from backend.services.capacity.kpi_integration_service import KPIIntegrationService, KPIActual, KPIVariance
-from backend.schemas.capacity.schedule import CapacitySchedule, ScheduleStatus
-from backend.schemas.capacity.scenario import CapacityScenario
+from backend.orm.capacity.schedule import CapacitySchedule, ScheduleStatus
+from backend.orm.capacity.scenario import CapacityScenario
 
 
 class CapacityPlanningService:

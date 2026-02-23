@@ -11,7 +11,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from backend.schemas.attendance_entry import AttendanceEntry
+from backend.orm.attendance_entry import AttendanceEntry
 
 
 def calculate_absenteeism(

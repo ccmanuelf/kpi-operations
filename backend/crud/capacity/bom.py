@@ -12,7 +12,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
-from backend.schemas.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
+from backend.orm.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
 from backend.utils.tenant_guard import ensure_client_id
 
 

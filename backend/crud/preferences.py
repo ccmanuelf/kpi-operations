@@ -10,9 +10,9 @@ from sqlalchemy import and_
 import json
 import logging
 
-from backend.schemas.user_preferences import UserPreferences, DashboardWidgetDefaults
-from backend.schemas.user import User
-from backend.models.preferences import (
+from backend.orm.user_preferences import UserPreferences, DashboardWidgetDefaults
+from backend.orm.user import User
+from backend.schemas.preferences import (
     DashboardPreferences,
     DashboardWidgetConfig,
     DashboardPreferencesUpdate,

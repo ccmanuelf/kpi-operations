@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import (
     CALENDAR_DEFAULT_DAYS,
@@ -48,7 +48,7 @@ def get_kpi_commitments(
     """Get KPI commitments for a client."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
+    from backend.orm.capacity.kpi_commitment import CapacityKPICommitment
 
     query = db.query(CapacityKPICommitment).filter(CapacityKPICommitment.client_id == client_id)
 
@@ -114,11 +114,11 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
     stock_data = stock.get_stock_snapshots(db, client_id, limit=LARGE_PAGE_SIZE)
 
     # --- Computed data (7 worksheets via direct queries) ---
-    from backend.schemas.capacity.component_check import CapacityComponentCheck
-    from backend.schemas.capacity.analysis import CapacityAnalysis
-    from backend.schemas.capacity.schedule import CapacitySchedule, CapacityScheduleDetail
-    from backend.schemas.capacity.scenario import CapacityScenario
-    from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
+    from backend.orm.capacity.component_check import CapacityComponentCheck
+    from backend.orm.capacity.analysis import CapacityAnalysis
+    from backend.orm.capacity.schedule import CapacitySchedule, CapacityScheduleDetail
+    from backend.orm.capacity.scenario import CapacityScenario
+    from backend.orm.capacity.kpi_commitment import CapacityKPICommitment
 
     component_checks = (
         db.query(CapacityComponentCheck)

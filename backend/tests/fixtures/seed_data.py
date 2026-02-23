@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 from sqlalchemy.orm import Session
 
 from .factories import TestDataFactory
-from backend.schemas import ClientType, WorkOrderStatus, HoldStatus, AbsenceType
+from backend.orm import ClientType, WorkOrderStatus, HoldStatus, AbsenceType
 
 
 def seed_minimal_data(db: Session) -> Dict[str, Any]:
@@ -454,7 +454,7 @@ def cleanup_test_data(db: Session):
     Args:
         db: Database session
     """
-    from backend.schemas import (
+    from backend.orm import (
         WorkflowTransitionLog,
         FilterHistory,
         SavedFilter,

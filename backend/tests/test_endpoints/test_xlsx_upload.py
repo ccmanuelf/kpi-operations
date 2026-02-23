@@ -25,11 +25,11 @@ from sqlalchemy.pool import StaticPool
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user
 from backend.endpoints.csv_upload import router as csv_upload_router
-from backend.schemas.user import User, UserRole
+from backend.orm.user import User, UserRole
 
 # Import CapacityOrder so its table is registered before create_all.
 # WORK_ORDER has FK -> capacity_orders.id.
-from backend.schemas.capacity.orders import CapacityOrder  # noqa: F401
+from backend.orm.capacity.orders import CapacityOrder  # noqa: F401
 
 from backend.tests.fixtures.factories import TestDataFactory
 

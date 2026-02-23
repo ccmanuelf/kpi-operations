@@ -10,8 +10,9 @@ from typing import List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
-from backend.models.client_config import (
+from backend.orm.user import User
+from backend.dependencies import PaginationParams
+from backend.schemas.client_config import (
     ClientConfigCreate,
     ClientConfigUpdate,
     ClientConfigResponse,
@@ -128,8 +129,7 @@ def delete_client_config(client_id: str, db: Session = Depends(get_db), current_
 
 @router.get("/", response_model=List[ClientConfigResponse])
 def list_client_configs(
-    skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=100, ge=1, le=500),
+    pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -138,7 +138,7 @@ def list_client_configs(
 
     Only admins can view all configurations.
     """
-    return crud.get_all_client_configs(db=db, current_user=current_user, skip=skip, limit=limit)
+    return crud.get_all_client_configs(db=db, current_user=current_user, skip=pagination.skip, limit=pagination.limit)
 
 
 @router.post("/{client_id}/reset-to-defaults", response_model=ClientConfigResponse)

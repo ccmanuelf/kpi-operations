@@ -12,8 +12,8 @@ import pytest
 from datetime import date
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.equipment import Equipment
-from backend.schemas.production_line import ProductionLine  # noqa: F401 — register table for Base.metadata
+from backend.orm.equipment import Equipment
+from backend.orm.production_line import ProductionLine  # noqa: F401 — register table for Base.metadata
 from backend.crud.equipment import (
     create_equipment,
     list_equipment,
@@ -23,7 +23,7 @@ from backend.crud.equipment import (
     deactivate_equipment,
     get_equipment_by_code,
 )
-from backend.models.equipment import EquipmentCreate, EquipmentUpdate
+from backend.schemas.equipment import EquipmentCreate, EquipmentUpdate
 
 
 # ---------------------------------------------------------------------------

@@ -16,12 +16,12 @@ from sqlalchemy.orm import Session
 from backend.auth.jwt import get_current_user
 from backend.database import get_db
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.capacity.orders import CapacityOrder
-from backend.schemas.product import Product
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.shift import Shift
-from backend.schemas.user import User
-from backend.schemas.work_order import WorkOrder
+from backend.orm.capacity.orders import CapacityOrder
+from backend.orm.product import Product
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.shift import Shift
+from backend.orm.user import User
+from backend.orm.work_order import WorkOrder
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

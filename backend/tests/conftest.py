@@ -25,7 +25,7 @@ from backend.database import Base, get_db
 
 # Import ALL schemas to ensure tables are created in the correct order
 # This is critical for foreign key relationships to work
-from backend.schemas import (
+from backend.orm import (
     # Core foundation (must be first - no FK dependencies)
     Client,
     ClientType,
@@ -60,18 +60,18 @@ from backend.schemas import (
 )
 
 # Break Time ORM model
-from backend.schemas.break_time import BreakTime  # noqa: F401
+from backend.orm.break_time import BreakTime  # noqa: F401
 
 # Sprint 2: Production Line Topology ORM models
-from backend.schemas.production_line import ProductionLine  # noqa: F401
-from backend.schemas.equipment import Equipment  # noqa: F401
-from backend.schemas.employee_line_assignment import EmployeeLineAssignment  # noqa: F401
+from backend.orm.production_line import ProductionLine  # noqa: F401
+from backend.orm.equipment import Equipment  # noqa: F401
+from backend.orm.employee_line_assignment import EmployeeLineAssignment  # noqa: F401
 
 # Import log for batch imports
-from backend.schemas.import_log import ImportLog
+from backend.orm.import_log import ImportLog
 
 # Alert ORM model (in models/, not schemas/) — needed for Base.metadata.create_all()
-from backend.models.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
+from backend.schemas.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
 
 # Backward compatibility aliases - use the correct _entry schemas
 QualityInspection = QualityEntry

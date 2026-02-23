@@ -11,7 +11,7 @@ from sqlalchemy.pool import StaticPool
 from fastapi import HTTPException
 
 from backend.database import Base
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.crud import client_config as client_config_crud
 from backend.tests.fixtures.factories import TestDataFactory
 

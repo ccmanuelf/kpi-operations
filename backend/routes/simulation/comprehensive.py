@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session
 
 from backend.auth.jwt import get_current_user
 from backend.database import get_db
-from backend.schemas.user import User
-from backend.schemas.simulation import ComprehensiveSimulationRequest
+from backend.orm.user import User
+from backend.orm.simulation import ComprehensiveSimulationRequest
 from backend.calculations.simulation import run_capacity_simulation
 from backend.utils.logging_utils import get_module_logger
 

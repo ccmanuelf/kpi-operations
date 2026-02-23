@@ -13,8 +13,8 @@ from sqlalchemy.pool import StaticPool
 from fastapi import HTTPException
 
 from backend.database import Base
-from backend.schemas import ClientType
-from backend.models.filters import (
+from backend.orm import ClientType
+from backend.schemas.filters import (
     FilterType,
     SavedFilterCreate,
     SavedFilterUpdate,

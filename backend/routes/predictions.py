@@ -19,7 +19,7 @@ from decimal import Decimal
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.constants import (
     LOOKBACK_WEEKLY_DAYS,
     LOOKBACK_MONTHLY_DAYS,
@@ -28,7 +28,7 @@ from backend.constants import (
     MIN_HISTORICAL_DAYS,
     MAX_HISTORICAL_DAYS,
 )
-from backend.schemas.analytics import (
+from backend.orm.analytics import (
     KPIType,
     ComprehensivePredictionResponse,
     AllKPIPredictionsResponse,
@@ -97,7 +97,7 @@ def get_historical_kpi_data(
         List of historical data points (may be empty)
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.crud.analytics import get_kpi_time_series_data
+    from backend.services.analytics_crud_service import get_time_series as get_kpi_time_series_data
 
     # Verify client access
     verify_client_access(current_user, client_id)

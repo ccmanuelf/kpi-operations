@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from backend.database import Base, get_db
 from backend.main import app
 from backend.auth.jwt import get_password_hash, create_access_token
-from backend.schemas.user import User, UserRole
-from backend.schemas.client import Client, ClientType
+from backend.orm.user import User, UserRole
+from backend.orm.client import Client, ClientType
 
 
 # Test database setup

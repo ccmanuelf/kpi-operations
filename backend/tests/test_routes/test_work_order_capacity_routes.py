@@ -14,9 +14,9 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User, UserRole
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
+from backend.orm.user import User, UserRole
+from backend.orm.work_order import WorkOrder
+from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.routes.work_orders import router as work_orders_router
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory

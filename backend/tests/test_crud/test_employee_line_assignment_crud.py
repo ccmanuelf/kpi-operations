@@ -8,9 +8,9 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.employee import Employee
-from backend.schemas.production_line import ProductionLine
-from backend.schemas.employee_line_assignment import EmployeeLineAssignment
+from backend.orm.employee import Employee
+from backend.orm.production_line import ProductionLine
+from backend.orm.employee_line_assignment import EmployeeLineAssignment
 from backend.crud.employee_line_assignment import (
     create_assignment,
     list_assignments,
@@ -21,7 +21,7 @@ from backend.crud.employee_line_assignment import (
     end_assignment,
     validate_allocation,
 )
-from backend.models.employee_line_assignment import (
+from backend.schemas.employee_line_assignment import (
     EmployeeLineAssignmentCreate,
     EmployeeLineAssignmentUpdate,
 )

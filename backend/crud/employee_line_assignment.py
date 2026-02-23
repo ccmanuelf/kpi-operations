@@ -10,9 +10,9 @@ from typing import List, Optional
 from datetime import date
 from decimal import Decimal
 
-from backend.schemas.employee_line_assignment import EmployeeLineAssignment
-from backend.schemas.employee import Employee
-from backend.models.employee_line_assignment import (
+from backend.orm.employee_line_assignment import EmployeeLineAssignment
+from backend.orm.employee import Employee
+from backend.schemas.employee_line_assignment import (
     EmployeeLineAssignmentCreate,
     EmployeeLineAssignmentUpdate,
 )

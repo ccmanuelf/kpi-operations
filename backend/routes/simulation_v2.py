@@ -11,7 +11,7 @@ tool without persisting scenarios to the database.
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 
 from backend.simulation_v2.models import (
     SimulationConfig,

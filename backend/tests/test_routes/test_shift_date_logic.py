@@ -21,9 +21,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.database import Base, get_db
-from backend.models.production import ProductionEntryCreate
+from backend.schemas.production import ProductionEntryCreate
 from backend.routes.production import router as production_router
-from backend.schemas import ClientType
+from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 
 

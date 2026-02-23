@@ -8,7 +8,7 @@ import pytest
 from datetime import date, datetime
 from decimal import Decimal
 
-from backend.schemas import (
+from backend.orm import (
     Client,
     ClientType,
     User,

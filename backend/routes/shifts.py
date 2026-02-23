@@ -9,15 +9,15 @@ from typing import List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
-from backend.models.shift import ShiftCreate, ShiftUpdate, ShiftResponse
-from backend.crud.shift import (
-    create_shift,
-    list_shifts,
-    get_shift,
-    update_shift,
-    deactivate_shift,
+from backend.schemas.shift import ShiftCreate, ShiftUpdate, ShiftResponse
+from backend.services.shift_service import (
+    create_shift_record as create_shift,
+    list_client_shifts as list_shifts,
+    get_shift_by_id as get_shift,
+    update_shift_record as update_shift,
+    deactivate_shift_record as deactivate_shift,
 )
 
 logger = get_module_logger(__name__)

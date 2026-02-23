@@ -659,16 +659,16 @@ class DatabaseMigrationTool:
     @staticmethod
     def _import_all_models() -> None:
         """Import all ORM models to register them with Base.metadata."""
-        import backend.schemas  # noqa: F401
-        import backend.schemas.capacity  # noqa: F401
-        import backend.schemas.client_config  # noqa: F401
-        import backend.schemas.event_store  # noqa: F401
-        import backend.schemas.import_log  # noqa: F401
-        import backend.schemas.kpi_threshold  # noqa: F401
-        import backend.schemas.coverage  # noqa: F401
+        import backend.orm  # noqa: F401
+        import backend.orm.capacity  # noqa: F401
+        import backend.orm.client_config  # noqa: F401
+        import backend.orm.event_store  # noqa: F401
+        import backend.orm.import_log  # noqa: F401
+        import backend.orm.kpi_threshold  # noqa: F401
+        import backend.orm.coverage  # noqa: F401
 
         try:
-            import backend.models.alert  # noqa: F401
+            import backend.schemas.alert  # noqa: F401
         except ImportError:
             pass
 

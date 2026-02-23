@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.calculations.ppm import identify_top_defects
 from backend.utils.logging_utils import get_module_logger
 
@@ -54,8 +54,8 @@ def get_defects_by_type(
     from datetime import timedelta
     from sqlalchemy import func
 
-    from backend.schemas.defect_detail import DefectDetail
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.defect_detail import DefectDetail
+    from backend.orm.quality_entry import QualityEntry
 
     # Default to last 30 days
     if end_date is None:
@@ -119,8 +119,8 @@ def get_quality_by_product(
     from datetime import timedelta
     from sqlalchemy import func
 
-    from backend.schemas.quality_entry import QualityEntry
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.quality_entry import QualityEntry
+    from backend.orm.work_order import WorkOrder
 
     # Default to last 30 days
     if end_date is None:

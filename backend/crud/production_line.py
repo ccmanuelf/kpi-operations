@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Dict, List, Optional, Tuple
 
-from backend.schemas.production_line import ProductionLine
-from backend.schemas.capacity.production_lines import CapacityProductionLine
-from backend.models.production_line import ProductionLineCreate, ProductionLineUpdate
+from backend.orm.production_line import ProductionLine
+from backend.orm.capacity.production_lines import CapacityProductionLine
+from backend.schemas.production_line import ProductionLineCreate, ProductionLineUpdate
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

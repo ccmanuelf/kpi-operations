@@ -12,12 +12,12 @@ from decimal import Decimal
 from uuid import uuid4
 from fastapi import HTTPException
 
-from backend.schemas.attendance_entry import AttendanceEntry
-from backend.schemas.shift import Shift
-from backend.schemas.employee import Employee
-from backend.models.attendance import AttendanceRecordCreate, AttendanceRecordUpdate, AttendanceRecordResponse
+from backend.orm.attendance_entry import AttendanceEntry
+from backend.orm.shift import Shift
+from backend.orm.employee import Employee
+from backend.schemas.attendance import AttendanceRecordCreate, AttendanceRecordUpdate, AttendanceRecordResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 from backend.utils.logging_utils import get_module_logger
 

@@ -8,8 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from typing import List, Optional
 
-from backend.schemas.equipment import Equipment
-from backend.models.equipment import EquipmentCreate, EquipmentUpdate
+from backend.orm.equipment import Equipment
+from backend.schemas.equipment import EquipmentCreate, EquipmentUpdate
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

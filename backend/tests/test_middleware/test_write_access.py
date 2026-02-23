@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 from fastapi import HTTPException
 
 from backend.middleware.write_access import require_capacity_write, require_operations_write
-from backend.schemas.user import UserRole
+from backend.orm.user import UserRole
 
 
 def _make_user(role: str) -> MagicMock:

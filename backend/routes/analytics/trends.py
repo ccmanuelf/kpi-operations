@@ -13,16 +13,16 @@ import statistics
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.analytics import (
+from backend.orm.analytics import (
     TrendAnalysisResponse,
     TrendDataPoint,
     TrendDirection,
     KPIType,
 )
 from backend.calculations.trend_analysis import calculate_moving_average, analyze_trend, detect_anomalies
-from backend.crud.analytics import get_kpi_time_series_data
+from backend.services.analytics_crud_service import get_time_series as get_kpi_time_series_data
 from backend.utils.logging_utils import get_module_logger
 from ._helpers import parse_time_range
 

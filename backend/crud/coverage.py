@@ -10,10 +10,10 @@ from datetime import date
 from decimal import Decimal
 from fastapi import HTTPException
 
-from backend.schemas.coverage import ShiftCoverage
-from backend.models.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, ShiftCoverageResponse
+from backend.orm.coverage import ShiftCoverage
+from backend.schemas.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, ShiftCoverageResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 
 

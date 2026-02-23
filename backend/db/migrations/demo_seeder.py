@@ -111,7 +111,7 @@ class DemoDataSeeder:
 
     def _seed_clients(self) -> int:
         """Seed demo clients."""
-        from backend.schemas.client import Client, ClientType
+        from backend.orm.client import Client, ClientType
 
         clients = [
             Client(
@@ -153,7 +153,7 @@ class DemoDataSeeder:
 
     def _seed_users(self) -> int:
         """Seed demo users."""
-        from backend.schemas.user import User, UserRole
+        from backend.orm.user import User, UserRole
 
         users = [
             User(
@@ -222,7 +222,7 @@ class DemoDataSeeder:
         - Production Entries (via employee_id)
         - Coverage Entries (via employee_id)
         """
-        from backend.schemas.employee import Employee
+        from backend.orm.employee import Employee
 
         employees = []
         for i in range(1, 11):
@@ -252,8 +252,8 @@ class DemoDataSeeder:
         - BOM Headers (style_model)
         - Production Standards (style_model)
         """
-        from backend.schemas.product import Product
-        from backend.schemas.client import Client
+        from backend.orm.product import Product
+        from backend.orm.client import Client
 
         # Products with meaningful names that match capacity planning styles
         products_data = [
@@ -285,8 +285,8 @@ class DemoDataSeeder:
 
         Each client gets the same 3 shifts with their own shift IDs.
         """
-        from backend.schemas.shift import Shift
-        from backend.schemas.client import Client
+        from backend.orm.shift import Shift
+        from backend.orm.client import Client
         from datetime import time as dt_time
 
         shifts_data = [
@@ -317,7 +317,7 @@ class DemoDataSeeder:
         - Capacity Orders (can be conceptually linked via matching style)
         - Production Entries (via work_order_id)
         """
-        from backend.schemas.work_order import WorkOrder, WorkOrderStatus
+        from backend.orm.work_order import WorkOrder, WorkOrderStatus
 
         today = date.today()
 
@@ -365,7 +365,7 @@ class DemoDataSeeder:
 
         These match the production standards in Capacity Planning.
         """
-        from backend.schemas.job import Job
+        from backend.orm.job import Job
 
         # Operations match capacity planning departments
         operations = [
@@ -401,9 +401,9 @@ class DemoDataSeeder:
 
         This data appears in KPI dashboards and feeds capacity analysis.
         """
-        from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.product import Product
-        from backend.schemas.shift import Shift
+        from backend.orm.production_entry import ProductionEntry
+        from backend.orm.product import Product
+        from backend.orm.shift import Shift
 
         # Look up DEMO-001's products and shifts by code/name
         client_id = "DEMO-001"
@@ -465,7 +465,7 @@ class DemoDataSeeder:
 
         Creates downtime records linked to Work Orders for Availability KPI.
         """
-        from backend.schemas.downtime_entry import DowntimeEntry
+        from backend.orm.downtime_entry import DowntimeEntry
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -501,8 +501,8 @@ class DemoDataSeeder:
 
         Creates attendance records for Absenteeism KPI calculation.
         """
-        from backend.schemas.attendance_entry import AttendanceEntry, AbsenceType
-        from backend.schemas.shift import Shift
+        from backend.orm.attendance_entry import AttendanceEntry, AbsenceType
+        from backend.orm.shift import Shift
 
         # Look up DEMO-001's 1st shift
         client_id = "DEMO-001"
@@ -552,7 +552,7 @@ class DemoDataSeeder:
 
         This data feeds quality KPIs (PPM, DPMO, FPY, RTY).
         """
-        from backend.schemas.quality_entry import QualityEntry
+        from backend.orm.quality_entry import QualityEntry
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -590,7 +590,7 @@ class DemoDataSeeder:
 
         Creates hold records for WIP Aging KPI calculation.
         """
-        from backend.schemas.hold_entry import HoldEntry, HoldStatus, HoldReason
+        from backend.orm.hold_entry import HoldEntry, HoldStatus, HoldReason
 
         today = datetime.now(tz=timezone.utc)
 
@@ -629,7 +629,7 @@ class DemoDataSeeder:
 
         Creates client-specific defect types for quality tracking.
         """
-        from backend.schemas.defect_type_catalog import DefectTypeCatalog
+        from backend.orm.defect_type_catalog import DefectTypeCatalog
 
         defect_types = [
             DefectTypeCatalog(
@@ -681,7 +681,7 @@ class DemoDataSeeder:
 
         Creates floating pool employees who can be assigned across clients.
         """
-        from backend.schemas.floating_pool import FloatingPool
+        from backend.orm.floating_pool import FloatingPool
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -716,8 +716,8 @@ class DemoDataSeeder:
 
         Creates records of floating pool employees covering for absent employees.
         """
-        from backend.schemas.coverage_entry import CoverageEntry
-        from backend.schemas.shift import Shift
+        from backend.orm.coverage_entry import CoverageEntry
+        from backend.orm.shift import Shift
 
         # Look up DEMO-001's shift IDs
         client_id = "DEMO-001"
@@ -769,7 +769,7 @@ class DemoDataSeeder:
 
         Creates realistic status progression for demo work orders.
         """
-        from backend.schemas.workflow import WorkflowTransitionLog
+        from backend.orm.workflow import WorkflowTransitionLog
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -833,7 +833,7 @@ class DemoDataSeeder:
 
         Creates sample events for testing event sourcing and audit trails.
         """
-        from backend.schemas.event_store import EventStore
+        from backend.orm.event_store import EventStore
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -1025,7 +1025,7 @@ class DemoDataSeeder:
         - Capacity Orders for styles that have active Work Orders
         - Production Standards match Job operations
         """
-        from backend.schemas.capacity import (
+        from backend.orm.capacity import (
             CapacityCalendar,
             CapacityProductionLine,
             CapacityOrder,
@@ -1034,7 +1034,7 @@ class DemoDataSeeder:
             CapacityBOMDetail,
             CapacityStockSnapshot,
         )
-        from backend.schemas.capacity.orders import OrderStatus, OrderPriority
+        from backend.orm.capacity.orders import OrderStatus, OrderPriority
 
         client_id = "DEMO-001"
         today = date.today()
@@ -1352,8 +1352,8 @@ class DemoDataSeeder:
         capacity orders have been seeded. Links WO-0001..WO-0003 to
         CPL-WO-0001..CPL-WO-0003 and sets origin='PLANNED'.
         """
-        from backend.schemas.work_order import WorkOrder
-        from backend.schemas.capacity.orders import CapacityOrder
+        from backend.orm.work_order import WorkOrder
+        from backend.orm.capacity.orders import CapacityOrder
 
         links = [
             ("WO-0001", "CPL-WO-0001"),

@@ -14,25 +14,25 @@ from backend.utils.logging_utils import get_module_logger
 logger = get_module_logger(__name__)
 
 from backend.database import get_db
-from backend.models.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderWithMetrics
-from backend.crud.work_order import (
-    create_work_order,
-    get_work_order,
-    get_work_orders,
-    update_work_order,
-    delete_work_order,
-    get_work_orders_by_client,
-    get_work_orders_by_status,
-    get_work_orders_by_date_range,
+from backend.schemas.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderWithMetrics
+from backend.services.work_order_service import (
+    create_order as create_work_order,
+    get_order as get_work_order,
+    list_orders as get_work_orders,
+    update_order as update_work_order,
+    delete_order as delete_work_order,
+    list_orders_by_client as get_work_orders_by_client,
+    list_orders_by_status as get_work_orders_by_status,
+    list_orders_by_date_range as get_work_orders_by_date_range,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.hold_entry import HoldEntry
+from backend.orm.user import User
+from backend.orm.work_order import WorkOrder
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.hold_entry import HoldEntry
 
 
 router = APIRouter(prefix="/api/work-orders", tags=["Work Orders"])
@@ -476,7 +476,7 @@ def approve_qc(
         404: Work order not found or access denied
         400: Work order already approved or not in valid state
     """
-    from backend.schemas.workflow import WorkflowTransitionLog
+    from backend.orm.workflow import WorkflowTransitionLog
 
     # Verify access to work order
     work_order = get_work_order(db, work_order_id, current_user)
@@ -551,9 +551,9 @@ def get_work_order_capacity_order(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Get the capacity order linked to this work order."""
-    from backend.crud.work_order import get_capacity_order_for_work_order
+    from backend.services.work_order_service import get_capacity_order_link
 
-    cap_order = get_capacity_order_for_work_order(db, work_order_id, current_user)
+    cap_order = get_capacity_order_link(db, work_order_id, current_user)
     if not cap_order:
         return {"linked": False, "capacity_order": None}
     return {
@@ -580,12 +580,12 @@ def link_to_capacity_order(
     current_user: User = Depends(get_current_user),
 ):
     """Link a work order to a capacity order."""
-    from backend.crud.work_order import link_work_order_to_capacity
+    from backend.services.work_order_service import link_to_capacity
 
     capacity_order_id = link_data.get("capacity_order_id")
     if not capacity_order_id:
         raise HTTPException(status_code=400, detail="capacity_order_id is required")
-    return link_work_order_to_capacity(db, work_order_id, capacity_order_id, current_user)
+    return link_to_capacity(db, work_order_id, capacity_order_id, current_user)
 
 
 @router.post("/{work_order_id}/unlink-capacity", response_model=WorkOrderResponse)
@@ -595,9 +595,9 @@ def unlink_from_capacity_order(
     current_user: User = Depends(get_current_user),
 ):
     """Unlink a work order from its capacity order."""
-    from backend.crud.work_order import unlink_work_order_from_capacity
+    from backend.services.work_order_service import unlink_from_capacity
 
-    return unlink_work_order_from_capacity(db, work_order_id, current_user)
+    return unlink_from_capacity(db, work_order_id, current_user)
 
 
 @router.delete("/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)

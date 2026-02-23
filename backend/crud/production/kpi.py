@@ -9,11 +9,11 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
-from backend.schemas.user import User
-from backend.models.production import ProductionEntryWithKPIs
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.user import User
+from backend.schemas.production import ProductionEntryWithKPIs
 from backend.middleware.client_auth import verify_client_access
 
 

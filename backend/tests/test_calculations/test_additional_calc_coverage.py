@@ -16,7 +16,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
 from backend.database import Base
-from backend.schemas.client import Client, ClientType
+from backend.orm.client import Client, ClientType
 
 
 @pytest.fixture(scope="function")
@@ -566,7 +566,7 @@ class TestPerformance:
     def test_calculate_quality_rate(self):
         """Test quality rate calculation"""
         from backend.calculations.performance import calculate_quality_rate
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         try:
             # Create mock production entry
@@ -583,7 +583,7 @@ class TestPerformance:
     def test_calculate_quality_rate_zero_defects(self):
         """Test quality rate with zero defects"""
         from backend.calculations.performance import calculate_quality_rate
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         try:
             mock_entry = MagicMock(spec=ProductionEntry)

@@ -15,7 +15,7 @@ from datetime import date, datetime, timedelta, timezone
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 
@@ -44,12 +44,12 @@ def get_aggregated_dashboard(
 
     This endpoint reduces 10+ API calls to a single request.
     """
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.quality_entry import QualityEntry
-    from backend.schemas.attendance_entry import AttendanceEntry
-    from backend.schemas.downtime_entry import DowntimeEntry
-    from backend.schemas.work_order import WorkOrder
-    from backend.schemas.hold_entry import HoldEntry
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.quality_entry import QualityEntry
+    from backend.orm.attendance_entry import AttendanceEntry
+    from backend.orm.downtime_entry import DowntimeEntry
+    from backend.orm.work_order import WorkOrder
+    from backend.orm.hold_entry import HoldEntry
     from backend.calculations.ppm import calculate_ppm
     from backend.calculations.dpmo import calculate_dpmo
     from backend.calculations.fpy_rty import calculate_fpy
@@ -213,7 +213,7 @@ def get_aggregated_dashboard(
 
     # ---- WIP AGING ----
     try:
-        from backend.schemas.hold_entry import HoldStatus
+        from backend.orm.hold_entry import HoldStatus
 
         # Count active holds (ON_HOLD status)
         wip_query = db.query(func.count(HoldEntry.hold_entry_id).label("total_count")).filter(

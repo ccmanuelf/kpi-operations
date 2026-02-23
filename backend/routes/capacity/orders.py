@@ -12,11 +12,11 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
 from backend.crud.capacity import orders
-from backend.schemas.capacity.orders import OrderStatus
+from backend.orm.capacity.orders import OrderStatus
 
 from ._models import (
     OrderCreate,

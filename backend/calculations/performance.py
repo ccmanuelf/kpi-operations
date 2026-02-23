@@ -10,8 +10,8 @@ Phase 1.2: Added pure calculation functions for service layer separation
 from decimal import Decimal
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
-from backend.schemas.product import Product
-from backend.schemas.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.production_entry import ProductionEntry
 from backend.calculations.efficiency import infer_ideal_cycle_time
 
 

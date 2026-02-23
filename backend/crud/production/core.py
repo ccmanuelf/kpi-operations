@@ -13,10 +13,10 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 import uuid
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.product import Product
-from backend.schemas.user import User
-from backend.models.production import (
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.user import User
+from backend.schemas.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
 )

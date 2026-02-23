@@ -314,7 +314,7 @@ class TestUserCreateModelValidation:
 
     def test_user_create_valid_password(self):
         """Test UserCreate accepts valid password"""
-        from backend.models.user import UserCreate
+        from backend.schemas.user import UserCreate
 
         user = UserCreate(
             username="testuser",
@@ -328,7 +328,7 @@ class TestUserCreateModelValidation:
 
     def test_user_create_invalid_password_rejected(self):
         """Test UserCreate rejects invalid password"""
-        from backend.models.user import UserCreate
+        from backend.schemas.user import UserCreate
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:
@@ -342,7 +342,7 @@ class TestUserCreateModelValidation:
 
     def test_user_create_missing_uppercase_rejected(self):
         """Test UserCreate rejects password missing uppercase"""
-        from backend.models.user import UserCreate
+        from backend.schemas.user import UserCreate
         from pydantic import ValidationError
 
         with pytest.raises(ValidationError) as exc_info:

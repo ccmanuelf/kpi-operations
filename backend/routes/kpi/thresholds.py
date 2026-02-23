@@ -13,7 +13,7 @@ import uuid
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 
 logger = get_module_logger(__name__)
 
@@ -29,8 +29,8 @@ def get_kpi_thresholds(
     If client_id is provided, returns client-specific thresholds merged with global defaults.
     If client_id is NULL/not provided, returns only global defaults.
     """
-    from backend.schemas.kpi_threshold import KPIThreshold
-    from backend.schemas.client import Client
+    from backend.orm.kpi_threshold import KPIThreshold
+    from backend.orm.client import Client
 
     # Get global defaults
     global_thresholds = db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None)).all()
@@ -85,7 +85,7 @@ def update_kpi_thresholds(
     if current_user.role not in ["admin", "poweruser"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin or supervisor access required")
 
-    from backend.schemas.kpi_threshold import KPIThreshold
+    from backend.orm.kpi_threshold import KPIThreshold
 
     client_id = thresholds_data.get("client_id")
     thresholds = thresholds_data.get("thresholds", {})
@@ -149,7 +149,7 @@ def delete_client_threshold(
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
-    from backend.schemas.kpi_threshold import KPIThreshold
+    from backend.orm.kpi_threshold import KPIThreshold
 
     threshold = (
         db.query(KPIThreshold).filter(KPIThreshold.client_id == client_id, KPIThreshold.kpi_key == kpi_key).first()

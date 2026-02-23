@@ -183,7 +183,7 @@ class PDFReportGenerator:
         # Metadata table
         client_name = "All Clients"
         if client_id:
-            from backend.schemas.client import Client
+            from backend.orm.client import Client
 
             client = self.db.query(Client).filter(Client.client_id == client_id).first()
             if client:
@@ -339,10 +339,10 @@ class PDFReportGenerator:
 
     def _fetch_kpi_summary(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch summary data for all KPIs from database"""
-        from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.quality_entry import QualityEntry
-        from backend.schemas.attendance_entry import AttendanceEntry
-        from backend.schemas.product import Product
+        from backend.orm.production_entry import ProductionEntry
+        from backend.orm.quality_entry import QualityEntry
+        from backend.orm.attendance_entry import AttendanceEntry
+        from backend.orm.product import Product
 
         kpi_data = []
 
@@ -453,10 +453,10 @@ class PDFReportGenerator:
         self, kpi_key: str, client_id: Optional[int], start_date: date, end_date: date
     ) -> Dict[str, Any]:
         """Fetch detailed metrics for specific KPI from database"""
-        from backend.schemas.production_entry import ProductionEntry
-        from backend.schemas.quality_entry import QualityEntry
-        from backend.schemas.attendance_entry import AttendanceEntry
-        from backend.schemas.product import Product
+        from backend.orm.production_entry import ProductionEntry
+        from backend.orm.quality_entry import QualityEntry
+        from backend.orm.attendance_entry import AttendanceEntry
+        from backend.orm.product import Product
 
         details = {}
 

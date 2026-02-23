@@ -10,7 +10,7 @@ from datetime import date
 from sqlalchemy.orm import Session
 from fastapi import Depends
 
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.crud.attendance import (
     create_attendance_record,
     get_attendance_record,

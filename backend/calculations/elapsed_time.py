@@ -17,8 +17,8 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from backend.schemas.work_order import WorkOrder
-from backend.schemas.workflow import WorkflowTransitionLog
+from backend.orm.work_order import WorkOrder
+from backend.orm.workflow import WorkflowTransitionLog
 
 
 def _ensure_tz_compatible(dt1: datetime, dt2: datetime) -> tuple:

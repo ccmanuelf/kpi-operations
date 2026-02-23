@@ -10,12 +10,19 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
-from backend.models.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
-from backend.crud.hold import create_wip_hold, get_wip_hold, get_wip_holds, update_wip_hold, delete_wip_hold
-from backend.crud.hold_catalog import validate_hold_status_for_client, validate_hold_reason_for_client
+from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
+from backend.services.hold_service import (
+    create_hold as create_wip_hold,
+    get_hold as get_wip_hold,
+    list_holds as get_wip_holds,
+    update_hold as update_wip_hold,
+    delete_hold as delete_wip_hold,
+    validate_status_for_client as validate_hold_status_for_client,
+    validate_reason_for_client as validate_hold_reason_for_client,
+)
 from backend.calculations.wip_aging import identify_chronic_holds
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.constants import DEFAULT_PAGE_SIZE, SMALL_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 from backend.utils.logging_utils import get_module_logger
 
@@ -147,7 +154,7 @@ def approve_hold(
     Approve a pending hold request (supervisor only).
     Transitions hold from PENDING_HOLD_APPROVAL to ON_HOLD.
     """
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
 
     db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
     if not db_hold:
@@ -182,7 +189,7 @@ def request_resume(hold_id: str, db: Session = Depends(get_db), current_user: Us
     Request to resume a hold (any user can request).
     Transitions hold from ON_HOLD to PENDING_RESUME_APPROVAL.
     """
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
 
     db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
     if not db_hold:
@@ -220,7 +227,7 @@ def approve_resume(
     Transitions hold from PENDING_RESUME_APPROVAL to RESUMED.
     Auto-calculates hold duration.
     """
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
     from decimal import Decimal
 
     db_hold = db.query(HoldEntry).filter(HoldEntry.hold_entry_id == hold_id).first()
@@ -273,7 +280,7 @@ def get_pending_approvals(
     Get all holds pending approval (supervisor only).
     Returns holds with PENDING_HOLD_APPROVAL or PENDING_RESUME_APPROVAL status.
     """
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
 
     query = db.query(HoldEntry)
 
@@ -317,7 +324,7 @@ def calculate_wip_aging_kpi(
 
     SECURITY: Requires authentication; non-admin users see only their assigned client.
     """
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
 
     # Determine effective client filter
     effective_client_id = client_id
@@ -396,8 +403,8 @@ def get_top_aging_items(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
     """Get top aging WIP items - for WIP Aging view table"""
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.work_order import WorkOrder
 
     query = (
         db.query(
@@ -438,7 +445,7 @@ def get_wip_aging_trend(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
     """Get WIP aging trend data - for WIP Aging view chart"""
-    from backend.schemas.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry, HoldStatus
 
     if not start_date:
         start_date = date.today() - timedelta(days=LOOKBACK_MONTHLY_DAYS)

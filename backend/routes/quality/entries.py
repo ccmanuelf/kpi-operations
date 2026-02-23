@@ -13,19 +13,19 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
-from backend.models.quality import (
+from backend.schemas.quality import (
     QualityInspectionCreate,
     QualityInspectionUpdate,
     QualityInspectionResponse,
 )
-from backend.crud.quality import (
-    create_quality_inspection,
-    get_quality_inspection,
-    get_quality_inspections,
-    update_quality_inspection,
-    delete_quality_inspection,
+from backend.services.quality_crud_service import (
+    create_inspection as create_quality_inspection,
+    get_inspection as get_quality_inspection,
+    list_inspections as get_quality_inspections,
+    update_inspection as update_quality_inspection,
+    delete_inspection as delete_quality_inspection,
 )
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
 
@@ -105,7 +105,7 @@ def get_quality_statistics(
     SECURITY: Returns only data for user's authorized clients
     """
     from sqlalchemy import func, cast, Date
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.quality_entry import QualityEntry
 
     query = db.query(
         func.sum(QualityEntry.units_inspected).label("total_inspected"),
@@ -165,7 +165,7 @@ def get_quality_by_work_order(
     Get all quality inspections for a specific work order
     SECURITY: Returns only inspections for user's authorized clients
     """
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.quality_entry import QualityEntry
 
     query = db.query(QualityEntry).filter(QualityEntry.work_order_id == work_order_id)
 

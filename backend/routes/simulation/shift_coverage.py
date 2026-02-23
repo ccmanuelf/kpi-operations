@@ -10,8 +10,8 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
-from backend.schemas.simulation import (
+from backend.orm.user import User
+from backend.orm.simulation import (
     ShiftCoverageSimulationRequest,
     ShiftCoverageSimulationResponse,
     MultiShiftCoverageRequest,

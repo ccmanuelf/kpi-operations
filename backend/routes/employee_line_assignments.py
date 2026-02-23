@@ -9,21 +9,21 @@ from typing import List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
-from backend.models.employee_line_assignment import (
+from backend.schemas.employee_line_assignment import (
     EmployeeLineAssignmentCreate,
     EmployeeLineAssignmentUpdate,
     EmployeeLineAssignmentResponse,
 )
-from backend.crud.employee_line_assignment import (
-    create_assignment,
-    list_assignments,
-    get_assignment,
-    get_employee_lines,
-    get_line_employees,
-    update_assignment,
-    end_assignment,
+from backend.services.employee_line_assignment_service import (
+    create_line_assignment as create_assignment,
+    list_line_assignments as list_assignments,
+    get_line_assignment as get_assignment,
+    get_lines_for_employee as get_employee_lines,
+    get_employees_for_line as get_line_employees,
+    update_line_assignment as update_assignment,
+    end_line_assignment as end_assignment,
 )
 
 logger = get_module_logger(__name__)

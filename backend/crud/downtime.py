@@ -9,10 +9,10 @@ from typing import Optional, List
 from datetime import date
 from fastapi import HTTPException
 
-from backend.schemas.downtime_entry import DowntimeEntry
-from backend.models.downtime import DowntimeEventCreate, DowntimeEventUpdate, DowntimeEventResponse
+from backend.orm.downtime_entry import DowntimeEntry
+from backend.schemas.downtime import DowntimeEventCreate, DowntimeEventUpdate, DowntimeEventResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.soft_delete import soft_delete
 
 

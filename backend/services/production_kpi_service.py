@@ -20,9 +20,9 @@ from sqlalchemy import func, and_
 
 logger = logging.getLogger(__name__)
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.shift import Shift
 from backend.crud.client_config import get_client_config_or_defaults
 from backend.cache import get_cache
 from backend.cache.kpi_cache import build_cache_key

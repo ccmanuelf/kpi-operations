@@ -10,9 +10,9 @@ from datetime import datetime, timezone
 import uuid
 
 from backend.database import get_db
-from backend.models.user import UserCreate, UserUpdate, UserResponse
+from backend.schemas.user import UserCreate, UserUpdate, UserResponse
 from backend.auth.jwt import get_password_hash, get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

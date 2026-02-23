@@ -15,24 +15,24 @@ from backend.utils.logging_utils import get_module_logger, log_operation, log_er
 from backend.constants import DEFAULT_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
 
 logger = get_module_logger(__name__)
-from backend.models.attendance import (
+from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
     AbsenteeismCalculationResponse,
 )
-from backend.crud.attendance import (
-    create_attendance_record,
-    get_attendance_record,
-    get_attendance_records,
-    update_attendance_record,
-    delete_attendance_record,
-    bulk_create_attendance_records,
-    mark_all_present,
+from backend.services.attendance_service import (
+    create_record as create_attendance_record,
+    get_record as get_attendance_record,
+    list_records as get_attendance_records,
+    update_record as update_attendance_record,
+    delete_record as delete_attendance_record,
+    bulk_create_records as bulk_create_attendance_records,
+    mark_all_employees_present as mark_all_present,
 )
 from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
 
@@ -158,7 +158,7 @@ def get_attendance_statistics(
     SECURITY: Returns only data for user's authorized clients
     """
     from sqlalchemy import func, case, cast, Date
-    from backend.schemas.attendance_entry import AttendanceEntry
+    from backend.orm.attendance_entry import AttendanceEntry
 
     # Convert is_absent to status for backward compatibility
     status_case = case(
@@ -289,7 +289,7 @@ def calculate_absenteeism_kpi(
     - high_absence_employees: Employees with high absence counts
     """
     from datetime import timedelta
-    from backend.schemas.attendance_entry import AttendanceEntry
+    from backend.orm.attendance_entry import AttendanceEntry
     from sqlalchemy import func, desc
 
     # Default to last 30 days if dates not provided
@@ -338,7 +338,7 @@ def calculate_absenteeism_kpi(
 
     # Get shift_id for response if not provided
     if shift_id is None:
-        from backend.schemas.shift import Shift
+        from backend.orm.shift import Shift
 
         shift_query = db.query(Shift)
         if effective_client_id:
@@ -469,7 +469,7 @@ def get_absenteeism_trend(
     Returns array of { date, value } where value is the absenteeism rate %
     """
     from datetime import timedelta
-    from backend.schemas.attendance_entry import AttendanceEntry
+    from backend.orm.attendance_entry import AttendanceEntry
     from sqlalchemy import func
 
     # Default to last 30 days if dates not provided

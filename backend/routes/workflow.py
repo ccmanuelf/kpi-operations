@@ -17,8 +17,9 @@ from datetime import datetime
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
-from backend.models.workflow import (
+from backend.orm.user import User
+from backend.dependencies import PaginationParams
+from backend.schemas.workflow import (
     WorkflowTransitionCreate,
     WorkflowTransitionResponse,
     WorkflowTransitionHistory,
@@ -33,18 +34,18 @@ from backend.models.workflow import (
     WorkflowTemplate,
     WORKFLOW_TEMPLATES,
 )
-from backend.crud.workflow import (
-    get_work_order_transitions,
-    get_client_transitions,
-    get_workflow_configuration,
-    update_workflow_configuration,
-    apply_workflow_template,
-    transition_work_order,
-    validate_transition,
-    get_allowed_transitions_for_work_order,
-    bulk_transition_work_orders,
-    get_transition_statistics,
-    get_status_distribution,
+from backend.services.workflow_crud_service import (
+    get_transitions_for_work_order as get_work_order_transitions,
+    get_transitions_for_client as get_client_transitions,
+    get_config as get_workflow_configuration,
+    update_config as update_workflow_configuration,
+    apply_template as apply_workflow_template,
+    execute_transition as transition_work_order,
+    check_transition_valid as validate_transition,
+    get_allowed_transitions as get_allowed_transitions_for_work_order,
+    bulk_transition as bulk_transition_work_orders,
+    get_statistics as get_transition_statistics,
+    get_distribution as get_status_distribution,
 )
 from backend.calculations.elapsed_time import (
     calculate_work_order_elapsed_times,
@@ -52,7 +53,7 @@ from backend.calculations.elapsed_time import (
     get_transition_elapsed_times,
     calculate_stage_duration_summary,
 )
-from backend.schemas.work_order import WorkOrder
+from backend.orm.work_order import WorkOrder
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -374,8 +375,7 @@ def get_client_status_distribution(
 @router.get("/transitions/{client_id}", response_model=List[WorkflowTransitionResponse])
 def get_client_all_transitions(
     client_id: str,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500),
+    pagination: PaginationParams = Depends(),
     from_status: Optional[str] = Query(None, description="Filter by from_status"),
     to_status: Optional[str] = Query(None, description="Filter by to_status"),
     trigger_source: Optional[str] = Query(None, description="Filter by trigger source"),
@@ -393,8 +393,8 @@ def get_client_all_transitions(
         db=db,
         client_id=client_id,
         current_user=current_user,
-        skip=skip,
-        limit=limit,
+        skip=pagination.skip,
+        limit=pagination.limit,
         from_status=from_status,
         to_status=to_status,
         trigger_source=trigger_source,

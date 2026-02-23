@@ -12,8 +12,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
-from backend.schemas import ClientType
-from backend.schemas.work_order import WorkOrderStatus
+from backend.orm import ClientType
+from backend.orm.work_order import WorkOrderStatus
 from backend.tests.fixtures.factories import TestDataFactory
 
 
@@ -358,8 +358,8 @@ def otd_real_db():
 @pytest.fixture
 def otd_setup(otd_real_db):
     """Create standard test data for OTD tests."""
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
 
     db = otd_real_db
 
@@ -404,7 +404,7 @@ class TestCalculateOTDWithData:
     def test_calculate_otd_with_confirmed_entries(self, otd_setup):
         """Test OTD calculation with confirmed entries (lines 140-148)."""
         from backend.calculations.otd import calculate_otd
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -472,7 +472,7 @@ class TestCalculateLeadTimeWithData:
     def test_calculate_lead_time_success(self, otd_setup):
         """Test lead time calculation with entries (lines 170-175)."""
         from backend.calculations.otd import calculate_lead_time
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -521,7 +521,7 @@ class TestCalculateLeadTimeWithData:
     def test_calculate_lead_time_single_entry(self, otd_setup):
         """Test lead time with single entry."""
         from backend.calculations.otd import calculate_lead_time
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -560,7 +560,7 @@ class TestCalculateCycleTimeWithData:
     def test_calculate_cycle_time_success(self, otd_setup):
         """Test cycle time calculation with entries (line 193)."""
         from backend.calculations.otd import calculate_cycle_time
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -613,7 +613,7 @@ class TestIdentifyLateOrdersWithData:
     def test_identify_late_orders_with_entries(self, otd_setup):
         """Test late order identification with actual entries (lines 251-260)."""
         from backend.calculations.otd import identify_late_orders
-        from backend.schemas.production_entry import ProductionEntry
+        from backend.orm.production_entry import ProductionEntry
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -653,7 +653,7 @@ class TestCalculateOTDByWorkOrderWithData:
     def test_calculate_otd_by_work_order_found(self, otd_setup):
         """Test OTD by work order with actual work order (lines 453-482)."""
         from backend.calculations.otd import calculate_otd_by_work_order
-        from backend.schemas.work_order import WorkOrder
+        from backend.orm.work_order import WorkOrder
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -685,7 +685,7 @@ class TestCalculateOTDByWorkOrderWithData:
     def test_calculate_otd_by_work_order_late(self, otd_setup):
         """Test OTD by work order for late delivery."""
         from backend.calculations.otd import calculate_otd_by_work_order
-        from backend.schemas.work_order import WorkOrder
+        from backend.orm.work_order import WorkOrder
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -715,7 +715,7 @@ class TestCalculateOTDByWorkOrderWithData:
     def test_calculate_otd_by_work_order_in_progress(self, otd_setup):
         """Test OTD by work order for in-progress order."""
         from backend.calculations.otd import calculate_otd_by_work_order
-        from backend.schemas.work_order import WorkOrder
+        from backend.orm.work_order import WorkOrder
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -747,7 +747,7 @@ class TestCalculateTrueOTDWithData:
     def test_calculate_true_otd_with_orders(self, otd_setup):
         """Test TRUE-OTD calculation with actual orders (lines 327-344, 367-382)."""
         from backend.calculations.otd import calculate_true_otd
-        from backend.schemas.work_order import WorkOrder
+        from backend.orm.work_order import WorkOrder
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -791,7 +791,7 @@ class TestCalculateOTDByProductWithData:
     def test_calculate_otd_by_product_with_orders(self, otd_setup):
         """Test OTD by product with actual orders (lines 610-655)."""
         from backend.calculations.otd import calculate_otd_by_product
-        from backend.schemas.work_order import WorkOrder
+        from backend.orm.work_order import WorkOrder
 
         db = otd_setup["db"]
         client = otd_setup["client"]
@@ -843,7 +843,7 @@ class TestCalculateTrueOTDEdgeCases:
     def test_true_otd_with_inferred_dates(self, otd_setup):
         """Test TRUE-OTD with orders requiring date inference (lines 335-346, 374-378)."""
         from backend.calculations.otd import calculate_true_otd
-        from backend.schemas.work_order import WorkOrder
+        from backend.orm.work_order import WorkOrder
 
         db = otd_setup["db"]
         client = otd_setup["client"]

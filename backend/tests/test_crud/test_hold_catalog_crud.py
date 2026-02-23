@@ -5,8 +5,8 @@ Uses real database sessions — no mocks for DB layer.
 
 import pytest
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.hold_status_catalog import HoldStatusCatalog
-from backend.schemas.hold_reason_catalog import HoldReasonCatalog
+from backend.orm.hold_status_catalog import HoldStatusCatalog
+from backend.orm.hold_reason_catalog import HoldReasonCatalog
 from backend.crud.hold_catalog import (
     create_hold_status,
     list_hold_statuses,
@@ -22,7 +22,7 @@ from backend.crud.hold_catalog import (
     DEFAULT_HOLD_STATUSES,
     DEFAULT_HOLD_REASONS,
 )
-from backend.models.hold_catalog import (
+from backend.schemas.hold_catalog import (
     HoldStatusCatalogCreate,
     HoldStatusCatalogUpdate,
     HoldReasonCatalogCreate,

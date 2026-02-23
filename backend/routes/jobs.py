@@ -11,11 +11,19 @@ from typing import List, Optional
 from datetime import date
 
 from backend.database import get_db
-from backend.models.job import JobCreate, JobUpdate, JobComplete, JobResponse
-from backend.crud.job import create_job, get_job, get_jobs, get_jobs_by_work_order, update_job, delete_job, complete_job
+from backend.schemas.job import JobCreate, JobUpdate, JobComplete, JobResponse
+from backend.services.job_service import (
+    create_job_record as create_job,
+    get_job_by_id as get_job,
+    list_jobs as get_jobs,
+    list_jobs_by_work_order as get_jobs_by_work_order,
+    update_job_record as update_job,
+    delete_job_record as delete_job,
+    complete_job_record as complete_job,
+)
 from backend.calculations.fpy_rty import calculate_job_yield, calculate_work_order_job_rty, calculate_job_rty_summary
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -222,8 +230,8 @@ def get_job_efficiency(job_id: str, db: Session = Depends(get_db), current_user:
     - Average efficiency per shift
     """
     from backend.services.production_kpi_service import ProductionKPIService
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.job import Job
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.job import Job
     from decimal import Decimal
 
     # Verify user has access to this job
@@ -289,7 +297,7 @@ def get_job_performance(job_id: str, db: Session = Depends(get_db), current_user
     Aggregates all production entries linked to this job.
     """
     from backend.services.production_kpi_service import ProductionKPIService
-    from backend.schemas.production_entry import ProductionEntry
+    from backend.orm.production_entry import ProductionEntry
     from decimal import Decimal
 
     # Verify user has access to this job
@@ -342,7 +350,7 @@ def get_job_ppm(job_id: str, db: Session = Depends(get_db), current_user: User =
 
     Aggregates all quality entries linked to this job.
     """
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.quality_entry import QualityEntry
     from backend.calculations.ppm import calculate_ppm_pure
     from decimal import Decimal
 
@@ -388,7 +396,7 @@ def get_job_dpmo(job_id: str, db: Session = Depends(get_db), current_user: User 
 
     Uses part-specific opportunities if available in PART_OPPORTUNITIES table.
     """
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.quality_entry import QualityEntry
     from backend.calculations.dpmo import (
         calculate_dpmo_pure,
         calculate_sigma_level_pure,
@@ -460,8 +468,8 @@ def get_job_kpi_summary(job_id: str, db: Session = Depends(get_db), current_user
     - DPMO with Sigma Level
     """
     from backend.services.production_kpi_service import ProductionKPIService
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.quality_entry import QualityEntry
     from backend.calculations.ppm import calculate_ppm_pure
     from backend.calculations.dpmo import (
         calculate_dpmo_pure,

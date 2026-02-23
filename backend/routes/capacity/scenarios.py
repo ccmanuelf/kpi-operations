@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
 
@@ -44,7 +44,7 @@ def list_scenarios(
     """Get scenarios for a client."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.scenario import CapacityScenario
+    from backend.orm.capacity.scenario import CapacityScenario
 
     query = db.query(CapacityScenario).filter(CapacityScenario.client_id == client_id)
 
@@ -64,7 +64,7 @@ def create_scenario(
     """Create a new scenario."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.scenario import CapacityScenario
+    from backend.orm.capacity.scenario import CapacityScenario
 
     new_scenario = CapacityScenario(
         client_id=client_id,
@@ -91,7 +91,7 @@ def get_scenario(
     """Get a specific scenario."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.scenario import CapacityScenario
+    from backend.orm.capacity.scenario import CapacityScenario
 
     scenario = (
         db.query(CapacityScenario)
@@ -115,7 +115,7 @@ def run_scenario(
     """Run/evaluate a scenario by applying its parameters and analyzing impact."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.scenario import CapacityScenario
+    from backend.orm.capacity.scenario import CapacityScenario
 
     scenario = (
         db.query(CapacityScenario)
@@ -137,7 +137,7 @@ def run_scenario(
 
         if not period_start or not period_end:
             if scenario.base_schedule_id:
-                from backend.schemas.capacity.schedule import CapacitySchedule
+                from backend.orm.capacity.schedule import CapacitySchedule
 
                 base_schedule = (
                     db.query(CapacitySchedule).filter(CapacitySchedule.id == scenario.base_schedule_id).first()
@@ -188,7 +188,7 @@ def delete_scenario(
     """Delete a scenario."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.schemas.capacity.scenario import CapacityScenario
+    from backend.orm.capacity.scenario import CapacityScenario
 
     scenario = (
         db.query(CapacityScenario)

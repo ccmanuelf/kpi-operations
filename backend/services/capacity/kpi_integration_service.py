@@ -21,10 +21,10 @@ from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, case
 
-from backend.schemas.capacity.kpi_commitment import CapacityKPICommitment
-from backend.schemas.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.work_order import WorkOrder
+from backend.orm.capacity.kpi_commitment import CapacityKPICommitment
+from backend.orm.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.work_order import WorkOrder
 from backend.events.bus import event_bus
 from backend.events.domain_events import KPIVarianceAlert
 from backend.exceptions import ResourceNotFoundError

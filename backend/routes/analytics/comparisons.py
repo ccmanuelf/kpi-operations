@@ -15,9 +15,9 @@ from decimal import Decimal
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.analytics import (
+from backend.orm.analytics import (
     ComparisonResponse,
     ClientComparisonData,
     HeatmapResponse,
@@ -26,11 +26,11 @@ from backend.schemas.analytics import (
     ParetoItem,
     KPIType,
 )
-from backend.crud.analytics import (
-    get_shift_heatmap_data,
-    get_client_comparison_data,
-    get_defect_pareto_data,
-    get_all_shifts,
+from backend.services.analytics_crud_service import (
+    get_heatmap as get_shift_heatmap_data,
+    get_comparison as get_client_comparison_data,
+    get_pareto as get_defect_pareto_data,
+    list_all_shifts as get_all_shifts,
 )
 from backend.utils.logging_utils import get_module_logger
 from ._helpers import parse_time_range, get_performance_rating, get_heatmap_color_code

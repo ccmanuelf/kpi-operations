@@ -18,12 +18,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.auth.jwt import get_current_user
-from backend.crud.capacity.calendar import (
-    get_calendar_entry_by_date,
-    get_calendar_for_period,
+from backend.services.calendar_service import (
+    get_calendar_entry as get_calendar_entry_by_date,
+    get_calendar_period as get_calendar_for_period,
 )
 from backend.database import get_db
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

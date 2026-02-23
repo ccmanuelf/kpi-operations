@@ -6,7 +6,7 @@ Uses real database (transactional_db) — no mocks.
 import pytest
 from fastapi import HTTPException
 
-from backend.schemas.break_time import BreakTime
+from backend.orm.break_time import BreakTime
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.crud.break_time import (
     create_break_time,
@@ -16,7 +16,7 @@ from backend.crud.break_time import (
     update_break_time,
     deactivate_break_time,
 )
-from backend.models.break_time import BreakTimeCreate, BreakTimeUpdate
+from backend.schemas.break_time import BreakTimeCreate, BreakTimeUpdate
 
 
 class TestBreakTimeCRUD:

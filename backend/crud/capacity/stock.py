@@ -13,7 +13,7 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 
-from backend.schemas.capacity.stock import CapacityStockSnapshot
+from backend.orm.capacity.stock import CapacityStockSnapshot
 from backend.utils.tenant_guard import ensure_client_id
 
 

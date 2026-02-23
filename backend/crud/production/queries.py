@@ -9,8 +9,8 @@ from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 
-from backend.schemas.production_entry import ProductionEntry
-from backend.schemas.user import User
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 
 

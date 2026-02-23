@@ -13,8 +13,8 @@ from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
-from backend.schemas.part_opportunities import PartOpportunities
-from backend.schemas.user import User
+from backend.orm.part_opportunities import PartOpportunities
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
 

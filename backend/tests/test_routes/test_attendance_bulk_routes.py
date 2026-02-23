@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.schemas import ClientType, AttendanceEntry
+from backend.orm import ClientType, AttendanceEntry
 from backend.routes.attendance import router as attendance_router
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.fixtures.auth_fixtures import create_test_token

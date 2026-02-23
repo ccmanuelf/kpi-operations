@@ -13,8 +13,8 @@ import json
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
-from backend.models.preferences import (
+from backend.orm.user import User
+from backend.schemas.preferences import (
     DashboardPreferences,
     DashboardPreferencesUpdate,
     PreferenceResponse,
@@ -23,13 +23,13 @@ from backend.models.preferences import (
     ResetPreferencesResponse,
     WidgetDefaultResponse,
 )
-from backend.crud.preferences import (
-    get_user_dashboard_preferences,
-    get_user_dashboard_preferences_full,
-    save_user_dashboard_preferences,
-    update_user_dashboard_preferences,
-    get_role_default_widgets,
-    reset_to_role_defaults,
+from backend.services.preferences_service import (
+    get_dashboard_preferences as get_user_dashboard_preferences,
+    get_dashboard_preferences_full as get_user_dashboard_preferences_full,
+    save_dashboard_preferences as save_user_dashboard_preferences,
+    update_dashboard_preferences as update_user_dashboard_preferences,
+    get_default_widgets_for_role as get_role_default_widgets,
+    reset_preferences_to_defaults as reset_to_role_defaults,
 )
 from backend.utils.logging_utils import get_module_logger
 
@@ -95,7 +95,8 @@ async def get_dashboard_preferences(
     except Exception:
         logger.warning("Error retrieving dashboard preferences (returning defaults)", exc_info=True)
         # Return default preferences if DB is unavailable or table doesn't exist
-        from backend.crud.preferences import FALLBACK_DEFAULT_WIDGETS
+        from backend.services.preferences_service import get_fallback_widgets
+        FALLBACK_DEFAULT_WIDGETS = get_fallback_widgets()
 
         default_prefs = DashboardPreferences(
             layout="grid", widgets=FALLBACK_DEFAULT_WIDGETS, theme="light", auto_refresh=0, default_time_range="7d"

@@ -1,61 +1,99 @@
 """
-DEFECT_DETAIL table ORM schema (SQLAlchemy)
-Detailed defect categorization for quality analysis
-Source: 05-Phase4_Quality_Inventory.csv lines 28-37
+Pydantic models for DEFECT_DETAIL API requests and responses
+Used for API validation, serialization, and documentation
 
-NOTE: defect_type is now a free-form string validated against DEFECT_TYPE_CATALOG.
-Each client has their own set of valid defect types defined in the catalog.
-The DefectType enum is kept for backward compatibility but is DEPRECATED.
+NOTE: defect_type is now a free-form string that should match a value from
+the client's DEFECT_TYPE_CATALOG. This allows each client to define their
+own industry-specific defect types.
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.sql import func
-from backend.database import Base
-import enum
+from pydantic import BaseModel, Field
+from typing import Optional
+from datetime import datetime
 
 
-class DefectType(str, enum.Enum):
-    """
-    DEPRECATED: Use DEFECT_TYPE_CATALOG for client-specific defect types.
-    This enum is kept only for backward compatibility with existing data.
-    New defect entries should use defect_type values from the client's catalog.
-    """
+class DefectDetailBase(BaseModel):
+    """Base defect detail fields shared across schemas"""
 
-    STITCHING = "Stitching"
-    FABRIC_DEFECT = "Fabric Defect"
-    MEASUREMENT = "Measurement"
-    COLOR_SHADE = "Color Shade"
-    PILLING = "Pilling"
-    HOLE_TEAR = "Hole/Tear"
-    STAIN = "Stain"
-    OTHER = "Other"
+    quality_entry_id: str = Field(..., description="Foreign key to QUALITY_ENTRY")
+    client_id_fk: str = Field(..., description="Foreign key to CLIENT (multi-tenant)")
+    defect_type: str = Field(..., max_length=100, description="Defect type from client's DEFECT_TYPE_CATALOG")
+    defect_category: Optional[str] = Field(None, max_length=100, description="Defect sub-category")
+    defect_count: int = Field(..., ge=0, description="Number of defects found")
+    severity: Optional[str] = Field(None, max_length=20, description="Severity level (CRITICAL, MAJOR, MINOR)")
+    location: Optional[str] = Field(None, max_length=255, description="Location on product")
+    description: Optional[str] = Field(None, description="Detailed defect description")
 
 
-class DefectDetail(Base):
-    """DEFECT_DETAIL table - Granular defect tracking"""
+class DefectDetailCreate(DefectDetailBase):
+    """Schema for creating a new defect detail record"""
 
-    __tablename__ = "DEFECT_DETAIL"
-    __table_args__ = {"extend_existing": True}
+    defect_detail_id: str = Field(..., max_length=50, description="Unique defect detail identifier")
 
-    # Primary key
-    defect_detail_id = Column(String(50), primary_key=True)
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "defect_detail_id": "DEF-2024-001",
+                "quality_entry_id": "QE-2024-001",
+                "client_id_fk": "CLIENT-001",
+                "defect_type": "Stitching",
+                "defect_category": "Loose Thread",
+                "defect_count": 5,
+                "severity": "MINOR",
+                "location": "Left Sleeve",
+                "description": "Found loose threads on seam",
+            }
+        }
 
-    # Parent quality entry
-    quality_entry_id = Column(String(50), ForeignKey("QUALITY_ENTRY.quality_entry_id"), nullable=False, index=True)
 
-    # Multi-tenant isolation (HIGH SECURITY FIX)
-    client_id_fk = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+class DefectDetailUpdate(BaseModel):
+    """Schema for updating defect detail (all fields optional)"""
 
-    # Defect classification - NOW uses client-specific catalog (String, not Enum)
-    # Validated against DEFECT_TYPE_CATALOG entries for the client
-    defect_type = Column(String(100), nullable=False, index=True)
-    defect_category = Column(String(100))  # Sub-category
-    defect_count = Column(Integer, nullable=False)
+    quality_entry_id: Optional[str] = None
+    client_id_fk: Optional[str] = None
+    defect_type: Optional[str] = Field(None, max_length=100)
+    defect_category: Optional[str] = Field(None, max_length=100)
+    defect_count: Optional[int] = Field(None, ge=0)
+    severity: Optional[str] = Field(None, max_length=20)
+    location: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
 
-    # Defect details
-    severity = Column(String(20))  # CRITICAL, MAJOR, MINOR
-    location = Column(String(255))  # Where on the product
-    description = Column(Text)
+    class Config:
+        json_schema_extra = {
+            "example": {"defect_count": 3, "severity": "MAJOR", "description": "Updated count after re-inspection"}
+        }
 
-    # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+
+class DefectDetailResponse(DefectDetailBase):
+    """Schema for defect detail API responses (includes timestamps)"""
+
+    defect_detail_id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+        json_schema_extra = {
+            "example": {
+                "defect_detail_id": "DEF-2024-001",
+                "quality_entry_id": "QE-2024-001",
+                "client_id_fk": "CLIENT-001",
+                "defect_type": "Stitching",
+                "defect_category": "Loose Thread",
+                "defect_count": 5,
+                "severity": "MINOR",
+                "location": "Left Sleeve",
+                "description": "Found loose threads on seam",
+                "created_at": "2024-01-15T10:30:00",
+            }
+        }
+
+
+class DefectSummaryResponse(BaseModel):
+    """Schema for defect summary by type"""
+
+    defect_type: str = Field(..., description="Defect type from client's catalog")
+    total_count: int = Field(..., ge=0, description="Number of defect records")
+    defect_count: int = Field(..., ge=0, description="Total defects found")
+
+    class Config:
+        json_schema_extra = {"example": {"defect_type": "Stitching", "total_count": 45, "defect_count": 120}}

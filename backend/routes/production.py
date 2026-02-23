@@ -17,7 +17,7 @@ from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
 
 logger = get_module_logger(__name__)
-from backend.models.production import (
+from backend.schemas.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
     ProductionEntryResponse,
@@ -25,22 +25,22 @@ from backend.models.production import (
     CSVUploadResponse,
     KPICalculationResponse,
 )
-from backend.models.import_log import BatchImportRequest, BatchImportResponse
-from backend.crud.production import (
-    create_production_entry,
-    get_production_entry,
-    get_production_entries,
-    update_production_entry,
-    delete_production_entry,
-    get_production_entry_with_details,
-    get_daily_summary,
+from backend.schemas.import_log import BatchImportRequest, BatchImportResponse
+from backend.services.production_crud_service import (
+    create_entry as create_production_entry,
+    get_entry as get_production_entry,
+    list_entries as get_production_entries,
+    update_entry as update_production_entry,
+    delete_entry as delete_production_entry,
+    get_entry_with_details as get_production_entry_with_details,
+    get_daily_production_summary as get_daily_summary,
 )
 from backend.calculations.efficiency import calculate_efficiency
 from backend.calculations.performance import calculate_performance, calculate_quality_rate
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
-from backend.schemas.product import Product
-from backend.schemas.shift import Shift
+from backend.orm.user import User
+from backend.orm.product import Product
+from backend.orm.shift import Shift
 
 
 router = APIRouter(prefix="/api/production", tags=["Production"])
@@ -343,7 +343,7 @@ def batch_import_production(
     # Create import log entry
     import_log_id = None
     try:
-        from backend.schemas.import_log import ImportLog
+        from backend.orm.import_log import ImportLog
 
         error_json = json.dumps(errors) if errors else None
 
@@ -392,7 +392,7 @@ import_logs_router = APIRouter(prefix="/api/import-logs", tags=["Production"])
 @import_logs_router.get("")
 def get_import_logs(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[dict]:
     """Get import logs for the current user"""
-    from backend.schemas.import_log import ImportLog
+    from backend.orm.import_log import ImportLog
 
     rows = (
         db.query(ImportLog)

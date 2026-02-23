@@ -8,10 +8,17 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from backend.database import get_db
-from backend.models.client import ClientCreate, ClientUpdate, ClientResponse, ClientSummary
-from backend.crud.client import create_client, get_client, get_clients, update_client, delete_client, get_active_clients
+from backend.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientSummary
+from backend.services.client_service import (
+    create_client_record as create_client,
+    get_client_by_id as get_client,
+    list_clients as get_clients,
+    update_client_record as update_client,
+    delete_client_record as delete_client,
+    list_active_clients as get_active_clients,
+)
 from backend.auth.jwt import get_current_user
-from backend.schemas.user import User
+from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

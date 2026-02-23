@@ -13,9 +13,9 @@ from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, cast, Date
 
-from backend.schemas.quality_entry import QualityEntry
-from backend.schemas.job import Job
-from backend.schemas.part_opportunities import PartOpportunities
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.job import Job
+from backend.orm.part_opportunities import PartOpportunities
 from backend.crud.client_config import get_client_config_or_defaults
 
 

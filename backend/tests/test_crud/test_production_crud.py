@@ -10,7 +10,7 @@ from decimal import Decimal
 from unittest.mock import patch
 from fastapi import HTTPException
 
-from backend.schemas import (
+from backend.orm import (
     Client,
     ClientType,
     User,

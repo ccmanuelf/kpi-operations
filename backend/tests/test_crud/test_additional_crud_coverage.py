@@ -11,8 +11,8 @@ from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.schemas.client import Client, ClientType
-from backend.schemas.user import User, UserRole
+from backend.orm.client import Client, ClientType
+from backend.orm.user import User, UserRole
 
 
 # =============================================================================

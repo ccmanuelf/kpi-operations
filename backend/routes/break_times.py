@@ -12,17 +12,17 @@ from backend.utils.logging_utils import get_module_logger, log_operation, log_er
 
 logger = get_module_logger(__name__)
 
-from backend.models.break_time import BreakTimeCreate, BreakTimeUpdate, BreakTimeResponse
-from backend.crud.break_time import (
-    create_break_time,
-    list_break_times,
-    list_break_times_for_client,
-    get_total_break_minutes,
-    update_break_time,
-    deactivate_break_time,
+from backend.schemas.break_time import BreakTimeCreate, BreakTimeUpdate, BreakTimeResponse
+from backend.services.break_time_service import (
+    create_break_time_record as create_break_time,
+    list_break_times_for_shift as list_break_times,
+    list_all_break_times_for_client as list_break_times_for_client,
+    get_total_break_minutes_for_shift as get_total_break_minutes,
+    update_break_time_record as update_break_time,
+    deactivate_break_time_record as deactivate_break_time,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.schemas.user import User
+from backend.orm.user import User
 
 router = APIRouter(prefix="/api/break-times", tags=["Break Times"])
 

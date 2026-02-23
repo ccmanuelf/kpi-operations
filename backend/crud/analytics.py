@@ -9,7 +9,7 @@ from datetime import date, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select, and_, or_, case
 from backend.middleware.client_auth import build_client_filter_clause, get_user_client_filter
-from backend.schemas.user import User
+from backend.orm.user import User
 
 
 def get_kpi_time_series_data(
@@ -33,8 +33,8 @@ def get_kpi_time_series_data(
         ClientAccessError: If user doesn't have access to this client
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
 
     # Verify client access
     verify_client_access(current_user, client_id)
@@ -93,9 +93,9 @@ def get_shift_heatmap_data(
         List of (date, shift_id, shift_name, avg_value) tuples
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.work_order import WorkOrder
-    from backend.schemas.shift import Shift
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
+    from backend.orm.shift import Shift
 
     verify_client_access(current_user, client_id)
 
@@ -153,9 +153,9 @@ def get_client_comparison_data(
     Returns:
         List of (client_id, client_name, avg_value, data_points) tuples
     """
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.work_order import WorkOrder
-    from backend.schemas.client import Client
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
+    from backend.orm.client import Client
 
     # Get user's client filter
     user_clients = get_user_client_filter(current_user)
@@ -220,8 +220,8 @@ def get_defect_pareto_data(
         List of (defect_type, total_count) tuples ordered by count descending
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.schemas.defect_detail import DefectDetail
-    from backend.schemas.quality_entry import QualityEntry
+    from backend.orm.defect_detail import DefectDetail
+    from backend.orm.quality_entry import QualityEntry
 
     verify_client_access(current_user, client_id)
 
@@ -251,7 +251,7 @@ def get_all_shifts(db: Session) -> List[Tuple[str, str]]:
     Returns:
         List of (shift_id, shift_name) tuples
     """
-    from backend.models.job import Shift
+    from backend.schemas.job import Shift
 
     query = select(Shift.shift_id, Shift.shift_name).order_by(Shift.shift_id)
 
@@ -271,7 +271,7 @@ def get_client_info(db: Session, client_id: str) -> Optional[Tuple[str, str]]:
     Returns:
         Tuple of (client_id, client_name) or None if not found
     """
-    from backend.models.client import Client
+    from backend.schemas.client import Client
 
     query = select(Client.client_id, Client.client_name).where(Client.client_id == client_id)
 
@@ -295,8 +295,8 @@ def get_date_range_data_availability(
         Tuple of (min_date, max_date, total_records)
     """
     from backend.middleware.client_auth import verify_client_access
-    from backend.schemas.production_entry import ProductionEntry
-    from backend.schemas.work_order import WorkOrder
+    from backend.orm.production_entry import ProductionEntry
+    from backend.orm.work_order import WorkOrder
 
     verify_client_access(current_user, client_id)
 

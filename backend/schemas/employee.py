@@ -1,42 +1,78 @@
 """
-EMPLOYEE table ORM schema (SQLAlchemy)
-Source: 01-Core_DataEntities_Inventory.csv lines 43-53
+Employee Pydantic models for request/response validation
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.sql import func
-from backend.database import Base
+from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from datetime import datetime
 
 
-class Employee(Base):
-    """EMPLOYEE table - Staff directory with floating pool flag"""
+class EmployeeCreate(BaseModel):
+    """Employee creation model"""
 
-    __tablename__ = "EMPLOYEE"
-    __table_args__ = {"extend_existing": True}
+    employee_code: str = Field(..., min_length=1, max_length=50, description="Unique employee code")
+    employee_name: str = Field(..., min_length=1, max_length=255, description="Employee full name")
+    client_id_assigned: Optional[str] = Field(None, description="Comma-separated client IDs, NULL for floating pool")
+    is_floating_pool: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=regular, 1=floating pool")
+    is_active: Optional[int] = Field(default=1, ge=0, le=1, description="Boolean: 1=active, 0=inactive (soft delete)")
+    department: Optional[str] = Field(None, max_length=50, description="Department classification")
+    contact_phone: Optional[str] = Field(None, max_length=50, description="Employee phone number for contact")
+    contact_email: Optional[str] = Field(None, max_length=255, description="Employee email address for notifications")
+    position: Optional[str] = Field(None, max_length=100, description="Job title or position within the organization")
+    hire_date: Optional[datetime] = Field(None, description="Date the employee was hired")
 
-    # Primary key
-    employee_id = Column(Integer, primary_key=True, autoincrement=True)
 
-    # Employee identification
-    employee_code = Column(String(50), unique=True, nullable=False, index=True)
-    employee_name = Column(String(255), nullable=False)
+class EmployeeUpdate(BaseModel):
+    """Employee update model (all fields optional)"""
 
-    # Multi-client assignment (comma-separated client IDs for leaders/supervisors)
-    client_id_assigned = Column(Text)  # NULL for floating pool, comma-separated for multi-client
+    employee_code: Optional[str] = Field(None, min_length=1, max_length=50, description="Updated unique employee code")
+    employee_name: Optional[str] = Field(None, min_length=1, max_length=255, description="Updated employee full name")
+    client_id_assigned: Optional[str] = Field(None, description="Updated comma-separated client IDs assignment")
+    is_floating_pool: Optional[int] = Field(None, ge=0, le=1, description="Updated floating pool flag: 0=regular, 1=floating pool")
+    is_active: Optional[int] = Field(None, ge=0, le=1, description="Updated active status: 1=active, 0=inactive")
+    department: Optional[str] = Field(None, max_length=50, description="Updated department classification")
+    contact_phone: Optional[str] = Field(None, max_length=50, description="Updated employee phone number")
+    contact_email: Optional[str] = Field(None, max_length=255, description="Updated employee email address")
+    position: Optional[str] = Field(None, max_length=100, description="Updated job title or position")
+    hire_date: Optional[datetime] = Field(None, description="Updated hire date")
 
-    # Floating pool flag
-    is_floating_pool = Column(Integer, nullable=False, default=0, index=True)  # Boolean: 0=regular, 1=floating
 
-    # Status and department
-    is_active = Column(Integer, nullable=False, default=1, index=True)  # Soft delete: 1=active, 0=inactive
-    department = Column(String(50))  # Department classification
+class EmployeeResponse(BaseModel):
+    """Employee response model"""
 
-    # Additional info
-    contact_phone = Column(String(50))
-    contact_email = Column(String(255))
-    position = Column(String(100))
-    hire_date = Column(DateTime)
+    employee_id: int = Field(..., description="Unique database identifier for the employee")
+    employee_code: str = Field(..., description="Unique employee code used across the system")
+    employee_name: str = Field(..., description="Employee full name")
+    client_id_assigned: Optional[str] = Field(None, description="Comma-separated client IDs the employee is assigned to")
+    is_floating_pool: int = Field(..., description="Floating pool flag: 0=regular assignment, 1=floating pool")
+    is_active: Optional[int] = Field(1, description="Active status: 1=active, 0=inactive (soft deleted)")
+    department: Optional[str] = Field(None, description="Department the employee belongs to")
+    contact_phone: Optional[str] = Field(None, description="Employee phone number")
+    contact_email: Optional[str] = Field(None, description="Employee email address")
+    position: Optional[str] = Field(None, description="Job title or position within the organization")
+    hire_date: Optional[datetime] = Field(None, description="Date the employee was hired")
+    created_at: datetime = Field(..., description="Timestamp when the employee record was created")
+    updated_at: Optional[datetime] = Field(None, description="Timestamp of the last employee record modification")
 
-    # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    class Config:
+        from_attributes = True
+
+
+class EmployeeWithClients(EmployeeResponse):
+    """Employee with parsed client list"""
+
+    assigned_clients: list[str] = Field(default=[], description="Parsed list of client IDs from client_id_assigned")
+
+
+class EmployeeAssignmentRequest(BaseModel):
+    """Request to assign employee to client"""
+
+    employee_id: int = Field(..., gt=0, description="Database ID of the employee to assign")
+    client_id: str = Field(..., min_length=1, max_length=50, description="Client ID to assign the employee to")
+
+
+class FloatingPoolAssignmentRequest(BaseModel):
+    """Request to assign/unassign floating pool employee"""
+
+    employee_id: int = Field(..., gt=0, description="Database ID of the employee to modify")
+    action: str = Field(..., pattern="^(assign|remove)$", description="assign or remove from floating pool")

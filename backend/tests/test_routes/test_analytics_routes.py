@@ -20,7 +20,7 @@ from fastapi import HTTPException
 
 # Import helper functions for direct testing
 from backend.routes.analytics import parse_time_range, get_performance_rating, get_heatmap_color_code
-from backend.schemas.user import User, UserRole
+from backend.orm.user import User, UserRole
 from backend.middleware.client_auth import ClientAccessError
 
 
