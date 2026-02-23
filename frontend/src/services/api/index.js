@@ -20,6 +20,7 @@ export * from './workflow'
 export * from './simulation'
 export * from './productionLines'
 export * from './planVsActual'
+export * from './csvExport'
 export * as capacityPlanning from './capacityPlanning'
 
 // Import all modules for default export object
@@ -40,6 +41,7 @@ import * as workflow from './workflow'
 import * as simulation from './simulation'
 import * as productionLines from './productionLines'
 import * as planVsActual from './planVsActual'
+import * as csvExport from './csvExport'
 import * as capacityPlanning from './capacityPlanning'
 
 // Default export object with all methods for backward compatibility
@@ -70,6 +72,7 @@ export default {
   ...simulation,
   ...productionLines,
   ...planVsActual,
+  ...csvExport,
   // Capacity Planning module (namespaced to avoid conflicts)
   capacityPlanning
 }

@@ -48,6 +48,13 @@ except Exception as e:
 " 2>&1 || echo "[WARN] Capacity table creation returned non-zero (may be expected if tables exist)"
     fi
 
+    # Run Alembic migrations (if alembic.ini exists)
+    if [ -f "/app/backend/alembic.ini" ]; then
+        echo "[INIT] Running Alembic migrations..."
+        cd /app/backend && python -m alembic upgrade head 2>&1 || echo "[WARN] Alembic migration returned non-zero"
+        cd /app
+    fi
+
     echo "[INIT] Migrations complete"
 }
 

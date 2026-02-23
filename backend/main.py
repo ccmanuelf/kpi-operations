@@ -517,6 +517,9 @@ from backend.routes.employee_line_assignments import router as employee_line_ass
 # Sprint 3: Plan vs Actual router
 from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 
+# Sprint 4: CSV/XLSX export router
+from backend.routes.export import router as export_router
+
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
 
@@ -727,6 +730,11 @@ app.include_router(capacity_router)
 # Sprint 3: Plan vs Actual comparison
 # ============================================================================
 app.include_router(plan_vs_actual_router)
+
+# ============================================================================
+# Sprint 4: CSV/XLSX export routes
+# ============================================================================
+app.include_router(export_router)
 
 # ============================================================================
 # NOTE: Report routes are now in routes/reports.py with proper authentication

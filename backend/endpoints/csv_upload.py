@@ -1,13 +1,13 @@
 """
-CSV Upload Endpoints for All Resources
-Provides CSV upload functionality for all major entities in the system
+CSV/XLSX Upload Endpoints for All Resources
+Provides CSV and XLSX upload functionality for all major entities in the system
 """
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from typing import List
+from typing import Dict, List, Optional
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pydantic import ValidationError
@@ -62,15 +62,68 @@ def sanitize_csv_value(value: str) -> str:
     return value
 
 
+_ALLOWED_EXTENSIONS = (".csv", ".xlsx")
+
+
+def _read_upload_file(
+    file_content: bytes,
+    filename: str,
+    sheet_name: Optional[str] = None,
+) -> List[Dict[str, str]]:
+    """
+    Read uploaded file (CSV or XLSX) and return list of row dicts.
+
+    This is the single decision point for CSV vs XLSX parsing.
+    Both paths return List[Dict[str, str]] matching csv.DictReader output.
+
+    Args:
+        file_content: Raw bytes of the uploaded file.
+        filename: Original filename (used to detect format by extension).
+        sheet_name: For XLSX files, which sheet to read (default: active sheet).
+
+    Returns:
+        List of dicts where keys are column headers and values are strings.
+
+    Raises:
+        HTTPException: If the file format is unsupported or cannot be parsed.
+    """
+    lower_name = (filename or "").lower()
+
+    if lower_name.endswith(".xlsx"):
+        from backend.services.xlsx_parser import parse_xlsx_to_rows
+
+        try:
+            return parse_xlsx_to_rows(file_content, sheet_name=sheet_name, fuzzy_headers=True)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid XLSX file: {exc}",
+            )
+
+    if lower_name.endswith(".csv"):
+        csv_file = io.StringIO(file_content.decode("utf-8"))
+        return list(csv.DictReader(csv_file))
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="File must be a .csv or .xlsx file",
+    )
+
+
 # ==================== 1. DOWNTIME EVENTS CSV UPLOAD ====================
 @router.post("/api/downtime/upload/csv", response_model=CSVUploadResponse)
 async def upload_downtime_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload downtime events via CSV - ALIGNED WITH DOWNTIME_ENTRY SCHEMA
+    Upload downtime events via CSV or XLSX - ALIGNED WITH DOWNTIME_ENTRY SCHEMA
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - client_id (str) - Multi-tenant isolation
     - work_order_id OR work_order_number (str) - Work order reference
     - shift_date OR production_date (YYYY-MM-DD) - Date tracking
@@ -84,15 +137,13 @@ async def upload_downtime_csv(
     - corrective_action (text)
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
-    # Read CSV
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -100,7 +151,7 @@ async def upload_downtime_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -163,12 +214,17 @@ async def upload_downtime_csv(
 # ==================== 2. WIP HOLDS CSV UPLOAD ====================
 @router.post("/api/holds/upload/csv", response_model=CSVUploadResponse)
 async def upload_holds_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload WIP hold/resume events via CSV - ALIGNED WITH HOLD_ENTRY SCHEMA
+    Upload WIP hold/resume events via CSV or XLSX - ALIGNED WITH HOLD_ENTRY SCHEMA
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - client_id (str) - Multi-tenant isolation
     - work_order_id OR work_order_number (str) - Work order reference
 
@@ -182,14 +238,13 @@ async def upload_holds_csv(
     - expected_resolution_date (YYYY-MM-DD)
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -197,7 +252,7 @@ async def upload_holds_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -259,24 +314,29 @@ async def upload_holds_csv(
 # ==================== 3. ATTENDANCE RECORDS CSV UPLOAD ====================
 @router.post("/api/attendance/upload/csv", response_model=CSVUploadResponse)
 async def upload_attendance_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload attendance records via CSV - ALIGNED WITH ATTENDANCE_ENTRY SCHEMA
+    Upload attendance records via CSV or XLSX - ALIGNED WITH ATTENDANCE_ENTRY SCHEMA
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - client_id (str) - Multi-tenant isolation
     - employee_id (int) - Employee reference
     - shift_date OR attendance_date (YYYY-MM-DD) - Date tracking
     - scheduled_hours (decimal, 0-24)
 
-    Status mapping (legacy → new schema):
-    - status: Present → is_absent=0
-    - status: Absent → is_absent=1, absence_type=UNSCHEDULED_ABSENCE
-    - status: Late → is_absent=0, is_late=1
-    - status: Leave → is_absent=1, absence_type=PERSONAL_LEAVE
-    - status: Vacation → is_absent=1, absence_type=VACATION
-    - status: Medical → is_absent=1, absence_type=MEDICAL_LEAVE
+    Status mapping (legacy -> new schema):
+    - status: Present -> is_absent=0
+    - status: Absent -> is_absent=1, absence_type=UNSCHEDULED_ABSENCE
+    - status: Late -> is_absent=0, is_late=1
+    - status: Leave -> is_absent=1, absence_type=PERSONAL_LEAVE
+    - status: Vacation -> is_absent=1, absence_type=VACATION
+    - status: Medical -> is_absent=1, absence_type=MEDICAL_LEAVE
 
     Optional columns:
     - shift_id (int)
@@ -286,14 +346,13 @@ async def upload_attendance_csv(
     - absence_reason (text)
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -301,7 +360,7 @@ async def upload_attendance_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -360,12 +419,17 @@ async def upload_attendance_csv(
 # ==================== 4. SHIFT COVERAGE CSV UPLOAD ====================
 @router.post("/api/coverage/upload/csv", response_model=CSVUploadResponse)
 async def upload_coverage_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload shift coverage records via CSV
+    Upload shift coverage records via CSV or XLSX
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - shift_id (int)
     - coverage_date (YYYY-MM-DD)
     - required_employees (int, > 0)
@@ -374,14 +438,13 @@ async def upload_coverage_csv(
     Optional columns:
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -389,7 +452,7 @@ async def upload_coverage_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -426,12 +489,17 @@ async def upload_coverage_csv(
 # ==================== 5. QUALITY INSPECTIONS CSV UPLOAD ====================
 @router.post("/api/quality/upload/csv", response_model=CSVUploadResponse)
 async def upload_quality_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload quality inspection records via CSV - ALIGNED WITH QUALITY_ENTRY SCHEMA
+    Upload quality inspection records via CSV or XLSX - ALIGNED WITH QUALITY_ENTRY SCHEMA
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - client_id (str) - Multi-tenant isolation
     - work_order_id OR work_order_number (str) - Work order reference
     - shift_date OR inspection_date (YYYY-MM-DD) - Date tracking
@@ -452,14 +520,13 @@ async def upload_quality_csv(
     - inspection_method (str, max 100)
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -467,7 +534,7 @@ async def upload_quality_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -544,12 +611,17 @@ async def upload_quality_csv(
 # ==================== 6. DEFECT DETAILS CSV UPLOAD ====================
 @router.post("/api/defects/upload/csv", response_model=CSVUploadResponse)
 async def upload_defects_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload defect detail records via CSV
+    Upload defect detail records via CSV or XLSX
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - defect_detail_id (str, max 50)
     - quality_entry_id (str)
     - client_id_fk (str)
@@ -562,14 +634,13 @@ async def upload_defects_csv(
     - location (str, max 255)
     - description (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -577,7 +648,7 @@ async def upload_defects_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -621,12 +692,17 @@ async def upload_defects_csv(
 # ==================== 7. WORK ORDERS CSV UPLOAD ====================
 @router.post("/api/work-orders/upload/csv", response_model=CSVUploadResponse)
 async def upload_work_orders_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload work orders via CSV
+    Upload work orders via CSV or XLSX
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - work_order_id (str, max 50)
     - client_id (str)
     - style_model (str, max 100)
@@ -647,14 +723,13 @@ async def upload_work_orders_csv(
     - notes (text)
     - internal_notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -662,7 +737,7 @@ async def upload_work_orders_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -725,12 +800,17 @@ async def upload_work_orders_csv(
 # ==================== 8. JOBS CSV UPLOAD ====================
 @router.post("/api/jobs/upload/csv", response_model=CSVUploadResponse)
 async def upload_jobs_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload job line items via CSV
+    Upload job line items via CSV or XLSX
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - job_id (str)
     - work_order_id (str)
     - client_id_fk (str)
@@ -751,14 +831,13 @@ async def upload_jobs_csv(
     - assigned_shift_id (int)
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -766,7 +845,7 @@ async def upload_jobs_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -826,12 +905,17 @@ async def upload_jobs_csv(
 # ==================== 9. CLIENTS CSV UPLOAD (ADMIN ONLY) ====================
 @router.post("/api/clients/upload/csv", response_model=CSVUploadResponse)
 async def upload_clients_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload clients via CSV (Admin only)
+    Upload clients via CSV or XLSX (Admin only)
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - client_id (str, max 50)
     - client_name (str, max 255)
 
@@ -851,14 +935,13 @@ async def upload_clients_csv(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can upload clients")
 
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -866,7 +949,7 @@ async def upload_clients_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -910,12 +993,17 @@ async def upload_clients_csv(
 # ==================== 10. EMPLOYEES CSV UPLOAD (ADMIN ONLY) ====================
 @router.post("/api/employees/upload/csv", response_model=CSVUploadResponse)
 async def upload_employees_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload employees via CSV (Admin only)
+    Upload employees via CSV or XLSX (Admin only)
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - employee_code (str, max 50)
     - employee_name (str, max 255)
 
@@ -931,14 +1019,13 @@ async def upload_employees_csv(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can upload employees")
 
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -946,7 +1033,7 @@ async def upload_employees_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
@@ -994,12 +1081,17 @@ async def upload_employees_csv(
 # ==================== 11. FLOATING POOL CSV UPLOAD (SUPERVISOR ONLY) ====================
 @router.post("/api/floating-pool/upload/csv", response_model=CSVUploadResponse)
 async def upload_floating_pool_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Upload floating pool assignments via CSV (Supervisor/Admin only)
+    Upload floating pool assignments via CSV or XLSX (Supervisor/Admin only)
 
-    Required CSV columns:
+    Accepts .csv and .xlsx files. For XLSX, optionally specify sheet_name.
+
+    Required columns:
     - employee_id (int, must be marked as floating pool)
 
     Optional columns:
@@ -1014,14 +1106,13 @@ async def upload_floating_pool_csv(
             status_code=status.HTTP_403_FORBIDDEN, detail="Only supervisors and administrators can manage floating pool"
         )
 
-    if not file.filename.endswith(".csv"):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
+    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    csv_file = io.StringIO(contents.decode("utf-8"))
-    csv_reader = csv.DictReader(csv_file)
+    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -1029,7 +1120,7 @@ async def upload_floating_pool_csv(
     errors = []
     created_ids = []
 
-    for row_num, row in enumerate(csv_reader, start=2):
+    for row_num, row in enumerate(rows_list, start=2):
         total_rows += 1
 
         try:
