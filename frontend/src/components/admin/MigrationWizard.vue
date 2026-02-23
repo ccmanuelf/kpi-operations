@@ -4,16 +4,16 @@
       <!-- Step 1: Select Target Provider -->
       <template v-slot:item.1>
         <v-card flat class="pa-4">
-          <h3 class="text-h6 mb-4">Select Target Database</h3>
+          <h3 class="text-h6 mb-4">{{ t('migrationWizard.selectTarget') }}</h3>
 
           <v-radio-group v-model="targetProvider" class="mb-4">
             <v-radio value="mariadb">
               <template v-slot:label>
                 <div>
-                  <strong>MariaDB</strong>
-                  <span class="text-success ml-2">(Recommended)</span>
+                  <strong>{{ t('migrationWizard.mariadb') }}</strong>
+                  <span class="text-success ml-2">{{ t('migrationWizard.mariadbRecommended') }}</span>
                   <p class="text-body-2 text-medium-emphasis mb-0">
-                    Open-source, MySQL-compatible database with excellent performance
+                    {{ t('migrationWizard.mariadbDesc') }}
                   </p>
                 </div>
               </template>
@@ -22,9 +22,9 @@
             <v-radio value="mysql" class="mt-3">
               <template v-slot:label>
                 <div>
-                  <strong>MySQL</strong>
+                  <strong>{{ t('migrationWizard.mysql') }}</strong>
                   <p class="text-body-2 text-medium-emphasis mb-0">
-                    Widely-used relational database
+                    {{ t('migrationWizard.mysqlDesc') }}
                   </p>
                 </div>
               </template>
@@ -42,7 +42,7 @@
           />
 
           <v-alert type="info" variant="tonal" density="compact" class="mb-4">
-            <v-alert-title>Connection URL Format</v-alert-title>
+            <v-alert-title>{{ t('migrationWizard.connectionFormat') }}</v-alert-title>
             <code>mysql+pymysql://username:password@hostname:port/database_name</code>
           </v-alert>
         </v-card>
@@ -51,10 +51,10 @@
       <!-- Step 2: Test Connection -->
       <template v-slot:item.2>
         <v-card flat class="pa-4">
-          <h3 class="text-h6 mb-4">Test Connection</h3>
+          <h3 class="text-h6 mb-4">{{ t('migrationWizard.testConnection') }}</h3>
 
           <p class="text-body-2 mb-4">
-            Click the button below to verify the connection to your target database.
+            {{ t('migrationWizard.testConnectionDesc') }}
           </p>
 
           <div class="d-flex align-center mb-4">
@@ -65,7 +65,7 @@
               :disabled="!targetUrl"
             >
               <v-icon start>mdi-connection</v-icon>
-              Test Connection
+              {{ t('migrationWizard.testConnection') }}
             </v-btn>
           </div>
 
@@ -77,7 +77,7 @@
             class="mt-4"
           >
             <v-alert-title>
-              {{ connectionTestResult.success ? 'Connection Successful' : 'Connection Failed' }}
+              {{ connectionTestResult.success ? t('migrationWizard.connectionSuccess') : t('migrationWizard.connectionFailed') }}
             </v-alert-title>
             <p class="mb-0">{{ connectionTestResult.message }}</p>
             <template v-if="connectionTestResult.success && connectionTestResult.connection_info">
@@ -95,17 +95,17 @@
       <!-- Step 3: Confirm Migration -->
       <template v-slot:item.3>
         <v-card flat class="pa-4">
-          <h3 class="text-h6 mb-4">Confirm Migration</h3>
+          <h3 class="text-h6 mb-4">{{ t('migrationWizard.confirmMigration') }}</h3>
 
           <v-alert type="error" variant="outlined" class="mb-4">
-            <v-alert-title>Final Warning</v-alert-title>
+            <v-alert-title>{{ t('migrationWizard.finalWarning') }}</v-alert-title>
             <p>
-              This action is <strong>irreversible</strong>. You are about to:
+              {{ t('migrationWizard.irreversible') }}
             </p>
             <ul class="mb-2">
-              <li>Create schema on <strong>{{ targetProvider.toUpperCase() }}</strong></li>
-              <li>Seed demo data on the new database</li>
-              <li>Switch the application to use the new database</li>
+              <li>{{ t('migrationWizard.createSchema', { provider: targetProvider.toUpperCase() }) }}</li>
+              <li>{{ t('migrationWizard.seedDemo') }}</li>
+              <li>{{ t('migrationWizard.switchApp') }}</li>
             </ul>
             <p class="mb-0">
               Type <code>MIGRATE</code> below to confirm this operation.
@@ -128,7 +128,7 @@
             @click="startMigration"
           >
             <v-icon start>mdi-database-arrow-right</v-icon>
-            Start Migration
+            {{ t('migrationWizard.startMigration') }}
           </v-btn>
         </v-card>
       </template>

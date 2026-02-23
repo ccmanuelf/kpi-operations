@@ -50,28 +50,28 @@
             prepend-icon="mdi-refresh"
             @click="$emit('refresh')"
           >
-            <v-list-item-title>Refresh</v-list-item-title>
+            <v-list-item-title>{{ t('widgets.container.refresh') }}</v-list-item-title>
           </v-list-item>
           <v-list-item
             v-if="hasSettings"
             prepend-icon="mdi-cog"
             @click="$emit('settings')"
           >
-            <v-list-item-title>Settings</v-list-item-title>
+            <v-list-item-title>{{ t('widgets.container.settings') }}</v-list-item-title>
           </v-list-item>
           <v-list-item
             v-if="hasFullscreen"
             prepend-icon="mdi-fullscreen"
             @click="$emit('fullscreen')"
           >
-            <v-list-item-title>Fullscreen</v-list-item-title>
+            <v-list-item-title>{{ t('widgets.container.fullscreen') }}</v-list-item-title>
           </v-list-item>
           <v-divider v-if="hasRefresh || hasSettings || hasFullscreen" class="my-1" />
           <v-list-item
             prepend-icon="mdi-eye-off"
             @click="$emit('hide')"
           >
-            <v-list-item-title>Hide Widget</v-list-item-title>
+            <v-list-item-title>{{ t('widgets.container.hideWidget') }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-menu>
@@ -86,7 +86,7 @@
         @click="$emit('remove')"
       >
         <v-icon size="18">mdi-close</v-icon>
-        <v-tooltip activator="parent" location="top">Remove Widget</v-tooltip>
+        <v-tooltip activator="parent" location="top">{{ t('widgets.container.removeWidget') }}</v-tooltip>
       </v-btn>
     </v-card-title>
 
@@ -115,7 +115,7 @@
           <!-- Default placeholder if no content -->
           <div class="text-center py-8">
             <v-icon size="48" color="grey-lighten-1">mdi-widgets-outline</v-icon>
-            <p class="text-grey mt-2">Widget content goes here</p>
+            <p class="text-grey mt-2">{{ t('widgets.container.placeholder') }}</p>
           </div>
         </slot>
       </template>
@@ -136,7 +136,10 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useDashboardStore } from '@/stores/dashboardStore'
+
+const { t } = useI18n()
 
 const props = defineProps({
   widget: {

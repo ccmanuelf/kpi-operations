@@ -1,0 +1,73 @@
+{
+  "_comment": "These keys must be merged into en.json and es.json during integration (Task 5.4/5.5 owns locale files).",
+  "en": {
+    "onboarding": {
+      "title": "Getting Started",
+      "subtitle": "Complete these steps to set up your operations",
+      "progress": "{completed} of {total} steps completed",
+      "dismiss": "Dismiss",
+      "refresh": "Refresh Status",
+      "allComplete": "All steps completed! You're ready to go.",
+      "steps": {
+        "shifts": {
+          "title": "Configure Shifts",
+          "description": "Set up your work shifts and schedules"
+        },
+        "products": {
+          "title": "Add Products",
+          "description": "Add your product catalog with style models"
+        },
+        "workOrders": {
+          "title": "Create Work Orders",
+          "description": "Create work orders or set up a capacity plan"
+        },
+        "production": {
+          "title": "Enter Production Data",
+          "description": "Log your first production entries"
+        },
+        "kpi": {
+          "title": "View Your KPIs",
+          "description": "See your operational metrics on the dashboard"
+        }
+      },
+      "goTo": "Go",
+      "completed": "Done",
+      "pending": "Pending"
+    }
+  },
+  "es": {
+    "onboarding": {
+      "title": "Primeros Pasos",
+      "subtitle": "Completa estos pasos para configurar tus operaciones",
+      "progress": "{completed} de {total} pasos completados",
+      "dismiss": "Cerrar",
+      "refresh": "Actualizar Estado",
+      "allComplete": "Todos los pasos completados. Ya puedes comenzar.",
+      "steps": {
+        "shifts": {
+          "title": "Configurar Turnos",
+          "description": "Configura los turnos de trabajo y horarios"
+        },
+        "products": {
+          "title": "Agregar Productos",
+          "description": "Agrega tu catalogo de productos con modelos de estilo"
+        },
+        "workOrders": {
+          "title": "Crear Ordenes de Trabajo",
+          "description": "Crea ordenes de trabajo o configura un plan de capacidad"
+        },
+        "production": {
+          "title": "Registrar Datos de Produccion",
+          "description": "Registra tus primeras entradas de produccion"
+        },
+        "kpi": {
+          "title": "Ver Tus KPIs",
+          "description": "Revisa las metricas operacionales en el dashboard"
+        }
+      },
+      "goTo": "Ir",
+      "completed": "Listo",
+      "pending": "Pendiente"
+    }
+  }
+}

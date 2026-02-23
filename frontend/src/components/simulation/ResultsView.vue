@@ -10,12 +10,12 @@
         <v-btn icon dark @click="close">
           <v-icon>mdi-close</v-icon>
         </v-btn>
-        <v-toolbar-title>Simulation Results</v-toolbar-title>
+        <v-toolbar-title>{{ t('simulationResults.title') }}</v-toolbar-title>
         <v-spacer />
         <v-toolbar-items>
           <v-btn variant="text" @click="exportToExcel">
             <v-icon left>mdi-microsoft-excel</v-icon>
-            Export to Excel
+            {{ t('simulationResults.exportExcel') }}
           </v-btn>
         </v-toolbar-items>
       </v-toolbar>
@@ -35,7 +35,7 @@
                 </div>
                 <div class="text-right">
                   <div class="text-h4">{{ results.daily_summary.daily_coverage_pct }}%</div>
-                  <div class="text-caption">Coverage</div>
+                  <div class="text-caption">{{ t('simulationResults.coverage') }}</div>
                 </div>
               </div>
             </v-alert>
@@ -44,13 +44,13 @@
 
         <!-- Tabs -->
         <v-tabs v-model="activeTab" bg-color="primary" show-arrows>
-          <v-tab value="summary">Summary</v-tab>
-          <v-tab value="weekly">Weekly Capacity</v-tab>
-          <v-tab value="stations">Station Performance</v-tab>
-          <v-tab value="products">Per Product</v-tab>
-          <v-tab value="bundles">Bundle Metrics</v-tab>
-          <v-tab value="rebalancing">Rebalancing</v-tab>
-          <v-tab value="assumptions">Assumptions</v-tab>
+          <v-tab value="summary">{{ t('simulationResults.summary') }}</v-tab>
+          <v-tab value="weekly">{{ t('simulationResults.weeklyCapacity') }}</v-tab>
+          <v-tab value="stations">{{ t('simulationResults.stationPerformance') }}</v-tab>
+          <v-tab value="products">{{ t('simulationResults.perProduct') }}</v-tab>
+          <v-tab value="bundles">{{ t('simulationResults.bundleMetrics') }}</v-tab>
+          <v-tab value="rebalancing">{{ t('simulationResults.rebalancing') }}</v-tab>
+          <v-tab value="assumptions">{{ t('simulationResults.assumptions') }}</v-tab>
         </v-tabs>
 
         <v-window v-model="activeTab" class="mt-4">
@@ -59,7 +59,7 @@
             <v-row>
               <v-col cols="12" md="4">
                 <v-card variant="outlined">
-                  <v-card-title class="text-subtitle-1">Daily Summary</v-card-title>
+                  <v-card-title class="text-subtitle-1">{{ t('simulationResults.dailySummary') }}</v-card-title>
                   <v-card-text>
                     <v-list density="compact">
                       <v-list-item>
@@ -72,11 +72,11 @@
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-timer-sand</v-icon></template>
-                        <v-list-item-title>Avg cycle time: {{ results.daily_summary.avg_cycle_time_min }} min</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.avgCycleTime') }}: {{ results.daily_summary.avg_cycle_time_min }} min</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-layers-outline</v-icon></template>
-                        <v-list-item-title>Avg WIP: {{ results.daily_summary.avg_wip_pcs }} pieces</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.avgWip') }}: {{ results.daily_summary.avg_wip_pcs }} pieces</v-list-item-title>
                       </v-list-item>
                     </v-list>
                   </v-card-text>
@@ -85,24 +85,24 @@
 
               <v-col cols="12" md="4">
                 <v-card variant="outlined">
-                  <v-card-title class="text-subtitle-1">Free Capacity</v-card-title>
+                  <v-card-title class="text-subtitle-1">{{ t('simulationResults.freeCapacity') }}</v-card-title>
                   <v-card-text>
                     <v-list density="compact">
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-speedometer</v-icon></template>
-                        <v-list-item-title>Max capacity: {{ results.free_capacity.daily_max_capacity_pcs }} pcs/day</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.maxCapacity') }}: {{ results.free_capacity.daily_max_capacity_pcs }} pcs/day</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-percent</v-icon></template>
-                        <v-list-item-title>Usage: {{ results.free_capacity.demand_usage_pct }}%</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.usage') }}: {{ results.free_capacity.demand_usage_pct }}%</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-clock-plus</v-icon></template>
-                        <v-list-item-title>Free line hours: {{ results.free_capacity.free_line_hours_per_day.toFixed(1) }}h/day</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.freeLineHours') }}: {{ results.free_capacity.free_line_hours_per_day.toFixed(1) }}h/day</v-list-item-title>
                       </v-list-item>
                       <v-list-item>
                         <template v-slot:prepend><v-icon>mdi-account-plus</v-icon></template>
-                        <v-list-item-title>Equiv. free operators: {{ results.free_capacity.equivalent_free_operators_full_shift.toFixed(1) }}</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.equivFreeOperators') }}: {{ results.free_capacity.equivalent_free_operators_full_shift.toFixed(1) }}</v-list-item-title>
                       </v-list-item>
                     </v-list>
                   </v-card-text>
@@ -111,7 +111,7 @@
 
               <v-col cols="12" md="4">
                 <v-card variant="outlined">
-                  <v-card-title class="text-subtitle-1">Bottlenecks</v-card-title>
+                  <v-card-title class="text-subtitle-1">{{ t('simulationResults.bottlenecks') }}</v-card-title>
                   <v-card-text>
                     <div v-if="bottlenecks.length > 0">
                       <v-chip
@@ -127,11 +127,11 @@
                     </div>
                     <div v-else class="text-success">
                       <v-icon>mdi-check-circle</v-icon>
-                      No bottlenecks detected
+                      {{ t('simulationResults.noBottlenecks') }}
                     </div>
 
                     <div v-if="donors.length > 0" class="mt-3">
-                      <div class="text-caption text-medium-emphasis mb-1">Potential Donors:</div>
+                      <div class="text-caption text-medium-emphasis mb-1">{{ t('simulationResults.potentialDonors') }}</div>
                       <v-chip
                         v-for="dn in donors"
                         :key="dn.machine_tool"
@@ -235,7 +235,7 @@
           <!-- Rebalancing Tab -->
           <v-window-item value="rebalancing">
             <v-alert v-if="results.rebalancing_suggestions.length === 0" type="success" variant="tonal">
-              No rebalancing needed - line is well balanced.
+              {{ t('simulationResults.noRebalancing') }}
             </v-alert>
             <v-data-table
               v-else
@@ -262,24 +262,24 @@
               <v-card-text>
                 <v-row>
                   <v-col cols="12" md="6">
-                    <h4 class="mb-2">Configuration</h4>
+                    <h4 class="mb-2">{{ t('simulationResults.configuration') }}</h4>
                     <v-list density="compact">
                       <v-list-item>
-                        <v-list-item-title>Engine Version</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.engineVersion') }}</v-list-item-title>
                         <v-list-item-subtitle>{{ results.assumption_log.simulation_engine_version }}</v-list-item-subtitle>
                       </v-list-item>
                       <v-list-item>
-                        <v-list-item-title>Mode</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.mode') }}</v-list-item-title>
                         <v-list-item-subtitle>{{ results.assumption_log.configuration_mode }}</v-list-item-subtitle>
                       </v-list-item>
                       <v-list-item>
-                        <v-list-item-title>Timestamp</v-list-item-title>
+                        <v-list-item-title>{{ t('simulationResults.timestamp') }}</v-list-item-title>
                         <v-list-item-subtitle>{{ formatTimestamp(results.assumption_log.timestamp) }}</v-list-item-subtitle>
                       </v-list-item>
                     </v-list>
                   </v-col>
                   <v-col cols="12" md="6">
-                    <h4 class="mb-2">Formulas Used</h4>
+                    <h4 class="mb-2">{{ t('simulationResults.formulasUsed') }}</h4>
                     <v-list density="compact">
                       <v-list-item v-for="(formula, key) in results.assumption_log.formula_implementations" :key="key">
                         <v-list-item-title>{{ key }}</v-list-item-title>
@@ -289,7 +289,7 @@
                   </v-col>
                 </v-row>
 
-                <h4 class="mt-4 mb-2">Limitations & Caveats</h4>
+                <h4 class="mt-4 mb-2">{{ t('simulationResults.limitationsAndCaveats') }}</h4>
                 <v-list density="compact">
                   <v-list-item v-for="(caveat, idx) in results.assumption_log.limitations_and_caveats" :key="idx">
                     <template v-slot:prepend>
@@ -315,8 +315,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import { exportSimulationToExcel } from '@/utils/excelExport'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: Boolean,
@@ -345,9 +348,9 @@ const summaryAlertType = computed(() => {
 
 const summaryText = computed(() => {
   const coverage = props.results?.daily_summary?.daily_coverage_pct || 0
-  if (coverage >= 100) return 'Demand can be fully met'
-  if (coverage >= 90) return 'Slight shortfall expected'
-  return 'Significant shortfall - action needed'
+  if (coverage >= 100) return t('simulationResults.demandMet')
+  if (coverage >= 90) return t('simulationResults.shortfall')
+  return t('simulationResults.significantShortfall')
 })
 
 const bottlenecks = computed(() => {

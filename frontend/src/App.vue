@@ -18,6 +18,9 @@
       <!-- Language Toggle -->
       <LanguageToggle class="mr-2" />
 
+      <v-btn icon @click="onboardingState.openOnboarding()" :aria-label="$t('onboarding.title')">
+        <v-icon aria-hidden="true">mdi-rocket-launch-outline</v-icon>
+      </v-btn>
       <v-btn icon @click="toggleShortcutsHelp" :aria-label="$t('common.view') + ' ' + $t('navigation.settings')">
         <v-icon aria-hidden="true">mdi-keyboard</v-icon>
       </v-btn>
@@ -56,53 +59,73 @@
 
       <v-divider role="separator"></v-divider>
 
-      <v-list density="compact" nav :aria-label="$t('navigation.primaryNav')">
+      <v-list v-model:opened="navGroupsOpen" density="compact" nav :aria-label="$t('navigation.primaryNav')">
+        <!-- Top-level items -->
         <v-list-item prepend-icon="mdi-view-dashboard" :title="$t('navigation.dashboard')" value="dashboard" to="/" />
         <v-list-item prepend-icon="mdi-account-hard-hat" :title="$t('navigation.myShift')" value="my-shift" to="/my-shift" />
-        <v-list-item prepend-icon="mdi-clipboard-list" :title="$t('navigation.workOrders')" value="work-orders" to="/work-orders" />
-        <v-list-item prepend-icon="mdi-factory" :title="$t('navigation.productionEntry')" value="production" to="/production-entry" />
-        <v-list-item prepend-icon="mdi-chart-box" :title="$t('navigation.kpiDashboard')" value="kpi-dashboard" to="/kpi-dashboard" />
 
-        <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="data-entry-nav">{{ $t('navigation.dataEntry').toUpperCase() }}</v-list-subheader>
+        <!-- Operations Group -->
+        <v-list-group value="operations">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-clipboard-text" :title="$t('navigation.operations')" />
+          </template>
+          <v-list-item prepend-icon="mdi-clipboard-list" :title="$t('navigation.workOrders')" value="work-orders" to="/work-orders" />
+          <v-list-item prepend-icon="mdi-factory" :title="$t('navigation.productionEntry')" value="production" to="/production-entry" />
+          <v-list-item prepend-icon="mdi-clock-alert" :title="$t('navigation.downtime')" value="downtime" to="/data-entry/downtime" />
+          <v-list-item prepend-icon="mdi-account-group" :title="$t('navigation.attendance')" value="attendance" to="/data-entry/attendance" />
+          <v-list-item prepend-icon="mdi-quality-high" :title="$t('navigation.quality')" value="quality" to="/data-entry/quality" />
+          <v-list-item prepend-icon="mdi-pause-circle" :title="$t('navigation.holdResume')" value="hold" to="/data-entry/hold-resume" />
+        </v-list-group>
 
-        <v-list-item prepend-icon="mdi-clock-alert" :title="$t('navigation.downtime')" value="downtime" to="/data-entry/downtime" />
-        <v-list-item prepend-icon="mdi-account-group" :title="$t('navigation.attendance')" value="attendance" to="/data-entry/attendance" />
-        <v-list-item prepend-icon="mdi-quality-high" :title="$t('navigation.quality')" value="quality" to="/data-entry/quality" />
-        <v-list-item prepend-icon="mdi-pause-circle" :title="$t('navigation.holdResume')" value="hold" to="/data-entry/hold-resume" />
+        <!-- KPI & Analytics Group -->
+        <v-list-group value="kpi">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-chart-box" :title="$t('navigation.kpiAnalytics')" />
+          </template>
+          <v-list-item prepend-icon="mdi-chart-box" :title="$t('navigation.kpiDashboard')" value="kpi-dashboard" to="/kpi-dashboard" />
+          <v-list-item prepend-icon="mdi-chart-line" :title="$t('kpi.efficiency')" value="efficiency" to="/kpi/efficiency" />
+          <v-list-item prepend-icon="mdi-warehouse" :title="$t('kpi.wipAging')" value="wip" to="/kpi/wip-aging" />
+          <v-list-item prepend-icon="mdi-truck-delivery" :title="$t('kpi.otdFull')" value="otd" to="/kpi/on-time-delivery" />
+          <v-list-item prepend-icon="mdi-checkbox-marked-circle" :title="$t('kpi.availability')" value="availability" to="/kpi/availability" />
+          <v-list-item prepend-icon="mdi-speedometer" :title="$t('kpi.performance')" value="performance" to="/kpi/performance" />
+          <v-list-item prepend-icon="mdi-star" :title="$t('navigation.quality')" value="quality-kpi" to="/kpi/quality" />
+          <v-list-item prepend-icon="mdi-account-off" :title="$t('kpi.absenteeism')" value="absenteeism" to="/kpi/absenteeism" />
+          <v-list-item prepend-icon="mdi-gauge" :title="$t('navigation.oee')" value="oee" to="/kpi/oee" />
+        </v-list-group>
 
-        <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="kpi-reports-nav">{{ $t('navigation.kpiReports').toUpperCase() }}</v-list-subheader>
+        <!-- Planning Group -->
+        <v-list-group value="planning">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-calendar-clock" :title="$t('navigation.planning')" />
+          </template>
+          <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
+          <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.planVsActual')" value="plan-vs-actual" to="/plan-vs-actual" />
+          <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
+        </v-list-group>
 
-        <v-list-item prepend-icon="mdi-chart-line" :title="$t('kpi.efficiency')" value="efficiency" to="/kpi/efficiency" />
-        <v-list-item prepend-icon="mdi-warehouse" :title="$t('kpi.wipAging')" value="wip" to="/kpi/wip-aging" />
-        <v-list-item prepend-icon="mdi-truck-delivery" :title="$t('kpi.otdFull')" value="otd" to="/kpi/on-time-delivery" />
-        <v-list-item prepend-icon="mdi-checkbox-marked-circle" :title="$t('kpi.availability')" value="availability" to="/kpi/availability" />
-        <v-list-item prepend-icon="mdi-speedometer" :title="$t('kpi.performance')" value="performance" to="/kpi/performance" />
-        <v-list-item prepend-icon="mdi-star" :title="$t('navigation.quality')" value="quality-kpi" to="/kpi/quality" />
-        <v-list-item prepend-icon="mdi-account-off" :title="$t('kpi.absenteeism')" value="absenteeism" to="/kpi/absenteeism" />
-        <v-list-item prepend-icon="mdi-gauge" :title="$t('navigation.oee')" value="oee" to="/kpi/oee" />
+        <!-- Tools Group -->
+        <v-list-group value="tools">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-toolbox" :title="$t('navigation.tools')" />
+          </template>
+          <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
+        </v-list-group>
 
-        <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="tools-nav">{{ $t('navigation.tools').toUpperCase() }}</v-list-subheader>
-
-        <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
-        <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
-        <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.planVsActual')" value="plan-vs-actual" to="/plan-vs-actual" />
-        <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
-
-        <v-divider class="my-2" role="separator"></v-divider>
-        <v-list-subheader v-if="!rail" id="admin-nav">{{ $t('navigation.admin').toUpperCase() }}</v-list-subheader>
-
-        <v-list-item prepend-icon="mdi-cog" :title="$t('navigation.settings')" value="settings" to="/admin/settings" />
-        <v-list-item prepend-icon="mdi-account-multiple" :title="$t('navigation.users')" value="users" to="/admin/users" />
-        <v-list-item prepend-icon="mdi-domain" :title="$t('navigation.clients')" value="clients" to="/admin/clients" />
-        <v-list-item prepend-icon="mdi-alert-circle-outline" :title="$t('navigation.defectTypes')" value="defect-types" to="/admin/defect-types" />
-        <v-list-item prepend-icon="mdi-tune-variant" :title="$t('navigation.clientConfig')" value="client-config" to="/admin/client-config" />
-        <v-list-item prepend-icon="mdi-chart-scatter-plot" :title="$t('navigation.partOpportunities')" value="part-opportunities" to="/admin/part-opportunities" />
-        <v-list-item prepend-icon="mdi-account-switch" :title="$t('navigation.floatingPool')" value="floating-pool" to="/admin/floating-pool" />
-        <v-list-item prepend-icon="mdi-sitemap" :title="$t('navigation.workflowConfig')" value="workflow-config" to="/admin/workflow-config" />
-        <v-list-item prepend-icon="mdi-database-cog" :title="$t('navigation.databaseConfig')" value="database-config" to="/admin/database" />
+        <!-- Admin Group -->
+        <v-list-group value="admin">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-shield-crown" :title="$t('navigation.admin')" />
+          </template>
+          <v-list-item prepend-icon="mdi-cog" :title="$t('navigation.settings')" value="settings" to="/admin/settings" />
+          <v-list-item prepend-icon="mdi-account-multiple" :title="$t('navigation.users')" value="users" to="/admin/users" />
+          <v-list-item prepend-icon="mdi-domain" :title="$t('navigation.clients')" value="clients" to="/admin/clients" />
+          <v-list-item prepend-icon="mdi-alert-circle-outline" :title="$t('navigation.defectTypes')" value="defect-types" to="/admin/defect-types" />
+          <v-list-item prepend-icon="mdi-tune-variant" :title="$t('navigation.clientConfig')" value="client-config" to="/admin/client-config" />
+          <v-list-item prepend-icon="mdi-chart-scatter-plot" :title="$t('navigation.partOpportunities')" value="part-opportunities" to="/admin/part-opportunities" />
+          <v-list-item prepend-icon="mdi-account-switch" :title="$t('navigation.floatingPool')" value="floating-pool" to="/admin/floating-pool" />
+          <v-list-item prepend-icon="mdi-sitemap" :title="$t('navigation.workflowConfig')" value="workflow-config" to="/admin/workflow-config" />
+          <v-list-item prepend-icon="mdi-database-cog" :title="$t('navigation.databaseConfig')" value="database-config" to="/admin/database" />
+        </v-list-group>
       </v-list>
     </v-navigation-drawer>
 
@@ -149,6 +172,18 @@
       </template>
     </v-snackbar>
 
+    <!-- On-demand Onboarding Checklist -->
+    <OnboardingChecklist
+      v-model="onboardingState.showOnboarding.value"
+      :loading="onboardingState.loading.value"
+      :steps="onboardingState.steps.value"
+      :completed-count="onboardingState.completedCount.value"
+      :total-steps="onboardingState.totalSteps.value"
+      :all-complete="onboardingState.allComplete.value"
+      :progress-percent="onboardingState.progressPercent.value"
+      @refresh="onboardingState.checkStatus()"
+    />
+
     <!-- Quick Actions FAB for Workflow Navigation -->
     <QuickActionsFAB v-if="isAuthenticated" />
   </v-app>
@@ -165,12 +200,15 @@ import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
 import QuickActionsFAB from '@/components/QuickActionsFAB.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import OnboardingChecklist from '@/components/OnboardingChecklist.vue'
+import { useOnboarding } from '@/composables/useOnboarding'
 
 const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 const shortcutsStore = useKeyboardShortcutsStore()
+const onboardingState = useOnboarding()
 
 // Error handling for child components
 onErrorCaptured((err, instance, info) => {
@@ -183,6 +221,7 @@ onErrorCaptured((err, instance, info) => {
 // Drawer state
 const drawer = ref(true)
 const rail = ref(false)
+const navGroupsOpen = ref(['operations', 'kpi'])
 const showNotification = ref(false)
 const notificationMessage = ref('')
 

@@ -21,6 +21,7 @@ export * from './simulation'
 export * from './productionLines'
 export * from './planVsActual'
 export * from './csvExport'
+export * from './onboarding'
 export * as capacityPlanning from './capacityPlanning'
 
 // Import all modules for default export object
@@ -42,6 +43,7 @@ import * as simulation from './simulation'
 import * as productionLines from './productionLines'
 import * as planVsActual from './planVsActual'
 import * as csvExport from './csvExport'
+import * as onboarding from './onboarding'
 import * as capacityPlanning from './capacityPlanning'
 
 // Default export object with all methods for backward compatibility
@@ -73,6 +75,7 @@ export default {
   ...productionLines,
   ...planVsActual,
   ...csvExport,
+  ...onboarding,
   // Capacity Planning module (namespaced to avoid conflicts)
   capacityPlanning
 }

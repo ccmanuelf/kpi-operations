@@ -18,6 +18,11 @@ export const updateAttendanceEntry = (id, data) => api.put(`/attendance/${id}`, 
 
 export const deleteAttendanceEntry = (id) => api.delete(`/attendance/${id}`)
 
+export const bulkCreateAttendance = (records) => api.post('/attendance/bulk', records)
+
+export const markAllPresent = (params) =>
+  api.post('/attendance/mark-all-present', null, { params })
+
 // Quality
 export const createQualityEntry = (data) => api.post('/quality', data)
 

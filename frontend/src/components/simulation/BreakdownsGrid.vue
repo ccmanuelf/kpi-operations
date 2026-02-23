@@ -4,18 +4,18 @@
       <div class="d-flex align-center justify-space-between" style="width: 100%;">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-wrench-clock</v-icon>
-          <span class="text-h6">Equipment Breakdowns (Optional)</span>
+          <span class="text-h6">{{ t('simulationBreakdowns.title') }}</span>
         </div>
         <v-btn color="white" variant="outlined" size="small" @click="addRow">
           <v-icon left>mdi-plus</v-icon>
-          Add Breakdown Rule
+          {{ t('simulationBreakdowns.addRule') }}
         </v-btn>
       </div>
     </v-card-title>
 
     <v-card-text>
       <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-        Configure probability of equipment breakdown per operation. Leave empty for perfect reliability.
+        {{ t('simulationBreakdowns.emptyAlert') }}
       </v-alert>
 
       <div v-if="store.breakdowns.length > 0" class="ag-theme-material" style="height: 200px; width: 100%;">
@@ -33,7 +33,7 @@
 
       <div v-else class="text-center py-6 text-medium-emphasis">
         <v-icon size="48" color="grey-lighten-1">mdi-check-circle-outline</v-icon>
-        <p class="mt-2">No breakdown rules configured. Simulation assumes perfect equipment reliability.</p>
+        <p class="mt-2">{{ t('simulationBreakdowns.emptyState') }}</p>
       </div>
 
       <!-- Quick Add from Machine Tools -->
@@ -45,13 +45,13 @@
         @click="showQuickAdd = true"
       >
         <v-icon left>mdi-lightning-bolt</v-icon>
-        Quick Add from Operations ({{ availableMachineTools.length }} machines)
+        {{ t('simulationBreakdowns.quickAdd', { count: availableMachineTools.length }) }}
       </v-btn>
 
       <!-- Quick Add Dialog -->
       <v-dialog v-model="showQuickAdd" max-width="500">
         <v-card>
-          <v-card-title>Add Breakdown Rules</v-card-title>
+          <v-card-title>{{ t('simulationBreakdowns.addRules') }}</v-card-title>
           <v-card-text>
             <v-list>
               <v-list-item
@@ -70,7 +70,7 @@
             </v-list>
             <v-text-field
               v-model.number="defaultBreakdownPct"
-              label="Default Breakdown %"
+              :label="t('simulationBreakdowns.defaultBreakdownPct')"
               type="number"
               :min="0"
               :max="100"
@@ -82,8 +82,8 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn @click="showQuickAdd = false">Cancel</v-btn>
-            <v-btn color="primary" @click="addSelectedTools">Add Selected</v-btn>
+            <v-btn @click="showQuickAdd = false">{{ t('common.cancel') }}</v-btn>
+            <v-btn color="primary" @click="addSelectedTools">{{ t('simulationBreakdowns.addSelected') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -93,8 +93,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AgGridVue } from 'ag-grid-vue3'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
+
+const { t } = useI18n()
 
 const store = useSimulationV2Store()
 const gridApi = ref(null)
@@ -142,14 +145,14 @@ const columnDefs = computed(() => [
     }
   },
   {
-    headerName: 'Machine/Tool',
+    headerName: t('simulationBreakdowns.machineTool'),
     field: 'machine_tool',
     flex: 1,
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: { values: store.machineTools }
   },
   {
-    headerName: 'Breakdown %',
+    headerName: t('simulationBreakdowns.breakdownPct'),
     field: 'breakdown_pct',
     width: 130,
     type: 'numericColumn',

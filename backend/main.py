@@ -520,6 +520,9 @@ from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 # Sprint 4: CSV/XLSX export router
 from backend.routes.export import router as export_router
 
+# Sprint 5: Onboarding status router
+from backend.routes.onboarding import router as onboarding_router
+
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
 
@@ -735,6 +738,11 @@ app.include_router(plan_vs_actual_router)
 # Sprint 4: CSV/XLSX export routes
 # ============================================================================
 app.include_router(export_router)
+
+# ============================================================================
+# Sprint 5: Onboarding status routes
+# ============================================================================
+app.include_router(onboarding_router)
 
 # ============================================================================
 # NOTE: Report routes are now in routes/reports.py with proper authentication

@@ -6,6 +6,16 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import BreakdownsGrid from '../BreakdownsGrid.vue'
 
+// Mock vue-i18n
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return Object.entries(params).reduce((str, [k, v]) => str.replace(`{${k}}`, String(v)), key)
+    }
+    return key
+  }})
+}))
+
 // Mock AG Grid
 vi.mock('ag-grid-vue3', () => ({
   AgGridVue: {
@@ -77,22 +87,23 @@ describe('BreakdownsGrid', () => {
 
     it('should display Equipment Breakdowns title', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Equipment Breakdowns')
+      expect(wrapper.text()).toContain('simulationBreakdowns.title')
     })
 
     it('should display Optional label', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Optional')
+      // Optional is now part of the i18n title key
+      expect(wrapper.text()).toContain('simulationBreakdowns.title')
     })
 
     it('should render Add Breakdown Rule button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Add Breakdown Rule')
+      expect(wrapper.text()).toContain('simulationBreakdowns.addRule')
     })
 
     it('should show info alert about breakdown configuration', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Configure probability of equipment breakdown')
+      expect(wrapper.text()).toContain('simulationBreakdowns.emptyAlert')
     })
   })
 
@@ -100,8 +111,7 @@ describe('BreakdownsGrid', () => {
     it('should show empty state message when no breakdowns exist', () => {
       mockStore.breakdowns = []
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('No breakdown rules configured')
-      expect(wrapper.text()).toContain('perfect equipment reliability')
+      expect(wrapper.text()).toContain('simulationBreakdowns.emptyState')
     })
 
     it('should show check circle icon in empty state', () => {
@@ -114,14 +124,15 @@ describe('BreakdownsGrid', () => {
       mockStore.breakdowns = []
       mockStore.machineTools = ['Cutting Table', 'Sewing Machine']
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Quick Add from Operations')
+      expect(wrapper.text()).toContain('simulationBreakdowns.quickAdd')
     })
 
     it('should show count of available machines in Quick Add button', () => {
       mockStore.breakdowns = []
       mockStore.machineTools = ['Cutting Table', 'Sewing Machine', 'Pressing']
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('3 machines')
+      // The i18n mock returns the key; count param is not visible in mock output
+      expect(wrapper.text()).toContain('simulationBreakdowns.quickAdd')
     })
   })
 
@@ -140,7 +151,7 @@ describe('BreakdownsGrid', () => {
 
     it('should not show empty state when breakdowns exist', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).not.toContain('No breakdown rules configured')
+      expect(wrapper.text()).not.toContain('simulationBreakdowns.emptyState')
     })
   })
 
@@ -178,7 +189,7 @@ describe('BreakdownsGrid', () => {
     it('should call addBreakdown when Add Breakdown Rule button is clicked', async () => {
       const wrapper = mountComponent()
       const buttons = wrapper.findAll('.v-btn')
-      const addButton = buttons.find(btn => btn.text().includes('Add Breakdown Rule'))
+      const addButton = buttons.find(btn => btn.text().includes('simulationBreakdowns.addRule'))
 
       if (addButton) {
         await addButton.trigger('click')
@@ -206,7 +217,7 @@ describe('BreakdownsGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const machineCol = columnDefs.find((c: { field: string }) => c.field === 'machine_tool')
       expect(machineCol).toBeDefined()
-      expect(machineCol.headerName).toBe('Machine/Tool')
+      expect(machineCol.headerName).toBe('simulationBreakdowns.machineTool')
     })
 
     it('should define Breakdown % column', () => {
@@ -214,7 +225,7 @@ describe('BreakdownsGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const breakdownCol = columnDefs.find((c: { field: string }) => c.field === 'breakdown_pct')
       expect(breakdownCol).toBeDefined()
-      expect(breakdownCol.headerName).toBe('Breakdown %')
+      expect(breakdownCol.headerName).toBe('simulationBreakdowns.breakdownPct')
     })
 
     it('should have actions column for row deletion', () => {

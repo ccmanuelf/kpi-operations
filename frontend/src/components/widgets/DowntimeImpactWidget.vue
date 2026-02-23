@@ -2,7 +2,7 @@
   <v-card elevation="2">
     <v-card-title class="d-flex align-center bg-warning-darken-1 text-white">
       <v-icon class="mr-2" size="24">mdi-alert-circle</v-icon>
-      Downtime Impact on OEE
+      {{ t('widgets.downtimeImpact.title') }}
       <v-spacer />
       <v-btn
         icon="mdi-refresh"
@@ -33,7 +33,7 @@
       <!-- Empty State -->
       <div v-else-if="!downtimeRanking.length" class="text-center text-grey pa-8">
         <v-icon size="64" class="mb-4">mdi-checkbox-marked-circle-outline</v-icon>
-        <div>No significant downtime events recorded</div>
+        <div>{{ t('widgets.downtimeImpact.noData') }}</div>
       </div>
 
       <!-- Data Display -->
@@ -43,15 +43,15 @@
           <v-row dense>
             <v-col cols="4" class="text-center">
               <div class="text-h5 font-weight-bold text-warning">{{ totalDowntimeHours }}h</div>
-              <div class="text-caption text-grey">Total Downtime</div>
+              <div class="text-caption text-grey">{{ t('widgets.downtimeImpact.totalDowntime') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
               <div class="text-h5 font-weight-bold text-error">-{{ totalOeeImpact }}%</div>
-              <div class="text-caption text-grey">OEE Impact</div>
+              <div class="text-caption text-grey">{{ t('widgets.downtimeImpact.oeeImpact') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
               <div class="text-h5 font-weight-bold text-info">{{ downtimeRanking.length }}</div>
-              <div class="text-caption text-grey">Categories</div>
+              <div class="text-caption text-grey">{{ t('widgets.downtimeImpact.categories') }}</div>
             </v-col>
           </v-row>
         </div>
@@ -83,7 +83,7 @@
               </span>
               <v-divider vertical class="mx-2" />
               <v-icon size="14" class="mr-1">mdi-counter</v-icon>
-              {{ item.eventCount }} events
+              {{ item.eventCount }} {{ t('widgets.downtimeImpact.events') }}
             </v-list-item-subtitle>
 
             <template v-slot:append>
@@ -100,7 +100,7 @@
 
         <!-- Availability Impact Chart Preview -->
         <v-divider class="my-4" />
-        <div class="text-subtitle-2 mb-2">Availability Impact by Category</div>
+        <div class="text-subtitle-2 mb-2">{{ t('widgets.downtimeImpact.availabilityImpact') }}</div>
         <div v-for="item in downtimeRanking.slice(0, 5)" :key="item.category" class="mb-2">
           <div class="d-flex justify-space-between text-caption mb-1">
             <span>{{ item.category }}</span>
@@ -124,7 +124,7 @@
         prepend-icon="mdi-chart-bar"
         @click="$emit('viewDetails')"
       >
-        View Full Analysis
+        {{ t('widgets.downtimeImpact.viewFullAnalysis') }}
       </v-btn>
       <v-spacer />
       <v-chip size="x-small" variant="outlined" color="grey">
@@ -136,7 +136,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps<{

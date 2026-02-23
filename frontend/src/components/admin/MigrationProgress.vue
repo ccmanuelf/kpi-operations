@@ -32,7 +32,7 @@
         <template v-slot:prepend>
           <v-icon>mdi-table</v-icon>
         </template>
-        <v-list-item-title>Current Table</v-list-item-title>
+        <v-list-item-title>{{ t('migrationProgress.currentTable') }}</v-list-item-title>
         <v-list-item-subtitle>{{ status.current_table }}</v-list-item-subtitle>
       </v-list-item>
 
@@ -40,7 +40,7 @@
         <template v-slot:prepend>
           <v-icon>mdi-counter</v-icon>
         </template>
-        <v-list-item-title>Tables Progress</v-list-item-title>
+        <v-list-item-title>{{ t('migrationProgress.tablesProgress') }}</v-list-item-title>
         <v-list-item-subtitle>
           {{ status.tables_migrated }} / {{ status.total_tables }} tables
         </v-list-item-subtitle>
@@ -54,7 +54,7 @@
       variant="outlined"
       class="mt-4"
     >
-      <v-alert-title>Migration Error</v-alert-title>
+      <v-alert-title>{{ t('migrationProgress.migrationError') }}</v-alert-title>
       <p class="mb-0 text-body-2">{{ status.error_message }}</p>
     </v-alert>
 
@@ -66,7 +66,7 @@
         @click="$emit('dismiss')"
       >
         <v-icon start>mdi-check</v-icon>
-        Done
+        {{ t('migrationProgress.done') }}
       </v-btn>
       <v-btn
         v-else-if="status?.status === 'failed'"
@@ -74,7 +74,7 @@
         @click="$emit('dismiss')"
       >
         <v-icon start>mdi-refresh</v-icon>
-        Try Again
+        {{ t('migrationProgress.tryAgain') }}
       </v-btn>
     </div>
 
@@ -92,6 +92,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps({
@@ -138,19 +141,19 @@ const statusIcon = computed(() => {
 
 const statusTitle = computed(() => {
   switch (props.status?.status) {
-    case 'completed': return 'Migration Complete'
-    case 'failed': return 'Migration Failed'
-    case 'in_progress': return 'Migration In Progress'
-    default: return 'Migration Status'
+    case 'completed': return t('migrationProgress.migrationComplete')
+    case 'failed': return t('migrationProgress.migrationFailed')
+    case 'in_progress': return t('migrationProgress.migrationInProgress')
+    default: return t('migrationProgress.migrationStatus')
   }
 })
 
 const statusLabel = computed(() => {
   switch (props.status?.status) {
-    case 'completed': return 'Complete'
-    case 'failed': return 'Failed'
-    case 'in_progress': return 'In Progress'
-    default: return 'Idle'
+    case 'completed': return t('migrationProgress.complete')
+    case 'failed': return t('migrationProgress.failed')
+    case 'in_progress': return t('migrationProgress.inProgress')
+    default: return t('migrationProgress.idle')
   }
 })
 

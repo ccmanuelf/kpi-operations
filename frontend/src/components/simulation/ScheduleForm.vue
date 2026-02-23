@@ -3,7 +3,7 @@
     <v-card-title class="bg-info">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-clock-outline</v-icon>
-        <span class="text-h6">Schedule Configuration</span>
+        <span class="text-h6">{{ t('simulationSchedule.title') }}</span>
       </div>
     </v-card-title>
 
@@ -14,7 +14,7 @@
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1">
               <v-icon left size="small">mdi-account-group</v-icon>
-              Shifts
+              {{ t('simulationSchedule.shifts') }}
             </v-card-title>
             <v-card-text>
               <v-slider
@@ -79,7 +79,7 @@
           <v-card variant="outlined">
             <v-card-title class="text-subtitle-1">
               <v-icon left size="small">mdi-calendar-week</v-icon>
-              Work Days & Overtime
+              {{ t('simulationSchedule.workDaysOvertime') }}
             </v-card-title>
             <v-card-text>
               <v-slider
@@ -155,19 +155,19 @@
         <v-card-text>
           <v-row align="center">
             <v-col cols="6" md="3">
-              <div class="text-caption text-medium-emphasis">Daily Planned Hours</div>
+              <div class="text-caption text-medium-emphasis">{{ t('simulationSchedule.dailyPlannedHours') }}</div>
               <div class="text-h5">{{ store.dailyPlannedHours.toFixed(1) }}h</div>
             </v-col>
             <v-col cols="6" md="3">
-              <div class="text-caption text-medium-emphasis">Weekly Base Hours</div>
+              <div class="text-caption text-medium-emphasis">{{ t('simulationSchedule.weeklyBaseHours') }}</div>
               <div class="text-h5">{{ weeklyBaseHours.toFixed(1) }}h</div>
             </v-col>
             <v-col cols="6" md="3">
-              <div class="text-caption text-medium-emphasis">Weekly with OT</div>
+              <div class="text-caption text-medium-emphasis">{{ t('simulationSchedule.weeklyWithOt') }}</div>
               <div class="text-h5">{{ weeklyTotalHours.toFixed(1) }}h</div>
             </v-col>
             <v-col cols="6" md="3">
-              <div class="text-caption text-medium-emphasis">Total Shift Hours</div>
+              <div class="text-caption text-medium-emphasis">{{ t('simulationSchedule.totalShiftHours') }}</div>
               <div class="text-h5">{{ totalShiftHours.toFixed(1) }}h</div>
             </v-col>
           </v-row>
@@ -181,7 +181,7 @@
         density="compact"
         class="mt-3"
       >
-        Total shift hours ({{ totalShiftHours.toFixed(1) }}h) exceed 24 hours per day.
+        {{ t('simulationSchedule.shiftHoursExceed', { hours: totalShiftHours.toFixed(1) }) }}
       </v-alert>
     </v-card-text>
   </v-card>

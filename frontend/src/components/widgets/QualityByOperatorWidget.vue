@@ -2,7 +2,7 @@
   <v-card elevation="2">
     <v-card-title class="d-flex align-center bg-teal text-white">
       <v-icon class="mr-2" size="24">mdi-account-hard-hat</v-icon>
-      Quality by Operator
+      {{ t('widgets.qualityByOperator.title') }}
       <v-spacer />
       <v-btn
         icon="mdi-refresh"
@@ -33,7 +33,7 @@
       <!-- Empty State -->
       <div v-else-if="!operatorQuality.length" class="text-center text-grey pa-8">
         <v-icon size="64" class="mb-4">mdi-account-question</v-icon>
-        <div>No operator quality data available</div>
+        <div>{{ t('widgets.qualityByOperator.noData') }}</div>
       </div>
 
       <!-- Data Display -->
@@ -42,15 +42,15 @@
         <v-row dense class="mb-4">
           <v-col cols="4" class="text-center">
             <div class="text-h5 font-weight-bold text-teal">{{ averageFPY }}%</div>
-            <div class="text-caption text-grey">Avg FPY</div>
+            <div class="text-caption text-grey">{{ t('widgets.qualityByOperator.avgFpy') }}</div>
           </v-col>
           <v-col cols="4" class="text-center">
             <div class="text-h5 font-weight-bold text-success">{{ topPerformerCount }}</div>
-            <div class="text-caption text-grey">Top Performers</div>
+            <div class="text-caption text-grey">{{ t('widgets.qualityByOperator.topPerformers') }}</div>
           </v-col>
           <v-col cols="4" class="text-center">
             <div class="text-h5 font-weight-bold text-warning">{{ needsAttentionCount }}</div>
-            <div class="text-caption text-grey">Needs Attention</div>
+            <div class="text-caption text-grey">{{ t('widgets.qualityByOperator.needsAttention') }}</div>
           </v-col>
         </v-row>
 
@@ -120,24 +120,24 @@
 
         <!-- Performance Distribution -->
         <v-divider class="my-4" />
-        <div class="text-subtitle-2 mb-2">Performance Distribution</div>
+        <div class="text-subtitle-2 mb-2">{{ t('widgets.qualityByOperator.performanceDistribution') }}</div>
         <v-row dense>
           <v-col cols="4">
             <div class="text-center pa-2 bg-success-lighten-4 rounded">
               <div class="text-h6 font-weight-bold text-success">{{ excellentCount }}</div>
-              <div class="text-caption">Excellent (>98%)</div>
+              <div class="text-caption">{{ t('widgets.qualityByOperator.excellent') }}</div>
             </div>
           </v-col>
           <v-col cols="4">
             <div class="text-center pa-2 bg-warning-lighten-4 rounded">
               <div class="text-h6 font-weight-bold text-warning">{{ goodCount }}</div>
-              <div class="text-caption">Good (95-98%)</div>
+              <div class="text-caption">{{ t('widgets.qualityByOperator.good') }}</div>
             </div>
           </v-col>
           <v-col cols="4">
             <div class="text-center pa-2 bg-error-lighten-4 rounded">
               <div class="text-h6 font-weight-bold text-error">{{ poorCount }}</div>
-              <div class="text-caption">Needs Work (&lt;95%)</div>
+              <div class="text-caption">{{ t('widgets.qualityByOperator.needsWork') }}</div>
             </div>
           </v-col>
         </v-row>
@@ -152,7 +152,7 @@
         prepend-icon="mdi-file-chart"
         @click="$emit('exportReport')"
       >
-        Export Report
+        {{ t('widgets.qualityByOperator.exportReport') }}
       </v-btn>
       <v-spacer />
       <v-btn
@@ -162,7 +162,7 @@
         prepend-icon="mdi-chart-line"
         @click="$emit('viewTrends')"
       >
-        View Trends
+        {{ t('widgets.qualityByOperator.viewTrends') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -170,7 +170,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps<{
@@ -199,13 +202,13 @@ interface OperatorQualityItem {
 }
 
 // Table Headers
-const headers = [
-  { title: 'Operator', key: 'operator_name', sortable: true },
-  { title: 'Units Inspected', key: 'units_inspected', sortable: true, align: 'end' as const },
-  { title: 'Defects', key: 'defects', sortable: true, align: 'center' as const },
-  { title: 'FPY', key: 'fpy', sortable: true, align: 'center' as const },
-  { title: 'Trend', key: 'trend', sortable: false, align: 'center' as const }
-]
+const headers = computed(() => [
+  { title: t('widgets.qualityByOperator.operator'), key: 'operator_name', sortable: true },
+  { title: t('widgets.qualityByOperator.unitsInspected'), key: 'units_inspected', sortable: true, align: 'end' as const },
+  { title: t('widgets.qualityByOperator.defects'), key: 'defects', sortable: true, align: 'center' as const },
+  { title: t('widgets.qualityByOperator.fpy'), key: 'fpy', sortable: true, align: 'center' as const },
+  { title: t('widgets.qualityByOperator.trend'), key: 'trend', sortable: false, align: 'center' as const }
+])
 
 // Computed
 const averageFPY = computed(() => {

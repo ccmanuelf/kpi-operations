@@ -27,6 +27,8 @@ from backend.crud.attendance import (
     get_attendance_records,
     update_attendance_record,
     delete_attendance_record,
+    bulk_create_attendance_records,
+    mark_all_present,
 )
 from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
@@ -546,3 +548,93 @@ def get_bradford_factor(
         "end_date": end_date,
         "calculation_timestamp": datetime.now(tz=timezone.utc),
     }
+
+
+# ============================================================================
+# BULK OPERATION ENDPOINTS
+# ============================================================================
+
+
+@router.post("/bulk", status_code=status.HTTP_201_CREATED)
+def bulk_create_attendance(
+    records: List[AttendanceRecordCreate],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Bulk create attendance records in a single transaction.
+
+    SECURITY: Validates client access for each record individually.
+
+    Returns summary with total, successful, failed counts, errors, and created IDs.
+    """
+    try:
+        result = bulk_create_attendance_records(db, records, current_user)
+        log_operation(
+            logger,
+            "BULK_CREATE",
+            "attendance",
+            user_id=current_user.user_id,
+            details={
+                "total": result["total"],
+                "successful": result["successful"],
+                "failed": result["failed"],
+            },
+        )
+        return result
+    except Exception as e:
+        log_error(logger, "BULK_CREATE", "attendance", e, user_id=current_user.user_id)
+        raise
+
+
+@router.post("/mark-all-present", status_code=status.HTTP_201_CREATED)
+def mark_all_present_endpoint(
+    client_id: str,
+    shift_id: int,
+    shift_date: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Mark all active employees as present for a given shift and date.
+
+    Creates attendance records with is_absent=0 for all active employees
+    assigned to the specified client who do not already have attendance
+    records for the given shift and date.
+
+    SECURITY: Verifies user has access to the specified client.
+
+    Query Parameters:
+        client_id: Client ID to mark attendance for
+        shift_id: Shift ID to record attendance against
+        shift_date: Date of the shift (YYYY-MM-DD)
+
+    Returns summary with total_employees, records_created, already_exists, created_ids.
+    """
+    try:
+        result = mark_all_present(db, client_id, shift_id, shift_date, current_user)
+        log_operation(
+            logger,
+            "MARK_ALL_PRESENT",
+            "attendance",
+            user_id=current_user.user_id,
+            client_id=client_id,
+            details={
+                "shift_id": shift_id,
+                "shift_date": str(shift_date),
+                "records_created": result["records_created"],
+            },
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(
+            logger,
+            "MARK_ALL_PRESENT",
+            "attendance",
+            e,
+            user_id=current_user.user_id,
+            client_id=client_id,
+        )
+        raise

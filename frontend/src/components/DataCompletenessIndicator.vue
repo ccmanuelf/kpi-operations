@@ -6,7 +6,7 @@
       class="d-flex align-center bg-grey-darken-3 text-white py-2"
     >
       <v-icon class="mr-2" size="24">mdi-clipboard-check-outline</v-icon>
-      Data Completeness
+      {{ t('dataCompleteness.title') }}
       <v-spacer />
       <v-btn
         icon="mdi-refresh"
@@ -56,7 +56,7 @@
                 </span>
               </v-progress-circular>
             </template>
-            <span>Click for details</span>
+            <span>{{ t('dataCompleteness.clickForDetails') }}</span>
           </v-tooltip>
           <div
             v-if="!compact"
@@ -131,7 +131,7 @@
                 class="mb-2"
               >
                 <v-icon>mdi-information</v-icon>
-                {{ incompleteCategories.length }} category(ies) need attention
+                {{ t('dataCompleteness.needAttentionCount', { count: incompleteCategories.length }) }}
               </v-alert>
 
               <div class="d-flex flex-wrap gap-2">
@@ -144,7 +144,7 @@
                   :prepend-icon="category.icon"
                   @click="navigateToCategory(category)"
                 >
-                  Complete {{ category.name }}
+                  {{ t('dataCompleteness.completeCategory', { name: category.name }) }}
                 </v-btn>
               </div>
             </div>
@@ -168,7 +168,7 @@
         size="small"
         @click="showDetails = false"
       >
-        Collapse
+        {{ t('dataCompleteness.collapse') }}
       </v-btn>
       <v-btn
         v-else
@@ -177,7 +177,7 @@
         color="primary"
         @click="showDetails = true"
       >
-        Details
+        {{ t('dataCompleteness.details') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -185,8 +185,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import api from '@/services/api'
+
+const { t } = useI18n()
 
 // Props interface
 interface DataCompletenessProps {
@@ -339,9 +342,9 @@ const getStatusColor = (status: string): string => {
 
 const getStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
-    complete: 'Data Complete',
-    warning: 'Needs Attention',
-    incomplete: 'Incomplete'
+    complete: t('dataCompleteness.dataComplete'),
+    warning: t('dataCompleteness.needsAttention'),
+    incomplete: t('dataCompleteness.incomplete')
   }
   return labels[status] || 'Unknown'
 }

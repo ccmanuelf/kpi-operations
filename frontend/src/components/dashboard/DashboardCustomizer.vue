@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4 bg-primary">
         <v-icon class="mr-2">mdi-view-dashboard-edit</v-icon>
-        <span class="text-h5">Customize Dashboard</span>
+        <span class="text-h5">{{ t('dashboardCustomizer.title') }}</span>
         <v-spacer></v-spacer>
         <v-btn icon variant="text" @click="cancel">
           <v-icon>mdi-close</v-icon>
@@ -13,7 +13,7 @@
       <v-card-text class="pa-0">
         <!-- Layout Selection -->
         <div class="pa-4 border-b">
-          <div class="text-subtitle-2 mb-3">Layout Style</div>
+          <div class="text-subtitle-2 mb-3">{{ t('dashboardCustomizer.layoutStyle') }}</div>
           <v-btn-toggle
             v-model="localLayout"
             mandatory
@@ -23,15 +23,15 @@
           >
             <v-btn value="grid">
               <v-icon start>mdi-view-grid</v-icon>
-              Grid
+              {{ t('dashboardCustomizer.grid') }}
             </v-btn>
             <v-btn value="list">
               <v-icon start>mdi-view-list</v-icon>
-              List
+              {{ t('dashboardCustomizer.list') }}
             </v-btn>
             <v-btn value="compact">
               <v-icon start>mdi-view-compact</v-icon>
-              Compact
+              {{ t('dashboardCustomizer.compact') }}
             </v-btn>
           </v-btn-toggle>
         </div>
@@ -39,16 +39,16 @@
         <!-- Active Widgets Section -->
         <div class="pa-4 border-b">
           <div class="d-flex align-center mb-3">
-            <div class="text-subtitle-2">Active Widgets</div>
+            <div class="text-subtitle-2">{{ t('dashboardCustomizer.activeWidgets') }}</div>
             <v-spacer />
             <v-chip size="small" color="primary" variant="tonal">
-              {{ localVisibleWidgets.length }} active
+              {{ localVisibleWidgets.length }} {{ t('dashboardCustomizer.active') }}
             </v-chip>
           </div>
 
           <div v-if="localVisibleWidgets.length === 0" class="text-center py-6">
             <v-icon size="48" color="grey-lighten-1">mdi-widgets-outline</v-icon>
-            <p class="text-grey mt-2">No widgets added. Add widgets from below.</p>
+            <p class="text-grey mt-2">{{ t('dashboardCustomizer.noWidgetsAdded') }}</p>
           </div>
 
           <draggable
@@ -78,7 +78,7 @@
                   @click="hideWidget(element.widget_key)"
                 >
                   <v-icon>mdi-eye-off</v-icon>
-                  <v-tooltip activator="parent" location="top">Hide Widget</v-tooltip>
+                  <v-tooltip activator="parent" location="top">{{ t('widgets.container.hideWidget') }}</v-tooltip>
                 </v-btn>
               </div>
             </template>
@@ -88,16 +88,16 @@
         <!-- Available Widgets Section -->
         <div class="pa-4">
           <div class="d-flex align-center mb-3">
-            <div class="text-subtitle-2">Available Widgets</div>
+            <div class="text-subtitle-2">{{ t('dashboardCustomizer.availableWidgets') }}</div>
             <v-spacer />
             <v-chip size="small" color="grey" variant="tonal">
-              {{ availableToAdd.length }} available
+              {{ availableToAdd.length }} {{ t('dashboardCustomizer.available') }}
             </v-chip>
           </div>
 
           <div v-if="availableToAdd.length === 0" class="text-center py-4">
             <v-icon size="32" color="grey-lighten-1">mdi-check-circle</v-icon>
-            <p class="text-grey text-caption mt-2">All available widgets are added</p>
+            <p class="text-grey text-caption mt-2">{{ t('dashboardCustomizer.allWidgetsAdded') }}</p>
           </div>
 
           <v-list v-else density="compact" class="pa-0">
@@ -126,7 +126,7 @@
                   color="primary"
                 >
                   <v-icon>mdi-plus</v-icon>
-                  <v-tooltip activator="parent" location="top">Add Widget</v-tooltip>
+                  <v-tooltip activator="parent" location="top">{{ t('widgets.grid.addWidget') }}</v-tooltip>
                 </v-btn>
               </template>
             </v-list-item>
@@ -143,14 +143,14 @@
           prepend-icon="mdi-restore"
           @click="confirmReset"
         >
-          Reset to Defaults
+          {{ t('dashboardCustomizer.resetToDefaults') }}
         </v-btn>
         <v-spacer />
         <v-btn
           variant="text"
           @click="cancel"
         >
-          Cancel
+          {{ t('common.cancel') }}
         </v-btn>
         <v-btn
           color="primary"
@@ -158,7 +158,7 @@
           :loading="saving"
           @click="save"
         >
-          Save Changes
+          {{ t('dashboardCustomizer.saveChanges') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -166,15 +166,14 @@
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-h6">Reset Dashboard?</v-card-title>
+        <v-card-title class="text-h6">{{ t('dashboardCustomizer.resetDashboard') }}</v-card-title>
         <v-card-text>
-          This will reset your dashboard to the default layout for your role ({{ userRole }}).
-          All customizations will be lost.
+          {{ t('dashboardCustomizer.resetMessage', { role: userRole }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showResetDialog = false">Cancel</v-btn>
-          <v-btn color="warning" variant="flat" @click="resetToDefaults">Reset</v-btn>
+          <v-btn variant="text" @click="showResetDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="warning" variant="flat" @click="resetToDefaults">{{ t('common.reset') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -183,8 +182,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { useDashboardStore } from '@/stores/dashboardStore'
+
+const { t } = useI18n()
 
 const props = defineProps({
   modelValue: {

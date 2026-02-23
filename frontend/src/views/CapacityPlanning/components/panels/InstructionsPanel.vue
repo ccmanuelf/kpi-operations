@@ -2,7 +2,7 @@
   <v-card>
     <v-card-title class="d-flex align-center">
       <v-icon start>mdi-book-open-variant</v-icon>
-      Capacity Planning Reference Guide
+      {{ t('capacityInstructions.title') }}
     </v-card-title>
     <v-card-text>
       <v-expansion-panels multiple>
@@ -10,7 +10,7 @@
         <v-expansion-panel>
           <v-expansion-panel-title>
             <v-icon start>mdi-calculator-variant</v-icon>
-            12-Step Capacity Calculation
+            {{ t('capacityInstructions.calculationGuide') }}
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-list density="compact">
@@ -38,7 +38,7 @@
         <v-expansion-panel>
           <v-expansion-panel-title>
             <v-icon start>mdi-alert-circle-outline</v-icon>
-            Common Pitfalls
+            {{ t('capacityInstructions.commonPitfalls') }}
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-alert
@@ -58,7 +58,7 @@
         <v-expansion-panel>
           <v-expansion-panel-title>
             <v-icon start>mdi-function-variant</v-icon>
-            Key Formulas
+            {{ t('capacityInstructions.keyFormulas') }}
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <v-card
@@ -90,6 +90,9 @@
  * (net capacity, utilization, SAM per order, gross required, coverage).
  * Purely informational -- no store dependency, props, or emits.
  */
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const calculationSteps = [
   { number: 1, title: 'Working Days', description: 'Count calendar working days in period' },
   { number: 2, title: 'Shifts per Day', description: 'Multiply by available shifts' },
@@ -100,7 +103,7 @@ const calculationSteps = [
   { number: 7, title: 'Net Available Hours', description: 'Gross \u00d7 Efficiency \u00d7 (1 \u2212 Absenteeism)' },
   { number: 8, title: 'Operators per Line', description: 'Multiply by available operators' },
   { number: 9, title: 'Total Capacity Hours', description: 'Net Hours \u00d7 Operators' },
-  { number: 10, title: 'Demand Hours', description: 'Sum SAM \u00d7 Quantity for all orders' },
+  { number: 10, title: t('capacityInstructions.steps.demandHours'), description: t('capacityInstructions.steps.demandHoursDesc') },
   { number: 11, title: 'Utilization %', description: '(Demand / Capacity) \u00d7 100' },
   { number: 12, title: 'Bottleneck Detection', description: 'Flag lines above threshold' }
 ]
@@ -125,8 +128,8 @@ const keyFormulas = [
     expression: '(Total Demand Hours / Total Capacity Hours) \u00d7 100'
   },
   {
-    label: 'SAM per Order',
-    expression: 'Sum of Operation SAMs \u00d7 Order Quantity'
+    label: t('timeStandard.samPerOrder'),
+    expression: t('timeStandard.samExpression')
   },
   {
     label: 'Gross Required',

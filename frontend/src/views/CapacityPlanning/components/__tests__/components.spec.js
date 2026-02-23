@@ -109,7 +109,7 @@ describe('InstructionsPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Capacity Planning Reference Guide')
+    expect(wrapper.text()).toContain('capacityInstructions.title')
   })
 
   it('renders all 12 calculation steps', () => {
@@ -127,7 +127,7 @@ describe('InstructionsPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Common Pitfalls')
+    expect(wrapper.text()).toContain('capacityInstructions.commonPitfalls')
     expect(wrapper.text()).toContain('Forgetting to exclude holidays')
   })
 
@@ -136,7 +136,7 @@ describe('InstructionsPanel', () => {
       global: { stubs: globalStubs }
     })
 
-    expect(wrapper.text()).toContain('Key Formulas')
+    expect(wrapper.text()).toContain('capacityInstructions.keyFormulas')
     expect(wrapper.text()).toContain('Net Capacity')
     expect(wrapper.text()).toContain('Utilization %')
   })

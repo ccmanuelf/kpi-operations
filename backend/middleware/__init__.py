@@ -15,6 +15,7 @@ from .rate_limit import (
     report_rate_limit,
 )
 from .audit_log import AuditLogMiddleware
+from .write_access import require_capacity_write, require_operations_write
 
 __all__ = [
     # Client authorization
@@ -32,4 +33,7 @@ __all__ = [
     "report_rate_limit",
     # Audit logging
     "AuditLogMiddleware",
+    # Write access control
+    "require_capacity_write",
+    "require_operations_write",
 ]

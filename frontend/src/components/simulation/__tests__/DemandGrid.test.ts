@@ -84,12 +84,12 @@ describe('DemandGrid', () => {
 
     it('should display Demand Configuration title', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Demand Configuration')
+      expect(wrapper.text()).toContain('simulationDemand.title')
     })
 
     it('should render Add Product Demand button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Add Product Demand')
+      expect(wrapper.text()).toContain('simulationDemand.addProductDemand')
     })
 
     it('should render AG Grid component', () => {
@@ -107,14 +107,14 @@ describe('DemandGrid', () => {
     it('should show info alert when no demands exist', () => {
       mockStore.demands = []
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Add demand for each product')
+      expect(wrapper.text()).toContain('simulationDemand.emptyDemand')
     })
 
     it('should show auto-fill button when products exist but no demands', () => {
       mockStore.demands = []
       mockStore.products = ['TSHIRT_A', 'TSHIRT_B']
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Auto-fill from Operations')
+      expect(wrapper.text()).toContain('simulationDemand.autoFill')
     })
   })
 
@@ -128,7 +128,7 @@ describe('DemandGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const dailyCol = columnDefs.find((c: { field: string }) => c.field === 'daily_demand')
       expect(dailyCol).toBeDefined()
-      expect(dailyCol.headerName).toBe('Daily Demand')
+      expect(dailyCol.headerName).toBe('simulationDemand.dailyDemand')
     })
 
     it('should display weekly demand column in demand-driven mode', () => {
@@ -136,7 +136,7 @@ describe('DemandGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const weeklyCol = columnDefs.find((c: { field: string }) => c.field === 'weekly_demand')
       expect(weeklyCol).toBeDefined()
-      expect(weeklyCol.headerName).toBe('Weekly Demand')
+      expect(weeklyCol.headerName).toBe('simulationDemand.weeklyDemand')
     })
   })
 
@@ -150,7 +150,7 @@ describe('DemandGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const mixCol = columnDefs.find((c: { field: string }) => c.field === 'mix_share_pct')
       expect(mixCol).toBeDefined()
-      expect(mixCol.headerName).toBe('Mix Share %')
+      expect(mixCol.headerName).toBe('simulationDemand.mixShare')
     })
 
     it('should not display daily demand column in mix-driven mode', () => {
@@ -166,7 +166,7 @@ describe('DemandGrid', () => {
       mockStore.mode = 'mix-driven'
       mockStore.totalMixPercent = 90
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Mix percentages sum to 90.0%')
+      expect(wrapper.text()).toContain('simulationDemand.mixWarning')
     })
   })
 
@@ -174,7 +174,7 @@ describe('DemandGrid', () => {
     it('should call addDemand when Add Product Demand button is clicked', async () => {
       const wrapper = mountComponent()
       const buttons = wrapper.findAll('.v-btn')
-      const addButton = buttons.find(btn => btn.text().includes('Add Product Demand'))
+      const addButton = buttons.find(btn => btn.text().includes('simulationDemand.addProductDemand'))
 
       if (addButton) {
         await addButton.trigger('click')
@@ -189,7 +189,7 @@ describe('DemandGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const productCol = columnDefs.find((c: { field: string }) => c.field === 'product')
       expect(productCol).toBeDefined()
-      expect(productCol.headerName).toBe('Product')
+      expect(productCol.headerName).toBe('simulationV2.operations.product')
     })
 
     it('should define Bundle Size column', () => {
@@ -197,7 +197,7 @@ describe('DemandGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const bundleCol = columnDefs.find((c: { field: string }) => c.field === 'bundle_size')
       expect(bundleCol).toBeDefined()
-      expect(bundleCol.headerName).toBe('Bundle Size')
+      expect(bundleCol.headerName).toBe('simulationDemand.bundleSize')
     })
 
     it('should have actions column for row deletion', () => {

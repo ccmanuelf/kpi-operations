@@ -2,7 +2,7 @@
   <v-card elevation="2">
     <v-card-title class="d-flex align-center bg-deep-purple text-white">
       <v-icon class="mr-2" size="24">mdi-wrench-clock</v-icon>
-      Rework by Operation
+      {{ t('widgets.reworkByOperation.title') }}
       <v-spacer />
       <v-btn
         icon="mdi-refresh"
@@ -33,7 +33,7 @@
       <!-- Empty State -->
       <div v-else-if="!reworkOperations.length" class="text-center text-grey pa-8">
         <v-icon size="64" class="mb-4">mdi-check-all</v-icon>
-        <div>No rework operations recorded</div>
+        <div>{{ t('widgets.reworkByOperation.noData') }}</div>
       </div>
 
       <!-- Data Display -->
@@ -42,15 +42,15 @@
         <v-row dense class="mb-4">
           <v-col cols="4" class="text-center">
             <div class="text-h5 font-weight-bold text-deep-purple">{{ totalReworkUnits.toLocaleString() }}</div>
-            <div class="text-caption text-grey">Total Rework Units</div>
+            <div class="text-caption text-grey">{{ t('widgets.reworkByOperation.totalReworkUnits') }}</div>
           </v-col>
           <v-col cols="4" class="text-center">
             <div class="text-h5 font-weight-bold text-warning">{{ totalReworkHours }}h</div>
-            <div class="text-caption text-grey">Rework Hours</div>
+            <div class="text-caption text-grey">{{ t('widgets.reworkByOperation.reworkHours') }}</div>
           </v-col>
           <v-col cols="4" class="text-center">
             <div class="text-h5 font-weight-bold text-error">${{ totalReworkCost.toLocaleString() }}</div>
-            <div class="text-caption text-grey">Est. Cost</div>
+            <div class="text-caption text-grey">{{ t('widgets.reworkByOperation.estCost') }}</div>
           </v-col>
         </v-row>
 
@@ -58,8 +58,8 @@
         <div class="mb-4 pa-3 rounded" :class="reworkRateBackgroundColor">
           <div class="d-flex justify-space-between align-center">
             <div>
-              <div class="text-subtitle-2">Overall Rework Rate</div>
-              <div class="text-caption text-grey">Target: &lt;2%</div>
+              <div class="text-subtitle-2">{{ t('widgets.reworkByOperation.overallReworkRate') }}</div>
+              <div class="text-caption text-grey">{{ t('widgets.reworkByOperation.targetRate') }}</div>
             </div>
             <div class="text-h4 font-weight-bold" :class="reworkRateTextColor">
               {{ reworkRate }}%
@@ -75,7 +75,7 @@
         </div>
 
         <!-- Operations List -->
-        <div class="text-subtitle-2 mb-2">Top Rework Operations</div>
+        <div class="text-subtitle-2 mb-2">{{ t('widgets.reworkByOperation.topOperations') }}</div>
         <v-list density="compact" class="pa-0">
           <v-list-item
             v-for="(item, index) in reworkOperations.slice(0, 6)"
@@ -129,7 +129,7 @@
 
         <!-- Pareto Chart Preview -->
         <v-divider class="my-4" />
-        <div class="text-subtitle-2 mb-2">Pareto Analysis (80/20 Rule)</div>
+        <div class="text-subtitle-2 mb-2">{{ t('widgets.reworkByOperation.paretoAnalysis') }}</div>
         <div class="d-flex align-center mb-2">
           <div class="flex-grow-1">
             <div v-for="item in paretoItems" :key="item.operation" class="mb-1">
@@ -168,7 +168,7 @@
         prepend-icon="mdi-chart-sankey"
         @click="$emit('viewDetails')"
       >
-        View Analysis
+        {{ t('widgets.reworkByOperation.viewAnalysis') }}
       </v-btn>
       <v-spacer />
       <v-btn
@@ -178,7 +178,7 @@
         prepend-icon="mdi-target"
         @click="$emit('createAction')"
       >
-        Create Action
+        {{ t('widgets.reworkByOperation.createAction') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -186,7 +186,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps<{

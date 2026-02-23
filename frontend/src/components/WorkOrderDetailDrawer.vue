@@ -38,7 +38,7 @@
           variant="outlined"
           size="small"
         >
-          {{ workOrder.priority }} Priority
+          {{ t('workOrderDrawer.priority', { priority: workOrder.priority }) }}
         </v-chip>
       </div>
 
@@ -47,7 +47,7 @@
       <v-card-text class="pa-0">
         <!-- Progress Section -->
         <div class="px-6 py-4">
-          <div class="text-subtitle-2 font-weight-bold mb-3">Production Progress</div>
+          <div class="text-subtitle-2 font-weight-bold mb-3">{{ t('workOrderDrawer.productionProgress') }}</div>
 
           <div class="d-flex justify-center mb-4">
             <v-progress-circular
@@ -58,7 +58,7 @@
             >
               <div class="text-center">
                 <div class="text-h5 font-weight-bold">{{ progressPercent.toFixed(0) }}%</div>
-                <div class="text-caption text-medium-emphasis">Complete</div>
+                <div class="text-caption text-medium-emphasis">{{ t('workOrderDrawer.complete') }}</div>
               </div>
             </v-progress-circular>
           </div>
@@ -66,15 +66,15 @@
           <v-row dense>
             <v-col cols="4" class="text-center">
               <div class="text-h6 font-weight-bold">{{ workOrder.planned_quantity }}</div>
-              <div class="text-caption text-medium-emphasis">Planned</div>
+              <div class="text-caption text-medium-emphasis">{{ t('workOrderDrawer.planned') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
               <div class="text-h6 font-weight-bold text-success">{{ workOrder.actual_quantity }}</div>
-              <div class="text-caption text-medium-emphasis">Produced</div>
+              <div class="text-caption text-medium-emphasis">{{ t('workOrderDrawer.produced') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
               <div class="text-h6 font-weight-bold text-warning">{{ remaining }}</div>
-              <div class="text-caption text-medium-emphasis">Remaining</div>
+              <div class="text-caption text-medium-emphasis">{{ t('workOrderDrawer.remaining') }}</div>
             </v-col>
           </v-row>
         </div>
@@ -83,16 +83,16 @@
 
         <!-- Details Section -->
         <div class="px-6 py-4">
-          <div class="text-subtitle-2 font-weight-bold mb-3">Order Details</div>
+          <div class="text-subtitle-2 font-weight-bold mb-3">{{ t('workOrderDrawer.orderDetails') }}</div>
 
           <v-list density="compact" class="bg-transparent pa-0">
             <v-list-item>
               <template v-slot:prepend>
                 <v-icon size="small" class="mr-2">mdi-calendar</v-icon>
               </template>
-              <v-list-item-title class="text-body-2">Planned Start</v-list-item-title>
+              <v-list-item-title class="text-body-2">{{ t('workOrderDrawer.plannedStart') }}</v-list-item-title>
               <template v-slot:append>
-                <span class="text-body-2">{{ formatDate(workOrder.planned_start_date) || 'Not set' }}</span>
+                <span class="text-body-2">{{ formatDate(workOrder.planned_start_date) || t('workOrderDrawer.notSet') }}</span>
               </template>
             </v-list-item>
 
@@ -100,9 +100,9 @@
               <template v-slot:prepend>
                 <v-icon size="small" class="mr-2">mdi-calendar-start</v-icon>
               </template>
-              <v-list-item-title class="text-body-2">Actual Start</v-list-item-title>
+              <v-list-item-title class="text-body-2">{{ t('workOrderDrawer.actualStart') }}</v-list-item-title>
               <template v-slot:append>
-                <span class="text-body-2">{{ formatDate(workOrder.actual_start_date) || 'Not started' }}</span>
+                <span class="text-body-2">{{ formatDate(workOrder.actual_start_date) || t('workOrderDrawer.notStarted') }}</span>
               </template>
             </v-list-item>
 
@@ -110,10 +110,10 @@
               <template v-slot:prepend>
                 <v-icon size="small" class="mr-2" :color="isOverdue ? 'error' : ''">mdi-truck-delivery</v-icon>
               </template>
-              <v-list-item-title class="text-body-2">Ship Date</v-list-item-title>
+              <v-list-item-title class="text-body-2">{{ t('workOrderDrawer.shipDate') }}</v-list-item-title>
               <template v-slot:append>
                 <span class="text-body-2" :class="{ 'text-error font-weight-bold': isOverdue }">
-                  {{ formatDate(workOrder.planned_ship_date) || 'Not set' }}
+                  {{ formatDate(workOrder.planned_ship_date) || t('workOrderDrawer.notSet') }}
                   <v-icon v-if="isOverdue" color="error" size="x-small" class="ml-1">mdi-alert</v-icon>
                 </span>
               </template>
@@ -123,7 +123,7 @@
               <template v-slot:prepend>
                 <v-icon size="small" class="mr-2">mdi-file-document</v-icon>
               </template>
-              <v-list-item-title class="text-body-2">Customer PO</v-list-item-title>
+              <v-list-item-title class="text-body-2">{{ t('workOrderDrawer.customerPo') }}</v-list-item-title>
               <template v-slot:append>
                 <span class="text-body-2 font-weight-medium">{{ workOrder.customer_po_number }}</span>
               </template>
@@ -133,9 +133,9 @@
               <template v-slot:prepend>
                 <v-icon size="small" class="mr-2">mdi-timer</v-icon>
               </template>
-              <v-list-item-title class="text-body-2">Ideal Cycle Time</v-list-item-title>
+              <v-list-item-title class="text-body-2">{{ t('workOrderDrawer.idealCycleTime') }}</v-list-item-title>
               <template v-slot:append>
-                <span class="text-body-2">{{ workOrder.ideal_cycle_time }} hrs</span>
+                <span class="text-body-2">{{ workOrder.ideal_cycle_time }} {{ t('workOrderDrawer.hrs') }}</span>
               </template>
             </v-list-item>
 
@@ -143,9 +143,9 @@
               <template v-slot:prepend>
                 <v-icon size="small" class="mr-2">mdi-clock-outline</v-icon>
               </template>
-              <v-list-item-title class="text-body-2">Total Run Time</v-list-item-title>
+              <v-list-item-title class="text-body-2">{{ t('workOrderDrawer.totalRunTime') }}</v-list-item-title>
               <template v-slot:append>
-                <span class="text-body-2">{{ workOrder.total_run_time_hours }} hrs</span>
+                <span class="text-body-2">{{ workOrder.total_run_time_hours }} {{ t('workOrderDrawer.hrs') }}</span>
               </template>
             </v-list-item>
           </v-list>
@@ -155,7 +155,7 @@
 
         <!-- QC Status -->
         <div class="px-6 py-4">
-          <div class="text-subtitle-2 font-weight-bold mb-3">Quality Control</div>
+          <div class="text-subtitle-2 font-weight-bold mb-3">{{ t('workOrderDrawer.qualityControl') }}</div>
 
           <v-alert
             :type="workOrder.qc_approved ? 'success' : 'warning'"
@@ -164,10 +164,10 @@
           >
             <div class="d-flex align-center">
               <v-icon :icon="workOrder.qc_approved ? 'mdi-check-circle' : 'mdi-clock-outline'" class="mr-2" />
-              <span>{{ workOrder.qc_approved ? 'QC Approved' : 'Pending QC Approval' }}</span>
+              <span>{{ workOrder.qc_approved ? t('workOrderDrawer.qcApproved') : t('workOrderDrawer.pendingQcApproval') }}</span>
             </div>
             <div v-if="workOrder.qc_approved && workOrder.qc_approved_date" class="text-caption mt-1">
-              Approved on {{ formatDate(workOrder.qc_approved_date) }}
+              {{ t('workOrderDrawer.approvedOn', { date: formatDate(workOrder.qc_approved_date) }) }}
             </div>
           </v-alert>
 
@@ -178,8 +178,8 @@
             density="compact"
             class="mt-2"
           >
-            <div class="font-weight-medium">Rejection Reason:</div>
-            <div class="text-body-2">{{ workOrder.rejection_reason || 'No reason provided' }}</div>
+            <div class="font-weight-medium">{{ t('workOrderDrawer.rejectionReason') }}</div>
+            <div class="text-body-2">{{ workOrder.rejection_reason || t('workOrderDrawer.noReasonProvided') }}</div>
           </v-alert>
         </div>
 
@@ -187,7 +187,7 @@
 
         <!-- Notes -->
         <div v-if="workOrder.notes" class="px-6 py-4">
-          <div class="text-subtitle-2 font-weight-bold mb-2">Notes</div>
+          <div class="text-subtitle-2 font-weight-bold mb-2">{{ t('common.notes') }}</div>
           <div class="text-body-2 text-medium-emphasis">{{ workOrder.notes }}</div>
         </div>
 
@@ -238,7 +238,7 @@
             prepend-icon="mdi-pencil"
             @click="$emit('edit', workOrder)"
           >
-            Edit Order
+            {{ t('workOrderDrawer.editOrder') }}
           </v-btn>
           <v-btn
             v-if="workOrder.status === 'ACTIVE'"
@@ -247,7 +247,7 @@
             prepend-icon="mdi-pause"
             @click="updateStatus('ON_HOLD')"
           >
-            Put On Hold
+            {{ t('workOrderDrawer.putOnHold') }}
           </v-btn>
           <v-btn
             v-if="workOrder.status === 'ON_HOLD'"
@@ -256,7 +256,7 @@
             prepend-icon="mdi-play"
             @click="updateStatus('ACTIVE')"
           >
-            Resume
+            {{ t('workOrderDrawer.resume') }}
           </v-btn>
           <v-btn
             v-if="workOrder.status === 'ACTIVE'"
@@ -265,7 +265,7 @@
             prepend-icon="mdi-check"
             @click="updateStatus('COMPLETED')"
           >
-            Mark Complete
+            {{ t('workOrderDrawer.markComplete') }}
           </v-btn>
         </div>
       </div>
@@ -276,7 +276,7 @@
       <div class="d-flex align-center justify-center" style="height: 100%;">
         <div class="text-center text-medium-emphasis">
           <v-icon size="64" class="mb-4">mdi-clipboard-text-outline</v-icon>
-          <div>No work order selected</div>
+          <div>{{ t('workOrderDrawer.noWorkOrderSelected') }}</div>
         </div>
       </div>
     </template>
@@ -285,6 +285,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { format, parseISO, isAfter, startOfDay } from 'date-fns'
 import api from '@/services/api'
 import { useNotificationStore } from '@/stores/notificationStore'
@@ -306,6 +307,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'update', 'edit'])
 
+const { t } = useI18n()
 const notificationStore = useNotificationStore()
 const workOrderRty = ref(null)
 const transitionHistoryRef = ref(null)

@@ -4,11 +4,11 @@
       <div class="d-flex align-center justify-space-between" style="width: 100%;">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-chart-bar</v-icon>
-          <span class="text-h6">Demand Configuration</span>
+          <span class="text-h6">{{ t('simulationDemand.title') }}</span>
         </div>
         <v-btn color="white" variant="outlined" size="small" @click="addRow">
           <v-icon left>mdi-plus</v-icon>
-          Add Product Demand
+          {{ t('simulationDemand.addProductDemand') }}
         </v-btn>
       </div>
     </v-card-title>
@@ -58,11 +58,11 @@
         density="compact"
         class="mb-3"
       >
-        Mix percentages sum to {{ store.totalMixPercent.toFixed(1) }}%. They should equal 100%.
+        {{ t('simulationDemand.mixWarning', { pct: store.totalMixPercent.toFixed(1) }) }}
       </v-alert>
 
       <v-alert v-if="store.demands.length === 0" type="info" variant="tonal" class="mb-3">
-        Add demand for each product. Products must match those defined in Operations.
+        {{ t('simulationDemand.emptyDemand') }}
       </v-alert>
 
       <div class="ag-theme-material" style="height: 300px; width: 100%;">
@@ -87,7 +87,7 @@
         @click="autoFillFromProducts"
       >
         <v-icon left>mdi-auto-fix</v-icon>
-        Auto-fill from Operations ({{ store.products.length }} products)
+        {{ t('simulationDemand.autoFill', { count: store.products.length }) }}
       </v-btn>
     </v-card-text>
   </v-card>
@@ -143,14 +143,14 @@ const columnDefs = computed(() => {
       }
     },
     {
-      headerName: 'Product',
+      headerName: t('simulationV2.operations.product'),
       field: 'product',
       width: 150,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: store.products.length > 0 ? store.products : [''] }
     },
     {
-      headerName: 'Bundle Size',
+      headerName: t('simulationDemand.bundleSize'),
       field: 'bundle_size',
       width: 110,
       type: 'numericColumn',
@@ -161,14 +161,14 @@ const columnDefs = computed(() => {
   if (store.mode === 'demand-driven') {
     cols.push(
       {
-        headerName: 'Daily Demand',
+        headerName: t('simulationDemand.dailyDemand'),
         field: 'daily_demand',
         width: 120,
         type: 'numericColumn',
         cellEditor: 'agNumberCellEditor'
       },
       {
-        headerName: 'Weekly Demand',
+        headerName: t('simulationDemand.weeklyDemand'),
         field: 'weekly_demand',
         width: 130,
         type: 'numericColumn',
@@ -177,7 +177,7 @@ const columnDefs = computed(() => {
     )
   } else {
     cols.push({
-      headerName: 'Mix Share %',
+      headerName: t('simulationDemand.mixShare'),
       field: 'mix_share_pct',
       width: 110,
       type: 'numericColumn',

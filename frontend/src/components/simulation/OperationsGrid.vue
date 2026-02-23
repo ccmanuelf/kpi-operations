@@ -18,7 +18,7 @@
             class="mr-2"
           >
             <v-icon left>mdi-plus</v-icon>
-            Add Operation
+            {{ t('simulationOperations.addOperation') }}
           </v-btn>
           <v-btn
             color="white"
@@ -28,7 +28,7 @@
             class="mr-2"
           >
             <v-icon left>mdi-file-import</v-icon>
-            Import CSV
+            {{ t('simulationOperations.importCsv') }}
           </v-btn>
         </div>
       </div>
@@ -77,7 +77,7 @@
       <v-card>
         <v-card-title>
           <v-icon left>mdi-file-import</v-icon>
-          Import Operations from CSV
+          {{ t('databaseConfig.importOperations') }}
         </v-card-title>
         <v-card-text>
           <v-textarea
@@ -113,9 +113,12 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { AgGridVue } from 'ag-grid-vue3'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 import Papa from 'papaparse'
+
+const { t } = useI18n()
 
 const store = useSimulationV2Store()
 const gridApi = ref(null)
@@ -188,7 +191,7 @@ const columnDefs = computed(() => [
     cellEditor: 'agTextCellEditor'
   },
   {
-    headerName: 'SAM (min)',
+    headerName: t('timeStandard.samMin'),
     field: 'sam_min',
     width: 100,
     type: 'numericColumn',

@@ -61,17 +61,17 @@ describe('ScheduleForm', () => {
 
     it('should display Schedule Configuration title', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Schedule Configuration')
+      expect(wrapper.text()).toContain('simulationSchedule.title')
     })
 
     it('should display Shifts section', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Shifts')
+      expect(wrapper.text()).toContain('simulationSchedule.shifts')
     })
 
     it('should display Work Days section', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Work Days')
+      expect(wrapper.text()).toContain('simulationSchedule.workDaysOvertime')
     })
   })
 
@@ -79,19 +79,19 @@ describe('ScheduleForm', () => {
     it('should render shift configuration inputs', () => {
       const wrapper = mountComponent()
       // Check that shift-related text is present
-      expect(wrapper.text()).toContain('Shifts')
+      expect(wrapper.text()).toContain('simulationSchedule.shifts')
     })
   })
 
   describe('Summary Display', () => {
     it('should display Daily Planned Hours', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Daily Planned Hours')
+      expect(wrapper.text()).toContain('simulationSchedule.dailyPlannedHours')
     })
 
     it('should display Weekly Base Hours', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Weekly Base Hours')
+      expect(wrapper.text()).toContain('simulationSchedule.weeklyBaseHours')
     })
   })
 })

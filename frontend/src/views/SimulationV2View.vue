@@ -244,7 +244,7 @@
             <v-expansion-panel :title="t('simulationV2.guide.processingTimeFormula')">
               <v-expansion-panel-text>
                 <v-code class="d-block pa-3 bg-grey-lighten-4 rounded">
-                  Actual Time = SAM × (1 + Variability + FPD/100 + (100-Grade)/100)
+                  {{ t('simulationV2.guide.formulaText', { sam: t('timeStandard.sam') }) }}
                 </v-code>
                 <v-list density="compact" class="mt-3">
                   <v-list-item><strong>{{ t('simulationV2.guide.variability') }}:</strong> {{ t('simulationV2.guide.variabilityDesc') }}</v-list-item>

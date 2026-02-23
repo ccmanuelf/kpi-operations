@@ -6,6 +6,16 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ResultsView from '../ResultsView.vue'
 
+// Mock vue-i18n
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string, params?: Record<string, unknown>) => {
+    if (params) {
+      return Object.entries(params).reduce((str, [k, v]) => str.replace(`{${k}}`, String(v)), key)
+    }
+    return key
+  }})
+}))
+
 // Mock date-fns
 vi.mock('date-fns', () => ({
   format: vi.fn((date, formatStr) => '2025-01-15 10:30:00')
@@ -128,12 +138,12 @@ describe('ResultsView', () => {
 
     it('should display Simulation Results title', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Simulation Results')
+      expect(wrapper.text()).toContain('simulationResults.title')
     })
 
     it('should display Export to Excel button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Export to Excel')
+      expect(wrapper.text()).toContain('simulationResults.exportExcel')
     })
   })
 
@@ -154,7 +164,7 @@ describe('ResultsView', () => {
         daily_summary: { ...createMockResults().daily_summary, daily_coverage_pct: 105 }
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.vm.summaryText).toBe('Demand can be fully met')
+      expect(wrapper.vm.summaryText).toBe('simulationResults.demandMet')
     })
 
     it('should show warning message when coverage >= 90% but < 100%', () => {
@@ -162,7 +172,7 @@ describe('ResultsView', () => {
         daily_summary: { ...createMockResults().daily_summary, daily_coverage_pct: 95 }
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.vm.summaryText).toBe('Slight shortfall expected')
+      expect(wrapper.vm.summaryText).toBe('simulationResults.shortfall')
     })
 
     it('should show error message when coverage < 90%', () => {
@@ -170,44 +180,44 @@ describe('ResultsView', () => {
         daily_summary: { ...createMockResults().daily_summary, daily_coverage_pct: 80 }
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.vm.summaryText).toBe('Significant shortfall - action needed')
+      expect(wrapper.vm.summaryText).toBe('simulationResults.significantShortfall')
     })
   })
 
   describe('Tabs', () => {
     it('should render Summary tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Summary')
+      expect(wrapper.text()).toContain('simulationResults.summary')
     })
 
     it('should render Weekly Capacity tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Weekly Capacity')
+      expect(wrapper.text()).toContain('simulationResults.weeklyCapacity')
     })
 
     it('should render Station Performance tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Station Performance')
+      expect(wrapper.text()).toContain('simulationResults.stationPerformance')
     })
 
     it('should render Per Product tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Per Product')
+      expect(wrapper.text()).toContain('simulationResults.perProduct')
     })
 
     it('should render Bundle Metrics tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Bundle Metrics')
+      expect(wrapper.text()).toContain('simulationResults.bundleMetrics')
     })
 
     it('should render Rebalancing tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Rebalancing')
+      expect(wrapper.text()).toContain('simulationResults.rebalancing')
     })
 
     it('should render Assumptions tab', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Assumptions')
+      expect(wrapper.text()).toContain('simulationResults.assumptions')
     })
   })
 
@@ -225,13 +235,13 @@ describe('ResultsView', () => {
 
     it('should display average cycle time', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Avg cycle time')
+      expect(wrapper.text()).toContain('simulationResults.avgCycleTime')
       expect(wrapper.text()).toContain('15.5 min')
     })
 
     it('should display average WIP', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Avg WIP')
+      expect(wrapper.text()).toContain('simulationResults.avgWip')
       expect(wrapper.text()).toContain('25 pieces')
     })
   })
@@ -239,19 +249,19 @@ describe('ResultsView', () => {
   describe('Free Capacity', () => {
     it('should display max capacity', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Max capacity')
+      expect(wrapper.text()).toContain('simulationResults.maxCapacity')
       expect(wrapper.text()).toContain('1200 pcs/day')
     })
 
     it('should display demand usage percentage', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Usage')
+      expect(wrapper.text()).toContain('simulationResults.usage')
       expect(wrapper.text()).toContain('83.3%')
     })
 
     it('should display free line hours', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Free line hours')
+      expect(wrapper.text()).toContain('simulationResults.freeLineHours')
       expect(wrapper.text()).toContain('2.5h/day')
     })
   })
@@ -278,7 +288,7 @@ describe('ResultsView', () => {
         ]
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.text()).toContain('No bottlenecks detected')
+      expect(wrapper.text()).toContain('simulationResults.noBottlenecks')
     })
   })
 
@@ -401,8 +411,7 @@ describe('ResultsView', () => {
         rebalancing_suggestions: []
       })
       const wrapper = mountComponent({ results })
-      expect(wrapper.text()).toContain('No rebalancing needed')
-      expect(wrapper.text()).toContain('line is well balanced')
+      expect(wrapper.text()).toContain('simulationResults.noRebalancing')
     })
   })
 })

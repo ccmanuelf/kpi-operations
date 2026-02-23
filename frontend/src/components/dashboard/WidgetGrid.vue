@@ -9,7 +9,7 @@
     >
       <v-icon class="ml-4">mdi-drag</v-icon>
       <v-toolbar-title class="text-body-1">
-        Drag widgets to reorder
+        {{ t('widgets.grid.dragToReorder') }}
       </v-toolbar-title>
       <v-spacer />
       <v-btn
@@ -17,23 +17,23 @@
         prepend-icon="mdi-plus"
         @click="$emit('addWidget')"
       >
-        Add Widget
+        {{ t('widgets.grid.addWidget') }}
       </v-btn>
       <v-btn
         variant="text"
         prepend-icon="mdi-check"
         @click="$emit('finishEditing')"
       >
-        Done
+        {{ t('widgets.grid.done') }}
       </v-btn>
     </v-toolbar>
 
     <!-- Empty State -->
     <div v-if="widgets.length === 0" class="empty-state text-center py-16">
       <v-icon size="80" color="grey-lighten-1">mdi-view-dashboard-outline</v-icon>
-      <h3 class="text-h5 text-grey mt-4">No Widgets</h3>
+      <h3 class="text-h5 text-grey mt-4">{{ t('widgets.grid.noWidgets') }}</h3>
       <p class="text-body-2 text-grey-darken-1 mt-2">
-        Add widgets to customize your dashboard
+        {{ t('widgets.grid.addWidgetCustomize') }}
       </p>
       <v-btn
         color="primary"
@@ -42,7 +42,7 @@
         prepend-icon="mdi-plus"
         @click="$emit('addWidget')"
       >
-        Add Widget
+        {{ t('widgets.grid.addWidget') }}
       </v-btn>
     </div>
 
@@ -96,8 +96,11 @@
 
 <script setup>
 import { ref, computed, watch, defineAsyncComponent } from 'vue'
+import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { useDashboardStore } from '@/stores/dashboardStore'
+
+const { t } = useI18n()
 import WidgetContainer from './WidgetContainer.vue'
 
 const props = defineProps({

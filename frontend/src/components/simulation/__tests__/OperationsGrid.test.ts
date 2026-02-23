@@ -6,6 +6,11 @@ import { mount, VueWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import OperationsGrid from '../OperationsGrid.vue'
 
+// Mock vue-i18n
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: (key: string) => key })
+}))
+
 // Mock AG Grid
 vi.mock('ag-grid-vue3', () => ({
   AgGridVue: {
@@ -97,6 +102,7 @@ describe('OperationsGrid', () => {
 
     it('should display Operations title', () => {
       const wrapper = mountComponent()
+      // Component uses $t() global with fallback 'Operations', not useI18n t()
       expect(wrapper.text()).toContain('Operations')
     })
 
@@ -112,12 +118,12 @@ describe('OperationsGrid', () => {
 
     it('should render Add Operation button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Add Operation')
+      expect(wrapper.text()).toContain('simulationOperations.addOperation')
     })
 
     it('should render Import CSV button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('Import CSV')
+      expect(wrapper.text()).toContain('simulationOperations.importCsv')
     })
 
     it('should render AG Grid component', () => {
@@ -132,7 +138,7 @@ describe('OperationsGrid', () => {
       const wrapper = mountComponent()
       // Component should render successfully
       expect(wrapper.find('.v-card').exists()).toBe(true)
-      // The component text should provide context about operations
+      // Component uses $t() global with fallback 'Operations'
       expect(wrapper.text()).toContain('Operations')
     })
   })
@@ -141,7 +147,7 @@ describe('OperationsGrid', () => {
     it('should call addOperation when Add Operation button is clicked', async () => {
       const wrapper = mountComponent()
       const buttons = wrapper.findAll('.v-btn')
-      const addButton = buttons.find(btn => btn.text().includes('Add Operation'))
+      const addButton = buttons.find(btn => btn.text().includes('simulationOperations.addOperation'))
 
       if (addButton) {
         await addButton.trigger('click')
@@ -152,7 +158,7 @@ describe('OperationsGrid', () => {
     it('should open import dialog when Import CSV button is clicked', async () => {
       const wrapper = mountComponent()
       const buttons = wrapper.findAll('.v-btn')
-      const importButton = buttons.find(btn => btn.text().includes('Import CSV'))
+      const importButton = buttons.find(btn => btn.text().includes('simulationOperations.importCsv'))
 
       if (importButton) {
         await importButton.trigger('click')
@@ -200,7 +206,7 @@ describe('OperationsGrid', () => {
       const columnDefs = wrapper.vm.columnDefs
       const samCol = columnDefs.find((c: { field: string }) => c.field === 'sam_min')
       expect(samCol).toBeDefined()
-      expect(samCol.headerName).toBe('SAM (min)')
+      expect(samCol.headerName).toBe('timeStandard.samMin')
     })
 
     it('should define Operators column', () => {

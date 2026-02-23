@@ -13,11 +13,12 @@ This guide covers deploying the KPI Operations Platform to production environmen
 5. [Frontend Deployment](#frontend-deployment)
 6. [Reverse Proxy Configuration](#reverse-proxy-configuration)
 7. [Docker Deployment](#docker-deployment)
-8. [Health Check Endpoints](#health-check-endpoints)
-9. [Security Checklist](#security-checklist)
-10. [Monitoring & Logging](#monitoring--logging)
-11. [Backup Strategy](#backup-strategy)
-12. [Troubleshooting](#troubleshooting)
+8. [Render.com Deployment](#rendercom-deployment)
+9. [Health Check Endpoints](#health-check-endpoints)
+10. [Security Checklist](#security-checklist)
+11. [Monitoring & Logging](#monitoring--logging)
+12. [Backup Strategy](#backup-strategy)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -559,6 +560,202 @@ networks:
 
 ---
 
+## Render.com Deployment
+
+Render.com provides a managed Docker hosting platform with persistent disks, automatic HTTPS, and zero-config deploys from Git.
+
+### One-Click Deploy
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/YOUR_ORG/kpi-operations)
+
+This uses the `render.yaml` blueprint at the project root to provision both services automatically.
+
+### Architecture on Render
+
+| Service | Type | Runtime | Plan | Port |
+|---------|------|---------|------|------|
+| `kpi-operations-api` | Web Service | Docker | Starter | 8000 |
+| `kpi-operations-frontend` | Web Service | Docker | Starter | 80 |
+
+- **Backend**: Uses the root `Dockerfile` (multi-stage, Python 3.11, non-root user)
+- **Frontend**: Uses `frontend/Dockerfile` (nginx serving the Vue 3 SPA)
+- **Database**: SQLite on a 1 GB persistent disk mounted at `/app/database`
+- **API Proxy**: nginx in the frontend container proxies `/api/` to the backend service
+
+### Manual Setup (Without Blueprint)
+
+If you prefer manual configuration over the `render.yaml` blueprint:
+
+#### 1. Create the Backend Service
+
+1. Go to **Dashboard > New > Web Service**
+2. Connect your Git repository
+3. Configure:
+   - **Name**: `kpi-operations-api`
+   - **Runtime**: Docker
+   - **Dockerfile Path**: `./Dockerfile`
+   - **Docker Context**: `.` (project root)
+   - **Plan**: Starter ($7/month) or higher
+   - **Health Check Path**: `/health/live`
+
+4. Add a **Persistent Disk**:
+   - **Name**: `kpi-database`
+   - **Mount Path**: `/app/database`
+   - **Size**: 1 GB
+
+5. Add **Environment Variables** (see table below)
+
+#### 2. Create the Frontend Service
+
+1. Go to **Dashboard > New > Web Service**
+2. Connect the same Git repository
+3. Configure:
+   - **Name**: `kpi-operations-frontend`
+   - **Runtime**: Docker
+   - **Dockerfile Path**: `./frontend/Dockerfile`
+   - **Docker Context**: `./frontend`
+   - **Plan**: Starter ($7/month) or higher
+   - **Health Check Path**: `/health`
+
+4. Set the **Docker Command** (replaces the internal Docker hostname with the backend's public URL):
+   ```
+   sh -c "sed -i 's|http://backend:8000|https://kpi-operations-api.onrender.com|g' /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+   ```
+
+5. Add **Environment Variables**:
+   - `VITE_API_URL` = `/api`
+
+### Environment Variables
+
+#### Backend (`kpi-operations-api`)
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `ENVIRONMENT` | `production` | Enables production config validation |
+| `SECRET_KEY` | (auto-generated) | Render generates a secure random value |
+| `DATABASE_URL` | `sqlite:////app/database/kpi_platform.db` | Four slashes: `sqlite:///` + absolute path `/app/...` |
+| `CORS_ORIGINS` | `https://kpi-operations-frontend.onrender.com` | Must match the frontend service URL exactly |
+| `DEBUG` | `false` | Never enable in production |
+| `DEMO_MODE` | `true` | Seeds demo data on first startup |
+| `RUN_MIGRATIONS` | `true` | Creates tables on startup |
+| `LOG_LEVEL` | `INFO` | Set to `DEBUG` for troubleshooting |
+| `REPORT_EMAIL_ENABLED` | `false` | Enable only after configuring SMTP/SendGrid |
+
+> **CORS_ORIGINS** is marked `sync: false` in `render.yaml` — you must set it manually after the frontend service URL is known.
+
+#### Frontend (`kpi-operations-frontend`)
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `VITE_API_URL` | `/api` | Relative path; nginx proxies to the backend |
+
+### Persistent Disk and SQLite
+
+Render's persistent disks survive deploys and restarts. The SQLite database file lives at `/app/database/kpi_platform.db` on a 1 GB disk.
+
+**Important considerations:**
+
+- Persistent disks are tied to a single service instance. SQLite does not support concurrent writes from multiple instances.
+- Keep the Render plan at a **single instance** (no horizontal scaling) while using SQLite.
+- The disk persists across deploys, but **not across service deletions**. Back up regularly.
+
+#### Backup Strategy
+
+A backup script is provided at `backend/scripts/backup_sqlite.sh`:
+
+```bash
+# Run manually via Render Shell (Dashboard > Shell)
+cd /app && bash backend/scripts/backup_sqlite.sh
+
+# Or schedule via a Render Cron Job:
+#   Name:     kpi-backup
+#   Schedule: 0 2 * * *  (daily at 2 AM UTC)
+#   Command:  bash /app/backend/scripts/backup_sqlite.sh
+```
+
+The script:
+- Uses the SQLite `.backup` API (safe for concurrent access)
+- Saves timestamped copies to `/app/database/backups/`
+- Rotates old backups, keeping the last 5 by default (`MAX_BACKUPS` env var)
+
+To download a backup, use Render Shell:
+```bash
+# List backups
+ls -lh /app/database/backups/
+
+# Copy to a temporary URL (Render doesn't have scp)
+# Use the Render API or mount the disk to another service
+```
+
+### Upgrading to a Managed Database
+
+SQLite is suitable for demos and small single-user deployments. For production with multiple concurrent users, upgrade to a managed database:
+
+#### Option A: Render PostgreSQL
+
+1. Create a **PostgreSQL** database in Render Dashboard
+2. Update the backend environment variable:
+   ```
+   DATABASE_URL=postgresql://user:password@host:5432/kpi_platform
+   ```
+3. Add `psycopg2-binary` to `backend/requirements.txt`
+4. Remove the persistent disk (no longer needed)
+5. Redeploy
+
+#### Option B: PlanetScale (MySQL/MariaDB-compatible)
+
+1. Create a PlanetScale database at https://planetscale.com
+2. Update the backend environment variable:
+   ```
+   DATABASE_URL=mysql+pymysql://user:password@host:3306/kpi_platform?ssl_ca=/etc/ssl/certs/ca-certificates.crt
+   ```
+3. Add `pymysql` and `cryptography` to `backend/requirements.txt` (already present)
+4. Remove the persistent disk
+5. Redeploy
+
+> **Note:** The backend uses SQLAlchemy ORM, so switching databases requires only changing `DATABASE_URL`. All table creation is handled automatically on startup via `Base.metadata.create_all()`.
+
+### CORS Configuration
+
+The CORS validator in `backend/config.py` requires origins to start with `http://` or `https://`. Render URLs use `https://` by default, so they pass validation without changes.
+
+After deploying, set `CORS_ORIGINS` on the backend to the frontend's full URL:
+
+```
+CORS_ORIGINS=https://kpi-operations-frontend.onrender.com
+```
+
+If using a custom domain:
+```
+CORS_ORIGINS=https://kpi.yourdomain.com
+```
+
+Multiple origins (comma-separated):
+```
+CORS_ORIGINS=https://kpi.yourdomain.com,https://www.kpi.yourdomain.com
+```
+
+### Custom Domains
+
+1. Go to your Render service **Settings > Custom Domains**
+2. Add your domain (e.g., `kpi.yourdomain.com`)
+3. Configure DNS as instructed by Render
+4. Render provisions a free TLS certificate automatically
+5. Update `CORS_ORIGINS` on the backend to match the new domain
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Frontend 502 on `/api/*` | Verify the `dockerCommand` sed replacement matches the backend service name |
+| CORS errors | Check `CORS_ORIGINS` includes the exact frontend URL (with `https://`) |
+| Database lost after deploy | Verify persistent disk is attached at `/app/database` |
+| Health check failing | Backend: check `/health/live` returns 200; Frontend: check `/health` returns 200 |
+| Demo data missing | Set `DEMO_MODE=true` and `RUN_MIGRATIONS=true`, then redeploy |
+| Slow cold starts | Render Starter plan spins down after 15 min inactivity; upgrade to Standard for always-on |
+
+---
+
 ## Health Check Endpoints
 
 ### Available Health Endpoints
@@ -797,5 +994,5 @@ For deployment issues:
 
 ---
 
-**Last Updated**: 2026-01-25
-**Version**: 1.0.0
+**Last Updated**: 2026-02-22
+**Version**: 1.1.0

@@ -16,8 +16,8 @@
       <div>
         <div class="text-h6 font-weight-bold">{{ alertTitle }}</div>
         <div class="mt-1">
-          Current rate: <strong>{{ absenteeismRate }}%</strong>
-          (Threshold: {{ threshold }}%)
+          {{ t('absenteeismAlert.currentRate') }}: <strong>{{ absenteeismRate }}%</strong>
+          ({{ t('absenteeismAlert.threshold') }}: {{ threshold }}%)
         </div>
         <div class="text-caption text-grey mt-1">
           {{ alertDescription }}
@@ -32,7 +32,7 @@
           prepend-icon="mdi-chart-line"
           @click="$emit('viewDetails')"
         >
-          View Details
+          {{ t('absenteeismAlert.viewDetails') }}
         </v-btn>
         <v-btn
           v-if="showScheduleAction"
@@ -42,7 +42,7 @@
           prepend-icon="mdi-calendar-clock"
           @click="$emit('scheduleReview')"
         >
-          Schedule Review
+          {{ t('absenteeismAlert.scheduleReview') }}
         </v-btn>
       </div>
     </div>
@@ -52,19 +52,19 @@
       <div v-if="expanded" class="mt-4 pa-3 bg-white rounded">
         <v-row dense>
           <v-col cols="6" sm="3">
-            <div class="text-caption text-grey">Scheduled Hours</div>
+            <div class="text-caption text-grey">{{ t('absenteeismAlert.scheduledHours') }}</div>
             <div class="font-weight-bold">{{ scheduledHours.toLocaleString() }}h</div>
           </v-col>
           <v-col cols="6" sm="3">
-            <div class="text-caption text-grey">Absent Hours</div>
+            <div class="text-caption text-grey">{{ t('absenteeismAlert.absentHours') }}</div>
             <div class="font-weight-bold text-error">{{ absentHours.toLocaleString() }}h</div>
           </v-col>
           <v-col cols="6" sm="3">
-            <div class="text-caption text-grey">Affected Employees</div>
+            <div class="text-caption text-grey">{{ t('absenteeismAlert.affectedEmployees') }}</div>
             <div class="font-weight-bold">{{ affectedEmployees }}</div>
           </v-col>
           <v-col cols="6" sm="3">
-            <div class="text-caption text-grey">Trend</div>
+            <div class="text-caption text-grey">{{ t('absenteeismAlert.trend') }}</div>
             <div class="d-flex align-center">
               <v-icon
                 :color="trendDirection === 'up' ? 'error' : trendDirection === 'down' ? 'success' : 'grey'"
@@ -79,7 +79,7 @@
 
         <!-- Quick Actions -->
         <v-divider class="my-3" />
-        <div class="text-subtitle-2 mb-2">Recommended Actions</div>
+        <div class="text-subtitle-2 mb-2">{{ t('absenteeismAlert.recommendedActions') }}</div>
         <v-chip-group>
           <v-chip
             v-for="action in recommendedActions"
@@ -103,7 +103,7 @@
         :color="alertType === 'error' ? 'white' : undefined"
         @click="expanded = !expanded"
       >
-        {{ expanded ? 'Show Less' : 'Show More' }}
+        {{ expanded ? t('absenteeismAlert.showLess') : t('absenteeismAlert.showMore') }}
         <v-icon :icon="expanded ? 'mdi-chevron-up' : 'mdi-chevron-down'" />
       </v-btn>
     </div>
@@ -112,7 +112,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+
+const { t } = useI18n()
 
 // Props
 const props = withDefaults(defineProps<{
@@ -159,19 +162,19 @@ const alertIcon = computed(() => {
 })
 
 const alertTitle = computed(() => {
-  if (alertType.value === 'error') return 'Critical Absenteeism Alert'
-  if (alertType.value === 'warning') return 'High Absenteeism Alert'
-  return 'Absenteeism Notice'
+  if (alertType.value === 'error') return t('absenteeismAlert.criticalAlert')
+  if (alertType.value === 'warning') return t('absenteeismAlert.highAlert')
+  return t('absenteeismAlert.notice')
 })
 
 const alertDescription = computed(() => {
   if (alertType.value === 'error') {
-    return 'Absenteeism significantly exceeds threshold. Immediate action recommended.'
+    return t('absenteeismAlert.criticalDesc')
   }
   if (alertType.value === 'warning') {
-    return 'Absenteeism above target threshold. Consider reviewing attendance patterns.'
+    return t('absenteeismAlert.highDesc')
   }
-  return 'Absenteeism is within acceptable range but approaching threshold.'
+  return t('absenteeismAlert.noticeDesc')
 })
 
 const showScheduleAction = computed(() => {
@@ -193,20 +196,20 @@ const trendTextColor = computed(() => {
 
 const recommendedActions = computed(() => {
   const actions = [
-    { id: 'review-patterns', label: 'Review Patterns', icon: 'mdi-chart-timeline-variant' }
+    { id: 'review-patterns', label: t('absenteeismAlert.reviewPatterns'), icon: 'mdi-chart-timeline-variant' }
   ]
 
   if (absenteeismRate.value > props.threshold) {
-    actions.push({ id: 'notify-supervisors', label: 'Notify Supervisors', icon: 'mdi-email-alert' })
+    actions.push({ id: 'notify-supervisors', label: t('absenteeismAlert.notifySupervisors'), icon: 'mdi-email-alert' })
   }
 
   if (absenteeismRate.value > props.threshold * 1.5) {
-    actions.push({ id: 'activate-floating-pool', label: 'Activate Floating Pool', icon: 'mdi-account-switch' })
-    actions.push({ id: 'schedule-meetings', label: 'Schedule Meetings', icon: 'mdi-calendar' })
+    actions.push({ id: 'activate-floating-pool', label: t('absenteeismAlert.activateFloatingPool'), icon: 'mdi-account-switch' })
+    actions.push({ id: 'schedule-meetings', label: t('absenteeismAlert.scheduleMeetings'), icon: 'mdi-calendar' })
   }
 
   if (absenteeismRate.value > props.threshold * 2) {
-    actions.push({ id: 'escalate-hr', label: 'Escalate to HR', icon: 'mdi-account-alert' })
+    actions.push({ id: 'escalate-hr', label: t('absenteeismAlert.escalateHr'), icon: 'mdi-account-alert' })
   }
 
   return actions

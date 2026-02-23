@@ -4,7 +4,7 @@
       <v-icon class="mr-2" :color="alertLevel === 'normal' ? undefined : alertLevel">
         mdi-account-clock
       </v-icon>
-      Bradford Factor Score
+      {{ t('widgets.bradfordFactor.title') }}
       <v-spacer />
       <v-chip :color="chipColor" size="small" variant="flat">
         {{ riskLevel }}
@@ -34,7 +34,7 @@
           <div class="text-h2 font-weight-bold" :class="scoreTextColor">
             {{ score }}
           </div>
-          <div class="text-caption text-grey">Bradford Factor (S^2 x D)</div>
+          <div class="text-caption text-grey">{{ t('widgets.bradfordFactor.formula') }}</div>
         </div>
 
         <!-- Score Progress -->
@@ -53,26 +53,26 @@
         <!-- Threshold Indicators -->
         <div class="d-flex justify-space-between text-caption text-grey mb-4">
           <span>0</span>
-          <span class="text-success">Low &lt;50</span>
-          <span class="text-warning">Med 50-200</span>
-          <span class="text-error">High &gt;200</span>
+          <span class="text-success">{{ t('widgets.bradfordFactor.lowThreshold') }}</span>
+          <span class="text-warning">{{ t('widgets.bradfordFactor.medThreshold') }}</span>
+          <span class="text-error">{{ t('widgets.bradfordFactor.highThreshold') }}</span>
         </div>
 
         <!-- Formula Components -->
         <v-card variant="outlined" class="mb-4 pa-3">
-          <div class="text-subtitle-2 mb-2">Score Components</div>
+          <div class="text-subtitle-2 mb-2">{{ t('widgets.bradfordFactor.scoreComponents') }}</div>
           <v-row dense>
             <v-col cols="4" class="text-center">
               <div class="text-h5 font-weight-bold text-primary">{{ spells }}</div>
-              <div class="text-caption text-grey">Spells (S)</div>
+              <div class="text-caption text-grey">{{ t('widgets.bradfordFactor.spells') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
               <div class="text-h5 font-weight-bold text-warning">{{ totalDays }}</div>
-              <div class="text-caption text-grey">Days (D)</div>
+              <div class="text-caption text-grey">{{ t('widgets.bradfordFactor.days') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
               <div class="text-h5 font-weight-bold" :class="scoreTextColor">{{ score }}</div>
-              <div class="text-caption text-grey">Score</div>
+              <div class="text-caption text-grey">{{ t('widgets.bradfordFactor.score') }}</div>
             </v-col>
           </v-row>
           <div class="text-caption text-grey text-center mt-2">
@@ -97,26 +97,26 @@
 
         <!-- Threshold Legend -->
         <div class="mt-4 pa-3 bg-grey-lighten-4 rounded">
-          <div class="text-subtitle-2 mb-2">Risk Thresholds</div>
+          <div class="text-subtitle-2 mb-2">{{ t('widgets.bradfordFactor.riskThresholds') }}</div>
           <v-row dense>
             <v-col cols="6">
               <div class="d-flex align-center mb-1">
                 <v-avatar color="success" size="12" class="mr-2" />
-                <span class="text-caption">0-50: Low Risk</span>
+                <span class="text-caption">{{ t('widgets.bradfordFactor.lowRiskRange') }}</span>
               </div>
               <div class="d-flex align-center">
                 <v-avatar color="warning" size="12" class="mr-2" />
-                <span class="text-caption">51-200: Monitor</span>
+                <span class="text-caption">{{ t('widgets.bradfordFactor.monitorRange') }}</span>
               </div>
             </v-col>
             <v-col cols="6">
               <div class="d-flex align-center mb-1">
                 <v-avatar color="orange" size="12" class="mr-2" />
-                <span class="text-caption">201-400: Action Required</span>
+                <span class="text-caption">{{ t('widgets.bradfordFactor.actionRange') }}</span>
               </div>
               <div class="d-flex align-center">
                 <v-avatar color="error" size="12" class="mr-2" />
-                <span class="text-caption">400+: Critical</span>
+                <span class="text-caption">{{ t('widgets.bradfordFactor.criticalRange') }}</span>
               </div>
             </v-col>
           </v-row>
@@ -132,7 +132,7 @@
         prepend-icon="mdi-account-multiple"
         @click="$emit('viewEmployees')"
       >
-        View All Employees
+        {{ t('widgets.bradfordFactor.viewAllEmployees') }}
       </v-btn>
       <v-spacer />
       <v-chip size="x-small" variant="outlined" color="grey">
@@ -144,7 +144,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import axios from 'axios'
+
+const { t } = useI18n()
 
 // Props
 const props = defineProps<{
@@ -171,10 +174,10 @@ const scorePercentage = computed(() => {
 })
 
 const riskLevel = computed(() => {
-  if (score.value <= 50) return 'Low Risk'
-  if (score.value <= 200) return 'Monitor'
-  if (score.value <= 400) return 'Action Required'
-  return 'Critical'
+  if (score.value <= 50) return t('widgets.bradfordFactor.lowRisk')
+  if (score.value <= 200) return t('widgets.bradfordFactor.monitor')
+  if (score.value <= 400) return t('widgets.bradfordFactor.actionRequired')
+  return t('widgets.bradfordFactor.critical')
 })
 
 const alertLevel = computed(() => {
@@ -224,25 +227,25 @@ const alertIcon = computed(() => {
 })
 
 const alertTitle = computed(() => {
-  if (score.value > 400) return 'Critical Bradford Factor'
-  if (score.value > 200) return 'High Bradford Factor'
-  return 'Elevated Bradford Factor'
+  if (score.value > 400) return t('widgets.bradfordFactor.criticalTitle')
+  if (score.value > 200) return t('widgets.bradfordFactor.highTitle')
+  return t('widgets.bradfordFactor.elevatedTitle')
 })
 
 const alertMessage = computed(() => {
   if (score.value > 400) {
-    return 'Immediate management review required. Consider formal HR action.'
+    return t('widgets.bradfordFactor.criticalMessage')
   }
   if (score.value > 200) {
-    return 'Schedule meeting with employee to discuss attendance patterns.'
+    return t('widgets.bradfordFactor.highMessage')
   }
-  return 'Monitor attendance patterns and document any issues.'
+  return t('widgets.bradfordFactor.elevatedMessage')
 })
 
 const dateRangeLabel = computed(() => {
-  if (props.dateRange) return `Last ${props.dateRange}`
+  if (props.dateRange) return t('widgets.bradfordFactor.lastMonths', { range: props.dateRange })
   if (props.startDate && props.endDate) return `${props.startDate} - ${props.endDate}`
-  return 'Last 12 months'
+  return t('widgets.bradfordFactor.last12Months')
 })
 
 // Methods

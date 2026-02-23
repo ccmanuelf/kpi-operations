@@ -14,8 +14,7 @@
 
     <template v-if="hasActiveShift">
       <p class="mb-2">
-        Shift {{ activeShift?.shift_number || '1' }} has been active since
-        {{ formatTime(activeShift?.start_time) }}.
+        {{ t('shiftBanner.shiftActive', { number: activeShift?.shift_number || '1', time: formatTime(activeShift?.start_time) }) }}
         <span v-if="shiftDuration" class="font-weight-medium">
           ({{ shiftDuration }})
         </span>
@@ -28,21 +27,21 @@
           @click="emit('end-shift')"
         >
           <v-icon start>mdi-stop-circle</v-icon>
-          End Shift
+          {{ t('shiftBanner.endShift') }}
         </v-btn>
         <v-btn
           variant="outlined"
           size="small"
           @click="showDetails = true"
         >
-          View Shift Details
+          {{ t('shiftBanner.viewShiftDetails') }}
         </v-btn>
       </div>
     </template>
 
     <template v-else>
       <p class="mb-2">
-        No active shift. Start a shift to begin tracking production and attendance.
+        {{ t('shiftBanner.noActiveShift') }}
       </p>
       <v-btn
         color="success"
@@ -51,7 +50,7 @@
         @click="emit('start-shift')"
       >
         <v-icon start>mdi-play-circle</v-icon>
-        Start Shift
+        {{ t('shiftBanner.startShift') }}
       </v-btn>
     </template>
 
@@ -73,7 +72,7 @@
     <v-card v-if="activeShift">
       <v-card-title class="d-flex align-center bg-primary text-white">
         <v-icon class="mr-2">mdi-clock-check</v-icon>
-        Active Shift Details
+        {{ t('shiftBanner.activeShiftDetails') }}
       </v-card-title>
       <v-card-text class="pt-4">
         <v-list density="compact">
@@ -81,7 +80,7 @@
             <template v-slot:prepend>
               <v-icon color="grey">mdi-identifier</v-icon>
             </template>
-            <v-list-item-title>Shift Number</v-list-item-title>
+            <v-list-item-title>{{ t('shiftBanner.shiftNumber') }}</v-list-item-title>
             <template v-slot:append>
               <span class="font-weight-medium">Shift {{ activeShift.shift_number || 1 }}</span>
             </template>
@@ -91,7 +90,7 @@
             <template v-slot:prepend>
               <v-icon color="grey">mdi-calendar</v-icon>
             </template>
-            <v-list-item-title>Date</v-list-item-title>
+            <v-list-item-title>{{ t('shiftBanner.date') }}</v-list-item-title>
             <template v-slot:append>
               <span>{{ formatDate(activeShift.date) }}</span>
             </template>
@@ -101,7 +100,7 @@
             <template v-slot:prepend>
               <v-icon color="grey">mdi-clock-start</v-icon>
             </template>
-            <v-list-item-title>Start Time</v-list-item-title>
+            <v-list-item-title>{{ t('shiftBanner.startTime') }}</v-list-item-title>
             <template v-slot:append>
               <span>{{ formatTime(activeShift.start_time) }}</span>
             </template>
@@ -111,7 +110,7 @@
             <template v-slot:prepend>
               <v-icon color="grey">mdi-timer-outline</v-icon>
             </template>
-            <v-list-item-title>Duration</v-list-item-title>
+            <v-list-item-title>{{ t('shiftBanner.duration') }}</v-list-item-title>
             <template v-slot:append>
               <span class="text-primary font-weight-medium">{{ shiftDuration }}</span>
             </template>
@@ -121,7 +120,7 @@
             <template v-slot:prepend>
               <v-icon color="grey">mdi-account-tie</v-icon>
             </template>
-            <v-list-item-title>Supervisor</v-list-item-title>
+            <v-list-item-title>{{ t('shiftBanner.supervisor') }}</v-list-item-title>
             <template v-slot:append>
               <span>{{ activeShift.supervisor }}</span>
             </template>
@@ -130,9 +129,9 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="showDetails = false">Close</v-btn>
+        <v-btn variant="text" @click="showDetails = false">{{ t('common.close') }}</v-btn>
         <v-btn color="error" variant="elevated" @click="handleEndShift">
-          End Shift
+          {{ t('shiftBanner.endShift') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -141,7 +140,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useWorkflowStore } from '@/stores/workflowStore'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['start-shift', 'end-shift'])
 
@@ -175,8 +177,8 @@ const alertIcon = computed(() => {
 })
 
 const alertTitle = computed(() => {
-  if (!hasActiveShift.value) return 'Ready to Start Shift?'
-  return 'Shift in Progress'
+  if (!hasActiveShift.value) return t('shiftBanner.readyToStart')
+  return t('shiftBanner.shiftInProgress')
 })
 
 const shiftDuration = computed(() => {

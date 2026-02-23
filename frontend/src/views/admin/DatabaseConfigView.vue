@@ -6,9 +6,9 @@
         <div class="d-flex align-center mb-6">
           <v-icon size="32" color="primary" class="mr-3">mdi-database-cog</v-icon>
           <div>
-            <h1 class="text-h4">Database Configuration</h1>
+            <h1 class="text-h4">{{ t('databaseConfig.title') }}</h1>
             <p class="text-body-2 text-medium-emphasis mb-0">
-              Manage database provider and optional migration to production database
+              {{ t('databaseConfig.subtitle') }}
             </p>
           </div>
         </div>
@@ -17,7 +17,7 @@
         <v-card class="mb-6">
           <v-card-title class="d-flex align-center">
             <v-icon start>mdi-database</v-icon>
-            Current Database Provider
+            {{ t('databaseConfig.currentProvider') }}
           </v-card-title>
 
           <v-card-text>
@@ -33,14 +33,13 @@
                   <template v-if="currentProvider === 'sqlite'">
                     <br>
                     <span class="text-body-2">
-                      SQLite is fully supported for demo and prove-in phases.
-                      Migration to MariaDB/MySQL is optional and available when ready for production.
+                      {{ t('databaseConfig.sqliteInfo') }}
                     </span>
                   </template>
                   <template v-else>
                     <br>
                     <span class="text-body-2">
-                      Production database configured and active.
+                      {{ t('databaseConfig.productionActive') }}
                     </span>
                   </template>
                 </div>
@@ -51,8 +50,8 @@
             <v-table v-if="Object.keys(connectionInfo).length > 0" density="compact" class="mb-4">
               <thead>
                 <tr>
-                  <th>Property</th>
-                  <th>Value</th>
+                  <th>{{ t('databaseConfig.property') }}</th>
+                  <th>{{ t('databaseConfig.value') }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -69,22 +68,21 @@
         <v-card v-if="canMigrate">
           <v-card-title class="d-flex align-center">
             <v-icon start>mdi-database-arrow-right</v-icon>
-            Migrate to Production Database
-            <v-chip class="ml-2" color="warning" size="small">Optional</v-chip>
+            {{ t('databaseConfig.migrateTitle') }}
+            <v-chip class="ml-2" color="warning" size="small">{{ t('common.optional') }}</v-chip>
           </v-card-title>
 
           <v-card-text>
             <!-- Warning Alert -->
             <v-alert type="warning" variant="outlined" class="mb-4">
-              <v-alert-title>One-Way Migration</v-alert-title>
+              <v-alert-title>{{ t('databaseConfig.oneWayMigration') }}</v-alert-title>
               <p class="mb-0">
-                Database migration is a <strong>one-way operation</strong>. Once migrated to
-                MariaDB or MySQL, you cannot revert to SQLite. The migration will:
+                {{ t('databaseConfig.oneWayWarning') }}
               </p>
               <ul class="mt-2 mb-0">
-                <li>Create all tables on the target database</li>
-                <li>Seed fresh demo data (existing SQLite data is not transferred)</li>
-                <li>Update the application to use the new database</li>
+                <li>{{ t('databaseConfig.createTables') }}</li>
+                <li>{{ t('databaseConfig.seedDemoData') }}</li>
+                <li>{{ t('databaseConfig.updateApp') }}</li>
               </ul>
             </v-alert>
 
@@ -110,15 +108,13 @@
         <v-card v-else>
           <v-card-title class="d-flex align-center">
             <v-icon start color="success">mdi-check-circle</v-icon>
-            Production Database Active
+            {{ t('databaseConfig.productionDbActive') }}
           </v-card-title>
 
           <v-card-text>
             <v-alert type="success" variant="tonal">
               <p class="mb-0">
-                Your application is configured for production using
-                <strong>{{ providerDisplayName }}</strong>.
-                No further migration is needed.
+                {{ t('databaseConfig.noFurtherMigration', { provider: providerDisplayName }) }}
               </p>
             </v-alert>
           </v-card-text>
@@ -128,7 +124,7 @@
         <v-snackbar v-model="showError" color="error" :timeout="5000">
           {{ error }}
           <template v-slot:actions>
-            <v-btn variant="text" @click="clearError">Close</v-btn>
+            <v-btn variant="text" @click="clearError">{{ t('common.close') }}</v-btn>
           </template>
         </v-snackbar>
       </v-col>

@@ -5,15 +5,23 @@ SECURITY: Multi-tenant client filtering enabled
 """
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from uuid import uuid4
 from fastapi import HTTPException
 
 from backend.schemas.attendance_entry import AttendanceEntry
+from backend.schemas.shift import Shift
+from backend.schemas.employee import Employee
 from backend.models.attendance import AttendanceRecordCreate, AttendanceRecordUpdate, AttendanceRecordResponse
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.schemas.user import User
 from backend.utils.soft_delete import soft_delete
+from backend.utils.logging_utils import get_module_logger
+
+logger = get_module_logger(__name__)
 
 
 def create_attendance_record(
@@ -142,3 +150,182 @@ def delete_attendance_record(db: Session, attendance_id: str, current_user: User
 
     # Soft delete - preserves data integrity
     return soft_delete(db, db_attendance)
+
+
+# ============================================================================
+# BULK OPERATIONS
+# ============================================================================
+
+
+def bulk_create_attendance_records(
+    db: Session, records: List[AttendanceRecordCreate], current_user: User
+) -> dict:
+    """
+    Create multiple attendance records in one transaction.
+
+    SECURITY: Validates client access for each record.
+
+    Args:
+        db: Database session
+        records: List of AttendanceRecordCreate Pydantic models
+        current_user: Authenticated user
+
+    Returns:
+        Summary dict with total, successful, failed counts, errors, and created IDs
+    """
+    total = len(records)
+    successful = 0
+    failed = 0
+    errors = []
+    created_ids = []
+
+    for idx, record in enumerate(records):
+        try:
+            # Validate client access
+            if record.client_id:
+                verify_client_access(current_user, record.client_id)
+
+            entry_id = uuid4().hex
+            db_entry = AttendanceEntry(
+                attendance_entry_id=entry_id,
+                **record.model_dump(),
+                entered_by=current_user.user_id,
+            )
+            db.add(db_entry)
+            created_ids.append(entry_id)
+            successful += 1
+        except HTTPException as e:
+            failed += 1
+            errors.append({"index": idx, "error": e.detail})
+        except Exception as e:
+            failed += 1
+            errors.append({"index": idx, "error": str(e)})
+
+    if successful > 0:
+        db.commit()
+        logger.info(
+            "Bulk attendance create: %d/%d succeeded, user=%s",
+            successful,
+            total,
+            current_user.username,
+        )
+    else:
+        db.rollback()
+
+    return {
+        "total": total,
+        "successful": successful,
+        "failed": failed,
+        "errors": errors,
+        "created_ids": created_ids,
+    }
+
+
+def mark_all_present(
+    db: Session, client_id: str, shift_id: int, shift_date: date, current_user: User
+) -> dict:
+    """
+    Create attendance records for all active employees assigned to a client,
+    marking them as present for a given shift and date.
+
+    SECURITY: Verifies user has access to the specified client.
+
+    Args:
+        db: Database session
+        client_id: Client to mark attendance for
+        shift_id: Shift to record attendance against
+        shift_date: Date of the shift
+        current_user: Authenticated user
+
+    Returns:
+        Summary dict with total_employees, records_created, already_exists, created_ids
+    """
+    # Verify client access
+    verify_client_access(current_user, client_id)
+
+    # Get the shift to determine scheduled hours
+    shift = db.query(Shift).filter(
+        Shift.shift_id == shift_id,
+        Shift.client_id == client_id,
+    ).first()
+
+    if not shift:
+        raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found for client {client_id}")
+
+    # Calculate shift hours from start_time / end_time (handle overnight)
+    start_dt = datetime.combine(shift_date, shift.start_time)
+    end_dt = datetime.combine(shift_date, shift.end_time)
+    if end_dt <= start_dt:
+        end_dt += timedelta(days=1)  # overnight shift
+    shift_hours = Decimal(str(round((end_dt - start_dt).total_seconds() / 3600, 2)))
+
+    # Get all active employees assigned to this client
+    # Employee.client_id_assigned is a comma-separated string of client IDs
+    employees = db.query(Employee).filter(
+        Employee.is_active == 1,
+        or_(
+            Employee.client_id_assigned == client_id,
+            Employee.client_id_assigned.like(f"{client_id},%"),
+            Employee.client_id_assigned.like(f"%,{client_id},%"),
+            Employee.client_id_assigned.like(f"%,{client_id}"),
+        ),
+    ).all()
+
+    total_employees = len(employees)
+
+    # Convert shift_date to datetime for comparison with the DateTime column
+    shift_datetime = datetime.combine(shift_date, datetime.min.time())
+
+    # Find employees who already have attendance for this shift_date + shift_id
+    existing_employee_ids = set()
+    if employees:
+        existing = db.query(AttendanceEntry.employee_id).filter(
+            AttendanceEntry.client_id == client_id,
+            AttendanceEntry.shift_id == shift_id,
+            AttendanceEntry.shift_date == shift_datetime,
+            AttendanceEntry.employee_id.in_([e.employee_id for e in employees]),
+        ).all()
+        existing_employee_ids = {row.employee_id for row in existing}
+
+    already_exists = len(existing_employee_ids)
+    created_ids = []
+
+    for emp in employees:
+        if emp.employee_id in existing_employee_ids:
+            continue
+
+        entry_id = uuid4().hex
+        db_entry = AttendanceEntry(
+            attendance_entry_id=entry_id,
+            client_id=client_id,
+            employee_id=emp.employee_id,
+            shift_date=shift_datetime,
+            shift_id=shift_id,
+            scheduled_hours=shift_hours,
+            actual_hours=shift_hours,
+            absence_hours=Decimal("0"),
+            is_absent=0,
+            entered_by=current_user.user_id,
+        )
+        db.add(db_entry)
+        created_ids.append(entry_id)
+
+    records_created = len(created_ids)
+
+    if records_created > 0:
+        db.commit()
+        logger.info(
+            "Mark all present: %d records created for client=%s shift=%d date=%s, user=%s",
+            records_created,
+            client_id,
+            shift_id,
+            shift_date.isoformat(),
+            current_user.username,
+        )
+
+    return {
+        "total_employees": total_employees,
+        "records_created": records_created,
+        "already_exists": already_exists,
+        "created_ids": created_ids,
+    }
