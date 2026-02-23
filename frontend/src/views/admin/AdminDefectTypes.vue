@@ -107,6 +107,7 @@
             :loading="loading"
             :items-per-page="15"
             class="elevation-0"
+            :no-data-text="t('common.noData')"
           >
             <template v-slot:item.severity_default="{ item }">
               <v-chip

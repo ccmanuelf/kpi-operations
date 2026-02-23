@@ -15,6 +15,12 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+# ORM models for missing seed entities
+from backend.orm.client_config import ClientConfig, OTDMode
+from backend.orm.kpi_threshold import KPIThreshold
+from backend.schemas.alert import Alert, AlertConfig
+from backend.orm.user_preferences import DashboardWidgetDefaults
+
 logger = logging.getLogger(__name__)
 
 
@@ -88,6 +94,16 @@ class DemoDataSeeder:
             ("capacity_planning", self._seed_capacity_planning),
             # Task 3.1: Link Work Orders to Capacity Orders (post-processing)
             ("wo_capacity_links", self._link_work_orders_to_capacity_orders),
+            # Sprint 0-2: Hold catalogs, break times, production lines, equipment, assignments
+            ("hold_catalogs", self._seed_hold_catalogs),
+            ("break_times", self._seed_break_times),
+            ("production_lines_and_equipment", self._seed_production_lines_and_equipment),
+            # Global settings & configurations (aligned with init_demo_database.py)
+            ("client_configs", self._seed_client_configs),
+            ("kpi_thresholds", self._seed_kpi_thresholds),
+            ("alert_configs", self._seed_alert_configs),
+            ("active_alerts", self._seed_active_alerts),
+            ("dashboard_defaults", self._seed_dashboard_defaults),
         ]
 
         logger.info(f"Starting demo data seeding ({len(seeders)} entities)")
@@ -168,7 +184,7 @@ class DemoDataSeeder:
                 user_id="supervisor-001",
                 username="supervisor",
                 email="supervisor@kpi-platform.com",
-                password_hash=_hash_password("super123"),
+                password_hash=_hash_password("password123"),
                 role=UserRole.LEADER,  # Leader role for multi-client supervisors
                 is_active=1,
                 client_id_assigned="DEMO-001",
@@ -177,7 +193,7 @@ class DemoDataSeeder:
                 user_id="operator-001",
                 username="operator",
                 email="operator@kpi-platform.com",
-                password_hash=_hash_password("oper123"),
+                password_hash=_hash_password("password123"),
                 role=UserRole.OPERATOR,
                 is_active=1,
                 client_id_assigned="DEMO-001",
@@ -205,7 +221,7 @@ class DemoDataSeeder:
                 user_id="viewer-001",
                 username="viewer",
                 email="viewer@kpi-platform.com",
-                password_hash=_hash_password("view123"),
+                password_hash=_hash_password("password123"),
                 role=UserRole.OPERATOR,  # Read-only operator role
                 is_active=1,
                 client_id_assigned="DEMO-001",
@@ -1383,6 +1399,296 @@ class DemoDataSeeder:
 
         logger.info(f"Linked {linked_count} work orders to capacity orders")
         return linked_count
+
+    def _seed_hold_catalogs(self) -> int:
+        """Seed hold status and reason catalogs for DEMO-001."""
+        from backend.orm.hold_status_catalog import HoldStatusCatalog
+        from backend.orm.hold_reason_catalog import HoldReasonCatalog
+
+        client_id = "DEMO-001"
+        count = 0
+
+        for code, name, order in [
+            ("ON_HOLD", "On Hold", 1),
+            ("PENDING_APPROVAL", "Pending Approval", 2),
+            ("APPROVED", "Approved", 3),
+            ("RELEASED", "Released", 4),
+            ("ESCALATED", "Escalated", 5),
+        ]:
+            self.session.add(HoldStatusCatalog(
+                client_id=client_id, status_code=code,
+                display_name=name, is_default=True, is_active=True, sort_order=order,
+            ))
+            count += 1
+
+        for code, name, order in [
+            ("QUALITY_ISSUE", "Quality Issue", 1),
+            ("MATERIAL_SHORTAGE", "Material Shortage", 2),
+            ("MACHINE_BREAKDOWN", "Machine Breakdown", 3),
+            ("CUSTOMER_REQUEST", "Customer Request", 4),
+            ("DESIGN_CHANGE", "Design Change", 5),
+            ("CAPACITY_CONSTRAINT", "Capacity Constraint", 6),
+        ]:
+            self.session.add(HoldReasonCatalog(
+                client_id=client_id, reason_code=code,
+                display_name=name, is_default=True, is_active=True, sort_order=order,
+            ))
+            count += 1
+
+        return count
+
+    def _seed_break_times(self) -> int:
+        """Seed break times for each shift."""
+        from backend.orm.break_time import BreakTime
+        from backend.orm.shift import Shift
+
+        count = 0
+        shifts = self.session.query(Shift).all()
+        for s in shifts:
+            self.session.add(BreakTime(
+                shift_id=s.shift_id, client_id=s.client_id,
+                break_name="Morning Break", start_offset_minutes=120,
+                duration_minutes=15, applies_to="ALL", is_active=True,
+            ))
+            self.session.add(BreakTime(
+                shift_id=s.shift_id, client_id=s.client_id,
+                break_name="Lunch Break", start_offset_minutes=240,
+                duration_minutes=30, applies_to="ALL", is_active=True,
+            ))
+            count += 2
+        return count
+
+    def _seed_production_lines_and_equipment(self) -> int:
+        """Seed production lines, equipment, and employee-line assignments."""
+        from backend.orm.production_line import ProductionLine
+        from backend.orm.equipment import Equipment
+        from backend.orm.employee_line_assignment import EmployeeLineAssignment
+        from backend.orm.employee import Employee
+
+        client_id = "DEMO-001"
+        count = 0
+
+        departments = [
+            ("CUT", "Cutting", "SECTION"),
+            ("SEW", "Sewing", "DEDICATED"),
+            ("FIN", "Finishing", "DEDICATED"),
+            ("QC", "Quality Control", "SHARED"),
+            ("PKG", "Packaging", "SHARED"),
+        ]
+        eq_types = {
+            "CUT": [("Fabric Cutting Machine", "Cutting Machine"), ("Spreading Table", "Spreader")],
+            "SEW": [("Industrial Sewing Machine", "Sewing Machine"), ("Overlock Machine", "Overlocker")],
+            "FIN": [("Steam Press", "Press"), ("Thread Trimmer", "Trimmer")],
+            "QC": [("AQL Inspection Table", "Inspection"), ("Needle Detector", "Detector")],
+            "PKG": [("Folding Machine", "Folder"), ("Poly Bagger", "Bagger")],
+        }
+
+        sew_line_id = None
+        for i, (dept_code, dept_name, line_type) in enumerate(departments, 1):
+            line = ProductionLine(
+                client_id=client_id, line_code=f"{dept_code}-DEMO-{i:02d}",
+                line_name=f"{dept_name} Line {i}", department=dept_name.upper(),
+                line_type=line_type, max_operators=8 if line_type == "DEDICATED" else 4,
+                is_active=True,
+            )
+            self.session.add(line)
+            self.session.flush()
+            count += 1
+
+            if dept_code == "SEW":
+                sew_line_id = line.line_id
+
+            for j, (eq_name, eq_type) in enumerate(eq_types.get(dept_code, []), 1):
+                self.session.add(Equipment(
+                    client_id=client_id, line_id=line.line_id,
+                    equipment_code=f"EQ-DEMO-{dept_code}-{j:02d}",
+                    equipment_name=eq_name, equipment_type=eq_type,
+                    status="ACTIVE", is_active=True,
+                ))
+                count += 1
+
+        # Employee-line assignments (first 5 employees to sewing line)
+        if sew_line_id:
+            emps = (
+                self.session.query(Employee)
+                .filter(Employee.client_id_assigned == client_id)
+                .limit(5)
+                .all()
+            )
+            for emp in emps:
+                self.session.add(EmployeeLineAssignment(
+                    employee_id=emp.employee_id, line_id=sew_line_id,
+                    client_id=client_id, allocation_percentage=100,
+                    is_primary=True, effective_date=date(2026, 1, 1),
+                ))
+                count += 1
+
+        return count
+
+    def _seed_client_configs(self) -> int:
+        """Seed client-level KPI configuration overrides.
+
+        Replicates init_demo_database.py pattern: OTD mode, efficiency targets,
+        quality targets, availability/performance/OEE targets, absenteeism,
+        and WIP aging thresholds per client.
+        """
+        from backend.orm.client import Client
+
+        clients = self.session.query(Client).all()
+        count = 0
+
+        for client in clients:
+            config = ClientConfig(
+                client_id=client.client_id,
+                otd_mode=OTDMode.STANDARD,
+                default_cycle_time_hours=0.25,
+                efficiency_target_percent=85.0,
+                quality_target_ppm=10000.0,
+                fpy_target_percent=95.0,
+                dpmo_opportunities_default=1,
+                availability_target_percent=90.0,
+                performance_target_percent=95.0,
+                oee_target_percent=85.0,
+                absenteeism_target_percent=3.0,
+                wip_aging_threshold_days=7,
+                wip_critical_threshold_days=14,
+            )
+            self.session.add(config)
+            count += 1
+
+        return count
+
+    def _seed_kpi_thresholds(self) -> int:
+        """Seed global KPI threshold defaults.
+
+        Replicates init_demo_database.py pattern: 9 global KPI thresholds
+        with target, warning, and critical values. client_id=None means
+        these are global defaults applicable to all clients.
+        """
+        kpi_thresholds = [
+            ("efficiency", 85.0, 75.0, 60.0, "%", "Y"),
+            ("performance", 95.0, 85.0, 70.0, "%", "Y"),
+            ("quality_rate", 99.0, 97.0, 95.0, "%", "Y"),
+            ("oee", 85.0, 75.0, 60.0, "%", "Y"),
+            ("ppm", 5000.0, 10000.0, 20000.0, "ppm", "N"),
+            ("fpy", 95.0, 90.0, 85.0, "%", "Y"),
+            ("availability", 90.0, 80.0, 70.0, "%", "Y"),
+            ("absenteeism", 3.0, 5.0, 10.0, "%", "N"),
+            ("otd", 95.0, 90.0, 80.0, "%", "Y"),
+        ]
+
+        count = 0
+        for kpi_key, target, warning, critical, unit, higher in kpi_thresholds:
+            threshold = KPIThreshold(
+                threshold_id=f"KPI-TH-{kpi_key.upper()}",
+                client_id=None,
+                kpi_key=kpi_key,
+                target_value=target,
+                warning_threshold=warning,
+                critical_threshold=critical,
+                unit=unit,
+                higher_is_better=higher,
+            )
+            self.session.add(threshold)
+            count += 1
+
+        return count
+
+    def _seed_alert_configs(self) -> int:
+        """Seed alert configuration rules.
+
+        Replicates init_demo_database.py pattern: global defaults (client_id=None)
+        plus client-specific overrides for efficiency and quality thresholds.
+        """
+        alert_configs = [
+            # Global defaults
+            (None, "efficiency", True, 75.0, 60.0),
+            (None, "quality_ppm", True, 5000.0, 10000.0),
+            (None, "otd", True, 90.0, 80.0),
+            (None, "absenteeism", True, 5.0, 10.0),
+            # Client-specific overrides
+            ("DEMO-001", "efficiency", True, 80.0, 65.0),
+            ("TEST-001", "quality_ppm", True, 3000.0, 8000.0),
+        ]
+
+        count = 0
+        for client_id, alert_type, enabled, warning, critical in alert_configs:
+            config = AlertConfig(
+                config_id=f"ALERT-CFG-{uuid.uuid4().hex[:8].upper()}",
+                client_id=client_id,
+                alert_type=alert_type,
+                enabled=enabled,
+                warning_threshold=warning,
+                critical_threshold=critical,
+            )
+            self.session.add(config)
+            count += 1
+
+        return count
+
+    def _seed_active_alerts(self) -> int:
+        """Seed demo active alerts.
+
+        Replicates init_demo_database.py pattern: one alert per client
+        covering different categories and severities for demonstration.
+        """
+        alert_data = [
+            ("Efficiency Below Target", "efficiency", "warning", "DEMO-001"),
+            ("OTD at Risk", "otd", "warning", "TEST-001"),
+            ("Quality PPM Elevated", "quality", "warning", "SAMPLE-001"),
+        ]
+
+        count = 0
+        for title, category, severity, client_id in alert_data:
+            alert = Alert(
+                alert_id=f"ALERT-{uuid.uuid4().hex[:8].upper()}",
+                client_id=client_id,
+                category=category,
+                severity=severity,
+                status="active",
+                title=title,
+                message=f"Demo alert for {category} monitoring in {client_id}",
+            )
+            self.session.add(alert)
+            count += 1
+
+        return count
+
+    def _seed_dashboard_defaults(self) -> int:
+        """Seed dashboard widget defaults by role.
+
+        Replicates init_demo_database.py pattern: role-based widget configurations
+        for admin, supervisor, and operator dashboard layouts.
+        """
+        widget_configs = [
+            ("admin", "kpi_summary", "KPI Summary", 1, True, '{"refreshInterval": 300}'),
+            ("admin", "production_chart", "Production Chart", 2, True, '{"chartType": "bar"}'),
+            ("admin", "quality_metrics", "Quality Metrics", 3, True, "{}"),
+            ("admin", "alerts_panel", "Alerts Panel", 4, True, "{}"),
+            ("admin", "efficiency_gauge", "Efficiency Gauge", 5, True, "{}"),
+            ("supervisor", "production_chart", "Production Chart", 1, True, '{"chartType": "line"}'),
+            ("supervisor", "quality_metrics", "Quality Metrics", 2, True, "{}"),
+            ("supervisor", "attendance_summary", "Attendance Summary", 3, True, "{}"),
+            ("supervisor", "alerts_panel", "Alerts Panel", 4, True, "{}"),
+            ("operator", "my_production", "My Production", 1, True, "{}"),
+            ("operator", "shift_summary", "Shift Summary", 2, True, "{}"),
+            ("operator", "quality_entry", "Quality Entry", 3, True, "{}"),
+        ]
+
+        count = 0
+        for role, widget_key, widget_name, order, visible, config in widget_configs:
+            widget = DashboardWidgetDefaults(
+                role=role,
+                widget_key=widget_key,
+                widget_name=widget_name,
+                widget_order=order,
+                is_visible=visible,
+                default_config=config,
+            )
+            self.session.add(widget)
+            count += 1
+
+        return count
 
     def get_seeded_counts(self) -> dict:
         """Get counts of seeded records.

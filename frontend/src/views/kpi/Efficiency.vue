@@ -284,6 +284,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.date="{ item }">
                 {{ formatDate(item.date) }}
@@ -314,6 +315,7 @@
               :headers="shiftHeaders"
               :items="efficiencyData?.by_shift || []"
               density="compact"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.efficiency="{ item }">
                 <v-chip :color="getEfficiencyColor(item.efficiency)" size="small">
@@ -333,6 +335,7 @@
               :headers="productHeaders"
               :items="efficiencyData?.by_product || []"
               density="compact"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.efficiency="{ item }">
                 <v-chip :color="getEfficiencyColor(item.efficiency)" size="small">

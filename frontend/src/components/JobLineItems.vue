@@ -50,6 +50,7 @@
         :items="jobs"
         :loading="loading"
         :items-per-page="10"
+        :no-data-text="$t('common.noData')"
         density="compact"
         class="elevation-0"
       >

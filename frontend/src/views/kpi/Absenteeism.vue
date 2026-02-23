@@ -165,6 +165,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.shift_date="{ item }">
                 {{ formatDate(item.shift_date) }}
@@ -190,6 +191,7 @@
               :headers="reasonHeaders"
               :items="absenteeismData?.by_reason || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.count="{ item }">
                 <v-chip color="error" size="small">{{ item.count }}</v-chip>
@@ -212,6 +214,7 @@
               :headers="deptHeaders"
               :items="absenteeismData?.by_department || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.rate="{ item }">
                 <v-chip :color="getAbsenteeismColor(item.rate)" size="small">
@@ -234,6 +237,7 @@
               :headers="alertHeaders"
               :items="absenteeismData?.high_absence_employees || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.absence_count="{ item }">
                 <v-chip color="warning" size="small">{{ $t('kpi.daysCount', { count: item.absence_count }) }}</v-chip>

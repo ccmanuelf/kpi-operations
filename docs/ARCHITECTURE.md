@@ -1,8 +1,8 @@
 # KPI Operations Platform - Architecture Documentation
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-17
-**Architecture Grade**: B+ (Backend) / B+ (Frontend)
+**Version**: 2.0.0
+**Last Updated**: 2026-02-23
+**Architecture Grade**: B+ (weighted score 85.6, targeting A- post-remediation)
 
 ---
 
@@ -15,59 +15,61 @@ KPI Operations is a manufacturing KPI tracking platform designed for shopfloor o
 | Layer | Technology | Version |
 |-------|------------|---------|
 | **Frontend** | Vue 3 + Vuetify 3 + Pinia | 3.4 / 3.5 / 3.0 |
-| **Backend** | FastAPI + SQLAlchemy | 0.100+ / 2.0+ |
-| **Database** | SQLite (dev) / MariaDB (prod) | - |
-| **Authentication** | JWT + bcrypt | - |
+| **Backend** | FastAPI + SQLAlchemy + Pydantic | 0.129 / 2.0.46 / 2.12 |
+| **Database** | SQLite (dev) / MariaDB (prod) | 51 tables |
+| **Authentication** | JWT + bcrypt | HS256, token blacklist enforced |
 | **Data Grid** | AG-Grid Community | - |
 | **Design System** | IBM Carbon (tokens) | - |
+| **Testing** | pytest + Vitest 4.0 | 4,910+ backend / 1,476+ frontend |
 
 ---
 
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                         FRONTEND                                 │
-│  Vue 3 + Vuetify + Pinia                                        │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐           │
-│  │  Views   │ │Components│ │  Stores  │ │Composables│          │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘           │
-│       └────────────┴────────────┴────────────┘                  │
-│                         │                                        │
-│                    API Service                                   │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │ HTTP/REST
-┌─────────────────────────┴───────────────────────────────────────┐
-│                         BACKEND                                  │
-│  FastAPI                                                         │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    Routes/Endpoints                      │    │
-│  │  auth │ users │ production │ quality │ attendance │ ...  │    │
-│  └───────────────────────┬─────────────────────────────────┘    │
-│                          │                                       │
-│  ┌───────────────────────┼─────────────────────────────────┐    │
-│  │   Middleware          │         Calculations            │    │
-│  │   • Auth              │         • efficiency.py         │    │
-│  │   • Rate Limit        │         • otd.py               │    │
-│  │   • Client Filter     │         • ppm.py               │    │
-│  └───────────────────────┼─────────────────────────────────┘    │
-│                          │                                       │
-│  ┌───────────────────────┴─────────────────────────────────┐    │
-│  │                     CRUD Layer                           │    │
-│  │  17 modules: production, quality, attendance, etc.       │    │
-│  └───────────────────────┬─────────────────────────────────┘    │
-│                          │                                       │
-│  ┌───────────────────────┴─────────────────────────────────┐    │
-│  │                   ORM Models (SQLAlchemy)                │    │
-│  │  WorkOrder │ Job │ Production │ Quality │ Attendance     │    │
-│  └───────────────────────┬─────────────────────────────────┘    │
-└──────────────────────────┼──────────────────────────────────────┘
-                           │
-┌──────────────────────────┴──────────────────────────────────────┐
-│                        DATABASE                                  │
-│  SQLite (dev) / MariaDB (prod)                                  │
-│  Multi-tenant with client_id isolation                          │
-└─────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+|                         FRONTEND                                |
+|  Vue 3 + Vuetify + Pinia                                       |
+|  +----------+ +----------+ +----------+ +----------+           |
+|  |  Views   | |Components| |  Stores  | |Composables|          |
+|  +----+-----+ +----+-----+ +----+-----+ +----+-----+          |
+|       +------------+------------+------------+                  |
+|                         |                                       |
+|                    API Service (18 sub-modules)                 |
++-------------------------+---------------------------------------+
+                          | HTTP/REST
++-------------------------+---------------------------------------+
+|                         BACKEND                                 |
+|  FastAPI                                                        |
+|  +---------------------------------------------------------+   |
+|  |                  Routes (14 sub-packages)                |   |
+|  |  auth | capacity/ | kpi/ | simulation/ | quality/ | ...  |   |
+|  +-------------------------+-------------------------------+   |
+|                            |                                    |
+|  +-------------------------+-------------------------------+   |
+|  |   Middleware             |         Calculations          |   |
+|  |   - Auth (JWT)           |         - efficiency.py       |   |
+|  |   - Rate Limit           |         - otd.py              |   |
+|  |   - Client Filter        |         - ppm.py              |   |
+|  |   - V1 Deprecation       |         - performance.py      |   |
+|  |   - API Version Rewrite  |         - availability.py     |   |
+|  +-------------------------+-------------------------------+   |
+|                            |                                    |
+|  +-------------------------+-------------------------------+   |
+|  |                     CRUD Layer (17 modules)              |   |
+|  +-------------------------+-------------------------------+   |
+|                            |                                    |
+|  +-------------------------+-------------------------------+   |
+|  |              ORM Models (backend/orm/, 51 tables)        |   |
+|  |  Client | WorkOrder | Job | Production | Quality | ...   |   |
+|  +-------------------------+-------------------------------+   |
++----------------------------+------------------------------------+
+                             |
++----------------------------+------------------------------------+
+|                        DATABASE                                 |
+|  SQLite (dev) / MariaDB (prod)                                 |
+|  Multi-tenant with client_id isolation (5 demo clients)        |
++-----------------------------------------------------------------+
 ```
 
 ---
@@ -78,32 +80,47 @@ KPI Operations is a manufacturing KPI tracking platform designed for shopfloor o
 
 ```
 backend/
-├── main.py              # App setup, route registration (needs refactoring)
-├── config.py            # Configuration with validation
-├── database.py          # Connection pooling, session management
-├── auth/
-│   ├── jwt.py           # JWT token utilities
-│   └── password_policy.py
-├── calculations/        # Business logic (12 modules)
-│   ├── efficiency.py    # Efficiency with inference engine
-│   ├── otd.py           # On-Time Delivery calculations
-│   ├── ppm.py           # Parts Per Million (quality)
-│   ├── performance.py   # Performance metrics
-│   ├── availability.py  # Machine availability
-│   └── ...
-├── crud/                # Data access layer (17 modules)
-│   ├── production.py
-│   ├── quality.py
-│   ├── attendance.py
-│   └── ...
-├── middleware/
-│   ├── client_auth.py   # Multi-tenant isolation
-│   └── rate_limit.py
-├── models/              # Pydantic request/response models
-├── routes/              # API endpoint modules
-├── schemas/             # SQLAlchemy ORM models
-├── reports/             # PDF/Excel generation
-└── services/            # External integrations
+  main.py                  # App setup, lifespan, middleware, route registration
+  config.py                # Configuration with production validation (DEFAULT_INSECURE_VALUES guard)
+  database.py              # Connection pooling, session management
+  dependencies.py          # Shared FastAPI Depends (PaginationParams)
+  auth/
+    jwt.py                 # JWT token utilities (HS256, blacklist enforcement)
+    password_policy.py     # Password strength validation
+  calculations/            # Business logic (12 modules)
+    efficiency.py          # Efficiency with inference engine
+    otd.py                 # On-Time Delivery calculations
+    ppm.py                 # Parts Per Million (quality)
+    performance.py         # Performance metrics
+    availability.py        # Machine availability
+    ...
+  crud/                    # Data access layer (17 modules)
+    production.py
+    quality.py
+    attendance.py
+    ...
+  orm/                     # SQLAlchemy ORM models (all imported in __init__.py)
+    __init__.py            # Central registry -- every model file MUST be imported here
+    client.py, user.py, work_order.py, job.py, ...
+    capacity/              # 13 capacity planning tables
+  models/                  # Pydantic request/response schemas
+  routes/                  # API endpoint modules (14 sub-packages + single-file routes)
+    capacity/              # 10 modules: analysis, bom_stock, calendar, lines, orders, scenarios, standards, kpi_workbook, work_order_bridge, _models
+    kpi/                   # 7 modules: dashboard, calculations, efficiency, otd, thresholds, trends
+    simulation/            # 8 modules: capacity, efficiency, staffing, shift_coverage, floating_pool, production_line, overview, comprehensive
+    alerts/                # 3 modules: config_history, crud, generate
+    analytics/             # 4 modules: _helpers, comparisons, predictions, trends
+    quality/               # 4 modules: entries, fpy_rty, pareto, ppm_dpmo
+    reports/               # 5 modules: _models, comprehensive_reports, email_config, kpi_reports, production_reports
+    [single-file routes]   # auth, attendance, work_orders, jobs, holds, downtime, shifts, employees, production, users, floating_pool, onboarding, etc.
+  services/capacity/       # 7 capacity planning services (facade pattern)
+  events/                  # Domain event bus (collect/flush pattern)
+  simulation_v2/           # SimPy-based discrete-event simulation engine
+  reports/                 # PDF/Excel generation
+  db/migrations/           # Demo seeder (demo_seeder.py) + capacity table creation
+  scripts/                 # init_demo_database.py, backup utilities
+  utils/
+    logging_utils.py       # get_module_logger() -- used by all route modules
 ```
 
 ### Key Design Patterns
@@ -148,22 +165,90 @@ class InferredEmployees:
 | LEADER | Read/write, own client |
 | OPERATOR | Read/limited write, own client |
 
+#### 4. Route Sub-Package Pattern
+
+All major route groups have been refactored from monolithic files into sub-packages with `__init__.py` assembling sub-routers:
+
+```
+routes/kpi/
+  __init__.py       # Assembles sub-routers into kpi_router
+  dashboard.py      # GET /api/kpi/dashboard
+  calculations.py   # GET /api/kpi/calculate/{id}
+  efficiency.py     # Efficiency-specific endpoints
+  otd.py            # On-Time Delivery endpoints
+  thresholds.py     # Threshold CRUD
+  trends.py         # Trend analysis
+```
+
+All route modules use `get_module_logger(__name__)` from `backend.utils.logging_utils` for structured logging (100% coverage).
+
+#### 5. Lifespan Context Manager
+
+The application uses FastAPI's `lifespan` context manager (not the deprecated `@app.on_event`). The lifespan handler:
+1. Runs `Base.metadata.create_all()` to ensure all tables exist
+2. Validates ORM registry completeness (warns if <45 tables detected)
+3. Creates capacity planning tables
+4. Initializes domain event infrastructure
+5. Starts the daily report scheduler
+6. Auto-seeds demo data if the database is empty
+
 ### API Endpoints Summary
 
-| Category | Endpoints | Authentication |
-|----------|-----------|----------------|
-| Auth | `/api/token`, `/api/register`, `/api/users/me` | Public/Protected |
-| Production | `/api/production/*` | Protected |
-| Quality | `/api/quality/*` | Protected |
-| Attendance | `/api/attendance/*` | Protected |
-| KPI | `/api/kpi/*` | Protected |
-| Reports | `/api/reports/*` | Protected |
-| Work Orders | `/api/work-orders/*` | Protected |
-| Jobs | `/api/jobs/*` | Protected |
-| Capacity Planning | `/api/capacity/*` | Protected |
-| Simulation V1 | `/api/simulation/*` | Protected (deprecated) |
-| Simulation V2 | `/api/v2/simulation/*` | Protected |
-| Floating Pool | `/api/floating-pool/*` | Protected |
+| Category | Prefix | Sub-Package | Authentication |
+|----------|--------|-------------|----------------|
+| Auth | `/api/token`, `/api/register`, `/api/users/me` | Single file | Public/Protected |
+| Production | `/api/production/*` | Single file | Protected |
+| Quality | `/api/quality/*` | `quality/` (4 modules) | Protected |
+| Attendance | `/api/attendance/*` | Single file | Protected |
+| KPI | `/api/kpi/*` | `kpi/` (7 modules) | Protected |
+| Reports | `/api/reports/*` | `reports/` (5 modules) | Protected |
+| Work Orders | `/api/work-orders/*` | Single file | Protected |
+| Jobs | `/api/jobs/*` | Single file | Protected |
+| Capacity Planning | `/api/capacity/*` | `capacity/` (10 modules) | Protected |
+| Simulation V1 | `/api/simulation/*` | `simulation/` (8 modules) | Protected (deprecated) |
+| Simulation V2 | `/api/v2/simulation/*` | Single file | Protected |
+| Alerts | `/api/alerts/*` | `alerts/` (3 modules) | Protected |
+| Analytics | `/api/analytics/*` | `analytics/` (4 modules) | Protected |
+| Floating Pool | `/api/floating-pool/*` | Single file | Protected |
+
+---
+
+## Schema-ORM Integrity
+
+The project maintains a strict discipline to prevent schema-ORM drift, which was the root cause of 503 errors on fresh installs during the 2026-02-23 deployment-readiness audit.
+
+### ORM Registry Pattern
+
+All SQLAlchemy ORM models are centrally imported in `backend/orm/__init__.py`. This file serves as the authoritative registry of every database table. `Base.metadata.create_all()` can only create tables for models that have been imported into the Python process, so a missing import means a missing table.
+
+**Rule**: Every new ORM model file added to `backend/orm/` MUST be imported in `backend/orm/__init__.py` and exported in `__all__`.
+
+### Lifespan Safety Check
+
+`backend/main.py` includes a runtime check during application startup:
+
+```python
+_actual_table_count = len(Base.metadata.tables)
+if _actual_table_count < 45:
+    _logger.warning(
+        "Schema registry may be incomplete: expected >=45 tables, got %d. "
+        "Check that all ORM models are imported in backend/orm/__init__.py.",
+        _actual_table_count,
+    )
+```
+
+As of the deployment-readiness audit, the database has 51 tables. The threshold of 45 provides margin for the check to remain useful without false positives.
+
+### Dual Seeder Architecture
+
+Two seeders must stay aligned:
+
+| Seeder | Location | Used By |
+|--------|----------|---------|
+| `init_demo_database.py` | `backend/scripts/` | Local development (`python scripts/init_demo_database.py`) |
+| `demo_seeder.py` | `backend/db/migrations/` | Docker / auto-seed on empty DB (called from `main.py` lifespan) |
+
+Both seeders import ALL ORM models and create the same comprehensive demo dataset (5 clients, employees, work orders, production data, quality entries, capacity planning data, hold catalogs, break times, production lines, equipment, and assignments).
 
 ---
 
@@ -173,35 +258,43 @@ class InferredEmployees:
 
 ```
 frontend/src/
-├── assets/
-│   ├── main.css           # Carbon Design integration
-│   ├── responsive.css     # Mobile-first breakpoints
-│   └── carbon-tokens.css  # Design tokens
-├── components/
-│   ├── grids/             # AG-Grid wrappers
-│   ├── entries/           # Data entry forms
-│   ├── widgets/           # Dashboard widgets
-│   ├── filters/           # Filter components
-│   └── dashboard/         # Dashboard customization
-├── composables/           # Reusable logic
-│   ├── useKeyboardShortcuts.js
-│   ├── useResponsive.js
-│   └── useMobileGrid.js
-├── services/
-│   ├── api.js             # Backward-compat stub; real API client is services/api/ (18 sub-modules)
-│   └── api/               # API sub-modules (18 modules)
-├── stores/                # Pinia state management
-│   ├── authStore.js       # Authentication
-│   ├── productionDataStore.js  # Production data (renamed; kpiStore.js backward-compat stub)
-│   ├── kpi.js             # KPI metrics
-│   └── dashboardStore.js  # Dashboard customization
-├── views/
-│   ├── admin/             # Admin pages
-│   ├── kpi/               # KPI detail views
-│   └── [entry views]
-├── router/
-│   └── index.js           # Route definitions
-└── App.vue                # Root component
+  assets/
+    main.css             # Carbon Design integration
+    responsive.css       # Mobile-first breakpoints
+    carbon-tokens.css    # Design tokens
+  components/
+    grids/               # AG-Grid wrappers
+    entries/              # Data entry forms
+    widgets/              # Dashboard widgets
+    filters/              # Filter components
+    dashboard/            # Dashboard customization
+  composables/           # Reusable logic (extracted from large views)
+    useKPIDashboardData.js
+    useKPIReports.js
+    useKPIFilters.js
+    useKPIChartData.js
+    useShiftDashboardData.js
+    useShiftForms.js
+    useKeyboardShortcuts.js
+    useResponsive.js
+    useMobileGrid.js
+  services/
+    api.js               # Backward-compat stub
+    api/                  # API sub-modules (18 modules, 57+ exports)
+  stores/                # Pinia state management
+    authStore.js         # Authentication
+    productionDataStore.js  # Production data
+    kpi.js               # KPI metrics
+    dashboardStore.js    # Dashboard customization
+    capacityPlanningStore.js  # Main capacity store (delegates to sub-stores)
+    capacity/            # Sub-stores: defaults, historyManager, useWorksheetOps, useWorkbookStore, useAnalysisStore
+  views/
+    admin/               # Admin pages
+    kpi/                 # KPI detail views
+    CapacityPlanning/    # 13-tab capacity planning view
+  router/
+    index.js             # Route definitions
+  App.vue                # Root component
 ```
 
 ### Key Features
@@ -221,21 +314,7 @@ frontend/src/
 - AG-Grid mobile optimizations
 - Print styles
 
-#### 3. State Management Pattern
-
-```javascript
-// Stores use localStorage + API sync for offline resilience
-const dashboardStore = defineStore('dashboard', () => {
-  const layout = ref(loadFromLocalStorage() || defaultLayout)
-
-  const saveLayout = async () => {
-    saveToLocalStorage(layout.value)
-    await api.saveDashboardLayout(layout.value)  // Sync to server
-  }
-})
-```
-
-#### 4. Keyboard Shortcuts
+#### 3. Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
@@ -249,39 +328,55 @@ const dashboardStore = defineStore('dashboard', () => {
 
 ## Data Model
 
-### Core Entities
+### Core Entities (51 tables)
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   CLIENT    │────<│ WORK_ORDER  │────<│     JOB     │
-└─────────────┘     └─────────────┘     └─────────────┘
-                          │                    │
-                          │                    │
-                    ┌─────┴─────┐        ┌─────┴─────┐
-                    │           │        │           │
-              ┌─────┴────┐ ┌────┴────┐ ┌─┴───┐ ┌────┴────┐
-              │PRODUCTION│ │ QUALITY │ │HOLD │ │DOWNTIME │
-              └──────────┘ └─────────┘ └─────┘ └─────────┘
++-----------+     +-----------+     +-----------+
+|   CLIENT  |----<| WORK_ORDER|----<|    JOB    |
++-----------+     +-----------+     +-----------+
+                        |                 |
+                        |                 |
+                  +-----+-----+     +-----+-----+
+                  |           |     |           |
+            +-----+----+ +---+-----+ +---+ +----+----+
+            |PRODUCTION| | QUALITY | |HOLD| |DOWNTIME |
+            +----------+ +---------+ +----+ +---------+
 ```
 
 ### Work Order Lifecycle
 
 ```
-ACTIVE → ON_HOLD → ACTIVE → COMPLETED
-   │         ↑         │
-   └─────────┘         └──→ REJECTED
-                       └──→ CANCELLED
+ACTIVE -> ON_HOLD -> ACTIVE -> COMPLETED
+   |          ^          |
+   +----------+          +--> REJECTED
+                         +--> CANCELLED
 ```
 
 ### Key Relationships
 
 | Entity | Relationships |
 |--------|---------------|
-| Client | Has many: Work Orders, Employees, Products |
-| Work Order | Has many: Jobs, belongs to Client |
+| Client | Has many: Work Orders, Employees, Products, Configuration |
+| Work Order | Has many: Jobs; belongs to Client; optional link to Capacity Order |
 | Job | Has many: Production, Quality, Holds, Downtime |
 | Production | Belongs to: Job, Employee, Shift |
 | Quality | Belongs to: Job, Product |
+
+### Capacity Planning Tables (13)
+
+| Table | Purpose |
+|-------|---------|
+| CapacityCalendar | Working days, shifts, holidays |
+| CapacityProductionLine | Line specifications and operator counts |
+| CapacityOrder | Planning orders with priority and status |
+| CapacityProductionStandard | SAM (Standard Allowed Minutes) per style |
+| CapacityBOMHeader / BOMDetail | Bill of Materials |
+| CapacityStockSnapshot | Current inventory positions |
+| CapacityComponentCheck | MRP explosion results |
+| CapacityAnalysis | 12-step utilization calculation |
+| CapacitySchedule / ScheduleDetail | Production schedule generation |
+| CapacityScenario | What-if analysis (8 types) |
+| CapacityKPICommitment | Plan vs. actual variance tracking |
 
 ---
 
@@ -289,25 +384,26 @@ ACTIVE → ON_HOLD → ACTIVE → COMPLETED
 
 ### Authentication Flow
 
-```
 1. User submits credentials
-2. Server validates, generates JWT
+2. Server validates, generates JWT (HS256)
 3. JWT contains: user_id, client_id, role, exp
 4. Client stores JWT in localStorage
 5. All API requests include Authorization header
 6. Server validates JWT + client_id on each request
-```
+7. Token blacklist checked on every authenticated request (logout invalidation)
 
 ### Security Measures
 
 | Measure | Implementation |
 |---------|----------------|
 | Password Hashing | bcrypt with salt |
-| Token Security | JWT with configurable expiration |
+| Token Security | JWT with configurable expiration, blacklist enforcement |
 | Rate Limiting | 10 req/min on auth endpoints |
 | Input Validation | Pydantic with field constraints |
 | SQL Injection | Parameterized queries via SQLAlchemy |
 | Multi-Tenant | Client filter on all queries |
+| Production Config | DEFAULT_INSECURE_VALUES guard hard-fails in production |
+| CORS | Validated origins, CORSMiddleware added last (outermost in LIFO) |
 
 ---
 
@@ -315,43 +411,21 @@ ACTIVE → ON_HOLD → ACTIVE → COMPLETED
 
 Capacity Planning follows a **13-worksheet workbook pattern** that mirrors a physical planning workbook. Each worksheet maps to a backend CRUD module and a frontend grid/panel component.
 
-### Worksheets
-
-| # | Worksheet | Purpose |
-|---|-----------|---------|
-| 1 | Master Calendar | Working days, shifts, holidays |
-| 2 | Production Lines | Line specifications and operator counts |
-| 3 | Orders | Planning orders with priority and status |
-| 4 | Production Standards | SAM (Standard Allowed Minutes) per style |
-| 5 | BOM | Bill of Materials headers and details |
-| 6 | Stock Snapshots | Current inventory positions |
-| 7 | Component Check | MRP explosion results |
-| 8 | Capacity Analysis | 12-step utilization calculation |
-| 9 | Schedules | Production schedule generation |
-| 10 | Scenarios | What-if analysis (8 types) |
-| 11 | KPI Commitments | Plan vs. actual variance tracking |
-| 12 | Dashboard Inputs | Aggregated planning inputs |
-| 13 | Instructions | User guide / reference |
-
 ### Backend Services (7)
 
 All services live in `backend/services/capacity/` with a facade orchestrator:
 
 ```
 CapacityPlanningService          (capacity_service.py)   - Orchestrator / unified API
-├── BOMService                   (bom_service.py)        - Single-level BOM explosion
-├── MRPService                   (mrp_service.py)        - Component availability / shortage detection
-├── CapacityAnalysisService      (analysis_service.py)   - 12-step capacity calculation
-├── SchedulingService            (scheduling_service.py) - Schedule generation & commitment
-├── ScenarioService              (scenario_service.py)   - What-if scenario engine
-└── KPIIntegrationService        (kpi_integration_service.py) - Commitment vs. actuals variance
+  BOMService                     (bom_service.py)        - Single-level BOM explosion
+  MRPService                     (mrp_service.py)        - Component availability / shortage detection
+  CapacityAnalysisService        (analysis_service.py)   - 12-step capacity calculation
+  SchedulingService              (scheduling_service.py) - Schedule generation & commitment
+  ScenarioService                (scenario_service.py)   - What-if scenario engine
+  KPIIntegrationService          (kpi_integration_service.py) - Commitment vs. actuals variance
 ```
 
-`CapacityPlanningService` coordinates the others; individual services can also be used directly by routes.
-
 ### Scenario Types (8)
-
-Defined via `ScenarioType` enum in `scenario_service.py`:
 
 | Type | Effect |
 |------|--------|
@@ -364,11 +438,9 @@ Defined via `ScenarioType` enum in `scenario_service.py`:
 | `ABSENTEEISM_SPIKE` | +15% absenteeism |
 | `MULTI_CONSTRAINT` | Combined multi-factor scenario |
 
-Each type has default parameters. Scenarios are persisted and can be compared side-by-side, emitting `CapacityScenarioCreated` and `CapacityScenarioCompared` domain events.
-
 ### API Surface
 
-Capacity planning endpoints are organized as a sub-package at `backend/routes/capacity/` with 10 modules: `__init__.py`, `analysis.py`, `bom_stock.py`, `calendar.py`, `kpi_workbook.py`, `lines.py`, `orders.py`, `scenarios.py`, `standards.py`, `_models.py`. Every endpoint enforces multi-tenant isolation via `client_id`.
+Capacity planning endpoints are organized at `backend/routes/capacity/` with 10 modules: `__init__.py`, `analysis.py`, `bom_stock.py`, `calendar.py`, `kpi_workbook.py`, `lines.py`, `orders.py`, `scenarios.py`, `standards.py`, `work_order_bridge.py`. Every endpoint enforces multi-tenant isolation via `client_id`.
 
 ---
 
@@ -380,16 +452,16 @@ The domain event infrastructure lives in `backend/events/` and provides loose co
 
 ```
 Transaction Start
-  │  bus.collect(event)     ← events buffered, not dispatched
-  │  bus.collect(event)
-  │  db.commit()
-  │  bus.flush_collected()  ← all events dispatched after commit
-  │
-  │  On rollback:
-  │  bus.discard_collected() ← events thrown away
+    bus.collect(event)      <- events buffered, not dispatched
+    bus.collect(event)
+    db.commit()
+    bus.flush_collected()   <- all events dispatched after commit
+
+    On rollback:
+    bus.discard_collected() <- events thrown away
 ```
 
-Events are collected during a transaction and only dispatched after a successful commit. On rollback, `discard_collected()` discards the buffer. This prevents side effects from failed transactions.
+Events are collected during a transaction and only dispatched after a successful commit. On rollback, `discard_collected()` discards the buffer.
 
 ### Key Components
 
@@ -416,10 +488,11 @@ Two simulation implementations coexist in the codebase.
 
 ### V1 (Deprecated) - `calculations/simulation.py`
 
-- **Route**: `/api/simulation/*` (in `routes/simulation.py`)
+- **Route**: `/api/simulation/*` (sub-package at `routes/simulation/`, 8 modules)
 - Pure-function calculator for capacity requirements, staffing, efficiency, shift coverage, and floating pool optimization.
 - Tightly coupled to the **floating pool** module: `routes/floating_pool.py` imports `optimize_floating_pool_allocation` and `simulate_shift_coverage` from V1.
 - **Cannot be removed** until the floating pool dependency is decoupled.
+- **Sunset date**: 2026-06-01 (deprecation headers added via middleware).
 
 ### V2 (Current) - `simulation_v2/`
 
@@ -440,17 +513,7 @@ Two simulation implementations coexist in the codebase.
 | Products | Single | Up to 5 |
 | Persistence | None | None (ephemeral) |
 | Floating pool | Yes (dependency) | No |
-| Status | Deprecated | Active |
-
-### Floating Pool Dependency
-
-`routes/floating_pool.py` imports three functions from `calculations/simulation.py` (V1):
-
-- `optimize_floating_pool_allocation`
-- `simulate_shift_coverage`
-- `run_staffing_simulation`
-
-This is the sole reason V1 cannot be archived. Decoupling requires extracting these functions into a dedicated module.
+| Status | Deprecated (sunset 2026-06-01) | Active |
 
 ---
 
@@ -460,54 +523,54 @@ This is the sole reason V1 cannot be archived. Decoupling requires extracting th
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| backend/main.py (~657 lines) — middleware, lifecycle, and route registration | `backend/main.py` | Maintainability |
-| Duplicate KPI stores | `frontend/stores/kpi*.js` | Confusion |
-| Inconsistent error handling | Frontend components | UX |
+| V1 simulation floating pool coupling | `routes/floating_pool.py` imports from V1 | Blocks V1 sunset |
+| Inconsistent naming convention | `models/` = Pydantic, `orm/` = SQLAlchemy | Developer confusion |
 
 ### Medium Priority
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| Business logic in routes | Various route files | Testability |
-| Missing service layer | Backend | Architecture |
-| Large API service file | `frontend/services/api/` (18 sub-modules; `api.js` is now a stub) | Maintainability |
+| Business logic in some routes | Various single-file routes | Testability |
+| 216 hardcoded i18n strings | Frontend components | Localization |
 
 ### Documented for Future
 
 | Issue | Status |
 |-------|--------|
-| TypeScript migration | In progress |
+| TypeScript migration | Planned |
 | Token storage (HttpOnly cookies) | Planned |
 | Redis for session data | Planned for production |
+| PostgreSQL migration | Planned (SQLAlchemy makes this a config change) |
 
 ---
 
 ## Deployment
+
+See `docs/DEPLOYMENT.md` for full deployment instructions.
 
 ### Development
 
 ```bash
 # Backend
 cd backend
-python -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+python scripts/init_demo_database.py
+uvicorn backend.main:app --reload
 
 # Frontend
 cd frontend
-npm install
+npm install --legacy-peer-deps
 npm run dev
 ```
 
 ### Production Considerations
 
 - Use MariaDB/MySQL instead of SQLite
-- Configure production SECRET_KEY
+- Configure production SECRET_KEY (config.py hard-fails on insecure defaults)
 - Enable HTTPS
-- Set up Redis for token blacklist
 - Configure CORS origins
 - Enable rate limiting
+- Set `CSP_CONNECT_EXTRA` env var in frontend Dockerfile for production API URLs
 
 ---
 
@@ -518,10 +581,10 @@ npm run dev
 | Directory | Contains | Common Convention |
 |-----------|----------|-------------------|
 | `/models/` | Pydantic schemas | Usually SQLAlchemy |
-| `/schemas/` | SQLAlchemy models | Usually Pydantic |
+| `/orm/` | SQLAlchemy models | Usually `models/` |
 
 This is documented and internally consistent.
 
 ---
 
-*Generated from architecture audit reports dated 2026-01-25*
+*Updated from deployment-readiness audit reports dated 2026-02-23*

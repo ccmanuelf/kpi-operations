@@ -18,6 +18,7 @@
         :headers="headers"
         :items="calendar"
         :items-per-page="31"
+        :no-data-text="t('common.noData')"
         class="elevation-1"
         density="compact"
       >

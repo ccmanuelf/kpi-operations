@@ -146,6 +146,7 @@
           :sort-by="[{ key: 'planned_ship_date', order: 'asc' }]"
           class="elevation-0"
           hover
+          :no-data-text="t('common.noData')"
           @click:row="onRowClick"
         >
           <template v-slot:item.work_order_id="{ item }">

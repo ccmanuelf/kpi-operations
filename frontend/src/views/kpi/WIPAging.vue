@@ -165,6 +165,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.hold_date="{ item }">
                 {{ formatDate(item.hold_date) }}
@@ -223,6 +224,7 @@
               :items="wipData?.top_aging || []"
               density="compact"
               :items-per-page="10"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.age="{ item }">
                 <v-chip :color="getAgeColor(item.age)" size="small">

@@ -1,6 +1,11 @@
 """
 SQLAlchemy ORM models for database tables
-Complete multi-tenant implementation with all 14 tables
+Complete multi-tenant implementation with all tables
+
+IMPORTANT: Every ORM model file in this package MUST be imported here
+so that Base.metadata.create_all() discovers all tables. Failure to
+import a model here was the root cause of 503 errors on fresh installs
+(2026-02-23 schema-ORM mismatch incident).
 """
 
 # Core multi-tenant foundation
@@ -26,10 +31,27 @@ from .downtime_entry import DowntimeEntry
 # Phase 3: Attendance
 from .attendance_entry import AttendanceEntry, AbsenceType
 from .coverage_entry import CoverageEntry
+from .coverage import ShiftCoverage
 
 # Phase 4: Quality
 from .quality_entry import QualityEntry
 from .defect_detail import DefectDetail, DefectType
+
+# Phase 7.2: Client-Level Configuration Overrides
+from .client_config import ClientConfig, OTDMode
+
+# Phase 3: Domain Events Infrastructure
+from .event_store import EventStore
+
+# Import Log (CSV/batch import auditing)
+from .import_log import ImportLog
+
+# KPI Thresholds
+from .kpi_threshold import KPIThreshold
+
+# Phase 2.1: Data Layer Normalization — junction tables
+from .user_client_assignment import UserClientAssignment
+from .employee_client_assignment import EmployeeClientAssignment, AssignmentType
 
 # Phase 9: Client-specific Defect Type Catalog
 from .defect_type_catalog import DefectTypeCatalog
@@ -54,6 +76,27 @@ from .saved_filter import SavedFilter, FilterHistory
 
 # Phase 10: Workflow Foundation
 from .workflow import WorkflowTransitionLog
+
+# Phase B.1: Capacity Planning (13 tables)
+from .capacity import (
+    CapacityCalendar,
+    CapacityProductionLine,
+    CapacityOrder,
+    OrderPriority,
+    OrderStatus,
+    CapacityProductionStandard,
+    CapacityBOMHeader,
+    CapacityBOMDetail,
+    CapacityStockSnapshot,
+    CapacityComponentCheck,
+    ComponentStatus,
+    CapacityAnalysis,
+    CapacitySchedule,
+    CapacityScheduleDetail,
+    ScheduleStatus,
+    CapacityScenario,
+    CapacityKPICommitment,
+)
 
 __all__ = [
     # Core foundation
@@ -80,10 +123,24 @@ __all__ = [
     "AttendanceEntry",
     "AbsenceType",
     "CoverageEntry",
+    "ShiftCoverage",
     # Phase 4
     "QualityEntry",
     "DefectDetail",
     "DefectType",
+    # Phase 7.2
+    "ClientConfig",
+    "OTDMode",
+    # Phase 3 Events
+    "EventStore",
+    # Import Log
+    "ImportLog",
+    # KPI Thresholds
+    "KPIThreshold",
+    # Phase 2.1 Junction tables
+    "UserClientAssignment",
+    "EmployeeClientAssignment",
+    "AssignmentType",
     # Phase 9
     "DefectTypeCatalog",
     # Task 0.5
@@ -102,4 +159,22 @@ __all__ = [
     "FilterHistory",
     # Phase 10
     "WorkflowTransitionLog",
+    # Phase B.1 Capacity Planning
+    "CapacityCalendar",
+    "CapacityProductionLine",
+    "CapacityOrder",
+    "OrderPriority",
+    "OrderStatus",
+    "CapacityProductionStandard",
+    "CapacityBOMHeader",
+    "CapacityBOMDetail",
+    "CapacityStockSnapshot",
+    "CapacityComponentCheck",
+    "ComponentStatus",
+    "CapacityAnalysis",
+    "CapacitySchedule",
+    "CapacityScheduleDetail",
+    "ScheduleStatus",
+    "CapacityScenario",
+    "CapacityKPICommitment",
 ]

@@ -31,14 +31,14 @@ def list_hold_status_records(db: Session, client_id: str, include_inactive: bool
     return list_hold_statuses(db, client_id, include_inactive)
 
 
-def update_hold_status_record(db: Session, catalog_id: int, data):
+def update_hold_status_record(db: Session, catalog_id: int, data, client_id=None):
     """Update a hold status catalog entry."""
-    return update_hold_status(db, catalog_id, data)
+    return update_hold_status(db, catalog_id, data, client_id=client_id)
 
 
-def deactivate_hold_status_record(db: Session, catalog_id: int) -> bool:
+def deactivate_hold_status_record(db: Session, catalog_id: int, client_id=None) -> bool:
     """Deactivate a hold status catalog entry."""
-    return deactivate_hold_status(db, catalog_id)
+    return deactivate_hold_status(db, catalog_id, client_id=client_id)
 
 
 def create_hold_reason_record(db: Session, data):
@@ -51,14 +51,14 @@ def list_hold_reason_records(db: Session, client_id: str, include_inactive: bool
     return list_hold_reasons(db, client_id, include_inactive)
 
 
-def update_hold_reason_record(db: Session, catalog_id: int, data):
+def update_hold_reason_record(db: Session, catalog_id: int, data, client_id=None):
     """Update a hold reason catalog entry."""
-    return update_hold_reason(db, catalog_id, data)
+    return update_hold_reason(db, catalog_id, data, client_id=client_id)
 
 
-def deactivate_hold_reason_record(db: Session, catalog_id: int) -> bool:
+def deactivate_hold_reason_record(db: Session, catalog_id: int, client_id=None) -> bool:
     """Deactivate a hold reason catalog entry."""
-    return deactivate_hold_reason(db, catalog_id)
+    return deactivate_hold_reason(db, catalog_id, client_id=client_id)
 
 
 def validate_hold_status(db: Session, client_id: str, status_code: str) -> bool:

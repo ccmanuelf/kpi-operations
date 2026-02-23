@@ -1,4 +1,4 @@
-# Deployment Guide - Manufacturing KPI Platform v1.0.0
+# Deployment Guide - KPI Operations Platform v2.0.0
 
 This guide covers deploying the KPI Operations Platform to production environments.
 
@@ -37,7 +37,7 @@ This guide covers deploying the KPI Operations Platform to production environmen
 
 | Software | Version | Purpose |
 |----------|---------|---------|
-| **Python** | 3.11+ | Backend runtime |
+| **Python** | 3.12+ | Backend runtime |
 | **Node.js** | 20+ LTS | Frontend build |
 | **MariaDB** | 10.11+ | Production database |
 | **Nginx** | 1.18+ | Reverse proxy |
@@ -139,6 +139,17 @@ VITE_API_BASE_URL=https://api.kpi.yourdomain.com
 VITE_APP_TITLE=KPI Operations Platform
 ```
 
+### Content Security Policy (CSP)
+
+The frontend Docker image uses nginx with a strict Content-Security-Policy header. The `connect-src` directive defaults to `'self'` plus the Docker-internal backend hostname. For production deployments where the API is on a different domain, set the `CSP_CONNECT_EXTRA` environment variable:
+
+```env
+# In the frontend container or Dockerfile override
+CSP_CONNECT_EXTRA=https://api.kpi.yourdomain.com wss://api.kpi.yourdomain.com
+```
+
+The `frontend/Dockerfile` declares `ENV CSP_CONNECT_EXTRA=""` and uses `envsubst` at container startup to inject the value into the nginx configuration. Without this variable set, API calls to external domains will be blocked by CSP.
+
 ---
 
 ## Database Setup
@@ -183,11 +194,15 @@ EXIT;
 
 ### 3. Initialize Schema and Data
 
-No manual SQL import is required. The backend automatically creates all tables (via SQLAlchemy `Base.metadata.create_all()` and `create_capacity_tables()`) and seeds comprehensive demo data on first startup when it detects an empty database.
+No manual SQL import is required. The backend automatically creates all 51 tables (via SQLAlchemy `Base.metadata.create_all()` and `create_capacity_tables()`) and seeds comprehensive demo data on first startup when it detects an empty database.
 
 Simply ensure the database exists and the connection is configured (see [Environment Variables](#environment-variables)), then start the backend. Tables and demo data will be created automatically.
 
-> **Note:** This project does not use Alembic or any migration tooling. Schema is managed directly by SQLAlchemy model definitions in the codebase. To reset the database, drop and recreate it in MariaDB, then restart the backend to re-initialize.
+The auto-seed creates 5 demo clients (ACME-MFG, TechCorp, GlobalMfg, PrecisionParts, SmartFactory) with employees, work orders, production entries, quality data, capacity planning records, hold catalogs, break times, production lines, equipment, and assignments.
+
+**Demo credentials**: admin/admin123, all other users use password123.
+
+> **Note:** This project does not use Alembic or any migration tooling for production. Schema is managed directly by SQLAlchemy model definitions in the `backend/orm/` package. All ORM models must be imported in `backend/orm/__init__.py` for table creation to work. To reset the database, drop and recreate it in MariaDB, then restart the backend to re-initialize.
 
 ---
 
@@ -577,7 +592,7 @@ This uses the `render.yaml` blueprint at the project root to provision both serv
 | `kpi-operations-api` | Web Service | Docker | Starter | 8000 |
 | `kpi-operations-frontend` | Web Service | Docker | Starter | 80 |
 
-- **Backend**: Uses the root `Dockerfile` (multi-stage, Python 3.11, non-root user)
+- **Backend**: Uses the root `Dockerfile` (multi-stage, Python 3.12, non-root user)
 - **Frontend**: Uses `frontend/Dockerfile` (nginx serving the Vue 3 SPA)
 - **Database**: SQLite on a 1 GB persistent disk mounted at `/app/database`
 - **API Proxy**: nginx in the frontend container proxies `/api/` to the backend service
@@ -624,6 +639,7 @@ If you prefer manual configuration over the `render.yaml` blueprint:
 
 5. Add **Environment Variables**:
    - `VITE_API_URL` = `/api`
+   - `CSP_CONNECT_EXTRA` = `https://kpi-operations-api.onrender.com` (if the `dockerCommand` sed replacement is not used and the API is on a separate domain)
 
 ### Environment Variables
 
@@ -648,6 +664,7 @@ If you prefer manual configuration over the `render.yaml` blueprint:
 | Variable | Value | Notes |
 |----------|-------|-------|
 | `VITE_API_URL` | `/api` | Relative path; nginx proxies to the backend |
+| `CSP_CONNECT_EXTRA` | (optional) | Extra domains for CSP `connect-src`; not needed if using the `dockerCommand` sed approach |
 
 ### Persistent Disk and SQLite
 
@@ -994,5 +1011,5 @@ For deployment issues:
 
 ---
 
-**Last Updated**: 2026-02-22
-**Version**: 1.1.0
+**Last Updated**: 2026-02-23
+**Version**: 2.0.0

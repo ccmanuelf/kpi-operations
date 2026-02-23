@@ -154,6 +154,7 @@
             <v-data-table
               :headers="weeklyHeaders"
               :items="results.weekly_demand_capacity"
+              :no-data-text="t('common.noData')"
               density="compact"
               class="elevation-1"
             >
@@ -177,6 +178,7 @@
             <v-data-table
               :headers="stationHeaders"
               :items="results.station_performance"
+              :no-data-text="t('common.noData')"
               density="compact"
               class="elevation-1"
               :sort-by="[{ key: 'util_pct', order: 'desc' }]"
@@ -207,6 +209,7 @@
             <v-data-table
               :headers="productHeaders"
               :items="results.per_product_summary"
+              :no-data-text="t('common.noData')"
               density="compact"
               class="elevation-1"
             >
@@ -227,6 +230,7 @@
             <v-data-table
               :headers="bundleHeaders"
               :items="results.bundle_metrics"
+              :no-data-text="t('common.noData')"
               density="compact"
               class="elevation-1"
             />
@@ -241,6 +245,7 @@
               v-else
               :headers="rebalanceHeaders"
               :items="results.rebalancing_suggestions"
+              :no-data-text="t('common.noData')"
               density="compact"
               class="elevation-1"
             >

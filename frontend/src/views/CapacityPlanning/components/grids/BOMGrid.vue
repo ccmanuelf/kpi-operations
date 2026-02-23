@@ -89,6 +89,7 @@
             <v-data-table
               :headers="componentHeaders"
               :items="bom.components || []"
+              :no-data-text="t('common.noData')"
               density="compact"
               class="elevation-1"
             >

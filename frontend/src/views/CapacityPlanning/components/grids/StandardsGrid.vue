@@ -14,6 +14,7 @@
         :headers="headers"
         :items="standards"
         :items-per-page="15"
+        :no-data-text="t('common.noData')"
         class="elevation-1"
         density="compact"
       >

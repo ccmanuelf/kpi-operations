@@ -68,6 +68,7 @@
         :items="stock"
         :items-per-page="15"
         :search="searchTerm"
+        :no-data-text="t('common.noData')"
         class="elevation-1"
         density="compact"
       >

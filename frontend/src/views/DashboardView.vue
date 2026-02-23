@@ -175,6 +175,7 @@
               class="elevation-1"
               aria-label="Production entries table"
               hover
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.production_date="{ item }">
                 {{ formatDate(item.production_date) }}

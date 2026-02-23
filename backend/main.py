@@ -122,6 +122,18 @@ async def lifespan(app: FastAPI):
     # Ensure all tables exist (idempotent — safe on pre-populated databases)
     Base.metadata.create_all(bind=engine)
 
+    # Safety check: warn if ORM model registry looks incomplete.
+    # The project has 51 tables as of the deployment-readiness audit (2026-02-23).
+    # If fewer than 45 appear, a model file was likely added to backend/orm/
+    # but not imported in backend/orm/__init__.py.
+    _actual_table_count = len(Base.metadata.tables)
+    if _actual_table_count < 45:
+        _logger.warning(
+            "Schema registry may be incomplete: expected >=45 tables, got %d. "
+            "Check that all ORM models are imported in backend/orm/__init__.py.",
+            _actual_table_count,
+        )
+
     from backend.db.migrations.capacity_planning_tables import create_capacity_tables
 
     create_capacity_tables()

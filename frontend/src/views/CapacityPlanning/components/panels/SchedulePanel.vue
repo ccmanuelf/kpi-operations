@@ -66,6 +66,7 @@
         :items="schedule"
         :items-per-page="15"
         :group-by="[{ key: 'scheduled_date', order: 'asc' }]"
+        :no-data-text="t('common.noData')"
         class="elevation-1"
         density="compact"
       >

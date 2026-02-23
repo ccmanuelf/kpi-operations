@@ -44,6 +44,7 @@
           :headers="headers"
           :items="workOrders"
           :items-per-page="-1"
+          :no-data-text="$t('common.noData')"
           density="compact"
           class="production-table"
         >

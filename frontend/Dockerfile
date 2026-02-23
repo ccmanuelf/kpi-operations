@@ -60,7 +60,9 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD wget -q --spider http://localhost:80 || exit 1
 
-# Run as non-root nginx user
-USER nginx
+# CSP connect-src customization (e.g. "https://api.example.com" on Render)
+ENV CSP_CONNECT_EXTRA=""
 
-CMD ["nginx", "-g", "daemon off;"]
+# Use envsubst to replace env vars in nginx.conf, then start nginx
+# Runs as root so envsubst can write to /etc/nginx/conf.d/; nginx workers drop to 'nginx' user
+CMD ["/bin/sh", "-c", "envsubst '${CSP_CONNECT_EXTRA}' < /etc/nginx/conf.d/default.conf > /tmp/default.conf && mv /tmp/default.conf /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

@@ -280,6 +280,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.date="{ item }">
                 {{ formatDate(item.date) }}
@@ -310,6 +311,7 @@
               :headers="shiftHeaders"
               :items="performanceData?.by_shift || []"
               density="compact"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.performance="{ item }">
                 <v-chip :color="getPerformanceColor(item.performance)" size="small">
@@ -329,6 +331,7 @@
               :headers="productHeaders"
               :items="performanceData?.by_product || []"
               density="compact"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.performance="{ item }">
                 <v-chip :color="getPerformanceColor(item.performance)" size="small">

@@ -91,9 +91,13 @@ def update_hold_status(
     db: Session,
     catalog_id: int,
     data: HoldStatusCatalogUpdate,
+    client_id: Optional[str] = None,
 ) -> Optional[HoldStatusCatalog]:
     """Update display_name, is_active, or sort_order of a hold status."""
-    db_entry = db.query(HoldStatusCatalog).filter(HoldStatusCatalog.catalog_id == catalog_id).first()
+    query = db.query(HoldStatusCatalog).filter(HoldStatusCatalog.catalog_id == catalog_id)
+    if client_id is not None:
+        query = query.filter(HoldStatusCatalog.client_id == client_id)
+    db_entry = query.first()
     if not db_entry:
         return None
     update_fields = data.model_dump(exclude_unset=True)
@@ -105,9 +109,14 @@ def update_hold_status(
     return db_entry
 
 
-def deactivate_hold_status(db: Session, catalog_id: int) -> bool:
+def deactivate_hold_status(
+    db: Session, catalog_id: int, client_id: Optional[str] = None
+) -> bool:
     """Soft-delete a hold status (set is_active = False)."""
-    db_entry = db.query(HoldStatusCatalog).filter(HoldStatusCatalog.catalog_id == catalog_id).first()
+    query = db.query(HoldStatusCatalog).filter(HoldStatusCatalog.catalog_id == catalog_id)
+    if client_id is not None:
+        query = query.filter(HoldStatusCatalog.client_id == client_id)
+    db_entry = query.first()
     if not db_entry:
         return False
     db_entry.is_active = False
@@ -175,9 +184,13 @@ def update_hold_reason(
     db: Session,
     catalog_id: int,
     data: HoldReasonCatalogUpdate,
+    client_id: Optional[str] = None,
 ) -> Optional[HoldReasonCatalog]:
     """Update display_name, is_active, or sort_order of a hold reason."""
-    db_entry = db.query(HoldReasonCatalog).filter(HoldReasonCatalog.catalog_id == catalog_id).first()
+    query = db.query(HoldReasonCatalog).filter(HoldReasonCatalog.catalog_id == catalog_id)
+    if client_id is not None:
+        query = query.filter(HoldReasonCatalog.client_id == client_id)
+    db_entry = query.first()
     if not db_entry:
         return None
     update_fields = data.model_dump(exclude_unset=True)
@@ -189,9 +202,14 @@ def update_hold_reason(
     return db_entry
 
 
-def deactivate_hold_reason(db: Session, catalog_id: int) -> bool:
+def deactivate_hold_reason(
+    db: Session, catalog_id: int, client_id: Optional[str] = None
+) -> bool:
     """Soft-delete a hold reason (set is_active = False)."""
-    db_entry = db.query(HoldReasonCatalog).filter(HoldReasonCatalog.catalog_id == catalog_id).first()
+    query = db.query(HoldReasonCatalog).filter(HoldReasonCatalog.catalog_id == catalog_id)
+    if client_id is not None:
+        query = query.filter(HoldReasonCatalog.client_id == client_id)
+    db_entry = query.first()
     if not db_entry:
         return False
     db_entry.is_active = False

@@ -204,7 +204,7 @@
           <v-card-title>{{ t('reports.summary') }}</v-card-title>
           <v-card-text>
             <v-data-table :headers="summaryHeaders" :items="summaryItems" :loading="loading"
-              density="comfortable" class="elevation-0">
+              density="comfortable" class="elevation-0" :no-data-text="t('common.noData')">
               <template v-slot:item.status="{ item }">
                 <v-chip :color="item.status" size="small" variant="flat">{{ item.statusText }}</v-chip>
               </template>

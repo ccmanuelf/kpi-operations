@@ -54,6 +54,7 @@
           :headers="headers"
           :items="workOrders"
           :items-per-page="5"
+          :no-data-text="$t('common.noData')"
           density="compact"
           class="work-orders-table"
         >

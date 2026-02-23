@@ -196,6 +196,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-1"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.status="{ item }">
                 <v-chip

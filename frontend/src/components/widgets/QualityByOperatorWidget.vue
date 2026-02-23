@@ -58,6 +58,7 @@
         <v-data-table
           :headers="headers"
           :items="operatorQuality"
+          :no-data-text="t('common.noData')"
           density="compact"
           :items-per-page="5"
           class="elevation-0"

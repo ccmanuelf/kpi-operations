@@ -86,7 +86,8 @@ def update_hold_status_endpoint(
 
     Requires supervisor or admin role.
     """
-    result = update_hold_status(db, catalog_id, data)
+    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    result = update_hold_status(db, catalog_id, data, client_id=tenant_filter)
     if not result:
         raise HTTPException(status_code=404, detail="Hold status catalog entry not found")
     return result
@@ -103,7 +104,8 @@ def delete_hold_status_endpoint(
 
     Requires supervisor or admin role.
     """
-    success = deactivate_hold_status(db, catalog_id)
+    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    success = deactivate_hold_status(db, catalog_id, client_id=tenant_filter)
     if not success:
         raise HTTPException(status_code=404, detail="Hold status catalog entry not found")
 
@@ -158,7 +160,8 @@ def update_hold_reason_endpoint(
 
     Requires supervisor or admin role.
     """
-    result = update_hold_reason(db, catalog_id, data)
+    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    result = update_hold_reason(db, catalog_id, data, client_id=tenant_filter)
     if not result:
         raise HTTPException(status_code=404, detail="Hold reason catalog entry not found")
     return result
@@ -175,7 +178,8 @@ def delete_hold_reason_endpoint(
 
     Requires supervisor or admin role.
     """
-    success = deactivate_hold_reason(db, catalog_id)
+    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    success = deactivate_hold_reason(db, catalog_id, client_id=tenant_filter)
     if not success:
         raise HTTPException(status_code=404, detail="Hold reason catalog entry not found")
 

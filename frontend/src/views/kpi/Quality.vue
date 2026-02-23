@@ -473,6 +473,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.shift_date="{ item }">
                 {{ formatDate(item.shift_date) }}
@@ -507,6 +508,7 @@
               :headers="defectHeaders"
               :items="qualityData?.defects_by_type || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.count="{ item }">
                 <v-chip color="error" size="small">{{ item.count }}</v-chip>
@@ -533,6 +535,7 @@
               :headers="productHeaders"
               :items="qualityData?.by_product || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.fpy="{ item }">
                 <v-chip :color="getFPYColor(item.fpy)" size="small">

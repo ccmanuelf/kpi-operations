@@ -90,6 +90,7 @@
         :headers="headers"
         :items="analysis"
         :items-per-page="10"
+        :no-data-text="t('common.noData')"
         class="elevation-1"
         density="compact"
       >

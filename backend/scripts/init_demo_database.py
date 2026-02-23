@@ -28,53 +28,62 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from backend.database import engine, Base, SessionLocal
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.orm import ClientType, WorkOrderStatus, HoldStatus
 
-# Import all models to ensure they're registered with Base
-from backend.orm.client import Client
-from backend.orm.user import User
-from backend.orm.employee import Employee
-from backend.orm.product import Product
-from backend.orm.shift import Shift
-from backend.orm.work_order import WorkOrder
-from backend.orm.job import Job
-from backend.orm.production_entry import ProductionEntry
-from backend.orm.quality_entry import QualityEntry
-from backend.orm.attendance_entry import AttendanceEntry
-from backend.orm.downtime_entry import DowntimeEntry
-from backend.orm.hold_entry import HoldEntry
-from backend.orm.defect_type_catalog import DefectTypeCatalog
-from backend.orm.defect_detail import DefectDetail
-from backend.orm.part_opportunities import PartOpportunities
-from backend.orm.floating_pool import FloatingPool
-from backend.orm.coverage_entry import CoverageEntry
-from backend.orm.saved_filter import SavedFilter, FilterHistory
-from backend.orm.workflow import WorkflowTransitionLog
-from backend.orm.user_preferences import UserPreferences, DashboardWidgetDefaults
-from backend.schemas.alert import Alert, AlertConfig, AlertHistory
-from backend.orm.client_config import ClientConfig, OTDMode
-from backend.orm.kpi_threshold import KPIThreshold
-
-# Import ALL capacity planning models
-from backend.orm.capacity import (
+# Import all ORM models via centralized registry (backend/orm/__init__.py).
+# This single import registers every model with Base.metadata so that
+# create_all() can never drift from the model registry. Only the names
+# actually referenced in seeder logic are listed explicitly.
+from backend.orm import (
+    # Enums used in seeder data
+    ClientType,
+    WorkOrderStatus,
+    HoldStatus,
+    OTDMode,
+    OrderPriority,
+    OrderStatus,
+    ScheduleStatus,
+    # Core entities
+    Client,
+    User,
+    Employee,
+    Product,
+    Shift,
+    WorkOrder,
+    Job,
+    ProductionEntry,
+    QualityEntry,
+    AttendanceEntry,
+    DowntimeEntry,
+    HoldEntry,
+    DefectTypeCatalog,
+    DashboardWidgetDefaults,
+    ClientConfig,
+    KPIThreshold,
+    # Sprint 0-2 entities
+    HoldStatusCatalog,
+    HoldReasonCatalog,
+    BreakTime,
+    ProductionLine,
+    Equipment,
+    EmployeeLineAssignment,
+    # Capacity planning
     CapacityCalendar,
     CapacityProductionLine,
     CapacityOrder,
-    OrderPriority,
-    OrderStatus,
     CapacityProductionStandard,
     CapacityBOMHeader,
     CapacityBOMDetail,
     CapacityStockSnapshot,
     CapacityComponentCheck,
-    ComponentStatus,
     CapacityAnalysis,
     CapacitySchedule,
     CapacityScheduleDetail,
-    ScheduleStatus,
     CapacityScenario,
     CapacityKPICommitment,
 )
+
+# Alert models live outside backend/orm/ (in backend/schemas/alert.py)
+from backend.schemas.alert import Alert, AlertConfig, AlertHistory
 
 # ============================================================================
 # MASTER PRODUCT CATALOG
@@ -338,6 +347,8 @@ def init_database():
                 db, client_id=client_id, client_name=client_name, client_type=client_type
             )
             clients[client_id] = client
+
+        CLIENT_IDS = list(clients.keys())
 
         # Client configs
         for client_id in clients.keys():
@@ -1142,6 +1153,16 @@ def init_database():
                 else:
                     # Still in progress: due in 10 days, no delivery yet
                     wo.required_date = datetime.combine(date.today() + timedelta(days=10), datetime.min.time())
+                # Link to corresponding capacity order (WO→CP bridge)
+                cap_orders_for_client = all_cap_orders.get(client_id, [])
+                matching_cap = next(
+                    (co for co in cap_orders_for_client if co.style_model == mp["code"]),
+                    None,
+                )
+                if matching_cap:
+                    wo.capacity_order_id = matching_cap.id
+                    wo.origin = "CAPACITY_PLAN"
+
                 client_work_orders.append(wo)
 
                 # 2 jobs per work order
@@ -1429,6 +1450,163 @@ def init_database():
         db.commit()
 
         # ==============================================================
+        # Step 9b: Sprint 0-2 Entities (Hold Catalogs, Breaks, Lines, Equipment, Assignments)
+        # ==============================================================
+        print("\n[9b/10] Seeding Sprint 0-2 entities...")
+
+        # Hold Status Catalogs — per client
+        hold_statuses = [
+            ("ON_HOLD", "On Hold", 1),
+            ("PENDING_APPROVAL", "Pending Approval", 2),
+            ("APPROVED", "Approved", 3),
+            ("RELEASED", "Released", 4),
+            ("ESCALATED", "Escalated", 5),
+        ]
+        hs_count = 0
+        for cid in CLIENT_IDS:
+            for code, name, order in hold_statuses:
+                db.add(HoldStatusCatalog(
+                    client_id=cid,
+                    status_code=code,
+                    display_name=name,
+                    is_default=True,
+                    is_active=True,
+                    sort_order=order,
+                ))
+                hs_count += 1
+        print(f"  Created {hs_count} hold status catalog entries")
+
+        # Hold Reason Catalogs — per client
+        hold_reasons = [
+            ("QUALITY_ISSUE", "Quality Issue", 1),
+            ("MATERIAL_SHORTAGE", "Material Shortage", 2),
+            ("MACHINE_BREAKDOWN", "Machine Breakdown", 3),
+            ("CUSTOMER_REQUEST", "Customer Request", 4),
+            ("DESIGN_CHANGE", "Design Change", 5),
+            ("CAPACITY_CONSTRAINT", "Capacity Constraint", 6),
+        ]
+        hr_count = 0
+        for cid in CLIENT_IDS:
+            for code, name, order in hold_reasons:
+                db.add(HoldReasonCatalog(
+                    client_id=cid,
+                    reason_code=code,
+                    display_name=name,
+                    is_default=True,
+                    is_active=True,
+                    sort_order=order,
+                ))
+                hr_count += 1
+        print(f"  Created {hr_count} hold reason catalog entries")
+
+        db.flush()
+
+        # Break Times — per shift
+        shifts_in_db = db.query(Shift).all()
+        bt_count = 0
+        for s in shifts_in_db:
+            # Morning/First break at 2h, Lunch at 4h
+            db.add(BreakTime(
+                shift_id=s.shift_id,
+                client_id=s.client_id,
+                break_name="Morning Break",
+                start_offset_minutes=120,
+                duration_minutes=15,
+                applies_to="ALL",
+                is_active=True,
+            ))
+            db.add(BreakTime(
+                shift_id=s.shift_id,
+                client_id=s.client_id,
+                break_name="Lunch Break",
+                start_offset_minutes=240,
+                duration_minutes=30,
+                applies_to="ALL",
+                is_active=True,
+            ))
+            bt_count += 2
+        print(f"  Created {bt_count} break time entries")
+
+        db.flush()
+
+        # Production Lines — sectional hierarchy per client
+        DEPARTMENTS = [
+            ("CUT", "Cutting", "SECTION"),
+            ("SEW", "Sewing", "DEDICATED"),
+            ("FIN", "Finishing", "DEDICATED"),
+            ("QC", "Quality Control", "SHARED"),
+            ("PKG", "Packaging", "SHARED"),
+        ]
+        pl_count = 0
+        line_map = {}  # (client_id, dept_code) -> line_id for equipment and assignment seeding
+        for cid in CLIENT_IDS:
+            short = cid.split("-")[0][:4]
+            for i, (dept_code, dept_name, line_type) in enumerate(DEPARTMENTS, 1):
+                line = ProductionLine(
+                    client_id=cid,
+                    line_code=f"{dept_code}-{short}-{i:02d}",
+                    line_name=f"{dept_name} Line {i}",
+                    department=dept_name.upper(),
+                    line_type=line_type,
+                    max_operators=8 if line_type == "DEDICATED" else 4,
+                    is_active=True,
+                )
+                db.add(line)
+                db.flush()
+                line_map[(cid, dept_code)] = line.line_id
+                pl_count += 1
+        print(f"  Created {pl_count} production lines")
+
+        # Equipment — 2 per line
+        eq_count = 0
+        EQUIPMENT_TYPES = {
+            "CUT": [("Fabric Cutting Machine", "Cutting Machine"), ("Spreading Table", "Spreader")],
+            "SEW": [("Industrial Sewing Machine", "Sewing Machine"), ("Overlock Machine", "Overlocker")],
+            "FIN": [("Steam Press", "Press"), ("Thread Trimmer", "Trimmer")],
+            "QC": [("AQL Inspection Table", "Inspection"), ("Needle Detector", "Detector")],
+            "PKG": [("Folding Machine", "Folder"), ("Poly Bagger", "Bagger")],
+        }
+        for (cid, dept_code), lid in line_map.items():
+            short = cid.split("-")[0][:4]
+            for j, (eq_name, eq_type) in enumerate(EQUIPMENT_TYPES.get(dept_code, []), 1):
+                db.add(Equipment(
+                    client_id=cid,
+                    line_id=lid,
+                    equipment_code=f"EQ-{short}-{dept_code}-{j:02d}",
+                    equipment_name=eq_name,
+                    equipment_type=eq_type,
+                    status="ACTIVE",
+                    is_active=True,
+                ))
+                eq_count += 1
+        print(f"  Created {eq_count} equipment records")
+
+        db.flush()
+
+        # Employee-Line Assignments — assign first 5 employees per client to the SEW line
+        ela_count = 0
+        all_employees = db.query(Employee).all()
+        for cid in CLIENT_IDS:
+            sew_line_id = line_map.get((cid, "SEW"))
+            if not sew_line_id:
+                continue
+            client_emps = [e for e in all_employees if e.client_id_assigned == cid][:5]
+            for emp in client_emps:
+                db.add(EmployeeLineAssignment(
+                    employee_id=emp.employee_id,
+                    line_id=sew_line_id,
+                    client_id=cid,
+                    allocation_percentage=100,
+                    is_primary=True,
+                    effective_date=date(2026, 1, 1),
+                ))
+                ela_count += 1
+        print(f"  Created {ela_count} employee-line assignments")
+
+        db.commit()
+        print("  Sprint 0-2 entities committed successfully")
+
+        # ==============================================================
         # Step 10: Summary Report
         # ==============================================================
         print("\n[10/10] Generating summary...")
@@ -1450,6 +1628,13 @@ def init_database():
             "Dashboard Widget Defaults": db.query(DashboardWidgetDefaults).count(),
             "Alert Configurations": db.query(AlertConfig).count(),
             "Active Alerts": db.query(Alert).count(),
+            # Sprint 0-2 entities
+            "Hold Status Catalog": db.query(HoldStatusCatalog).count(),
+            "Hold Reason Catalog": db.query(HoldReasonCatalog).count(),
+            "Break Times": db.query(BreakTime).count(),
+            "Production Lines": db.query(ProductionLine).count(),
+            "Equipment": db.query(Equipment).count(),
+            "Employee-Line Assignments": db.query(EmployeeLineAssignment).count(),
             # Capacity Planning - Core
             "Cap. Calendar Entries": db.query(CapacityCalendar).count(),
             "Cap. Production Lines": db.query(CapacityProductionLine).count(),

@@ -169,6 +169,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.shift_date="{ item }">
                 {{ formatDate(item.shift_date) }}
@@ -194,6 +195,7 @@
               :headers="downtimeHeaders"
               :items="availabilityData?.downtime_reasons || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.hours="{ item }">
                 <v-chip color="error" size="small">{{ $t('kpi.hoursSuffix', { value: item.hours }) }}</v-chip>
@@ -216,6 +218,7 @@
               :headers="equipmentHeaders"
               :items="availabilityData?.by_equipment || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.availability="{ item }">
                 <v-chip :color="getAvailabilityColor(item.availability)" size="small">

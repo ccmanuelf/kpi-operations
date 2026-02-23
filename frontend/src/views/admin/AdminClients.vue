@@ -54,6 +54,7 @@
         :loading="loading"
         :search="search"
         class="elevation-1"
+        :no-data-text="t('common.noData')"
       >
         <template v-slot:item.is_active="{ item }">
           <v-chip :color="item.is_active ? 'success' : 'error'" size="small">

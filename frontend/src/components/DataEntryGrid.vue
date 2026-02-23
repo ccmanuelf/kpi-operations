@@ -44,6 +44,7 @@
         :headers="headers"
         :items="entries"
         :loading="loading"
+        :no-data-text="$t('common.noData')"
         class="elevation-1"
         item-key="entry_id"
         :aria-label="$t('dataEntry.productionEntriesTable')"

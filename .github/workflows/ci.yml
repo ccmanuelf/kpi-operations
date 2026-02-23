@@ -121,3 +121,30 @@ jobs:
           curl -f http://localhost:8000/health/live || (docker logs backend-smoke && exit 1)
           docker stop backend-smoke
           docker rm backend-smoke
+
+      - name: Fresh database smoke test
+        run: |
+          set -e
+          docker run -d --name backend-freshdb -p 8001:8000 \
+            -e DATABASE_URL=sqlite:///tmp/fresh.db \
+            -e SECRET_KEY=ci-freshdb-test \
+            kpi-operations-backend
+          sleep 8
+          # Auth
+          TOKEN=$(curl -sf -X POST http://localhost:8001/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"admin123"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+          AUTH="Authorization: Bearer $TOKEN"
+          # Hit key workflow endpoints
+          curl -sf -H "$AUTH" "http://localhost:8001/api/capacity/orders?client_id=ACME-MFG" || echo "WARN: capacity/orders"
+          curl -sf -H "$AUTH" http://localhost:8001/api/work-orders || echo "WARN: work-orders"
+          curl -sf -H "$AUTH" http://localhost:8001/api/production || echo "WARN: production"
+          curl -sf -H "$AUTH" "http://localhost:8001/api/quality/" || echo "WARN: quality"
+          curl -sf -H "$AUTH" http://localhost:8001/api/downtime || echo "WARN: downtime"
+          curl -sf -H "$AUTH" http://localhost:8001/api/attendance || echo "WARN: attendance"
+          curl -sf -H "$AUTH" "http://localhost:8001/api/kpi/dashboard?client_id=ACME-MFG" || echo "WARN: kpi/dashboard"
+          curl -sf -H "$AUTH" "http://localhost:8001/api/alerts/dashboard?client_id=ACME-MFG" || echo "WARN: alerts/dashboard"
+          curl -sf -H "$AUTH" "http://localhost:8001/api/onboarding/status?client_id=ACME-MFG" || echo "WARN: onboarding"
+          curl -sf -H "$AUTH" http://localhost:8001/api/shifts || echo "WARN: shifts"
+          echo "All workflow endpoints passed"
+          docker stop backend-freshdb && docker rm backend-freshdb

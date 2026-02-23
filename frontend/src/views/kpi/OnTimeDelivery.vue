@@ -167,6 +167,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.date="{ item }">
                 {{ formatDate(item.date) }}
@@ -192,6 +193,7 @@
               :headers="clientHeaders"
               :items="otdData?.by_client || []"
               density="compact"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.otd_percentage="{ item }">
                 <v-chip :color="getOTDColor(item.otd_percentage)" size="small">
@@ -213,6 +215,7 @@
               :items="otdData?.late_deliveries || []"
               density="compact"
               :items-per-page="10"
+              :no-data-text="t('common.noData')"
             >
               <template v-slot:item.delay_hours="{ item }">
                 <v-chip color="error" size="small">

@@ -1,283 +1,174 @@
-# Manufacturing KPI Platform - Phase 1 MVP
+# KPI Operations Platform
 
-Production tracking platform with real-time KPI calculations, featuring FastAPI backend, Vue 3 frontend, and MariaDB database.
-
-## Features
-
-### Phase 1 (MVP) - Production Entry Focus
-
-- **Production Data Entry**: Excel-like grid interface for entering production metrics
-- **KPI Calculations**:
-  - KPI #3: Efficiency = (units_produced × ideal_cycle_time) / (employees_assigned × run_time_hours) × 100
-  - KPI #9: Performance = (ideal_cycle_time × units_produced) / run_time_hours × 100
-  - Quality Rate calculation
-  - OEE (Overall Equipment Effectiveness)
-- **Inference Engine**: Automatic ideal_cycle_time inference when not defined
-- **Read-Back Confirmation**: Data validation workflow
-- **CSV Bulk Upload**: Import production entries via CSV
-- **Real-Time Dashboard**: Live KPI visualization with charts
-- **PDF Reports**: Generate daily/weekly production reports
-- **JWT Authentication**: Secure role-based access control
+Manufacturing KPI tracking and capacity planning platform with multi-tenant architecture. Designed for shopfloor operators and technicians as a bridge tool for operations without a full MES system, replacing Excel spreadsheets and whiteboards with structured, data-driven workflows.
 
 ## Tech Stack
 
+| Layer | Technology | Version |
+|-------|------------|---------|
+| **Backend** | Python, FastAPI, SQLAlchemy, Pydantic, uvicorn | 3.12, 0.129, 2.0.46, 2.12, 0.40 |
+| **Frontend** | Vue 3, Pinia, Vuetify 3, vue-router, vue-i18n, Vite | 3.4, 3, 3, 5, 11, 7.3 |
+| **Database** | SQLite (dev/demo), MariaDB (production) | |
+| **Testing** | pytest + Vitest | 6,386+ tests (4,910 backend, 1,476 frontend) |
+| **Auth** | JWT + bcrypt | Role-based, multi-tenant |
+
+## Modules
+
+- **Production Data Entry** -- Work orders, jobs, line items, production tracking with CSV bulk upload and read-back confirmation
+- **Quality Management** -- Defect tracking (PPM, DPMO, FPY, RTY), inspection records, Pareto analysis, quality KPIs
+- **Attendance and Absenteeism** -- Employee attendance, floating pool management, shift coverage tracking
+- **Downtime Tracking** -- Equipment downtime, reason codes, availability KPIs
+- **KPI Dashboard** -- OEE, efficiency, performance, quality, availability, on-time delivery, WIP aging, absenteeism with configurable thresholds and trend analysis
+- **Capacity Planning** -- 13-worksheet workbook: orders, BOM, standards, production lines, calendar, stock, component check, analysis, schedule, scenarios, KPI tracking, plan vs actual, instructions
+- **Alert System** -- Configurable thresholds, alert dashboard, notification management with history
+- **Work Order Management** -- Full lifecycle (active, on-hold, completed, cancelled, rejected) with hold catalog support
+- **Shift Management** -- Shift definitions, break times, shift coverage analysis
+- **Onboarding** -- Guided workflow for new client setup
+- **Simulation** -- Line balancing V1 (deprecated, sunset 2026-06-01) + V2 (SimPy discrete-event) with what-if scenarios
+- **Admin** -- Users, clients, defect types, part opportunities, employee-line assignments, equipment management
+
+## Quick Start
+
 ### Backend
-- **FastAPI**: Modern Python web framework
-- **SQLAlchemy**: ORM for database operations
-- **MariaDB**: Production-grade database
-- **JWT**: Token-based authentication
-- **Pandas**: CSV processing
-- **ReportLab**: PDF generation
-
-### Frontend
-- **Vue 3**: Progressive JavaScript framework
-- **Vuetify 3**: Material Design component library
-- **Pinia**: State management
-- **Chart.js**: Data visualization
-- **Axios**: HTTP client
-- **Tailwind CSS**: Utility-first CSS
-
-## Installation
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- MariaDB 10.11+
-
-### Backend Setup
 
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Create .env file
-cp .env.example .env
-# Edit .env with your database credentials
-
-# Initialize database
-mysql -u root -p < ../database/schema.sql
-mysql -u root -p kpi_platform < ../database/seed_data.sql
-
-# Run backend
+python scripts/init_demo_database.py   # Seeds demo data (5 clients, 51 tables)
 uvicorn backend.main:app --reload
 ```
 
-Backend will be available at: http://localhost:8000
+Backend available at http://localhost:8000. API docs at http://localhost:8000/docs.
 
-### Frontend Setup
+### Frontend
 
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies
-npm install
-
-# Run development server
+npm install --legacy-peer-deps
 npm run dev
 ```
 
-Frontend will be available at: http://localhost:5173
+Frontend available at http://localhost:5173.
 
-## Database Setup
-
-### Create Database
-
-```sql
-CREATE DATABASE kpi_platform CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'kpi_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON kpi_platform.* TO 'kpi_user'@'localhost';
-FLUSH PRIVILEGES;
-```
-
-### Run Schema
-
-```bash
-mysql -u kpi_user -p kpi_platform < database/schema.sql
-mysql -u kpi_user -p kpi_platform < database/seed_data.sql
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - User login
-- `GET /api/auth/me` - Get current user
-
-### Production Entries
-- `POST /api/production` - Create production entry
-- `GET /api/production` - List entries (with filters)
-- `GET /api/production/{id}` - Get entry details
-- `PUT /api/production/{id}` - Update entry
-- `DELETE /api/production/{id}` - Delete entry (supervisor only)
-- `POST /api/production/upload/csv` - Bulk CSV upload
-
-### KPIs
-- `GET /api/kpi/calculate/{id}` - Calculate KPIs for entry
-- `GET /api/kpi/dashboard` - Get dashboard data
-
-### Reports
-- `GET /api/reports/daily/{date}` - Generate daily PDF report
-
-### Reference Data
-- `GET /api/products` - List products
-- `GET /api/shifts` - List shifts
-
-## Default Users (Seed Data)
+## Demo Credentials
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin | password123 | admin |
+| admin | admin123 | admin |
 | supervisor1 | password123 | supervisor |
 | operator1 | password123 | operator |
 | operator2 | password123 | operator |
 
-**⚠️ Change passwords in production!**
+Five demo clients are seeded: ACME-MFG, TechCorp, GlobalMfg, PrecisionParts, SmartFactory.
 
-## CSV Upload Format
-
-```csv
-product_id,shift_id,production_date,work_order_number,units_produced,run_time_hours,employees_assigned,defect_count,scrap_count,notes
-1,1,2025-12-31,WO-2025-001,250,7.5,3,5,2,Example entry
-2,2,2025-12-31,WO-2025-002,180,7.0,2,3,1,Another example
-```
-
-## Testing
-
-### Backend Tests
+## Docker
 
 ```bash
-cd backend
-pytest tests/ -v --cov=backend
+docker-compose up --build
 ```
 
-### Frontend Tests
+The backend auto-seeds demo data on first startup when it detects an empty database. No manual SQL import or migration step is required.
+
+## API
+
+80+ endpoints across 14 route sub-packages, all requiring JWT authentication (except auth and health):
+
+| Sub-Package | Prefix | Modules |
+|-------------|--------|---------|
+| `auth` | `/api/token`, `/api/register` | Authentication, registration |
+| `capacity/` | `/api/capacity/*` | 10 modules (orders, BOM, lines, calendar, standards, analysis, scenarios, KPI workbook, stock, WO bridge) |
+| `kpi/` | `/api/kpi/*` | 7 modules (dashboard, calculations, efficiency, OTD, thresholds, trends) |
+| `simulation/` | `/api/simulation/*` | 8 modules (capacity, efficiency, staffing, shift coverage, floating pool, production line, overview, comprehensive) |
+| `alerts/` | `/api/alerts/*` | Config history, CRUD, generation |
+| `analytics/` | `/api/analytics/*` | Comparisons, predictions, trends |
+| `quality/` | `/api/quality/*` | Entries, PPM/DPMO, FPY/RTY, Pareto |
+| `reports/` | `/api/reports/*` | Production, KPI, comprehensive, email config |
+| Single-file routes | Various | attendance, work orders, jobs, holds, downtime, shifts, employees, production, users, floating pool, onboarding, and more |
+
+All routes use structured logging via `get_module_logger(__name__)` (100% coverage).
+
+## Tests
+
+| Suite | Count | Coverage |
+|-------|-------|----------|
+| Backend (pytest) | 4,910+ passed | 75%+ |
+| Frontend (Vitest) | 1,476+ passed | 30%+ (V8 provider) |
+| **Total** | **6,386+** | |
 
 ```bash
-cd frontend
-npm run test
+# Backend
+cd backend && pytest tests/ -v --cov=backend
+
+# Frontend
+cd frontend && npm run test
 ```
 
-## KPI Calculation Details
-
-### Efficiency (KPI #3)
-
-**Formula**: `(units_produced × ideal_cycle_time) / (employees_assigned × run_time_hours) × 100`
-
-**Inference Engine**:
-- If `ideal_cycle_time` is NULL for product, system uses:
-  1. Historical average from last 10 entries of same product
-  2. Default: 0.25 hours (15 minutes per unit)
-
-**Example**:
-- Units: 250
-- Ideal cycle time: 0.25 hours
-- Employees: 3
-- Runtime: 7.5 hours
-- Efficiency: (250 × 0.25) / (3 × 7.5) × 100 = 277.78% (capped at 150%)
-
-### Performance (KPI #9)
-
-**Formula**: `(ideal_cycle_time × units_produced) / run_time_hours × 100`
-
-**Example**:
-- Ideal cycle time: 0.25 hours
-- Units: 200
-- Runtime: 8.0 hours
-- Performance: (0.25 × 200) / 8.0 × 100 = 625% (capped at 150%)
-
-### Quality Rate
-
-**Formula**: `((units_produced - defects - scrap) / units_produced) × 100`
-
-### OEE (Overall Equipment Effectiveness)
-
-**Formula**: `Availability × Performance × Quality`
-
-**Phase 1 Note**: Availability assumed 100% (downtime tracking in Phase 2)
-
-## Architecture
+## Project Structure
 
 ```
 kpi-operations/
-├── backend/
-│   ├── main.py                 # FastAPI app
-│   ├── config.py              # Settings
-│   ├── database.py            # DB connection
-│   ├── models/                # Pydantic models
-│   ├── schemas/               # SQLAlchemy ORM
-│   ├── crud/                  # CRUD operations
-│   ├── calculations/          # KPI logic
-│   ├── auth/                  # JWT auth
-│   └── reports/               # PDF generation
-├── frontend/
-│   └── src/
-│       ├── components/        # Vue components
-│       ├── views/             # Page views
-│       ├── stores/            # Pinia stores
-│       ├── services/          # API client
-│       └── router/            # Vue Router
-├── database/
-│   ├── schema.sql             # Database schema
-│   └── seed_data.sql          # Sample data
-├── tests/
-│   ├── backend/               # Backend tests
-│   └── frontend/              # Frontend tests
-└── docs/
-    └── README.md              # This file
+  backend/
+    main.py                  # FastAPI app, lifespan, middleware
+    config.py                # Settings with production validation
+    database.py              # Connection pooling, session management
+    auth/                    # JWT, password policy
+    calculations/            # KPI business logic (12 modules)
+    crud/                    # Data access layer (17 modules)
+    orm/                     # SQLAlchemy ORM models (all imported in __init__.py)
+    models/                  # Pydantic request/response schemas
+    routes/                  # API endpoints (14 sub-packages + single-file routes)
+      capacity/              # 10 modules
+      kpi/                   # 7 modules
+      simulation/            # 8 modules
+      alerts/                # 3 modules
+      analytics/             # 4 modules
+      quality/               # 4 modules
+      reports/               # 5 modules
+    services/capacity/       # 7 capacity planning services
+    events/                  # Domain event bus (collect/flush pattern)
+    simulation_v2/           # SimPy-based simulation engine
+    db/migrations/           # Demo seeder + capacity table creation
+    scripts/                 # init_demo_database.py, backup, utilities
+  frontend/src/
+    views/                   # Page views (admin/, kpi/, CapacityPlanning/, etc.)
+    components/              # Vue components (grids, entries, widgets, filters)
+    composables/             # Reusable logic (6 composables extracted from large views)
+    stores/                  # Pinia state management
+      capacity/              # Capacity planning sub-stores
+    services/api/            # API sub-modules (18 modules)
+    router/                  # Vue Router definitions
+    assets/                  # CSS (Carbon Design tokens, responsive, Tailwind)
+  database/                  # SQLite DB file (dev)
+  docs/                      # Documentation
+  render.yaml                # Render.com deployment blueprint
+  docker-compose.yml         # Docker orchestration
+  Dockerfile                 # Backend Docker image
+  frontend/Dockerfile        # Frontend Docker image (nginx)
 ```
 
 ## Deployment
 
-### Production Configuration
+See `docs/DEPLOYMENT.md` for full deployment instructions covering:
 
-1. **Backend**:
-   - Set `DEBUG=False` in `.env`
-   - Use production database credentials
-   - Configure CORS origins
-   - Set strong `SECRET_KEY`
+- Bare-metal with systemd + nginx
+- Docker Compose
+- Render.com (one-click deploy via `render.yaml`)
 
-2. **Frontend**:
-   - Build for production: `npm run build`
-   - Serve with nginx or similar
+## Naming Convention
 
-3. **Database**:
-   - Enable MariaDB binary logging
-   - Configure backups
-   - Optimize indexes
+This project uses a non-standard naming convention:
 
-### Docker Deployment
+| Directory | Contains | Standard Convention |
+|-----------|----------|---------------------|
+| `backend/models/` | Pydantic schemas | Usually SQLAlchemy models |
+| `backend/orm/` | SQLAlchemy ORM models | Usually `models/` |
 
-```bash
-# Build and run with docker-compose
-docker-compose up -d
-```
-
-## Future Phases
-
-- **Phase 2**: Downtime tracking, WIP inventory
-- **Phase 3**: Attendance tracking, labor metrics
-- **Phase 4**: Quality control, defect analysis
-- **Phase 5**: Advanced analytics, predictive maintenance
-
-## Support
-
-For issues and questions:
-- GitHub Issues: [repo]/issues
-- Documentation: `/docs`
+This is documented and internally consistent.
 
 ## License
 
-Proprietary - All rights reserved
+Proprietary -- All rights reserved.
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-31
+**Last Updated**: 2026-02-23
