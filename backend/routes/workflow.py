@@ -81,13 +81,15 @@ def transition_work_order_status(
 
     SECURITY: Requires authentication and client access.
     """
-    return transition_work_order(
+    result = transition_work_order(
         db=db,
         work_order_id=work_order_id,
         to_status=transition.to_status.value,
         current_user=current_user,
         notes=transition.notes,
     )
+    db.commit()
+    return result
 
 
 @router.post("/work-orders/{work_order_id}/validate", response_model=Dict)
@@ -155,7 +157,7 @@ def bulk_transition_work_orders_endpoint(
 
     SECURITY: Requires supervisor role.
     """
-    return bulk_transition_work_orders(
+    result = bulk_transition_work_orders(
         db=db,
         work_order_ids=request.work_order_ids,
         to_status=request.to_status.value,
@@ -163,6 +165,8 @@ def bulk_transition_work_orders_endpoint(
         current_user=current_user,
         notes=request.notes,
     )
+    db.commit()
+    return result
 
 
 # ============================================
@@ -197,9 +201,11 @@ def update_client_workflow_config(
     SECURITY: Requires admin role.
     """
     config_dict = config.model_dump(exclude_none=True)
-    return update_workflow_configuration(
+    result = update_workflow_configuration(
         db=db, client_id=client_id, config_update=config_dict, current_user=current_user
     )
+    db.commit()
+    return result
 
 
 @router.post("/config/{client_id}/apply-template", response_model=Dict)
@@ -216,7 +222,9 @@ def apply_workflow_template_endpoint(
 
     SECURITY: Requires admin role.
     """
-    return apply_workflow_template(db=db, client_id=client_id, template_id=template_id, current_user=current_user)
+    result = apply_workflow_template(db=db, client_id=client_id, template_id=template_id, current_user=current_user)
+    db.commit()
+    return result
 
 
 @router.get("/templates", response_model=Dict)

@@ -3,7 +3,7 @@ Pydantic models for Shift API request/response validation.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import time, datetime
 
 
@@ -41,3 +41,41 @@ class ShiftResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ShiftResponseWithWarnings(BaseModel):
+    """Response schema for shift create/update that may include overlap warnings."""
+
+    data: ShiftResponse
+    warnings: List[str] = Field(default_factory=list, description="Overlap warnings (soft validation)")
+
+    model_config = {"from_attributes": False}
+
+
+class OverlapCheckRequest(BaseModel):
+    """Request body for the check-overlap endpoint."""
+
+    client_id: str = Field(..., min_length=1, max_length=50, description="Client to check overlaps for")
+    start_time: time = Field(..., description="Proposed shift start time")
+    end_time: time = Field(..., description="Proposed shift end time")
+    exclude_shift_id: Optional[int] = Field(
+        None, description="Shift ID to exclude from overlap check (for updates)"
+    )
+
+
+class OverlapInfo(BaseModel):
+    """Details about a single overlapping shift."""
+
+    shift_id: int
+    shift_name: str
+    start_time: time
+    end_time: time
+
+    model_config = {"from_attributes": True}
+
+
+class OverlapCheckResponse(BaseModel):
+    """Response schema for the check-overlap endpoint."""
+
+    has_overlaps: bool
+    overlaps: List[OverlapInfo] = Field(default_factory=list)

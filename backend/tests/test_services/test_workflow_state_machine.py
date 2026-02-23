@@ -527,8 +527,8 @@ class TestApplyWorkflowTemplate:
 
         result = apply_workflow_template(mock_db, "CLIENT-001", "standard")
 
-        # Verify commit was called
-        mock_db.commit.assert_called_once()
+        # Verify flush was called (commit is now at route handler level)
+        mock_db.flush.assert_called_once()
 
         assert "client_id" in result
         assert "workflow_statuses" in result
@@ -547,7 +547,7 @@ class TestApplyWorkflowTemplate:
 
         # Verify add was called for new config
         mock_db.add.assert_called_once()
-        mock_db.commit.assert_called_once()
+        mock_db.flush.assert_called_once()
 
 
 class TestDefaultTransitions:

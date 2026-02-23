@@ -145,6 +145,16 @@
               {{ t('simulationV2.actions.runSimulation') }}
             </v-btn>
 
+            <v-btn
+              v-if="hasHistory"
+              :color="showComparison ? 'secondary' : 'default'"
+              :variant="showComparison ? 'elevated' : 'tonal'"
+              @click="showComparison = !showComparison"
+            >
+              <v-icon start>mdi-compare-horizontal</v-icon>
+              {{ t('simulation.compare') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -184,6 +194,174 @@
       <v-col cols="12">
         <v-alert type="error" closable @click:close="store.error = null">
           {{ store.error }}
+        </v-alert>
+      </v-col>
+    </v-row>
+
+    <!-- Scenario Comparison Panel -->
+    <v-row v-if="showComparison && hasHistory" class="mt-3">
+      <v-col cols="12">
+        <v-card>
+          <v-card-title class="d-flex align-center">
+            <v-icon start color="secondary">mdi-compare-horizontal</v-icon>
+            {{ t('simulation.scenarioComparison') }}
+            <v-spacer />
+            <v-btn icon size="small" variant="text" @click="showComparison = false">
+              <v-icon>mdi-close</v-icon>
+            </v-btn>
+          </v-card-title>
+          <v-card-text>
+            <!-- Side-by-side key metrics -->
+            <v-table density="compact" class="comparison-table">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('simulation.deltaLabel') }}</th>
+                  <th class="text-right">{{ t('simulation.previousRun') }}</th>
+                  <th class="text-right">{{ t('simulation.currentRun') }}</th>
+                  <th class="text-right">{{ t('simulation.deltaLabel') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="m in comparisonMetrics" :key="m.metric">
+                  <td>{{ t(m.label) }} <span class="text-caption text-medium-emphasis">({{ m.unit }})</span></td>
+                  <td class="text-right">{{ formatMetricValue(getDelta(m.block, m.metric)?.previous) }}</td>
+                  <td class="text-right font-weight-bold">{{ formatMetricValue(getDelta(m.block, m.metric)?.current) }}</td>
+                  <td class="text-right" :class="deltaClass(getDelta(m.block, m.metric), m.higherIsBetter)">
+                    <v-icon size="small" :class="deltaClass(getDelta(m.block, m.metric), m.higherIsBetter)">
+                      {{ deltaIcon(getDelta(m.block, m.metric), m.higherIsBetter) }}
+                    </v-icon>
+                    {{ formatDelta(getDelta(m.block, m.metric)) }}
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+
+            <!-- Bottleneck comparison -->
+            <v-row class="mt-4">
+              <v-col cols="6">
+                <v-card variant="outlined">
+                  <v-card-title class="text-subtitle-2">
+                    {{ t('simulation.previousRun') }} - {{ t('simulationResults.bottlenecks') }}
+                  </v-card-title>
+                  <v-card-text>
+                    <template v-if="previousResult?.station_performance">
+                      <v-chip
+                        v-for="bn in previousResult.station_performance.filter(s => s.is_bottleneck)"
+                        :key="bn.machine_tool + '-prev'"
+                        color="error"
+                        variant="tonal"
+                        size="small"
+                        class="ma-1"
+                      >
+                        {{ bn.operation }} ({{ bn.util_pct.toFixed(1) }}%)
+                      </v-chip>
+                      <div v-if="countBottlenecks(previousResult) === 0" class="text-success text-body-2">
+                        <v-icon size="small">mdi-check-circle</v-icon>
+                        {{ t('simulationResults.noBottlenecks') }}
+                      </div>
+                    </template>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6">
+                <v-card variant="outlined">
+                  <v-card-title class="text-subtitle-2">
+                    {{ t('simulation.currentRun') }} - {{ t('simulationResults.bottlenecks') }}
+                  </v-card-title>
+                  <v-card-text>
+                    <template v-if="currentResult?.station_performance">
+                      <v-chip
+                        v-for="bn in currentResult.station_performance.filter(s => s.is_bottleneck)"
+                        :key="bn.machine_tool + '-cur'"
+                        color="error"
+                        variant="tonal"
+                        size="small"
+                        class="ma-1"
+                      >
+                        {{ bn.operation }} ({{ bn.util_pct.toFixed(1) }}%)
+                      </v-chip>
+                      <div v-if="countBottlenecks(currentResult) === 0" class="text-success text-body-2">
+                        <v-icon size="small">mdi-check-circle</v-icon>
+                        {{ t('simulationResults.noBottlenecks') }}
+                      </div>
+                    </template>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <!-- Per-product side-by-side -->
+            <v-row v-if="currentResult?.per_product_summary && previousResult?.per_product_summary" class="mt-4">
+              <v-col cols="6">
+                <v-card variant="outlined">
+                  <v-card-title class="text-subtitle-2">
+                    {{ t('simulation.previousRun') }} - {{ t('simulationResults.perProduct') }}
+                  </v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>{{ t('simulationResults.summary') }}</th>
+                          <th class="text-right">pcs/day</th>
+                          <th class="text-right">{{ t('simulationResults.coverage') }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="row in previousResult.per_product_summary" :key="row.product + '-prev'">
+                          <td>{{ row.product }}</td>
+                          <td class="text-right">{{ row.daily_throughput_pcs }}</td>
+                          <td class="text-right">
+                            <v-chip :color="row.daily_coverage_pct >= 100 ? 'success' : row.daily_coverage_pct >= 90 ? 'warning' : 'error'" size="small" variant="tonal">
+                              {{ row.daily_coverage_pct.toFixed(1) }}%
+                            </v-chip>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="6">
+                <v-card variant="outlined">
+                  <v-card-title class="text-subtitle-2">
+                    {{ t('simulation.currentRun') }} - {{ t('simulationResults.perProduct') }}
+                  </v-card-title>
+                  <v-card-text class="pa-0">
+                    <v-table density="compact">
+                      <thead>
+                        <tr>
+                          <th>{{ t('simulationResults.summary') }}</th>
+                          <th class="text-right">pcs/day</th>
+                          <th class="text-right">{{ t('simulationResults.coverage') }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="row in currentResult.per_product_summary" :key="row.product + '-cur'">
+                          <td>{{ row.product }}</td>
+                          <td class="text-right">{{ row.daily_throughput_pcs }}</td>
+                          <td class="text-right">
+                            <v-chip :color="row.daily_coverage_pct >= 100 ? 'success' : row.daily_coverage_pct >= 90 ? 'warning' : 'error'" size="small" variant="tonal">
+                              {{ row.daily_coverage_pct.toFixed(1) }}%
+                            </v-chip>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </v-table>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+
+    <!-- No history hint (shown briefly when user has run once but no comparison yet) -->
+    <v-row v-if="currentResult && !hasHistory && !showComparison" class="mt-3">
+      <v-col cols="12">
+        <v-alert type="info" variant="tonal" density="compact" closable>
+          <v-icon start>mdi-information-outline</v-icon>
+          {{ t('simulation.noHistory') }}
         </v-alert>
       </v-col>
     </v-row>
@@ -377,6 +555,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
+import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
 import ScheduleForm from '@/components/simulation/ScheduleForm.vue'
 import DemandGrid from '@/components/simulation/DemandGrid.vue'
@@ -386,6 +565,15 @@ import ResultsView from '@/components/simulation/ResultsView.vue'
 
 const { t } = useI18n()
 const store = useSimulationV2Store()
+const {
+  currentResult,
+  previousResult,
+  hasHistory,
+  saveResult,
+  clearHistory,
+  getDelta,
+  countBottlenecks,
+} = useSimulationComparison()
 
 // Local state
 const activeTab = ref('operations')
@@ -394,6 +582,7 @@ const showImportDialog = ref(false)
 const showResetDialog = ref(false)
 const importJson = ref('')
 const showWelcomeMessage = ref(false)
+const showComparison = ref(false)
 
 // Computed
 const canRunSimulation = computed(() => {
@@ -420,11 +609,61 @@ async function handleRun() {
     }
     // Only run if valid
     if (store.validationReport?.is_valid) {
-      await store.run()
+      const response = await store.run()
+      // Retain result for comparison if run succeeded
+      if (response?.success && response.results) {
+        saveResult(response.results)
+      }
     }
   } catch (error) {
     console.error('Simulation error:', error)
   }
+}
+
+/** Comparison metric definitions used by the side-by-side panel. */
+const comparisonMetrics = [
+  { block: 'daily_summary', metric: 'daily_throughput_pcs', label: 'simulationResults.dailySummary', unit: 'pcs/day', higherIsBetter: true },
+  { block: 'daily_summary', metric: 'daily_coverage_pct', label: 'simulationResults.coverage', unit: '%', higherIsBetter: true },
+  { block: 'daily_summary', metric: 'avg_cycle_time_min', label: 'simulationResults.avgCycleTime', unit: 'min', higherIsBetter: false },
+  { block: 'daily_summary', metric: 'avg_wip_pcs', label: 'simulationResults.avgWip', unit: 'pcs', higherIsBetter: false },
+  { block: 'free_capacity', metric: 'daily_max_capacity_pcs', label: 'simulationResults.maxCapacity', unit: 'pcs/day', higherIsBetter: true },
+  { block: 'free_capacity', metric: 'demand_usage_pct', label: 'simulationResults.usage', unit: '%', higherIsBetter: true },
+  { block: 'free_capacity', metric: 'free_line_hours_per_day', label: 'simulationResults.freeLineHours', unit: 'h/day', higherIsBetter: true },
+]
+
+/**
+ * Determine the direction class for a delta row.
+ * Returns 'text-success', 'text-error', or '' depending on whether
+ * the change is beneficial, detrimental, or neutral.
+ */
+function deltaClass(delta, higherIsBetter) {
+  if (!delta || delta.direction === 'unchanged') return ''
+  const beneficial = higherIsBetter
+    ? delta.delta > 0
+    : delta.delta < 0
+  return beneficial ? 'text-success' : 'text-error'
+}
+
+function deltaIcon(delta, higherIsBetter) {
+  if (!delta || delta.direction === 'unchanged') return 'mdi-minus'
+  const beneficial = higherIsBetter
+    ? delta.delta > 0
+    : delta.delta < 0
+  return beneficial ? 'mdi-arrow-up-bold' : 'mdi-arrow-down-bold'
+}
+
+function formatDelta(delta) {
+  if (!delta) return '-'
+  const sign = delta.delta > 0 ? '+' : ''
+  const val = Number.isInteger(delta.delta)
+    ? delta.delta
+    : delta.delta.toFixed(1)
+  return `${sign}${val} (${sign}${delta.deltaPct.toFixed(1)}%)`
+}
+
+function formatMetricValue(value) {
+  if (value == null) return '-'
+  return Number.isInteger(value) ? value : value.toFixed(1)
 }
 
 function confirmReset() {
@@ -484,5 +723,14 @@ onMounted(async () => {
 <style scoped>
 .gap-2 {
   gap: 8px;
+}
+
+.comparison-table th {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.comparison-table td {
+  white-space: nowrap;
 }
 </style>

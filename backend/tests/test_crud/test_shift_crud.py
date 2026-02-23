@@ -14,6 +14,7 @@ from backend.crud.shift import (
     get_shift,
     update_shift,
     deactivate_shift,
+    check_shift_overlaps,
 )
 from backend.schemas.shift import ShiftCreate, ShiftUpdate
 
@@ -334,3 +335,203 @@ class TestMultiTenantIsolation:
         # Ensure no cross-contamination
         names_a = {s.shift_name for s in shifts_a}
         assert "Only B Shift" not in names_a
+
+
+# ============================================================================
+# TestCheckShiftOverlaps
+# ============================================================================
+class TestCheckShiftOverlaps:
+    """Tests for check_shift_overlaps function."""
+
+    def test_no_overlap_adjacent_shifts(self, transactional_db):
+        """Adjacent shifts (06:00-14:00 and 14:00-22:00) do NOT overlap."""
+        db = transactional_db
+        _seed_client(db, "SH-OV1")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV1",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+
+        overlaps = check_shift_overlaps(db, "SH-OV1", time(14, 0), time(22, 0))
+        assert overlaps == []
+
+    def test_overlap_detected(self, transactional_db):
+        """Overlapping shift is detected (08:00-16:00 overlaps 06:00-14:00)."""
+        db = transactional_db
+        _seed_client(db, "SH-OV2")
+
+        existing = create_shift(db, ShiftCreate(
+            client_id="SH-OV2",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+
+        overlaps = check_shift_overlaps(db, "SH-OV2", time(8, 0), time(16, 0))
+        assert len(overlaps) == 1
+        assert overlaps[0].shift_id == existing.shift_id
+
+    def test_overlap_contained_within(self, transactional_db):
+        """A shift fully contained within another is detected as overlap."""
+        db = transactional_db
+        _seed_client(db, "SH-OV3")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV3",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+
+        overlaps = check_shift_overlaps(db, "SH-OV3", time(8, 0), time(12, 0))
+        assert len(overlaps) == 1
+
+    def test_overlap_exact_same_times(self, transactional_db):
+        """Exactly matching times are detected as overlap."""
+        db = transactional_db
+        _seed_client(db, "SH-OV4")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV4",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+
+        overlaps = check_shift_overlaps(db, "SH-OV4", time(6, 0), time(14, 0))
+        assert len(overlaps) == 1
+
+    def test_no_overlap_different_client(self, transactional_db):
+        """Shifts from different clients do NOT count as overlaps."""
+        db = transactional_db
+        _seed_client(db, "SH-OV5A")
+        _seed_client(db, "SH-OV5B")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV5A",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+
+        overlaps = check_shift_overlaps(db, "SH-OV5B", time(6, 0), time(14, 0))
+        assert overlaps == []
+
+    def test_exclude_self_on_update(self, transactional_db):
+        """When updating a shift, it should NOT flag itself as overlapping."""
+        db = transactional_db
+        _seed_client(db, "SH-OV6")
+
+        existing = create_shift(db, ShiftCreate(
+            client_id="SH-OV6",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+
+        # Check with same times but exclude self
+        overlaps = check_shift_overlaps(
+            db, "SH-OV6", time(6, 0), time(14, 0),
+            exclude_shift_id=existing.shift_id,
+        )
+        assert overlaps == []
+
+    def test_inactive_shifts_ignored(self, transactional_db):
+        """Deactivated shifts are NOT included in overlap checks."""
+        db = transactional_db
+        _seed_client(db, "SH-OV7")
+
+        existing = create_shift(db, ShiftCreate(
+            client_id="SH-OV7",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+        deactivate_shift(db, existing.shift_id)
+
+        overlaps = check_shift_overlaps(db, "SH-OV7", time(6, 0), time(14, 0))
+        assert overlaps == []
+
+    def test_multiple_overlaps(self, transactional_db):
+        """Returns all overlapping shifts when multiple exist."""
+        db = transactional_db
+        _seed_client(db, "SH-OV8")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV8",
+            shift_name="1st",
+            start_time=time(6, 0),
+            end_time=time(14, 0),
+        ))
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV8",
+            shift_name="2nd",
+            start_time=time(10, 0),
+            end_time=time(18, 0),
+        ))
+
+        # A shift from 08:00-16:00 overlaps with both
+        overlaps = check_shift_overlaps(db, "SH-OV8", time(8, 0), time(16, 0))
+        assert len(overlaps) == 2
+        names = {s.shift_name for s in overlaps}
+        assert names == {"1st", "2nd"}
+
+    def test_overnight_shift_overlap(self, transactional_db):
+        """Overnight shifts (22:00-06:00) are detected for overlap correctly."""
+        db = transactional_db
+        _seed_client(db, "SH-OV9")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV9",
+            shift_name="Night",
+            start_time=time(22, 0),
+            end_time=time(6, 0),
+        ))
+
+        # A shift 23:00-07:00 should overlap with the night shift
+        overlaps = check_shift_overlaps(db, "SH-OV9", time(23, 0), time(7, 0))
+        assert len(overlaps) == 1
+        assert overlaps[0].shift_name == "Night"
+
+    def test_overnight_shift_no_overlap_with_daytime(self, transactional_db):
+        """An overnight shift does NOT overlap with a daytime-only shift outside its range."""
+        db = transactional_db
+        _seed_client(db, "SH-OV10")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV10",
+            shift_name="Night",
+            start_time=time(22, 0),
+            end_time=time(6, 0),
+        ))
+
+        # A shift 08:00-16:00 should NOT overlap with 22:00-06:00
+        overlaps = check_shift_overlaps(db, "SH-OV10", time(8, 0), time(16, 0))
+        assert overlaps == []
+
+    def test_no_shifts_exist(self, transactional_db):
+        """No overlaps when no shifts exist for the client."""
+        db = transactional_db
+        _seed_client(db, "SH-OV11")
+
+        overlaps = check_shift_overlaps(db, "SH-OV11", time(6, 0), time(14, 0))
+        assert overlaps == []
+
+    def test_overnight_overlap_early_morning(self, transactional_db):
+        """A daytime shift starting at 04:00 overlaps with an overnight 22:00-06:00 shift."""
+        db = transactional_db
+        _seed_client(db, "SH-OV12")
+
+        create_shift(db, ShiftCreate(
+            client_id="SH-OV12",
+            shift_name="Night",
+            start_time=time(22, 0),
+            end_time=time(6, 0),
+        ))
+
+        # 04:00-12:00 overlaps with the 00:00-06:00 portion of the night shift
+        overlaps = check_shift_overlaps(db, "SH-OV12", time(4, 0), time(12, 0))
+        assert len(overlaps) == 1

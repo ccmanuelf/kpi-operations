@@ -77,7 +77,7 @@ def update_workflow_configuration(db: Session, client_id: str, config_update: Di
     # Increment version
     config.workflow_version = (config.workflow_version or 0) + 1
 
-    db.commit()
+    db.flush()
     db.refresh(config)
 
     return get_workflow_config(db, client_id)

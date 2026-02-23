@@ -28,8 +28,8 @@ class DowntimeEventCreate(BaseModel):
     # Multi-tenant isolation - REQUIRED
     client_id: str = Field(..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation")
 
-    # Work order reference - REQUIRED (replaces product_id/shift_id)
-    work_order_id: str = Field(..., min_length=1, max_length=50, description="Work order affected by this downtime event")
+    # Work order reference - optional (downtime can be attributed to machine/line without a work order)
+    work_order_id: Optional[str] = Field(None, max_length=50, description="Work order affected by this downtime event")
     line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
 
     # Date tracking - shift_date is REQUIRED
@@ -80,7 +80,7 @@ class DowntimeEventCreate(BaseModel):
 
         return cls(
             client_id=data.get("client_id", ""),
-            work_order_id=data.get("work_order_number") or data.get("work_order_id", ""),
+            work_order_id=data.get("work_order_number") or data.get("work_order_id") or None,
             shift_date=data.get("shift_date") or data.get("production_date"),
             downtime_reason=reason_enum,
             downtime_duration_minutes=duration_minutes,
@@ -95,6 +95,7 @@ class DowntimeEventCreate(BaseModel):
 class DowntimeEventUpdate(BaseModel):
     """Update downtime event"""
 
+    work_order_id: Optional[str] = Field(None, max_length=50, description="Updated work order reference (set to null to remove)")
     line_id: Optional[int] = Field(None, description="Updated production line ID")
     downtime_category: Optional[str] = Field(None, max_length=50, description="Updated downtime classification category")
     downtime_reason: Optional[str] = Field(None, max_length=255, description="Updated detailed reason for the downtime")
@@ -108,7 +109,7 @@ class DowntimeEventResponse(BaseModel):
 
     downtime_entry_id: str = Field(..., description="Unique identifier for this downtime entry")
     client_id: str = Field(..., description="Tenant client identifier for data isolation")
-    work_order_id: str = Field(..., description="Work order affected by this downtime event")
+    work_order_id: Optional[str] = Field(None, description="Work order affected by this downtime event")
     line_id: Optional[int] = Field(None, description="Production line ID for line-level tracking")
     shift_date: datetime = Field(..., description="Shift date when the downtime occurred")
     downtime_reason: str = Field(..., description="Category or reason for the downtime")

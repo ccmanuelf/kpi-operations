@@ -70,6 +70,9 @@ from backend.orm.employee_line_assignment import EmployeeLineAssignment  # noqa:
 # Import log for batch imports
 from backend.orm.import_log import ImportLog
 
+# Capacity Planning ORM models — needed so WORK_ORDER.capacity_order_id FK resolves
+from backend.orm.capacity.orders import CapacityOrder  # noqa: F401
+
 # Alert ORM model (in models/, not schemas/) — needed for Base.metadata.create_all()
 from backend.schemas.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
 

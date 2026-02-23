@@ -59,7 +59,7 @@ def create_transition_log(
     )
 
     db.add(log_entry)
-    db.commit()
+    db.flush()
     db.refresh(log_entry)
 
     return log_entry

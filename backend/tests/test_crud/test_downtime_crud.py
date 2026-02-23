@@ -176,6 +176,216 @@ class TestDowntimeCRUD:
         assert round(improvement, 2) == 34.38
 
 
+class TestDowntimeNullableWorkOrderId:
+    """Test suite for nullable work_order_id on DowntimeEntry"""
+
+    def test_create_downtime_without_work_order_id(self, transactional_db):
+        """Creating a downtime entry without work_order_id succeeds"""
+        client = TestDataFactory.create_client(transactional_db, client_id="DT-NWO-1")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-NWO-1")
+        transactional_db.flush()
+
+        entry = TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-NWO-1",
+            reported_by=admin.user_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+            duration_minutes=45,
+            machine_id="MACH-LINE-A",
+        )
+        transactional_db.commit()
+
+        assert entry.downtime_entry_id is not None
+        assert entry.work_order_id is None
+        assert entry.client_id == "DT-NWO-1"
+        assert entry.downtime_duration_minutes == 45
+        assert entry.machine_id == "MACH-LINE-A"
+
+    def test_create_downtime_with_work_order_id(self, transactional_db):
+        """Creating a downtime entry with work_order_id still works"""
+        client = TestDataFactory.create_client(transactional_db, client_id="DT-WWO-1")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-WWO-1")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-WWO-1")
+        transactional_db.flush()
+
+        entry = TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-WWO-1",
+            work_order_id=wo.work_order_id,
+            reported_by=admin.user_id,
+            downtime_reason="MATERIAL_SHORTAGE",
+            duration_minutes=60,
+        )
+        transactional_db.commit()
+
+        assert entry.work_order_id == wo.work_order_id
+        assert entry.downtime_duration_minutes == 60
+
+    def test_update_downtime_to_remove_work_order_id(self, transactional_db):
+        """Updating a downtime entry to set work_order_id to None works"""
+        from backend.orm.downtime_entry import DowntimeEntry
+
+        client = TestDataFactory.create_client(transactional_db, client_id="DT-RWO-1")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-RWO-1")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-RWO-1")
+        transactional_db.flush()
+
+        entry = TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-RWO-1",
+            work_order_id=wo.work_order_id,
+            reported_by=admin.user_id,
+        )
+        transactional_db.commit()
+
+        # Verify it was created with the work order
+        assert entry.work_order_id == wo.work_order_id
+
+        # Now remove the work order reference
+        entry.work_order_id = None
+        transactional_db.commit()
+        transactional_db.refresh(entry)
+
+        assert entry.work_order_id is None
+
+    def test_query_downtime_with_null_work_order_id(self, transactional_db):
+        """Querying downtime entries with NULL work_order_id returns correct results"""
+        client = TestDataFactory.create_client(transactional_db, client_id="DT-QNL-1")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-QNL-1")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-QNL-1")
+        transactional_db.flush()
+
+        # Create one entry WITH work order
+        entry_with_wo = TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-QNL-1",
+            work_order_id=wo.work_order_id,
+            reported_by=admin.user_id,
+            downtime_reason="EQUIPMENT_FAILURE",
+        )
+        # Create one entry WITHOUT work order
+        entry_without_wo = TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-QNL-1",
+            reported_by=admin.user_id,
+            downtime_reason="MAINTENANCE",
+        )
+        transactional_db.commit()
+
+        # List all - should return both
+        all_events = get_downtime_events(transactional_db, admin, client_id="DT-QNL-1")
+        assert len(all_events) == 2
+
+        # Filter by work_order_id - should return only the one with WO
+        wo_events = get_downtime_events(
+            transactional_db, admin, client_id="DT-QNL-1", work_order_id=wo.work_order_id
+        )
+        assert len(wo_events) == 1
+        assert wo_events[0].work_order_id == wo.work_order_id
+
+    def test_query_null_work_order_id_directly(self, transactional_db):
+        """Querying entries where work_order_id IS NULL via ORM works"""
+        from backend.orm.downtime_entry import DowntimeEntry
+
+        client = TestDataFactory.create_client(transactional_db, client_id="DT-QDR-1")
+        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-QDR-1")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-QDR-1")
+        transactional_db.flush()
+
+        # Create entries with and without work orders
+        TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-QDR-1",
+            work_order_id=wo.work_order_id,
+            reported_by=admin.user_id,
+        )
+        TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-QDR-1",
+            reported_by=admin.user_id,
+        )
+        TestDataFactory.create_downtime_entry(
+            transactional_db,
+            client_id="DT-QDR-1",
+            reported_by=admin.user_id,
+        )
+        transactional_db.commit()
+
+        # Query for entries with NULL work_order_id
+        null_wo_entries = (
+            transactional_db.query(DowntimeEntry)
+            .filter(DowntimeEntry.work_order_id.is_(None))
+            .all()
+        )
+        assert len(null_wo_entries) == 2
+        for entry in null_wo_entries:
+            assert entry.work_order_id is None
+
+        # Query for entries with non-NULL work_order_id
+        non_null_entries = (
+            transactional_db.query(DowntimeEntry)
+            .filter(DowntimeEntry.work_order_id.isnot(None))
+            .all()
+        )
+        assert len(non_null_entries) == 1
+        assert non_null_entries[0].work_order_id == wo.work_order_id
+
+    def test_pydantic_create_schema_accepts_none_work_order_id(self):
+        """DowntimeEventCreate schema accepts work_order_id=None"""
+        from backend.schemas.downtime import DowntimeEventCreate
+
+        event = DowntimeEventCreate(
+            client_id="TEST-CL",
+            shift_date=date.today(),
+            downtime_reason="EQUIPMENT_FAILURE",
+            downtime_duration_minutes=30,
+            machine_id="MACH-001",
+        )
+        assert event.work_order_id is None
+
+    def test_pydantic_create_schema_accepts_provided_work_order_id(self):
+        """DowntimeEventCreate schema accepts an explicit work_order_id"""
+        from backend.schemas.downtime import DowntimeEventCreate
+
+        event = DowntimeEventCreate(
+            client_id="TEST-CL",
+            work_order_id="WO-123",
+            shift_date=date.today(),
+            downtime_reason="MAINTENANCE",
+            downtime_duration_minutes=60,
+        )
+        assert event.work_order_id == "WO-123"
+
+    def test_pydantic_response_schema_allows_null_work_order_id(self):
+        """DowntimeEventResponse schema allows work_order_id=None"""
+        from backend.schemas.downtime import DowntimeEventResponse
+
+        response = DowntimeEventResponse(
+            downtime_entry_id="DT-001",
+            client_id="TEST-CL",
+            work_order_id=None,
+            shift_date=datetime.now(),
+            downtime_reason="EQUIPMENT_FAILURE",
+            downtime_duration_minutes=30,
+        )
+        assert response.work_order_id is None
+
+    def test_pydantic_update_schema_includes_work_order_id(self):
+        """DowntimeEventUpdate schema can set work_order_id"""
+        from backend.schemas.downtime import DowntimeEventUpdate
+
+        # Explicitly set work_order_id
+        update = DowntimeEventUpdate(work_order_id="WO-NEW")
+        data = update.model_dump(exclude_unset=True)
+        assert "work_order_id" in data
+        assert data["work_order_id"] == "WO-NEW"
+
+        # Omitting work_order_id entirely (not in exclude_unset output)
+        update_no_wo = DowntimeEventUpdate(notes="updated notes")
+        data_no_wo = update_no_wo.model_dump(exclude_unset=True)
+        assert "work_order_id" not in data_no_wo
+
+
 class TestAvailabilityMetrics:
     """Test availability-related metrics"""
 

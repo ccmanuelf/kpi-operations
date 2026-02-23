@@ -49,7 +49,9 @@ def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user
             detail=f"Reason '{hold.hold_reason}' not found in client catalog",
         )
 
-    return create_wip_hold(db, hold, current_user)
+    result = create_wip_hold(db, hold, current_user)
+    db.commit()
+    return result
 
 
 @router.get("", response_model=List[WIPHoldResponse])
@@ -128,6 +130,7 @@ def update_hold(
     updated = update_wip_hold(db, hold_id, hold_update, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="WIP hold not found")
+    db.commit()
     return updated
 
 
@@ -139,6 +142,7 @@ def delete_hold(
     success = delete_wip_hold(db, hold_id, current_user)
     if not success:
         raise HTTPException(status_code=404, detail="WIP hold not found")
+    db.commit()
 
 
 # =============================================================================

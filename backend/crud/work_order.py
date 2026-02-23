@@ -57,7 +57,7 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
     db_work_order = WorkOrder(**work_order_data)
 
     db.add(db_work_order)
-    db.commit()
+    db.flush()
     db.refresh(db_work_order)
 
     # Phase 10: Log initial status transition
@@ -75,7 +75,7 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
             trigger_source="api",
         )
         db.add(initial_log)
-        db.commit()
+        db.flush()
     except SQLAlchemyError as e:
         # Don't fail creation if logging fails
         logger.exception("Failed to log initial status transition for work_order_id=%s", db_work_order.work_order_id)
@@ -226,7 +226,7 @@ def update_work_order(
         if hasattr(db_work_order, field):
             setattr(db_work_order, field, value)
 
-    db.commit()
+    db.flush()
     db.refresh(db_work_order)
 
     return db_work_order
@@ -258,8 +258,8 @@ def delete_work_order(db: Session, work_order_id: str, current_user: User) -> bo
     if hasattr(db_work_order, "client_id") and db_work_order.client_id:
         verify_client_access(current_user, db_work_order.client_id)
 
-    # Soft delete - preserves data integrity
-    return soft_delete(db, db_work_order)
+    # Soft delete - preserves data integrity (commit=False: route handler commits)
+    return soft_delete(db, db_work_order, commit=False)
 
 
 def get_work_orders_by_client(
@@ -393,7 +393,7 @@ def link_work_order_to_capacity(
         raise HTTPException(status_code=404, detail="Capacity order not found")
     work_order.capacity_order_id = capacity_order_id
     work_order.origin = "PLANNED"
-    db.commit()
+    db.flush()
     db.refresh(work_order)
     return work_order
 
@@ -405,6 +405,6 @@ def unlink_work_order_from_capacity(db: Session, work_order_id: str, current_use
         raise HTTPException(status_code=404, detail="Work order not found")
     work_order.capacity_order_id = None
     work_order.origin = "AD_HOC"
-    db.commit()
+    db.flush()
     db.refresh(work_order)
     return work_order

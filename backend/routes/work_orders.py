@@ -47,7 +47,9 @@ def create_work_order_endpoint(
     SECURITY: Enforces client filtering
     """
     work_order_data = work_order.model_dump()
-    return create_work_order(db, work_order_data, current_user)
+    result = create_work_order(db, work_order_data, current_user)
+    db.commit()
+    return result
 
 
 @router.get("", response_model=List[WorkOrderResponse])
@@ -418,6 +420,7 @@ def update_work_order_endpoint(
     updated = update_work_order(db, work_order_id, work_order_data, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Work order not found or access denied")
+    db.commit()
     return updated
 
 
@@ -443,6 +446,7 @@ def update_work_order_status(
     updated = update_work_order(db, work_order_id, {"status": status_update["status"]}, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="Work order not found or access denied")
+    db.commit()
     return updated
 
 
@@ -585,7 +589,9 @@ def link_to_capacity_order(
     capacity_order_id = link_data.get("capacity_order_id")
     if not capacity_order_id:
         raise HTTPException(status_code=400, detail="capacity_order_id is required")
-    return link_to_capacity(db, work_order_id, capacity_order_id, current_user)
+    result = link_to_capacity(db, work_order_id, capacity_order_id, current_user)
+    db.commit()
+    return result
 
 
 @router.post("/{work_order_id}/unlink-capacity", response_model=WorkOrderResponse)
@@ -597,7 +603,9 @@ def unlink_from_capacity_order(
     """Unlink a work order from its capacity order."""
     from backend.services.work_order_service import unlink_from_capacity
 
-    return unlink_from_capacity(db, work_order_id, current_user)
+    result = unlink_from_capacity(db, work_order_id, current_user)
+    db.commit()
+    return result
 
 
 @router.delete("/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -611,6 +619,7 @@ def delete_work_order_endpoint(
     success = delete_work_order(db, work_order_id, current_user)
     if not success:
         raise HTTPException(status_code=404, detail="Work order not found or access denied")
+    db.commit()
 
 
 # Client work orders endpoint (separate prefix for /api/clients namespace)

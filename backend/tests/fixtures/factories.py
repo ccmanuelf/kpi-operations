@@ -422,14 +422,14 @@ class TestDataFactory:
     def create_downtime_entry(
         db: Session,
         client_id: str,
-        work_order_id: str,
         reported_by: str,
+        work_order_id: Optional[str] = None,
         downtime_reason: str = "EQUIPMENT_FAILURE",
         shift_date: Optional[datetime] = None,
         duration_minutes: int = 60,
         **kwargs,
     ) -> DowntimeEntry:
-        """Create a downtime entry"""
+        """Create a downtime entry (work_order_id is optional)"""
         entry_id = TestDataFactory._next_id("DT")
 
         if shift_date is None:

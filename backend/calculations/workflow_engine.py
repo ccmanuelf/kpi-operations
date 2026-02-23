@@ -381,7 +381,7 @@ def execute_transition(
     )
 
     db.add(transition_log)
-    db.commit()
+    db.flush()
     db.refresh(work_order)
     db.refresh(transition_log)
 
@@ -509,7 +509,7 @@ def apply_workflow_template(db: Session, client_id: str, template_id: str) -> Di
     config.workflow_closure_trigger = template.workflow_closure_trigger
     config.workflow_version = (config.workflow_version or 0) + 1
 
-    db.commit()
+    db.flush()
     db.refresh(config)
 
     return get_workflow_config(db, client_id)

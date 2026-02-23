@@ -7,12 +7,96 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_
 from typing import List, Optional
+from datetime import time
 
 from backend.orm.shift import Shift
 from backend.schemas.shift import ShiftCreate, ShiftUpdate
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
+
+
+def _is_overnight(start: time, end: time) -> bool:
+    """Return True if a shift crosses midnight (e.g. 22:00-06:00)."""
+    return start > end
+
+
+def _times_overlap(
+    start_a: time,
+    end_a: time,
+    start_b: time,
+    end_b: time,
+) -> bool:
+    """Determine whether two time ranges overlap, handling overnight shifts.
+
+    An overnight shift (start > end, e.g. 22:00-06:00) is treated as two
+    logical intervals: [start, 24:00) and [00:00, end).  Two ranges overlap
+    when any of their sub-intervals intersect.
+    """
+
+    def _segments(s: time, e: time) -> list[tuple[time, time]]:
+        """Split a time range into non-overnight segments."""
+        if _is_overnight(s, e):
+            return [(s, time(23, 59, 59)), (time(0, 0), e)]
+        return [(s, e)]
+
+    segs_a = _segments(start_a, end_a)
+    segs_b = _segments(start_b, end_b)
+
+    for sa_start, sa_end in segs_a:
+        for sb_start, sb_end in segs_b:
+            if sa_start < sb_end and sa_end > sb_start:
+                return True
+    return False
+
+
+def check_shift_overlaps(
+    db: Session,
+    client_id: str,
+    start_time: time,
+    end_time: time,
+    exclude_shift_id: Optional[int] = None,
+) -> List[Shift]:
+    """Check if a shift time range overlaps with existing active shifts for the same client.
+
+    Args:
+        db: Database session.
+        client_id: The client whose shifts to check against.
+        start_time: Proposed shift start time.
+        end_time: Proposed shift end time.
+        exclude_shift_id: Shift ID to exclude (used when updating a shift so it
+            doesn't flag itself).
+
+    Returns:
+        List of overlapping Shift ORM objects (empty if no overlaps).
+    """
+    query = db.query(Shift).filter(
+        and_(
+            Shift.client_id == client_id,
+            Shift.is_active == True,  # noqa: E712
+        )
+    )
+    if exclude_shift_id is not None:
+        query = query.filter(Shift.shift_id != exclude_shift_id)
+
+    existing_shifts = query.all()
+
+    overlapping: List[Shift] = []
+    for shift in existing_shifts:
+        if _times_overlap(start_time, end_time, shift.start_time, shift.end_time):
+            overlapping.append(shift)
+
+    if overlapping:
+        names = ", ".join(s.shift_name for s in overlapping)
+        logger.warning(
+            "Shift overlap detected for client '%s': proposed %s-%s overlaps with [%s]",
+            client_id,
+            start_time,
+            end_time,
+            names,
+        )
+
+    return overlapping
 
 
 def create_shift(db: Session, data: ShiftCreate) -> Shift:

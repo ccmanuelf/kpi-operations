@@ -73,7 +73,7 @@ def create_wip_hold(db: Session, hold: WIPHoldCreate, current_user: User) -> WIP
     db_hold = WIPHold(**hold_data)
 
     db.add(db_hold)
-    db.commit()
+    db.flush()
     db.refresh(db_hold)
 
     return WIPHoldResponse.model_validate(db_hold)
@@ -117,7 +117,7 @@ def update_wip_hold(
     for field, value in update_data.items():
         setattr(db_hold, field, value)
 
-    db.commit()
+    db.flush()
     db.refresh(db_hold)
 
     return WIPHoldResponse.from_orm(db_hold)
@@ -130,5 +130,5 @@ def delete_wip_hold(db: Session, hold_id: int, current_user: User) -> bool:
     if not db_hold:
         return False
 
-    # Soft delete - preserves data integrity
-    return soft_delete(db, db_hold)
+    # Soft delete - preserves data integrity (commit=False: route handler commits)
+    return soft_delete(db, db_hold, commit=False)

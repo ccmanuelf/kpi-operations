@@ -22,8 +22,8 @@ class DowntimeEntry(Base):
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
     line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True)
 
-    # Work order reference
-    work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)
+    # Work order reference (optional — downtime can be attributed to machine/line without a work order)
+    work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=True, index=True)
 
     # Date tracking
     shift_date = Column(DateTime, nullable=False, index=True)
