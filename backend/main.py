@@ -159,34 +159,51 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"Warning: Failed to start report scheduler: {e}")
 
-    # Auto-seed demo data if database is empty (or FORCE_RESEED is set)
+    # Auto-seed demo data if database is empty or incomplete
+    # FORCE_RESEED=true: always drop and re-seed (one-time migration)
+    # Otherwise: smart detection — re-seed only if data is missing/stale
     try:
         import os
-        from backend.database import SessionLocal
+        from backend.database import SessionLocal, engine
+        from backend.orm import Base
         from backend.orm.client import Client
 
+        EXPECTED_CLIENTS = {"ACME-MFG", "TEXTILE-PRO", "FASHION-WORKS", "QUALITY-STITCH", "GLOBAL-APPAREL"}
         force_reseed = os.environ.get("FORCE_RESEED", "").lower() in ("1", "true", "yes")
 
         db = SessionLocal()
         try:
-            client_count = db.query(Client).count()
+            existing_clients = {c.client_id for c in db.query(Client.client_id).all()}
+            client_count = len(existing_clients)
         finally:
             db.close()
 
-        need_seed = client_count == 0 or force_reseed
-        if force_reseed and client_count > 0:
+        # Determine if re-seed is needed
+        if force_reseed:
             _logger.info(
                 "FORCE_RESEED enabled — dropping all tables and re-seeding (%d clients existed)",
                 client_count,
             )
-            from backend.orm import Base
-            from backend.database import engine
-
-            Base.metadata.drop_all(bind=engine)
-            Base.metadata.create_all(bind=engine)
+            need_seed = True
+        elif client_count == 0:
+            _logger.info("Empty database detected — seeding demo data...")
+            need_seed = True
+        elif not EXPECTED_CLIENTS.issubset(existing_clients):
+            missing = EXPECTED_CLIENTS - existing_clients
+            _logger.info(
+                "Incomplete demo data detected (missing clients: %s) — re-seeding...",
+                ", ".join(sorted(missing)),
+            )
+            need_seed = True
+        else:
+            need_seed = False
 
         if need_seed:
-            _logger.info("Seeding demo data...")
+            # Drop and recreate if there's stale data to replace
+            if client_count > 0:
+                Base.metadata.drop_all(bind=engine)
+                Base.metadata.create_all(bind=engine)
+
             try:
                 # Prefer the dev seeder (has TestDataFactory for richer data)
                 from backend.scripts.init_demo_database import init_database
@@ -204,7 +221,7 @@ async def lifespan(app: FastAPI):
                     seed_db.close()
             _logger.info("Auto-seeding complete")
         else:
-            _logger.info("Database already populated (%d clients)", client_count)
+            _logger.info("Database OK (%d clients, all expected clients present)", client_count)
     except Exception as e:
         _logger.warning("Auto-seed check failed: %s", e)
 
