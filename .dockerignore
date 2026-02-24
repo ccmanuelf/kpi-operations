@@ -47,10 +47,6 @@ htmlcov/
 .hypothesis/
 coverage.xml
 backend/tests/
-# Re-include TestDataFactory (needed by init_demo_database.py seeder in Docker)
-!backend/tests/__init__.py
-!backend/tests/fixtures/__init__.py
-!backend/tests/fixtures/factories.py
 backend/htmlcov/
 backend/.coverage
 frontend/coverage/

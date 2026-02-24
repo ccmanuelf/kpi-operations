@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from backend.database import engine, Base, SessionLocal
-from backend.tests.fixtures.factories import TestDataFactory
+from backend.db.factories import TestDataFactory
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
 # This single import registers every model with Base.metadata so that
