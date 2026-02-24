@@ -25,6 +25,10 @@ location /api/ {
     proxy_set_header X-Real-IP \$remote_addr;
     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto \$scheme;
+    # Rewrite backend redirect URLs to stay on frontend origin.
+    # Without this, 307 trailing-slash redirects expose the backend host,
+    # causing cross-origin redirects that strip the Authorization header.
+    proxy_redirect https://$BACKEND_HOST/ /;
     proxy_connect_timeout 60s;
     proxy_send_timeout 60s;
     proxy_read_timeout 60s;
