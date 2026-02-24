@@ -1,13 +1,14 @@
-# Render.com Deployment Blueprint — KPI Operations Platform
-# Deploy with: https://render.com/deploy?repo=<your-repo-url>
+# Render.com Deployment Blueprint — KPI Operations Platform v1.0.0-rc.1
+# Deploy with: https://render.com/deploy?repo=https://github.com/ccmanuelf/kpi-operations
 #
 # Architecture:
-#   - Backend API: Docker (FastAPI + uvicorn), persistent disk for SQLite
+#   - Backend API: Docker (FastAPI + uvicorn), SQLite demo DB (ephemeral on free tier)
 #   - Frontend:    Docker (nginx serving Vue 3 SPA, proxying /api to backend)
 #
-# The frontend nginx config references "backend:8000" for API proxying.
-# On Render, the dockerCommand replaces this hostname at container startup
-# with the backend service's internal URL so cross-service proxying works.
+# Free tier notes:
+#   - No persistent disk: DB recreates on each deploy (demo seeder runs automatically)
+#   - Services spin down after 15 min of inactivity (~30-60s cold start)
+#   - Perfect for demos — fresh data on every boot
 
 services:
   # ── Backend API Service ───────────────────────────────────────────────
@@ -16,7 +17,7 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /health/live
     envVars:
@@ -27,7 +28,7 @@ services:
       - key: DATABASE_URL
         value: sqlite:////app/database/kpi_platform.db
       - key: CORS_ORIGINS
-        sync: false  # Set manually: https://kpi-operations-frontend.onrender.com
+        value: https://kpi-operations-frontend.onrender.com
       - key: DEBUG
         value: "false"
       - key: DEMO_MODE
@@ -38,27 +39,28 @@ services:
         value: INFO
       - key: REPORT_EMAIL_ENABLED
         value: "false"
-    disk:
-      name: kpi-database
-      mountPath: /app/database
-      sizeGB: 1
 
-  # ── Frontend Static Site ──────────────────────────────────────────────
+  # ── Frontend (nginx + Vue SPA) ──────────────────────────────────────
   - type: web
     name: kpi-operations-frontend
     runtime: docker
     dockerfilePath: ./frontend/Dockerfile
     dockerContext: ./frontend
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /health
-    # Replace the Docker-internal "backend:8000" hostname in nginx.conf
-    # with the real backend service URL so API proxying works on Render.
+    # Replace Docker-internal "backend:8000" with real backend URL,
+    # then run envsubst for CSP_CONNECT_EXTRA, then start nginx.
     dockerCommand: >-
       sh -c "sed -i
-      's|http://backend:8000|https://kpi-operations-api.onrender.com|g'
+      's|http://backend:8000|https://kpi-operations-api.onrender.com|g;
+      s|ws://backend:8000|wss://kpi-operations-api.onrender.com|g'
       /etc/nginx/conf.d/default.conf &&
+      envsubst '$$CSP_CONNECT_EXTRA' < /etc/nginx/conf.d/default.conf > /tmp/default.conf &&
+      mv /tmp/default.conf /etc/nginx/conf.d/default.conf &&
       nginx -g 'daemon off;'"
     envVars:
       - key: VITE_API_URL
         value: /api
+      - key: CSP_CONNECT_EXTRA
+        value: https://kpi-operations-api.onrender.com
