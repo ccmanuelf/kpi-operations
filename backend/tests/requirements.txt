@@ -29,5 +29,5 @@ assertpy==1.1
 pytest-benchmark==4.0.0
 
 # Test Reporting
-pytest-html==4.1.1
+pytest-html==4.2.0
 pytest-json-report==1.5.0
