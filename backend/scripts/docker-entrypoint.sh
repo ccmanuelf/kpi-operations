@@ -58,25 +58,8 @@ except Exception as e:
     echo "[INIT] Migrations complete"
 }
 
-# Function to seed demo data
-seed_demo_data() {
-    echo "[INIT] Seeding demo data..."
-    python -c "
-from backend.database import SessionLocal
-from backend.db.migrations.demo_seeder import DemoDataSeeder
-
-try:
-    db = SessionLocal()
-    seeder = DemoDataSeeder(db)
-    counts = seeder.seed_all()
-    db.close()
-    print(f'[INIT] Demo data seeded: {counts}')
-except Exception as e:
-    print(f'[WARN] Demo data seeding failed: {e}')
-" 2>&1 || echo "[WARN] Demo data seeding returned non-zero"
-
-    echo "[INIT] Demo data seeding complete"
-}
+# Demo seeding is handled by main.py lifespan (smart reseed with TestDataFactory).
+# The entrypoint only handles infrastructure (DB connectivity, migrations).
 
 # Function to verify database connectivity
 check_database() {
@@ -120,10 +103,7 @@ main() {
         run_migrations
     fi
 
-    # Seed demo data if in demo mode
-    if [ "$DEMO_MODE" = "true" ]; then
-        seed_demo_data
-    fi
+    # Note: demo data seeding is handled by main.py lifespan (smart reseed)
 
     echo ""
     echo "[INIT] Initialization complete"
