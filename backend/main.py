@@ -159,10 +159,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"Warning: Failed to start report scheduler: {e}")
 
-    # Auto-seed demo data if database is empty
+    # Auto-seed demo data if database is empty (or FORCE_RESEED is set)
     try:
+        import os
         from backend.database import SessionLocal
         from backend.orm.client import Client
+
+        force_reseed = os.environ.get("FORCE_RESEED", "").lower() in ("1", "true", "yes")
 
         db = SessionLocal()
         try:
@@ -170,8 +173,20 @@ async def lifespan(app: FastAPI):
         finally:
             db.close()
 
-        if client_count == 0:
-            _logger.info("Empty database detected — auto-seeding demo data...")
+        need_seed = client_count == 0 or force_reseed
+        if force_reseed and client_count > 0:
+            _logger.info(
+                "FORCE_RESEED enabled — dropping all tables and re-seeding (%d clients existed)",
+                client_count,
+            )
+            from backend.orm import Base
+            from backend.database import engine
+
+            Base.metadata.drop_all(bind=engine)
+            Base.metadata.create_all(bind=engine)
+
+        if need_seed:
+            _logger.info("Seeding demo data...")
             try:
                 # Prefer the dev seeder (has TestDataFactory for richer data)
                 from backend.scripts.init_demo_database import init_database
