@@ -54,11 +54,15 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copy entrypoint script (handles URL replacement for production)
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 EXPOSE 80
 
 # Health check for container orchestration
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD wget -q --spider http://localhost:80 || exit 1
 
-# Start nginx (sed-based URL replacement is done via Render dockerCommand or docker-compose)
-CMD ["nginx", "-g", "daemon off;"]
+# Entrypoint replaces backend URLs via sed, then starts nginx
+ENTRYPOINT ["/docker-entrypoint.sh"]

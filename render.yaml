@@ -49,15 +49,10 @@ services:
     plan: free
     region: oregon
     healthCheckPath: /health
-    # Replace Docker-internal "backend:8000" with real backend URL via sed,
-    # also replace the CSP placeholder, then start nginx.
-    dockerCommand: >-
-      sh -c "sed -i
-      's|http://backend:8000|https://kpi-operations-api.onrender.com|g;
-      s|ws://backend:8000|wss://kpi-operations-api.onrender.com|g;
-      s|CSP_CONNECT_EXTRA_PLACEHOLDER|https://kpi-operations-api.onrender.com|g'
-      /etc/nginx/conf.d/default.conf &&
-      nginx -g 'daemon off;'"
     envVars:
       - key: VITE_API_URL
         value: /api
+      - key: BACKEND_URL
+        value: https://kpi-operations-api.onrender.com
+      - key: CSP_CONNECT_EXTRA
+        value: https://kpi-operations-api.onrender.com
