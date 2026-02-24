@@ -2,7 +2,7 @@
 set -e
 
 CONF="/etc/nginx/conf.d/default.conf"
-UPSTREAM="/etc/nginx/conf.d/upstream.conf"
+UPSTREAM="/etc/nginx/conf.d/upstream.inc"
 
 # --- Generate proxy config based on BACKEND_URL ---
 if [ -z "$BACKEND_URL" ]; then

@@ -54,7 +54,7 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Create empty upstream.conf so the include directive doesn't fail before entrypoint runs
-RUN touch /etc/nginx/conf.d/upstream.conf
+RUN touch /etc/nginx/conf.d/upstream.inc
 
 # Copy entrypoint script (generates proxy config at runtime based on BACKEND_URL)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
