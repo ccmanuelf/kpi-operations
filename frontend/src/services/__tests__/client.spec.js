@@ -109,16 +109,16 @@ describe('API Client', () => {
   })
 
   describe('Client Configuration', () => {
-    it('should use /api as baseURL', () => {
+    it('should use /api/v1 as default baseURL', () => {
       // Test the expected configuration
       const expectedConfig = {
-        baseURL: '/api',
+        baseURL: '/api/v1',
         headers: {
           'Content-Type': 'application/json'
         }
       }
 
-      expect(expectedConfig.baseURL).toBe('/api')
+      expect(expectedConfig.baseURL).toBe('/api/v1')
       expect(expectedConfig.headers['Content-Type']).toBe('application/json')
     })
   })

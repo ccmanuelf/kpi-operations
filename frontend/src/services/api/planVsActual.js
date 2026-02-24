@@ -16,7 +16,7 @@ import api from './client'
  * @returns {Promise} Axios response with array of plan vs actual entries
  */
 export function getPlanVsActual(params = {}) {
-  return api.get('/api/plan-vs-actual', { params })
+  return api.get('/plan-vs-actual', { params })
 }
 
 /**
@@ -26,5 +26,5 @@ export function getPlanVsActual(params = {}) {
  * @returns {Promise} Axios response with summary object
  */
 export function getPlanVsActualSummary(params = {}) {
-  return api.get('/api/plan-vs-actual/summary', { params })
+  return api.get('/plan-vs-actual/summary', { params })
 }

@@ -15,7 +15,7 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 
 # Build arg for API URL — must be declared here so Vite bakes it at build time
-ARG VITE_API_URL=/api
+ARG VITE_API_URL=/api/v1
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build for production

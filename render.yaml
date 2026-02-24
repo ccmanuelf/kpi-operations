@@ -51,7 +51,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: VITE_API_URL
-        value: /api
+        value: https://kpi-operations-api.onrender.com/api/v1
       - key: BACKEND_URL
         value: https://kpi-operations-api.onrender.com
       - key: CSP_CONNECT_EXTRA
