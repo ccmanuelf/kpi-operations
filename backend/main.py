@@ -172,9 +172,21 @@ async def lifespan(app: FastAPI):
 
         if client_count == 0:
             _logger.info("Empty database detected — auto-seeding demo data...")
-            from backend.scripts.init_demo_database import init_database
-
-            init_database()
+            try:
+                # Prefer the dev seeder (has TestDataFactory for richer data)
+                from backend.scripts.init_demo_database import init_database
+                init_database()
+            except ImportError:
+                # Docker image doesn't include backend.tests — use Docker seeder
+                _logger.info("Using Docker-safe demo seeder (test fixtures not available)")
+                from backend.db.migrations.demo_seeder import DemoDataSeeder
+                seed_db = SessionLocal()
+                try:
+                    seeder = DemoDataSeeder(seed_db)
+                    seeder.seed_all()
+                    seed_db.commit()
+                finally:
+                    seed_db.close()
             _logger.info("Auto-seeding complete")
         else:
             _logger.info("Database already populated (%d clients)", client_count)
