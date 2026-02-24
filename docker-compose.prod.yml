@@ -60,6 +60,9 @@ services:
     ports:
       - "80:80"
       # Port 443 requires TLS certificates — add when SSL is configured
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - CSP_CONNECT_EXTRA=${CSP_CONNECT_EXTRA:-}
     depends_on:
       backend:
         condition: service_healthy

@@ -15,7 +15,7 @@ RUN npm ci --legacy-peer-deps
 COPY . .
 
 # Build arg for API URL — must be declared here so Vite bakes it at build time
-ARG VITE_API_URL=/api/v1
+ARG VITE_API_URL=/api
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build for production
@@ -53,8 +53,10 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Create empty upstream.conf so the include directive doesn't fail before entrypoint runs
+RUN touch /etc/nginx/conf.d/upstream.conf
 
-# Copy entrypoint script (handles URL replacement for production)
+# Copy entrypoint script (generates proxy config at runtime based on BACKEND_URL)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
