@@ -7,6 +7,10 @@ if [ -n "$BACKEND_URL" ]; then
   # Convert https:// to wss:// for WebSocket URLs
   WS_URL=$(echo "$BACKEND_URL" | sed 's|https://|wss://|; s|http://|ws://|')
   sed -i "s|ws://backend:8000|${WS_URL}|g" /etc/nginx/conf.d/default.conf
+
+  # Nginx needs a resolver for external hostnames (not needed for Docker-internal names)
+  # Use Google DNS as resolver with 30s cache
+  sed -i '/location \/api\//a\        resolver 8.8.8.8 8.8.4.4 valid=30s;' /etc/nginx/conf.d/default.conf
 fi
 
 # Replace CSP placeholder with additional allowed origins (or remove it)
