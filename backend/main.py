@@ -164,8 +164,7 @@ async def lifespan(app: FastAPI):
     # Otherwise: smart detection — re-seed only if data is missing/stale
     try:
         import os
-        from backend.database import SessionLocal, engine
-        from backend.orm import Base
+        from backend.database import SessionLocal
         from backend.orm.client import Client
 
         EXPECTED_CLIENTS = {"ACME-MFG", "TEXTILE-PRO", "FASHION-WORKS", "QUALITY-STITCH", "GLOBAL-APPAREL"}
