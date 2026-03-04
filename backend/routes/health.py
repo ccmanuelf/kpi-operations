@@ -276,7 +276,7 @@ async def readiness_check(
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready")
 
 
-@router.get("/live", response_model=Dict[str, Any])
+@router.api_route("/live", methods=["GET", "HEAD"], response_model=Dict[str, Any])
 async def liveness_check():
     """
     Kubernetes-style liveness probe
