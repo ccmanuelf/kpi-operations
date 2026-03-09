@@ -609,6 +609,12 @@ app.include_router(kpi_router)
 app.include_router(kpi_thresholds_router)
 
 # ============================================================================
+# Register reference data routes (before shifts_router so /shifts/active
+# is matched before the parameterized /{shift_id} route)
+# ============================================================================
+app.include_router(reference_router)
+
+# ============================================================================
 # Register shift management routes
 # ============================================================================
 app.include_router(shifts_router)
@@ -674,10 +680,7 @@ app.include_router(client_floating_pool_router)
 # ============================================================================
 app.include_router(part_opportunities_router)
 
-# ============================================================================
-# Register reference data routes
-# ============================================================================
-app.include_router(reference_router)
+# (reference_router registered earlier — before shifts_router)
 
 # ============================================================================
 # Register data completeness routes

@@ -60,7 +60,7 @@ class TestBasicHealthEndpoint:
         """Test root health endpoint returns version"""
         response = test_client.get("/health/")
         data = response.json()
-        assert data["version"] == "1.0.0"
+        assert data["version"] == "1.0.1"
 
     def test_health_root_response_structure(self, test_client):
         """Test root health endpoint has complete response structure"""
@@ -178,7 +178,7 @@ class TestDetailedHealthEndpoint:
         assert "service" in data
         service = data["service"]
         assert service["name"] == "KPI Operations API"
-        assert service["version"] == "1.0.0"
+        assert service["version"] == "1.0.1"
         assert "uptime" in service
         assert "uptime_seconds" in service
         assert "started_at" in service

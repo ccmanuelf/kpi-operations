@@ -246,7 +246,7 @@ async def detailed_health_check(
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "service": {
             "name": "KPI Operations API",
-            "version": "1.0.0",
+            "version": "1.0.1",
             "uptime": uptime_formatted,
             "uptime_seconds": int(uptime_seconds),
             "started_at": APP_START_TIME.isoformat(),
