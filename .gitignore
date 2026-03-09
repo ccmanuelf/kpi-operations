@@ -142,8 +142,9 @@ _audit/
 /package-lock.json
 reference_not_to_sync/
 
-# Claude settings (local, not for sharing)
+# Claude settings and MCP config (contains API keys)
 .claude/settings.local.json
+.claude.json
 
 # Claude Flow telemetry and memory (regenerated per session)
 .claude-flow/metrics/
