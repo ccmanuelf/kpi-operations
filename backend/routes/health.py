@@ -52,7 +52,7 @@ async def health_check():
         "status": "healthy",
         "service": "KPI Operations API",
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
-        "version": "1.0.0",
+        "version": "1.0.1",
     }
 
 
