@@ -5,7 +5,7 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">{{ $t('kpi.oee') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.oeeDescription') }}</p>
+        <p class="text-subtitle-1 text-medium-emphasis">{{ $t('kpi.oeeDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -83,7 +83,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption text-grey-darken-1">{{ $t('kpi.availability') }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ $t('kpi.availability') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
                     <div class="text-caption">{{ t('kpi.equipmentUptime') }}</div>
                   </div>
@@ -107,7 +107,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption text-grey-darken-1">{{ $t('kpi.performance') }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ $t('kpi.performance') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
                     <div class="text-caption">{{ t('kpi.speedEfficiency') }}</div>
                   </div>
@@ -131,7 +131,7 @@
               <v-card-text>
                 <div class="d-flex align-center justify-space-between">
                   <div>
-                    <div class="text-caption text-grey-darken-1">{{ $t('kpi.qualityFPY') }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ $t('kpi.qualityFPY') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
                     <div class="text-caption">{{ t('kpi.firstPassYield') }}</div>
                   </div>
@@ -379,15 +379,6 @@ onMounted(async () => {
 </script>
 
 <style>
-/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
-.v-tooltip > .v-overlay__content {
-  background-color: rgba(33, 33, 33, 0.95) !important;
-  color: #ffffff !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-}
-
 .v-tooltip .tooltip-title {
   font-weight: 600;
   margin-bottom: 4px;

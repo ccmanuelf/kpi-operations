@@ -4,7 +4,7 @@
     <v-row class="mb-2">
       <v-col cols="12" md="6">
         <h1 id="dashboard-page-title" class="text-h3">{{ t('dashboard.title') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ t('dashboard.overview') }}</p>
+        <p class="text-subtitle-1 text-medium-emphasis">{{ t('dashboard.overview') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="d-flex align-center justify-end flex-wrap ga-3">
         <v-btn
@@ -188,7 +188,7 @@
                   <span v-else-if="item.job_id" class="font-weight-medium">
                     {{ item.job_id }}
                   </span>
-                  <span v-else class="text-grey-darken-1">—</span>
+                  <span v-else class="text-medium-emphasis">—</span>
                 </div>
               </template>
               <template v-slot:item.product_id="{ item }">

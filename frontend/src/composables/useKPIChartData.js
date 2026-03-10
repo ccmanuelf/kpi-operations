@@ -5,17 +5,20 @@
 import { computed } from 'vue'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
+import { useChartTheme } from '@/composables/useChartTheme'
 
 export function useKPIChartData() {
   const kpiStore = useKPIStore()
+  const { scaleDefaults, legendDefaults, chartColors } = useChartTheme()
 
-  const chartOptions = {
+  const chartOptions = computed(() => ({
     responsive: true,
     maintainAspectRatio: true,
     plugins: {
       legend: {
         display: true,
-        position: 'top'
+        position: 'top',
+        ...legendDefaults.value
       },
       tooltip: {
         mode: 'index',
@@ -27,8 +30,14 @@ export function useKPIChartData() {
         beginAtZero: true,
         max: 100,
         ticks: {
-          callback: (value) => `${value}%`
-        }
+          callback: (value) => `${value}%`,
+          ...scaleDefaults.value.ticks
+        },
+        grid: scaleDefaults.value.grid
+      },
+      x: {
+        ticks: scaleDefaults.value.ticks,
+        grid: scaleDefaults.value.grid
       }
     },
     interaction: {
@@ -36,7 +45,7 @@ export function useKPIChartData() {
       axis: 'x',
       intersect: false
     }
-  }
+  }))
 
   const efficiencyChartData = computed(() => ({
     labels: kpiStore.trends.efficiency.map(d => format(new Date(d.date), 'MMM dd')),
@@ -44,15 +53,15 @@ export function useKPIChartData() {
       {
         label: 'Efficiency %',
         data: kpiStore.trends.efficiency.map(d => d.value),
-        borderColor: '#2e7d32',
-        backgroundColor: 'rgba(46, 125, 50, 0.1)',
+        borderColor: chartColors.value.green,
+        backgroundColor: chartColors.value.greenFill,
         tension: 0.3,
         fill: true
       },
       {
         label: 'Target',
         data: Array(kpiStore.trends.efficiency.length).fill(85),
-        borderColor: '#f57c00',
+        borderColor: chartColors.value.orange,
         borderDash: [5, 5],
         pointRadius: 0
       }
@@ -65,15 +74,15 @@ export function useKPIChartData() {
       {
         label: 'FPY %',
         data: kpiStore.trends.quality.map(d => d.value),
-        borderColor: '#1976d2',
-        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+        borderColor: chartColors.value.blue,
+        backgroundColor: chartColors.value.blueFill,
         tension: 0.3,
         fill: true
       },
       {
         label: 'Target',
         data: Array(kpiStore.trends.quality.length).fill(99),
-        borderColor: '#f57c00',
+        borderColor: chartColors.value.orange,
         borderDash: [5, 5],
         pointRadius: 0
       }
@@ -86,15 +95,15 @@ export function useKPIChartData() {
       {
         label: 'Availability %',
         data: kpiStore.trends.availability.map(d => d.value),
-        borderColor: '#7b1fa2',
-        backgroundColor: 'rgba(123, 31, 162, 0.1)',
+        borderColor: chartColors.value.purple,
+        backgroundColor: chartColors.value.purpleFill,
         tension: 0.3,
         fill: true
       },
       {
         label: 'Target',
         data: Array(kpiStore.trends.availability.length).fill(90),
-        borderColor: '#f57c00',
+        borderColor: chartColors.value.orange,
         borderDash: [5, 5],
         pointRadius: 0
       }
@@ -107,15 +116,15 @@ export function useKPIChartData() {
       {
         label: 'OEE %',
         data: kpiStore.trends.oee.map(d => d.value),
-        borderColor: '#d32f2f',
-        backgroundColor: 'rgba(211, 47, 47, 0.1)',
+        borderColor: chartColors.value.red,
+        backgroundColor: chartColors.value.redFill,
         tension: 0.3,
         fill: true
       },
       {
         label: 'Target',
         data: Array(kpiStore.trends.oee.length).fill(85),
-        borderColor: '#f57c00',
+        borderColor: chartColors.value.orange,
         borderDash: [5, 5],
         pointRadius: 0
       }

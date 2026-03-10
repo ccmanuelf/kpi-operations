@@ -223,8 +223,8 @@ const columnDefs = ref([
     width: 90,
     cellRenderer: (params) => {
       return params.value === 'valid'
-        ? '<span style="color: green;">&#10003;</span>'
-        : '<span style="color: red;">&#10007;</span>'
+        ? '<span style="color: var(--cds-support-success, #198038);">&#10003;</span>'
+        : '<span style="color: var(--cds-support-error, #da1e28);">&#10007;</span>'
     }
   },
   { headerName: 'Client ID', field: 'client_id', editable: true, width: 110 },
@@ -238,7 +238,7 @@ const columnDefs = ref([
   { headerName: 'Absence Hours', field: 'absence_hours', editable: true, width: 110 },
   { headerName: 'Absence Type', field: 'absence_type', editable: true, width: 150 },
   { headerName: 'Notes', field: 'notes', editable: true, width: 180 },
-  { headerName: 'Errors', field: '_validationErrors', editable: false, width: 200, cellStyle: { color: 'red', fontSize: '12px' } }
+  { headerName: 'Errors', field: '_validationErrors', editable: false, width: 200, cellStyle: { color: 'var(--cds-support-error, #da1e28)', fontSize: '12px' } }
 ])
 
 const defaultColDef = {
@@ -362,8 +362,8 @@ const onCellValueChanged = (event) => {
 }
 
 const getRowStyle = (params) => {
-  if (params.data._validationStatus === 'valid') return { background: '#e8f5e9' }
-  if (params.data._validationStatus === 'error') return { background: '#ffebee' }
+  if (params.data._validationStatus === 'valid') return { background: 'var(--cds-support-success-subtle, #defbe6)' }
+  if (params.data._validationStatus === 'error') return { background: 'var(--cds-support-error-subtle, #fff1f1)' }
   return null
 }
 
@@ -458,7 +458,12 @@ const closeDialog = () => {
 
 <style scoped>
 .ag-theme-material {
-  --ag-header-background-color: #1a237e;
-  --ag-header-foreground-color: white;
+  --ag-header-background-color: var(--cds-blue-70, #0043ce);
+  --ag-header-foreground-color: var(--cds-text-on-color, #ffffff);
+}
+
+[data-theme="dark"] .ag-theme-material {
+  --ag-header-background-color: var(--cds-blue-60, #0f62fe);
+  --ag-header-foreground-color: var(--cds-text-on-color, #ffffff);
 }
 </style>

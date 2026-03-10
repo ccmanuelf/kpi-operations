@@ -136,7 +136,10 @@
     "operations": "Operations",
     "kpiAnalytics": "KPI & Analytics",
     "planning": "Planning",
-    "reportsExport": "Reports & Export"
+    "reportsExport": "Reports & Export",
+    "toggleDarkMode": "Toggle dark mode",
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode"
   },
   "operationsHealth": {
     "productionToday": "Production Today",

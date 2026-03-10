@@ -18,6 +18,9 @@
       <!-- Language Toggle -->
       <LanguageToggle class="mr-2" />
 
+      <!-- Dark Mode Toggle -->
+      <DarkModeToggle class="mr-1" />
+
       <v-btn icon @click="onboardingState.openOnboarding()" :aria-label="$t('onboarding.title')">
         <v-icon aria-hidden="true">mdi-rocket-launch-outline</v-icon>
       </v-btn>
@@ -190,25 +193,36 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onErrorCaptured } from 'vue'
+import { ref, computed, watch, onMounted, onErrorCaptured } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useTheme } from 'vuetify'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
+import { useThemeStore } from '@/stores/themeStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
 import QuickActionsFAB from '@/components/QuickActionsFAB.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
+import DarkModeToggle from '@/components/DarkModeToggle.vue'
 import OnboardingChecklist from '@/components/OnboardingChecklist.vue'
 import { useOnboarding } from '@/composables/useOnboarding'
 
 const { t } = useI18n()
 const router = useRouter()
+const vuetifyTheme = useTheme()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 const shortcutsStore = useKeyboardShortcutsStore()
+const themeStore = useThemeStore()
 const onboardingState = useOnboarding()
+
+// Sync theme store → Vuetify + Carbon tokens
+watch(() => themeStore.isDark, (dark) => {
+  vuetifyTheme.global.name.value = dark ? 'dark' : 'light'
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+}, { immediate: true })
 
 // Error handling for child components
 onErrorCaptured((err, instance, info) => {

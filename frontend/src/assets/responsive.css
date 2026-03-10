@@ -92,7 +92,7 @@ h4 {
 
 /* Collapsible sections */
 .collapsible-section {
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--cds-border-subtle-00, #e0e0e0);
   border-radius: 8px;
   margin-bottom: 12px;
   overflow: hidden;
@@ -100,7 +100,7 @@ h4 {
 
 .collapsible-header {
   padding: 12px 16px;
-  background: #f5f5f5;
+  background: var(--cds-layer-01, #f4f4f4);
   cursor: pointer;
   display: flex;
   justify-content: space-between;

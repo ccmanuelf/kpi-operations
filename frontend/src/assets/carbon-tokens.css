@@ -300,4 +300,12 @@
 
   --cds-link-primary: #78a9ff;
   --cds-link-primary-hover: #a6c8ff;
+
+  /* Support colors — brighter variants for dark backgrounds */
+  --cds-support-success: #42be65;
+  --cds-support-error: #ff8389;
+  --cds-support-warning: #f1c21b;
+  --cds-support-info: #4589ff;
+  --cds-support-success-subtle: #044317;
+  --cds-support-error-subtle: #520408;
 }

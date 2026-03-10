@@ -115,14 +115,14 @@
                 <div class="d-flex justify-space-between align-start mb-3">
                   <div>
                     <div class="d-flex align-center">
-                      <span class="text-caption text-grey-darken-1">{{ kpi.title }}</span>
+                      <span class="text-caption text-medium-emphasis">{{ kpi.title }}</span>
                       <InferenceIndicator v-if="kpi.inference" :is-estimated="kpi.inference.is_estimated"
                         :confidence-score="kpi.inference.confidence_score" :inference-details="kpi.inference.details" />
                     </div>
                     <div class="text-h4 font-weight-bold mt-1" :class="{ 'text-estimated': kpi.inference?.is_estimated }">
                       {{ formatValue(kpi.value, kpi.unit) }}
                     </div>
-                    <div v-if="kpi.subtitle" class="text-caption text-grey-darken-2 mt-1">{{ kpi.subtitle }}</div>
+                    <div v-if="kpi.subtitle" class="text-caption text-medium-emphasis mt-1">{{ kpi.subtitle }}</div>
                   </div>
                   <v-icon :color="getStatusColor(kpi)" size="40">
                     {{ kpiStore.kpiIcon(kpi.value, kpi.target, kpi.higherBetter) }}
@@ -131,7 +131,7 @@
                 <v-progress-linear :model-value="getProgress(kpi)" :color="getStatusColor(kpi)"
                   height="8" rounded class="mb-2" />
                 <div class="d-flex justify-space-between text-caption">
-                  <span class="text-grey-darken-1">{{ t('kpi.target') }}: {{ kpi.target }}{{ kpi.unit }}</span>
+                  <span class="text-medium-emphasis">{{ t('kpi.target') }}: {{ kpi.target }}{{ kpi.unit }}</span>
                   <span :class="`text-${getStatusColor(kpi)}`">{{ getStatusText(kpi) }}</span>
                 </div>
                 <div v-if="kpi.inference?.is_estimated" class="confidence-bar mt-2">

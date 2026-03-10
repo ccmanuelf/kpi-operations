@@ -32,7 +32,7 @@
     <div v-if="widgets.length === 0" class="empty-state text-center py-16">
       <v-icon size="80" color="grey-lighten-1">mdi-view-dashboard-outline</v-icon>
       <h3 class="text-h5 text-grey mt-4">{{ t('widgets.grid.noWidgets') }}</h3>
-      <p class="text-body-2 text-grey-darken-1 mt-2">
+      <p class="text-body-2 text-medium-emphasis mt-2">
         {{ t('widgets.grid.addWidgetCustomize') }}
       </p>
       <v-btn

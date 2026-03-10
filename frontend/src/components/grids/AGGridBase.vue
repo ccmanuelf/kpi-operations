@@ -186,23 +186,23 @@ defineExpose({
 
 /* Highlight cells being edited */
 :deep(.ag-cell-inline-editing) {
-  background-color: #fff9c4 !important;
-  box-shadow: inset 0 0 0 2px #1a237e;
+  background-color: var(--cds-yellow-10, #fcf4d6) !important;
+  box-shadow: inset 0 0 0 2px var(--cds-focus, #0f62fe);
 }
 
 /* Highlight cells with unsaved changes */
 :deep(.ag-cell-data-changed) {
-  background-color: #fff3e0 !important;
+  background-color: var(--cds-yellow-20, #fddc69) !important;
 }
 
 /* Better focus indication */
 :deep(.ag-cell-focus) {
-  border: 2px solid #1a237e !important;
+  border: 2px solid var(--cds-focus, #0f62fe) !important;
 }
 
 /* Range selection styling */
 :deep(.ag-cell-range-selected) {
-  background-color: rgba(26, 35, 126, 0.1) !important;
+  background-color: rgba(15, 98, 254, 0.1) !important;
 }
 
 /* Mobile-specific styles */

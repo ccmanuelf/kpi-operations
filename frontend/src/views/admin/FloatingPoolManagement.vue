@@ -126,7 +126,7 @@
                         class="mb-2"
                       >
                         <div class="font-weight-medium">{{ rec.message }}</div>
-                        <div class="text-caption text-grey-darken-1 mt-1">
+                        <div class="text-caption text-medium-emphasis mt-1">
                           <v-icon size="x-small" class="mr-1">mdi-arrow-right</v-icon>
                           {{ rec.action }}
                         </div>

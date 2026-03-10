@@ -146,10 +146,8 @@ export default function useProductionGridData() {
       valueFormatter: (params) => {
         return params.value ? params.value.toLocaleString() : '0'
       },
-      cellStyle: (params) => {
-        return params.value > 0
-          ? { color: '#2e7d32', fontWeight: 'bold' }
-          : { color: '#c62828' }
+      cellClass: (params) => {
+        return params.value > 0 ? 'ag-cell-success ag-cell-bold' : 'ag-cell-error'
       },
       width: 160
     },
@@ -182,8 +180,8 @@ export default function useProductionGridData() {
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { min: 0, precision: 0 },
-      cellStyle: (params) => {
-        return params.value > 0 ? { backgroundColor: '#ffebee', color: '#c62828' } : {}
+      cellClass: (params) => {
+        return params.value > 0 ? 'ag-cell-error' : ''
       },
       width: 110
     },
@@ -194,8 +192,8 @@ export default function useProductionGridData() {
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { min: 0, precision: 0 },
-      cellStyle: (params) => {
-        return params.value > 0 ? { backgroundColor: '#ffebee', color: '#c62828' } : {}
+      cellClass: (params) => {
+        return params.value > 0 ? 'ag-cell-error' : ''
       },
       width: 110
     },

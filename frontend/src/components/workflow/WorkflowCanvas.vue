@@ -34,12 +34,12 @@
         <g>
           <path
             :d="`M ${sourceX} ${sourceY} C ${sourceX} ${(sourceY + targetY) / 2}, ${targetX} ${(sourceY + targetY) / 2}, ${targetX} ${targetY}`"
-            stroke="#007bff"
+            stroke="#0f62fe"
             stroke-width="2"
             fill="none"
             stroke-dasharray="5,5"
           />
-          <circle :cx="targetX" :cy="targetY" r="5" fill="#007bff" />
+          <circle :cx="targetX" :cy="targetY" r="5" fill="#0f62fe" />
         </g>
       </template>
     </VueFlow>
@@ -47,7 +47,7 @@
     <!-- Empty state -->
     <div v-if="nodes.length === 0" class="empty-state">
       <v-icon size="64" color="grey-lighten-1">mdi-sitemap</v-icon>
-      <p class="text-h6 text-grey-darken-1 mt-4">{{ $t('workflowDesigner.canvas.emptyState') }}</p>
+      <p class="text-h6 text-medium-emphasis mt-4">{{ $t('workflowDesigner.canvas.emptyState') }}</p>
       <p class="text-body-2 text-grey">{{ $t('workflowDesigner.canvas.emptyStateHint') }}</p>
     </div>
   </div>
@@ -97,7 +97,7 @@ const defaultEdgeOptions = {
   animated: false,
   markerEnd: {
     type: 'arrowclosed',
-    color: '#6c757d'
+    color: '#525252'
   }
 }
 
@@ -135,11 +135,11 @@ const handleNodeDragStop = (event) => {
 const getMinimapNodeColor = (node) => {
   const statusType = node.data?.statusType
   const colors = {
-    start: '#28a745',
-    normal: '#007bff',
-    terminal: '#dc3545',
-    hold: '#ffc107',
-    optional: '#6c757d'
+    start: '#198038',
+    normal: '#0f62fe',
+    terminal: '#da1e28',
+    hold: '#f1c21b',
+    optional: '#525252'
   }
   return colors[statusType] || colors.normal
 }
@@ -190,8 +190,8 @@ watch(selectedEdge, (edge) => {
   width: 100%;
   height: 100%;
   min-height: 500px;
-  background: #fafafa;
-  border: 1px solid #e0e0e0;
+  background: var(--cds-layer-01, #f4f4f4);
+  border: 1px solid var(--cds-border-subtle, #e0e0e0);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -218,18 +218,18 @@ watch(selectedEdge, (edge) => {
 }
 
 .workflow-canvas :deep(.vue-flow__controls-button) {
-  background: white;
+  background: var(--cds-layer-01, #f4f4f4);
   border: none;
-  color: #333;
+  color: var(--cds-text-primary, #161616);
 }
 
 .workflow-canvas :deep(.vue-flow__controls-button:hover) {
-  background: #f5f5f5;
+  background: var(--cds-layer-hover-01, #e8e8e8);
 }
 
 /* Minimap styling */
 .workflow-canvas :deep(.vue-flow__minimap) {
-  background: #fff;
+  background: var(--cds-layer-01, #f4f4f4);
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }

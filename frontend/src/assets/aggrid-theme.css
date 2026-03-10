@@ -199,6 +199,127 @@
   color: var(--cds-blue-70, #0043ce) !important;
 }
 
+.ag-cell-neutral,
+.ag-theme-material .ag-cell-neutral {
+  background-color: var(--cds-gray-20, #e0e0e0) !important;
+  color: var(--cds-gray-70, #525252) !important;
+}
+
+.ag-cell-warning-light,
+.ag-theme-material .ag-cell-warning-light {
+  background-color: var(--cds-yellow-10, #fcf4d6) !important;
+  color: var(--cds-yellow-70, #684e00) !important;
+}
+
+.ag-cell-purple,
+.ag-theme-material .ag-cell-purple {
+  background-color: #f3e5f5 !important;
+  color: #7b1fa2 !important;
+}
+
+.ag-cell-pink,
+.ag-theme-material .ag-cell-pink {
+  background-color: #fce4ec !important;
+  color: #c2185b !important;
+}
+
+.ag-cell-bold {
+  font-weight: bold !important;
+}
+
+/* ============================================
+   DARK MODE OVERRIDES
+   ============================================ */
+
+[data-theme="dark"] .ag-theme-material {
+  --ag-background-color: var(--cds-layer-02, #262626);
+  --ag-foreground-color: var(--cds-text-primary, #f4f4f4);
+  --ag-secondary-foreground-color: var(--cds-text-secondary, #c6c6c6);
+  --ag-data-color: var(--cds-text-primary, #f4f4f4);
+  --ag-header-background-color: var(--cds-layer-01, #393939);
+  --ag-header-foreground-color: var(--cds-text-primary, #f4f4f4);
+  --ag-header-cell-hover-background-color: var(--cds-gray-70, #525252);
+  --ag-row-hover-color: var(--cds-layer-01, #393939);
+  --ag-selected-row-background-color: rgba(69, 137, 255, 0.2);
+  --ag-row-border-color: var(--cds-border-subtle-00, #525252);
+  --ag-border-color: var(--cds-border-subtle-00, #525252);
+  --ag-odd-row-background-color: var(--cds-layer-02, #262626);
+  --ag-menu-background-color: var(--cds-layer-02, #262626);
+  --ag-menu-text-color: var(--cds-text-primary, #f4f4f4);
+  --ag-checkbox-background-color: var(--cds-layer-02, #262626);
+  --ag-range-selection-background-color: rgba(69, 137, 255, 0.15);
+}
+
+[data-theme="dark"] .ag-theme-material .ag-overlay-loading-wrapper {
+  background-color: rgba(22, 22, 22, 0.9);
+}
+
+[data-theme="dark"] .ag-theme-material .ag-overlay-loading-center {
+  background-color: var(--cds-layer-02, #262626);
+  color: var(--cds-text-secondary, #c6c6c6);
+}
+
+[data-theme="dark"] .ag-cell-success,
+[data-theme="dark"] .ag-theme-material .ag-cell-success {
+  background-color: rgba(36, 161, 72, 0.2) !important;
+  color: #6fdc8c !important;
+}
+
+[data-theme="dark"] .ag-cell-error,
+[data-theme="dark"] .ag-theme-material .ag-cell-error {
+  background-color: rgba(250, 77, 86, 0.2) !important;
+  color: #ffb3b8 !important;
+}
+
+[data-theme="dark"] .ag-cell-warning,
+[data-theme="dark"] .ag-theme-material .ag-cell-warning {
+  background-color: rgba(241, 194, 27, 0.2) !important;
+  color: #fddc69 !important;
+}
+
+[data-theme="dark"] .ag-cell-warning-light,
+[data-theme="dark"] .ag-theme-material .ag-cell-warning-light {
+  background-color: rgba(241, 194, 27, 0.15) !important;
+  color: #fddc69 !important;
+}
+
+[data-theme="dark"] .ag-cell-info,
+[data-theme="dark"] .ag-theme-material .ag-cell-info {
+  background-color: rgba(69, 137, 255, 0.2) !important;
+  color: #a6c8ff !important;
+}
+
+[data-theme="dark"] .ag-cell-neutral,
+[data-theme="dark"] .ag-theme-material .ag-cell-neutral {
+  background-color: rgba(141, 141, 141, 0.2) !important;
+  color: #c6c6c6 !important;
+}
+
+[data-theme="dark"] .ag-cell-purple,
+[data-theme="dark"] .ag-theme-material .ag-cell-purple {
+  background-color: rgba(156, 39, 176, 0.2) !important;
+  color: #ce93d8 !important;
+}
+
+[data-theme="dark"] .ag-cell-pink,
+[data-theme="dark"] .ag-theme-material .ag-cell-pink {
+  background-color: rgba(194, 24, 91, 0.2) !important;
+  color: #f48fb1 !important;
+}
+
+[data-theme="dark"] .ag-theme-material .ag-header {
+  border-bottom-color: var(--cds-border-strong-01, #6f6f6f);
+}
+
+[data-theme="dark"] .ag-theme-material .ag-filter {
+  background-color: var(--cds-layer-02, #262626);
+  border-color: var(--cds-border-subtle-00, #525252);
+}
+
+[data-theme="dark"] .ag-theme-material .ag-menu {
+  border-color: var(--cds-border-subtle-00, #525252);
+}
+
 /* ============================================
    EDITING CELLS - CARBON INPUT STYLE
    ============================================ */

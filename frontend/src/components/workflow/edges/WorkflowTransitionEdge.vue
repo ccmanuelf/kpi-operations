@@ -91,7 +91,9 @@ const path = computed(() => getBezierPath({
 }))
 
 const edgeStyle = computed(() => ({
-  stroke: props.selected ? '#1976d2' : '#6c757d',
+  stroke: props.selected
+    ? 'var(--cds-interactive, #0f62fe)'
+    : 'var(--cds-text-secondary, #525252)',
   strokeWidth: props.selected ? 3 : 2,
   transition: 'stroke 0.2s, stroke-width 0.2s'
 }))
@@ -103,11 +105,11 @@ const handleClick = () => {
 
 <style scoped>
 .edge-label {
-  background: #fff;
-  border: 1px solid #ddd;
+  background: var(--cds-layer-02, #ffffff);
+  border: 1px solid var(--cds-border-subtle-00, #e0e0e0);
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
-  color: #666;
+  color: var(--cds-text-secondary, #525252);
 }
 </style>

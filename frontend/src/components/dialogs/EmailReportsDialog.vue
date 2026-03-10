@@ -160,7 +160,7 @@
             {{ $t('reports.sendTest') }}
           </v-btn>
         </div>
-        <div class="text-caption text-grey-darken-1 mt-1">
+        <div class="text-caption text-medium-emphasis mt-1">
           {{ $t('reports.sendTestDescription') }}
         </div>
       </v-card-text>

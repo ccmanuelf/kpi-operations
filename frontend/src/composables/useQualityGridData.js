@@ -139,8 +139,8 @@ export default function useQualityGridData() {
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { min: 0, precision: 0 },
-      cellStyle: (params) => {
-        return params.value > 0 ? { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' } : {}
+      cellClass: (params) => {
+        return params.value > 0 ? 'ag-cell-error ag-cell-bold' : ''
       },
       width: 130
     },
@@ -154,11 +154,11 @@ export default function useQualityGridData() {
         if (inspected === 0) return 0
         return ((1 - defects / inspected) * 100).toFixed(2)
       },
-      cellStyle: (params) => {
+      cellClass: (params) => {
         const fpy = parseFloat(params.value)
-        if (fpy >= 99) return { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }
-        if (fpy >= 95) return { backgroundColor: '#fff3e0', color: '#f57c00', fontWeight: 'bold' }
-        return { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' }
+        if (fpy >= 99) return 'ag-cell-success ag-cell-bold'
+        if (fpy >= 95) return 'ag-cell-warning ag-cell-bold'
+        return 'ag-cell-error ag-cell-bold'
       },
       width: 110
     },
@@ -175,11 +175,11 @@ export default function useQualityGridData() {
       valueFormatter: (params) => {
         return params.value ? params.value.toLocaleString() : '0'
       },
-      cellStyle: (params) => {
+      cellClass: (params) => {
         const ppm = params.value || 0
-        if (ppm === 0) return { backgroundColor: '#e8f5e9', color: '#2e7d32' }
-        if (ppm <= 10000) return { backgroundColor: '#fff3e0', color: '#f57c00' }
-        return { backgroundColor: '#ffebee', color: '#c62828' }
+        if (ppm === 0) return 'ag-cell-success'
+        if (ppm <= 10000) return 'ag-cell-warning'
+        return 'ag-cell-error'
       },
       width: 110
     },
@@ -203,14 +203,14 @@ export default function useQualityGridData() {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: ['Critical', 'Major', 'Minor', 'Cosmetic'] },
-      cellStyle: (params) => {
-        const severityColors = {
-          'Critical': { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' },
-          'Major': { backgroundColor: '#fff3e0', color: '#f57c00', fontWeight: 'bold' },
-          'Minor': { backgroundColor: '#fff9c4', color: '#f57f17' },
-          'Cosmetic': { backgroundColor: '#e3f2fd', color: '#1976d2' }
+      cellClass: (params) => {
+        const classes = {
+          'Critical': 'ag-cell-error ag-cell-bold',
+          'Major': 'ag-cell-warning ag-cell-bold',
+          'Minor': 'ag-cell-warning-light',
+          'Cosmetic': 'ag-cell-info'
         }
-        return severityColors[params.value] || {}
+        return classes[params.value] || ''
       },
       width: 120
     },
@@ -222,14 +222,14 @@ export default function useQualityGridData() {
       cellEditorParams: {
         values: ['Accept', 'Reject', 'Rework', 'Use As Is', 'Return to Supplier', 'Scrap']
       },
-      cellStyle: (params) => {
-        const dispositionColors = {
-          'Accept': { backgroundColor: '#e8f5e9', color: '#2e7d32' },
-          'Reject': { backgroundColor: '#ffebee', color: '#c62828' },
-          'Rework': { backgroundColor: '#fff3e0', color: '#f57c00' },
-          'Scrap': { backgroundColor: '#ffebee', color: '#c62828' }
+      cellClass: (params) => {
+        const classes = {
+          'Accept': 'ag-cell-success',
+          'Reject': 'ag-cell-error',
+          'Rework': 'ag-cell-warning',
+          'Scrap': 'ag-cell-error'
         }
-        return dispositionColors[params.value] || {}
+        return classes[params.value] || ''
       },
       width: 150
     },

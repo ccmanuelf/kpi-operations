@@ -176,16 +176,16 @@ export function useHoldGridData() {
         }
         return statusLabels[status] || status
       },
-      cellStyle: (params) => {
+      cellClass: (params) => {
         const status = params.data.hold_status || (params.data.actual_resume_date ? 'RESUMED' : 'ON_HOLD')
-        const styles = {
-          'PENDING_HOLD_APPROVAL': { backgroundColor: '#fff3e0', color: '#e65100', fontWeight: 'bold' },
-          'ON_HOLD': { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' },
-          'PENDING_RESUME_APPROVAL': { backgroundColor: '#f3e5f5', color: '#7b1fa2', fontWeight: 'bold' },
-          'RESUMED': { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' },
-          'CANCELLED': { backgroundColor: '#eceff1', color: '#546e7a', fontWeight: 'bold' }
+        const classes = {
+          'PENDING_HOLD_APPROVAL': 'ag-cell-warning ag-cell-bold',
+          'ON_HOLD': 'ag-cell-error ag-cell-bold',
+          'PENDING_RESUME_APPROVAL': 'ag-cell-purple ag-cell-bold',
+          'RESUMED': 'ag-cell-success ag-cell-bold',
+          'CANCELLED': 'ag-cell-neutral ag-cell-bold'
         }
-        return styles[status] || {}
+        return classes[status] || ''
       },
       width: 160
     },
@@ -206,8 +206,8 @@ export function useHoldGridData() {
       valueFormatter: (params) => {
         return params.value ? format(new Date(params.value), 'MMM dd, yyyy HH:mm') : t('grids.holds.notYetResumed')
       },
-      cellStyle: (params) => {
-        return params.value ? { backgroundColor: '#e8f5e9', color: '#2e7d32' } : {}
+      cellClass: (params) => {
+        return params.value ? 'ag-cell-success' : ''
       },
       width: 180
     },
@@ -222,11 +222,11 @@ export function useHoldGridData() {
           : new Date()
         return differenceInDays(endDate, startDate)
       },
-      cellStyle: (params) => {
+      cellClass: (params) => {
         const days = params.value || 0
-        if (days > 7) return { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' }
-        if (days > 3) return { backgroundColor: '#fff3e0', color: '#f57c00' }
-        return {}
+        if (days > 7) return 'ag-cell-error ag-cell-bold'
+        if (days > 3) return 'ag-cell-warning'
+        return ''
       },
       width: 130
     },

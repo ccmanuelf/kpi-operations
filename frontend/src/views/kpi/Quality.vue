@@ -5,7 +5,7 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">{{ t('kpi.quality') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ t('kpi.qualityDescription') }}</p>
+        <p class="text-subtitle-1 text-medium-emphasis">{{ t('kpi.qualityDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="fpyColor" size="large" class="mr-2 text-white" variant="flat">
@@ -66,7 +66,7 @@
               <v-card-text>
                 <div class="text-caption">{{ t('kpi.fpy') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.fpy) }}%</div>
-                <div class="text-caption text-grey-darken-1">{{ t('kpi.targetPercent', { value: 99 }) }} | {{ t('kpi.firstAttemptPassRate') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('kpi.targetPercent', { value: 99 }) }} | {{ t('kpi.firstAttemptPassRate') }}</div>
               </v-card-text>
             </v-card>
           </template>
@@ -85,7 +85,7 @@
               <v-card-text>
                 <div class="text-caption">{{ t('kpi.rty') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.rty) }}%</div>
-                <div class="text-caption text-grey-darken-1">{{ t('kpi.targetPercent', { value: 95 }) }} | {{ t('kpi.allStagesCombined') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('kpi.targetPercent', { value: 95 }) }} | {{ t('kpi.allStagesCombined') }}</div>
               </v-card-text>
             </v-card>
           </template>
@@ -104,7 +104,7 @@
               <v-card-text>
                 <div class="text-caption">{{ t('kpi.finalYield') }}</div>
                 <div class="text-h3 font-weight-bold">{{ formatValue(qualityData?.final_yield) }}%</div>
-                <div class="text-caption text-grey-darken-1">{{ t('kpi.targetPercent', { value: 99 }) }} | {{ t('kpi.afterRework') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('kpi.targetPercent', { value: 99 }) }} | {{ t('kpi.afterRework') }}</div>
               </v-card-text>
             </v-card>
           </template>
@@ -125,7 +125,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ t('kpi.totalUnitsInspected') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('kpi.totalUnitsInspected') }}</div>
                 <div class="text-h4 font-weight-bold">{{ qualityData?.total_units || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -141,7 +141,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ t('kpi.firstPassGood') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('kpi.firstPassGood') }}</div>
                 <div class="text-h4 font-weight-bold text-success">{{ qualityData?.first_pass_good || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -157,7 +157,7 @@
           <template v-slot:activator="{ props }">
             <v-card variant="outlined" v-bind="props" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ t('kpi.totalScrapped') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('kpi.totalScrapped') }}</div>
                 <div class="text-h4 font-weight-bold text-error">{{ qualityData?.total_scrapped || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -359,7 +359,7 @@
               <v-col cols="6" md="3">
                 <v-card variant="outlined">
                   <v-card-text class="text-center">
-                    <div class="text-caption text-grey-darken-1">{{ t('jobs.totalJobsCompleted') }}</div>
+                    <div class="text-caption text-medium-emphasis">{{ t('jobs.totalJobsCompleted') }}</div>
                     <div class="text-h4 font-weight-bold">{{ jobRtySummary.total_jobs_completed || 0 }}</div>
                   </v-card-text>
                 </v-card>
@@ -613,15 +613,6 @@ onMounted(async () => {
 </style>
 
 <style>
-/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
-.v-tooltip > .v-overlay__content {
-  background-color: rgba(33, 33, 33, 0.95) !important;
-  color: #ffffff !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-}
-
 .v-tooltip .tooltip-title {
   font-weight: 600;
   margin-bottom: 4px;

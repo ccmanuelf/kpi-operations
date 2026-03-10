@@ -115,15 +115,15 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       cellEditorParams: {
         values: ['Present', 'Absent', 'Late', 'Half Day', 'Leave']
       },
-      cellStyle: (params) => {
-        const statusColors = {
-          'Present': { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' },
-          'Absent': { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' },
-          'Late': { backgroundColor: '#fff3e0', color: '#f57c00', fontWeight: 'bold' },
-          'Half Day': { backgroundColor: '#fff9c4', color: '#f57f17', fontWeight: 'bold' },
-          'Leave': { backgroundColor: '#f3e5f5', color: '#7b1fa2', fontWeight: 'bold' }
+      cellClass: (params) => {
+        const classes = {
+          'Present': 'ag-cell-success ag-cell-bold',
+          'Absent': 'ag-cell-error ag-cell-bold',
+          'Late': 'ag-cell-warning ag-cell-bold',
+          'Half Day': 'ag-cell-warning-light ag-cell-bold',
+          'Leave': 'ag-cell-purple ag-cell-bold'
         }
-        return statusColors[params.value] || {}
+        return classes[params.value] || ''
       },
       width: 130
     },
@@ -152,8 +152,8 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { min: 0, precision: 0 },
-      cellStyle: (params) => {
-        return params.value > 0 ? { backgroundColor: '#fff3e0', color: '#f57c00' } : {}
+      cellClass: (params) => {
+        return params.value > 0 ? 'ag-cell-warning' : ''
       },
       width: 120
     },

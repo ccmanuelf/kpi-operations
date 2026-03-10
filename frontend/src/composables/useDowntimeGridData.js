@@ -132,16 +132,16 @@ export default function useDowntimeGridData() {
       editable: true,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: { values: categories },
-      cellStyle: (params) => {
-        const categoryColors = {
-          'Planned Maintenance': { backgroundColor: '#e3f2fd', color: '#1976d2' },
-          'Unplanned Breakdown': { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' },
-          'Changeover': { backgroundColor: '#fff9c4', color: '#f57f17' },
-          'Material Shortage': { backgroundColor: '#fff3e0', color: '#f57c00' },
-          'Quality Issue': { backgroundColor: '#fce4ec', color: '#c2185b' },
-          'Operator Absence': { backgroundColor: '#f3e5f5', color: '#7b1fa2' }
+      cellClass: (params) => {
+        const classes = {
+          'Planned Maintenance': 'ag-cell-info',
+          'Unplanned Breakdown': 'ag-cell-error ag-cell-bold',
+          'Changeover': 'ag-cell-warning-light',
+          'Material Shortage': 'ag-cell-warning',
+          'Quality Issue': 'ag-cell-pink',
+          'Operator Absence': 'ag-cell-purple'
         }
-        return categoryColors[params.value] || {}
+        return classes[params.value] || ''
       },
       width: 180
     },
@@ -155,11 +155,11 @@ export default function useDowntimeGridData() {
       valueFormatter: (params) => {
         return params.value ? params.value.toFixed(2) : '0.00'
       },
-      cellStyle: (params) => {
+      cellClass: (params) => {
         const hours = params.value || 0
-        if (hours >= 4) return { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' }
-        if (hours >= 2) return { backgroundColor: '#fff3e0', color: '#f57c00' }
-        return {}
+        if (hours >= 4) return 'ag-cell-error ag-cell-bold'
+        if (hours >= 2) return 'ag-cell-warning'
+        return ''
       },
       width: 140
     },
@@ -183,10 +183,8 @@ export default function useDowntimeGridData() {
         return params.value ? t('grids.downtime.resolved') : t('grids.downtime.unresolved')
       },
       cellEditor: 'agCheckboxCellEditor',
-      cellStyle: (params) => {
-        return params.value
-          ? { backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }
-          : { backgroundColor: '#ffebee', color: '#c62828', fontWeight: 'bold' }
+      cellClass: (params) => {
+        return params.value ? 'ag-cell-success ag-cell-bold' : 'ag-cell-error ag-cell-bold'
       },
       width: 130
     },

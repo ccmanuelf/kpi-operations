@@ -5,7 +5,7 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">{{ $t('kpi.availability') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.availabilityDescription') }}</p>
+        <p class="text-subtitle-1 text-medium-emphasis">{{ $t('kpi.availabilityDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -98,7 +98,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalTime') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('kpi.totalTime') }}</div>
                 <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: availabilityData?.total_time || 0 }) }}</div>
               </v-card-text>
             </v-card>
@@ -116,7 +116,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.mtbf') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('kpi.mtbf') }}</div>
                 <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: availabilityData?.mtbf || 0 }) }}</div>
               </v-card-text>
             </v-card>
@@ -421,15 +421,6 @@ onMounted(async () => {
 </style>
 
 <style>
-/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
-.v-tooltip > .v-overlay__content {
-  background-color: rgba(33, 33, 33, 0.95) !important;
-  color: #ffffff !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-}
-
 .v-tooltip .tooltip-title {
   font-weight: 600;
   margin-bottom: 4px;

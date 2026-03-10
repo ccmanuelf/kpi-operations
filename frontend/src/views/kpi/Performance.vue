@@ -5,7 +5,7 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">{{ $t('kpi.performance') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.performanceDescription') }}</p>
+        <p class="text-subtitle-1 text-medium-emphasis">{{ $t('kpi.performanceDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.actualRate') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('kpi.actualRate') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.actual_rate || 0 }} {{ $t('kpi.unitsPerHour') }}</div>
               </v-card-text>
             </v-card>
@@ -82,7 +82,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.standardRate') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('kpi.standardRate') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.standard_rate || 0 }} {{ $t('kpi.unitsPerHour') }}</div>
               </v-card-text>
             </v-card>
@@ -98,7 +98,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.totalUnits') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('kpi.totalUnits') }}</div>
                 <div class="text-h4 font-weight-bold">{{ performanceData?.total_units || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -114,7 +114,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('kpi.productionHours') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('kpi.productionHours') }}</div>
                 <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: performanceData?.production_hours || 0 }) }}</div>
               </v-card-text>
             </v-card>
@@ -173,25 +173,25 @@
           </v-card-title>
           <v-card-text>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">{{ $t('kpi.predictedAverage') }}</span>
+              <span class="text-medium-emphasis">{{ $t('kpi.predictedAverage') }}</span>
               <span class="font-weight-bold">{{ predictionData.predicted_average?.toFixed(1) }}%</span>
             </div>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">{{ $t('kpi.currentValue') }}</span>
+              <span class="text-medium-emphasis">{{ $t('kpi.currentValue') }}</span>
               <span>{{ predictionData.current_value?.toFixed(1) }}%</span>
             </div>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">{{ $t('kpi.expectedChange') }}</span>
+              <span class="text-medium-emphasis">{{ $t('kpi.expectedChange') }}</span>
               <v-chip :color="predictionData.expected_change_percent >= 0 ? 'success' : 'error'" size="small">
                 {{ predictionData.expected_change_percent >= 0 ? '+' : '' }}{{ predictionData.expected_change_percent?.toFixed(1) }}%
               </v-chip>
             </div>
             <div class="d-flex justify-space-between mb-2">
-              <span class="text-grey-darken-1">{{ $t('kpi.modelAccuracy') }}</span>
+              <span class="text-medium-emphasis">{{ $t('kpi.modelAccuracy') }}</span>
               <span>{{ predictionData.model_accuracy?.toFixed(0) }}%</span>
             </div>
             <div class="d-flex justify-space-between">
-              <span class="text-grey-darken-1">{{ $t('kpi.method') }}</span>
+              <span class="text-medium-emphasis">{{ $t('kpi.method') }}</span>
               <v-chip size="x-small" color="purple" variant="outlined">
                 {{ predictionData.prediction_method?.replace(/_/g, ' ') }}
               </v-chip>
@@ -217,14 +217,14 @@
                 {{ predictionData.health_assessment.health_score?.toFixed(0) }}
               </v-progress-circular>
               <div class="ml-3">
-                <div class="text-body-2 text-grey-darken-1">{{ $t('kpi.healthScore') }}</div>
+                <div class="text-body-2 text-medium-emphasis">{{ $t('kpi.healthScore') }}</div>
                 <v-chip :color="getTrendColor(predictionData.health_assessment.trend)" size="small">
                   <v-icon start size="small">{{ getTrendIcon(predictionData.health_assessment.trend) }}</v-icon>
                   {{ predictionData.health_assessment.trend }}
                 </v-chip>
               </div>
             </div>
-            <div class="text-caption text-grey-darken-1">
+            <div class="text-caption text-medium-emphasis">
               {{ predictionData.health_assessment.current_vs_target }}
             </div>
           </v-card-text>
@@ -378,15 +378,6 @@ onMounted(() => initialize())
 </style>
 
 <style>
-/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
-.v-tooltip > .v-overlay__content {
-  background-color: rgba(33, 33, 33, 0.95) !important;
-  color: #ffffff !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-}
-
 .v-tooltip .tooltip-title {
   font-weight: 600;
   margin-bottom: 4px;

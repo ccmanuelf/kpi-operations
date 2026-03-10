@@ -17,12 +17,14 @@ import {
 } from 'chart.js'
 import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
+import { useChartTheme } from '@/composables/useChartTheme'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
 export function useQualityCharts() {
   const { t } = useI18n()
   const kpiStore = useKPIStore()
+  const { scaleDefaults, legendDefaults, chartColors } = useChartTheme()
 
   const chartData = computed(() => ({
     labels: kpiStore.trends.quality.map(d => format(new Date(d.date), 'MMM dd')),
@@ -30,26 +32,26 @@ export function useQualityCharts() {
       {
         label: t('kpi.charts.qualityFPYPercent'),
         data: kpiStore.trends.quality.map(d => d.value),
-        borderColor: '#1976d2',
-        backgroundColor: 'rgba(25, 118, 210, 0.1)',
+        borderColor: chartColors.value.blue,
+        backgroundColor: chartColors.value.blueFill,
         tension: 0.3,
         fill: true
       },
       {
         label: t('kpi.charts.targetValue', { value: 99 }),
         data: Array(kpiStore.trends.quality.length).fill(99),
-        borderColor: '#2e7d32',
+        borderColor: chartColors.value.green,
         borderDash: [5, 5],
         pointRadius: 0
       }
     ]
   }))
 
-  const chartOptions = {
+  const chartOptions = computed(() => ({
     responsive: true,
     maintainAspectRatio: true,
     plugins: {
-      legend: { display: true, position: 'top' },
+      legend: { display: true, position: 'top', ...legendDefaults.value },
       tooltip: { mode: 'index', intersect: false }
     },
     scales: {
@@ -57,10 +59,12 @@ export function useQualityCharts() {
         beginAtZero: false,
         min: 90,
         max: 100,
-        ticks: { callback: (value) => `${value}%` }
-      }
+        ticks: { callback: (value) => `${value}%`, ...scaleDefaults.value.ticks },
+        grid: scaleDefaults.value.grid
+      },
+      x: { ticks: scaleDefaults.value.ticks, grid: scaleDefaults.value.grid }
     }
-  }
+  }))
 
   return {
     chartData,

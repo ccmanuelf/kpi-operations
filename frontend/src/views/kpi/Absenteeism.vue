@@ -5,7 +5,7 @@
     <v-row>
       <v-col cols="12" md="6">
         <h1 class="text-h3">{{ $t('kpi.absenteeism') }}</h1>
-        <p class="text-subtitle-1 text-grey-darken-1">{{ $t('kpi.absenteeismDescription') }}</p>
+        <p class="text-subtitle-1 text-medium-emphasis">{{ $t('kpi.absenteeismDescription') }}</p>
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
@@ -64,7 +64,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('attendance.totalEmployees') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('attendance.totalEmployees') }}</div>
                 <div class="text-h4 font-weight-bold">{{ absenteeismData?.total_employees || 0 }}</div>
               </v-card-text>
             </v-card>
@@ -96,7 +96,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('attendance.scheduledHours') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('attendance.scheduledHours') }}</div>
                 <div class="text-h4 font-weight-bold">{{ $t('kpi.hoursSuffix', { value: absenteeismData?.total_scheduled_hours || 0 }) }}</div>
               </v-card-text>
             </v-card>
@@ -114,7 +114,7 @@
           <template v-slot:activator="{ props }">
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
-                <div class="text-caption text-grey-darken-1">{{ $t('attendance.absentHours') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ $t('attendance.absentHours') }}</div>
                 <div class="text-h4 font-weight-bold text-error">{{ $t('kpi.hoursSuffix', { value: absenteeismData?.total_hours_absent || 0 }) }}</div>
               </v-card-text>
             </v-card>
@@ -450,15 +450,6 @@ onMounted(async () => {
 </style>
 
 <style>
-/* Tooltip styling - unscoped to affect Vuetify tooltip portal */
-.v-tooltip > .v-overlay__content {
-  background-color: rgba(33, 33, 33, 0.95) !important;
-  color: #ffffff !important;
-  padding: 12px 16px !important;
-  font-size: 14px !important;
-  line-height: 1.5 !important;
-}
-
 .v-tooltip .tooltip-title {
   font-weight: 600;
   margin-bottom: 4px;

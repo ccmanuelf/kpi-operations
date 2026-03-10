@@ -910,6 +910,10 @@ h2.text-h5 {
   backdrop-filter: blur(1px);
 }
 
+[data-theme="dark"] .v-data-table--loading::after {
+  background: rgba(22, 22, 22, 0.7);
+}
+
 /* ============================================
    LOADING STATES
    ============================================ */
