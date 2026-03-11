@@ -136,6 +136,8 @@
     "operations": "Operations",
     "kpiAnalytics": "KPI & Analytics",
     "planning": "Planning",
+    "monitoring": "Monitoring",
+    "kpiDetail": "KPI Detail",
     "reportsExport": "Reports & Export",
     "toggleDarkMode": "Toggle dark mode",
     "darkMode": "Dark mode",

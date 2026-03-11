@@ -63,16 +63,22 @@
       <v-divider role="separator"></v-divider>
 
       <v-list v-model:opened="navGroupsOpen" density="compact" nav :aria-label="$t('navigation.primaryNav')">
-        <!-- Top-level items -->
-        <v-list-item prepend-icon="mdi-view-dashboard" :title="$t('navigation.dashboard')" value="dashboard" to="/" />
-        <v-list-item prepend-icon="mdi-account-hard-hat" :title="$t('navigation.myShift')" value="my-shift" to="/my-shift" />
+        <!-- 1. Planning — Business flow starts here -->
+        <v-list-group value="planning">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-calendar-clock" :title="$t('navigation.planning')" />
+          </template>
+          <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
+          <v-list-item prepend-icon="mdi-clipboard-list" :title="$t('navigation.workOrders')" value="work-orders" to="/work-orders" />
+          <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.planVsActual')" value="plan-vs-actual" to="/plan-vs-actual" />
+        </v-list-group>
 
-        <!-- Operations Group -->
+        <!-- 2. Operations — Day-to-day execution -->
         <v-list-group value="operations">
           <template v-slot:activator="{ props }">
             <v-list-item v-bind="props" prepend-icon="mdi-clipboard-text" :title="$t('navigation.operations')" />
           </template>
-          <v-list-item prepend-icon="mdi-clipboard-list" :title="$t('navigation.workOrders')" value="work-orders" to="/work-orders" />
+          <v-list-item prepend-icon="mdi-account-hard-hat" :title="$t('navigation.myShift')" value="my-shift" to="/my-shift" />
           <v-list-item prepend-icon="mdi-factory" :title="$t('navigation.productionEntry')" value="production" to="/production-entry" />
           <v-list-item prepend-icon="mdi-clock-alert" :title="$t('navigation.downtime')" value="downtime" to="/data-entry/downtime" />
           <v-list-item prepend-icon="mdi-account-group" :title="$t('navigation.attendance')" value="attendance" to="/data-entry/attendance" />
@@ -80,41 +86,35 @@
           <v-list-item prepend-icon="mdi-pause-circle" :title="$t('navigation.holdResume')" value="hold" to="/data-entry/hold-resume" />
         </v-list-group>
 
-        <!-- KPI & Analytics Group -->
-        <v-list-group value="kpi">
+        <!-- 3. Monitoring — Dashboards and alerts -->
+        <v-list-group value="monitoring">
           <template v-slot:activator="{ props }">
-            <v-list-item v-bind="props" prepend-icon="mdi-chart-box" :title="$t('navigation.kpiAnalytics')" />
+            <v-list-item v-bind="props" prepend-icon="mdi-monitor-dashboard" :title="$t('navigation.monitoring')" />
           </template>
+          <v-list-item prepend-icon="mdi-view-dashboard" :title="$t('navigation.dashboard')" value="dashboard" to="/" />
           <v-list-item prepend-icon="mdi-chart-box" :title="$t('navigation.kpiDashboard')" value="kpi-dashboard" to="/kpi-dashboard" />
-          <v-list-item prepend-icon="mdi-chart-line" :title="$t('kpi.efficiency')" value="efficiency" to="/kpi/efficiency" />
-          <v-list-item prepend-icon="mdi-warehouse" :title="$t('kpi.wipAging')" value="wip" to="/kpi/wip-aging" />
-          <v-list-item prepend-icon="mdi-truck-delivery" :title="$t('kpi.otdFull')" value="otd" to="/kpi/on-time-delivery" />
-          <v-list-item prepend-icon="mdi-checkbox-marked-circle" :title="$t('kpi.availability')" value="availability" to="/kpi/availability" />
-          <v-list-item prepend-icon="mdi-speedometer" :title="$t('kpi.performance')" value="performance" to="/kpi/performance" />
-          <v-list-item prepend-icon="mdi-star" :title="$t('navigation.quality')" value="quality-kpi" to="/kpi/quality" />
-          <v-list-item prepend-icon="mdi-account-off" :title="$t('kpi.absenteeism')" value="absenteeism" to="/kpi/absenteeism" />
-          <v-list-item prepend-icon="mdi-gauge" :title="$t('navigation.oee')" value="oee" to="/kpi/oee" />
-        </v-list-group>
-
-        <!-- Planning Group -->
-        <v-list-group value="planning">
-          <template v-slot:activator="{ props }">
-            <v-list-item v-bind="props" prepend-icon="mdi-calendar-clock" :title="$t('navigation.planning')" />
-          </template>
-          <v-list-item prepend-icon="mdi-calendar-clock" :title="$t('navigation.capacityPlanning')" value="capacity-planning" to="/capacity-planning" />
-          <v-list-item prepend-icon="mdi-scale-balance" :title="$t('navigation.planVsActual')" value="plan-vs-actual" to="/plan-vs-actual" />
-          <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
-        </v-list-group>
-
-        <!-- Tools Group -->
-        <v-list-group value="tools">
-          <template v-slot:activator="{ props }">
-            <v-list-item v-bind="props" prepend-icon="mdi-toolbox" :title="$t('navigation.tools')" />
-          </template>
           <v-list-item prepend-icon="mdi-bell-alert" :title="$t('navigation.alerts')" value="alerts" to="/alerts" />
         </v-list-group>
 
-        <!-- Admin Group -->
+        <!-- 4. KPI Detail — Individual KPI deep dives -->
+        <v-list-group value="kpi-detail">
+          <template v-slot:activator="{ props }">
+            <v-list-item v-bind="props" prepend-icon="mdi-chart-box" :title="$t('navigation.kpiDetail')" />
+          </template>
+          <v-list-item prepend-icon="mdi-chart-line" :title="$t('kpi.efficiency')" value="efficiency" to="/kpi/efficiency" />
+          <v-list-item prepend-icon="mdi-speedometer" :title="$t('kpi.performance')" value="performance" to="/kpi/performance" />
+          <v-list-item prepend-icon="mdi-star" :title="$t('navigation.quality')" value="quality-kpi" to="/kpi/quality" />
+          <v-list-item prepend-icon="mdi-checkbox-marked-circle" :title="$t('kpi.availability')" value="availability" to="/kpi/availability" />
+          <v-list-item prepend-icon="mdi-gauge" :title="$t('navigation.oee')" value="oee" to="/kpi/oee" />
+          <v-list-item prepend-icon="mdi-warehouse" :title="$t('kpi.wipAging')" value="wip" to="/kpi/wip-aging" />
+          <v-list-item prepend-icon="mdi-truck-delivery" :title="$t('kpi.otdFull')" value="otd" to="/kpi/on-time-delivery" />
+          <v-list-item prepend-icon="mdi-account-off" :title="$t('kpi.absenteeism')" value="absenteeism" to="/kpi/absenteeism" />
+        </v-list-group>
+
+        <!-- 5. Simulation — Cross-role analysis tool -->
+        <v-list-item prepend-icon="mdi-chart-timeline-variant" :title="$t('navigation.simulation')" value="simulation" to="/simulation" />
+
+        <!-- 6. Admin — Configuration and settings -->
         <v-list-group value="admin">
           <template v-slot:activator="{ props }">
             <v-list-item v-bind="props" prepend-icon="mdi-shield-crown" :title="$t('navigation.admin')" />
@@ -235,7 +235,28 @@ onErrorCaptured((err, instance, info) => {
 // Drawer state
 const drawer = ref(true)
 const rail = ref(false)
-const navGroupsOpen = ref(['operations', 'kpi'])
+
+// Role-based default nav expansion
+// All groups visible to all roles; only the default expanded state differs
+const getDefaultNavGroups = () => {
+  const role = authStore.currentUser?.role
+  switch (role) {
+    case 'admin':
+      return ['planning', 'operations', 'monitoring', 'kpi-detail', 'admin']
+    case 'poweruser': // supervisor
+      return ['operations', 'monitoring', 'kpi-detail']
+    case 'leader':
+    case 'operator':
+    default:
+      return ['operations', 'monitoring']
+  }
+}
+const navGroupsOpen = ref(getDefaultNavGroups())
+
+// Reset expansion when user changes (login/logout/switch)
+watch(() => authStore.currentUser?.role, () => {
+  navGroupsOpen.value = getDefaultNavGroups()
+})
 const showNotification = ref(false)
 const notificationMessage = ref('')
 
