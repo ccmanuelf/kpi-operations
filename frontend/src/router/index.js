@@ -233,9 +233,16 @@ router.beforeEach((to, from, next) => {
     }
   }
 
-  // Redirect authenticated users away from login page
+  // Redirect authenticated users away from login page to role-based landing
   if (to.path === '/login' && isAuthenticated) {
-    next('/')
+    const user = JSON.parse(localStorage.getItem('user') || 'null')
+    const landing = {
+      operator: '/my-shift',
+      leader: '/',
+      poweruser: '/capacity-planning',
+      admin: '/kpi-dashboard'
+    }
+    next(landing[user?.role] || '/')
     return
   }
 

@@ -243,8 +243,8 @@ const getDefaultNavGroups = () => {
   switch (role) {
     case 'admin':
       return ['planning', 'operations', 'monitoring', 'kpi-detail', 'admin']
-    case 'poweruser': // supervisor
-      return ['operations', 'monitoring', 'kpi-detail']
+    case 'poweruser': // planners, schedulers, engineers
+      return ['planning', 'operations', 'monitoring']
     case 'leader':
     case 'operator':
     default:
