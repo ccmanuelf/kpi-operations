@@ -25,10 +25,27 @@ import os
 RATE_LIMIT_DISABLED = os.environ.get("DISABLE_RATE_LIMIT", "").lower() in ("1", "true", "yes")
 
 
-# Create limiter instance with remote address as key
+def get_real_client_ip(request: Request) -> str:
+    """
+    Extract the real client IP from proxy headers, falling back to direct IP.
+    On Render (and behind any reverse proxy), request.client.host is the
+    proxy's internal IP — all users share the same address. Reading
+    X-Forwarded-For gives us the actual client IP for per-user rate limiting.
+    """
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # X-Forwarded-For: client, proxy1, proxy2 — first entry is the real client
+        return forwarded_for.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    return get_remote_address(request)
+
+
+# Create limiter instance with real client IP as key
 limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["100/minute"],
+    key_func=get_real_client_ip,
+    default_limits=["200/minute"],
     storage_uri="memory://",
     strategy="fixed-window",
     enabled=not RATE_LIMIT_DISABLED,
@@ -39,8 +56,8 @@ limiter = Limiter(
 class RateLimitConfig:
     """Rate limiting configuration constants"""
 
-    # General API endpoints: 100 requests per minute
-    GENERAL_LIMIT = "100/minute"
+    # General API endpoints: 200 requests per minute
+    GENERAL_LIMIT = "200/minute"
 
     # Auth endpoints (login, register): 10 requests per minute (stricter)
     AUTH_LIMIT = "10/minute"
@@ -84,12 +101,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
 
         # Add rate limit headers to response
-        response.headers["X-RateLimit-Limit"] = "100"
+        response.headers["X-RateLimit-Limit"] = "200"
         response.headers["X-RateLimit-Reset"] = str(window_reset)
 
         # Note: Actual remaining count is managed by slowapi internally
         # These are informational headers
-        response.headers["X-RateLimit-Policy"] = "100 requests per minute"
+        response.headers["X-RateLimit-Policy"] = "200 requests per minute"
 
         return response
 
@@ -101,7 +118,7 @@ def get_rate_limit_key(request: Request) -> str:
     Combines IP address with authenticated user ID (if available)
     to provide per-user rate limiting for authenticated requests
     """
-    client_ip = get_remote_address(request)
+    client_ip = get_real_client_ip(request)
 
     # Try to get user from request state (set by auth dependency)
     user_id = getattr(request.state, "user_id", None)
@@ -202,4 +219,5 @@ __all__ = [
     "upload_rate_limit",
     "report_rate_limit",
     "get_rate_limit_key",
+    "get_real_client_ip",
 ]
