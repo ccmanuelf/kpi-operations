@@ -110,23 +110,28 @@ class CapacityAnalysis(Base):
         days = int(self.working_days or 0)
         shifts = int(self.shifts_per_day or 1)
         hours = float(self.hours_per_shift or 8.0)
-        self.gross_hours = days * shifts * hours
+        gross = days * shifts * hours
+        self.gross_hours = Decimal(str(gross))
 
         # Step 8: Net hours (apply efficiency and absenteeism)
         eff = float(self.efficiency_factor or 0.85)
         abs_factor = 1 - float(self.absenteeism_factor or 0.05)
-        self.net_hours = float(self.gross_hours) * eff * abs_factor
+        net = gross * eff * abs_factor
+        self.net_hours = Decimal(str(net))
 
         # Step 9: Capacity hours
         operators = int(self.operators_available or 0)
-        self.capacity_hours = float(self.net_hours) * operators
+        capacity = net * operators
+        self.capacity_hours = Decimal(str(capacity))
 
         # Steps 11-12: Utilization and bottleneck
-        if self.capacity_hours and float(self.capacity_hours) > 0:
-            self.utilization_percent = (float(self.demand_hours or 0) / float(self.capacity_hours)) * 100
-            self.is_bottleneck = float(self.utilization_percent) >= bottleneck_threshold
+        if capacity > 0:
+            demand = float(self.demand_hours or 0)
+            utilization = (demand / capacity) * 100
+            self.utilization_percent = Decimal(str(utilization))
+            self.is_bottleneck = utilization >= bottleneck_threshold
         else:
-            self.utilization_percent = 0
+            self.utilization_percent = Decimal("0")
             self.is_bottleneck = False
 
     def available_capacity_hours(self) -> float:
