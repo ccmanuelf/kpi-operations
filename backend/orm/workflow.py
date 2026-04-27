@@ -4,8 +4,13 @@ Audit trail for work order status transitions
 Implements Phase 10: Flexible Workflow Foundation
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Index
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -30,24 +35,24 @@ class WorkflowTransitionLog(Base):
     )
 
     # Primary key
-    transition_id = Column(Integer, primary_key=True, autoincrement=True)
+    transition_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    work_order_id = Column(
+    work_order_id: Mapped[str] = mapped_column(
         String(50), ForeignKey("WORK_ORDER.work_order_id", ondelete="CASCADE"), nullable=False, index=True
     )
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Transition details
-    from_status = Column(String(20), nullable=True)  # NULL for initial creation
-    to_status = Column(String(20), nullable=False)
-    transitioned_by = Column(Integer, ForeignKey("USER.user_id"), nullable=True)
-    transitioned_at = Column(DateTime, nullable=False, server_default=func.now(), index=True)
+    from_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # NULL for initial creation
+    to_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    transitioned_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"), nullable=True)
+    transitioned_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)
 
     # Optional context
-    notes = Column(Text)  # Transition reason/notes
-    trigger_source = Column(String(50))  # 'manual', 'automatic', 'bulk', 'api'
+    notes: Mapped[Optional[str]] = mapped_column(Text)  # Transition reason/notes
+    trigger_source: Mapped[Optional[str]] = mapped_column(String(50))  # 'manual', 'automatic', 'bulk', 'api'
 
     # Elapsed time snapshot (calculated at transition time)
-    elapsed_from_received_hours = Column(Integer)  # Hours since received_date
-    elapsed_from_previous_hours = Column(Integer)  # Hours since previous transition
+    elapsed_from_received_hours: Mapped[Optional[int]] = mapped_column(Integer)  # Hours since received_date
+    elapsed_from_previous_hours: Mapped[Optional[int]] = mapped_column(Integer)  # Hours since previous transition

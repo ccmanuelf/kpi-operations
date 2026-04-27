@@ -8,10 +8,15 @@ Each client has their own set of valid defect types defined in the catalog.
 The DefectType enum is kept for backward compatibility but is DEPRECATED.
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
-from sqlalchemy.sql import func
-from backend.database import Base
 import enum
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from backend.database import Base
 
 
 class DefectType(str, enum.Enum):
@@ -38,24 +43,26 @@ class DefectDetail(Base):
     __table_args__ = {"extend_existing": True}
 
     # Primary key
-    defect_detail_id = Column(String(50), primary_key=True)
+    defect_detail_id: Mapped[str] = mapped_column(String(50), primary_key=True)
 
     # Parent quality entry
-    quality_entry_id = Column(String(50), ForeignKey("QUALITY_ENTRY.quality_entry_id"), nullable=False, index=True)
+    quality_entry_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("QUALITY_ENTRY.quality_entry_id"), nullable=False, index=True
+    )
 
     # Multi-tenant isolation (HIGH SECURITY FIX)
-    client_id_fk = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id_fk: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Defect classification - NOW uses client-specific catalog (String, not Enum)
     # Validated against DEFECT_TYPE_CATALOG entries for the client
-    defect_type = Column(String(100), nullable=False, index=True)
-    defect_category = Column(String(100))  # Sub-category
-    defect_count = Column(Integer, nullable=False)
+    defect_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    defect_category: Mapped[Optional[str]] = mapped_column(String(100))  # Sub-category
+    defect_count: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Defect details
-    severity = Column(String(20))  # CRITICAL, MAJOR, MINOR
-    location = Column(String(255))  # Where on the product
-    description = Column(Text)
+    severity: Mapped[Optional[str]] = mapped_column(String(20))  # CRITICAL, MAJOR, MINOR
+    location: Mapped[Optional[str]] = mapped_column(String(255))  # Where on the product
+    description: Mapped[Optional[str]] = mapped_column(Text)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
