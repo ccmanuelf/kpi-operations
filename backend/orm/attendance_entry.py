@@ -5,10 +5,16 @@ Source: 04-Phase3_Attendance_Inventory.csv lines 2-21
 Enhanced with composite indexes for query performance (per audit requirement)
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum, Index
-from sqlalchemy.sql import func
-from backend.database import Base
 import enum
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from backend.database import Base
 
 
 class AbsenceType(str, enum.Enum):
@@ -33,46 +39,50 @@ class AttendanceEntry(Base):
     )
 
     # Primary key
-    attendance_entry_id = Column(String(50), primary_key=True)
+    attendance_entry_id: Mapped[str] = mapped_column(String(50), primary_key=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
-    line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    line_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True
+    )
 
     # Employee reference
-    employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"), nullable=False, index=True)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("EMPLOYEE.employee_id"), nullable=False, index=True)
 
     # Date tracking
-    shift_date = Column(DateTime, nullable=False, index=True)
-    shift_id = Column(Integer, ForeignKey("SHIFT.shift_id"))
+    shift_date: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    shift_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("SHIFT.shift_id"))
 
     # Hours tracking - REQUIRED for Absenteeism calculation
-    scheduled_hours = Column(Numeric(5, 2), nullable=False)
-    actual_hours = Column(Numeric(5, 2), default=0)
-    absence_hours = Column(Numeric(5, 2), default=0)  # scheduled_hours - actual_hours
+    scheduled_hours: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    actual_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=0)
+    absence_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=0)  # scheduled - actual
 
     # Absence tracking
-    is_absent = Column(Integer, nullable=False, default=0, index=True)  # Boolean
-    absence_type = Column(SQLEnum(AbsenceType))  # type: ignore[var-annotated]
+    is_absent: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)  # Boolean
+    absence_type: Mapped[Optional[AbsenceType]] = mapped_column(SQLEnum(AbsenceType))
 
     # Coverage tracking - for floating pool assignments
-    covered_by_employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"))  # FK to floating pool employee
-    coverage_confirmed = Column(Integer, default=0)  # Boolean: 0=pending, 1=confirmed
+    covered_by_employee_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("EMPLOYEE.employee_id")
+    )  # FK to floating pool employee
+    coverage_confirmed: Mapped[Optional[int]] = mapped_column(Integer, default=0)  # 0=pending, 1=confirmed
 
     # Late/early departure tracking
-    arrival_time = Column(DateTime)
-    departure_time = Column(DateTime)
-    is_late = Column(Integer, default=0)  # Boolean
-    is_early_departure = Column(Integer, default=0)  # Boolean
+    arrival_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    departure_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    is_late: Mapped[Optional[int]] = mapped_column(Integer, default=0)  # Boolean
+    is_early_departure: Mapped[Optional[int]] = mapped_column(Integer, default=0)  # Boolean
 
     # Metadata
-    absence_reason = Column(Text)
-    notes = Column(Text)
-    entered_by = Column(Integer, ForeignKey("USER.user_id"))
+    absence_reason: Mapped[Optional[str]] = mapped_column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    entered_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(Integer, ForeignKey("USER.user_id"))
+    updated_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"))
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

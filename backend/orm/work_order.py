@@ -4,10 +4,16 @@ Core entity for WIP tracking, OTD, and quality metrics
 Source: 01-Core_DataEntities_Inventory.csv lines 16-42
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey, Enum as SQLEnum, Index
-from sqlalchemy.sql import func
-from backend.database import Base
 import enum
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from backend.database import Base
 
 
 class WorkOrderStatus(str, enum.Enum):
@@ -60,72 +66,74 @@ class WorkOrder(Base):
     )
 
     # Primary key
-    work_order_id = Column(String(50), primary_key=True, index=True)
+    work_order_id: Mapped[str] = mapped_column(String(50), primary_key=True, index=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Order details
-    style_model = Column(String(100), nullable=False, index=True)
-    planned_quantity = Column(Integer, nullable=False)
-    actual_quantity = Column(Integer, default=0)
+    style_model: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    planned_quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    actual_quantity: Mapped[Optional[int]] = mapped_column(Integer, default=0)
 
     # Workflow lifecycle dates
-    received_date = Column(DateTime, index=True)  # When order was received/acknowledged
-    planned_date = Column(DateTime)  # When work is planned to start
-    expected_date = Column(DateTime)  # Expected completion date
-    dispatch_date = Column(DateTime, index=True)  # When released/dispatched to shopfloor
-    shipped_date = Column(DateTime)  # When shipped to client
-    closure_date = Column(DateTime)  # When formally closed
-    closed_by = Column(Integer)  # USER.user_id who closed the order
+    received_date: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)  # When received
+    planned_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When work is planned to start
+    expected_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # Expected completion date
+    dispatch_date: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)  # When released
+    shipped_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When shipped to client
+    closure_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When formally closed
+    closed_by: Mapped[Optional[int]] = mapped_column(Integer)  # USER.user_id who closed the order
 
     # Date tracking for OTD calculation (legacy + enhanced)
-    planned_start_date = Column(DateTime)
-    actual_start_date = Column(DateTime, index=True)
-    planned_ship_date = Column(DateTime, index=True)  # REQUIRED for OTD
-    required_date = Column(DateTime)
-    actual_delivery_date = Column(DateTime)  # REQUIRED for OTD
+    planned_start_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    actual_start_date: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)
+    planned_ship_date: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)  # REQUIRED for OTD
+    required_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    actual_delivery_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # REQUIRED for OTD
 
     # Workflow state tracking
-    previous_status = Column(String(20))  # For ON_HOLD resume tracking
+    previous_status: Mapped[Optional[str]] = mapped_column(String(20))  # For ON_HOLD resume tracking
 
     # Performance calculation
-    ideal_cycle_time = Column(Numeric(10, 4))  # Decimal hours (0.25 = 15 min)
-    calculated_cycle_time = Column(Numeric(10, 4))  # From production data
+    ideal_cycle_time: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))  # Decimal hours (0.25 = 15 min)
+    calculated_cycle_time: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))  # From production data
 
     # Status tracking
-    status = Column(SQLEnum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.ACTIVE, index=True)  # type: ignore[var-annotated]
-    priority = Column(String(20))  # HIGH, MEDIUM, LOW
+    status: Mapped[WorkOrderStatus] = mapped_column(
+        SQLEnum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.ACTIVE, index=True
+    )
+    priority: Mapped[Optional[str]] = mapped_column(String(20))  # HIGH, MEDIUM, LOW
 
     # Quality gates
-    qc_approved = Column(Integer, default=0)  # Boolean
-    qc_approved_by = Column(Integer)  # USER.user_id
-    qc_approved_date = Column(DateTime)
+    qc_approved: Mapped[Optional[int]] = mapped_column(Integer, default=0)  # Boolean
+    qc_approved_by: Mapped[Optional[int]] = mapped_column(Integer)  # USER.user_id
+    qc_approved_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Rejection tracking
-    rejection_reason = Column(Text)
-    rejected_by = Column(Integer)  # USER.user_id
-    rejected_date = Column(DateTime)
+    rejection_reason: Mapped[Optional[str]] = mapped_column(Text)
+    rejected_by: Mapped[Optional[int]] = mapped_column(Integer)  # USER.user_id
+    rejected_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Production tracking
-    total_run_time_hours = Column(Numeric(10, 2))
-    total_employees_assigned = Column(Integer)
+    total_run_time_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
+    total_employees_assigned: Mapped[Optional[int]] = mapped_column(Integer)
 
     # Additional metadata
-    notes = Column(Text)
-    customer_po_number = Column(String(100))
-    internal_notes = Column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    customer_po_number: Mapped[Optional[str]] = mapped_column(String(100))
+    internal_notes: Mapped[Optional[str]] = mapped_column(Text)
 
     # Bridge to Capacity Planning: links work order to a capacity order.
     # NULL means ad-hoc work order (prove-in, test run, calibration, rework).
-    capacity_order_id = Column(
+    capacity_order_id: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey("capacity_orders.id"),
         nullable=True,
     )
     # Origin distinguishes planned WOs (from Capacity Planning) from ad-hoc ones (from Ops).
-    origin = Column(String(20), nullable=False, default="AD_HOC")
+    origin: Mapped[str] = mapped_column(String(20), nullable=False, default="AD_HOC")
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())

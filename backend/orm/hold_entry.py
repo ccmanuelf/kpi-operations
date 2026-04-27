@@ -10,8 +10,14 @@ string-constant classes so that all existing comparison code
 (e.g. ``db_hold.hold_status == HoldStatus.ON_HOLD``) continues to work.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Text, DateTime, ForeignKey
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -87,44 +93,46 @@ class HoldEntry(Base):
     __table_args__ = {"extend_existing": True}
 
     # Primary key
-    hold_entry_id = Column(String(50), primary_key=True)
+    hold_entry_id: Mapped[str] = mapped_column(String(50), primary_key=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Work order reference
-    work_order_id = Column(String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True)
-    job_id = Column(String(50), ForeignKey("JOB.job_id"), index=True)  # Job-level tracking
+    work_order_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("WORK_ORDER.work_order_id"), nullable=False, index=True
+    )
+    job_id: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("JOB.job_id"), index=True)  # Job-level
 
     # Hold tracking — String(50) backed by HOLD_STATUS_CATALOG
-    hold_status = Column(String(50), nullable=False, default=HoldStatus.ON_HOLD, index=True)
-    hold_date = Column(DateTime, index=True)
-    resume_date = Column(DateTime)
+    hold_status: Mapped[str] = mapped_column(String(50), nullable=False, default=HoldStatus.ON_HOLD, index=True)
+    hold_date: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)
+    resume_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Duration calculation - CRITICAL for WIP Aging
     # Excludes this time from aging: Net Aging = Total Days - (Hold Hours / 24)
-    total_hold_duration_hours = Column(Numeric(10, 2), default=0)
+    total_hold_duration_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), default=0)
 
     # Hold reason details — String(50) backed by HOLD_REASON_CATALOG
-    hold_reason_category = Column(String(100))  # Kept for backward compatibility
-    hold_reason = Column(String(50))  # Now catalog-driven (was SQLEnum)
-    hold_reason_description = Column(Text)
+    hold_reason_category: Mapped[Optional[str]] = mapped_column(String(100))  # Backward compat
+    hold_reason: Mapped[Optional[str]] = mapped_column(String(50))  # Now catalog-driven (was SQLEnum)
+    hold_reason_description: Mapped[Optional[str]] = mapped_column(Text)
 
     # Quality hold specifics
-    quality_issue_type = Column(String(100))
-    expected_resolution_date = Column(DateTime)
+    quality_issue_type: Mapped[Optional[str]] = mapped_column(String(100))
+    expected_resolution_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Responsible parties
-    hold_initiated_by = Column(String(50), ForeignKey("USER.user_id"))
-    hold_approved_by = Column(String(50), ForeignKey("USER.user_id"))
-    resumed_by = Column(String(50), ForeignKey("USER.user_id"))
+    hold_initiated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
+    hold_approved_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
+    resumed_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Metadata
-    notes = Column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
     # Audit field - tracks who last modified the record (per audit requirement)
-    updated_by = Column(String(50), ForeignKey("USER.user_id"))
+    updated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
