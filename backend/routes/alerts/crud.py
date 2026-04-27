@@ -26,6 +26,7 @@ from backend.orm.alert import (
 from backend.calculations.alerts import generate_alert_id
 from backend.auth.jwt import get_current_user
 from backend.middleware.client_auth import verify_client_access
+from backend.orm.user import User
 from backend.constants import (
     LOOKBACK_WEEKLY_DAYS,
     LOOKBACK_DAILY_HOURS,
@@ -51,7 +52,7 @@ async def list_alerts(
     days: int = Query(LOOKBACK_WEEKLY_DAYS, ge=MIN_DAYS_LOOKBACK, le=MAX_DAYS_SHORT, description="Days to look back"),
     limit: int = Query(MEDIUM_PAGE_SIZE, ge=MIN_DAYS_LOOKBACK, le=MAX_ALERT_PAGE_SIZE, description="Maximum results"),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     List alerts with optional filters
@@ -87,7 +88,7 @@ async def list_alerts(
 async def get_alert_dashboard(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get comprehensive alert dashboard
@@ -148,7 +149,7 @@ async def get_alert_dashboard(
 async def get_alert_summary(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get quick summary of active alerts
@@ -185,7 +186,7 @@ async def get_alert_summary(
 async def get_alert(
     alert_id: str,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Get specific alert by ID"""
     alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
@@ -198,7 +199,7 @@ async def get_alert(
 async def create_alert(
     alert_data: AlertCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Create new alert manually
@@ -237,7 +238,7 @@ async def create_alert(
 async def acknowledge_alert(
     alert_id: str,
     ack_data: AlertAcknowledge,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -266,7 +267,7 @@ async def acknowledge_alert(
 async def resolve_alert(
     alert_id: str,
     resolve_data: AlertResolve,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -307,7 +308,7 @@ async def resolve_alert(
 @crud_router.post("/{alert_id}/dismiss", response_model=AlertResponse)
 async def dismiss_alert(
     alert_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
