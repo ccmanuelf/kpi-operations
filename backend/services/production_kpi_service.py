@@ -10,13 +10,14 @@ Phase A.2: Added batch calculation methods to eliminate N+1 query patterns
 """
 
 import logging
-from decimal import Decimal
-from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-from sqlalchemy.orm import Session, joinedload
+from datetime import date, datetime, time, timezone
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, Union, cast
+
+from sqlalchemy import and_, func
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import func, and_
+from sqlalchemy.orm import Session, joinedload
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ class ProductionKPIService:
         self.db = db
         self._cache = get_cache()
 
-    def _get_product_cached(self, product_id: str) -> Optional[Product]:
+    def _get_product_cached(self, product_id: int) -> Optional[Product]:
         """
         Get product by ID with caching.
 
@@ -146,10 +147,12 @@ class ProductionKPIService:
         if cached_data is None:
             return None
 
-        # Create a minimal Product-like object for compatibility
-        return _CachedProduct(cached_data)
+        # Create a minimal Product-like object for compatibility.
+        # _CachedProduct is duck-type-equivalent for downstream consumers but
+        # is not a SQLAlchemy Product instance — the cast tells mypy that.
+        return cast(Optional[Product], _CachedProduct(cached_data))
 
-    def _get_shift_cached(self, shift_id: str) -> Optional[Shift]:
+    def _get_shift_cached(self, shift_id: int) -> Optional[Shift]:
         """
         Get shift by ID with caching.
 
@@ -181,8 +184,10 @@ class ProductionKPIService:
         if cached_data is None:
             return None
 
-        # Create a minimal Shift-like object for compatibility
-        return _CachedShift(cached_data)
+        # Create a minimal Shift-like object for compatibility.
+        # _CachedShift is duck-type-equivalent for downstream consumers but
+        # is not a SQLAlchemy Shift instance — the cast tells mypy that.
+        return cast(Optional[Shift], _CachedShift(cached_data))
 
     def calculate_entry_kpis(
         self, entry: ProductionEntry, product: Optional[Product] = None, shift: Optional[Shift] = None
@@ -281,9 +286,9 @@ class ProductionKPIService:
             return {}
 
         # Pre-fetch all unique IDs
-        product_ids = list(set(e.product_id for e in entries if e.product_id))
-        shift_ids = list(set(e.shift_id for e in entries if e.shift_id))
-        client_ids = list(set(getattr(e, "client_id", None) for e in entries if getattr(e, "client_id", None)))
+        product_ids = list({e.product_id for e in entries if e.product_id})
+        shift_ids = list({e.shift_id for e in entries if e.shift_id})
+        client_ids: List[str] = list({e.client_id for e in entries if e.client_id})
 
         # Batch fetch all products (single query)
         products_by_id: Dict[int, Product] = {}
@@ -307,8 +312,8 @@ class ProductionKPIService:
         for entry in entries:
             product = products_by_id.get(entry.product_id)
             shift = shifts_by_id.get(entry.shift_id)
-            client_id = getattr(entry, "client_id", None)
-            client_config = configs_by_client.get(client_id, {})
+            client_id_for_entry = entry.client_id
+            client_config = configs_by_client.get(client_id_for_entry, {}) if client_id_for_entry else {}
 
             # Calculate each KPI component using pre-fetched data
             efficiency = self._calculate_efficiency(entry, product, shift, client_config)
@@ -341,7 +346,7 @@ class ProductionKPIService:
         Returns:
             Dictionary with results and any errors
         """
-        results = {"total": len(entry_ids), "successful": 0, "failed": 0, "entries": []}
+        results: Dict[str, Any] = {"total": len(entry_ids), "successful": 0, "failed": 0, "entries": []}
 
         if not entry_ids:
             return results
@@ -485,7 +490,7 @@ class ProductionKPIService:
                 "entry_count": result.entry_count or 0,
             }
 
-        return self._cache.get_or_set(cache_key, compute_summary, ttl_seconds=300)
+        return cast(Dict[str, Any], self._cache.get_or_set(cache_key, compute_summary, ttl_seconds=300))
 
     # ========================================================================
     # Private calculation methods
@@ -720,14 +725,15 @@ class ProductionKPIService:
         availability_estimated = True
 
         # Attempt real availability calculation when we have a work order
-        if entry is not None and getattr(entry, "work_order_id", None):
+        work_order_id = entry.work_order_id if entry is not None else None
+        if entry is not None and work_order_id:
             try:
                 target_date = entry.shift_date.date() if hasattr(entry.shift_date, "date") else entry.shift_date
                 client_id = getattr(entry, "client_id", None)
 
                 availability_pct, _scheduled, _downtime, event_count = calculate_availability(
                     db=self.db,
-                    work_order_id=entry.work_order_id,
+                    work_order_id=work_order_id,
                     target_date=target_date,
                     client_id=client_id,
                 )
@@ -778,8 +784,6 @@ class _CachedShift:
     """Minimal Shift-like object reconstructed from cached data."""
 
     def __init__(self, data: dict):
-        from datetime import time
-
         self.shift_id = data.get("shift_id")
         self.name = data.get("name")
         self.client_id = data.get("client_id")
@@ -788,20 +792,18 @@ class _CachedShift:
         start_str = data.get("start_time")
         end_str = data.get("end_time")
 
+        self.start_time: Optional[time] = None
         if start_str and start_str != "None":
             try:
                 parts = start_str.split(":")
                 self.start_time = time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
             except (ValueError, IndexError):
                 self.start_time = None
-        else:
-            self.start_time = None
 
+        self.end_time: Optional[time] = None
         if end_str and end_str != "None":
             try:
                 parts = end_str.split(":")
                 self.end_time = time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
             except (ValueError, IndexError):
                 self.end_time = None
-        else:
-            self.end_time = None
