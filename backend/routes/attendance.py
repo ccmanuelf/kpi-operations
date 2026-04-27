@@ -32,6 +32,7 @@ from backend.services.attendance_service import (
 )
 from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 
@@ -82,7 +83,7 @@ def list_attendance(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[AttendanceRecordResponse]:
+) -> List[AttendanceEntry]:
     """
     List attendance records with filters
     SECURITY: Returns only attendance for user's authorized clients
@@ -110,7 +111,7 @@ def get_attendance_by_employee(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[AttendanceRecordResponse]:
+) -> List[AttendanceEntry]:
     """
     Get all attendance records for a specific employee
     SECURITY: Returns only attendance for user's authorized clients
@@ -134,7 +135,7 @@ def get_attendance_by_date_range(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[AttendanceRecordResponse]:
+) -> List[AttendanceEntry]:
     """
     Get attendance records within a date range
     SECURITY: Returns only attendance for user's authorized clients
@@ -223,7 +224,7 @@ def get_attendance(
 
 @router.put("/{attendance_id}", response_model=AttendanceRecordResponse)
 def update_attendance(
-    attendance_id: int,
+    attendance_id: str,
     attendance_update: AttendanceRecordUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -247,7 +248,7 @@ def update_attendance(
 
 @router.delete("/{attendance_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_attendance(
-    attendance_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
+    attendance_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ) -> None:
     """
     Delete attendance record (supervisor only)
@@ -332,10 +333,16 @@ def calculate_absenteeism_kpi(
         query = query.filter(AttendanceEntry.client_id == effective_client_id)
 
     result = query.first()
-    scheduled = float(result.scheduled or 0)
-    absent = float(result.absent or 0)
-    emp_count = result.emp_count or 0
-    absence_count = result.absence_count or 0
+    if result is None:
+        scheduled = 0.0
+        absent = 0.0
+        emp_count = 0
+        absence_count = 0
+    else:
+        scheduled = float(result.scheduled or 0)
+        absent = float(result.absent or 0)
+        emp_count = result.emp_count or 0
+        absence_count = result.absence_count or 0
     rate = (absent / scheduled * 100) if scheduled > 0 else 0
 
     # Get shift_id for response if not provided
@@ -359,7 +366,7 @@ def calculate_absenteeism_kpi(
 
     reason_query = db.query(
         absence_type_label,
-        sa_func.count().label("count"),
+        sa_func.count().label("row_count"),
     ).filter(
         AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
         AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
@@ -371,12 +378,12 @@ def calculate_absenteeism_kpi(
 
     reason_results = reason_query.group_by(absence_type_label).all()
 
-    total_absences_for_pct = sum(r.count for r in reason_results) or 1
+    total_absences_for_pct = sum(r.row_count for r in reason_results) or 1
     by_reason = [
         {
             "reason": str(r.reason) if r.reason else "Unspecified",
-            "count": r.count,
-            "percentage": round((r.count / total_absences_for_pct) * 100, 1),
+            "count": r.row_count,
+            "percentage": round((r.row_count / total_absences_for_pct) * 100, 1),
         }
         for r in reason_results
     ]
