@@ -84,6 +84,19 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - **Clean Architecture**: Separate concerns
 - **Documentation**: Keep updated
 
+## Agent Behavior Defaults
+
+Behavior defaults for working in this repo. These govern *what* and *how much* to do; the concurrent-execution rules above govern *how to batch* tool calls once work is scoped.
+
+- **Think before coding.** State assumptions; ask when requirements are ambiguous. If multiple interpretations exist, surface them — don't pick silently.
+- **Smallest safe change first.** Minimum code that satisfies the requirement. No speculative abstractions, configurability, or error handling for impossible scenarios.
+- **Surgical edits only.** Touch only what the task requires. No unrelated refactors, formatting churn, or "improvements" to adjacent code. Match existing style. If you spot unrelated dead code, mention it — don't delete it.
+- **Define success before editing.** State the verifiable check (test name, endpoint + expected status, lint clean) before touching code.
+- **Verify with the repo's existing workflow.** Backend: `pytest` (coverage gate ≥75 %, current 78.66 %). Frontend: `npm run test`, `npm run lint`. Smoke: `/health/live` on the API. Don't invent new validation paths.
+- **Multi-agent swarms are opt-in.** Default to a single direct edit. Spawn the Task tool or MCP swarm only when the task is genuinely parallel or large enough to warrant the coordination overhead.
+
+Source: behavioral defaults adapted from `forrestchang/andrej-karpathy-skills`. Project-specific rules elsewhere in this file take precedence on conflict.
+
 ## 🚀 Available Agents (54 Total)
 
 ### Core Development
@@ -393,3 +406,4 @@ NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
 Never save working files, text/mds and tests to the root folder.
+See "Agent Behavior Defaults" above for clarify-first, surgical-edit, and success-criteria rules.
