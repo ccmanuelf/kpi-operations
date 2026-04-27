@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, cast, Date
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 from backend.orm.quality_entry import QualityEntry
 
@@ -115,6 +115,9 @@ def calculate_ppm(
 
     inspections = query.first()
 
+    if inspections is None:
+        return (Decimal("0"), 0, 0)
+
     total_inspected = inspections.total_inspected or 0
     total_defects = inspections.total_defects or 0
 
@@ -151,7 +154,7 @@ def calculate_ppm_by_category(
     total_inspected = sum(i.units_inspected for i in inspections)
 
     # Group by inspection stage (instead of defect_category)
-    categories = {}
+    categories: Dict[str, Dict[str, Any]] = {}
     for insp in inspections:
         cat = insp.inspection_stage or "Uncategorized"
         if cat not in categories:
@@ -171,8 +174,8 @@ def calculate_ppm_by_category(
 def identify_top_defects(
     db: Session,
     work_order_id: Optional[str] = None,
-    start_date: date = None,
-    end_date: date = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
     client_id: Optional[str] = None,
     limit: int = 10,
 ) -> list[dict]:
@@ -197,7 +200,7 @@ def identify_top_defects(
     inspections = query.all()
 
     # Group by process step (replaces defect_type)
-    defect_types = {}
+    defect_types: Dict[str, Dict[str, Any]] = {}
     total_defects = 0
 
     for insp in inspections:
@@ -209,7 +212,7 @@ def identify_top_defects(
         total_defects += insp.units_defective
 
     # Convert to list and calculate percentages
-    results = list(defect_types.values())
+    results: List[Dict[str, Any]] = list(defect_types.values())
 
     if total_defects > 0:
         for item in results:
@@ -255,8 +258,8 @@ def calculate_cost_of_quality(
 
     inspections = query.all()
 
-    total_scrap = sum(i.units_scrapped for i in inspections)
-    total_rework = sum(i.units_reworked for i in inspections)
+    total_scrap = sum((i.units_scrapped or 0) for i in inspections)
+    total_rework = sum((i.units_reworked or 0) for i in inspections)
 
     # Use default costs if not provided
     if not scrap_cost_per_unit:
