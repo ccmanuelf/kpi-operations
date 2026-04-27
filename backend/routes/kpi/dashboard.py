@@ -134,25 +134,22 @@ def get_aggregated_dashboard(
         result["performance"] = {"current": 0, "target": 90.0, "error": "Calculation error"}
 
     # ---- QUALITY (FPY, RTY, PPM, DPMO) ----
-    try:
-        fpy_rty = calculate_fpy_rty(db, effective_client_id, start_date, end_date)
-        ppm_data = calculate_ppm(db, effective_client_id, start_date, end_date)
-        dpmo_data = calculate_dpmo(db, effective_client_id, start_date, end_date)
-
-        result["quality"] = {
-            "fpy": round(fpy_rty.get("fpy", 0), 1),
-            "rty": round(fpy_rty.get("rty", 0), 1),
-            "ppm": int(ppm_data.get("ppm", 0)),
-            "dpmo": int(dpmo_data.get("dpmo", 0)),
-            "total_inspected": ppm_data.get("total_inspected", 0),
-            "total_defective": ppm_data.get("total_defective", 0),
-        }
-    except SQLAlchemyError:
-        logger.exception("Database error fetching quality metrics")
-        result["quality"] = {"fpy": 0, "rty": 0, "ppm": 0, "dpmo": 0, "error": "Database error"}
-    except Exception:
-        logger.exception("Unexpected error fetching quality metrics")
-        result["quality"] = {"fpy": 0, "rty": 0, "ppm": 0, "dpmo": 0, "error": "Calculation error"}
+    # TODO: Quality KPIs need a per-client aggregation function. The previous
+    # implementation here called a non-existent `calculate_fpy_rty()` and used
+    # the wrong signatures for calculate_ppm()/calculate_dpmo() (which take
+    # work_order_id, not client_id, and return tuples not dicts). The whole
+    # block was always falling into the except path. Returning placeholders
+    # until the aggregate quality query is implemented properly — see also
+    # routes/quality/* for per-resource quality endpoints.
+    result["quality"] = {
+        "fpy": 0,
+        "rty": 0,
+        "ppm": 0,
+        "dpmo": 0,
+        "total_inspected": 0,
+        "total_defective": 0,
+        "error": "Aggregate quality KPI not yet implemented",
+    }
 
     # ---- AVAILABILITY ----
     try:
@@ -163,7 +160,7 @@ def get_aggregated_dashboard(
             downtime_query = downtime_query.filter(DowntimeEntry.client_id == effective_client_id)
 
         downtime_result = downtime_query.first()
-        downtime_hours = float(downtime_result.downtime_hours or 0)
+        downtime_hours = float(downtime_result.downtime_hours or 0) if downtime_result else 0.0
 
         # Calculate scheduled hours from production entries
         scheduled_hours = float(prod_result.total_hours or 480) if prod_result else 480
@@ -193,8 +190,14 @@ def get_aggregated_dashboard(
             att_query = att_query.filter(AttendanceEntry.client_id == effective_client_id)
 
         att_result = att_query.first()
-        scheduled = float(att_result.scheduled or 0)
-        absent = float(att_result.absent or 0)
+        if att_result is None:
+            scheduled = 0.0
+            absent = 0.0
+            employee_count = 0
+        else:
+            scheduled = float(att_result.scheduled or 0)
+            absent = float(att_result.absent or 0)
+            employee_count = att_result.employee_count or 0
         absenteeism_rate = (absent / scheduled * 100) if scheduled > 0 else 0
 
         result["absenteeism"] = {
@@ -202,7 +205,7 @@ def get_aggregated_dashboard(
             "target": 5.0,
             "total_scheduled_hours": round(scheduled, 1),
             "total_absent_hours": round(absent, 1),
-            "employee_count": att_result.employee_count or 0,
+            "employee_count": employee_count,
         }
     except SQLAlchemyError:
         logger.exception("Database error fetching absenteeism metrics")
@@ -223,7 +226,7 @@ def get_aggregated_dashboard(
             wip_query = wip_query.filter(HoldEntry.client_id == effective_client_id)
 
         wip_result = wip_query.first()
-        total_active = wip_result.total_count or 0
+        total_active = wip_result.total_count if wip_result else 0
 
         # For simplicity, set defaults - proper aging calculation would need hold_date analysis
         result["wip_aging"] = {
@@ -254,8 +257,12 @@ def get_aggregated_dashboard(
             otd_query = otd_query.filter(WorkOrder.client_id == effective_client_id)
 
         otd_result = otd_query.first()
-        total_orders = otd_result.total or 0
-        on_time_orders = otd_result.on_time or 0
+        if otd_result is None:
+            total_orders = 0
+            on_time_orders = 0
+        else:
+            total_orders = otd_result.total or 0
+            on_time_orders = otd_result.on_time or 0
         otd_rate = (on_time_orders / total_orders * 100) if total_orders > 0 else 100
 
         result["otd"] = {
