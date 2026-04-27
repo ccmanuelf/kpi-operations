@@ -81,7 +81,15 @@ def get_kpi_variance_report(
 
         service = KPIIntegrationService(db)
 
-        report = service.get_variance_report(client_id, schedule_id)
+        # The granular variance method requires a schedule_id; without it,
+        # calculate_variance_detailed gives an aggregate report across all
+        # client schedules. Both return shapes are acceptable for the
+        # /variance-report response.
+        report: Any
+        if schedule_id is not None:
+            report = service.calculate_variance(client_id, schedule_id)
+        else:
+            report = service.calculate_variance_detailed(client_id)
         return report
     except ImportError:
         raise HTTPException(status_code=501, detail="KPI integration service not yet implemented")
@@ -178,9 +186,9 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
                 "calendar_date": e.calendar_date.isoformat(),
                 "is_working_day": e.is_working_day,
                 "shifts_available": e.shifts_available,
-                "shift1_hours": float(e.shift1_hours),
-                "shift2_hours": float(e.shift2_hours),
-                "shift3_hours": float(e.shift3_hours),
+                "shift1_hours": float(e.shift1_hours or 0),
+                "shift2_hours": float(e.shift2_hours or 0),
+                "shift3_hours": float(e.shift3_hours or 0),
                 "holiday_name": e.holiday_name,
                 "notes": e.notes,
             }
@@ -193,10 +201,10 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
                 "line_code": l.line_code,
                 "line_name": l.line_name,
                 "department": l.department,
-                "standard_capacity_units_per_hour": float(l.standard_capacity_units_per_hour),
+                "standard_capacity_units_per_hour": float(l.standard_capacity_units_per_hour or 0),
                 "max_operators": l.max_operators,
-                "efficiency_factor": float(l.efficiency_factor),
-                "absenteeism_factor": float(l.absenteeism_factor),
+                "efficiency_factor": float(l.efficiency_factor or 0),
+                "absenteeism_factor": float(l.absenteeism_factor or 0),
                 "is_active": l.is_active,
                 "notes": l.notes,
             }
@@ -216,8 +224,8 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
                 "required_date": o.required_date.isoformat(),
                 "planned_start_date": o.planned_start_date.isoformat() if o.planned_start_date else None,
                 "planned_end_date": o.planned_end_date.isoformat() if o.planned_end_date else None,
-                "priority": o.priority.value,
-                "status": o.status.value,
+                "priority": o.priority.value if o.priority else None,
+                "status": o.status.value if o.status else None,
                 "order_sam_minutes": float(o.order_sam_minutes) if o.order_sam_minutes else None,
                 "notes": o.notes,
             }
@@ -259,10 +267,10 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
                 "snapshot_date": s.snapshot_date.isoformat(),
                 "item_code": s.item_code,
                 "item_description": s.item_description,
-                "on_hand_quantity": float(s.on_hand_quantity),
-                "allocated_quantity": float(s.allocated_quantity),
-                "on_order_quantity": float(s.on_order_quantity),
-                "available_quantity": float(s.available_quantity),
+                "on_hand_quantity": float(s.on_hand_quantity or 0),
+                "allocated_quantity": float(s.allocated_quantity or 0),
+                "on_order_quantity": float(s.on_order_quantity or 0),
+                "available_quantity": float(s.available_quantity or 0),
                 "unit_of_measure": s.unit_of_measure,
                 "location": s.location,
                 "notes": s.notes,
@@ -328,7 +336,10 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
                 "notes": sd.notes,
                 # Include parent schedule metadata
                 "schedule_name": next((s.schedule_name for s in schedules if s.id == sd.schedule_id), None),
-                "schedule_status": next((s.status.value for s in schedules if s.id == sd.schedule_id), None),
+                "schedule_status": next(
+                    (s.status.value for s in schedules if s.id == sd.schedule_id and s.status is not None),
+                    None,
+                ),
             }
             for sd in schedule_details
         ],
