@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.employee_line_assignment import EmployeeLineAssignment
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 from backend.schemas.employee_line_assignment import (
@@ -42,7 +43,7 @@ def list_assignments_endpoint(
     active_only: bool = Query(True, description="Only return active assignments"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[EmployeeLineAssignmentResponse]:
+) -> List[EmployeeLineAssignment]:
     """
     List employee line assignments with optional filters.
 
@@ -74,7 +75,7 @@ def get_employee_lines_endpoint(
     employee_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[EmployeeLineAssignmentResponse]:
+) -> List[EmployeeLineAssignment]:
     """
     Get active line assignments for a specific employee.
 
@@ -97,7 +98,7 @@ def get_line_employees_endpoint(
     client_id: str = Query(..., description="Client ID for tenant isolation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[EmployeeLineAssignmentResponse]:
+) -> List[EmployeeLineAssignment]:
     """
     Get active employees assigned to a specific production line.
 
@@ -122,7 +123,7 @@ def create_assignment_endpoint(
     data: EmployeeLineAssignmentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> EmployeeLineAssignmentResponse:
+) -> EmployeeLineAssignment:
     """
     Create a new employee-to-line assignment.
 
@@ -164,7 +165,7 @@ def update_assignment_endpoint(
     data: EmployeeLineAssignmentUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> EmployeeLineAssignmentResponse:
+) -> EmployeeLineAssignment:
     """
     Update an existing employee line assignment.
 
@@ -199,7 +200,7 @@ def end_assignment_endpoint(
     assignment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> EmployeeLineAssignmentResponse:
+) -> EmployeeLineAssignment:
     """
     End an employee line assignment (sets end_date to today).
 
