@@ -34,7 +34,7 @@ class TestRateLimitMiddleware:
         # Verify header values if present
         if "X-RateLimit-Limit" in response.headers:
             limit = response.headers.get("X-RateLimit-Limit")
-            assert limit == "100", f"Expected limit 100, got {limit}"
+            assert limit == "200", f"Expected limit 200, got {limit}"
 
         if "X-RateLimit-Reset" in response.headers:
             reset = response.headers.get("X-RateLimit-Reset")
@@ -83,7 +83,7 @@ class TestRateLimitConfig:
         """Test rate limit configuration constants"""
         from backend.middleware.rate_limit import RateLimitConfig
 
-        assert RateLimitConfig.GENERAL_LIMIT == "100/minute"
+        assert RateLimitConfig.GENERAL_LIMIT == "200/minute"
         assert RateLimitConfig.AUTH_LIMIT == "10/minute"
         assert RateLimitConfig.SENSITIVE_LIMIT == "5/minute"
         assert RateLimitConfig.UPLOAD_LIMIT == "20/minute"
@@ -123,8 +123,11 @@ class TestRateLimitKeyFunction:
         from backend.middleware.rate_limit import get_rate_limit_key
         from unittest.mock import MagicMock
 
-        # Create mock request
+        # Create mock request with no proxy headers (forces fallback to client.host).
+        # get_real_client_ip checks X-Forwarded-For/X-Real-IP first; without explicit
+        # None returns, MagicMock would yield truthy mocks and short-circuit there.
         mock_request = MagicMock()
+        mock_request.headers.get.return_value = None
         mock_request.client.host = "192.168.1.1"
 
         # State without user_id
@@ -141,8 +144,9 @@ class TestRateLimitKeyFunction:
         from backend.middleware.rate_limit import get_rate_limit_key
         from unittest.mock import MagicMock
 
-        # Create mock request with authenticated user
+        # Create mock request with authenticated user, no proxy headers.
         mock_request = MagicMock()
+        mock_request.headers.get.return_value = None
         mock_request.client.host = "192.168.1.1"
 
         mock_state = MagicMock()

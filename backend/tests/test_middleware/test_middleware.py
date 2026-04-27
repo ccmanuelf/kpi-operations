@@ -150,9 +150,9 @@ class TestRateLimitMiddleware:
         self.client = TestClient(app)
 
     def test_rate_limit_header_present(self):
-        """X-RateLimit-Limit header is set to 100."""
+        """X-RateLimit-Limit header is set to 200."""
         resp = self.client.get("/ping")
-        assert resp.headers["X-RateLimit-Limit"] == "100"
+        assert resp.headers["X-RateLimit-Limit"] == "200"
 
     def test_rate_limit_reset_header_present(self):
         """X-RateLimit-Reset header is a numeric timestamp."""
@@ -164,7 +164,7 @@ class TestRateLimitMiddleware:
     def test_rate_limit_policy_header_present(self):
         """X-RateLimit-Policy header describes the policy."""
         resp = self.client.get("/ping")
-        assert resp.headers["X-RateLimit-Policy"] == "100 requests per minute"
+        assert resp.headers["X-RateLimit-Policy"] == "200 requests per minute"
 
     def test_response_200_ok(self):
         """Endpoint returns 200 when rate limit is not exceeded."""
@@ -176,7 +176,7 @@ class TestRateLimitConfig:
     """Verify the RateLimitConfig constants."""
 
     def test_general_limit(self):
-        assert RateLimitConfig.GENERAL_LIMIT == "100/minute"
+        assert RateLimitConfig.GENERAL_LIMIT == "200/minute"
 
     def test_auth_limit(self):
         assert RateLimitConfig.AUTH_LIMIT == "10/minute"
