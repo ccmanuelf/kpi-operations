@@ -93,6 +93,7 @@ Behavior defaults for working in this repo. These govern *what* and *how much* t
 - **Surgical edits only.** Touch only what the task requires. No unrelated refactors, formatting churn, or "improvements" to adjacent code. Match existing style. If you spot unrelated dead code, mention it — don't delete it.
 - **Define success before editing.** State the verifiable check (test name, endpoint + expected status, lint clean) before touching code.
 - **Verify with the repo's existing workflow.** Backend: `pytest` (coverage gate ≥75 %, current 78.66 %). Frontend: `npm run test`, `npm run lint`. Smoke: `/health/live` on the API. Don't invent new validation paths.
+- **Self-audit findings expand scope; no tech debt allowed.** During a deliberate verification pass, anything found — even pre-existing issues beyond your own changes — becomes part of the current task and must be fixed before presenting. This activates only when auditing; it does not override *Surgical edits only* during the baseline task.
 - **Multi-agent swarms are opt-in.** Default to a single direct edit. Spawn the Task tool or MCP swarm only when the task is genuinely parallel or large enough to warrant the coordination overhead.
 
 Source: behavioral defaults adapted from `forrestchang/andrej-karpathy-skills`. Project-specific rules elsewhere in this file take precedence on conflict.
