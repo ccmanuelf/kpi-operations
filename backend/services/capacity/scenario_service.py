@@ -478,6 +478,8 @@ class ScenarioService:
         result = self.apply_scenario_parameters(client_id, scenario_id, period_start, period_end)
 
         scenario = self.db.query(CapacityScenario).filter(CapacityScenario.id == scenario_id).first()
+        if scenario is None:
+            raise ValueError(f"Scenario {scenario_id} not found for client {client_id}")
 
         # Extract bottleneck line codes
         original_bottlenecks = [
@@ -498,7 +500,7 @@ class ScenarioService:
         return DetailedScenarioResult(
             scenario_id=scenario.id,
             scenario_name=scenario.scenario_name,
-            scenario_type=scenario.scenario_type,
+            scenario_type=scenario.scenario_type or "UNKNOWN",
             original_capacity_hours=Decimal(str(result.original_metrics["total_capacity_hours"])),
             adjusted_capacity_hours=Decimal(str(result.modified_metrics["total_capacity_hours"])),
             capacity_change_percent=Decimal(str(result.impact_summary["capacity_increase_percent"])),
@@ -542,6 +544,9 @@ class ScenarioService:
             )
 
             scenario = self.db.query(CapacityScenario).filter(CapacityScenario.id == scenario_id).first()
+            if scenario is None:
+                # Skip scenarios that have been deleted between resolve and comparison
+                continue
 
             comparisons.append(
                 ScenarioComparison(
@@ -1015,7 +1020,7 @@ class ScenarioService:
 
         Converts Decimal to float for JSON serialization.
         """
-        result = {}
+        result: Dict[str, Any] = {}
         for key, value in params.items():
             if isinstance(value, Decimal):
                 result[key] = float(value)
