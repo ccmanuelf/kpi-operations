@@ -137,13 +137,14 @@ async def upload_downtime_csv(
     - corrective_action (text)
     - notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -238,13 +239,14 @@ async def upload_holds_csv(
     - expected_resolution_date (YYYY-MM-DD)
     - notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -346,13 +348,14 @@ async def upload_attendance_csv(
     - absence_reason (text)
     - notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -438,13 +441,14 @@ async def upload_coverage_csv(
     Optional columns:
     - notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -520,13 +524,14 @@ async def upload_quality_csv(
     - inspection_method (str, max 100)
     - notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -634,13 +639,14 @@ async def upload_defects_csv(
     - location (str, max 255)
     - description (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -723,13 +729,14 @@ async def upload_work_orders_csv(
     - notes (text)
     - internal_notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -831,13 +838,14 @@ async def upload_jobs_csv(
     - assigned_shift_id (int)
     - notes (text)
     """
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -935,13 +943,14 @@ async def upload_clients_csv(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can upload clients")
 
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -1019,13 +1028,14 @@ async def upload_employees_csv(
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can upload employees")
 
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
@@ -1106,13 +1116,14 @@ async def upload_floating_pool_csv(
             status_code=status.HTTP_403_FORBIDDEN, detail="Only supervisors and administrators can manage floating pool"
         )
 
-    if not file.filename.lower().endswith(_ALLOWED_EXTENSIONS):
+    filename = file.filename or ""
+    if not filename.lower().endswith(_ALLOWED_EXTENSIONS):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a .csv or .xlsx file")
 
     contents = await file.read()
     if len(contents) > _MAX_CSV_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
-    rows_list = _read_upload_file(contents, file.filename, sheet_name=sheet_name)
+    rows_list = _read_upload_file(contents, filename, sheet_name=sheet_name)
 
     total_rows = 0
     successful = 0
