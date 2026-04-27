@@ -8,19 +8,14 @@ Business Rules:
 - Each assignment has an effective_date and optional end_date (NULL = currently active)
 """
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    DateTime,
-    Date,
-    Numeric,
-    ForeignKey,
-    UniqueConstraint,
-    Index,
-)
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -50,41 +45,41 @@ class EmployeeLineAssignment(Base):
     )
 
     # Primary key
-    assignment_id = Column(Integer, primary_key=True, autoincrement=True)
+    assignment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    employee_id = Column(
+    employee_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("EMPLOYEE.employee_id", ondelete="CASCADE"),
         nullable=False,
     )
-    line_id = Column(
+    line_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("PRODUCTION_LINE.line_id", ondelete="CASCADE"),
         nullable=False,
     )
-    client_id = Column(
+    client_id: Mapped[str] = mapped_column(
         String(50),
         ForeignKey("CLIENT.client_id", ondelete="RESTRICT"),
         nullable=False,
     )
 
     # Allocation
-    allocation_percentage = Column(
+    allocation_percentage: Mapped[Decimal] = mapped_column(
         Numeric(5, 2),
         nullable=False,
         default=100.00,
     )  # 1.00 - 100.00
 
     # Primary line flag
-    is_primary = Column(Boolean, default=True, nullable=False)
+    is_primary: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Date range
-    effective_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=True)  # NULL = currently active
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)  # NULL = currently active
 
     # Audit
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
     def __repr__(self):
         return (

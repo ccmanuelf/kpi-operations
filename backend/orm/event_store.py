@@ -6,9 +6,11 @@ Provides persistent storage for domain events.
 Enables event replay, audit trails, and event sourcing.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, JSON, Index, func, Text
-from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
+from typing import Any, Optional
+
+from sqlalchemy import DateTime, Index, Integer, JSON, String, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
 
@@ -26,16 +28,16 @@ class EventStore(Base):
 
     __tablename__ = "EVENT_STORE"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    event_id = Column(String(36), unique=True, nullable=False, index=True)
-    event_type = Column(String(100), nullable=False, index=True)
-    aggregate_type = Column(String(50), nullable=False)
-    aggregate_id = Column(String(50), nullable=False)
-    client_id = Column(String(50), index=True)
-    triggered_by = Column(Integer)
-    occurred_at = Column(DateTime, nullable=False, index=True)
-    payload = Column(JSON, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    aggregate_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    aggregate_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    client_id: Mapped[Optional[str]] = mapped_column(String(50), index=True)
+    triggered_by: Mapped[Optional[int]] = mapped_column(Integer)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    payload: Mapped[Any] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now())
 
     # Composite indexes for common queries
     __table_args__ = (

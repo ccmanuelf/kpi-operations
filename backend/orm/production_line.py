@@ -4,18 +4,13 @@ Operational production line entity for factory topology management.
 Distinct from CapacityProductionLine which is used for capacity planning.
 """
 
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    DateTime,
-    ForeignKey,
-    CheckConstraint,
-    UniqueConstraint,
-)
-from sqlalchemy.orm import relationship
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -41,25 +36,25 @@ class ProductionLine(Base):
         {"extend_existing": True},
     )
 
-    line_id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
-    line_code = Column(String(50), nullable=False)  # e.g., "SEW-01", "CUT-01"
-    line_name = Column(String(100), nullable=False)  # e.g., "Sewing Line 1"
-    department = Column(String(50), nullable=True)  # CUTTING, SEWING, FINISHING, etc.
-    line_type = Column(String(20), nullable=False, default="DEDICATED")
-    parent_line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True)
-    max_operators = Column(Integer, nullable=True)
+    line_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    line_code: Mapped[str] = mapped_column(String(50), nullable=False)  # e.g., "SEW-01", "CUT-01"
+    line_name: Mapped[str] = mapped_column(String(100), nullable=False)  # e.g., "Sewing Line 1"
+    department: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # CUTTING, SEWING, etc.
+    line_type: Mapped[str] = mapped_column(String(20), nullable=False, default="DEDICATED")
+    parent_line_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True)
+    max_operators: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Bridge to Capacity Planning: links operational line to its capacity counterpart.
     # NULL means the line exists only in the operational context.
-    capacity_line_id = Column(
+    capacity_line_id: Mapped[Optional[int]] = mapped_column(
         Integer,
         ForeignKey("capacity_production_lines.id"),
         nullable=True,
     )
 
-    is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
     # Self-referential: remote_side points to the "one" side (parent's PK)
     parent = relationship(

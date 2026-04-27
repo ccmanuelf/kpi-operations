@@ -6,10 +6,13 @@ Replaces comma-separated client_id_assigned field with proper junction table.
 Provides normalized user-to-client many-to-many relationship.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
+from typing import Optional
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -31,27 +34,31 @@ class UserClientAssignment(Base):
     )
 
     # Primary key
-    assignment_id = Column(Integer, primary_key=True, autoincrement=True)
+    assignment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    user_id = Column(String(50), ForeignKey("USER.user_id", ondelete="CASCADE"), nullable=False)
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id", ondelete="RESTRICT"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id", ondelete="CASCADE"), nullable=False)
+    client_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("CLIENT.client_id", ondelete="RESTRICT"), nullable=False
+    )
 
     # Assignment metadata
-    assigned_at = Column(DateTime, nullable=False, server_default=func.now())
-    assigned_by = Column(String(50))  # User who made this assignment
+    assigned_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    assigned_by: Mapped[Optional[str]] = mapped_column(String(50))  # User who made this assignment
 
     # Is this the user's primary/default client?
-    is_primary = Column(Boolean, nullable=False, default=False)
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Soft delete / deactivation
-    is_active = Column(Boolean, nullable=False, default=True)
-    deactivated_at = Column(DateTime)
-    deactivated_by = Column(String(50))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deactivated_by: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Audit timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 def get_user_assigned_clients(db, user_id: str, active_only: bool = True):

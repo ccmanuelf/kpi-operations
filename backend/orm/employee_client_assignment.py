@@ -6,12 +6,15 @@ Replaces comma-separated client_id_assigned field with proper junction table.
 Provides normalized employee-to-client relationship with assignment type support.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey, Index, UniqueConstraint, Enum as SQLEnum
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
-from backend.database import Base
 import enum
+from datetime import datetime, timezone
+from typing import Optional
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from backend.database import Base
 
 
 class AssignmentType(str, enum.Enum):
@@ -43,32 +46,38 @@ class EmployeeClientAssignment(Base):
     )
 
     # Primary key
-    assignment_id = Column(Integer, primary_key=True, autoincrement=True)
+    assignment_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Foreign keys
-    employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id", ondelete="CASCADE"), nullable=False)
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id", ondelete="RESTRICT"), nullable=False)
+    employee_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("EMPLOYEE.employee_id", ondelete="CASCADE"), nullable=False
+    )
+    client_id: Mapped[str] = mapped_column(
+        String(50), ForeignKey("CLIENT.client_id", ondelete="RESTRICT"), nullable=False
+    )
 
     # Assignment type
-    assignment_type = Column(String(20), nullable=False, default=AssignmentType.DEDICATED.value)
+    assignment_type: Mapped[str] = mapped_column(String(20), nullable=False, default=AssignmentType.DEDICATED.value)
 
     # Assignment validity period
-    assigned_at = Column(DateTime, nullable=False, server_default=func.now())
-    valid_from = Column(DateTime)  # When assignment becomes active
-    valid_to = Column(DateTime)  # When assignment expires (optional)
+    assigned_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    valid_from: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When assignment becomes active
+    valid_to: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When assignment expires (optional)
 
     # Assignment metadata
-    assigned_by = Column(String(50))  # User who made this assignment
-    notes = Column(String(500))  # Optional assignment notes
+    assigned_by: Mapped[Optional[str]] = mapped_column(String(50))  # User who made this assignment
+    notes: Mapped[Optional[str]] = mapped_column(String(500))  # Optional assignment notes
 
     # Soft delete / deactivation
-    is_active = Column(Boolean, nullable=False, default=True)
-    deactivated_at = Column(DateTime)
-    deactivated_by = Column(String(50))
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    deactivated_by: Mapped[Optional[str]] = mapped_column(String(50))
 
     # Audit timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 def get_employee_assigned_clients(db, employee_id: int, active_only: bool = True):

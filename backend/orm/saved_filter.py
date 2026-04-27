@@ -3,8 +3,13 @@ Saved Filter ORM schemas (SQLAlchemy)
 User-specific filter configurations for KPI dashboards
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -25,29 +30,29 @@ class SavedFilter(Base):
     __table_args__ = {"extend_existing": True}
 
     # Primary key
-    filter_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    filter_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, index=True)
 
     # User ownership - CRITICAL for isolation
-    user_id = Column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
 
     # Filter identification
-    filter_name = Column(String(100), nullable=False)
-    filter_type = Column(String(50), nullable=False, index=True)  # dashboard, production, quality, attendance, etc.
+    filter_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    filter_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # dashboard/production/etc.
 
     # Filter configuration (JSON string)
     # Contains: client_id, date_range, shift_ids, product_ids, kpi_thresholds
-    filter_config = Column(Text, nullable=False)
+    filter_config: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Default filter flag (one per filter_type per user)
-    is_default = Column(Boolean, nullable=False, default=False, index=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
 
     # Usage tracking
-    usage_count = Column(Integer, nullable=False, default=0)
-    last_used_at = Column(DateTime, nullable=True)
+    usage_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class FilterHistory(Base):
@@ -64,13 +69,13 @@ class FilterHistory(Base):
     __table_args__ = {"extend_existing": True}
 
     # Primary key
-    history_id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    history_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True, index=True)
 
     # User ownership
-    user_id = Column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False, index=True)
 
     # Filter configuration (JSON string)
-    filter_config = Column(Text, nullable=False)
+    filter_config: Mapped[str] = mapped_column(Text, nullable=False)
 
     # Application timestamp
-    applied_at = Column(DateTime, nullable=False, server_default=func.now(), index=True)
+    applied_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)
