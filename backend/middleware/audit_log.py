@@ -12,7 +12,7 @@ Log format:
 import logging
 import time
 
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -31,7 +31,7 @@ class AuditLogMiddleware(BaseHTTPMiddleware):
     checks, static assets, docs) are silently passed through.
     """
 
-    async def dispatch(self, request: Request, call_next) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         # Fast-path: skip methods and paths we don't care about
         if request.method not in _AUDITED_METHODS:
             return await call_next(request)
