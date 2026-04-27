@@ -9,7 +9,7 @@ pytest-xdist==3.5.0  # Parallel test execution
 
 # Database Testing
 pytest-postgresql==5.0.0
-sqlalchemy-utils==0.41.1
+sqlalchemy-utils==0.42.1
 
 # API Testing
 httpx==0.25.2
