@@ -23,11 +23,12 @@ repos:
         additional_dependencies: []
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.17.1
     hooks:
       - id: mypy
         args: [--ignore-missing-imports, --no-error-summary]
-        additional_dependencies: []
+        # Required for the pydantic.mypy plugin configured in pyproject.toml
+        additional_dependencies: ["pydantic>=2.12,<3"]
 
   - repo: https://github.com/PyCQA/bandit
     rev: '1.8.3'

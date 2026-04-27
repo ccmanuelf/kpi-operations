@@ -28,6 +28,10 @@ ignore_missing_imports = true
 # masks ~700 real type errors as a single soft "511" floor.
 namespace_packages = true
 explicit_package_bases = true
+# Pydantic v2 mypy plugin: makes `field: Optional[X] = Field(None, ...)`
+# resolve as a non-required argument (mypy without the plugin treats Field()
+# as a non-default and demands the field be passed at every call site).
+plugins = ["pydantic.mypy"]
 exclude = [
     "_archive/",
     "migrations/",
