@@ -3,12 +3,15 @@ Capacity Schedule - Production schedule
 Two-table structure: Header (schedule metadata) and Detail (schedule line items).
 """
 
-from sqlalchemy import Column, Integer, String, Date, Numeric, Boolean, ForeignKey, Text, Enum as SQLEnum, JSON, Index
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from sqlalchemy import DateTime
-from backend.database import Base
 import enum
+from datetime import date as date_type, datetime
+from typing import Any, Optional
+
+from sqlalchemy import Date, DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, JSON, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
+
+from backend.database import Base
 
 
 class ScheduleStatus(str, enum.Enum):
@@ -49,35 +52,35 @@ class CapacitySchedule(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Schedule identification
-    schedule_name = Column(String(100), nullable=False)
+    schedule_name: Mapped[str] = mapped_column(String(100), nullable=False)
 
     # Period covered (indexed via composite index in __table_args__)
-    period_start = Column(Date, nullable=False)
-    period_end = Column(Date, nullable=False)
+    period_start: Mapped[date_type] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date_type] = mapped_column(Date, nullable=False)
 
     # Status tracking (indexed via composite index in __table_args__)
-    status = Column(SQLEnum(ScheduleStatus), default=ScheduleStatus.DRAFT)  # type: ignore[var-annotated]
+    status: Mapped[Optional[ScheduleStatus]] = mapped_column(SQLEnum(ScheduleStatus), default=ScheduleStatus.DRAFT)
 
     # Commitment tracking
-    committed_at = Column(Date, nullable=True)
-    committed_by = Column(Integer, nullable=True)  # USER.user_id
+    committed_at: Mapped[Optional[date_type]] = mapped_column(Date, nullable=True)
+    committed_by: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # USER.user_id
 
     # KPI commitments stored as JSON when schedule is committed
     # Example: {"efficiency": 85.0, "quality": 98.5, "otd": 95.0}
-    kpi_commitments_json = Column(JSON, nullable=True)
+    kpi_commitments_json: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationship to details
     details = relationship(
@@ -122,37 +125,37 @@ class CapacityScheduleDetail(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Parent schedule reference (indexed via composite index in __table_args__)
-    schedule_id = Column(Integer, ForeignKey("capacity_schedule.id"), nullable=False)
+    schedule_id: Mapped[int] = mapped_column(Integer, ForeignKey("capacity_schedule.id"), nullable=False)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # What to produce (indexed via composite index in __table_args__)
-    order_id = Column(Integer, ForeignKey("capacity_orders.id"), nullable=True)
-    order_number = Column(String(50), nullable=True)  # Denormalized for reporting
-    style_model = Column(String(100), nullable=True)  # Denormalized for reporting
+    order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("capacity_orders.id"), nullable=True)
+    order_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # Denormalized for reporting
+    style_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Denormalized for reporting
 
     # Where and when (indexed via composite indexes in __table_args__)
-    line_id = Column(Integer, ForeignKey("capacity_production_lines.id"), nullable=True)
-    line_code = Column(String(50), nullable=True)  # Denormalized for reporting
-    scheduled_date = Column(Date, nullable=False)
+    line_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("capacity_production_lines.id"), nullable=True)
+    line_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # Denormalized for reporting
+    scheduled_date: Mapped[date_type] = mapped_column(Date, nullable=False)
 
     # Quantities
-    scheduled_quantity = Column(Integer, default=0)
-    completed_quantity = Column(Integer, default=0)
+    scheduled_quantity: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    completed_quantity: Mapped[Optional[int]] = mapped_column(Integer, default=0)
 
     # Sequence within day (for prioritization)
-    sequence = Column(Integer, default=1)
+    sequence: Mapped[Optional[int]] = mapped_column(Integer, default=1)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationship back to header
     schedule = relationship("CapacitySchedule", back_populates="details")

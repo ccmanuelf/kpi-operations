@@ -3,9 +3,13 @@ Capacity Scenario - What-if scenario configurations
 Stores scenario parameters and results for capacity planning simulations.
 """
 
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, JSON, Index
+from datetime import datetime
+from typing import Any, Optional
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, JSON, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -37,49 +41,33 @@ class CapacityScenario(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Scenario identification (scenario_type indexed via composite index in __table_args__)
-    scenario_name = Column(String(100), nullable=False)
-    scenario_type = Column(String(50), nullable=True)
+    scenario_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    scenario_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Base schedule this scenario modifies (indexed via composite index in __table_args__)
-    base_schedule_id = Column(Integer, ForeignKey("capacity_schedule.id"), nullable=True)
+    base_schedule_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("capacity_schedule.id"), nullable=True)
 
     # Scenario parameters stored as JSON
-    # Example structures by type:
-    # OVERTIME: {"overtime_percent": 20, "affected_lines": ["LINE1", "LINE2"], "days": ["MON", "TUE"]}
-    # SETUP_REDUCTION: {"reduction_percent": 15, "affected_operations": ["OP1", "OP2"]}
-    # SUBCONTRACT: {"quantity": 1000, "style_model": "STYLE1", "cost_per_unit": 5.50}
-    # SHIFT_ADD: {"shift_number": 2, "hours": 8, "affected_lines": ["LINE1"]}
-    # EFFICIENCY_IMPROVEMENT: {"target_efficiency": 90, "investment_cost": 10000}
-    # LABOR_ADD: {"operators": 5, "affected_lines": ["LINE1", "LINE2"], "cost_per_operator": 150}
-    parameters_json = Column(JSON, nullable=True)
+    parameters_json: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     # Results stored as JSON
-    # Example: {
-    #   "original_capacity_hours": 400,
-    #   "new_capacity_hours": 480,
-    #   "capacity_increase_percent": 20,
-    #   "cost_impact": 5000,
-    #   "utilization_before": 95,
-    #   "utilization_after": 79,
-    #   "bottlenecks_resolved": ["LINE1"]
-    # }
-    results_json = Column(JSON, nullable=True)
+    results_json: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     # Status
-    is_active = Column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def get_parameter(self, key: str, default=None):
         """Get a parameter value from parameters_json."""

@@ -4,9 +4,14 @@ Stores calendar configuration for capacity planning calculations.
 Used to determine available production hours per day.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Numeric, Text, UniqueConstraint
+from datetime import date as date_type, datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -29,32 +34,32 @@ class CapacityCalendar(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Calendar date
-    calendar_date = Column(Date, nullable=False, index=True)
+    calendar_date: Mapped[date_type] = mapped_column(Date, nullable=False, index=True)
 
     # Working day configuration
-    is_working_day = Column(Boolean, default=True, nullable=False)
-    shifts_available = Column(Integer, default=1, nullable=False)  # 1, 2, or 3
+    is_working_day: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    shifts_available: Mapped[int] = mapped_column(Integer, default=1, nullable=False)  # 1, 2, or 3
 
     # Hours per shift (allows partial shifts, overtime, etc.)
-    shift1_hours = Column(Numeric(5, 2), default=8.0)
-    shift2_hours = Column(Numeric(5, 2), default=0)
-    shift3_hours = Column(Numeric(5, 2), default=0)
+    shift1_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=8.0)
+    shift2_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=0)
+    shift3_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=0)
 
     # Holiday tracking
-    holiday_name = Column(String(100), nullable=True)
+    holiday_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def total_hours(self) -> float:
         """Calculate total available hours for this day."""

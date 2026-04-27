@@ -3,9 +3,14 @@ Capacity Stock Snapshot - Weekly inventory positions
 Point-in-time inventory data for capacity planning and MRP.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Date, ForeignKey, Text, Index
+from datetime import date as date_type, datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -32,34 +37,34 @@ class CapacityStockSnapshot(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Snapshot date (indexed via composite indexes in __table_args__)
-    snapshot_date = Column(Date, nullable=False)
+    snapshot_date: Mapped[date_type] = mapped_column(Date, nullable=False)
 
     # Item identification (indexed via composite indexes in __table_args__)
-    item_code = Column(String(50), nullable=False)
-    item_description = Column(String(200), nullable=True)
+    item_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    item_description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
     # Stock quantities
-    on_hand_quantity = Column(Numeric(12, 4), default=0)  # Physical inventory
-    allocated_quantity = Column(Numeric(12, 4), default=0)  # Reserved for orders
-    on_order_quantity = Column(Numeric(12, 4), default=0)  # Expected receipts
-    available_quantity = Column(Numeric(12, 4), default=0)  # Calculated: on_hand - allocated + on_order
+    on_hand_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), default=0)  # Physical inventory
+    allocated_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), default=0)  # Reserved
+    on_order_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), default=0)  # Expected receipts
+    available_quantity: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), default=0)  # Calculated
 
     # Unit and location
-    unit_of_measure = Column(String(20), default="EA")
-    location = Column(String(50), nullable=True)
+    unit_of_measure: Mapped[Optional[str]] = mapped_column(String(20), default="EA")
+    location: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def calculate_available(self) -> float:
         """

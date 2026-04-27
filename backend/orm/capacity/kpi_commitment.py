@@ -3,9 +3,14 @@ Capacity KPI Commitment - KPI targets and actuals tracking
 Links committed KPI targets to schedules for variance analysis.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey, Text, Index
+from datetime import date as date_type, datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -37,36 +42,36 @@ class CapacityKPICommitment(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Schedule reference (indexed via composite index in __table_args__)
-    schedule_id = Column(Integer, ForeignKey("capacity_schedule.id"), nullable=False)
+    schedule_id: Mapped[int] = mapped_column(Integer, ForeignKey("capacity_schedule.id"), nullable=False)
 
     # KPI identification (indexed via composite index in __table_args__)
-    kpi_key = Column(String(50), nullable=False)  # efficiency, quality, otd, etc.
-    kpi_name = Column(String(100), nullable=True)  # Human-readable name
+    kpi_key: Mapped[str] = mapped_column(String(50), nullable=False)  # efficiency, quality, otd, etc.
+    kpi_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # Human-readable name
 
     # Period covered (indexed via composite index in __table_args__)
-    period_start = Column(Date, nullable=False)
-    period_end = Column(Date, nullable=False)
+    period_start: Mapped[date_type] = mapped_column(Date, nullable=False)
+    period_end: Mapped[date_type] = mapped_column(Date, nullable=False)
 
     # Target and actual values
-    committed_value = Column(Numeric(12, 4), nullable=False)
-    actual_value = Column(Numeric(12, 4), nullable=True)
+    committed_value: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    actual_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)
 
     # Variance calculations
-    variance = Column(Numeric(12, 4), nullable=True)  # actual - committed
-    variance_percent = Column(Numeric(6, 2), nullable=True)  # ((actual - committed) / committed) * 100
+    variance: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4), nullable=True)  # actual - committed
+    variance_percent: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2), nullable=True)  # variance %
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def calculate_variance(self) -> None:
         """

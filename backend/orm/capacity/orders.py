@@ -3,11 +3,16 @@ Capacity Orders - Planning orders (separate from Work Orders)
 Orders specifically for capacity planning, with their own lifecycle.
 """
 
-from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey, Text, Enum as SQLEnum, Index
-from sqlalchemy.sql import func
-from sqlalchemy import DateTime
-from backend.database import Base
 import enum
+from datetime import date as date_type, datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Date, DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
+
+from backend.database import Base
 
 
 class OrderPriority(str, enum.Enum):
@@ -62,43 +67,43 @@ class CapacityOrder(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Order identification
-    order_number = Column(String(50), nullable=False, index=True)
-    customer_name = Column(String(100), nullable=True)
+    order_number: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    customer_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Style/product details (style_model indexed via composite index in __table_args__)
-    style_model = Column(String(100), nullable=False)
-    style_description = Column(String(200), nullable=True)
+    style_model: Mapped[str] = mapped_column(String(100), nullable=False)
+    style_description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
     # Quantities
-    order_quantity = Column(Integer, nullable=False)
-    completed_quantity = Column(Integer, default=0)
+    order_quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    completed_quantity: Mapped[Optional[int]] = mapped_column(Integer, default=0)
 
     # Dates (required_date indexed via composite index in __table_args__)
-    order_date = Column(Date, nullable=True)  # When order was received
-    required_date = Column(Date, nullable=False)  # Customer need date
-    planned_start_date = Column(Date, nullable=True)  # Planned production start
-    planned_end_date = Column(Date, nullable=True)  # Planned production end
+    order_date: Mapped[Optional[date_type]] = mapped_column(Date, nullable=True)  # When order was received
+    required_date: Mapped[date_type] = mapped_column(Date, nullable=False)  # Customer need date
+    planned_start_date: Mapped[Optional[date_type]] = mapped_column(Date, nullable=True)  # Planned start
+    planned_end_date: Mapped[Optional[date_type]] = mapped_column(Date, nullable=True)  # Planned end
 
     # Status and priority (status indexed via composite index in __table_args__)
-    priority = Column(SQLEnum(OrderPriority), default=OrderPriority.NORMAL)  # type: ignore[var-annotated]
-    status = Column(SQLEnum(OrderStatus), default=OrderStatus.DRAFT)  # type: ignore[var-annotated]
+    priority: Mapped[Optional[OrderPriority]] = mapped_column(SQLEnum(OrderPriority), default=OrderPriority.NORMAL)
+    status: Mapped[Optional[OrderStatus]] = mapped_column(SQLEnum(OrderStatus), default=OrderStatus.DRAFT)
 
     # SAM for this specific order (if different from standard)
     # Allows order-level override of production standard
-    order_sam_minutes = Column(Numeric(10, 4), nullable=True)
+    order_sam_minutes: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), nullable=True)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def remaining_quantity(self) -> int:
         """Calculate remaining quantity to produce."""

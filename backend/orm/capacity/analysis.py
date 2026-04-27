@@ -3,9 +3,14 @@ Capacity Analysis - Utilization calculations per line/week
 Stores capacity analysis results following the 12-step calculation method.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, Date, Boolean, ForeignKey, Text, Index
+from datetime import date as date_type, datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -44,54 +49,54 @@ class CapacityAnalysis(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Analysis period/date (indexed via composite indexes in __table_args__)
-    analysis_date = Column(Date, nullable=False)
+    analysis_date: Mapped[date_type] = mapped_column(Date, nullable=False)
 
     # Line reference (indexed via composite index in __table_args__)
-    line_id = Column(Integer, ForeignKey("capacity_production_lines.id"), nullable=False)
-    line_code = Column(String(50), nullable=True)  # Denormalized for reporting
-    department = Column(String(50), nullable=True)  # Denormalized for reporting
+    line_id: Mapped[int] = mapped_column(Integer, ForeignKey("capacity_production_lines.id"), nullable=False)
+    line_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # Denormalized for reporting
+    department: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # Denormalized for reporting
 
     # Step 1-4: Time-based capacity inputs
-    working_days = Column(Integer, default=0)
-    shifts_per_day = Column(Integer, default=1)
-    hours_per_shift = Column(Numeric(5, 2), default=8.0)
+    working_days: Mapped[Optional[int]] = mapped_column(Integer, default=0)
+    shifts_per_day: Mapped[Optional[int]] = mapped_column(Integer, default=1)
+    hours_per_shift: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=8.0)
 
     # Step 5: Labor availability
-    operators_available = Column(Integer, default=0)
+    operators_available: Mapped[Optional[int]] = mapped_column(Integer, default=0)
 
     # Steps 6-7: Efficiency factors (0-1 scale)
-    efficiency_factor = Column(Numeric(5, 4), default=0.85)
-    absenteeism_factor = Column(Numeric(5, 4), default=0.05)
+    efficiency_factor: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 4), default=0.85)
+    absenteeism_factor: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 4), default=0.05)
 
     # Step 4: Gross hours calculation (days * shifts * hours)
-    gross_hours = Column(Numeric(10, 2), default=0)
+    gross_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), default=0)
 
     # Step 8: Net hours (gross * efficiency * (1 - absenteeism))
-    net_hours = Column(Numeric(10, 2), default=0)
+    net_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), default=0)
 
     # Step 9: Capacity hours (net * operators)
-    capacity_hours = Column(Numeric(10, 2), default=0)
+    capacity_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), default=0)
 
     # Step 10: Demand from schedule
-    demand_hours = Column(Numeric(10, 2), default=0)
-    demand_units = Column(Integer, default=0)
+    demand_hours: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), default=0)
+    demand_units: Mapped[Optional[int]] = mapped_column(Integer, default=0)
 
     # Steps 11-12: Analysis results
-    utilization_percent = Column(Numeric(6, 2), default=0)
-    is_bottleneck = Column(Boolean, default=False)
+    utilization_percent: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2), default=0)
+    is_bottleneck: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def calculate_metrics(self, bottleneck_threshold: float = 95.0) -> None:
         """

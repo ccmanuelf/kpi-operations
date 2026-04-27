@@ -4,10 +4,14 @@ Two-table structure: Header (parent items) and Detail (components).
 Used for MRP explosion and component availability checking.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Text, Boolean, Index
-from sqlalchemy.orm import relationship
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -31,30 +35,30 @@ class CapacityBOMHeader(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Parent item identification (indexed via composite index in __table_args__)
-    parent_item_code = Column(String(50), nullable=False)
-    parent_item_description = Column(String(200), nullable=True)
+    parent_item_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    parent_item_description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
     # Link to style (indexed via composite index in __table_args__)
-    style_model = Column(String(100), nullable=True)
+    style_model: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Revision tracking
-    revision = Column(String(20), default="1.0")
+    revision: Mapped[Optional[str]] = mapped_column(String(20), default="1.0")
 
     # Status
-    is_active = Column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationship to details
     components = relationship(
@@ -86,34 +90,34 @@ class CapacityBOMDetail(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Parent BOM header reference (indexed via composite index in __table_args__)
-    header_id = Column(Integer, ForeignKey("capacity_bom_header.id"), nullable=False)
+    header_id: Mapped[int] = mapped_column(Integer, ForeignKey("capacity_bom_header.id"), nullable=False)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Component identification (indexed via composite index in __table_args__)
-    component_item_code = Column(String(50), nullable=False)
-    component_description = Column(String(200), nullable=True)
+    component_item_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    component_description: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
 
     # Quantity per parent unit (allows fractional quantities)
-    quantity_per = Column(Numeric(12, 6), nullable=False, default=1.0)
-    unit_of_measure = Column(String(20), default="EA")
+    quantity_per: Mapped[Decimal] = mapped_column(Numeric(12, 6), nullable=False, default=1.0)
+    unit_of_measure: Mapped[Optional[str]] = mapped_column(String(20), default="EA")
 
     # Waste/scrap allowance percentage (e.g., 5.0 = 5%)
-    waste_percentage = Column(Numeric(5, 2), default=0)
+    waste_percentage: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2), default=0)
 
     # Component categorization
-    component_type = Column(String(50), nullable=True)  # FABRIC, TRIM, ACCESSORY, PACKAGING, etc.
+    component_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # FABRIC/TRIM/etc.
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationship back to header
     header = relationship("CapacityBOMHeader", back_populates="components")

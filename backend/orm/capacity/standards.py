@@ -3,9 +3,14 @@ Capacity Production Standards - SAM per operation per style
 Standard Allowed Minutes (SAM) define the expected time for each operation.
 """
 
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey, Text, Index
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy import DateTime
+
 from backend.database import Base
 
 
@@ -31,31 +36,31 @@ class CapacityProductionStandard(Base):
     )
 
     # Primary key
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Style and operation identification (indexed via composite index in __table_args__)
-    style_model = Column(String(100), nullable=False)
-    operation_code = Column(String(50), nullable=False)
-    operation_name = Column(String(100), nullable=True)
-    department = Column(String(50), nullable=True)  # CUTTING, SEWING, FINISHING, etc.
+    style_model: Mapped[str] = mapped_column(String(100), nullable=False)
+    operation_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    operation_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    department: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # CUTTING/SEWING/FINISHING/etc.
 
     # Standard Allowed Minutes (total)
-    sam_minutes = Column(Numeric(10, 4), nullable=False)
+    sam_minutes: Mapped[Decimal] = mapped_column(Numeric(10, 4), nullable=False)
 
     # Optional time breakdown
-    setup_time_minutes = Column(Numeric(10, 4), default=0)
-    machine_time_minutes = Column(Numeric(10, 4), default=0)
-    manual_time_minutes = Column(Numeric(10, 4), default=0)
+    setup_time_minutes: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), default=0)
+    machine_time_minutes: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), default=0)
+    manual_time_minutes: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4), default=0)
 
     # Notes/metadata
-    notes = Column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def total_minutes(self) -> float:
         """
