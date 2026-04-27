@@ -5,14 +5,16 @@ All floating pool CRUD and assignment endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime, date
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Any, Dict, List, Optional, cast
 
 from backend.database import get_db
 from backend.calculations.simulation import (
+    OptimizationGoal,
     optimize_floating_pool_allocation,
-    simulate_shift_coverage,
     run_staffing_simulation,
+    simulate_shift_coverage,
 )
 from backend.schemas.floating_pool import (
     FloatingPoolCreate,
@@ -260,17 +262,24 @@ def get_floating_pool_simulation_insights(
     cycle_time_hours = 0.5
     base_efficiency = 85.0
 
-    # Run staffing simulations
-    simulation_results = []
+    # Run staffing simulations. The simulation function takes absolute
+    # employee counts (List[int]) and Decimal parameters, so translate
+    # the +/- delta scenarios and float configuration accordingly.
+    simulation_results: List[Any] = []
     try:
-        result = run_staffing_simulation(
+        scenario_employee_counts = [
+            max(0, base_employees + int(cast(int, s.get("employees_change", 0)))) for s in scenarios
+        ]
+        results = run_staffing_simulation(
             base_employees=base_employees,
-            scenarios=scenarios,
-            shift_hours=shift_hours,
-            cycle_time_hours=cycle_time_hours,
-            base_efficiency=base_efficiency,
+            scenarios=scenario_employee_counts,
+            shift_hours=Decimal(str(shift_hours)),
+            cycle_time_hours=Decimal(str(cycle_time_hours)),
+            base_efficiency=Decimal(str(base_efficiency)),
         )
-        simulation_results = result.get("scenario_results", [])
+        # run_staffing_simulation returns a List[SimulationResult]; pair the
+        # results with the scenario name labels for response shaping.
+        simulation_results = [{"scenario": scenarios[i]["name"], "result": r} for i, r in enumerate(results)]
     except Exception:
         logger.warning("run_staffing_simulation failed, using fallback", exc_info=True)
         simulation_results = [
@@ -367,13 +376,32 @@ def optimize_floating_pool_allocation_endpoint(
     summary = get_floating_pool_summary(db, current_user)
     available_pool = summary.get("currently_available", 0)
 
-    # Use simulation engine for optimization
+    # Use simulation engine for optimization. The function expects:
+    #   - List[Dict[str, Any]] of available pool employees, not a count
+    #   - OptimizationGoal enum, not a free-form string
+    #   - explicit db + client_id positional arguments
+    # Build a synthetic available_pool_employees list from the count, and
+    # parse the optimization_goal string into the enum (falling back to a
+    # sensible default for unrecognized values).
     try:
+        available_pool_employees: List[Dict[str, Any]] = [
+            {"employee_id": i + 1, "skills": []} for i in range(int(available_pool))
+        ]
+        try:
+            goal_enum = OptimizationGoal(optimization_goal)
+        except ValueError:
+            goal_enum = OptimizationGoal.BALANCE_WORKLOAD
+        # Without a route-level client_id, resolve from the caller's assignment.
+        # Non-admin users always have client_id_assigned populated; admins
+        # supplying no client_id will fail this branch and use the fallback.
+        effective_client_id = current_user.client_id_assigned or ""
         result = optimize_floating_pool_allocation(
-            available_pool_employees=available_pool,
-            shift_requirements=shift_requirements,
-            optimization_goal=optimization_goal,
+            db=db,
+            client_id=effective_client_id,
             target_date=target_date or date.today(),
+            available_pool_employees=available_pool_employees,
+            shift_requirements=shift_requirements,
+            optimization_goal=goal_enum,
         )
         return result
     except Exception:
@@ -432,7 +460,7 @@ def optimize_floating_pool_allocation_endpoint(
 
 @router.post("/simulation/shift-coverage")
 def simulate_shift_coverage_endpoint(
-    shift_id: str,
+    shift_id: int,
     shift_name: str,
     regular_employees: int,
     floating_pool_available: int,

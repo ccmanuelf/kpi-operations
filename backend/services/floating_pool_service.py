@@ -4,23 +4,25 @@ Thin service layer wrapping Floating Pool CRUD operations.
 Routes should import from this module instead of backend.crud.floating_pool directly.
 """
 
+from datetime import datetime
 from typing import List, Optional
+
 from sqlalchemy.orm import Session
 
-from backend.orm.user import User
 from backend.crud.floating_pool import (
-    create_floating_pool_entry,
-    get_floating_pool_entry,
-    get_floating_pool_entries,
-    update_floating_pool_entry,
-    delete_floating_pool_entry,
     assign_floating_pool_to_client,
-    unassign_floating_pool_from_client,
+    create_floating_pool_entry,
+    delete_floating_pool_entry,
     get_available_floating_pool_employees,
     get_floating_pool_assignments_by_client,
-    is_employee_available_for_assignment,
+    get_floating_pool_entries,
+    get_floating_pool_entry,
     get_floating_pool_summary,
+    is_employee_available_for_assignment,
+    unassign_floating_pool_from_client,
+    update_floating_pool_entry,
 )
+from backend.orm.user import User
 
 
 def create_pool_entry(db: Session, pool_data: dict, current_user: User):
@@ -55,9 +57,23 @@ def delete_pool_entry(db: Session, pool_id: int, current_user: User) -> bool:
     return delete_floating_pool_entry(db, pool_id, current_user)
 
 
-def assign_to_client(db: Session, pool_id: int, assignment_data: dict, current_user: User):
-    """Assign a floating pool employee to a client."""
-    return assign_floating_pool_to_client(db, pool_id, assignment_data, current_user)
+def assign_to_client(
+    db: Session,
+    employee_id: int,
+    client_id: str,
+    available_from: Optional[datetime],
+    available_to: Optional[datetime],
+    current_user: User,
+    notes: Optional[str] = None,
+):
+    """Assign a floating pool employee to a client.
+
+    Forwards directly to the CRUD layer which takes individual fields rather
+    than a packed dict; the previous (db, pool_id, dict, user) signature was
+    a mismatch with crud.assign_floating_pool_to_client and would have failed
+    at runtime.
+    """
+    return assign_floating_pool_to_client(db, employee_id, client_id, available_from, available_to, current_user, notes)
 
 
 def unassign_from_client(db: Session, pool_id: int, current_user: User):

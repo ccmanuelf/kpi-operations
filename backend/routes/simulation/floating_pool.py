@@ -65,7 +65,7 @@ async def optimize_floating_pool_endpoint(
 
         result = optimize_floating_pool_allocation(
             db=db,
-            client_id=current_user.client_id_assigned,
+            client_id=current_user.client_id_assigned or "",
             target_date=target_date_val,
             available_pool_employees=pool_employees,
             shift_requirements=shift_requirements,
