@@ -323,7 +323,9 @@ def calculate_wip_age_adjusted(db: Session, work_order_number: str, work_order_c
 
     # Calculate raw age in hours — normalize naive DB datetimes to UTC
     now = datetime.now(tz=timezone.utc)
-    created_at = work_order_created_at if work_order_created_at.tzinfo else work_order_created_at.replace(tzinfo=timezone.utc)
+    created_at = (
+        work_order_created_at if work_order_created_at.tzinfo else work_order_created_at.replace(tzinfo=timezone.utc)
+    )
     raw_age_seconds = (now - created_at).total_seconds()
     raw_age_hours = Decimal(str(raw_age_seconds / 3600))
 

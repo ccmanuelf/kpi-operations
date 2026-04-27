@@ -80,9 +80,7 @@ def plb_db():
 @pytest.fixture
 def supervisor_client(plb_db):
     """TestClient authenticated as supervisor."""
-    TestDataFactory.create_client(
-        plb_db, client_id=CLIENT_ID, client_name="PLB Route Test Client"
-    )
+    TestDataFactory.create_client(plb_db, client_id=CLIENT_ID, client_name="PLB Route Test Client")
     plb_db.commit()
     app = _create_test_app(plb_db, role="supervisor")
     return TestClient(app), plb_db
@@ -91,9 +89,7 @@ def supervisor_client(plb_db):
 @pytest.fixture
 def operator_client(plb_db):
     """TestClient authenticated as operator (no write access)."""
-    TestDataFactory.create_client(
-        plb_db, client_id=CLIENT_ID, client_name="PLB Route Test Client"
-    )
+    TestDataFactory.create_client(plb_db, client_id=CLIENT_ID, client_name="PLB Route Test Client")
     plb_db.commit()
     app = _create_test_app(plb_db, role="operator")
     return TestClient(app), plb_db
@@ -205,9 +201,7 @@ class TestUnlinkCapacityEndpoint:
         ops.capacity_line_id = cap.id
         db.commit()
 
-        response = client.delete(
-            f"/api/production-lines/{ops.line_id}/link-capacity"
-        )
+        response = client.delete(f"/api/production-lines/{ops.line_id}/link-capacity")
         assert response.status_code == 200
         data = response.json()
         assert data["capacity_line_id"] is None
@@ -224,9 +218,7 @@ class TestUnlinkCapacityEndpoint:
         client, db = operator_client
         ops = _create_ops_line(db, "SEW-01", "Sewing 1")
 
-        response = client.delete(
-            f"/api/production-lines/{ops.line_id}/link-capacity"
-        )
+        response = client.delete(f"/api/production-lines/{ops.line_id}/link-capacity")
         assert response.status_code in (403, 500)
 
 
@@ -301,9 +293,7 @@ class TestSyncCapacityEndpoint:
         client, db = supervisor_client
 
         # Create a second client
-        TestDataFactory.create_client(
-            db, client_id="PLB-RT-C2", client_name="Other Client"
-        )
+        TestDataFactory.create_client(db, client_id="PLB-RT-C2", client_name="Other Client")
         db.commit()
 
         # Ops line in CLIENT_ID, capacity line in other client
@@ -395,9 +385,7 @@ class TestExistingEndpointsWithBridgeField:
         client, db = supervisor_client
         _create_ops_line(db, "SEW-01", "Sewing 1")
 
-        response = client.get(
-            "/api/production-lines/", params={"client_id": CLIENT_ID}
-        )
+        response = client.get("/api/production-lines/", params={"client_id": CLIENT_ID})
         assert response.status_code == 200
         data = response.json()
         assert "capacity_line_id" in data[0]

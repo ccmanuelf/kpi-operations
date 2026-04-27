@@ -16,6 +16,7 @@ Usage:
         [--force] \
         [--strict]
 """
+
 import argparse
 import sys
 import time
@@ -170,36 +171,23 @@ class DatabaseMigrationTool:
         # Validate source
         source_info = self.validate_source(self.source_engine)
         if not source_info["accessible"]:
-            raise MigrationValidationError(
-                f"Source database is not accessible: {source_info.get('error', 'unknown')}"
-            )
+            raise MigrationValidationError(f"Source database is not accessible: {source_info.get('error', 'unknown')}")
 
         if self.mode != "schema-only" and source_info["table_count"] == 0:
-            raise MigrationValidationError(
-                "Source database has no tables. Nothing to migrate."
-            )
+            raise MigrationValidationError("Source database has no tables. Nothing to migrate.")
 
-        logger.info(
-            f"Source validation passed: {source_info['table_count']} tables found"
-        )
+        logger.info(f"Source validation passed: {source_info['table_count']} tables found")
 
         # Validate target (skip for schema-only since we create tables)
         target_info = self.validate_target(self.target_engine)
         if not target_info["accessible"]:
-            raise MigrationValidationError(
-                f"Target database is not accessible: {target_info.get('error', 'unknown')}"
-            )
+            raise MigrationValidationError(f"Target database is not accessible: {target_info.get('error', 'unknown')}")
 
         if target_info["has_data"] and not self.force:
-            raise MigrationValidationError(
-                "Target database already has data. Use --force to overwrite."
-            )
+            raise MigrationValidationError("Target database already has data. Use --force to overwrite.")
 
         if target_info["table_count"] > 0 and not self.force:
-            logger.warning(
-                f"Target already has {target_info['table_count']} tables. "
-                "Use --force to proceed."
-            )
+            logger.warning(f"Target already has {target_info['table_count']} tables. " "Use --force to proceed.")
 
         logger.info("Pre-flight validation passed")
 
@@ -264,9 +252,7 @@ class DatabaseMigrationTool:
             for table_name in tables:
                 try:
                     with target_engine.connect() as conn:
-                        count = conn.execute(
-                            text(f'SELECT COUNT(*) FROM "{table_name}"')
-                        ).scalar()
+                        count = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
                         if count and count > 0:
                             result["has_data"] = True
                             result["tables_with_data"].append(table_name)
@@ -335,9 +321,7 @@ class DatabaseMigrationTool:
             table_counts = {}
             for table_name in source_meta.tables:
                 with self.source_engine.connect() as conn:
-                    count = conn.execute(
-                        text(f'SELECT COUNT(*) FROM "{table_name}"')
-                    ).scalar()
+                    count = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
                     table_counts[table_name] = count or 0
                     total_rows += count or 0
 
@@ -362,18 +346,14 @@ class DatabaseMigrationTool:
             target_provider=target_provider,
         )
 
-        result = migrator.migrate_all_data(
-            progress_callback=self._default_progress_callback
-        )
+        result = migrator.migrate_all_data(progress_callback=self._default_progress_callback)
 
         # Verification
         if not self.skip_verification:
             verification = migrator.verify_migration()
             result["verification"] = verification
             if not verification["verified"]:
-                logger.warning(
-                    f"Verification found {len(verification['mismatches'])} mismatches"
-                )
+                logger.warning(f"Verification found {len(verification['mismatches'])} mismatches")
 
         return result
 
@@ -385,10 +365,7 @@ class DatabaseMigrationTool:
         Returns:
             Dict with migration results including counts per table.
         """
-        logger.info(
-            f"Starting user-only migration (excluding demo clients: "
-            f"{self.demo_client_ids})..."
-        )
+        logger.info(f"Starting user-only migration (excluding demo clients: " f"{self.demo_client_ids})...")
 
         # Create schema first
         schema_result = self._migrate_schema()
@@ -402,9 +379,7 @@ class DatabaseMigrationTool:
         source_tables = set(source_meta.tables.keys())
 
         # Determine migration order
-        tables_to_migrate = [
-            t for t in DataMigrator.TABLE_ORDER if t in source_tables
-        ]
+        tables_to_migrate = [t for t in DataMigrator.TABLE_ORDER if t in source_tables]
         extra_tables = source_tables - set(DataMigrator.TABLE_ORDER)
         if extra_tables:
             tables_to_migrate.extend(sorted(extra_tables))
@@ -423,13 +398,9 @@ class DatabaseMigrationTool:
                 if self.progress_callback:
                     self.progress_callback(table_name, idx, total_tables, total_rows)
                 else:
-                    self._default_progress_callback(
-                        table_name, idx, total_tables, total_rows
-                    )
+                    self._default_progress_callback(table_name, idx, total_tables, total_rows)
 
-                rows_copied, rows_filtered = self._migrate_table_filtered(
-                    table_name, source_table
-                )
+                rows_copied, rows_filtered = self._migrate_table_filtered(table_name, source_table)
 
                 migrated_counts[table_name] = rows_copied
                 filtered_counts[table_name] = rows_filtered
@@ -454,9 +425,7 @@ class DatabaseMigrationTool:
         # Verification
         verification = None
         if not self.skip_verification:
-            verification = self._verify_user_only_migration(
-                source_meta, migrated_counts
-            )
+            verification = self._verify_user_only_migration(source_meta, migrated_counts)
 
         result = {
             "success": len(errors) == 0,
@@ -474,9 +443,7 @@ class DatabaseMigrationTool:
 
         return result
 
-    def _migrate_table_filtered(
-        self, table_name: str, source_table: Table
-    ) -> tuple:
+    def _migrate_table_filtered(self, table_name: str, source_table: Table) -> tuple:
         """Migrate a single table, filtering out demo data.
 
         Args:
@@ -499,11 +466,7 @@ class DatabaseMigrationTool:
         if self.dry_run:
             if has_client_id:
                 client_id_idx = columns.index("client_id")
-                kept = [
-                    r
-                    for r in rows
-                    if r[client_id_idx] not in self.demo_client_ids
-                ]
+                kept = [r for r in rows if r[client_id_idx] not in self.demo_client_ids]
                 return len(kept), len(rows) - len(kept)
             return len(rows), 0
 
@@ -544,19 +507,12 @@ class DatabaseMigrationTool:
 
             try:
                 target_meta = MetaData()
-                target_table = Table(
-                    table_name, target_meta, autoload_with=self.target_engine
-                )
+                target_table = Table(table_name, target_meta, autoload_with=self.target_engine)
 
                 for i in range(0, len(rows_to_insert), self.batch_size):
                     batch = rows_to_insert[i : i + self.batch_size]
                     row_dicts = [
-                        {
-                            col: converter._convert_value(
-                                row[idx], col, table_name
-                            )
-                            for idx, col in enumerate(columns)
-                        }
+                        {col: converter._convert_value(row[idx], col, table_name) for idx, col in enumerate(columns)}
                         for row in batch
                     ]
                     target_conn.execute(target_table.insert(), row_dicts)
@@ -606,9 +562,7 @@ class DatabaseMigrationTool:
                 continue
 
             with self.target_engine.connect() as conn:
-                actual = conn.execute(
-                    text(f'SELECT COUNT(*) FROM "{table_name}"')
-                ).scalar()
+                actual = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
 
             if actual != expected_count:
                 mismatches.append(
@@ -625,9 +579,7 @@ class DatabaseMigrationTool:
             "mismatches": mismatches,
         }
 
-    def _default_progress_callback(
-        self, table_name: str, current: int, total: int, rows_so_far: int
-    ) -> None:
+    def _default_progress_callback(self, table_name: str, current: int, total: int, rows_so_far: int) -> None:
         """Default progress output.
 
         Args:

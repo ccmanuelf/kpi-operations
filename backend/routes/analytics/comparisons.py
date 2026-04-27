@@ -337,9 +337,7 @@ async def get_defect_pareto_analysis(
         )
 
     vital_few_total = sum(item.count for item in items if item.is_vital_few)
-    vital_few_percentage = (
-        Decimal(str((vital_few_total / total_defects) * 100)) if total_defects > 0 else Decimal("0")
-    )
+    vital_few_percentage = Decimal(str((vital_few_total / total_defects) * 100)) if total_defects > 0 else Decimal("0")
 
     return ParetoResponse(
         client_id=client_id,

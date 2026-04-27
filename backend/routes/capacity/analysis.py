@@ -40,7 +40,14 @@ analysis_router = APIRouter()
 # =============================================================================
 
 
-@analysis_router.post("/component-check/run", response_model=List[ComponentCheckResult], responses={400: {"description": "Must provide order_ids or date range, or component check failed"}, 501: {"description": "MRP service not yet implemented"}})
+@analysis_router.post(
+    "/component-check/run",
+    response_model=List[ComponentCheckResult],
+    responses={
+        400: {"description": "Must provide order_ids or date range, or component check failed"},
+        501: {"description": "MRP service not yet implemented"},
+    },
+)
 def run_component_check(
     request: ComponentCheckRequest,
     client_id: str = Query(..., description="Client ID"),
@@ -136,7 +143,14 @@ def get_component_shortages(
 # =============================================================================
 
 
-@analysis_router.post("/analysis/calculate", response_model=List[AnalysisResult], responses={400: {"description": "Capacity analysis failed"}, 501: {"description": "Capacity analysis service not yet implemented"}})
+@analysis_router.post(
+    "/analysis/calculate",
+    response_model=List[AnalysisResult],
+    responses={
+        400: {"description": "Capacity analysis failed"},
+        501: {"description": "Capacity analysis service not yet implemented"},
+    },
+)
 def run_capacity_analysis(
     request: AnalysisRequest,
     client_id: str = Query(..., description="Client ID"),
@@ -275,7 +289,9 @@ def create_schedule(
     return new_schedule
 
 
-@analysis_router.get("/schedules/{schedule_id}", response_model=ScheduleResponse, responses={404: {"description": "Schedule not found"}})
+@analysis_router.get(
+    "/schedules/{schedule_id}", response_model=ScheduleResponse, responses={404: {"description": "Schedule not found"}}
+)
 def get_schedule(
     schedule_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -298,7 +314,14 @@ def get_schedule(
     return schedule
 
 
-@analysis_router.post("/schedules/generate", response_model=ScheduleResponse, responses={400: {"description": "Schedule generation failed"}, 501: {"description": "Scheduling service not yet implemented"}})
+@analysis_router.post(
+    "/schedules/generate",
+    response_model=ScheduleResponse,
+    responses={
+        400: {"description": "Schedule generation failed"},
+        501: {"description": "Scheduling service not yet implemented"},
+    },
+)
 def generate_schedule(
     schedule_name: str,
     start_date: date = Query(..., description="Schedule period start"),
@@ -331,7 +354,14 @@ def generate_schedule(
         raise HTTPException(status_code=400, detail="Schedule generation failed")
 
 
-@analysis_router.post("/schedules/{schedule_id}/commit", response_model=ScheduleResponse, responses={404: {"description": "Schedule not found"}, 400: {"description": "Only draft schedules can be committed"}})
+@analysis_router.post(
+    "/schedules/{schedule_id}/commit",
+    response_model=ScheduleResponse,
+    responses={
+        404: {"description": "Schedule not found"},
+        400: {"description": "Only draft schedules can be committed"},
+    },
+)
 def commit_schedule(
     schedule_id: int,
     request: ScheduleCommitRequest,

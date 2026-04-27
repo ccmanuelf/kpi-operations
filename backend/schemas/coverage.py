@@ -12,7 +12,9 @@ from decimal import Decimal
 class ShiftCoverageCreate(BaseModel):
     """Create shift coverage record"""
 
-    client_id: str = Field(..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation")
+    client_id: str = Field(
+        ..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation"
+    )
     shift_id: int = Field(..., gt=0, description="Reference to the shift definition being covered")
     coverage_date: date = Field(..., description="Calendar date of the shift coverage record")
     required_employees: int = Field(..., gt=0, description="Number of employees needed to fully staff the shift")

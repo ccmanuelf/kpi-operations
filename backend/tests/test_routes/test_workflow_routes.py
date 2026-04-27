@@ -452,7 +452,9 @@ class TestStatisticsEndpoints:
             mock_func.return_value = mock_transitions
 
             pagination = PaginationParams(skip=0, limit=100)
-            result = get_client_all_transitions(client_id="CLIENT-001", pagination=pagination, db=mock_db, current_user=mock_user)
+            result = get_client_all_transitions(
+                client_id="CLIENT-001", pagination=pagination, db=mock_db, current_user=mock_user
+            )
 
             assert len(result) == 5
 

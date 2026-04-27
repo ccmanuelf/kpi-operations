@@ -97,7 +97,9 @@ class ProductionLineUpdate(BaseModel):
     standard_capacity_units_per_hour: Optional[float] = Field(default=None, description="Rated output units per hour")
     max_operators: Optional[int] = Field(default=None, description="Maximum operators that can be assigned")
     efficiency_factor: Optional[float] = Field(default=None, description="Line efficiency as a decimal (0.0-1.0)")
-    absenteeism_factor: Optional[float] = Field(default=None, description="Expected absenteeism rate as a decimal (0.0-1.0)")
+    absenteeism_factor: Optional[float] = Field(
+        default=None, description="Expected absenteeism rate as a decimal (0.0-1.0)"
+    )
     is_active: Optional[bool] = Field(default=None, description="Whether the line is currently active")
     notes: Optional[str] = Field(default=None, description="Free-text notes")
 
@@ -370,7 +372,9 @@ class AvailableStockResponse(BaseModel):
 
 
 class ComponentCheckRequest(BaseModel):
-    order_ids: Optional[List[int]] = Field(default=None, description="Specific order IDs to check (mutually exclusive with date range)")
+    order_ids: Optional[List[int]] = Field(
+        default=None, description="Specific order IDs to check (mutually exclusive with date range)"
+    )
     start_date: Optional[date] = Field(default=None, description="Period start for confirmed-order lookup")
     end_date: Optional[date] = Field(default=None, description="Period end for confirmed-order lookup")
 
@@ -469,7 +473,10 @@ class ScheduleCommitRequest(BaseModel):
 
 class ScenarioCreate(BaseModel):
     scenario_name: str = Field(description="Descriptive name for the what-if scenario")
-    scenario_type: Optional[str] = Field(default=None, description="Scenario type (OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT)")
+    scenario_type: Optional[str] = Field(
+        default=None,
+        description="Scenario type (OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT)",
+    )
     base_schedule_id: Optional[int] = Field(default=None, description="Schedule ID used as the baseline for comparison")
     parameters: Optional[Dict[str, Any]] = Field(default=None, description="Scenario-specific parameter dictionary")
     notes: Optional[str] = Field(default=None, description="Free-text notes")
@@ -503,8 +510,12 @@ class ScenarioCompareRequest(BaseModel):
 
 
 class ScenarioRunRequest(BaseModel):
-    period_start: Optional[date] = Field(default=None, description="Override analysis period start (defaults to base schedule or today)")
-    period_end: Optional[date] = Field(default=None, description="Override analysis period end (defaults to base schedule or today+30d)")
+    period_start: Optional[date] = Field(
+        default=None, description="Override analysis period start (defaults to base schedule or today)"
+    )
+    period_end: Optional[date] = Field(
+        default=None, description="Override analysis period end (defaults to base schedule or today+30d)"
+    )
 
 
 class ScenarioRunResponse(BaseModel):

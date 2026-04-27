@@ -132,16 +132,11 @@ class TestNoOrphanedORMFiles:
         this test catches it before it reaches production.
         """
         orm_path = backend.orm.__path__
-        orm_modules = {
-            name
-            for _, name, ispkg in pkgutil.iter_modules(orm_path)
-            if not name.startswith("_")
-        }
+        orm_modules = {name for _, name, ispkg in pkgutil.iter_modules(orm_path) if not name.startswith("_")}
 
         # Sanity check — we know there are many modules
         assert len(orm_modules) >= 20, (
-            f"Expected at least 20 ORM modules, found {len(orm_modules)}: "
-            f"{sorted(orm_modules)}"
+            f"Expected at least 20 ORM modules, found {len(orm_modules)}: " f"{sorted(orm_modules)}"
         )
 
         for module_name in sorted(orm_modules):
@@ -158,21 +153,14 @@ class TestNoOrphanedORMFiles:
         import backend.orm.capacity
 
         cap_path = backend.orm.capacity.__path__
-        cap_modules = {
-            name
-            for _, name, ispkg in pkgutil.iter_modules(cap_path)
-            if not name.startswith("_")
-        }
+        cap_modules = {name for _, name, ispkg in pkgutil.iter_modules(cap_path) if not name.startswith("_")}
 
         assert len(cap_modules) >= 10, (
-            f"Expected at least 10 capacity modules, found {len(cap_modules)}: "
-            f"{sorted(cap_modules)}"
+            f"Expected at least 10 capacity modules, found {len(cap_modules)}: " f"{sorted(cap_modules)}"
         )
 
         for module_name in sorted(cap_modules):
             try:
                 importlib.import_module(f"backend.orm.capacity.{module_name}")
             except ImportError as e:
-                pytest.fail(
-                    f"backend.orm.capacity.{module_name} failed to import: {e}"
-                )
+                pytest.fail(f"backend.orm.capacity.{module_name} failed to import: {e}")

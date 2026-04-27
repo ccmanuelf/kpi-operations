@@ -33,9 +33,7 @@ class Equipment(Base):
     )
 
     equipment_id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(
-        String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True
-    )
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
     line_id = Column(
         Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True, index=True
     )  # NULL for shared equipment

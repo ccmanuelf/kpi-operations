@@ -86,7 +86,9 @@ def get_orders_for_scheduling(
     return orders.get_orders_for_scheduling(db, client_id, start_date, end_date)
 
 
-@orders_router.get("/orders/{order_id}", response_model=OrderResponse, responses={404: {"description": "Order not found"}})
+@orders_router.get(
+    "/orders/{order_id}", response_model=OrderResponse, responses={404: {"description": "Order not found"}}
+)
 def get_order(
     order_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -101,7 +103,9 @@ def get_order(
     return order
 
 
-@orders_router.put("/orders/{order_id}", response_model=OrderResponse, responses={404: {"description": "Order not found"}})
+@orders_router.put(
+    "/orders/{order_id}", response_model=OrderResponse, responses={404: {"description": "Order not found"}}
+)
 def update_order(
     order_id: int,
     update: OrderUpdate,
@@ -117,7 +121,9 @@ def update_order(
     return order
 
 
-@orders_router.patch("/orders/{order_id}/status", response_model=OrderResponse, responses={404: {"description": "Order not found"}})
+@orders_router.patch(
+    "/orders/{order_id}/status", response_model=OrderResponse, responses={404: {"description": "Order not found"}}
+)
 def update_order_status(
     order_id: int,
     new_status: OrderStatus,
@@ -133,7 +139,9 @@ def update_order_status(
     return order
 
 
-@orders_router.delete("/orders/{order_id}", response_model=MessageResponse, responses={404: {"description": "Order not found"}})
+@orders_router.delete(
+    "/orders/{order_id}", response_model=MessageResponse, responses={404: {"description": "Order not found"}}
+)
 def delete_order(
     order_id: int,
     client_id: str = Query(..., description="Client ID"),

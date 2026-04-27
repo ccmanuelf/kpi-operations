@@ -278,16 +278,14 @@ class TestExportProductionEntries:
 
         # Date range that includes the entry
         response = client.get(
-            f"/api/export/production-entries?client_id={CLIENT_ID}"
-            "&start_date=2026-01-01&end_date=2026-01-31"
+            f"/api/export/production-entries?client_id={CLIENT_ID}" "&start_date=2026-01-01&end_date=2026-01-31"
         )
         records = _parse_csv_dict_response(response)
         assert len(records) == 1
 
         # Date range that excludes the entry
         response = client.get(
-            f"/api/export/production-entries?client_id={CLIENT_ID}"
-            "&start_date=2026-02-01&end_date=2026-02-28"
+            f"/api/export/production-entries?client_id={CLIENT_ID}" "&start_date=2026-02-01&end_date=2026-02-28"
         )
         records = _parse_csv_dict_response(response)
         assert len(records) == 0

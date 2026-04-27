@@ -94,7 +94,9 @@ def get_total_sam_for_style(
     return {"style_model": style_model, "total_sam_minutes": total, "department": department}
 
 
-@standards_router.get("/standards/{standard_id}", response_model=StandardResponse, responses={404: {"description": "Standard not found"}})
+@standards_router.get(
+    "/standards/{standard_id}", response_model=StandardResponse, responses={404: {"description": "Standard not found"}}
+)
 def get_standard(
     standard_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -109,7 +111,9 @@ def get_standard(
     return standard
 
 
-@standards_router.put("/standards/{standard_id}", response_model=StandardResponse, responses={404: {"description": "Standard not found"}})
+@standards_router.put(
+    "/standards/{standard_id}", response_model=StandardResponse, responses={404: {"description": "Standard not found"}}
+)
 def update_standard(
     standard_id: int,
     update: StandardUpdate,
@@ -125,7 +129,9 @@ def update_standard(
     return standard
 
 
-@standards_router.delete("/standards/{standard_id}", response_model=MessageResponse, responses={404: {"description": "Standard not found"}})
+@standards_router.delete(
+    "/standards/{standard_id}", response_model=MessageResponse, responses={404: {"description": "Standard not found"}}
+)
 def delete_standard(
     standard_id: int,
     client_id: str = Query(..., description="Client ID"),

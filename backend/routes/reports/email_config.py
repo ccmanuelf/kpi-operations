@@ -94,9 +94,7 @@ async def save_email_report_config(
 
     config_dict = config.model_dump()
     config_dict["updated_at"] = datetime.now(tz=timezone.utc)
-    config_dict["created_at"] = _email_configs.get(config_key, {}).get(
-        "created_at", datetime.now(tz=timezone.utc)
-    )
+    config_dict["created_at"] = _email_configs.get(config_key, {}).get("created_at", datetime.now(tz=timezone.utc))
 
     _email_configs[config_key] = config_dict
 

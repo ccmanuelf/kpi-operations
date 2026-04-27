@@ -19,14 +19,14 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # check_threshold_breach: ratio thresholds for "urgent" severity
-URGENT_RATIO_THRESHOLD = Decimal("0.5")   # higher-is-better: below 50% of target → urgent
+URGENT_RATIO_THRESHOLD = Decimal("0.5")  # higher-is-better: below 50% of target → urgent
 URGENT_MULTIPLIER_THRESHOLD = Decimal("5")  # lower-is-better: above 5× target → urgent
 
 # generate_quality_alert: default threshold multipliers for quality KPIs
-QUALITY_WARNING_RATIO_HIGH = Decimal("0.95")   # higher-is-better warning: 95% of target
+QUALITY_WARNING_RATIO_HIGH = Decimal("0.95")  # higher-is-better warning: 95% of target
 QUALITY_CRITICAL_RATIO_HIGH = Decimal("0.90")  # higher-is-better critical: 90% of target
-QUALITY_WARNING_RATIO_LOW = Decimal("1.5")     # lower-is-better warning: 150% of target
-QUALITY_CRITICAL_RATIO_LOW = Decimal("2.0")   # lower-is-better critical: 200% of target
+QUALITY_WARNING_RATIO_LOW = Decimal("1.5")  # lower-is-better warning: 150% of target
+QUALITY_CRITICAL_RATIO_LOW = Decimal("2.0")  # lower-is-better critical: 200% of target
 
 
 @dataclass

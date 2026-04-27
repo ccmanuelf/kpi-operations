@@ -43,5 +43,3 @@ def setup_session_hooks(session_factory) -> None:
         count = bus.discard_collected()
         if count > 0:
             logger.debug(f"Discarded {count} events after rollback")
-
-

@@ -75,9 +75,7 @@ def validate_allocation(
     )
 
     if exclude_assignment_id is not None:
-        query = query.filter(
-            EmployeeLineAssignment.assignment_id != exclude_assignment_id
-        )
+        query = query.filter(EmployeeLineAssignment.assignment_id != exclude_assignment_id)
 
     result = query.scalar()
     return Decimal(str(result)) if result is not None else Decimal("0.00")
@@ -108,11 +106,7 @@ def create_assignment(
         ValueError: If business rule validation fails.
     """
     # 1. Verify employee exists and is active
-    employee = (
-        db.query(Employee)
-        .filter(Employee.employee_id == data.employee_id)
-        .first()
-    )
+    employee = db.query(Employee).filter(Employee.employee_id == data.employee_id).first()
     if not employee:
         raise ValueError(f"Employee with id {data.employee_id} not found")
     if not employee.is_active:
@@ -123,14 +117,10 @@ def create_assignment(
     active_count = len(active_assignments)
 
     if active_count >= MAX_ACTIVE_ASSIGNMENTS:
-        raise ValueError(
-            f"Maximum {MAX_ACTIVE_ASSIGNMENTS} line assignments per employee"
-        )
+        raise ValueError(f"Maximum {MAX_ACTIVE_ASSIGNMENTS} line assignments per employee")
 
     # 3. Validate allocation total
-    existing_total = sum(
-        Decimal(str(a.allocation_percentage)) for a in active_assignments
-    )
+    existing_total = sum(Decimal(str(a.allocation_percentage)) for a in active_assignments)
     new_total = existing_total + data.allocation_percentage
 
     if new_total > MAX_ALLOCATION_PERCENTAGE:
@@ -173,8 +163,7 @@ def create_assignment(
     except IntegrityError:
         db.rollback()
         raise ValueError(
-            f"Duplicate assignment: employee {data.employee_id} "
-            f"to line {data.line_id} on {data.effective_date}"
+            f"Duplicate assignment: employee {data.employee_id} " f"to line {data.line_id} on {data.effective_date}"
         )
 
     logger.info(
@@ -235,11 +224,7 @@ def get_assignment(
     Returns:
         EmployeeLineAssignment or None.
     """
-    return (
-        db.query(EmployeeLineAssignment)
-        .filter(EmployeeLineAssignment.assignment_id == assignment_id)
-        .first()
-    )
+    return db.query(EmployeeLineAssignment).filter(EmployeeLineAssignment.assignment_id == assignment_id).first()
 
 
 def get_employee_lines(
@@ -317,11 +302,7 @@ def update_assignment(
     Raises:
         ValueError: If allocation total would exceed 100%.
     """
-    db_entry = (
-        db.query(EmployeeLineAssignment)
-        .filter(EmployeeLineAssignment.assignment_id == assignment_id)
-        .first()
-    )
+    db_entry = db.query(EmployeeLineAssignment).filter(EmployeeLineAssignment.assignment_id == assignment_id).first()
     if not db_entry:
         return None
 
@@ -330,9 +311,7 @@ def update_assignment(
     # Re-validate allocation if percentage is being changed
     if "allocation_percentage" in update_fields:
         new_pct = update_fields["allocation_percentage"]
-        existing_total = validate_allocation(
-            db, db_entry.employee_id, exclude_assignment_id=assignment_id
-        )
+        existing_total = validate_allocation(db, db_entry.employee_id, exclude_assignment_id=assignment_id)
         proposed_total = existing_total + new_pct
         if proposed_total > MAX_ALLOCATION_PERCENTAGE:
             raise ValueError(
@@ -366,11 +345,7 @@ def end_assignment(
     Returns:
         Updated EmployeeLineAssignment or None if not found.
     """
-    db_entry = (
-        db.query(EmployeeLineAssignment)
-        .filter(EmployeeLineAssignment.assignment_id == assignment_id)
-        .first()
-    )
+    db_entry = db.query(EmployeeLineAssignment).filter(EmployeeLineAssignment.assignment_id == assignment_id).first()
     if not db_entry:
         return None
 

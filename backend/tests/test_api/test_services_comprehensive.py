@@ -278,7 +278,10 @@ class TestGenerateEmailTemplate:
 
     def test_generate_email_template_basic(self):
         """Test email template generation"""
-        with patch("backend.services.email_service.SENDGRID_AVAILABLE", False), patch("backend.services.email_service.settings"):
+        with (
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings"),
+        ):
             from backend.services.email_service import EmailService
 
             service = EmailService()
@@ -291,7 +294,10 @@ class TestGenerateEmailTemplate:
 
     def test_generate_email_template_with_message(self):
         """Test email template with additional message"""
-        with patch("backend.services.email_service.SENDGRID_AVAILABLE", False), patch("backend.services.email_service.settings"):
+        with (
+            patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
+            patch("backend.services.email_service.settings"),
+        ):
             from backend.services.email_service import EmailService
 
             service = EmailService()

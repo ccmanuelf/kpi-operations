@@ -58,16 +58,12 @@ def delete_order(db: Session, work_order_id: str, current_user: User) -> bool:
     return delete_work_order(db, work_order_id, current_user)
 
 
-def list_orders_by_client(
-    db: Session, client_id: str, current_user: User, skip: int = 0, limit: int = 100
-):
+def list_orders_by_client(db: Session, client_id: str, current_user: User, skip: int = 0, limit: int = 100):
     """Get work orders for a specific client."""
     return get_work_orders_by_client(db, client_id, current_user, skip, limit)
 
 
-def list_orders_by_status(
-    db: Session, status: str, current_user: User, skip: int = 0, limit: int = 100
-):
+def list_orders_by_status(db: Session, status: str, current_user: User, skip: int = 0, limit: int = 100):
     """Get work orders by status."""
     return get_work_orders_by_status(db, status, current_user, skip, limit)
 

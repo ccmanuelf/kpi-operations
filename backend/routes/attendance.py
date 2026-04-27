@@ -205,7 +205,9 @@ def get_attendance_statistics(
 
 
 @router.get("/{attendance_id}", response_model=AttendanceRecordResponse)
-def get_attendance(attendance_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> AttendanceRecordResponse:
+def get_attendance(
+    attendance_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> AttendanceRecordResponse:
     """
     Get attendance record by ID
     SECURITY: Verifies user has access to this attendance record
@@ -353,20 +355,15 @@ def calculate_absenteeism_kpi(
     # 1. Absence by reason/type - using ORM with func.coalesce for enum handling
     from sqlalchemy import func as sa_func
 
-    absence_type_label = sa_func.coalesce(
-        AttendanceEntry.absence_type, "Unspecified"
-    ).label("reason")
+    absence_type_label = sa_func.coalesce(AttendanceEntry.absence_type, "Unspecified").label("reason")
 
-    reason_query = (
-        db.query(
-            absence_type_label,
-            sa_func.count().label("count"),
-        )
-        .filter(
-            AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
-            AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
-            AttendanceEntry.is_absent == 1,
-        )
+    reason_query = db.query(
+        absence_type_label,
+        sa_func.count().label("count"),
+    ).filter(
+        AttendanceEntry.shift_date >= datetime.combine(start_date, datetime.min.time()),
+        AttendanceEntry.shift_date <= datetime.combine(end_date, datetime.max.time()),
+        AttendanceEntry.is_absent == 1,
     )
 
     if effective_client_id:

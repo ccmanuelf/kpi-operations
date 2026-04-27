@@ -79,7 +79,5 @@ def format_overlap_warnings(overlapping_shifts: List[Shift]) -> List[str]:
     for s in overlapping_shifts:
         start_str = s.start_time.strftime("%H:%M")
         end_str = s.end_time.strftime("%H:%M")
-        warnings.append(
-            f"Shift overlaps with {s.shift_name} ({start_str}-{end_str})"
-        )
+        warnings.append(f"Shift overlaps with {s.shift_name} ({start_str}-{end_str})")
     return warnings

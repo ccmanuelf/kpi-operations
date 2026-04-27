@@ -24,9 +24,7 @@ from backend.schemas.production_line import ProductionLineCreate
 # ---------------------------------------------------------------------------
 def _seed_client(db, client_id="BRIDGE-C1"):
     """Create the minimal client row needed for FK constraint."""
-    client = TestDataFactory.create_client(
-        db, client_id=client_id, client_name="Bridge Test Client"
-    )
+    client = TestDataFactory.create_client(db, client_id=client_id, client_name="Bridge Test Client")
     db.commit()
     return client
 
@@ -67,9 +65,7 @@ class TestLinkToCapacityLine:
         db = transactional_db
         _seed_client(db, "BRG-L1")
 
-        ops = create_production_line(
-            db, _make_create("BRG-L1", "SEW-01", "Sewing Line 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-L1", "SEW-01", "Sewing Line 1"))
         cap = _create_capacity_line(db, "BRG-L1", "SEW-01", "Cap Sewing 1")
 
         result = link_to_capacity_line(db, ops.line_id, cap.id)
@@ -89,9 +85,7 @@ class TestLinkToCapacityLine:
         """Linking to a nonexistent capacity line raises ValueError."""
         db = transactional_db
         _seed_client(db, "BRG-L3")
-        ops = create_production_line(
-            db, _make_create("BRG-L3", "SEW-01", "Sewing Line 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-L3", "SEW-01", "Sewing Line 1"))
 
         with pytest.raises(ValueError, match="does not exist"):
             link_to_capacity_line(db, ops.line_id, 999999)
@@ -101,9 +95,7 @@ class TestLinkToCapacityLine:
         db = transactional_db
         _seed_client(db, "BRG-L4")
 
-        ops = create_production_line(
-            db, _make_create("BRG-L4", "SEW-01", "Sewing 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-L4", "SEW-01", "Sewing 1"))
         cap_a = _create_capacity_line(db, "BRG-L4", "CAP-A", "Cap A")
         cap_b = _create_capacity_line(db, "BRG-L4", "CAP-B", "Cap B")
 
@@ -125,9 +117,7 @@ class TestUnlinkFromCapacityLine:
         db = transactional_db
         _seed_client(db, "BRG-U1")
 
-        ops = create_production_line(
-            db, _make_create("BRG-U1", "SEW-01", "Sewing Line 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-U1", "SEW-01", "Sewing Line 1"))
         cap = _create_capacity_line(db, "BRG-U1", "SEW-01")
 
         link_to_capacity_line(db, ops.line_id, cap.id)
@@ -142,9 +132,7 @@ class TestUnlinkFromCapacityLine:
         db = transactional_db
         _seed_client(db, "BRG-U2")
 
-        ops = create_production_line(
-            db, _make_create("BRG-U2", "SEW-01", "Sewing Line 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-U2", "SEW-01", "Sewing Line 1"))
         assert ops.capacity_line_id is None
 
         result = unlink_from_capacity_line(db, ops.line_id)
@@ -170,9 +158,7 @@ class TestAutoSyncLines:
 
         codes = ["SEW-01", "CUT-01", "INS-01"]
         for code in codes:
-            create_production_line(
-                db, _make_create("BRG-S1", code, f"Ops {code}")
-            )
+            create_production_line(db, _make_create("BRG-S1", code, f"Ops {code}"))
             _create_capacity_line(db, "BRG-S1", code, f"Cap {code}")
 
         result = auto_sync_lines(db, "BRG-S1")
@@ -190,14 +176,10 @@ class TestAutoSyncLines:
 
         # 2 matching + 1 unmatched operational line
         for code in ["SEW-01", "CUT-01"]:
-            create_production_line(
-                db, _make_create("BRG-S2", code, f"Ops {code}")
-            )
+            create_production_line(db, _make_create("BRG-S2", code, f"Ops {code}"))
             _create_capacity_line(db, "BRG-S2", code, f"Cap {code}")
 
-        create_production_line(
-            db, _make_create("BRG-S2", "PKG-01", "Packaging (no cap match)")
-        )
+        create_production_line(db, _make_create("BRG-S2", "PKG-01", "Packaging (no cap match)"))
 
         result = auto_sync_lines(db, "BRG-S2")
         assert len(result["matched"]) == 2
@@ -209,9 +191,7 @@ class TestAutoSyncLines:
         db = transactional_db
         _seed_client(db, "BRG-S3")
 
-        ops = create_production_line(
-            db, _make_create("BRG-S3", "SEW-01", "Sewing 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-S3", "SEW-01", "Sewing 1"))
         cap = _create_capacity_line(db, "BRG-S3", "SEW-01", "Cap Sewing 1")
 
         # Manually link first
@@ -238,9 +218,7 @@ class TestAutoSyncLines:
         _seed_client(db, "BRG-MT-B")
 
         # Client A has operational line SEW-01
-        create_production_line(
-            db, _make_create("BRG-MT-A", "SEW-01", "Ops Sewing A")
-        )
+        create_production_line(db, _make_create("BRG-MT-A", "SEW-01", "Ops Sewing A"))
         # Client B has the capacity line SEW-01
         _create_capacity_line(db, "BRG-MT-B", "SEW-01", "Cap Sewing B")
 
@@ -254,9 +232,7 @@ class TestAutoSyncLines:
         db = transactional_db
         _seed_client(db, "BRG-S5")
 
-        ops = create_production_line(
-            db, _make_create("BRG-S5", "SEW-01", "Sewing 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-S5", "SEW-01", "Sewing 1"))
         _create_capacity_line(db, "BRG-S5", "SEW-01", "Cap Sewing 1")
 
         # Deactivate the operational line
@@ -272,12 +248,8 @@ class TestAutoSyncLines:
         db = transactional_db
         _seed_client(db, "BRG-S6")
 
-        create_production_line(
-            db, _make_create("BRG-S6", "SEW-01", "Sewing 1")
-        )
-        cap = _create_capacity_line(
-            db, "BRG-S6", "SEW-01", "Cap Sewing 1", is_active=False
-        )
+        create_production_line(db, _make_create("BRG-S6", "SEW-01", "Sewing 1"))
+        cap = _create_capacity_line(db, "BRG-S6", "SEW-01", "Cap Sewing 1", is_active=False)
 
         result = auto_sync_lines(db, "BRG-S6")
         assert len(result["matched"]) == 0
@@ -296,9 +268,7 @@ class TestGetUnlinkedLines:
         _seed_client(db, "BRG-UL1")
 
         for code in ["SEW-01", "CUT-01", "INS-01"]:
-            create_production_line(
-                db, _make_create("BRG-UL1", code, f"Line {code}")
-            )
+            create_production_line(db, _make_create("BRG-UL1", code, f"Line {code}"))
 
         unlinked = get_unlinked_lines(db, "BRG-UL1")
         assert len(unlinked) == 3
@@ -308,12 +278,8 @@ class TestGetUnlinkedLines:
         db = transactional_db
         _seed_client(db, "BRG-UL2")
 
-        ops1 = create_production_line(
-            db, _make_create("BRG-UL2", "SEW-01", "Sewing 1")
-        )
-        create_production_line(
-            db, _make_create("BRG-UL2", "CUT-01", "Cutting 1")
-        )
+        ops1 = create_production_line(db, _make_create("BRG-UL2", "SEW-01", "Sewing 1"))
+        create_production_line(db, _make_create("BRG-UL2", "CUT-01", "Cutting 1"))
         cap = _create_capacity_line(db, "BRG-UL2", "SEW-01")
 
         link_to_capacity_line(db, ops1.line_id, cap.id)
@@ -328,9 +294,7 @@ class TestGetUnlinkedLines:
         _seed_client(db, "BRG-UL3")
 
         for code in ["ZZZ-01", "AAA-01", "MID-01"]:
-            create_production_line(
-                db, _make_create("BRG-UL3", code, f"Line {code}")
-            )
+            create_production_line(db, _make_create("BRG-UL3", code, f"Line {code}"))
 
         unlinked = get_unlinked_lines(db, "BRG-UL3")
         codes = [line.line_code for line in unlinked]
@@ -341,9 +305,7 @@ class TestGetUnlinkedLines:
         db = transactional_db
         _seed_client(db, "BRG-UL4")
 
-        ops = create_production_line(
-            db, _make_create("BRG-UL4", "SEW-01", "Sewing 1")
-        )
+        ops = create_production_line(db, _make_create("BRG-UL4", "SEW-01", "Sewing 1"))
         ops.is_active = False
         db.commit()
 

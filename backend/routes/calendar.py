@@ -134,11 +134,7 @@ def get_summary(
 
     working = [e for e in entries if e.is_working_day]
     non_working = [e for e in entries if not e.is_working_day]
-    holidays = [
-        HolidayInfo(holiday_date=e.calendar_date, name=e.holiday_name)
-        for e in entries
-        if e.holiday_name
-    ]
+    holidays = [HolidayInfo(holiday_date=e.calendar_date, name=e.holiday_name) for e in entries if e.holiday_name]
     total_planned = sum(e.total_hours() for e in entries)
 
     return CalendarSummary(

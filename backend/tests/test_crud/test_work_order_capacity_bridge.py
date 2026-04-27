@@ -27,9 +27,7 @@ CLIENT_ID = "WO-CAP-C1"
 
 def _seed_client(db, client_id=CLIENT_ID):
     """Create the minimal client row needed for FK constraint."""
-    client = TestDataFactory.create_client(
-        db, client_id=client_id, client_name="WO-Cap Bridge Test Client"
-    )
+    client = TestDataFactory.create_client(db, client_id=client_id, client_name="WO-Cap Bridge Test Client")
     db.commit()
     return client
 
@@ -95,12 +93,16 @@ class TestGetWorkOrdersByCapacityOrder:
 
         cap_order = _create_capacity_order(db, order_number="CO-LINK-001")
         _create_work_order(
-            db, work_order_id="WO-LINKED-001",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-LINKED-001",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
         _create_work_order(
-            db, work_order_id="WO-LINKED-002",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-LINKED-002",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
         # Unlinked work order - should NOT be returned
         _create_work_order(db, work_order_id="WO-UNLINKED-001")
@@ -137,8 +139,10 @@ class TestGetCapacityOrderForWorkOrder:
 
         cap_order = _create_capacity_order(db, order_number="CO-GET-001")
         _create_work_order(
-            db, work_order_id="WO-GET-001",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-GET-001",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
 
         result = get_capacity_order_for_work_order(db, "WO-GET-001", admin)
@@ -217,8 +221,10 @@ class TestUnlinkWorkOrderFromCapacity:
 
         cap_order = _create_capacity_order(db, order_number="CO-UNL-001")
         _create_work_order(
-            db, work_order_id="WO-UNL-001",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-UNL-001",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
 
         result = unlink_work_order_from_capacity(db, "WO-UNL-001", admin)

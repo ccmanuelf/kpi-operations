@@ -129,10 +129,7 @@ def parse_xlsx_to_rows(
         # Select sheet
         if sheet_name is not None:
             if sheet_name not in wb.sheetnames:
-                raise ValueError(
-                    f"Sheet '{sheet_name}' not found. "
-                    f"Available sheets: {', '.join(wb.sheetnames)}"
-                )
+                raise ValueError(f"Sheet '{sheet_name}' not found. " f"Available sheets: {', '.join(wb.sheetnames)}")
             ws = wb[sheet_name]
         else:
             ws = wb.active

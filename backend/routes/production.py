@@ -136,7 +136,9 @@ def list_entries(
 
 
 @router.get("/{entry_id}", response_model=ProductionEntryWithKPIs)
-def get_entry(entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> ProductionEntryWithKPIs:
+def get_entry(
+    entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> ProductionEntryWithKPIs:
     """Get production entry with full KPI details"""
     entry = get_production_entry_with_details(db, entry_id, current_user)
     if not entry:
@@ -390,7 +392,9 @@ import_logs_router = APIRouter(prefix="/api/import-logs", tags=["Production"])
 
 
 @import_logs_router.get("")
-def get_import_logs(limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[dict]:
+def get_import_logs(
+    limit: int = 50, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> list[dict]:
     """Get import logs for the current user"""
     from backend.orm.import_log import ImportLog
 

@@ -32,7 +32,9 @@ def create_shift_coverage(db: Session, coverage: ShiftCoverageCreate, current_us
     else:
         coverage_pct = Decimal("0")
 
-    db_coverage = ShiftCoverage(**coverage.model_dump(), coverage_percentage=coverage_pct, entered_by=current_user.user_id)
+    db_coverage = ShiftCoverage(
+        **coverage.model_dump(), coverage_percentage=coverage_pct, entered_by=current_user.user_id
+    )
 
     db.add(db_coverage)
     db.commit()

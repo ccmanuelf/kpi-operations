@@ -277,9 +277,7 @@ class TestDowntimeNullableWorkOrderId:
         assert len(all_events) == 2
 
         # Filter by work_order_id - should return only the one with WO
-        wo_events = get_downtime_events(
-            transactional_db, admin, client_id="DT-QNL-1", work_order_id=wo.work_order_id
-        )
+        wo_events = get_downtime_events(transactional_db, admin, client_id="DT-QNL-1", work_order_id=wo.work_order_id)
         assert len(wo_events) == 1
         assert wo_events[0].work_order_id == wo.work_order_id
 
@@ -312,21 +310,13 @@ class TestDowntimeNullableWorkOrderId:
         transactional_db.commit()
 
         # Query for entries with NULL work_order_id
-        null_wo_entries = (
-            transactional_db.query(DowntimeEntry)
-            .filter(DowntimeEntry.work_order_id.is_(None))
-            .all()
-        )
+        null_wo_entries = transactional_db.query(DowntimeEntry).filter(DowntimeEntry.work_order_id.is_(None)).all()
         assert len(null_wo_entries) == 2
         for entry in null_wo_entries:
             assert entry.work_order_id is None
 
         # Query for entries with non-NULL work_order_id
-        non_null_entries = (
-            transactional_db.query(DowntimeEntry)
-            .filter(DowntimeEntry.work_order_id.isnot(None))
-            .all()
-        )
+        non_null_entries = transactional_db.query(DowntimeEntry).filter(DowntimeEntry.work_order_id.isnot(None)).all()
         assert len(non_null_entries) == 1
         assert non_null_entries[0].work_order_id == wo.work_order_id
 

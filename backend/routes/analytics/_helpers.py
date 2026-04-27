@@ -62,9 +62,7 @@ def get_performance_rating(value: Decimal, benchmark: Decimal) -> str:
         return "Poor"
 
 
-def get_heatmap_color_code(
-    value: Optional[Decimal], benchmark: Decimal = Decimal("85.0")
-) -> Tuple[str, str]:
+def get_heatmap_color_code(value: Optional[Decimal], benchmark: Decimal = Decimal("85.0")) -> Tuple[str, str]:
     """
     Get performance level and color code for heatmap cell
 

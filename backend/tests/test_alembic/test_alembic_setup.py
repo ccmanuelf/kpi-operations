@@ -127,9 +127,7 @@ class TestModelMetadata:
         import backend.orm  # noqa: F401
         import backend.orm.capacity  # noqa: F401
 
-        assert len(Base.metadata.tables) >= 25, (
-            f"Expected >= 25 tables, got {len(Base.metadata.tables)}"
-        )
+        assert len(Base.metadata.tables) >= 25, f"Expected >= 25 tables, got {len(Base.metadata.tables)}"
 
 
 # ---------------------------------------------------------------------------
@@ -197,17 +195,13 @@ class TestAlembicCLI:
         """``alembic heads`` should list the baseline revision."""
         result = _run_alembic("heads")
         assert result.returncode == 0, f"alembic heads failed: {result.stderr}"
-        assert "001_baseline" in result.stdout, (
-            f"001_baseline not in heads output: {result.stdout}"
-        )
+        assert "001_baseline" in result.stdout, f"001_baseline not in heads output: {result.stdout}"
 
     def test_alembic_history(self):
         """``alembic history`` should contain the baseline entry."""
         result = _run_alembic("history")
         assert result.returncode == 0, f"alembic history failed: {result.stderr}"
-        assert "001_baseline" in result.stdout, (
-            f"001_baseline not in history output: {result.stdout}"
-        )
+        assert "001_baseline" in result.stdout, f"001_baseline not in history output: {result.stdout}"
 
     def test_alembic_current(self):
         """``alembic current`` should run without error.
@@ -220,16 +214,12 @@ class TestAlembicCLI:
     def test_alembic_upgrade_head(self):
         """``alembic upgrade head`` should succeed (no-op baseline migration)."""
         result = _run_alembic("upgrade", "head")
-        assert result.returncode == 0, (
-            f"alembic upgrade head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        )
+        assert result.returncode == 0, f"alembic upgrade head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
     def test_alembic_stamp_head(self):
         """``alembic stamp head`` should succeed (marks DB at current revision)."""
         result = _run_alembic("stamp", "head")
-        assert result.returncode == 0, (
-            f"alembic stamp head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        )
+        assert result.returncode == 0, f"alembic stamp head failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
     def test_alembic_current_after_stamp(self):
         """After stamping, ``alembic current`` should report 001_baseline."""
@@ -237,6 +227,4 @@ class TestAlembicCLI:
         _run_alembic("stamp", "head")
         result = _run_alembic("current")
         assert result.returncode == 0, f"alembic current failed: {result.stderr}"
-        assert "001_baseline" in result.stdout, (
-            f"Expected 001_baseline in current output: {result.stdout}"
-        )
+        assert "001_baseline" in result.stdout, f"Expected 001_baseline in current output: {result.stdout}"

@@ -70,7 +70,11 @@ def create_calendar(
     )
 
 
-@calendar_router.get("/calendar/{entry_id}", response_model=CalendarEntryResponse, responses={404: {"description": "Calendar entry not found"}})
+@calendar_router.get(
+    "/calendar/{entry_id}",
+    response_model=CalendarEntryResponse,
+    responses={404: {"description": "Calendar entry not found"}},
+)
 def get_calendar(
     entry_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -85,7 +89,11 @@ def get_calendar(
     return entry
 
 
-@calendar_router.put("/calendar/{entry_id}", response_model=CalendarEntryResponse, responses={404: {"description": "Calendar entry not found"}})
+@calendar_router.put(
+    "/calendar/{entry_id}",
+    response_model=CalendarEntryResponse,
+    responses={404: {"description": "Calendar entry not found"}},
+)
 def update_calendar(
     entry_id: int,
     update: CalendarEntryUpdate,
@@ -101,7 +109,9 @@ def update_calendar(
     return entry
 
 
-@calendar_router.delete("/calendar/{entry_id}", response_model=MessageResponse, responses={404: {"description": "Calendar entry not found"}})
+@calendar_router.delete(
+    "/calendar/{entry_id}", response_model=MessageResponse, responses={404: {"description": "Calendar entry not found"}}
+)
 def delete_calendar(
     entry_id: int,
     client_id: str = Query(..., description="Client ID"),

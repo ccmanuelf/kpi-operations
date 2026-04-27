@@ -66,12 +66,8 @@ def break_time_setup(break_time_db):
     """Seed base data: client, shift, supervisor user."""
     db = break_time_db
 
-    client = TestDataFactory.create_client(
-        db, client_id="RT-BRK", client_name="Route Test Client"
-    )
-    shift = TestDataFactory.create_shift(
-        db, client_id="RT-BRK", shift_name="Day Shift"
-    )
+    client = TestDataFactory.create_client(db, client_id="RT-BRK", client_name="Route Test Client")
+    shift = TestDataFactory.create_shift(db, client_id="RT-BRK", shift_name="Day Shift")
     supervisor = TestDataFactory.create_user(
         db,
         username="brk_supervisor",
@@ -307,9 +303,7 @@ class TestUpdateBreak:
         )
         break_id = create_resp.json()["break_id"]
 
-        update_resp = client.put(
-            f"/api/break-times/{break_id}", json={"is_active": False}
-        )
+        update_resp = client.put(f"/api/break-times/{break_id}", json={"is_active": False})
         assert update_resp.status_code == 200
         assert update_resp.json()["is_active"] is False
 
@@ -358,9 +352,7 @@ class TestUnauthenticated:
 
     def test_unauthenticated_get(self, unauthenticated_client):
         """GET without auth returns 401."""
-        resp = unauthenticated_client.get(
-            "/api/break-times", params={"client_id": "RT-BRK"}
-        )
+        resp = unauthenticated_client.get("/api/break-times", params={"client_id": "RT-BRK"})
         assert resp.status_code == 401
 
     def test_unauthenticated_post(self, unauthenticated_client):

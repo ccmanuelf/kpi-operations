@@ -464,11 +464,15 @@ def bulk_transition(
             results["failed"] += 1
         except SQLAlchemyError as e:
             logger.exception("Database error during bulk transition for work_order_id=%s", wo_id)
-            results["results"].append({"work_order_id": wo_id, "success": False, "error": "Database error during transition"})
+            results["results"].append(
+                {"work_order_id": wo_id, "success": False, "error": "Database error during transition"}
+            )
             results["failed"] += 1
         except (ValueError, TypeError) as e:
             logger.exception("Validation error during bulk transition for work_order_id=%s", wo_id)
-            results["results"].append({"work_order_id": wo_id, "success": False, "error": "Validation error during transition"})
+            results["results"].append(
+                {"work_order_id": wo_id, "success": False, "error": "Validation error during transition"}
+            )
             results["failed"] += 1
 
     return results

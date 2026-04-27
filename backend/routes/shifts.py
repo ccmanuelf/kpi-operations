@@ -99,9 +99,7 @@ def check_overlap_endpoint(
         body.end_time,
         exclude_shift_id=body.exclude_shift_id,
     )
-    overlap_infos = [
-        OverlapInfo.model_validate(s) for s in overlapping
-    ]
+    overlap_infos = [OverlapInfo.model_validate(s) for s in overlapping]
     logger.info(
         "Overlap check for client '%s' (%s-%s): %d overlap(s)",
         body.client_id,
@@ -151,9 +149,7 @@ def update_shift_endpoint(
     effective_end = data.end_time if data.end_time is not None else existing.end_time
 
     # Check overlaps (exclude self)
-    overlapping = check_overlaps(
-        db, existing.client_id, effective_start, effective_end, exclude_shift_id=shift_id
-    )
+    overlapping = check_overlaps(db, existing.client_id, effective_start, effective_end, exclude_shift_id=shift_id)
     warnings = format_overlap_warnings(overlapping)
 
     result = update_shift(db, shift_id, data)

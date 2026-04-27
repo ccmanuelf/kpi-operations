@@ -102,9 +102,7 @@ def decode_access_token(token: str) -> dict:
         raise credentials_exception
 
 
-def get_current_user(
-    request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
-) -> User:
+def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     """
     Dependency to get current authenticated user
 

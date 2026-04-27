@@ -14,10 +14,18 @@ class UserCreate(BaseModel):
 
     username: str = Field(..., min_length=3, max_length=50, description="Unique login identifier for the user")
     email: EmailStr = Field(..., description="User email address for notifications and password recovery")
-    password: str = Field(..., min_length=8, max_length=128, description="User password, must meet security policy requirements")
+    password: str = Field(
+        ..., min_length=8, max_length=128, description="User password, must meet security policy requirements"
+    )
     full_name: str = Field(..., min_length=1, max_length=100, description="User display name shown in the application")
-    role: str = Field(default="operator", pattern="^(admin|poweruser|supervisor|operator|viewer)$", description="Access role determining permissions: admin, poweruser, supervisor, operator, or viewer")
-    client_id_assigned: Optional[str] = Field(None, description="Client tenant ID this user is assigned to for data isolation")
+    role: str = Field(
+        default="operator",
+        pattern="^(admin|poweruser|supervisor|operator|viewer)$",
+        description="Access role determining permissions: admin, poweruser, supervisor, operator, or viewer",
+    )
+    client_id_assigned: Optional[str] = Field(
+        None, description="Client tenant ID this user is assigned to for data isolation"
+    )
 
     @field_validator("password")
     @classmethod
@@ -49,11 +57,21 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     """User update model (all fields optional)"""
 
-    username: Optional[str] = Field(None, min_length=3, max_length=50, description="Updated login identifier for the user")
+    username: Optional[str] = Field(
+        None, min_length=3, max_length=50, description="Updated login identifier for the user"
+    )
     email: Optional[EmailStr] = Field(None, description="Updated email address for notifications")
-    password: Optional[str] = Field(None, min_length=8, max_length=128, description="New password, must meet security policy requirements")
-    full_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Updated display name shown in the application")
-    role: Optional[str] = Field(None, pattern="^(admin|poweruser|supervisor|operator|viewer)$", description="Updated access role for permissions")
+    password: Optional[str] = Field(
+        None, min_length=8, max_length=128, description="New password, must meet security policy requirements"
+    )
+    full_name: Optional[str] = Field(
+        None, min_length=1, max_length=100, description="Updated display name shown in the application"
+    )
+    role: Optional[str] = Field(
+        None,
+        pattern="^(admin|poweruser|supervisor|operator|viewer)$",
+        description="Updated access role for permissions",
+    )
     client_id_assigned: Optional[str] = Field(None, description="Updated client tenant ID assignment")
     is_active: Optional[bool] = Field(None, description="Whether the user account is active or disabled")
 
@@ -93,7 +111,9 @@ class PasswordResetConfirm(BaseModel):
     """Password reset confirmation model"""
 
     token: str = Field(..., description="Password reset token received via email")
-    new_password: str = Field(..., min_length=8, max_length=128, description="New password, must meet security policy requirements")
+    new_password: str = Field(
+        ..., min_length=8, max_length=128, description="New password, must meet security policy requirements"
+    )
 
     @field_validator("new_password")
     @classmethod
@@ -109,7 +129,9 @@ class PasswordChange(BaseModel):
     """Password change model (for authenticated users)"""
 
     current_password: str = Field(..., description="Current password for verification before change")
-    new_password: str = Field(..., min_length=8, max_length=128, description="New password, must meet security policy requirements")
+    new_password: str = Field(
+        ..., min_length=8, max_length=128, description="New password, must meet security policy requirements"
+    )
 
     @field_validator("new_password")
     @classmethod

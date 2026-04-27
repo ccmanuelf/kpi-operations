@@ -61,9 +61,7 @@ def get_plan_vs_actual(
     if status_filter:
         query = query.filter(CapacityOrder.status == status_filter)
     else:
-        query = query.filter(
-            CapacityOrder.status.notin_([OrderStatus.DRAFT, OrderStatus.CANCELLED])
-        )
+        query = query.filter(CapacityOrder.status.notin_([OrderStatus.DRAFT, OrderStatus.CANCELLED]))
 
     # Date range filter on required_date
     if start_date:
@@ -139,19 +137,13 @@ def _build_plan_vs_actual_entry(
     # Calculate variance
     planned_quantity = cap_order.order_quantity or 0
     variance_quantity = actual_completed - planned_quantity
-    variance_percentage = (
-        round((variance_quantity / planned_quantity) * 100, 2)
-        if planned_quantity > 0
-        else 0.0
-    )
+    variance_percentage = round((variance_quantity / planned_quantity) * 100, 2) if planned_quantity > 0 else 0.0
 
     # Calculate on-time risk
     on_time_risk = _calculate_risk(cap_order, actual_completed, planned_quantity)
 
     # Projected completion (simple linear projection)
-    projected_completion = _project_completion(
-        cap_order, actual_completed, planned_quantity
-    )
+    projected_completion = _project_completion(cap_order, actual_completed, planned_quantity)
 
     return {
         "capacity_order_id": cap_order.id,
@@ -165,23 +157,11 @@ def _build_plan_vs_actual_entry(
         "variance_quantity": variance_quantity,
         "variance_percentage": variance_percentage,
         "completion_percentage": (
-            round((actual_completed / planned_quantity * 100), 2)
-            if planned_quantity > 0
-            else 0.0
+            round((actual_completed / planned_quantity * 100), 2) if planned_quantity > 0 else 0.0
         ),
-        "required_date": (
-            cap_order.required_date.isoformat() if cap_order.required_date else None
-        ),
-        "planned_start_date": (
-            cap_order.planned_start_date.isoformat()
-            if cap_order.planned_start_date
-            else None
-        ),
-        "planned_end_date": (
-            cap_order.planned_end_date.isoformat()
-            if cap_order.planned_end_date
-            else None
-        ),
+        "required_date": (cap_order.required_date.isoformat() if cap_order.required_date else None),
+        "planned_start_date": (cap_order.planned_start_date.isoformat() if cap_order.planned_start_date else None),
+        "planned_end_date": (cap_order.planned_end_date.isoformat() if cap_order.planned_end_date else None),
         "projected_completion": projected_completion,
         "on_time_risk": on_time_risk,
         "linked_work_orders": len(linked_work_orders),
@@ -189,9 +169,7 @@ def _build_plan_vs_actual_entry(
     }
 
 
-def _calculate_risk(
-    cap_order: CapacityOrder, actual_completed: int, planned_quantity: int
-) -> str:
+def _calculate_risk(cap_order: CapacityOrder, actual_completed: int, planned_quantity: int) -> str:
     """
     Calculate on-time delivery risk level.
 
@@ -236,20 +214,14 @@ def _calculate_risk(
         return "HIGH"
 
 
-def _project_completion(
-    cap_order: CapacityOrder, actual_completed: int, planned_quantity: int
-) -> Optional[str]:
+def _project_completion(cap_order: CapacityOrder, actual_completed: int, planned_quantity: int) -> Optional[str]:
     """
     Project completion date based on current production rate.
     Uses simple linear projection from planned_start_date to today.
 
     Returns ISO-format date string or None if projection is not possible.
     """
-    if (
-        not cap_order.planned_start_date
-        or actual_completed == 0
-        or planned_quantity == 0
-    ):
+    if not cap_order.planned_start_date or actual_completed == 0 or planned_quantity == 0:
         return None
 
     today = date.today()
@@ -304,11 +276,7 @@ def get_plan_vs_actual_summary(
         "total_planned_quantity": total_planned,
         "total_actual_completed": total_actual,
         "overall_variance": total_actual - total_planned,
-        "overall_completion_pct": (
-            round((total_actual / total_planned * 100), 2)
-            if total_planned > 0
-            else 0.0
-        ),
+        "overall_completion_pct": (round((total_actual / total_planned * 100), 2) if total_planned > 0 else 0.0),
         "risk_distribution": risk_counts,
         "orders": details,
     }

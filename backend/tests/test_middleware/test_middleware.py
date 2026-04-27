@@ -104,10 +104,7 @@ class TestSecurityHeadersMiddleware:
     def test_permissions_policy(self):
         """Permissions-Policy disables camera, microphone, geolocation."""
         resp = self.client.get("/ping")
-        assert (
-            resp.headers["Permissions-Policy"]
-            == "camera=(), microphone=(), geolocation=()"
-        )
+        assert resp.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
 
     def test_hsts_not_set_for_localhost(self):
         """HSTS header is NOT set for localhost requests."""

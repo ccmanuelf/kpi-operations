@@ -54,9 +54,7 @@ def create_equipment(db: Session, data: EquipmentCreate) -> Equipment:
         db.refresh(db_entry)
     except IntegrityError:
         db.rollback()
-        raise ValueError(
-            f"Equipment code '{data.equipment_code}' already exists for client '{data.client_id}'"
-        )
+        raise ValueError(f"Equipment code '{data.equipment_code}' already exists for client '{data.client_id}'")
     logger.info(
         "Created equipment '%s' (%s) for client '%s'",
         data.equipment_name,

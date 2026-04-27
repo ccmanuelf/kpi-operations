@@ -95,9 +95,7 @@ def xlsx_db():
 @pytest.fixture
 def supervisor_client(xlsx_db):
     """TestClient authenticated as supervisor with a pre-created client."""
-    TestDataFactory.create_client(
-        xlsx_db, client_id=CLIENT_ID, client_name="XLSX Test Client"
-    )
+    TestDataFactory.create_client(xlsx_db, client_id=CLIENT_ID, client_name="XLSX Test Client")
     xlsx_db.commit()
     app = _create_test_app(xlsx_db, role="supervisor")
     return TestClient(app), xlsx_db
@@ -106,9 +104,7 @@ def supervisor_client(xlsx_db):
 @pytest.fixture
 def admin_client(xlsx_db):
     """TestClient authenticated as admin with a pre-created client."""
-    TestDataFactory.create_client(
-        xlsx_db, client_id=CLIENT_ID, client_name="XLSX Admin Client"
-    )
+    TestDataFactory.create_client(xlsx_db, client_id=CLIENT_ID, client_name="XLSX Admin Client")
     xlsx_db.commit()
     app = _create_test_app(xlsx_db, role="admin")
     return TestClient(app), xlsx_db
@@ -165,24 +161,26 @@ class TestDowntimeXlsxUpload:
         """XLSX file is parsed and all rows are processed."""
         client, db = supervisor_client
 
-        wo = TestDataFactory.create_work_order(
-            db, client_id=CLIENT_ID, work_order_id="WO-XLSX-DT-001"
-        )
+        wo = TestDataFactory.create_work_order(db, client_id=CLIENT_ID, work_order_id="WO-XLSX-DT-001")
         db.commit()
 
-        xlsx_data = _make_xlsx_bytes([
-            ["client_id", "work_order_number", "shift_date",
-             "downtime_category", "downtime_duration_minutes"],
-            [CLIENT_ID, wo.work_order_id, "2025-06-01",
-             "EQUIPMENT_FAILURE", 30],
-            [CLIENT_ID, wo.work_order_id, "2025-06-02",
-             "MAINTENANCE", 45],
-        ])
+        xlsx_data = _make_xlsx_bytes(
+            [
+                ["client_id", "work_order_number", "shift_date", "downtime_category", "downtime_duration_minutes"],
+                [CLIENT_ID, wo.work_order_id, "2025-06-01", "EQUIPMENT_FAILURE", 30],
+                [CLIENT_ID, wo.work_order_id, "2025-06-02", "MAINTENANCE", 45],
+            ]
+        )
 
         response = client.post(
             "/api/downtime/upload/csv",
-            files={"file": ("downtime.xlsx", BytesIO(xlsx_data),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "downtime.xlsx",
+                    BytesIO(xlsx_data),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
 
         assert response.status_code == 200, response.text
@@ -194,28 +192,31 @@ class TestDowntimeXlsxUpload:
         """The sheet_name query parameter selects the correct sheet."""
         client, db = supervisor_client
 
-        wo = TestDataFactory.create_work_order(
-            db, client_id=CLIENT_ID, work_order_id="WO-XLSX-DT-SH"
-        )
+        wo = TestDataFactory.create_work_order(db, client_id=CLIENT_ID, work_order_id="WO-XLSX-DT-SH")
         db.commit()
 
-        xlsx_data = _make_multi_sheet_xlsx_bytes({
-            "Ignore": [
-                ["col_a"],
-                ["garbage"],
-            ],
-            "Downtime": [
-                ["client_id", "work_order_number", "shift_date",
-                 "downtime_category", "downtime_duration_minutes"],
-                [CLIENT_ID, wo.work_order_id, "2025-07-01",
-                 "MATERIAL_SHORTAGE", 60],
-            ],
-        })
+        xlsx_data = _make_multi_sheet_xlsx_bytes(
+            {
+                "Ignore": [
+                    ["col_a"],
+                    ["garbage"],
+                ],
+                "Downtime": [
+                    ["client_id", "work_order_number", "shift_date", "downtime_category", "downtime_duration_minutes"],
+                    [CLIENT_ID, wo.work_order_id, "2025-07-01", "MATERIAL_SHORTAGE", 60],
+                ],
+            }
+        )
 
         response = client.post(
             "/api/downtime/upload/csv?sheet_name=Downtime",
-            files={"file": ("multi.xlsx", BytesIO(xlsx_data),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "multi.xlsx",
+                    BytesIO(xlsx_data),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
 
         assert response.status_code == 200, response.text
@@ -243,8 +244,13 @@ class TestDowntimeXlsxUpload:
 
         response = client.post(
             "/api/downtime/upload/csv",
-            files={"file": ("big.xlsx", BytesIO(big_data),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "big.xlsx",
+                    BytesIO(big_data),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
         assert response.status_code == 413
 
@@ -252,9 +258,7 @@ class TestDowntimeXlsxUpload:
         """Existing CSV upload still works after XLSX support was added."""
         client, db = supervisor_client
 
-        wo = TestDataFactory.create_work_order(
-            db, client_id=CLIENT_ID, work_order_id="WO-CSV-DT-001"
-        )
+        wo = TestDataFactory.create_work_order(db, client_id=CLIENT_ID, work_order_id="WO-CSV-DT-001")
         db.commit()
 
         csv_content = (
@@ -294,17 +298,23 @@ class TestWorkOrdersXlsxUpload:
         """XLSX file is parsed and all rows are processed."""
         client, db = admin_client
 
-        xlsx_data = _make_xlsx_bytes([
-            ["work_order_id", "client_id", "style_model", "planned_quantity",
-             "status", "priority"],
-            ["WO-XL-001", CLIENT_ID, "STYLE-A", 500, "ACTIVE", "HIGH"],
-            ["WO-XL-002", CLIENT_ID, "STYLE-B", 750, "ACTIVE", "MEDIUM"],
-        ])
+        xlsx_data = _make_xlsx_bytes(
+            [
+                ["work_order_id", "client_id", "style_model", "planned_quantity", "status", "priority"],
+                ["WO-XL-001", CLIENT_ID, "STYLE-A", 500, "ACTIVE", "HIGH"],
+                ["WO-XL-002", CLIENT_ID, "STYLE-B", 750, "ACTIVE", "MEDIUM"],
+            ]
+        )
 
         response = client.post(
             "/api/work-orders/upload/csv",
-            files={"file": ("orders.xlsx", BytesIO(xlsx_data),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "orders.xlsx",
+                    BytesIO(xlsx_data),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
 
         assert response.status_code == 200, response.text
@@ -316,16 +326,22 @@ class TestWorkOrdersXlsxUpload:
         """XLSX headers with spaces/capitals are matched correctly."""
         client, db = admin_client
 
-        xlsx_data = _make_xlsx_bytes([
-            ["Work Order ID", "Client ID", "Style Model", "Planned Quantity",
-             "Status", "Priority"],
-            ["WO-FUZZY-001", CLIENT_ID, "STYLE-FUZZY", 100, "ACTIVE", "LOW"],
-        ])
+        xlsx_data = _make_xlsx_bytes(
+            [
+                ["Work Order ID", "Client ID", "Style Model", "Planned Quantity", "Status", "Priority"],
+                ["WO-FUZZY-001", CLIENT_ID, "STYLE-FUZZY", 100, "ACTIVE", "LOW"],
+            ]
+        )
 
         response = client.post(
             "/api/work-orders/upload/csv",
-            files={"file": ("fuzzy.xlsx", BytesIO(xlsx_data),
-                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "fuzzy.xlsx",
+                    BytesIO(xlsx_data),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
 
         assert response.status_code == 200, response.text

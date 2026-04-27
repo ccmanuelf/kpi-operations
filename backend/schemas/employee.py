@@ -28,7 +28,9 @@ class EmployeeUpdate(BaseModel):
     employee_code: Optional[str] = Field(None, min_length=1, max_length=50, description="Updated unique employee code")
     employee_name: Optional[str] = Field(None, min_length=1, max_length=255, description="Updated employee full name")
     client_id_assigned: Optional[str] = Field(None, description="Updated comma-separated client IDs assignment")
-    is_floating_pool: Optional[int] = Field(None, ge=0, le=1, description="Updated floating pool flag: 0=regular, 1=floating pool")
+    is_floating_pool: Optional[int] = Field(
+        None, ge=0, le=1, description="Updated floating pool flag: 0=regular, 1=floating pool"
+    )
     is_active: Optional[int] = Field(None, ge=0, le=1, description="Updated active status: 1=active, 0=inactive")
     department: Optional[str] = Field(None, max_length=50, description="Updated department classification")
     contact_phone: Optional[str] = Field(None, max_length=50, description="Updated employee phone number")
@@ -43,7 +45,9 @@ class EmployeeResponse(BaseModel):
     employee_id: int = Field(..., description="Unique database identifier for the employee")
     employee_code: str = Field(..., description="Unique employee code used across the system")
     employee_name: str = Field(..., description="Employee full name")
-    client_id_assigned: Optional[str] = Field(None, description="Comma-separated client IDs the employee is assigned to")
+    client_id_assigned: Optional[str] = Field(
+        None, description="Comma-separated client IDs the employee is assigned to"
+    )
     is_floating_pool: int = Field(..., description="Floating pool flag: 0=regular assignment, 1=floating pool")
     is_active: Optional[int] = Field(1, description="Active status: 1=active, 0=inactive (soft deleted)")
     department: Optional[str] = Field(None, description="Department the employee belongs to")

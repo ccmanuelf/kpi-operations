@@ -23,6 +23,7 @@ from backend.services.xlsx_parser import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_xlsx(rows, sheet_name="Sheet1", header_row=None):
     """
     Create an in-memory XLSX workbook from a list of lists.
@@ -119,11 +120,13 @@ class TestParseXlsxToRows:
 
     def test_basic_parsing(self):
         """Parse a simple 2-column, 2-row workbook."""
-        content = _make_xlsx([
-            ["Name", "Value"],
-            ["Alpha", "100"],
-            ["Beta", "200"],
-        ])
+        content = _make_xlsx(
+            [
+                ["Name", "Value"],
+                ["Alpha", "100"],
+                ["Beta", "200"],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert len(rows) == 2
         assert rows[0]["name"] == "Alpha"
@@ -133,10 +136,12 @@ class TestParseXlsxToRows:
 
     def test_header_normalization(self):
         """Headers like 'Work Order ID' become 'work_order_id'."""
-        content = _make_xlsx([
-            ["Work Order ID", "Shift Date", "Client ID"],
-            ["WO-001", "2025-01-10", "CLIENT-A"],
-        ])
+        content = _make_xlsx(
+            [
+                ["Work Order ID", "Shift Date", "Client ID"],
+                ["WO-001", "2025-01-10", "CLIENT-A"],
+            ]
+        )
         rows = parse_xlsx_to_rows(content, fuzzy_headers=True)
         assert len(rows) == 1
         assert "work_order_id" in rows[0]
@@ -145,10 +150,12 @@ class TestParseXlsxToRows:
 
     def test_fuzzy_headers_disabled(self):
         """With fuzzy_headers=False, headers are stripped but not normalized."""
-        content = _make_xlsx([
-            ["Work Order ID", "Shift Date"],
-            ["WO-001", "2025-01-10"],
-        ])
+        content = _make_xlsx(
+            [
+                ["Work Order ID", "Shift Date"],
+                ["WO-001", "2025-01-10"],
+            ]
+        )
         rows = parse_xlsx_to_rows(content, fuzzy_headers=False)
         assert "Work Order ID" in rows[0]
         assert "Shift Date" in rows[0]
@@ -181,37 +188,45 @@ class TestParseXlsxToRows:
 
     def test_numeric_int_cell(self):
         """Integer cells are converted to string without decimal."""
-        content = _make_xlsx([
-            ["count"],
-            [42],
-        ])
+        content = _make_xlsx(
+            [
+                ["count"],
+                [42],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert rows[0]["count"] == "42"
 
     def test_numeric_float_cell(self):
         """Float cells with fractional parts keep their decimals."""
-        content = _make_xlsx([
-            ["rate"],
-            [3.14],
-        ])
+        content = _make_xlsx(
+            [
+                ["rate"],
+                [3.14],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert rows[0]["rate"] == "3.14"
 
     def test_numeric_whole_float(self):
         """Float cells like 100.0 become '100' (no trailing .0)."""
-        content = _make_xlsx([
-            ["qty"],
-            [100.0],
-        ])
+        content = _make_xlsx(
+            [
+                ["qty"],
+                [100.0],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert rows[0]["qty"] == "100"
 
     def test_none_cell_becomes_empty_string(self):
         """None cell values become empty strings."""
-        content = _make_xlsx([
-            ["col_a", "col_b"],
-            ["hello", None],
-        ])
+        content = _make_xlsx(
+            [
+                ["col_a", "col_b"],
+                ["hello", None],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert rows[0]["col_b"] == ""
 
@@ -234,16 +249,18 @@ class TestParseXlsxToRows:
 
     def test_sheet_selection_by_name(self):
         """Selecting a specific sheet by name works."""
-        content = _make_multi_sheet_xlsx({
-            "Downtime": [
-                ["event_id", "reason"],
-                ["DT-001", "EQUIPMENT_FAILURE"],
-            ],
-            "Quality": [
-                ["inspection_id", "result"],
-                ["QI-001", "PASS"],
-            ],
-        })
+        content = _make_multi_sheet_xlsx(
+            {
+                "Downtime": [
+                    ["event_id", "reason"],
+                    ["DT-001", "EQUIPMENT_FAILURE"],
+                ],
+                "Quality": [
+                    ["inspection_id", "result"],
+                    ["QI-001", "PASS"],
+                ],
+            }
+        )
         rows = parse_xlsx_to_rows(content, sheet_name="Quality")
         assert len(rows) == 1
         assert rows[0]["inspection_id"] == "QI-001"
@@ -256,19 +273,23 @@ class TestParseXlsxToRows:
 
     def test_empty_workbook(self):
         """A workbook with only headers and no data rows returns empty list."""
-        content = _make_xlsx([
-            ["col_a", "col_b"],
-        ])
+        content = _make_xlsx(
+            [
+                ["col_a", "col_b"],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert rows == []
 
     def test_boolean_cell(self):
         """Boolean cells become '1' or '0'."""
-        content = _make_xlsx([
-            ["flag"],
-            [True],
-            [False],
-        ])
+        content = _make_xlsx(
+            [
+                ["flag"],
+                [True],
+                [False],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         assert rows[0]["flag"] == "1"
         assert rows[1]["flag"] == "0"
@@ -280,10 +301,12 @@ class TestParseXlsxToRows:
 
     def test_all_values_are_strings(self):
         """Every value in the returned dicts is a string."""
-        content = _make_xlsx([
-            ["text", "integer", "decimal", "empty"],
-            ["hello", 42, 3.14, None],
-        ])
+        content = _make_xlsx(
+            [
+                ["text", "integer", "decimal", "empty"],
+                ["hello", 42, 3.14, None],
+            ]
+        )
         rows = parse_xlsx_to_rows(content)
         for key, value in rows[0].items():
             assert isinstance(value, str), f"Key '{key}' has non-string value: {type(value)}"
@@ -318,11 +341,13 @@ class TestGetSheetNames:
         assert names == ["Sheet1"]
 
     def test_multiple_sheets(self):
-        content = _make_multi_sheet_xlsx({
-            "Downtime": [["a"]],
-            "Quality": [["b"]],
-            "Attendance": [["c"]],
-        })
+        content = _make_multi_sheet_xlsx(
+            {
+                "Downtime": [["a"]],
+                "Quality": [["b"]],
+                "Attendance": [["c"]],
+            }
+        )
         names = get_sheet_names(content)
         assert "Downtime" in names
         assert "Quality" in names

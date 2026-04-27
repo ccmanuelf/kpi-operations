@@ -240,7 +240,9 @@ class TestCreateWorkOrder:
         assert result.received_date is not None
         # Received date should be close to creation time
         # SQLite strips timezone info, so compare as naive UTC
-        received = result.received_date if result.received_date.tzinfo else result.received_date.replace(tzinfo=timezone.utc)
+        received = (
+            result.received_date if result.received_date.tzinfo else result.received_date.replace(tzinfo=timezone.utc)
+        )
         assert received >= before_create
 
     def test_create_work_order_supervisor_own_client(self, work_order_setup):
@@ -599,7 +601,11 @@ class TestGetWorkOrdersByDateRange:
         assert len(results) >= 1
         for wo in results:
             # SQLite strips timezone info, so normalize for comparison
-            ship_date = wo.planned_ship_date if wo.planned_ship_date.tzinfo else wo.planned_ship_date.replace(tzinfo=timezone.utc)
+            ship_date = (
+                wo.planned_ship_date
+                if wo.planned_ship_date.tzinfo
+                else wo.planned_ship_date.replace(tzinfo=timezone.utc)
+            )
             assert ship_date >= start_date
             assert ship_date <= end_date
 

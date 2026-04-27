@@ -26,7 +26,9 @@ class DowntimeEventCreate(BaseModel):
     """Create downtime event - aligned with DOWNTIME_ENTRY schema"""
 
     # Multi-tenant isolation - REQUIRED
-    client_id: str = Field(..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation")
+    client_id: str = Field(
+        ..., min_length=1, max_length=50, description="Tenant client identifier for multi-tenant isolation"
+    )
 
     # Work order reference - optional (downtime can be attributed to machine/line without a work order)
     work_order_id: Optional[str] = Field(None, max_length=50, description="Work order affected by this downtime event")
@@ -40,11 +42,17 @@ class DowntimeEventCreate(BaseModel):
     downtime_duration_minutes: int = Field(..., gt=0, le=1440, description="Duration in minutes (max 24h)")
 
     # Equipment details
-    machine_id: Optional[str] = Field(None, max_length=100, description="Identifier of the machine or equipment affected")
-    equipment_code: Optional[str] = Field(None, max_length=50, description="Equipment asset code for maintenance tracking")
+    machine_id: Optional[str] = Field(
+        None, max_length=100, description="Identifier of the machine or equipment affected"
+    )
+    equipment_code: Optional[str] = Field(
+        None, max_length=50, description="Equipment asset code for maintenance tracking"
+    )
 
     # Root cause analysis
-    root_cause_category: Optional[str] = Field(None, max_length=100, description="Classification of the root cause for analysis")
+    root_cause_category: Optional[str] = Field(
+        None, max_length=100, description="Classification of the root cause for analysis"
+    )
     corrective_action: Optional[str] = Field(None, description="Description of corrective or preventive action taken")
 
     # Metadata
@@ -95,9 +103,13 @@ class DowntimeEventCreate(BaseModel):
 class DowntimeEventUpdate(BaseModel):
     """Update downtime event"""
 
-    work_order_id: Optional[str] = Field(None, max_length=50, description="Updated work order reference (set to null to remove)")
+    work_order_id: Optional[str] = Field(
+        None, max_length=50, description="Updated work order reference (set to null to remove)"
+    )
     line_id: Optional[int] = Field(None, description="Updated production line ID")
-    downtime_category: Optional[str] = Field(None, max_length=50, description="Updated downtime classification category")
+    downtime_category: Optional[str] = Field(
+        None, max_length=50, description="Updated downtime classification category"
+    )
     downtime_reason: Optional[str] = Field(None, max_length=255, description="Updated detailed reason for the downtime")
     duration_hours: Optional[Decimal] = Field(None, gt=0, le=24, description="Updated downtime duration in hours")
     machine_id: Optional[str] = Field(None, max_length=50, description="Updated machine or equipment identifier")
@@ -135,6 +147,8 @@ class AvailabilityCalculationResponse(BaseModel):
     total_scheduled_hours: Decimal = Field(..., description="Total scheduled production hours for the period")
     total_downtime_hours: Decimal = Field(..., description="Sum of all downtime hours during the period")
     available_hours: Decimal = Field(..., description="Net available hours (scheduled minus downtime)")
-    availability_percentage: Decimal = Field(..., description="Availability rate as percentage (available / scheduled * 100)")
+    availability_percentage: Decimal = Field(
+        ..., description="Availability rate as percentage (available / scheduled * 100)"
+    )
     downtime_events: int = Field(..., description="Count of distinct downtime events in the period")
     calculation_timestamp: datetime = Field(..., description="Timestamp when this calculation was performed")

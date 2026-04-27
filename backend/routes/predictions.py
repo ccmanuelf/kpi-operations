@@ -275,8 +275,15 @@ def build_comprehensive_prediction(
 async def get_kpi_prediction(
     kpi_type: str,
     client_id: Optional[str] = Query(None, description="Client ID to forecast (defaults to user's client)"),
-    forecast_days: int = Query(LOOKBACK_WEEKLY_DAYS, ge=MIN_FORECAST_DAYS, le=MAX_FORECAST_DAYS, description="Forecast horizon (1-30 days)"),
-    historical_days: int = Query(LOOKBACK_MONTHLY_DAYS, ge=MIN_HISTORICAL_DAYS, le=MAX_HISTORICAL_DAYS, description="Historical data window (7-90 days)"),
+    forecast_days: int = Query(
+        LOOKBACK_WEEKLY_DAYS, ge=MIN_FORECAST_DAYS, le=MAX_FORECAST_DAYS, description="Forecast horizon (1-30 days)"
+    ),
+    historical_days: int = Query(
+        LOOKBACK_MONTHLY_DAYS,
+        ge=MIN_HISTORICAL_DAYS,
+        le=MAX_HISTORICAL_DAYS,
+        description="Historical data window (7-90 days)",
+    ),
     method: Optional[str] = Query(None, pattern="^(auto|simple|double|linear)$", description="Forecasting method"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -360,8 +367,15 @@ async def get_kpi_prediction(
 )
 async def get_all_kpi_predictions(
     client_id: Optional[str] = Query(None, description="Client ID to forecast (defaults to user's client)"),
-    forecast_days: int = Query(LOOKBACK_WEEKLY_DAYS, ge=MIN_FORECAST_DAYS, le=MAX_FORECAST_DAYS, description="Forecast horizon (1-30 days)"),
-    historical_days: int = Query(LOOKBACK_MONTHLY_DAYS, ge=MIN_HISTORICAL_DAYS, le=MAX_HISTORICAL_DAYS, description="Historical data window (7-90 days)"),
+    forecast_days: int = Query(
+        LOOKBACK_WEEKLY_DAYS, ge=MIN_FORECAST_DAYS, le=MAX_FORECAST_DAYS, description="Forecast horizon (1-30 days)"
+    ),
+    historical_days: int = Query(
+        LOOKBACK_MONTHLY_DAYS,
+        ge=MIN_HISTORICAL_DAYS,
+        le=MAX_HISTORICAL_DAYS,
+        description="Historical data window (7-90 days)",
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AllKPIPredictionsResponse:
@@ -495,9 +509,7 @@ async def seed_demo_data(
         return {"message": "Demo data seeded successfully", **result}
     except Exception as e:
         logger.exception("Prediction operation failed: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Prediction operation failed"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Prediction operation failed")
 
 
 @router.get(

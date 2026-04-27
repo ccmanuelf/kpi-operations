@@ -25,7 +25,10 @@ class TestInferredDate:
         from backend.calculations.otd import InferredDate
 
         inferred = InferredDate(
-            date=datetime.now(tz=timezone.utc), is_inferred=False, inference_source="planned_ship_date", confidence_score=1.0
+            date=datetime.now(tz=timezone.utc),
+            is_inferred=False,
+            inference_source="planned_ship_date",
+            confidence_score=1.0,
         )
 
         assert inferred.date is not None

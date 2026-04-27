@@ -4,6 +4,7 @@ Tests for database migration CLI tool.
 Uses in-memory SQLite databases for both source and target to validate
 migration logic without requiring external database servers.
 """
+
 import pytest
 from sqlalchemy import Column, Integer, String, DateTime, MetaData, Table, create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -246,6 +247,7 @@ class TestPreflightValidation:
 
         # Cleanup the created file
         import os
+
         try:
             os.remove("nonexistent_path_xyz_12345.db")
         except FileNotFoundError:
@@ -314,9 +316,7 @@ class TestSchemaOnlyMode:
         target_tables = inspector.get_table_names()
 
         # Should have a reasonable number of tables
-        assert len(target_tables) >= 20, (
-            f"Expected at least 20 tables, got {len(target_tables)}"
-        )
+        assert len(target_tables) >= 20, f"Expected at least 20 tables, got {len(target_tables)}"
 
     def test_idempotent_schema_creation(self, source_engine, target_engine):
         """Running schema creation twice does not error."""
@@ -379,10 +379,7 @@ class TestAllMode:
         tool._migrate_schema()
 
         # Create migrator and run
-        migrator = DataMigrator(
-            seeded_source, target_engine,
-            source_provider="sqlite", target_provider="sqlite"
-        )
+        migrator = DataMigrator(seeded_source, target_engine, source_provider="sqlite", target_provider="sqlite")
         result = migrator.migrate_all_data()
 
         assert result["success"] is True
@@ -402,16 +399,11 @@ class TestAllMode:
 
         tool._migrate_schema()
 
-        migrator = DataMigrator(
-            seeded_source, target_engine,
-            source_provider="sqlite", target_provider="sqlite"
-        )
+        migrator = DataMigrator(seeded_source, target_engine, source_provider="sqlite", target_provider="sqlite")
         migrator.migrate_all_data()
 
         verification = migrator.verify_migration()
-        assert verification["verified"] is True, (
-            f"Mismatches: {verification['mismatches']}"
-        )
+        assert verification["verified"] is True, f"Mismatches: {verification['mismatches']}"
 
     def test_data_integrity(self, seeded_source, target_engine):
         """Spot-check that specific records were copied correctly."""
@@ -427,17 +419,12 @@ class TestAllMode:
 
         tool._migrate_schema()
 
-        migrator = DataMigrator(
-            seeded_source, target_engine,
-            source_provider="sqlite", target_provider="sqlite"
-        )
+        migrator = DataMigrator(seeded_source, target_engine, source_provider="sqlite", target_provider="sqlite")
         migrator.migrate_all_data()
 
         # Verify specific CLIENT records exist on target
         with target_engine.connect() as conn:
-            result = conn.execute(
-                text("SELECT client_id FROM CLIENT ORDER BY client_id")
-            ).fetchall()
+            result = conn.execute(text("SELECT client_id FROM CLIENT ORDER BY client_id")).fetchall()
             client_ids = [r[0] for r in result]
 
         assert "DEMO-001" in client_ids
@@ -458,10 +445,7 @@ class TestAllMode:
 
         tool._migrate_schema()
 
-        migrator = DataMigrator(
-            source_engine, target_engine,
-            source_provider="sqlite", target_provider="sqlite"
-        )
+        migrator = DataMigrator(source_engine, target_engine, source_provider="sqlite", target_provider="sqlite")
         result = migrator.migrate_all_data(skip_empty_tables=True)
 
         assert result["success"] is True
@@ -484,17 +468,16 @@ class TestAllMode:
         progress_calls = []
 
         def track_progress(table_name, current, total, rows_so_far):
-            progress_calls.append({
-                "table": table_name,
-                "current": current,
-                "total": total,
-                "rows_so_far": rows_so_far,
-            })
+            progress_calls.append(
+                {
+                    "table": table_name,
+                    "current": current,
+                    "total": total,
+                    "rows_so_far": rows_so_far,
+                }
+            )
 
-        migrator = DataMigrator(
-            seeded_source, target_engine,
-            source_provider="sqlite", target_provider="sqlite"
-        )
+        migrator = DataMigrator(seeded_source, target_engine, source_provider="sqlite", target_provider="sqlite")
         migrator.migrate_all_data(progress_callback=track_progress)
 
         assert len(progress_calls) > 0
@@ -549,9 +532,7 @@ class TestUserOnlyMode:
 
         # Verify DEMO-001 products were NOT copied
         with target_engine.connect() as conn:
-            demo_count = conn.execute(
-                text("SELECT COUNT(*) FROM PRODUCT WHERE client_id = 'DEMO-001'")
-            ).scalar()
+            demo_count = conn.execute(text("SELECT COUNT(*) FROM PRODUCT WHERE client_id = 'DEMO-001'")).scalar()
             assert demo_count == 0, "Demo client products should not be copied"
 
     def test_copies_non_demo_data(self, seeded_source, target_engine):
@@ -571,9 +552,7 @@ class TestUserOnlyMode:
 
         # REAL-001 products should be copied
         with target_engine.connect() as conn:
-            real_count = conn.execute(
-                text("SELECT COUNT(*) FROM PRODUCT WHERE client_id = 'REAL-001'")
-            ).scalar()
+            real_count = conn.execute(text("SELECT COUNT(*) FROM PRODUCT WHERE client_id = 'REAL-001'")).scalar()
             assert real_count == 3, f"Expected 3 REAL-001 products, got {real_count}"
 
     def test_custom_demo_client_ids(self, seeded_source, target_engine):
@@ -594,15 +573,11 @@ class TestUserOnlyMode:
 
         # TEST-001 client should be present (not excluded)
         with target_engine.connect() as conn:
-            test_count = conn.execute(
-                text("SELECT COUNT(*) FROM CLIENT WHERE client_id = 'TEST-001'")
-            ).scalar()
+            test_count = conn.execute(text("SELECT COUNT(*) FROM CLIENT WHERE client_id = 'TEST-001'")).scalar()
             assert test_count == 1, "TEST-001 should be copied when not in exclusion list"
 
             # DEMO-001 should be excluded
-            demo_count = conn.execute(
-                text("SELECT COUNT(*) FROM CLIENT WHERE client_id = 'DEMO-001'")
-            ).scalar()
+            demo_count = conn.execute(text("SELECT COUNT(*) FROM CLIENT WHERE client_id = 'DEMO-001'")).scalar()
             assert demo_count == 0, "DEMO-001 should be excluded"
 
     def test_tables_without_client_id_copied_fully(self, seeded_source, target_engine):
@@ -626,8 +601,7 @@ class TestUserOnlyMode:
         target_user_count = _count_table(target_engine, "USER")
 
         assert target_user_count == source_user_count, (
-            f"USER table should be fully copied: source={source_user_count}, "
-            f"target={target_user_count}"
+            f"USER table should be fully copied: source={source_user_count}, " f"target={target_user_count}"
         )
 
     def test_filtered_row_counts_reported(self, seeded_source, target_engine):
@@ -647,9 +621,7 @@ class TestUserOnlyMode:
 
         assert "rows_filtered" in result
         # CLIENT table should have filtered some rows
-        assert result["rows_filtered"].get("CLIENT", 0) == 2, (
-            "Should filter 2 demo clients (DEMO-001, TEST-001)"
-        )
+        assert result["rows_filtered"].get("CLIENT", 0) == 2, "Should filter 2 demo clients (DEMO-001, TEST-001)"
 
     def test_user_only_with_verification(self, seeded_source, target_engine):
         """User-only mode with verification enabled."""
@@ -743,9 +715,7 @@ class TestDryRun:
         source_meta.reflect(bind=seeded_source)
 
         if "PRODUCT" in source_meta.tables:
-            rows_copied, rows_filtered = tool._migrate_table_filtered(
-                "PRODUCT", source_meta.tables["PRODUCT"]
-            )
+            rows_copied, rows_filtered = tool._migrate_table_filtered("PRODUCT", source_meta.tables["PRODUCT"])
             # DEMO-001 has 2 products, TEST-001 has 0,  REAL-001 has 3
             assert rows_copied == 3, f"Expected 3 real products, got {rows_copied}"
             assert rows_filtered == 2, f"Expected 2 demo products filtered, got {rows_filtered}"
@@ -836,18 +806,9 @@ class TestErrorHandling:
         """Provider detection works for common database URLs."""
         assert DatabaseMigrationTool._detect_provider("sqlite:///test.db") == "sqlite"
         assert DatabaseMigrationTool._detect_provider("sqlite:///:memory:") == "sqlite"
-        assert (
-            DatabaseMigrationTool._detect_provider("mysql+pymysql://u:p@h/db")
-            == "mariadb"
-        )
-        assert (
-            DatabaseMigrationTool._detect_provider("mariadb+pymysql://u:p@h/db")
-            == "mariadb"
-        )
-        assert (
-            DatabaseMigrationTool._detect_provider("postgresql://u:p@h/db")
-            == "postgresql"
-        )
+        assert DatabaseMigrationTool._detect_provider("mysql+pymysql://u:p@h/db") == "mariadb"
+        assert DatabaseMigrationTool._detect_provider("mariadb+pymysql://u:p@h/db") == "mariadb"
+        assert DatabaseMigrationTool._detect_provider("postgresql://u:p@h/db") == "postgresql"
 
     def test_validation_error_on_non_empty_target_without_force(self, seeded_source):
         """MigrationValidationError raised when target has data and force=False."""
@@ -912,9 +873,7 @@ class TestMigrationToolIntegration:
 
         # Only REAL-001 client should be on target
         with target_engine.connect() as conn:
-            clients = conn.execute(
-                text("SELECT client_id FROM CLIENT")
-            ).fetchall()
+            clients = conn.execute(text("SELECT client_id FROM CLIENT")).fetchall()
             client_ids = [r[0] for r in clients]
 
         assert "REAL-001" in client_ids

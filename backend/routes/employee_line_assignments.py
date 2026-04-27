@@ -51,7 +51,11 @@ def list_assignments_endpoint(
     """
     logger.info(
         "Listing line assignments (employee_id=%s, line_id=%s, client_id=%s, active_only=%s) by user=%s",
-        employee_id, line_id, client_id, active_only, current_user.user_id,
+        employee_id,
+        line_id,
+        client_id,
+        active_only,
+        current_user.user_id,
     )
     return list_assignments(
         db,
@@ -78,7 +82,8 @@ def get_employee_lines_endpoint(
     """
     logger.info(
         "Getting lines for employee_id=%d by user=%s",
-        employee_id, current_user.user_id,
+        employee_id,
+        current_user.user_id,
     )
     return get_employee_lines(db, employee_id)
 
@@ -101,7 +106,9 @@ def get_line_employees_endpoint(
     """
     logger.info(
         "Getting employees for line_id=%d, client_id=%s by user=%s",
-        line_id, client_id, current_user.user_id,
+        line_id,
+        client_id,
+        current_user.user_id,
     )
     return get_line_employees(db, line_id, client_id)
 
@@ -132,14 +139,18 @@ def create_assignment_endpoint(
         error_msg = str(exc)
         if "Duplicate" in error_msg:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail=error_msg,
+                status_code=status.HTTP_409_CONFLICT,
+                detail=error_msg,
             )
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=error_msg,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=error_msg,
         )
     logger.info(
         "Created line assignment: employee_id=%d -> line_id=%d by user=%s",
-        data.employee_id, data.line_id, current_user.user_id,
+        data.employee_id,
+        data.line_id,
+        current_user.user_id,
     )
     return result
 
@@ -164,7 +175,8 @@ def update_assignment_endpoint(
         result = update_assignment(db, assignment_id, data)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc),
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
         )
     if not result:
         raise HTTPException(
@@ -173,7 +185,8 @@ def update_assignment_endpoint(
         )
     logger.info(
         "Updated line assignment assignment_id=%d by user=%s",
-        assignment_id, current_user.user_id,
+        assignment_id,
+        current_user.user_id,
     )
     return result
 
@@ -201,6 +214,7 @@ def end_assignment_endpoint(
         )
     logger.info(
         "Ended line assignment assignment_id=%d by user=%s",
-        assignment_id, current_user.user_id,
+        assignment_id,
+        current_user.user_id,
     )
     return result

@@ -62,9 +62,7 @@ def pva_db():
 @pytest.fixture
 def admin_user(pva_db):
     """Create an admin user (can see all clients)."""
-    client = TestDataFactory.create_client(
-        pva_db, client_id=CLIENT_ID, client_name="PVA Test Client"
-    )
+    client = TestDataFactory.create_client(pva_db, client_id=CLIENT_ID, client_name="PVA Test Client")
     user = TestDataFactory.create_user(
         pva_db,
         username="pva_admin",
@@ -93,9 +91,7 @@ def _ensure_client(db, client_id, client_name=None):
     existing = db.query(Client).filter(Client.client_id == client_id).first()
     if existing:
         return existing
-    return TestDataFactory.create_client(
-        db, client_id=client_id, client_name=client_name or f"Client {client_id}"
-    )
+    return TestDataFactory.create_client(db, client_id=client_id, client_name=client_name or f"Client {client_id}")
 
 
 def _create_capacity_order(db, client_id, **overrides):
@@ -243,16 +239,10 @@ class TestPlanVsActualWithLinkedOrders:
 
     def test_plan_vs_actual_multiple_orders(self, pva_db, admin_user):
         """Multiple capacity orders with different statuses."""
-        cap1 = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=1000, status=OrderStatus.CONFIRMED
-        )
-        cap2 = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=2000, status=OrderStatus.IN_PROGRESS
-        )
+        cap1 = _create_capacity_order(pva_db, CLIENT_ID, order_quantity=1000, status=OrderStatus.CONFIRMED)
+        cap2 = _create_capacity_order(pva_db, CLIENT_ID, order_quantity=2000, status=OrderStatus.IN_PROGRESS)
         # Draft should be excluded by default
-        _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=500, status=OrderStatus.DRAFT
-        )
+        _create_capacity_order(pva_db, CLIENT_ID, order_quantity=500, status=OrderStatus.DRAFT)
         pva_db.commit()
 
         results = get_plan_vs_actual(pva_db, admin_user, client_id=CLIENT_ID)
@@ -269,12 +259,8 @@ class TestPlanVsActualFilters:
     def test_plan_vs_actual_date_filter(self, pva_db, admin_user):
         """Filter by required_date range."""
         today = date.today()
-        cap_in_range = _create_capacity_order(
-            pva_db, CLIENT_ID, required_date=today + timedelta(days=10)
-        )
-        _create_capacity_order(
-            pva_db, CLIENT_ID, required_date=today + timedelta(days=60)
-        )
+        cap_in_range = _create_capacity_order(pva_db, CLIENT_ID, required_date=today + timedelta(days=10))
+        _create_capacity_order(pva_db, CLIENT_ID, required_date=today + timedelta(days=60))
         pva_db.commit()
 
         results = get_plan_vs_actual(
@@ -298,21 +284,29 @@ class TestPlanVsActualFilters:
         line2 = _create_production_line(pva_db, CLIENT_ID, line_code="LINE-B")
 
         _create_production_entry(
-            pva_db, CLIENT_ID, wo.work_order_id, 300,
-            product.product_id, shift.shift_id, user.user_id,
+            pva_db,
+            CLIENT_ID,
+            wo.work_order_id,
+            300,
+            product.product_id,
+            shift.shift_id,
+            user.user_id,
             line_id=line1.line_id,
         )
         _create_production_entry(
-            pva_db, CLIENT_ID, wo.work_order_id, 200,
-            product.product_id, shift.shift_id, user.user_id,
+            pva_db,
+            CLIENT_ID,
+            wo.work_order_id,
+            200,
+            product.product_id,
+            shift.shift_id,
+            user.user_id,
             line_id=line2.line_id,
         )
         pva_db.commit()
 
         # Filter for line1 only
-        results = get_plan_vs_actual(
-            pva_db, admin_user, client_id=CLIENT_ID, line_id=line1.line_id
-        )
+        results = get_plan_vs_actual(pva_db, admin_user, client_id=CLIENT_ID, line_id=line1.line_id)
 
         assert len(results) == 1
         entry = results[0]
@@ -325,9 +319,7 @@ class TestPlanVsActualFilters:
         """Default filter excludes DRAFT and CANCELLED orders."""
         _create_capacity_order(pva_db, CLIENT_ID, status=OrderStatus.DRAFT)
         _create_capacity_order(pva_db, CLIENT_ID, status=OrderStatus.CANCELLED)
-        confirmed = _create_capacity_order(
-            pva_db, CLIENT_ID, status=OrderStatus.CONFIRMED
-        )
+        confirmed = _create_capacity_order(pva_db, CLIENT_ID, status=OrderStatus.CONFIRMED)
         pva_db.commit()
 
         results = get_plan_vs_actual(pva_db, admin_user, client_id=CLIENT_ID)
@@ -341,9 +333,7 @@ class TestPlanVsActualFilters:
         _create_capacity_order(pva_db, CLIENT_ID, status=OrderStatus.CONFIRMED)
         pva_db.commit()
 
-        results = get_plan_vs_actual(
-            pva_db, admin_user, client_id=CLIENT_ID, status_filter="DRAFT"
-        )
+        results = get_plan_vs_actual(pva_db, admin_user, client_id=CLIENT_ID, status_filter="DRAFT")
 
         assert len(results) == 1
         assert results[0]["capacity_order_id"] == draft.id
@@ -356,7 +346,9 @@ class TestRiskCalculation:
     def test_risk_calculation_completed(self, pva_db, admin_user):
         """All units produced -> COMPLETED."""
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             required_date=date.today() + timedelta(days=30),
         )
         pva_db.commit()
@@ -367,7 +359,9 @@ class TestRiskCalculation:
     def test_risk_calculation_overdue(self, pva_db, admin_user):
         """Past required_date and not complete -> OVERDUE."""
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             required_date=date.today() - timedelta(days=5),
         )
         pva_db.commit()
@@ -379,7 +373,9 @@ class TestRiskCalculation:
         """Ahead of schedule -> LOW risk."""
         today = date.today()
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             planned_start_date=today - timedelta(days=10),
             required_date=today + timedelta(days=10),
         )
@@ -393,7 +389,9 @@ class TestRiskCalculation:
         """Far behind schedule -> HIGH risk."""
         today = date.today()
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             planned_start_date=today - timedelta(days=10),
             required_date=today + timedelta(days=10),
         )
@@ -420,7 +418,9 @@ class TestRiskCalculation:
     def test_risk_calculation_unknown_zero_quantity(self, pva_db, admin_user):
         """Zero planned_quantity -> UNKNOWN."""
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=0,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=0,
             required_date=date.today() + timedelta(days=30),
         )
         pva_db.commit()
@@ -432,7 +432,9 @@ class TestRiskCalculation:
         """Moderately behind schedule -> MEDIUM risk."""
         today = date.today()
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             planned_start_date=today - timedelta(days=10),
             required_date=today + timedelta(days=10),
         )
@@ -445,7 +447,9 @@ class TestRiskCalculation:
     def test_risk_fallback_low(self, pva_db, admin_user):
         """No planned_start_date, high completion -> LOW via fallback."""
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             required_date=date.today() + timedelta(days=30),
             planned_start_date=None,
         )
@@ -462,7 +466,9 @@ class TestProjectedCompletion:
         """Verify linear projection logic."""
         today = date.today()
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=1000,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=1000,
             planned_start_date=today - timedelta(days=10),
             required_date=today + timedelta(days=30),
         )
@@ -479,7 +485,9 @@ class TestProjectedCompletion:
     def test_projected_completion_no_start_date(self, pva_db, admin_user):
         """No planned_start_date -> None."""
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=1000,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=1000,
             planned_start_date=None,
         )
         pva_db.commit()
@@ -490,7 +498,9 @@ class TestProjectedCompletion:
     def test_projected_completion_no_production(self, pva_db, admin_user):
         """Zero actual_completed -> None."""
         cap = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=1000,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=1000,
             planned_start_date=date.today() - timedelta(days=5),
         )
         pva_db.commit()
@@ -506,14 +516,18 @@ class TestPlanVsActualSummary:
         """Aggregate summary with risk distribution."""
         # Order 1: completed
         cap1 = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=100,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=100,
             required_date=date.today() + timedelta(days=30),
         )
         wo1 = _create_linked_work_order(pva_db, cap1, actual_quantity=100)
 
         # Order 2: in progress
         cap2 = _create_capacity_order(
-            pva_db, CLIENT_ID, order_quantity=200,
+            pva_db,
+            CLIENT_ID,
+            order_quantity=200,
             required_date=date.today() + timedelta(days=30),
         )
         pva_db.commit()

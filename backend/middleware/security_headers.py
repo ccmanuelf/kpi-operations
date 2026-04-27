@@ -35,8 +35,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Only add HSTS when not running on localhost (avoids breaking local dev)
         host = request.headers.get("host", "")
         if not host.startswith("localhost") and not host.startswith("127.0.0.1"):
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         return response

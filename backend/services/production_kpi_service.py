@@ -391,7 +391,9 @@ class ProductionKPIService:
 
                 except (ValueError, TypeError, ArithmeticError) as e:
                     logger.exception("KPI calculation failed for entry_id=%s", entry_id)
-                    results["entries"].append({"entry_id": entry_id, "success": False, "error": "KPI calculation failed"})
+                    results["entries"].append(
+                        {"entry_id": entry_id, "success": False, "error": "KPI calculation failed"}
+                    )
                     results["failed"] += 1
 
         except (SQLAlchemyError, ValueError, TypeError, ArithmeticError) as e:
@@ -549,9 +551,7 @@ class ProductionKPIService:
             hours_inferred = True
 
         # Subtract configured break time from available hours
-        scheduled_hours = self._subtract_break_time(
-            scheduled_hours, entry, shift
-        )
+        scheduled_hours = self._subtract_break_time(scheduled_hours, entry, shift)
 
         inference_sources["scheduled_hours"] = InferenceMetadata(
             is_inferred=hours_inferred,
@@ -629,8 +629,7 @@ class ProductionKPIService:
                 return max(adjusted, Decimal("0.01"))
         except Exception:
             logger.debug(
-                "Could not query break times for shift_id=%s client_id=%s; "
-                "using full scheduled hours",
+                "Could not query break times for shift_id=%s client_id=%s; " "using full scheduled hours",
                 shift_id,
                 client_id,
                 exc_info=True,

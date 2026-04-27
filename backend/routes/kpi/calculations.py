@@ -12,7 +12,10 @@ from datetime import date, datetime, timedelta, timezone
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.schemas.production import KPICalculationResponse
-from backend.services.production_crud_service import get_entry as get_production_entry, get_daily_production_summary as get_daily_summary
+from backend.services.production_crud_service import (
+    get_entry as get_production_entry,
+    get_daily_production_summary as get_daily_summary,
+)
 from backend.calculations.efficiency import calculate_efficiency
 from backend.calculations.performance import calculate_performance, calculate_quality_rate
 from backend.auth.jwt import get_current_user

@@ -84,10 +84,7 @@ def get_defects_by_type(
         query = query.filter(DefectDetail.client_id_fk == effective_client_id)
 
     results = (
-        query.group_by(DefectDetail.defect_type)
-        .order_by(func.sum(DefectDetail.defect_count).desc())
-        .limit(limit)
-        .all()
+        query.group_by(DefectDetail.defect_type).order_by(func.sum(DefectDetail.defect_count).desc()).limit(limit).all()
     )
 
     # Calculate total for percentages
@@ -151,10 +148,7 @@ def get_quality_by_product(
         query = query.filter(QualityEntry.client_id == effective_client_id)
 
     results = (
-        query.group_by(WorkOrder.style_model)
-        .order_by(func.sum(QualityEntry.units_inspected).desc())
-        .limit(limit)
-        .all()
+        query.group_by(WorkOrder.style_model).order_by(func.sum(QualityEntry.units_inspected).desc()).limit(limit).all()
     )
 
     return [

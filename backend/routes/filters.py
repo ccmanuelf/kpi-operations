@@ -73,7 +73,9 @@ def list_saved_filters(
     3. Alphabetically by name
     """
     try:
-        filters = get_saved_filters(db, user_id=current_user.user_id, filter_type=filter_type, skip=pagination.skip, limit=pagination.limit)
+        filters = get_saved_filters(
+            db, user_id=current_user.user_id, filter_type=filter_type, skip=pagination.skip, limit=pagination.limit
+        )
 
         # Transform to response model with parsed config
         return [_to_filter_response(f) for f in filters]

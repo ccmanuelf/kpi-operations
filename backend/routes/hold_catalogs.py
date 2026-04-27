@@ -40,6 +40,7 @@ router = APIRouter(prefix="/api/hold-catalogs", tags=["Hold Catalogs"])
 # Hold Status Endpoints
 # =============================================================================
 
+
 @router.get("/statuses", response_model=List[HoldStatusCatalogResponse])
 def get_hold_statuses(
     client_id: str,
@@ -114,6 +115,7 @@ def delete_hold_status_endpoint(
 # Hold Reason Endpoints
 # =============================================================================
 
+
 @router.get("/reasons", response_model=List[HoldReasonCatalogResponse])
 def get_hold_reasons(
     client_id: str,
@@ -187,6 +189,7 @@ def delete_hold_reason_endpoint(
 # =============================================================================
 # Seed Defaults
 # =============================================================================
+
 
 @router.post("/seed-defaults", status_code=status.HTTP_200_OK)
 def seed_defaults_endpoint(

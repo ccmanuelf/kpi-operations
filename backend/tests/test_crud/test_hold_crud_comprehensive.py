@@ -215,7 +215,11 @@ class TestBulkUpdateAging:
         db = transactional_db
         client, user, wo = _seed_hold_prereqs(db)
         _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(days=5)
+            db,
+            client.client_id,
+            wo.work_order_id,
+            user.user_id,
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(days=5),
         )
 
         try:
@@ -333,7 +337,11 @@ class TestGetTotalHoldDuration:
 
         # Hold started 2 hours ago
         _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2)
+            db,
+            client.client_id,
+            wo.work_order_id,
+            user.user_id,
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2),
         )
 
         from backend.crud.hold.duration import get_total_hold_duration
@@ -373,7 +381,11 @@ class TestGetTotalHoldDuration:
 
         # Active hold (1 hour ago)
         _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=1)
+            db,
+            client.client_id,
+            wo.work_order_id,
+            user.user_id,
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=1),
         )
 
         # Completed hold with stored duration
@@ -444,7 +456,11 @@ class TestReleaseHold:
         db = transactional_db
         client, user, wo = _seed_hold_prereqs(db)
         hold = _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=4)
+            db,
+            client.client_id,
+            wo.work_order_id,
+            user.user_id,
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=4),
         )
 
         from backend.crud.hold.duration import release_hold
@@ -495,7 +511,11 @@ class TestReleaseHold:
         db = transactional_db
         client, user, wo = _seed_hold_prereqs(db)
         hold = _create_on_hold(
-            db, client.client_id, wo.work_order_id, user.user_id, hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2)
+            db,
+            client.client_id,
+            wo.work_order_id,
+            user.user_id,
+            hold_date=datetime.now(tz=timezone.utc) - timedelta(hours=2),
         )
         # Ensure duration is None before release
         hold.total_hold_duration_hours = None

@@ -81,9 +81,7 @@ def calculate_ppm_kpi(
         is_estimated=inspected == 0,
         confidence_score=1.0 if inspected > 0 else 0.3,
         inference_source="actual_data" if inspected > 0 else "system_fallback",
-        inference_warning=(
-            "No inspection data available for the specified period" if inspected == 0 else None
-        ),
+        inference_warning=("No inspection data available for the specified period" if inspected == 0 else None),
     )
 
     return PPMCalculationResponse(
@@ -115,9 +113,7 @@ def calculate_dpmo_kpi(
     Formula: (Total Defects / Total Opportunities) × 1,000,000
     Total Opportunities = Units × Opportunities per Unit
     """
-    dpmo, sigma, units, defects = calculate_dpmo(
-        db, product_id, shift_id, start_date, end_date, opportunities_per_unit
-    )
+    dpmo, sigma, units, defects = calculate_dpmo(db, product_id, shift_id, start_date, end_date, opportunities_per_unit)
 
     inference = InferenceMetadata(
         is_estimated=units == 0,

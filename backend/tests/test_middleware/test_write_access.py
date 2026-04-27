@@ -74,12 +74,15 @@ class TestRequireCapacityWrite:
 class TestRequireOperationsWrite:
     """Tests for the require_operations_write dependency (placeholder)."""
 
-    @pytest.mark.parametrize("role", [
-        UserRole.ADMIN.value,
-        UserRole.POWERUSER.value,
-        UserRole.OPERATOR.value,
-        UserRole.LEADER.value,
-    ])
+    @pytest.mark.parametrize(
+        "role",
+        [
+            UserRole.ADMIN.value,
+            UserRole.POWERUSER.value,
+            UserRole.OPERATOR.value,
+            UserRole.LEADER.value,
+        ],
+    )
     def test_allows_all_current_roles(self, role: str):
         """All existing roles should be allowed to write operations data."""
         user = _make_user(role)
@@ -102,29 +105,23 @@ class TestCapacityRouterDependencyInjection:
 
         write_methods = {"POST", "PUT", "PATCH", "DELETE"}
 
-        write_routes = [
-            r for r in router.routes
-            if hasattr(r, "methods") and r.methods & write_methods
-        ]
+        write_routes = [r for r in router.routes if hasattr(r, "methods") and r.methods & write_methods]
         assert len(write_routes) > 0, "Expected at least one write route"
 
         for route in write_routes:
             dep_callables = [d.dependency for d in route.dependencies if hasattr(d, "dependency")]
-            assert require_capacity_write in dep_callables, (
-                f"Route {route.path} ({route.methods}) missing require_capacity_write dependency"
-            )
+            assert (
+                require_capacity_write in dep_callables
+            ), f"Route {route.path} ({route.methods}) missing require_capacity_write dependency"
 
     def test_get_routes_no_write_dependency(self):
         """GET-only routes should NOT have require_capacity_write."""
         from backend.routes.capacity import router
 
-        get_only_routes = [
-            r for r in router.routes
-            if hasattr(r, "methods") and r.methods == {"GET"}
-        ]
+        get_only_routes = [r for r in router.routes if hasattr(r, "methods") and r.methods == {"GET"}]
         # It's acceptable if there are no GET-only routes
         for route in get_only_routes:
             dep_callables = [d.dependency for d in route.dependencies if hasattr(d, "dependency")]
-            assert require_capacity_write not in dep_callables, (
-                f"GET route {route.path} should NOT have require_capacity_write dependency"
-            )
+            assert (
+                require_capacity_write not in dep_callables
+            ), f"GET route {route.path} should NOT have require_capacity_write dependency"

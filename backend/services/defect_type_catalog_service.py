@@ -42,7 +42,9 @@ def list_defect_types_by_client(
 ):
     """List defect types for a client."""
     return get_defect_types_by_client(
-        db, client_id, current_user,
+        db,
+        client_id,
+        current_user,
         include_inactive=include_inactive,
         include_global=include_global,
     )
@@ -72,7 +74,10 @@ def bulk_create_defect_type_records(
 ):
     """Bulk create defect type catalog entries."""
     return bulk_create_defect_types(
-        db, client_id, defect_types, current_user,
+        db,
+        client_id,
+        defect_types,
+        current_user,
         replace_existing=replace_existing,
     )
 

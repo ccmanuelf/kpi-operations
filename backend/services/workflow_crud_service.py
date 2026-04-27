@@ -43,8 +43,11 @@ def get_transitions_for_client(
 ):
     """Get transition history for a client."""
     return get_client_transitions(
-        db, client_id, current_user,
-        skip=skip, limit=limit,
+        db,
+        client_id,
+        current_user,
+        skip=skip,
+        limit=limit,
         from_status=from_status,
         to_status=to_status,
         trigger_source=trigger_source,
@@ -66,7 +69,9 @@ def apply_template(db: Session, client_id: str, template_id: str, current_user: 
     return apply_workflow_template(db, client_id, template_id, current_user)
 
 
-def execute_transition(db: Session, work_order_id: str, to_status: str, current_user: User, notes: Optional[str] = None) -> Dict:
+def execute_transition(
+    db: Session, work_order_id: str, to_status: str, current_user: User, notes: Optional[str] = None
+) -> Dict:
     """Execute a work order status transition."""
     return transition_work_order(db, work_order_id, to_status, current_user, notes)
 

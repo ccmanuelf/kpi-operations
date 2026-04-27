@@ -157,9 +157,7 @@ def delete_attendance_record(db: Session, attendance_id: str, current_user: User
 # ============================================================================
 
 
-def bulk_create_attendance_records(
-    db: Session, records: List[AttendanceRecordCreate], current_user: User
-) -> dict:
+def bulk_create_attendance_records(db: Session, records: List[AttendanceRecordCreate], current_user: User) -> dict:
     """
     Create multiple attendance records in one transaction.
 
@@ -221,9 +219,7 @@ def bulk_create_attendance_records(
     }
 
 
-def mark_all_present(
-    db: Session, client_id: str, shift_id: int, shift_date: date, current_user: User
-) -> dict:
+def mark_all_present(db: Session, client_id: str, shift_id: int, shift_date: date, current_user: User) -> dict:
     """
     Create attendance records for all active employees assigned to a client,
     marking them as present for a given shift and date.
@@ -244,10 +240,14 @@ def mark_all_present(
     verify_client_access(current_user, client_id)
 
     # Get the shift to determine scheduled hours
-    shift = db.query(Shift).filter(
-        Shift.shift_id == shift_id,
-        Shift.client_id == client_id,
-    ).first()
+    shift = (
+        db.query(Shift)
+        .filter(
+            Shift.shift_id == shift_id,
+            Shift.client_id == client_id,
+        )
+        .first()
+    )
 
     if not shift:
         raise HTTPException(status_code=404, detail=f"Shift {shift_id} not found for client {client_id}")
@@ -261,15 +261,19 @@ def mark_all_present(
 
     # Get all active employees assigned to this client
     # Employee.client_id_assigned is a comma-separated string of client IDs
-    employees = db.query(Employee).filter(
-        Employee.is_active == 1,
-        or_(
-            Employee.client_id_assigned == client_id,
-            Employee.client_id_assigned.like(f"{client_id},%"),
-            Employee.client_id_assigned.like(f"%,{client_id},%"),
-            Employee.client_id_assigned.like(f"%,{client_id}"),
-        ),
-    ).all()
+    employees = (
+        db.query(Employee)
+        .filter(
+            Employee.is_active == 1,
+            or_(
+                Employee.client_id_assigned == client_id,
+                Employee.client_id_assigned.like(f"{client_id},%"),
+                Employee.client_id_assigned.like(f"%,{client_id},%"),
+                Employee.client_id_assigned.like(f"%,{client_id}"),
+            ),
+        )
+        .all()
+    )
 
     total_employees = len(employees)
 
@@ -279,12 +283,16 @@ def mark_all_present(
     # Find employees who already have attendance for this shift_date + shift_id
     existing_employee_ids = set()
     if employees:
-        existing = db.query(AttendanceEntry.employee_id).filter(
-            AttendanceEntry.client_id == client_id,
-            AttendanceEntry.shift_id == shift_id,
-            AttendanceEntry.shift_date == shift_datetime,
-            AttendanceEntry.employee_id.in_([e.employee_id for e in employees]),
-        ).all()
+        existing = (
+            db.query(AttendanceEntry.employee_id)
+            .filter(
+                AttendanceEntry.client_id == client_id,
+                AttendanceEntry.shift_id == shift_id,
+                AttendanceEntry.shift_date == shift_datetime,
+                AttendanceEntry.employee_id.in_([e.employee_id for e in employees]),
+            )
+            .all()
+        )
         existing_employee_ids = {row.employee_id for row in existing}
 
     already_exists = len(existing_employee_ids)

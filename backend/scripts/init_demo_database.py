@@ -668,18 +668,18 @@ def init_database():
             #   ZIPPER-INVIS:  1 * 800 * 1.01 = 808 EA needed   → 400 on hand (shortage ~408)
             stock_quantities = {
                 "FABRIC-JERSEY": Decimal("5000"),
-                "FABRIC-PIQUE": Decimal("900"),       # LOW_STOCK: POLO-200 needs ~1484 M
+                "FABRIC-PIQUE": Decimal("900"),  # LOW_STOCK: POLO-200 needs ~1484 M
                 "FABRIC-TWILL": Decimal("4000"),
-                "FABRIC-CREPE": Decimal("800"),        # LOW_STOCK: DRESS-500 needs ~1584 M
+                "FABRIC-CREPE": Decimal("800"),  # LOW_STOCK: DRESS-500 needs ~1584 M
                 "THREAD-POLY": Decimal("500000"),
-                "THREAD-HEAVY": Decimal("150000"),     # LOW_STOCK: JACKET+PANTS need ~216300 M
+                "THREAD-HEAVY": Decimal("150000"),  # LOW_STOCK: JACKET+PANTS need ~216300 M
                 "THREAD-FINE": Decimal("200000"),
                 "LABEL-CARE": Decimal("100000"),
                 "BUTTON-POLO": Decimal("20000"),
                 "BUTTON-METAL": Decimal("15000"),
                 "ZIPPER-MAIN": Decimal("5000"),
                 "ZIPPER-FLY": Decimal("8000"),
-                "ZIPPER-INVIS": Decimal("400"),        # LOW_STOCK: DRESS-500 needs ~808 EA
+                "ZIPPER-INVIS": Decimal("400"),  # LOW_STOCK: DRESS-500 needs ~808 EA
             }
             stock_entries = []
             for comp_code, comp_info in _ALL_COMPONENTS.items():
@@ -1465,14 +1465,16 @@ def init_database():
         hs_count = 0
         for cid in CLIENT_IDS:
             for code, name, order in hold_statuses:
-                db.add(HoldStatusCatalog(
-                    client_id=cid,
-                    status_code=code,
-                    display_name=name,
-                    is_default=True,
-                    is_active=True,
-                    sort_order=order,
-                ))
+                db.add(
+                    HoldStatusCatalog(
+                        client_id=cid,
+                        status_code=code,
+                        display_name=name,
+                        is_default=True,
+                        is_active=True,
+                        sort_order=order,
+                    )
+                )
                 hs_count += 1
         print(f"  Created {hs_count} hold status catalog entries")
 
@@ -1488,14 +1490,16 @@ def init_database():
         hr_count = 0
         for cid in CLIENT_IDS:
             for code, name, order in hold_reasons:
-                db.add(HoldReasonCatalog(
-                    client_id=cid,
-                    reason_code=code,
-                    display_name=name,
-                    is_default=True,
-                    is_active=True,
-                    sort_order=order,
-                ))
+                db.add(
+                    HoldReasonCatalog(
+                        client_id=cid,
+                        reason_code=code,
+                        display_name=name,
+                        is_default=True,
+                        is_active=True,
+                        sort_order=order,
+                    )
+                )
                 hr_count += 1
         print(f"  Created {hr_count} hold reason catalog entries")
 
@@ -1506,24 +1510,28 @@ def init_database():
         bt_count = 0
         for s in shifts_in_db:
             # Morning/First break at 2h, Lunch at 4h
-            db.add(BreakTime(
-                shift_id=s.shift_id,
-                client_id=s.client_id,
-                break_name="Morning Break",
-                start_offset_minutes=120,
-                duration_minutes=15,
-                applies_to="ALL",
-                is_active=True,
-            ))
-            db.add(BreakTime(
-                shift_id=s.shift_id,
-                client_id=s.client_id,
-                break_name="Lunch Break",
-                start_offset_minutes=240,
-                duration_minutes=30,
-                applies_to="ALL",
-                is_active=True,
-            ))
+            db.add(
+                BreakTime(
+                    shift_id=s.shift_id,
+                    client_id=s.client_id,
+                    break_name="Morning Break",
+                    start_offset_minutes=120,
+                    duration_minutes=15,
+                    applies_to="ALL",
+                    is_active=True,
+                )
+            )
+            db.add(
+                BreakTime(
+                    shift_id=s.shift_id,
+                    client_id=s.client_id,
+                    break_name="Lunch Break",
+                    start_offset_minutes=240,
+                    duration_minutes=30,
+                    applies_to="ALL",
+                    is_active=True,
+                )
+            )
             bt_count += 2
         print(f"  Created {bt_count} break time entries")
 
@@ -1569,15 +1577,17 @@ def init_database():
         for (cid, dept_code), lid in line_map.items():
             short = cid.split("-")[0][:4]
             for j, (eq_name, eq_type) in enumerate(EQUIPMENT_TYPES.get(dept_code, []), 1):
-                db.add(Equipment(
-                    client_id=cid,
-                    line_id=lid,
-                    equipment_code=f"EQ-{short}-{dept_code}-{j:02d}",
-                    equipment_name=eq_name,
-                    equipment_type=eq_type,
-                    status="ACTIVE",
-                    is_active=True,
-                ))
+                db.add(
+                    Equipment(
+                        client_id=cid,
+                        line_id=lid,
+                        equipment_code=f"EQ-{short}-{dept_code}-{j:02d}",
+                        equipment_name=eq_name,
+                        equipment_type=eq_type,
+                        status="ACTIVE",
+                        is_active=True,
+                    )
+                )
                 eq_count += 1
         print(f"  Created {eq_count} equipment records")
 
@@ -1592,14 +1602,16 @@ def init_database():
                 continue
             client_emps = [e for e in all_employees if e.client_id_assigned == cid][:5]
             for emp in client_emps:
-                db.add(EmployeeLineAssignment(
-                    employee_id=emp.employee_id,
-                    line_id=sew_line_id,
-                    client_id=cid,
-                    allocation_percentage=100,
-                    is_primary=True,
-                    effective_date=date(2026, 1, 1),
-                ))
+                db.add(
+                    EmployeeLineAssignment(
+                        employee_id=emp.employee_id,
+                        line_id=sew_line_id,
+                        client_id=cid,
+                        allocation_percentage=100,
+                        is_primary=True,
+                        effective_date=date(2026, 1, 1),
+                    )
+                )
                 ela_count += 1
         print(f"  Created {ela_count} employee-line assignments")
 

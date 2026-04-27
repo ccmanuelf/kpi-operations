@@ -500,7 +500,8 @@ class ComprehensivePredictionResponse(BaseModel):
 
     # Metadata
     generated_at: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(tz=datetime.timezone.utc), description="Response generation timestamp"
+        default_factory=lambda: datetime.datetime.now(tz=datetime.timezone.utc),
+        description="Response generation timestamp",
     )
     data_quality_score: float = Field(default=100.0, description="Quality score of input data (0-100)")
 

@@ -44,11 +44,16 @@ def list_records(
 ):
     """List attendance records with filters."""
     return get_attendance_records(
-        db, current_user,
-        skip=skip, limit=limit,
-        start_date=start_date, end_date=end_date,
-        employee_id=employee_id, shift_id=shift_id,
-        is_absent=is_absent, client_id=client_id,
+        db,
+        current_user,
+        skip=skip,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+        employee_id=employee_id,
+        shift_id=shift_id,
+        is_absent=is_absent,
+        client_id=client_id,
     )
 
 

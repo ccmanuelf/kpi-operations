@@ -58,9 +58,7 @@ class OverlapCheckRequest(BaseModel):
     client_id: str = Field(..., min_length=1, max_length=50, description="Client to check overlaps for")
     start_time: time = Field(..., description="Proposed shift start time")
     end_time: time = Field(..., description="Proposed shift end time")
-    exclude_shift_id: Optional[int] = Field(
-        None, description="Shift ID to exclude from overlap check (for updates)"
-    )
+    exclude_shift_id: Optional[int] = Field(None, description="Shift ID to exclude from overlap check (for updates)")
 
 
 class OverlapInfo(BaseModel):

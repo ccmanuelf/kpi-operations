@@ -212,7 +212,9 @@ def get_standards_by_style(db: Session, client_id: str, style_model: str) -> Lis
     return (
         db.query(CapacityProductionStandard)
         .filter(
-            and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model)
+            and_(
+                CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model
+            )
         )
         .order_by(CapacityProductionStandard.operation_code)
         .all()
@@ -285,7 +287,9 @@ def get_sam_by_department_for_style(db: Session, client_id: str, style_model: st
             CapacityProductionStandard.department, func.sum(CapacityProductionStandard.sam_minutes).label("total_sam")
         )
         .filter(
-            and_(CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model)
+            and_(
+                CapacityProductionStandard.client_id == client_id, CapacityProductionStandard.style_model == style_model
+            )
         )
         .group_by(CapacityProductionStandard.department)
         .all()

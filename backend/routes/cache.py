@@ -134,4 +134,8 @@ async def cache_health() -> Dict[str, Any]:
         }
     except Exception as e:
         logger.exception("Cache health check failed")
-        return {"status": "error", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "error": "Cache health check failed"}
+        return {
+            "status": "error",
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "error": "Cache health check failed",
+        }

@@ -137,9 +137,7 @@ class TestHoldStatusTenantIsolation:
             f"/api/hold-catalogs/statuses/{ctx['status_b_id']}",
             json={"display_name": "Hacked by A"},
         )
-        assert resp.status_code == 404, (
-            f"Expected 404 for cross-tenant update, got {resp.status_code}: {resp.text}"
-        )
+        assert resp.status_code == 404, f"Expected 404 for cross-tenant update, got {resp.status_code}: {resp.text}"
 
     def test_user_a_cannot_deactivate_status_of_client_b(self, tenant_isolation_setup):
         """Supervisor A tries to DELETE a hold status owned by Client B -> 404."""
@@ -147,9 +145,7 @@ class TestHoldStatusTenantIsolation:
         resp = ctx["auth_a"].delete(
             f"/api/hold-catalogs/statuses/{ctx['status_b_id']}",
         )
-        assert resp.status_code == 404, (
-            f"Expected 404 for cross-tenant deactivate, got {resp.status_code}: {resp.text}"
-        )
+        assert resp.status_code == 404, f"Expected 404 for cross-tenant deactivate, got {resp.status_code}: {resp.text}"
 
     def test_user_b_cannot_update_status_of_client_a(self, tenant_isolation_setup):
         """Supervisor B tries to PUT a hold status owned by Client A -> 404."""

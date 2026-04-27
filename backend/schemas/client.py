@@ -12,15 +12,31 @@ class ClientCreate(BaseModel):
 
     client_id: str = Field(..., min_length=1, max_length=50, description="Unique client ID")
     client_name: str = Field(..., min_length=1, max_length=255, description="Client name")
-    client_contact: Optional[str] = Field(None, max_length=255, description="Primary contact person name for the client")
+    client_contact: Optional[str] = Field(
+        None, max_length=255, description="Primary contact person name for the client"
+    )
     client_email: Optional[str] = Field(None, max_length=255, description="Client email address for communication")
     client_phone: Optional[str] = Field(None, max_length=50, description="Client phone number for contact")
-    location: Optional[str] = Field(None, max_length=255, description="Physical location or address of the client facility")
-    supervisor_id: Optional[str] = Field(None, max_length=50, description="User ID of the assigned production supervisor")
+    location: Optional[str] = Field(
+        None, max_length=255, description="Physical location or address of the client facility"
+    )
+    supervisor_id: Optional[str] = Field(
+        None, max_length=50, description="User ID of the assigned production supervisor"
+    )
     planner_id: Optional[str] = Field(None, max_length=50, description="User ID of the assigned production planner")
-    engineering_id: Optional[str] = Field(None, max_length=50, description="User ID of the assigned engineering contact")
-    client_type: Optional[str] = Field(default="Piece Rate", pattern="^(Hourly Rate|Piece Rate|Hybrid|Service|Other)$", description="Billing model: Hourly Rate, Piece Rate, Hybrid, Service, or Other")
-    timezone: Optional[str] = Field(default="America/New_York", max_length=50, description="IANA timezone for shift scheduling and report generation")
+    engineering_id: Optional[str] = Field(
+        None, max_length=50, description="User ID of the assigned engineering contact"
+    )
+    client_type: Optional[str] = Field(
+        default="Piece Rate",
+        pattern="^(Hourly Rate|Piece Rate|Hybrid|Service|Other)$",
+        description="Billing model: Hourly Rate, Piece Rate, Hybrid, Service, or Other",
+    )
+    timezone: Optional[str] = Field(
+        default="America/New_York",
+        max_length=50,
+        description="IANA timezone for shift scheduling and report generation",
+    )
     is_active: Optional[int] = Field(default=1, ge=0, le=1, description="Boolean: 1=active, 0=inactive")
 
 
@@ -35,7 +51,9 @@ class ClientUpdate(BaseModel):
     supervisor_id: Optional[str] = Field(None, max_length=50, description="Updated supervisor user ID assignment")
     planner_id: Optional[str] = Field(None, max_length=50, description="Updated planner user ID assignment")
     engineering_id: Optional[str] = Field(None, max_length=50, description="Updated engineering contact user ID")
-    client_type: Optional[str] = Field(None, pattern="^(Hourly Rate|Piece Rate|Hybrid|Service|Other)$", description="Updated billing model type")
+    client_type: Optional[str] = Field(
+        None, pattern="^(Hourly Rate|Piece Rate|Hybrid|Service|Other)$", description="Updated billing model type"
+    )
     timezone: Optional[str] = Field(None, max_length=50, description="Updated IANA timezone for scheduling")
     is_active: Optional[int] = Field(None, ge=0, le=1, description="Updated active status: 1=active, 0=inactive")
 

@@ -32,7 +32,9 @@ router = APIRouter(prefix="/api/holds", tags=["WIP Holds"])
 
 
 @router.post("", response_model=WIPHoldResponse, status_code=status.HTTP_201_CREATED)
-def create_hold(hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WIPHoldResponse:
+def create_hold(
+    hold: WIPHoldCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> WIPHoldResponse:
     """
     Create WIP hold record.
 
@@ -95,7 +97,9 @@ def list_active_holds(
 
 
 @router.get("/{hold_id}", response_model=WIPHoldResponse)
-def get_hold(hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WIPHoldResponse:
+def get_hold(
+    hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> WIPHoldResponse:
     """
     Get WIP hold by ID.
 
@@ -188,7 +192,9 @@ def approve_hold(
 
 
 @router.post("/{hold_id}/request-resume", response_model=WIPHoldResponse)
-def request_resume(hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> WIPHoldResponse:
+def request_resume(
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> WIPHoldResponse:
     """
     Request to resume a hold (any user can request).
     Transitions hold from ON_HOLD to PENDING_RESUME_APPROVAL.

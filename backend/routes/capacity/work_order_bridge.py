@@ -26,5 +26,7 @@ def get_capacity_order_work_orders(
     """Get all work orders linked to a capacity order."""
     from backend.services.work_order_service import list_orders_by_capacity_order
 
-    logger.info("Fetching work orders for capacity order %d (skip=%d, limit=%d)", order_id, pagination.skip, pagination.limit)
+    logger.info(
+        "Fetching work orders for capacity order %d (skip=%d, limit=%d)", order_id, pagination.skip, pagination.limit
+    )
     return list_orders_by_capacity_order(db, order_id, current_user, pagination.skip, pagination.limit)

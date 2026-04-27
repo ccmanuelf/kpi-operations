@@ -70,9 +70,7 @@ async def database_health(db: Session = Depends(get_db)):
         return {"status": "healthy", "database": "connected", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
     except (SQLAlchemyError, OSError) as e:
         logger.exception("Health check failed: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Health check failed"
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Health check failed")
 
 
 @router.get("/pool", response_model=Dict[str, Any])
@@ -94,9 +92,7 @@ async def connection_pool_status():
         return {"status": "healthy", "timestamp": datetime.now(tz=timezone.utc).isoformat(), "pool": pool_stats}
     except (SQLAlchemyError, OSError) as e:
         logger.exception("Failed to retrieve pool status: %s", e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve pool status"
-        )
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to retrieve pool status")
 
 
 @router.get("/detailed", response_model=Dict[str, Any])

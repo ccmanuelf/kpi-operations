@@ -46,11 +46,16 @@ def list_holds(
 ):
     """List WIP holds with filters."""
     return get_wip_holds(
-        db, current_user,
-        skip=skip, limit=limit,
-        start_date=start_date, end_date=end_date,
-        client_id=client_id, work_order_id=work_order_id,
-        released=released, hold_reason_category=hold_reason_category,
+        db,
+        current_user,
+        skip=skip,
+        limit=limit,
+        start_date=start_date,
+        end_date=end_date,
+        client_id=client_id,
+        work_order_id=work_order_id,
+        released=released,
+        hold_reason_category=hold_reason_category,
     )
 
 

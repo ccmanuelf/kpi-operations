@@ -22,10 +22,14 @@ class DashboardWidgetConfig(BaseModel):
     """
 
     widget_key: str = Field(..., min_length=1, max_length=50, description="Unique identifier for the widget type")
-    widget_name: str = Field(..., min_length=1, max_length=100, description="Display name shown in the dashboard header")
+    widget_name: str = Field(
+        ..., min_length=1, max_length=100, description="Display name shown in the dashboard header"
+    )
     widget_order: int = Field(default=0, ge=0, le=100, description="Position in the dashboard layout, 0-indexed")
     is_visible: bool = Field(default=True, description="Whether this widget is displayed on the dashboard")
-    custom_config: Optional[Dict[str, Any]] = Field(default=None, description="Widget-specific settings such as chart type, filters, and display options")
+    custom_config: Optional[Dict[str, Any]] = Field(
+        default=None, description="Widget-specific settings such as chart type, filters, and display options"
+    )
 
     class Config:
         from_attributes = True
@@ -52,11 +56,23 @@ class DashboardPreferences(BaseModel):
         default_time_range: Default time range for data displays
     """
 
-    layout: str = Field(default="grid", pattern="^(grid|list|compact)$", description="Dashboard layout type: grid, list, or compact")
-    widgets: List[DashboardWidgetConfig] = Field(default_factory=list, description="Ordered list of widget configurations for the dashboard")
-    theme: str = Field(default="light", pattern="^(light|dark|system)$", description="Color theme preference: light, dark, or system")
-    auto_refresh: int = Field(default=0, ge=0, le=3600, description="Auto-refresh interval in seconds; 0 disables auto-refresh")
-    default_time_range: str = Field(default="7d", pattern="^(1d|7d|30d|90d)$", description="Default time range for KPI data displays: 1d, 7d, 30d, or 90d")
+    layout: str = Field(
+        default="grid", pattern="^(grid|list|compact)$", description="Dashboard layout type: grid, list, or compact"
+    )
+    widgets: List[DashboardWidgetConfig] = Field(
+        default_factory=list, description="Ordered list of widget configurations for the dashboard"
+    )
+    theme: str = Field(
+        default="light", pattern="^(light|dark|system)$", description="Color theme preference: light, dark, or system"
+    )
+    auto_refresh: int = Field(
+        default=0, ge=0, le=3600, description="Auto-refresh interval in seconds; 0 disables auto-refresh"
+    )
+    default_time_range: str = Field(
+        default="7d",
+        pattern="^(1d|7d|30d|90d)$",
+        description="Default time range for KPI data displays: 1d, 7d, 30d, or 90d",
+    )
 
     @field_validator("widgets")
     @classmethod
@@ -99,11 +115,21 @@ class DashboardPreferencesUpdate(BaseModel):
     All fields are optional for PATCH-style updates
     """
 
-    layout: Optional[str] = Field(default=None, pattern="^(grid|list|compact)$", description="Updated dashboard layout type")
-    widgets: Optional[List[DashboardWidgetConfig]] = Field(default=None, description="Updated list of widget configurations")
-    theme: Optional[str] = Field(default=None, pattern="^(light|dark|system)$", description="Updated color theme preference")
-    auto_refresh: Optional[int] = Field(default=None, ge=0, le=3600, description="Updated auto-refresh interval in seconds")
-    default_time_range: Optional[str] = Field(default=None, pattern="^(1d|7d|30d|90d)$", description="Updated default time range for KPI displays")
+    layout: Optional[str] = Field(
+        default=None, pattern="^(grid|list|compact)$", description="Updated dashboard layout type"
+    )
+    widgets: Optional[List[DashboardWidgetConfig]] = Field(
+        default=None, description="Updated list of widget configurations"
+    )
+    theme: Optional[str] = Field(
+        default=None, pattern="^(light|dark|system)$", description="Updated color theme preference"
+    )
+    auto_refresh: Optional[int] = Field(
+        default=None, ge=0, le=3600, description="Updated auto-refresh interval in seconds"
+    )
+    default_time_range: Optional[str] = Field(
+        default=None, pattern="^(1d|7d|30d|90d)$", description="Updated default time range for KPI displays"
+    )
 
     @field_validator("widgets")
     @classmethod

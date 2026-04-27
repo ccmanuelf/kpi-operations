@@ -81,9 +81,7 @@ def wocap_db():
 @pytest.fixture
 def admin_client(wocap_db):
     """TestClient authenticated as admin."""
-    TestDataFactory.create_client(
-        wocap_db, client_id=CLIENT_ID, client_name="WO-Cap Route Test Client"
-    )
+    TestDataFactory.create_client(wocap_db, client_id=CLIENT_ID, client_name="WO-Cap Route Test Client")
     wocap_db.commit()
     app = _create_test_app(wocap_db, role="admin")
     return TestClient(app), wocap_db
@@ -135,8 +133,10 @@ class TestGetCapacityOrderForWorkOrderRoute:
         client, db = admin_client
         cap_order = _create_capacity_order(db, order_number="CO-RT-LINK-001")
         _create_work_order(
-            db, work_order_id="WO-RT-LINK-001",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-RT-LINK-001",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
 
         response = client.get("/api/work-orders/WO-RT-LINK-001/capacity-order")
@@ -203,8 +203,10 @@ class TestUnlinkWorkOrderFromCapacityRoute:
         client, db = admin_client
         cap_order = _create_capacity_order(db, order_number="CO-RT-UNL-001")
         _create_work_order(
-            db, work_order_id="WO-RT-UNL-001",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-RT-UNL-001",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
 
         response = client.post("/api/work-orders/WO-RT-UNL-001/unlink-capacity")
@@ -225,12 +227,16 @@ class TestGetCapacityOrderWorkOrdersRoute:
         client, db = admin_client
         cap_order = _create_capacity_order(db, order_number="CO-RT-WO-001")
         _create_work_order(
-            db, work_order_id="WO-RT-WO-001",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-RT-WO-001",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
         _create_work_order(
-            db, work_order_id="WO-RT-WO-002",
-            capacity_order_id=cap_order.id, origin="PLANNED",
+            db,
+            work_order_id="WO-RT-WO-002",
+            capacity_order_id=cap_order.id,
+            origin="PLANNED",
         )
 
         response = client.get(f"/api/capacity/orders/{cap_order.id}/work-orders")

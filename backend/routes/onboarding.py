@@ -84,12 +84,8 @@ def get_onboarding_status(
         "shifts_configured": db.query(Shift).filter(Shift.client_id == cid).count() > 0,
         "products_added": db.query(Product).filter(Product.client_id == cid).count() > 0,
         "work_orders_created": db.query(WorkOrder).filter(WorkOrder.client_id == cid).count() > 0,
-        "production_data_entered": (
-            db.query(ProductionEntry).filter(ProductionEntry.client_id == cid).count() > 0
-        ),
-        "capacity_plan_created": (
-            db.query(CapacityOrder).filter(CapacityOrder.client_id == cid).count() > 0
-        ),
+        "production_data_entered": (db.query(ProductionEntry).filter(ProductionEntry.client_id == cid).count() > 0),
+        "capacity_plan_created": (db.query(CapacityOrder).filter(CapacityOrder.client_id == cid).count() > 0),
     }
 
     completed_count = sum(1 for v in steps.values() if v)

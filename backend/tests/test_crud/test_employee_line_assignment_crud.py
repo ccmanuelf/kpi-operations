@@ -40,7 +40,9 @@ TOMORROW = TODAY + timedelta(days=1)
 def _seed_client(db, client_id=CLIENT_ID):
     """Create the minimal client row needed for FK constraints."""
     client = TestDataFactory.create_client(
-        db, client_id=client_id, client_name=f"Test Client {client_id}",
+        db,
+        client_id=client_id,
+        client_name=f"Test Client {client_id}",
     )
     db.commit()
     return client
@@ -77,9 +79,15 @@ def _seed_line(db, client_id=CLIENT_ID, line_code=None, line_name=None):
     return line
 
 
-def _make_create(employee_id, line_id, client_id=CLIENT_ID,
-                 allocation=Decimal("100.00"), is_primary=True,
-                 effective_date=None, end_date=None):
+def _make_create(
+    employee_id,
+    line_id,
+    client_id=CLIENT_ID,
+    allocation=Decimal("100.00"),
+    is_primary=True,
+    effective_date=None,
+    end_date=None,
+):
     """Build an EmployeeLineAssignmentCreate payload."""
     return EmployeeLineAssignmentCreate(
         employee_id=employee_id,
@@ -133,8 +141,10 @@ class TestCreateAssignment:
         a2 = create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=False,
             ),
         )
 
@@ -159,8 +169,10 @@ class TestCreateAssignment:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("50.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("50.00"),
+                is_primary=False,
             ),
         )
 
@@ -168,8 +180,10 @@ class TestCreateAssignment:
             create_assignment(
                 db,
                 _make_create(
-                    emp.employee_id, line3.line_id,
-                    allocation=Decimal("10.00"), is_primary=False,
+                    emp.employee_id,
+                    line3.line_id,
+                    allocation=Decimal("10.00"),
+                    is_primary=False,
                 ),
             )
 
@@ -190,8 +204,10 @@ class TestCreateAssignment:
             create_assignment(
                 db,
                 _make_create(
-                    emp.employee_id, line2.line_id,
-                    allocation=Decimal("40.00"), is_primary=False,
+                    emp.employee_id,
+                    line2.line_id,
+                    allocation=Decimal("40.00"),
+                    is_primary=False,
                 ),
             )
 
@@ -243,8 +259,10 @@ class TestCreateAssignment:
         a2 = create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=True,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=True,
             ),
         )
 
@@ -287,8 +305,10 @@ class TestCreateAssignment:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("50.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("50.00"),
+                is_primary=False,
             ),
         )
 
@@ -299,8 +319,10 @@ class TestCreateAssignment:
         a3 = create_assignment(
             db,
             _make_create(
-                emp.employee_id, line3.line_id,
-                allocation=Decimal("50.00"), is_primary=True,
+                emp.employee_id,
+                line3.line_id,
+                allocation=Decimal("50.00"),
+                is_primary=True,
                 effective_date=TODAY + timedelta(days=1),
             ),
         )
@@ -328,8 +350,10 @@ class TestListAssignments:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=False,
             ),
         )
 
@@ -440,8 +464,10 @@ class TestGetEmployeeLines:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=False,
             ),
         )
 
@@ -467,8 +493,10 @@ class TestGetEmployeeLines:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=False,
             ),
         )
 
@@ -562,8 +590,10 @@ class TestUpdateAssignment:
         a2 = create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=False,
             ),
         )
 
@@ -672,8 +702,10 @@ class TestEndAssignment:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("40.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("40.00"),
+                is_primary=False,
             ),
         )
 
@@ -685,8 +717,10 @@ class TestEndAssignment:
         a3 = create_assignment(
             db,
             _make_create(
-                emp.employee_id, line3.line_id,
-                allocation=Decimal("60.00"), is_primary=True,
+                emp.employee_id,
+                line3.line_id,
+                allocation=Decimal("60.00"),
+                is_primary=True,
                 effective_date=TOMORROW,
             ),
         )
@@ -720,8 +754,10 @@ class TestValidateAllocation:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("30.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("30.00"),
+                is_primary=False,
             ),
         )
 
@@ -743,13 +779,17 @@ class TestValidateAllocation:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line2.line_id,
-                allocation=Decimal("30.00"), is_primary=False,
+                emp.employee_id,
+                line2.line_id,
+                allocation=Decimal("30.00"),
+                is_primary=False,
             ),
         )
 
         total_without_a1 = validate_allocation(
-            db, emp.employee_id, exclude_assignment_id=a1.assignment_id,
+            db,
+            emp.employee_id,
+            exclude_assignment_id=a1.assignment_id,
         )
         assert total_without_a1 == Decimal("30.00")
 
@@ -770,7 +810,8 @@ class TestDateBoundedQueries:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line.line_id,
+                emp.employee_id,
+                line.line_id,
                 effective_date=TODAY - timedelta(days=30),
                 end_date=YESTERDAY,
             ),
@@ -789,7 +830,8 @@ class TestDateBoundedQueries:
         create_assignment(
             db,
             _make_create(
-                emp.employee_id, line.line_id,
+                emp.employee_id,
+                line.line_id,
                 effective_date=TODAY - timedelta(days=10),
                 end_date=TOMORROW,
             ),

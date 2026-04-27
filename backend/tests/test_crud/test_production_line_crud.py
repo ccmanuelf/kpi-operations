@@ -114,9 +114,7 @@ class TestCreateProductionLine:
         db = transactional_db
         _seed_client(db, "PL-C4")
 
-        parent = create_production_line(
-            db, _make_create("PL-C4", "SEW-AREA", "Sewing Area", line_type="SECTION")
-        )
+        parent = create_production_line(db, _make_create("PL-C4", "SEW-AREA", "Sewing Area", line_type="SECTION"))
         child = create_production_line(
             db,
             _make_create(
@@ -136,16 +134,12 @@ class TestCreateProductionLine:
 
         # Create 10 lines (at the limit)
         for i in range(10):
-            create_production_line(
-                db, _make_create("PL-LIM", f"LINE-{i:02d}", f"Line {i}")
-            )
+            create_production_line(db, _make_create("PL-LIM", f"LINE-{i:02d}", f"Line {i}"))
 
         assert count_active_lines(db, "PL-LIM") == 10
 
         # The 11th still succeeds with a warning
-        result = create_production_line(
-            db, _make_create("PL-LIM", "LINE-10", "Line 10")
-        )
+        result = create_production_line(db, _make_create("PL-LIM", "LINE-10", "Line 10"))
         assert result.line_id is not None
         assert result._limit_warning is not None
         assert "soft limit" in result._limit_warning
@@ -157,14 +151,10 @@ class TestCreateProductionLine:
 
         # Create 3 lines
         for i in range(3):
-            create_production_line(
-                db, _make_create("PL-LIM2", f"LINE-{i}", f"Line {i}"), max_lines=3
-            )
+            create_production_line(db, _make_create("PL-LIM2", f"LINE-{i}", f"Line {i}"), max_lines=3)
 
         # 4th triggers warning with custom limit of 3
-        result = create_production_line(
-            db, _make_create("PL-LIM2", "LINE-3", "Line 3"), max_lines=3
-        )
+        result = create_production_line(db, _make_create("PL-LIM2", "LINE-3", "Line 3"), max_lines=3)
         assert result._limit_warning is not None
 
 
@@ -224,9 +214,7 @@ class TestGetProductionLine:
         db = transactional_db
         _seed_client(db, "PL-G1")
 
-        created = create_production_line(
-            db, _make_create("PL-G1", "SEW-01", "Sewing Line 1")
-        )
+        created = create_production_line(db, _make_create("PL-G1", "SEW-01", "Sewing Line 1"))
 
         result = get_production_line(db, created.line_id)
         assert result is not None
@@ -281,12 +269,8 @@ class TestGetProductionLineTree:
         db = transactional_db
         _seed_client(db, "PL-T2")
 
-        active = create_production_line(
-            db, _make_create("PL-T2", "ACT-01", "Active Line")
-        )
-        inactive = create_production_line(
-            db, _make_create("PL-T2", "INACT-01", "Inactive Line")
-        )
+        active = create_production_line(db, _make_create("PL-T2", "ACT-01", "Active Line"))
+        inactive = create_production_line(db, _make_create("PL-T2", "INACT-01", "Inactive Line"))
         deactivate_production_line(db, inactive.line_id)
 
         tree = get_production_line_tree(db, "PL-T2")
@@ -319,13 +303,9 @@ class TestUpdateProductionLine:
         db = transactional_db
         _seed_client(db, "PL-U1")
 
-        created = create_production_line(
-            db, _make_create("PL-U1", "SEW-01", "Before")
-        )
+        created = create_production_line(db, _make_create("PL-U1", "SEW-01", "Before"))
 
-        updated = update_production_line(
-            db, created.line_id, ProductionLineUpdate(line_name="After")
-        )
+        updated = update_production_line(db, created.line_id, ProductionLineUpdate(line_name="After"))
         assert updated is not None
         assert updated.line_name == "After"
 
@@ -334,9 +314,7 @@ class TestUpdateProductionLine:
         db = transactional_db
         _seed_client(db, "PL-U2")
 
-        created = create_production_line(
-            db, _make_create("PL-U2", "GEN-01", "Generic Line")
-        )
+        created = create_production_line(db, _make_create("PL-U2", "GEN-01", "Generic Line"))
 
         updated = update_production_line(
             db,
@@ -356,13 +334,9 @@ class TestUpdateProductionLine:
         db = transactional_db
         _seed_client(db, "PL-U3")
 
-        created = create_production_line(
-            db, _make_create("PL-U3", "SEW-01", "Toggle")
-        )
+        created = create_production_line(db, _make_create("PL-U3", "SEW-01", "Toggle"))
 
-        updated = update_production_line(
-            db, created.line_id, ProductionLineUpdate(is_active=False)
-        )
+        updated = update_production_line(db, created.line_id, ProductionLineUpdate(is_active=False))
         assert updated.is_active is False
 
     def test_update_nonexistent_returns_none(self, transactional_db):
@@ -386,9 +360,7 @@ class TestDeactivateProductionLine:
         db = transactional_db
         _seed_client(db, "PL-D1")
 
-        created = create_production_line(
-            db, _make_create("PL-D1", "SEW-01", "ToDeactivate")
-        )
+        created = create_production_line(db, _make_create("PL-D1", "SEW-01", "ToDeactivate"))
 
         assert deactivate_production_line(db, created.line_id) is True
 
@@ -410,21 +382,15 @@ class TestDeactivateProductionLine:
         )
         child1 = create_production_line(
             db,
-            _make_create(
-                "PL-D2", "SEW-01", "Sewing Line 1", parent_line_id=parent.line_id
-            ),
+            _make_create("PL-D2", "SEW-01", "Sewing Line 1", parent_line_id=parent.line_id),
         )
         child2 = create_production_line(
             db,
-            _make_create(
-                "PL-D2", "SEW-02", "Sewing Line 2", parent_line_id=parent.line_id
-            ),
+            _make_create("PL-D2", "SEW-02", "Sewing Line 2", parent_line_id=parent.line_id),
         )
         child3 = create_production_line(
             db,
-            _make_create(
-                "PL-D2", "SEW-03", "Sewing Line 3", parent_line_id=parent.line_id
-            ),
+            _make_create("PL-D2", "SEW-03", "Sewing Line 3", parent_line_id=parent.line_id),
         )
 
         deactivate_production_line(db, parent.line_id)
@@ -445,9 +411,7 @@ class TestDeactivateProductionLine:
         )
         create_production_line(
             db,
-            _make_create(
-                "PL-D3", "SEW-01", "Sewing Line 1", parent_line_id=parent.line_id
-            ),
+            _make_create("PL-D3", "SEW-01", "Sewing Line 1", parent_line_id=parent.line_id),
         )
 
         # Before deactivation: parent + child = 2 active
@@ -478,9 +442,7 @@ class TestCountActiveLines:
         db = transactional_db
         _seed_client(db, "PL-CNT2")
 
-        line1 = create_production_line(
-            db, _make_create("PL-CNT2", "L1", "Line 1")
-        )
+        line1 = create_production_line(db, _make_create("PL-CNT2", "L1", "Line 1"))
         create_production_line(db, _make_create("PL-CNT2", "L2", "Line 2"))
 
         assert count_active_lines(db, "PL-CNT2") == 2
@@ -501,15 +463,9 @@ class TestMultiTenantIsolation:
         _seed_client(db, "PL-ISO-A")
         _seed_client(db, "PL-ISO-B")
 
-        create_production_line(
-            db, _make_create("PL-ISO-A", "SEW-01", "Sewing Line 1")
-        )
-        create_production_line(
-            db, _make_create("PL-ISO-A", "SEW-02", "Sewing Line 2")
-        )
-        create_production_line(
-            db, _make_create("PL-ISO-B", "CUT-01", "Cutting Only B")
-        )
+        create_production_line(db, _make_create("PL-ISO-A", "SEW-01", "Sewing Line 1"))
+        create_production_line(db, _make_create("PL-ISO-A", "SEW-02", "Sewing Line 2"))
+        create_production_line(db, _make_create("PL-ISO-B", "CUT-01", "Cutting Only B"))
 
         lines_a = list_production_lines(db, "PL-ISO-A")
         lines_b = list_production_lines(db, "PL-ISO-B")
@@ -529,13 +485,9 @@ class TestMultiTenantIsolation:
         _seed_client(db, "PL-ISO-D")
 
         for i in range(5):
-            create_production_line(
-                db, _make_create("PL-ISO-C", f"C-{i}", f"Line C-{i}")
-            )
+            create_production_line(db, _make_create("PL-ISO-C", f"C-{i}", f"Line C-{i}"))
         for i in range(3):
-            create_production_line(
-                db, _make_create("PL-ISO-D", f"D-{i}", f"Line D-{i}")
-            )
+            create_production_line(db, _make_create("PL-ISO-D", f"D-{i}", f"Line D-{i}"))
 
         assert count_active_lines(db, "PL-ISO-C") == 5
         assert count_active_lines(db, "PL-ISO-D") == 3

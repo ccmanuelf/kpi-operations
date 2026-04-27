@@ -69,9 +69,7 @@ def create_production_line(
         .first()
     )
     if existing:
-        raise ValueError(
-            f"Line code '{data.line_code}' already exists for client '{data.client_id}'"
-        )
+        raise ValueError(f"Line code '{data.line_code}' already exists for client '{data.client_id}'")
 
     # Check soft limit
     current_count = count_active_lines(db, data.client_id)
@@ -100,9 +98,7 @@ def create_production_line(
         db.refresh(db_entry)
     except IntegrityError:
         db.rollback()
-        raise ValueError(
-            f"Line code '{data.line_code}' already exists for client '{data.client_id}'"
-        )
+        raise ValueError(f"Line code '{data.line_code}' already exists for client '{data.client_id}'")
 
     # Attach warning as transient attribute so the route can surface it
     db_entry._limit_warning = warning  # type: ignore[attr-defined]
@@ -223,11 +219,7 @@ def deactivate_production_line(db: Session, line_id: int) -> bool:
     db_entry.is_active = False
 
     # Cascade: deactivate all children
-    children = (
-        db.query(ProductionLine)
-        .filter(ProductionLine.parent_line_id == line_id)
-        .all()
-    )
+    children = db.query(ProductionLine).filter(ProductionLine.parent_line_id == line_id).all()
     deactivated_children = 0
     for child in children:
         if child.is_active:
@@ -248,9 +240,7 @@ def deactivate_production_line(db: Session, line_id: int) -> bool:
 # ============================================================================
 
 
-def link_to_capacity_line(
-    db: Session, line_id: int, capacity_line_id: int
-) -> Optional[ProductionLine]:
+def link_to_capacity_line(db: Session, line_id: int, capacity_line_id: int) -> Optional[ProductionLine]:
     """Manually link an operational production line to a capacity planning line.
 
     Args:
@@ -264,22 +254,14 @@ def link_to_capacity_line(
     Raises:
         ValueError: If the capacity line does not exist.
     """
-    db_entry = (
-        db.query(ProductionLine).filter(ProductionLine.line_id == line_id).first()
-    )
+    db_entry = db.query(ProductionLine).filter(ProductionLine.line_id == line_id).first()
     if not db_entry:
         return None
 
     # Validate that the capacity line exists
-    cap_line = (
-        db.query(CapacityProductionLine)
-        .filter(CapacityProductionLine.id == capacity_line_id)
-        .first()
-    )
+    cap_line = db.query(CapacityProductionLine).filter(CapacityProductionLine.id == capacity_line_id).first()
     if not cap_line:
-        raise ValueError(
-            f"CapacityProductionLine with id={capacity_line_id} does not exist"
-        )
+        raise ValueError(f"CapacityProductionLine with id={capacity_line_id} does not exist")
 
     db_entry.capacity_line_id = capacity_line_id
     db.commit()
@@ -302,9 +284,7 @@ def unlink_from_capacity_line(db: Session, line_id: int) -> Optional[ProductionL
     Returns:
         Updated ProductionLine (with capacity_line_id=NULL), or None if not found.
     """
-    db_entry = (
-        db.query(ProductionLine).filter(ProductionLine.line_id == line_id).first()
-    )
+    db_entry = db.query(ProductionLine).filter(ProductionLine.line_id == line_id).first()
     if not db_entry:
         return None
 
@@ -320,9 +300,7 @@ def unlink_from_capacity_line(db: Session, line_id: int) -> Optional[ProductionL
     return db_entry
 
 
-def auto_sync_lines(
-    db: Session, client_id: str
-) -> Dict[str, list]:
+def auto_sync_lines(db: Session, client_id: str) -> Dict[str, list]:
     """Automatically link operational lines to capacity lines by matching line_code.
 
     Only matches within the same client_id. Already-linked lines are skipped.
@@ -356,9 +334,7 @@ def auto_sync_lines(
         )
         .all()
     )
-    cap_by_code: Dict[str, CapacityProductionLine] = {
-        cl.line_code: cl for cl in cap_lines
-    }
+    cap_by_code: Dict[str, CapacityProductionLine] = {cl.line_code: cl for cl in cap_lines}
 
     matched = []
     unmatched = []

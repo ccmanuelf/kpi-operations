@@ -81,7 +81,9 @@ def create_bom_header(
     )
 
 
-@bom_stock_router.get("/bom/{header_id}", response_model=BOMHeaderResponse, responses={404: {"description": "BOM header not found"}})
+@bom_stock_router.get(
+    "/bom/{header_id}", response_model=BOMHeaderResponse, responses={404: {"description": "BOM header not found"}}
+)
 def get_bom_header(
     header_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -96,7 +98,9 @@ def get_bom_header(
     return header
 
 
-@bom_stock_router.put("/bom/{header_id}", response_model=BOMHeaderResponse, responses={404: {"description": "BOM header not found"}})
+@bom_stock_router.put(
+    "/bom/{header_id}", response_model=BOMHeaderResponse, responses={404: {"description": "BOM header not found"}}
+)
 def update_bom_header(
     header_id: int,
     update: BOMHeaderUpdate,
@@ -112,7 +116,9 @@ def update_bom_header(
     return header
 
 
-@bom_stock_router.delete("/bom/{header_id}", response_model=MessageResponse, responses={404: {"description": "BOM header not found"}})
+@bom_stock_router.delete(
+    "/bom/{header_id}", response_model=MessageResponse, responses={404: {"description": "BOM header not found"}}
+)
 def delete_bom_header(
     header_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -139,7 +145,9 @@ def list_bom_details(
     return bom.get_bom_details(db, client_id, header_id)
 
 
-@bom_stock_router.post("/bom/{header_id}/details", response_model=BOMDetailResponse, status_code=status.HTTP_201_CREATED)
+@bom_stock_router.post(
+    "/bom/{header_id}/details", response_model=BOMDetailResponse, status_code=status.HTTP_201_CREATED
+)
 def create_bom_detail(
     header_id: int,
     detail: BOMDetailCreate,
@@ -163,7 +171,11 @@ def create_bom_detail(
     )
 
 
-@bom_stock_router.put("/bom/details/{detail_id}", response_model=BOMDetailResponse, responses={404: {"description": "BOM detail not found"}})
+@bom_stock_router.put(
+    "/bom/details/{detail_id}",
+    response_model=BOMDetailResponse,
+    responses={404: {"description": "BOM detail not found"}},
+)
 def update_bom_detail(
     detail_id: int,
     update: BOMDetailUpdate,
@@ -179,7 +191,9 @@ def update_bom_detail(
     return detail
 
 
-@bom_stock_router.delete("/bom/details/{detail_id}", response_model=MessageResponse, responses={404: {"description": "BOM detail not found"}})
+@bom_stock_router.delete(
+    "/bom/details/{detail_id}", response_model=MessageResponse, responses={404: {"description": "BOM detail not found"}}
+)
 def delete_bom_detail(
     detail_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -193,7 +207,9 @@ def delete_bom_detail(
     return {"message": "BOM detail deleted"}
 
 
-@bom_stock_router.post("/bom/explode", response_model=BOMExplosionResponse, responses={400: {"description": "BOM explosion failed"}})
+@bom_stock_router.post(
+    "/bom/explode", response_model=BOMExplosionResponse, responses={400: {"description": "BOM explosion failed"}}
+)
 def explode_bom(
     request: BOMExplosionRequest,
     client_id: str = Query(..., description="Client ID"),
@@ -282,7 +298,11 @@ def create_stock_snapshot(
     )
 
 
-@bom_stock_router.get("/stock/item/{item_code}/latest", response_model=StockSnapshotResponse, responses={404: {"description": "No stock snapshot found for this item"}})
+@bom_stock_router.get(
+    "/stock/item/{item_code}/latest",
+    response_model=StockSnapshotResponse,
+    responses={404: {"description": "No stock snapshot found for this item"}},
+)
 def get_latest_stock_for_item(
     item_code: str,
     client_id: str = Query(..., description="Client ID"),
@@ -323,7 +343,11 @@ def get_shortage_items(
     return stock.get_shortage_items(db, client_id, snapshot_date)
 
 
-@bom_stock_router.get("/stock/{snapshot_id}", response_model=StockSnapshotResponse, responses={404: {"description": "Stock snapshot not found"}})
+@bom_stock_router.get(
+    "/stock/{snapshot_id}",
+    response_model=StockSnapshotResponse,
+    responses={404: {"description": "Stock snapshot not found"}},
+)
 def get_stock_snapshot(
     snapshot_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -338,7 +362,11 @@ def get_stock_snapshot(
     return snapshot
 
 
-@bom_stock_router.put("/stock/{snapshot_id}", response_model=StockSnapshotResponse, responses={404: {"description": "Stock snapshot not found"}})
+@bom_stock_router.put(
+    "/stock/{snapshot_id}",
+    response_model=StockSnapshotResponse,
+    responses={404: {"description": "Stock snapshot not found"}},
+)
 def update_stock_snapshot(
     snapshot_id: int,
     update: StockSnapshotUpdate,
@@ -354,7 +382,9 @@ def update_stock_snapshot(
     return snapshot
 
 
-@bom_stock_router.delete("/stock/{snapshot_id}", response_model=MessageResponse, responses={404: {"description": "Stock snapshot not found"}})
+@bom_stock_router.delete(
+    "/stock/{snapshot_id}", response_model=MessageResponse, responses={404: {"description": "Stock snapshot not found"}}
+)
 def delete_stock_snapshot(
     snapshot_id: int,
     client_id: str = Query(..., description="Client ID"),

@@ -60,7 +60,13 @@ def get_kpi_commitments(
     return query.order_by(CapacityKPICommitment.period_start.desc()).all()
 
 
-@kpi_workbook_router.get("/kpi/variance", responses={400: {"description": "KPI variance report failed"}, 501: {"description": "KPI integration service not yet implemented"}})
+@kpi_workbook_router.get(
+    "/kpi/variance",
+    responses={
+        400: {"description": "KPI variance report failed"},
+        501: {"description": "KPI integration service not yet implemented"},
+    },
+)
 def get_kpi_variance_report(
     client_id: str = Query(..., description="Client ID"),
     schedule_id: Optional[int] = None,
@@ -94,7 +100,9 @@ def get_kpi_variance_report(
 # =============================================================================
 
 
-@kpi_workbook_router.get("/workbook/{client_id}", response_model=Dict[str, Any], responses={403: {"description": "Client access denied"}})
+@kpi_workbook_router.get(
+    "/workbook/{client_id}", response_model=Dict[str, Any], responses={403: {"description": "Client access denied"}}
+)
 def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Load all worksheet data for a client (capacity planning workbook).
 
@@ -398,7 +406,11 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
     }
 
 
-@kpi_workbook_router.put("/workbook/{client_id}/{worksheet_name}", response_model=WorksheetSaveResponse, responses={400: {"description": "Invalid worksheet name"}, 403: {"description": "Client access denied"}})
+@kpi_workbook_router.put(
+    "/workbook/{client_id}/{worksheet_name}",
+    response_model=WorksheetSaveResponse,
+    responses={400: {"description": "Invalid worksheet name"}, 403: {"description": "Client access denied"}},
+)
 def save_worksheet(
     client_id: str,
     worksheet_name: str,

@@ -67,9 +67,7 @@ def bulk_setup(bulk_att_db):
     )
 
     # Create admin user (access to all clients)
-    admin = TestDataFactory.create_user(
-        db, user_id="brt-admin-001", username="brt_admin", role="admin", client_id=None
-    )
+    admin = TestDataFactory.create_user(db, user_id="brt-admin-001", username="brt_admin", role="admin", client_id=None)
 
     # Create operator user (restricted to this client)
     operator = TestDataFactory.create_user(
@@ -78,16 +76,17 @@ def bulk_setup(bulk_att_db):
 
     # Create shift (06:00 - 14:00 = 8 hours)
     shift = TestDataFactory.create_shift(
-        db, client_id=client.client_id, shift_name="Bulk Day Shift",
-        start_time="06:00:00", end_time="14:00:00",
+        db,
+        client_id=client.client_id,
+        shift_name="Bulk Day Shift",
+        start_time="06:00:00",
+        end_time="14:00:00",
     )
 
     # Create employees
     employees = []
     for i in range(5):
-        emp = TestDataFactory.create_employee(
-            db, client_id=client.client_id, employee_name=f"Bulk Worker {i}"
-        )
+        emp = TestDataFactory.create_employee(db, client_id=client.client_id, employee_name=f"Bulk Worker {i}")
         employees.append(emp)
 
     db.commit()
@@ -299,12 +298,8 @@ class TestMarkAllPresentRoute:
         s = bulk_setup
 
         # Create another client with its own shift
-        other_client = TestDataFactory.create_client(
-            s["db"], client_id="BULK-OTHER-RT", client_name="Other RT"
-        )
-        other_shift = TestDataFactory.create_shift(
-            s["db"], client_id="BULK-OTHER-RT", shift_name="Other Day Shift"
-        )
+        other_client = TestDataFactory.create_client(s["db"], client_id="BULK-OTHER-RT", client_name="Other RT")
+        other_shift = TestDataFactory.create_shift(s["db"], client_id="BULK-OTHER-RT", shift_name="Other Day Shift")
         s["db"].commit()
 
         response = s["test_client"].post(

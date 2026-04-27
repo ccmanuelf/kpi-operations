@@ -25,16 +25,10 @@ router = APIRouter(prefix="/api/plan-vs-actual", tags=["Plan vs Actual"])
 @router.get("", response_model=None)
 def plan_vs_actual(
     client_id: Optional[str] = Query(None, description="Filter by client"),
-    start_date: Optional[date] = Query(
-        None, description="Filter by required_date start"
-    ),
+    start_date: Optional[date] = Query(None, description="Filter by required_date start"),
     end_date: Optional[date] = Query(None, description="Filter by required_date end"),
-    line_id: Optional[int] = Query(
-        None, description="Filter production by line_id (integer)"
-    ),
-    status: Optional[str] = Query(
-        None, description="Filter by capacity order status"
-    ),
+    line_id: Optional[int] = Query(None, description="Filter production by line_id (integer)"),
+    status: Optional[str] = Query(None, description="Filter by capacity order status"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
@@ -44,9 +38,7 @@ def plan_vs_actual(
         current_user.username,
         client_id,
     )
-    return get_plan_vs_actual(
-        db, current_user, client_id, start_date, end_date, line_id, status
-    )
+    return get_plan_vs_actual(db, current_user, client_id, start_date, end_date, line_id, status)
 
 
 @router.get("/summary", response_model=None)
@@ -56,7 +48,5 @@ def plan_vs_actual_summary(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Get aggregate summary of plan vs actual across all active orders."""
-    logger.info(
-        "Plan vs actual summary requested by user=%s", current_user.username
-    )
+    logger.info("Plan vs actual summary requested by user=%s", current_user.username)
     return get_plan_vs_actual_summary(db, current_user, client_id)

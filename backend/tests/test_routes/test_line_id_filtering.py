@@ -252,9 +252,7 @@ class TestBackwardCompatibility:
         db.add(entry)
         db.commit()
 
-        fetched = db.query(ProductionEntry).filter_by(
-            production_entry_id="PE-NOLN-001"
-        ).one()
+        fetched = db.query(ProductionEntry).filter_by(production_entry_id="PE-NOLN-001").one()
         assert fetched.line_id is None
 
     def test_downtime_entry_without_line_id(self, seed_base_data):
@@ -271,9 +269,7 @@ class TestBackwardCompatibility:
         db.add(entry)
         db.commit()
 
-        fetched = db.query(DowntimeEntry).filter_by(
-            downtime_entry_id="DT-NOLN-001"
-        ).one()
+        fetched = db.query(DowntimeEntry).filter_by(downtime_entry_id="DT-NOLN-001").one()
         assert fetched.line_id is None
 
     def test_attendance_entry_without_line_id(self, seed_base_data):
@@ -290,9 +286,7 @@ class TestBackwardCompatibility:
         db.add(entry)
         db.commit()
 
-        fetched = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id="ATT-NOLN-001"
-        ).one()
+        fetched = db.query(AttendanceEntry).filter_by(attendance_entry_id="ATT-NOLN-001").one()
         assert fetched.line_id is None
 
     def test_shift_without_line_id(self, seed_base_data):
@@ -332,9 +326,7 @@ class TestWithLineId:
         db.add(entry)
         db.commit()
 
-        fetched = db.query(ProductionEntry).filter_by(
-            production_entry_id="PE-LN-001"
-        ).one()
+        fetched = db.query(ProductionEntry).filter_by(production_entry_id="PE-LN-001").one()
         assert fetched.line_id == line.line_id
 
     def test_downtime_entry_with_line_id(self, seed_base_data):
@@ -354,9 +346,7 @@ class TestWithLineId:
         db.add(entry)
         db.commit()
 
-        fetched = db.query(DowntimeEntry).filter_by(
-            downtime_entry_id="DT-LN-001"
-        ).one()
+        fetched = db.query(DowntimeEntry).filter_by(downtime_entry_id="DT-LN-001").one()
         assert fetched.line_id == line.line_id
 
     def test_attendance_entry_with_line_id(self, seed_base_data):
@@ -376,9 +366,7 @@ class TestWithLineId:
         db.add(entry)
         db.commit()
 
-        fetched = db.query(AttendanceEntry).filter_by(
-            attendance_entry_id="ATT-LN-001"
-        ).one()
+        fetched = db.query(AttendanceEntry).filter_by(attendance_entry_id="ATT-LN-001").one()
         assert fetched.line_id == line.line_id
 
     def test_shift_with_line_id(self, seed_base_data):

@@ -91,9 +91,7 @@ def _setup_quality_data(db, *, client_id="SVC-CLIENT", days=5, defects=5):
     user = TestDataFactory.create_user(db, client_id=client_id, role="supervisor")
     product = TestDataFactory.create_product(db, client_id=client_id)
     db.flush()
-    wo = TestDataFactory.create_work_order(
-        db, client_id=client_id, product_id=product.product_id
-    )
+    wo = TestDataFactory.create_work_order(db, client_id=client_id, product_id=product.product_id)
     db.flush()
 
     entries = []
@@ -186,9 +184,7 @@ class TestProductionKPIService:
         service = ProductionKPIService(transactional_db)
         entry = data["entries"][0]
 
-        result = service.calculate_entry_kpis(
-            entry, product=data["product"], shift=data["shift"]
-        )
+        result = service.calculate_entry_kpis(entry, product=data["product"], shift=data["shift"])
 
         # defect_count=2, scrap_count=1 => good=997 => rate=99.7%
         assert result.quality.good_units == entry.units_produced - 2 - 1
@@ -219,9 +215,11 @@ class TestProductionKPIService:
         data = _setup_production_data(transactional_db, days=3)
         service = ProductionKPIService(transactional_db)
 
-        target = data["entries"][0].production_date.date() if isinstance(
-            data["entries"][0].production_date, datetime
-        ) else data["entries"][0].production_date
+        target = (
+            data["entries"][0].production_date.date()
+            if isinstance(data["entries"][0].production_date, datetime)
+            else data["entries"][0].production_date
+        )
 
         summary = service.get_daily_kpi_summary(target, client_id="SVC-CLIENT")
 
@@ -234,9 +232,7 @@ class TestProductionKPIService:
         _setup_production_data(transactional_db)
         service = ProductionKPIService(transactional_db)
 
-        summary = service.get_daily_kpi_summary(
-            date(2000, 1, 1), client_id="SVC-CLIENT"
-        )
+        summary = service.get_daily_kpi_summary(date(2000, 1, 1), client_id="SVC-CLIENT")
 
         assert summary["total_units_produced"] == 0
         assert summary["entry_count"] == 0
@@ -247,9 +243,7 @@ class TestProductionKPIService:
         service = ProductionKPIService(transactional_db)
 
         # Pass None for product to trigger inference
-        eff = service.calculate_efficiency_only(
-            data["entries"][0], product=None, shift=data["shift"]
-        )
+        eff = service.calculate_efficiency_only(data["entries"][0], product=None, shift=data["shift"])
 
         # Since the product exists in DB, cached lookup should still find it,
         # so this actually tests the caching path
@@ -284,9 +278,7 @@ class TestQualityKPIService:
         _setup_quality_data(transactional_db)
         service = QualityKPIService(transactional_db)
 
-        result = service.calculate_ppm(
-            date(2000, 1, 1), date(2000, 1, 2), client_id="SVC-CLIENT"
-        )
+        result = service.calculate_ppm(date(2000, 1, 1), date(2000, 1, 2), client_id="SVC-CLIENT")
 
         assert result.ppm == Decimal("0")
         assert result.total_inspected == 0
@@ -299,9 +291,7 @@ class TestQualityKPIService:
         base = date.today() - timedelta(days=3)
         end = date.today() + timedelta(days=1)
 
-        result = service.calculate_dpmo(
-            base, end, opportunities_per_unit=10, client_id="SVC-CLIENT"
-        )
+        result = service.calculate_dpmo(base, end, opportunities_per_unit=10, client_id="SVC-CLIENT")
 
         # total_defects_count=12 per entry (defects=10 + 2 extra), 1 entry
         # DPMO = 12 / (1000 * 10) * 1e6 = 1200
@@ -366,7 +356,8 @@ class TestQualityKPIService:
         end = date.today() + timedelta(days=1)
 
         result = service.calculate_ppm(
-            base, end,
+            base,
+            end,
             work_order_id=data["work_order"].work_order_id,
             client_id="SVC-CLIENT",
         )
@@ -396,9 +387,7 @@ class TestAnalyticsService:
         base = date.today() - timedelta(days=15)
         end = date.today() + timedelta(days=1)
 
-        trend = service.analyze_efficiency_trend(
-            base, end, client_id="SVC-CLIENT", granularity="daily"
-        )
+        trend = service.analyze_efficiency_trend(base, end, client_id="SVC-CLIENT", granularity="daily")
 
         assert trend.metric_name == "efficiency"
         assert len(trend.data_points) >= 2
@@ -416,9 +405,7 @@ class TestAnalyticsService:
         base = date.today() - timedelta(days=3)
         end = date.today() + timedelta(days=1)
 
-        trend = service.analyze_efficiency_trend(
-            base, end, client_id="SVC-CLIENT"
-        )
+        trend = service.analyze_efficiency_trend(base, end, client_id="SVC-CLIENT")
 
         assert trend.trend_direction == "insufficient_data"
 
@@ -430,9 +417,7 @@ class TestAnalyticsService:
         base = date.today() - timedelta(days=10)
         end = date.today() + timedelta(days=1)
 
-        trend = service.analyze_quality_trend(
-            base, end, metric="ppm", client_id="SVC-CLIENT"
-        )
+        trend = service.analyze_quality_trend(base, end, metric="ppm", client_id="SVC-CLIENT")
 
         assert trend.metric_name == "ppm"
         # Data may be insufficient or stable depending on date alignment
@@ -459,7 +444,10 @@ class TestAnalyticsService:
         p2_end = date.today()
 
         result = service.compare_periods(
-            p1_start, p1_end, p2_start, p2_end,
+            p1_start,
+            p1_end,
+            p2_start,
+            p2_end,
             metrics=["efficiency"],
             client_id="SVC-CLIENT",
         )
@@ -641,9 +629,7 @@ class TestWorkflowServiceFunctions:
         entities = self._create_entities(transactional_db)
         wo = entities["work_order"]
 
-        is_valid, reason, allowed = validate_transition(
-            transactional_db, wo, "RELEASED"
-        )
+        is_valid, reason, allowed = validate_transition(transactional_db, wo, "RELEASED")
 
         assert is_valid is True
         assert reason is None
@@ -653,9 +639,7 @@ class TestWorkflowServiceFunctions:
         """Module-level get_allowed_transitions returns a list of valid targets."""
         self._create_entities(transactional_db)
 
-        allowed = get_allowed_transitions(
-            transactional_db, "WFS-CLIENT", "IN_PROGRESS"
-        )
+        allowed = get_allowed_transitions(transactional_db, "WFS-CLIENT", "IN_PROGRESS")
 
         assert "COMPLETED" in allowed
         assert "ON_HOLD" in allowed
@@ -665,10 +649,7 @@ class TestWorkflowServiceFunctions:
         entities = self._create_entities(transactional_db)
         wo = entities["work_order"]
 
-        updated_wo, log = execute_transition(
-            transactional_db, wo, "RELEASED",
-            user_id=1, notes="Test release"
-        )
+        updated_wo, log = execute_transition(transactional_db, wo, "RELEASED", user_id=1, notes="Test release")
 
         assert updated_wo.status == WorkOrderStatus.RELEASED
         assert log.from_status == "RECEIVED"
@@ -708,9 +689,7 @@ class TestWorkflowServiceFunctions:
         execute_transition(transactional_db, wo, "RELEASED", user_id=1)
         execute_transition(transactional_db, wo, "IN_PROGRESS", user_id=1)
 
-        history = get_transition_history(
-            transactional_db, wo.work_order_id, "WFS-CLIENT"
-        )
+        history = get_transition_history(transactional_db, wo.work_order_id, "WFS-CLIENT")
 
         assert len(history) == 2
         assert history[0].to_status == "RELEASED"
@@ -720,9 +699,7 @@ class TestWorkflowServiceFunctions:
         """Applying 'standard' template updates client config."""
         self._create_entities(transactional_db)
 
-        config = apply_workflow_template(
-            transactional_db, "WFS-CLIENT", "standard"
-        )
+        config = apply_workflow_template(transactional_db, "WFS-CLIENT", "standard")
 
         assert "RECEIVED" in config["workflow_statuses"]
         assert "SHIPPED" in config["workflow_statuses"]
@@ -734,8 +711,6 @@ class TestWorkflowServiceFunctions:
         self._create_entities(transactional_db)
 
         with pytest.raises(HTTPException) as exc_info:
-            apply_workflow_template(
-                transactional_db, "WFS-CLIENT", "nonexistent"
-            )
+            apply_workflow_template(transactional_db, "WFS-CLIENT", "nonexistent")
 
         assert exc_info.value.status_code == 404

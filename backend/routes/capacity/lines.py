@@ -70,7 +70,11 @@ def create_production_line(
     )
 
 
-@lines_router.get("/lines/{line_id}", response_model=ProductionLineResponse, responses={404: {"description": "Production line not found"}})
+@lines_router.get(
+    "/lines/{line_id}",
+    response_model=ProductionLineResponse,
+    responses={404: {"description": "Production line not found"}},
+)
 def get_production_line(
     line_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -85,7 +89,11 @@ def get_production_line(
     return line
 
 
-@lines_router.put("/lines/{line_id}", response_model=ProductionLineResponse, responses={404: {"description": "Production line not found"}})
+@lines_router.put(
+    "/lines/{line_id}",
+    response_model=ProductionLineResponse,
+    responses={404: {"description": "Production line not found"}},
+)
 def update_production_line(
     line_id: int,
     update: ProductionLineUpdate,
@@ -101,7 +109,9 @@ def update_production_line(
     return line
 
 
-@lines_router.delete("/lines/{line_id}", response_model=MessageResponse, responses={404: {"description": "Production line not found"}})
+@lines_router.delete(
+    "/lines/{line_id}", response_model=MessageResponse, responses={404: {"description": "Production line not found"}}
+)
 def delete_production_line(
     line_id: int,
     client_id: str = Query(..., description="Client ID"),

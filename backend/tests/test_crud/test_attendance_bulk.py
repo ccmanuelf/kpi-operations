@@ -31,20 +31,24 @@ def _seed_prereqs(db, client_id="BULK-ATT-C1", num_employees=5, overnight_shift=
 
     employees = []
     for i in range(num_employees):
-        emp = TestDataFactory.create_employee(
-            db, client_id=client_id, employee_name=f"Worker {client_id}-{i}"
-        )
+        emp = TestDataFactory.create_employee(db, client_id=client_id, employee_name=f"Worker {client_id}-{i}")
         employees.append(emp)
 
     if overnight_shift:
         shift = TestDataFactory.create_shift(
-            db, client_id=client_id, shift_name=f"Night Shift {client_id}",
-            start_time="22:00:00", end_time="06:00:00",
+            db,
+            client_id=client_id,
+            shift_name=f"Night Shift {client_id}",
+            start_time="22:00:00",
+            end_time="06:00:00",
         )
     else:
         shift = TestDataFactory.create_shift(
-            db, client_id=client_id, shift_name=f"Day Shift {client_id}",
-            start_time="06:00:00", end_time="14:00:00",
+            db,
+            client_id=client_id,
+            shift_name=f"Day Shift {client_id}",
+            start_time="06:00:00",
+            end_time="14:00:00",
         )
 
     db.flush()
@@ -81,9 +85,13 @@ class TestBulkCreateAttendanceRecords:
         assert len(result["created_ids"]) == 3
 
         # Verify records exist in DB
-        count = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-        ).scalar()
+        count = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+            )
+            .scalar()
+        )
         assert count == 3
 
     def test_bulk_create_mixed_valid_invalid(self, transactional_db):
@@ -93,9 +101,7 @@ class TestBulkCreateAttendanceRecords:
 
         # Create operator user for CLIENT-B (no access to BULK-ATT-C1)
         other_client = TestDataFactory.create_client(db, client_id="BULK-OTHER-C", client_name="Other")
-        operator = TestDataFactory.create_user(
-            db, username="bulk_operator", role="operator", client_id="BULK-OTHER-C"
-        )
+        operator = TestDataFactory.create_user(db, username="bulk_operator", role="operator", client_id="BULK-OTHER-C")
         db.flush()
 
         records = [
@@ -215,10 +221,14 @@ class TestMarkAllPresent:
         assert len(result["created_ids"]) == 5
 
         # Verify records in DB
-        count = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-            AttendanceEntry.shift_id == shift.shift_id,
-        ).scalar()
+        count = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+                AttendanceEntry.shift_id == shift.shift_id,
+            )
+            .scalar()
+        )
         assert count == 5
 
     def test_mark_all_present_skips_existing(self, transactional_db):
@@ -251,9 +261,9 @@ class TestMarkAllPresent:
         # Day shift: 06:00 to 14:00 = 8 hours
         result = mark_all_present(db, client.client_id, shift.shift_id, date.today(), user)
 
-        entry = db.query(AttendanceEntry).filter(
-            AttendanceEntry.attendance_entry_id == result["created_ids"][0]
-        ).first()
+        entry = (
+            db.query(AttendanceEntry).filter(AttendanceEntry.attendance_entry_id == result["created_ids"][0]).first()
+        )
 
         assert float(entry.scheduled_hours) == 8.0
         assert float(entry.actual_hours) == 8.0
@@ -270,9 +280,9 @@ class TestMarkAllPresent:
         # Night shift: 22:00 to 06:00 = 8 hours
         result = mark_all_present(db, client.client_id, shift.shift_id, date.today(), user)
 
-        entry = db.query(AttendanceEntry).filter(
-            AttendanceEntry.attendance_entry_id == result["created_ids"][0]
-        ).first()
+        entry = (
+            db.query(AttendanceEntry).filter(AttendanceEntry.attendance_entry_id == result["created_ids"][0]).first()
+        )
 
         assert float(entry.scheduled_hours) == 8.0
 
@@ -312,9 +322,13 @@ class TestMarkAllPresent:
         assert result["records_created"] == 3
 
         # Verify no records created for ISO-B
-        b_count = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == "ISO-B",
-        ).scalar()
+        b_count = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == "ISO-B",
+            )
+            .scalar()
+        )
         assert b_count == 0
 
     def test_mark_all_present_operator_cannot_access_other_client(self, transactional_db):
@@ -324,9 +338,7 @@ class TestMarkAllPresent:
         client_b, user_b, emps_b, shift_b = _seed_prereqs(db, client_id="OP-B", num_employees=2)
 
         # Create operator restricted to OP-A
-        operator = TestDataFactory.create_user(
-            db, username="restricted_op", role="operator", client_id="OP-A"
-        )
+        operator = TestDataFactory.create_user(db, username="restricted_op", role="operator", client_id="OP-A")
         db.flush()
 
         # Should succeed for own client
@@ -351,9 +363,13 @@ class TestMarkAllPresent:
         assert second["already_exists"] == 3
 
         # Total in DB should be 3, not 6
-        count = db.query(func.count(AttendanceEntry.attendance_entry_id)).filter(
-            AttendanceEntry.client_id == client.client_id,
-        ).scalar()
+        count = (
+            db.query(func.count(AttendanceEntry.attendance_entry_id))
+            .filter(
+                AttendanceEntry.client_id == client.client_id,
+            )
+            .scalar()
+        )
         assert count == 3
 
     def test_mark_all_present_sets_correct_metadata(self, transactional_db):
@@ -364,9 +380,9 @@ class TestMarkAllPresent:
 
         result = mark_all_present(db, client.client_id, shift.shift_id, target_date, user)
 
-        entry = db.query(AttendanceEntry).filter(
-            AttendanceEntry.attendance_entry_id == result["created_ids"][0]
-        ).first()
+        entry = (
+            db.query(AttendanceEntry).filter(AttendanceEntry.attendance_entry_id == result["created_ids"][0]).first()
+        )
 
         assert entry.client_id == client.client_id
         assert entry.employee_id == employees[0].employee_id

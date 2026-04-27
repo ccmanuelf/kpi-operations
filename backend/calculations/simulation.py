@@ -25,10 +25,10 @@ from backend.orm.simulation import SimulationScenarioType, OptimizationGoal  # c
 # ---------------------------------------------------------------------------
 
 # Staffing ratio thresholds used in run_staffing_simulation
-STAFFING_UNDERSTAFFED_RATIO = Decimal("0.7")   # below this → understaffed
-STAFFING_OVERSTAFFED_RATIO = Decimal("1.5")    # above this → overstaffed
+STAFFING_UNDERSTAFFED_RATIO = Decimal("0.7")  # below this → understaffed
+STAFFING_OVERSTAFFED_RATIO = Decimal("1.5")  # above this → overstaffed
 STAFFING_UNDERSTAFFED_EFFICIENCY_PENALTY = Decimal("0.95")  # efficiency multiplier when understaffed
-STAFFING_OVERSTAFFED_EFFICIENCY_BONUS = Decimal("0.98")    # efficiency multiplier when overstaffed
+STAFFING_OVERSTAFFED_EFFICIENCY_BONUS = Decimal("0.98")  # efficiency multiplier when overstaffed
 
 
 @dataclass

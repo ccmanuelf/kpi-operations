@@ -42,16 +42,12 @@ class ProductionLine(Base):
     )
 
     line_id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(
-        String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True
-    )
+    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
     line_code = Column(String(50), nullable=False)  # e.g., "SEW-01", "CUT-01"
     line_name = Column(String(100), nullable=False)  # e.g., "Sewing Line 1"
     department = Column(String(50), nullable=True)  # CUTTING, SEWING, FINISHING, etc.
     line_type = Column(String(20), nullable=False, default="DEDICATED")
-    parent_line_id = Column(
-        Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True
-    )
+    parent_line_id = Column(Integer, ForeignKey("PRODUCTION_LINE.line_id"), nullable=True)
     max_operators = Column(Integer, nullable=True)
 
     # Bridge to Capacity Planning: links operational line to its capacity counterpart.

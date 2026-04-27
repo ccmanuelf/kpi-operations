@@ -144,12 +144,8 @@ class TestBreakTimeCRUD:
     def test_list_break_times_for_client(self, transactional_db):
         """List all active breaks across shifts for a client."""
         client = TestDataFactory.create_client(transactional_db, client_id="BRK-ALL")
-        shift_a = TestDataFactory.create_shift(
-            transactional_db, client_id="BRK-ALL", shift_name="Day"
-        )
-        shift_b = TestDataFactory.create_shift(
-            transactional_db, client_id="BRK-ALL", shift_name="Night"
-        )
+        shift_a = TestDataFactory.create_shift(transactional_db, client_id="BRK-ALL", shift_name="Day")
+        shift_b = TestDataFactory.create_shift(transactional_db, client_id="BRK-ALL", shift_name="Night")
         transactional_db.flush()
 
         for sid in [shift_a.shift_id, shift_b.shift_id]:
@@ -402,12 +398,8 @@ class TestBreakTimeCRUD:
     def test_break_associated_with_correct_shift(self, transactional_db):
         """Breaks are scoped to their parent shift."""
         client = TestDataFactory.create_client(transactional_db, client_id="BRK-ASSOC")
-        shift_day = TestDataFactory.create_shift(
-            transactional_db, client_id="BRK-ASSOC", shift_name="Day"
-        )
-        shift_night = TestDataFactory.create_shift(
-            transactional_db, client_id="BRK-ASSOC", shift_name="Night"
-        )
+        shift_day = TestDataFactory.create_shift(transactional_db, client_id="BRK-ASSOC", shift_name="Day")
+        shift_night = TestDataFactory.create_shift(transactional_db, client_id="BRK-ASSOC", shift_name="Night")
         transactional_db.flush()
 
         transactional_db.add(

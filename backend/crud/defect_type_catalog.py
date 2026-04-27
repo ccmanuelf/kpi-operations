@@ -254,11 +254,19 @@ def bulk_create_defect_types(
             created += 1
 
         except SQLAlchemyError as e:
-            logger.exception("Database error bulk-creating defect type at row %d, defect_code=%s", idx + 1, dt.defect_code)
-            errors.append({"row": idx + 1, "defect_code": dt.defect_code, "error": "Database error creating defect type"})
+            logger.exception(
+                "Database error bulk-creating defect type at row %d, defect_code=%s", idx + 1, dt.defect_code
+            )
+            errors.append(
+                {"row": idx + 1, "defect_code": dt.defect_code, "error": "Database error creating defect type"}
+            )
         except (ValueError, TypeError) as e:
-            logger.exception("Validation error bulk-creating defect type at row %d, defect_code=%s", idx + 1, dt.defect_code)
-            errors.append({"row": idx + 1, "defect_code": dt.defect_code, "error": "Validation error creating defect type"})
+            logger.exception(
+                "Validation error bulk-creating defect type at row %d, defect_code=%s", idx + 1, dt.defect_code
+            )
+            errors.append(
+                {"row": idx + 1, "defect_code": dt.defect_code, "error": "Validation error creating defect type"}
+            )
 
     db.commit()
 

@@ -105,7 +105,9 @@ class TestQualityCRUD:
         )
         transactional_db.flush()
 
-        TestDataFactory.create_defect_detail(transactional_db, quality_entry_id=qe.quality_entry_id, defect_count=3, client_id="QDD-CL")
+        TestDataFactory.create_defect_detail(
+            transactional_db, quality_entry_id=qe.quality_entry_id, defect_count=3, client_id="QDD-CL"
+        )
         transactional_db.commit()
 
         details = get_defect_details(transactional_db, admin)

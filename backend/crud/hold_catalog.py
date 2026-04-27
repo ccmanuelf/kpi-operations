@@ -52,6 +52,7 @@ DEFAULT_HOLD_REASONS = [
 # Hold Status Catalog CRUD
 # =============================================================================
 
+
 def create_hold_status(db: Session, data: HoldStatusCatalogCreate) -> HoldStatusCatalog:
     """Create a new hold status catalog entry for a client."""
     db_entry = HoldStatusCatalog(
@@ -68,9 +69,7 @@ def create_hold_status(db: Session, data: HoldStatusCatalogCreate) -> HoldStatus
         db.refresh(db_entry)
     except IntegrityError:
         db.rollback()
-        raise ValueError(
-            f"Status code '{data.status_code}' already exists for client '{data.client_id}'"
-        )
+        raise ValueError(f"Status code '{data.status_code}' already exists for client '{data.client_id}'")
     logger.info("Created hold status '%s' for client '%s'", data.status_code, data.client_id)
     return db_entry
 
@@ -109,9 +108,7 @@ def update_hold_status(
     return db_entry
 
 
-def deactivate_hold_status(
-    db: Session, catalog_id: int, client_id: Optional[str] = None
-) -> bool:
+def deactivate_hold_status(db: Session, catalog_id: int, client_id: Optional[str] = None) -> bool:
     """Soft-delete a hold status (set is_active = False)."""
     query = db.query(HoldStatusCatalog).filter(HoldStatusCatalog.catalog_id == catalog_id)
     if client_id is not None:
@@ -145,6 +142,7 @@ def validate_hold_status_for_client(db: Session, client_id: str, status_code: st
 # Hold Reason Catalog CRUD
 # =============================================================================
 
+
 def create_hold_reason(db: Session, data: HoldReasonCatalogCreate) -> HoldReasonCatalog:
     """Create a new hold reason catalog entry for a client."""
     db_entry = HoldReasonCatalog(
@@ -161,9 +159,7 @@ def create_hold_reason(db: Session, data: HoldReasonCatalogCreate) -> HoldReason
         db.refresh(db_entry)
     except IntegrityError:
         db.rollback()
-        raise ValueError(
-            f"Reason code '{data.reason_code}' already exists for client '{data.client_id}'"
-        )
+        raise ValueError(f"Reason code '{data.reason_code}' already exists for client '{data.client_id}'")
     logger.info("Created hold reason '%s' for client '%s'", data.reason_code, data.client_id)
     return db_entry
 
@@ -202,9 +198,7 @@ def update_hold_reason(
     return db_entry
 
 
-def deactivate_hold_reason(
-    db: Session, catalog_id: int, client_id: Optional[str] = None
-) -> bool:
+def deactivate_hold_reason(db: Session, catalog_id: int, client_id: Optional[str] = None) -> bool:
     """Soft-delete a hold reason (set is_active = False)."""
     query = db.query(HoldReasonCatalog).filter(HoldReasonCatalog.catalog_id == catalog_id)
     if client_id is not None:
@@ -237,6 +231,7 @@ def validate_hold_reason_for_client(db: Session, client_id: str, reason_code: st
 # =============================================================================
 # Seed Defaults
 # =============================================================================
+
 
 def seed_defaults(db: Session, client_id: str) -> dict:
     """

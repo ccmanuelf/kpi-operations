@@ -427,8 +427,6 @@ def test_data_factory():
     return EnhancedFactory
 
 
-
-
 # FastAPI Test Client Fixtures
 @pytest.fixture(scope="module")
 def test_client():

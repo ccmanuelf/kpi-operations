@@ -81,7 +81,9 @@ def create_scenario(
     return new_scenario
 
 
-@scenarios_router.get("/scenarios/{scenario_id}", response_model=ScenarioResponse, responses={404: {"description": "Scenario not found"}})
+@scenarios_router.get(
+    "/scenarios/{scenario_id}", response_model=ScenarioResponse, responses={404: {"description": "Scenario not found"}}
+)
 def get_scenario(
     scenario_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -104,7 +106,15 @@ def get_scenario(
     return scenario
 
 
-@scenarios_router.post("/scenarios/{scenario_id}/run", response_model=ScenarioRunResponse, responses={404: {"description": "Scenario not found"}, 400: {"description": "Scenario evaluation failed"}, 501: {"description": "Scenario service not yet implemented"}})
+@scenarios_router.post(
+    "/scenarios/{scenario_id}/run",
+    response_model=ScenarioRunResponse,
+    responses={
+        404: {"description": "Scenario not found"},
+        400: {"description": "Scenario evaluation failed"},
+        501: {"description": "Scenario service not yet implemented"},
+    },
+)
 def run_scenario(
     scenario_id: int,
     request: ScenarioRunRequest,
@@ -178,7 +188,9 @@ def run_scenario(
         raise HTTPException(status_code=400, detail="Scenario run failed")
 
 
-@scenarios_router.delete("/scenarios/{scenario_id}", response_model=MessageResponse, responses={404: {"description": "Scenario not found"}})
+@scenarios_router.delete(
+    "/scenarios/{scenario_id}", response_model=MessageResponse, responses={404: {"description": "Scenario not found"}}
+)
 def delete_scenario(
     scenario_id: int,
     client_id: str = Query(..., description="Client ID"),
@@ -204,7 +216,13 @@ def delete_scenario(
     return {"message": "Scenario deleted"}
 
 
-@scenarios_router.post("/scenarios/compare", responses={400: {"description": "Scenario comparison failed"}, 501: {"description": "Scenario service not yet implemented"}})
+@scenarios_router.post(
+    "/scenarios/compare",
+    responses={
+        400: {"description": "Scenario comparison failed"},
+        501: {"description": "Scenario service not yet implemented"},
+    },
+)
 def compare_scenarios(
     request: ScenarioCompareRequest,
     client_id: str = Query(..., description="Client ID"),

@@ -238,4 +238,3 @@ def build_client_filter_clause(user: User, client_id_column):
 
     # Return IN clause for user's authorized clients
     return client_id_column.in_(user_clients)
-

@@ -108,12 +108,14 @@ def calculate_fpy_rty_kpi(
         if stage_total > 0:
             stage_fpy = stage_passed / stage_total
             rty_decimal *= stage_fpy
-            steps.append({
-                "stage": stage.inspection_stage,
-                "fpy": round(stage_fpy * 100, 2),
-                "total": stage_total,
-                "passed": stage_passed,
-            })
+            steps.append(
+                {
+                    "stage": stage.inspection_stage,
+                    "fpy": round(stage_fpy * 100, 2),
+                    "total": stage_total,
+                    "passed": stage_passed,
+                }
+            )
 
     rty = rty_decimal * 100 if steps else fpy
 
@@ -122,9 +124,7 @@ def calculate_fpy_rty_kpi(
         is_estimated=is_estimated,
         confidence_score=1.0 if total > 0 and steps else (0.7 if total > 0 else 0.3),
         inference_source=(
-            "actual_data"
-            if total > 0 and steps
-            else ("overall_fpy_fallback" if total > 0 else "system_fallback")
+            "actual_data" if total > 0 and steps else ("overall_fpy_fallback" if total > 0 else "system_fallback")
         ),
         inference_warning=(
             "RTY calculation used overall FPY as fallback (no stage-specific data)"

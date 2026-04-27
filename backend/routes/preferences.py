@@ -96,6 +96,7 @@ async def get_dashboard_preferences(
         logger.warning("Error retrieving dashboard preferences (returning defaults)", exc_info=True)
         # Return default preferences if DB is unavailable or table doesn't exist
         from backend.services.preferences_service import get_fallback_widgets
+
         FALLBACK_DEFAULT_WIDGETS = get_fallback_widgets()
 
         default_prefs = DashboardPreferences(

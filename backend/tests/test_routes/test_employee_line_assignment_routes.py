@@ -137,9 +137,9 @@ def _seed_line(db, client_id=CLIENT_ID, line_code=None, line_name=None):
     return line
 
 
-def _create_assignment_payload(employee_id, line_id, client_id=CLIENT_ID,
-                                allocation="100.00", is_primary=True,
-                                effective_date=None):
+def _create_assignment_payload(
+    employee_id, line_id, client_id=CLIENT_ID, allocation="100.00", is_primary=True, effective_date=None
+):
     """Build a JSON payload for POST /api/employee-line-assignments/."""
     return {
         "employee_id": employee_id,
@@ -250,12 +250,19 @@ class TestGetEmployeeLinesEndpoint:
         line2 = _seed_line(db, line_code="L2")
 
         _create_assignment_via_api(
-            client, db, emp.employee_id, line1.line_id,
+            client,
+            db,
+            emp.employee_id,
+            line1.line_id,
             allocation="60.00",
         )
         _create_assignment_via_api(
-            client, db, emp.employee_id, line2.line_id,
-            allocation="40.00", is_primary=False,
+            client,
+            db,
+            emp.employee_id,
+            line2.line_id,
+            allocation="40.00",
+            is_primary=False,
         )
 
         response = client.get(
@@ -362,7 +369,9 @@ class TestCreateEndpoint:
         line = _seed_line(db)
 
         payload = _create_assignment_payload(
-            emp.employee_id, line.line_id, allocation="50.00",
+            emp.employee_id,
+            line.line_id,
+            allocation="50.00",
         )
         response1 = client.post("/api/employee-line-assignments/", json=payload)
         assert response1.status_code == 201
@@ -379,12 +388,18 @@ class TestCreateEndpoint:
         line2 = _seed_line(db, line_code="L2")
 
         _create_assignment_via_api(
-            client, db, emp.employee_id, line1.line_id, allocation="70.00",
+            client,
+            db,
+            emp.employee_id,
+            line1.line_id,
+            allocation="70.00",
         )
 
         payload = _create_assignment_payload(
-            emp.employee_id, line2.line_id,
-            allocation="40.00", is_primary=False,
+            emp.employee_id,
+            line2.line_id,
+            allocation="40.00",
+            is_primary=False,
         )
         response = client.post("/api/employee-line-assignments/", json=payload)
         assert response.status_code == 422
@@ -399,16 +414,26 @@ class TestCreateEndpoint:
         line3 = _seed_line(db, line_code="L3")
 
         _create_assignment_via_api(
-            client, db, emp.employee_id, line1.line_id, allocation="50.00",
+            client,
+            db,
+            emp.employee_id,
+            line1.line_id,
+            allocation="50.00",
         )
         _create_assignment_via_api(
-            client, db, emp.employee_id, line2.line_id,
-            allocation="50.00", is_primary=False,
+            client,
+            db,
+            emp.employee_id,
+            line2.line_id,
+            allocation="50.00",
+            is_primary=False,
         )
 
         payload = _create_assignment_payload(
-            emp.employee_id, line3.line_id,
-            allocation="10.00", is_primary=False,
+            emp.employee_id,
+            line3.line_id,
+            allocation="10.00",
+            is_primary=False,
         )
         response = client.post("/api/employee-line-assignments/", json=payload)
         assert response.status_code == 422
@@ -485,11 +510,19 @@ class TestUpdateEndpoint:
         line2 = _seed_line(db, line_code="L2")
 
         _create_assignment_via_api(
-            client, db, emp.employee_id, line1.line_id, allocation="60.00",
+            client,
+            db,
+            emp.employee_id,
+            line1.line_id,
+            allocation="60.00",
         )
         a2 = _create_assignment_via_api(
-            client, db, emp.employee_id, line2.line_id,
-            allocation="40.00", is_primary=False,
+            client,
+            db,
+            emp.employee_id,
+            line2.line_id,
+            allocation="40.00",
+            is_primary=False,
         )
 
         response = client.put(

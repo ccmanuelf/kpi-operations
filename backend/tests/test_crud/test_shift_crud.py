@@ -127,12 +127,15 @@ class TestListShifts:
         _seed_client(db, "SH-L1")
 
         for name in ["1st", "2nd", "3rd"]:
-            create_shift(db, ShiftCreate(
-                client_id="SH-L1",
-                shift_name=name,
-                start_time=time(6, 0),
-                end_time=time(14, 0),
-            ))
+            create_shift(
+                db,
+                ShiftCreate(
+                    client_id="SH-L1",
+                    shift_name=name,
+                    start_time=time(6, 0),
+                    end_time=time(14, 0),
+                ),
+            )
 
         # Deactivate one
         shifts = list_shifts(db, "SH-L1")
@@ -150,12 +153,15 @@ class TestListShifts:
         _seed_client(db, "SH-L2")
 
         for name in ["3rd", "1st", "2nd"]:
-            create_shift(db, ShiftCreate(
-                client_id="SH-L2",
-                shift_name=name,
-                start_time=time(6, 0),
-                end_time=time(14, 0),
-            ))
+            create_shift(
+                db,
+                ShiftCreate(
+                    client_id="SH-L2",
+                    shift_name=name,
+                    start_time=time(6, 0),
+                    end_time=time(14, 0),
+                ),
+            )
 
         shifts = list_shifts(db, "SH-L2")
         names = [s.shift_name for s in shifts]
@@ -181,12 +187,15 @@ class TestGetShift:
         db = transactional_db
         _seed_client(db, "SH-G1")
 
-        created = create_shift(db, ShiftCreate(
-            client_id="SH-G1",
-            shift_name="Morning",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        created = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-G1",
+                shift_name="Morning",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         result = get_shift(db, created.shift_id)
         assert result is not None
@@ -210,12 +219,15 @@ class TestUpdateShift:
         db = transactional_db
         _seed_client(db, "SH-U1")
 
-        created = create_shift(db, ShiftCreate(
-            client_id="SH-U1",
-            shift_name="Before",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        created = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-U1",
+                shift_name="Before",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         updated = update_shift(db, created.shift_id, ShiftUpdate(shift_name="After"))
         assert updated is not None
@@ -226,17 +238,24 @@ class TestUpdateShift:
         db = transactional_db
         _seed_client(db, "SH-U2")
 
-        created = create_shift(db, ShiftCreate(
-            client_id="SH-U2",
-            shift_name="Flexible",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        created = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-U2",
+                shift_name="Flexible",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
-        updated = update_shift(db, created.shift_id, ShiftUpdate(
-            start_time=time(7, 0),
-            end_time=time(15, 0),
-        ))
+        updated = update_shift(
+            db,
+            created.shift_id,
+            ShiftUpdate(
+                start_time=time(7, 0),
+                end_time=time(15, 0),
+            ),
+        )
         assert updated.start_time == time(7, 0)
         assert updated.end_time == time(15, 0)
 
@@ -245,12 +264,15 @@ class TestUpdateShift:
         db = transactional_db
         _seed_client(db, "SH-U3")
 
-        created = create_shift(db, ShiftCreate(
-            client_id="SH-U3",
-            shift_name="Toggle",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        created = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-U3",
+                shift_name="Toggle",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         updated = update_shift(db, created.shift_id, ShiftUpdate(is_active=False))
         assert updated.is_active is False
@@ -276,12 +298,15 @@ class TestDeactivateShift:
         db = transactional_db
         _seed_client(db, "SH-D1")
 
-        created = create_shift(db, ShiftCreate(
-            client_id="SH-D1",
-            shift_name="ToDeactivate",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        created = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-D1",
+                shift_name="ToDeactivate",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         assert deactivate_shift(db, created.shift_id) is True
 
@@ -306,24 +331,33 @@ class TestMultiTenantIsolation:
         _seed_client(db, "SH-ISO-A")
         _seed_client(db, "SH-ISO-B")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-ISO-A",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
-        create_shift(db, ShiftCreate(
-            client_id="SH-ISO-A",
-            shift_name="2nd",
-            start_time=time(14, 0),
-            end_time=time(22, 0),
-        ))
-        create_shift(db, ShiftCreate(
-            client_id="SH-ISO-B",
-            shift_name="Only B Shift",
-            start_time=time(8, 0),
-            end_time=time(16, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-ISO-A",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-ISO-A",
+                shift_name="2nd",
+                start_time=time(14, 0),
+                end_time=time(22, 0),
+            ),
+        )
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-ISO-B",
+                shift_name="Only B Shift",
+                start_time=time(8, 0),
+                end_time=time(16, 0),
+            ),
+        )
 
         shifts_a = list_shifts(db, "SH-ISO-A")
         shifts_b = list_shifts(db, "SH-ISO-B")
@@ -348,12 +382,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV1")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV1",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV1",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         overlaps = check_shift_overlaps(db, "SH-OV1", time(14, 0), time(22, 0))
         assert overlaps == []
@@ -363,12 +400,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV2")
 
-        existing = create_shift(db, ShiftCreate(
-            client_id="SH-OV2",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        existing = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV2",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         overlaps = check_shift_overlaps(db, "SH-OV2", time(8, 0), time(16, 0))
         assert len(overlaps) == 1
@@ -379,12 +419,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV3")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV3",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV3",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         overlaps = check_shift_overlaps(db, "SH-OV3", time(8, 0), time(12, 0))
         assert len(overlaps) == 1
@@ -394,12 +437,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV4")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV4",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV4",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         overlaps = check_shift_overlaps(db, "SH-OV4", time(6, 0), time(14, 0))
         assert len(overlaps) == 1
@@ -410,12 +456,15 @@ class TestCheckShiftOverlaps:
         _seed_client(db, "SH-OV5A")
         _seed_client(db, "SH-OV5B")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV5A",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV5A",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         overlaps = check_shift_overlaps(db, "SH-OV5B", time(6, 0), time(14, 0))
         assert overlaps == []
@@ -425,16 +474,22 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV6")
 
-        existing = create_shift(db, ShiftCreate(
-            client_id="SH-OV6",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        existing = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV6",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
 
         # Check with same times but exclude self
         overlaps = check_shift_overlaps(
-            db, "SH-OV6", time(6, 0), time(14, 0),
+            db,
+            "SH-OV6",
+            time(6, 0),
+            time(14, 0),
             exclude_shift_id=existing.shift_id,
         )
         assert overlaps == []
@@ -444,12 +499,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV7")
 
-        existing = create_shift(db, ShiftCreate(
-            client_id="SH-OV7",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
+        existing = create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV7",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
         deactivate_shift(db, existing.shift_id)
 
         overlaps = check_shift_overlaps(db, "SH-OV7", time(6, 0), time(14, 0))
@@ -460,18 +518,24 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV8")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV8",
-            shift_name="1st",
-            start_time=time(6, 0),
-            end_time=time(14, 0),
-        ))
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV8",
-            shift_name="2nd",
-            start_time=time(10, 0),
-            end_time=time(18, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV8",
+                shift_name="1st",
+                start_time=time(6, 0),
+                end_time=time(14, 0),
+            ),
+        )
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV8",
+                shift_name="2nd",
+                start_time=time(10, 0),
+                end_time=time(18, 0),
+            ),
+        )
 
         # A shift from 08:00-16:00 overlaps with both
         overlaps = check_shift_overlaps(db, "SH-OV8", time(8, 0), time(16, 0))
@@ -484,12 +548,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV9")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV9",
-            shift_name="Night",
-            start_time=time(22, 0),
-            end_time=time(6, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV9",
+                shift_name="Night",
+                start_time=time(22, 0),
+                end_time=time(6, 0),
+            ),
+        )
 
         # A shift 23:00-07:00 should overlap with the night shift
         overlaps = check_shift_overlaps(db, "SH-OV9", time(23, 0), time(7, 0))
@@ -501,12 +568,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV10")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV10",
-            shift_name="Night",
-            start_time=time(22, 0),
-            end_time=time(6, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV10",
+                shift_name="Night",
+                start_time=time(22, 0),
+                end_time=time(6, 0),
+            ),
+        )
 
         # A shift 08:00-16:00 should NOT overlap with 22:00-06:00
         overlaps = check_shift_overlaps(db, "SH-OV10", time(8, 0), time(16, 0))
@@ -525,12 +595,15 @@ class TestCheckShiftOverlaps:
         db = transactional_db
         _seed_client(db, "SH-OV12")
 
-        create_shift(db, ShiftCreate(
-            client_id="SH-OV12",
-            shift_name="Night",
-            start_time=time(22, 0),
-            end_time=time(6, 0),
-        ))
+        create_shift(
+            db,
+            ShiftCreate(
+                client_id="SH-OV12",
+                shift_name="Night",
+                start_time=time(22, 0),
+                end_time=time(6, 0),
+            ),
+        )
 
         # 04:00-12:00 overlaps with the 00:00-06:00 portion of the night shift
         overlaps = check_shift_overlaps(db, "SH-OV12", time(4, 0), time(12, 0))

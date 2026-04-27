@@ -92,12 +92,8 @@ class TestHoldEntryORM:
     def test_create_hold_entry_with_required_fields(self, transactional_db):
         """HoldEntry persists with only required fields."""
         client = TestDataFactory.create_client(transactional_db, client_id="HOLD-C1")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="HOLD-C1", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="HOLD-C1"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="HOLD-C1", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-C1")
         transactional_db.flush()
 
         hold = HoldEntry(
@@ -112,11 +108,7 @@ class TestHoldEntryORM:
         transactional_db.add(hold)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(HoldEntry)
-            .filter(HoldEntry.hold_entry_id == "HOLD-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(HoldEntry).filter(HoldEntry.hold_entry_id == "HOLD-TEST-001").first()
         assert fetched is not None
         assert fetched.hold_status == HoldStatus.ON_HOLD
         assert fetched.client_id == "HOLD-C1"
@@ -125,9 +117,7 @@ class TestHoldEntryORM:
     def test_hold_entry_default_duration_is_zero(self, transactional_db):
         """total_hold_duration_hours defaults to 0."""
         client = TestDataFactory.create_client(transactional_db, client_id="HOLD-C2")
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="HOLD-C2"
-        )
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-C2")
         transactional_db.flush()
 
         hold = HoldEntry(
@@ -139,11 +129,7 @@ class TestHoldEntryORM:
         transactional_db.add(hold)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(HoldEntry)
-            .filter(HoldEntry.hold_entry_id == "HOLD-TEST-002")
-            .first()
-        )
+        fetched = transactional_db.query(HoldEntry).filter(HoldEntry.hold_entry_id == "HOLD-TEST-002").first()
         assert fetched.total_hold_duration_hours == 0
 
     def test_hold_status_constant_values(self):
@@ -177,12 +163,8 @@ class TestHoldEntryORM:
     def test_hold_entry_factory(self, transactional_db):
         """TestDataFactory.create_hold_entry produces valid records."""
         client = TestDataFactory.create_client(transactional_db, client_id="HOLD-C3")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="HOLD-C3", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="HOLD-C3"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="HOLD-C3", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-C3")
         transactional_db.flush()
 
         hold = TestDataFactory.create_hold_entry(
@@ -248,12 +230,8 @@ class TestQualityEntryORM:
     def test_create_quality_entry(self, transactional_db):
         """QualityEntry persists with all required fields."""
         client = TestDataFactory.create_client(transactional_db, client_id="QUAL-C1")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="QUAL-C1", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="QUAL-C1"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="QUAL-C1", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-C1")
         transactional_db.flush()
 
         qe = QualityEntry(
@@ -270,11 +248,7 @@ class TestQualityEntryORM:
         transactional_db.add(qe)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(QualityEntry)
-            .filter(QualityEntry.quality_entry_id == "QE-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(QualityEntry).filter(QualityEntry.quality_entry_id == "QE-TEST-001").first()
         assert fetched is not None
         assert fetched.units_inspected == 500
         assert fetched.units_defective == 10
@@ -284,9 +258,7 @@ class TestQualityEntryORM:
     def test_quality_entry_defaults(self, transactional_db):
         """Defaults for optional integer columns."""
         client = TestDataFactory.create_client(transactional_db, client_id="QUAL-C2")
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="QUAL-C2"
-        )
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-C2")
         transactional_db.flush()
 
         qe = QualityEntry(
@@ -302,11 +274,7 @@ class TestQualityEntryORM:
         transactional_db.add(qe)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(QualityEntry)
-            .filter(QualityEntry.quality_entry_id == "QE-TEST-002")
-            .first()
-        )
+        fetched = transactional_db.query(QualityEntry).filter(QualityEntry.quality_entry_id == "QE-TEST-002").first()
         assert fetched.units_scrapped == 0
         assert fetched.units_reworked == 0
         assert fetched.units_requiring_repair == 0
@@ -314,12 +282,8 @@ class TestQualityEntryORM:
     def test_quality_entry_factory(self, transactional_db):
         """TestDataFactory.create_quality_entry produces valid records."""
         client = TestDataFactory.create_client(transactional_db, client_id="QUAL-C3")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="QUAL-C3", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="QUAL-C3"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="QUAL-C3", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-C3")
         transactional_db.flush()
 
         qe = TestDataFactory.create_quality_entry(
@@ -396,12 +360,8 @@ class TestDowntimeEntryORM:
     def test_create_downtime_entry(self, transactional_db):
         """DowntimeEntry persists with required fields."""
         client = TestDataFactory.create_client(transactional_db, client_id="DT-C1")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="DT-C1", role="operator"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="DT-C1"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="DT-C1", role="operator")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-C1")
         transactional_db.flush()
 
         dt = DowntimeEntry(
@@ -416,11 +376,7 @@ class TestDowntimeEntryORM:
         transactional_db.add(dt)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(DowntimeEntry)
-            .filter(DowntimeEntry.downtime_entry_id == "DT-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(DowntimeEntry).filter(DowntimeEntry.downtime_entry_id == "DT-TEST-001").first()
         assert fetched is not None
         assert fetched.downtime_reason == "EQUIPMENT_FAILURE"
         assert fetched.downtime_duration_minutes == 45
@@ -429,12 +385,8 @@ class TestDowntimeEntryORM:
     def test_downtime_entry_factory(self, transactional_db):
         """TestDataFactory.create_downtime_entry produces valid records."""
         client = TestDataFactory.create_client(transactional_db, client_id="DT-C2")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="DT-C2", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="DT-C2"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="DT-C2", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-C2")
         transactional_db.flush()
 
         dt = TestDataFactory.create_downtime_entry(
@@ -523,9 +475,7 @@ class TestAttendanceEntryORM:
     def test_create_attendance_entry(self, transactional_db):
         """AttendanceEntry persists with required fields."""
         client = TestDataFactory.create_client(transactional_db, client_id="ATT-C1")
-        employee = TestDataFactory.create_employee(
-            transactional_db, client_id="ATT-C1"
-        )
+        employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-C1")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-C1")
         transactional_db.flush()
 
@@ -554,9 +504,7 @@ class TestAttendanceEntryORM:
     def test_attendance_absent_with_type(self, transactional_db):
         """Absent entry records absence_type correctly."""
         client = TestDataFactory.create_client(transactional_db, client_id="ATT-C2")
-        employee = TestDataFactory.create_employee(
-            transactional_db, client_id="ATT-C2"
-        )
+        employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-C2")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-C2")
         transactional_db.flush()
 
@@ -597,9 +545,7 @@ class TestAttendanceEntryORM:
     def test_attendance_defaults(self, transactional_db):
         """Integer boolean defaults are 0 (present, not late)."""
         client = TestDataFactory.create_client(transactional_db, client_id="ATT-C3")
-        employee = TestDataFactory.create_employee(
-            transactional_db, client_id="ATT-C3"
-        )
+        employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-C3")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-C3")
         transactional_db.flush()
 
@@ -705,11 +651,7 @@ class TestWorkOrderORM:
         transactional_db.add(wo)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(WorkOrder)
-            .filter(WorkOrder.work_order_id == "WO-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(WorkOrder).filter(WorkOrder.work_order_id == "WO-TEST-001").first()
         assert fetched is not None
         assert fetched.style_model == "STYLE-X100"
         assert fetched.planned_quantity == 500
@@ -818,12 +760,8 @@ class TestWorkflowTransitionLogORM:
     def test_create_transition_log(self, transactional_db):
         """WorkflowTransitionLog persists with required fields."""
         client = TestDataFactory.create_client(transactional_db, client_id="WF-C1")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="WF-C1", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="WF-C1"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="WF-C1", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="WF-C1")
         transactional_db.flush()
 
         log = WorkflowTransitionLog(
@@ -850,12 +788,8 @@ class TestWorkflowTransitionLogORM:
     def test_multiple_transitions_for_same_work_order(self, transactional_db):
         """Multiple transitions can be recorded for a single work order."""
         client = TestDataFactory.create_client(transactional_db, client_id="WF-C2")
-        user = TestDataFactory.create_user(
-            transactional_db, client_id="WF-C2", role="supervisor"
-        )
-        wo = TestDataFactory.create_work_order(
-            transactional_db, client_id="WF-C2"
-        )
+        user = TestDataFactory.create_user(transactional_db, client_id="WF-C2", role="supervisor")
+        wo = TestDataFactory.create_work_order(transactional_db, client_id="WF-C2")
         transactional_db.flush()
 
         log1 = WorkflowTransitionLog(
@@ -977,11 +911,7 @@ class TestAlertORM:
         transactional_db.add(alert)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(Alert)
-            .filter(Alert.alert_id == "ALT-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(Alert).filter(Alert.alert_id == "ALT-TEST-001").first()
         assert fetched is not None
         assert fetched.category == "quality"
         assert fetched.severity == "warning"
@@ -1007,11 +937,7 @@ class TestAlertORM:
         transactional_db.add(config)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(AlertConfig)
-            .filter(AlertConfig.config_id == "ACFG-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(AlertConfig).filter(AlertConfig.config_id == "ACFG-TEST-001").first()
         assert fetched is not None
         assert fetched.enabled is True
         assert fetched.warning_threshold == pytest.approx(95.0)
@@ -1050,11 +976,7 @@ class TestAlertORM:
         transactional_db.add(history)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(AlertHistory)
-            .filter(AlertHistory.history_id == "AH-TEST-001")
-            .first()
-        )
+        fetched = transactional_db.query(AlertHistory).filter(AlertHistory.history_id == "AH-TEST-001").first()
         assert fetched is not None
         assert fetched.alert_id == "ALT-TEST-002"
         assert fetched.was_accurate is True
@@ -1072,10 +994,6 @@ class TestAlertORM:
         transactional_db.add(config)
         transactional_db.commit()
 
-        fetched = (
-            transactional_db.query(AlertConfig)
-            .filter(AlertConfig.config_id == "ACFG-GLOBAL-001")
-            .first()
-        )
+        fetched = transactional_db.query(AlertConfig).filter(AlertConfig.config_id == "ACFG-GLOBAL-001").first()
         assert fetched.client_id is None
         assert fetched.alert_type == "efficiency"

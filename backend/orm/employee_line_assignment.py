@@ -38,7 +38,9 @@ class EmployeeLineAssignment(Base):
     __tablename__ = "EMPLOYEE_LINE_ASSIGNMENT"
     __table_args__ = (
         UniqueConstraint(
-            "employee_id", "line_id", "effective_date",
+            "employee_id",
+            "line_id",
+            "effective_date",
             name="uq_employee_line_date",
         ),
         Index("idx_ela_employee", "employee_id"),
@@ -69,7 +71,9 @@ class EmployeeLineAssignment(Base):
 
     # Allocation
     allocation_percentage = Column(
-        Numeric(5, 2), nullable=False, default=100.00,
+        Numeric(5, 2),
+        nullable=False,
+        default=100.00,
     )  # 1.00 - 100.00
 
     # Primary line flag

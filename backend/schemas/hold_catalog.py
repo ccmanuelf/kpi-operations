@@ -12,6 +12,7 @@ from datetime import datetime
 # Hold Status Catalog
 # =============================================================================
 
+
 class HoldStatusCatalogCreate(BaseModel):
     """Create a new hold status for a client."""
 
@@ -49,6 +50,7 @@ class HoldStatusCatalogResponse(BaseModel):
 # =============================================================================
 # Hold Reason Catalog
 # =============================================================================
+
 
 class HoldReasonCatalogCreate(BaseModel):
     """Create a new hold reason for a client."""

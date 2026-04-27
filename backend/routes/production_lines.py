@@ -178,9 +178,7 @@ def link_capacity_endpoint(
     try:
         result = link_to_capacity_line(db, line_id, body.capacity_line_id)
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     if not result:
         raise HTTPException(status_code=404, detail="Production line not found")
     logger.info(

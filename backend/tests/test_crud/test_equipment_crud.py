@@ -321,17 +321,32 @@ class TestListSharedEquipment:
         db = transactional_db
         _seed_client(db, "EQ-S1")
 
-        create_equipment(db, _make_equipment(
-            client_id="EQ-S1", equipment_code="NORM-01", is_shared=False,
-        ))
-        create_equipment(db, _make_equipment(
-            client_id="EQ-S1", equipment_code="SHR-01",
-            equipment_name="Shared Forklift", is_shared=True,
-        ))
-        create_equipment(db, _make_equipment(
-            client_id="EQ-S1", equipment_code="SHR-02",
-            equipment_name="Shared Compressor", is_shared=True,
-        ))
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-S1",
+                equipment_code="NORM-01",
+                is_shared=False,
+            ),
+        )
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-S1",
+                equipment_code="SHR-01",
+                equipment_name="Shared Forklift",
+                is_shared=True,
+            ),
+        )
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-S1",
+                equipment_code="SHR-02",
+                equipment_name="Shared Compressor",
+                is_shared=True,
+            ),
+        )
 
         shared = list_shared_equipment(db, "EQ-S1")
         assert len(shared) == 2
@@ -343,9 +358,14 @@ class TestListSharedEquipment:
         db = transactional_db
         _seed_client(db, "EQ-S2")
 
-        equip = create_equipment(db, _make_equipment(
-            client_id="EQ-S2", equipment_code="SHR-GONE", is_shared=True,
-        ))
+        equip = create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-S2",
+                equipment_code="SHR-GONE",
+                is_shared=True,
+            ),
+        )
         deactivate_equipment(db, equip.equipment_id)
 
         shared = list_shared_equipment(db, "EQ-S2")
@@ -363,10 +383,14 @@ class TestGetEquipment:
         db = transactional_db
         _seed_client(db, "EQ-G1")
 
-        created = create_equipment(db, _make_equipment(
-            client_id="EQ-G1", equipment_code="MCH-GET",
-            equipment_name="Getter Machine",
-        ))
+        created = create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-G1",
+                equipment_code="MCH-GET",
+                equipment_name="Getter Machine",
+            ),
+        )
         result = get_equipment(db, created.equipment_id)
 
         assert result is not None
@@ -390,9 +414,13 @@ class TestGetEquipmentByCode:
         db = transactional_db
         _seed_client(db, "EQ-BC1")
 
-        created = create_equipment(db, _make_equipment(
-            client_id="EQ-BC1", equipment_code="MCH-FIND",
-        ))
+        created = create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-BC1",
+                equipment_code="MCH-FIND",
+            ),
+        )
         result = get_equipment_by_code(db, "EQ-BC1", "MCH-FIND")
 
         assert result is not None
@@ -412,9 +440,13 @@ class TestGetEquipmentByCode:
         _seed_client(db, "EQ-BC3A")
         _seed_client(db, "EQ-BC3B")
 
-        create_equipment(db, _make_equipment(
-            client_id="EQ-BC3A", equipment_code="MCH-CROSS",
-        ))
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-BC3A",
+                equipment_code="MCH-CROSS",
+            ),
+        )
 
         result = get_equipment_by_code(db, "EQ-BC3B", "MCH-CROSS")
         assert result is None
@@ -431,10 +463,14 @@ class TestUpdateEquipment:
         db = transactional_db
         _seed_client(db, "EQ-U1")
 
-        created = create_equipment(db, _make_equipment(
-            client_id="EQ-U1", equipment_code="MCH-UPD",
-            equipment_name="Before",
-        ))
+        created = create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-U1",
+                equipment_code="MCH-UPD",
+                equipment_name="Before",
+            ),
+        )
         updated = update_equipment(db, created.equipment_id, EquipmentUpdate(equipment_name="After"))
 
         assert updated is not None
@@ -457,7 +493,8 @@ class TestUpdateEquipment:
 
         created = create_equipment(db, _make_equipment(client_id="EQ-U3", equipment_code="MCH-NOTE"))
         updated = update_equipment(
-            db, created.equipment_id,
+            db,
+            created.equipment_id,
             EquipmentUpdate(notes="Needs calibration"),
         )
         assert updated.notes == "Needs calibration"
@@ -487,7 +524,8 @@ class TestUpdateEquipment:
 
         created = create_equipment(db, _make_equipment(client_id="EQ-U5", equipment_code="MCH-DATE"))
         updated = update_equipment(
-            db, created.equipment_id,
+            db,
+            created.equipment_id,
             EquipmentUpdate(
                 last_maintenance_date=date(2026, 2, 1),
                 next_maintenance_date=date(2026, 5, 1),
@@ -508,9 +546,13 @@ class TestDeactivateEquipment:
         db = transactional_db
         _seed_client(db, "EQ-D1")
 
-        created = create_equipment(db, _make_equipment(
-            client_id="EQ-D1", equipment_code="MCH-DEL",
-        ))
+        created = create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-D1",
+                equipment_code="MCH-DEL",
+            ),
+        )
         assert deactivate_equipment(db, created.equipment_id) is True
 
         entry = get_equipment(db, created.equipment_id)
@@ -533,18 +575,30 @@ class TestMultiTenantIsolation:
         _seed_client(db, "EQ-ISO-A")
         _seed_client(db, "EQ-ISO-B")
 
-        create_equipment(db, _make_equipment(
-            client_id="EQ-ISO-A", equipment_code="MCH-A01",
-            equipment_name="Machine A1",
-        ))
-        create_equipment(db, _make_equipment(
-            client_id="EQ-ISO-A", equipment_code="MCH-A02",
-            equipment_name="Machine A2",
-        ))
-        create_equipment(db, _make_equipment(
-            client_id="EQ-ISO-B", equipment_code="MCH-B01",
-            equipment_name="Only B Machine",
-        ))
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-ISO-A",
+                equipment_code="MCH-A01",
+                equipment_name="Machine A1",
+            ),
+        )
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-ISO-A",
+                equipment_code="MCH-A02",
+                equipment_name="Machine A2",
+            ),
+        )
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-ISO-B",
+                equipment_code="MCH-B01",
+                equipment_name="Only B Machine",
+            ),
+        )
 
         equip_a = list_equipment(db, "EQ-ISO-A")
         equip_b = list_equipment(db, "EQ-ISO-B")
@@ -563,14 +617,24 @@ class TestMultiTenantIsolation:
         _seed_client(db, "EQ-ISO-SA")
         _seed_client(db, "EQ-ISO-SB")
 
-        create_equipment(db, _make_equipment(
-            client_id="EQ-ISO-SA", equipment_code="SHR-A01",
-            equipment_name="Shared A", is_shared=True,
-        ))
-        create_equipment(db, _make_equipment(
-            client_id="EQ-ISO-SB", equipment_code="SHR-B01",
-            equipment_name="Shared B", is_shared=True,
-        ))
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-ISO-SA",
+                equipment_code="SHR-A01",
+                equipment_name="Shared A",
+                is_shared=True,
+            ),
+        )
+        create_equipment(
+            db,
+            _make_equipment(
+                client_id="EQ-ISO-SB",
+                equipment_code="SHR-B01",
+                equipment_name="Shared B",
+                is_shared=True,
+            ),
+        )
 
         shared_a = list_shared_equipment(db, "EQ-ISO-SA")
         shared_b = list_shared_equipment(db, "EQ-ISO-SB")

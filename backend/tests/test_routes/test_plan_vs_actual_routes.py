@@ -182,12 +182,8 @@ class TestPlanVsActualEndpoint:
         client, db = route_client
         today = date.today()
 
-        cap_in_range = _create_capacity_order(
-            db, CLIENT_ID, required_date=today + timedelta(days=10)
-        )
-        _create_capacity_order(
-            db, CLIENT_ID, required_date=today + timedelta(days=60)
-        )
+        cap_in_range = _create_capacity_order(db, CLIENT_ID, required_date=today + timedelta(days=10))
+        _create_capacity_order(db, CLIENT_ID, required_date=today + timedelta(days=60))
         db.commit()
 
         response = client.get(
@@ -209,9 +205,7 @@ class TestPlanVsActualEndpoint:
         _create_capacity_order(db, CLIENT_ID, status=OrderStatus.CONFIRMED)
         db.commit()
 
-        response = client.get(
-            f"/api/plan-vs-actual?client_id={CLIENT_ID}&status=DRAFT"
-        )
+        response = client.get(f"/api/plan-vs-actual?client_id={CLIENT_ID}&status=DRAFT")
 
         assert response.status_code == 200
         data = response.json()
@@ -240,9 +234,7 @@ class TestPlanVsActualSummaryEndpoint:
         cap2 = _create_capacity_order(db, CLIENT_ID, order_quantity=200)
         db.commit()
 
-        response = client.get(
-            f"/api/plan-vs-actual/summary?client_id={CLIENT_ID}"
-        )
+        response = client.get(f"/api/plan-vs-actual/summary?client_id={CLIENT_ID}")
 
         assert response.status_code == 200
         data = response.json()
@@ -261,9 +253,7 @@ class TestPlanVsActualAuth:
     def test_plan_vs_actual_requires_auth(self, pva_route_db):
         """401 without valid token."""
         db = pva_route_db
-        TestDataFactory.create_client(
-            db, client_id=CLIENT_ID, client_name="Auth Test"
-        )
+        TestDataFactory.create_client(db, client_id=CLIENT_ID, client_name="Auth Test")
         db.commit()
 
         app = create_unauthenticated_app(db)

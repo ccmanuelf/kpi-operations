@@ -66,17 +66,13 @@ def seeded_db(csv_db):
     db = csv_db
 
     # Create foundation data
-    TestDataFactory.create_client(
-        db, client_id=CLIENT_ID, client_name="CSV Export Test Client"
-    )
+    TestDataFactory.create_client(db, client_id=CLIENT_ID, client_name="CSV Export Test Client")
     product = TestDataFactory.create_product(db, client_id=CLIENT_ID)
     shift = TestDataFactory.create_shift(db, client_id=CLIENT_ID)
     wo = TestDataFactory.create_work_order(db, client_id=CLIENT_ID)
 
     # Create a user for entered_by
-    user = TestDataFactory.create_user(
-        db, role=UserRole.ADMIN.value, username="csv_export_admin"
-    )
+    user = TestDataFactory.create_user(db, role=UserRole.ADMIN.value, username="csv_export_admin")
 
     # Create production entries with different dates
     for i, day_offset in enumerate([0, 5, 10, 20]):

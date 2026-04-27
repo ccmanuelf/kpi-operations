@@ -125,9 +125,7 @@ def create_shift(db: Session, data: ShiftCreate) -> Shift:
         db.refresh(db_entry)
     except IntegrityError:
         db.rollback()
-        raise ValueError(
-            f"Shift name '{data.shift_name}' already exists for client '{data.client_id}'"
-        )
+        raise ValueError(f"Shift name '{data.shift_name}' already exists for client '{data.client_id}'")
     logger.info("Created shift '%s' for client '%s'", data.shift_name, data.client_id)
     return db_entry
 
