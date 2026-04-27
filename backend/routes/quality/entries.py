@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.quality_entry import QualityEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
 from backend.schemas.quality import (
@@ -72,7 +73,7 @@ def list_quality(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[QualityInspectionResponse]:
+) -> List[QualityEntry]:
     """
     List quality inspections with filters
     SECURITY: Returns only inspections for user's authorized clients
@@ -160,7 +161,7 @@ def get_quality_by_work_order(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[QualityInspectionResponse]:
+) -> List[QualityEntry]:
     """
     Get all quality inspections for a specific work order
     SECURITY: Returns only inspections for user's authorized clients
@@ -182,7 +183,7 @@ def get_quality(
     inspection_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> QualityInspectionResponse:
+) -> QualityEntry:
     """
     Get quality inspection by ID
     SECURITY: Verifies user has access to this inspection record
@@ -195,7 +196,7 @@ def get_quality(
 
 @entries_router.put("/{inspection_id}", response_model=QualityInspectionResponse)
 def update_quality(
-    inspection_id: int,
+    inspection_id: str,
     inspection_update: QualityInspectionUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -220,7 +221,7 @@ def update_quality(
 
 @entries_router.delete("/{inspection_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_quality(
-    inspection_id: int,
+    inspection_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
 ) -> None:
