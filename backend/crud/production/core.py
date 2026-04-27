@@ -106,7 +106,7 @@ def create_production_entry(
     return db_entry
 
 
-def get_production_entry(db: Session, entry_id: int, current_user: User) -> Optional[ProductionEntry]:
+def get_production_entry(db: Session, entry_id: str, current_user: User) -> Optional[ProductionEntry]:
     """
     Get production entry by ID
     SECURITY: Verifies user has access to the entry's client
@@ -137,7 +137,7 @@ def get_production_entry(db: Session, entry_id: int, current_user: User) -> Opti
 
 
 def update_production_entry(
-    db: Session, entry_id: int, entry_update: ProductionEntryUpdate, current_user: User
+    db: Session, entry_id: str, entry_update: ProductionEntryUpdate, current_user: User
 ) -> Optional[ProductionEntry]:
     """
     Update production entry and recalculate KPIs
@@ -189,7 +189,7 @@ def update_production_entry(
     return db_entry
 
 
-def delete_production_entry(db: Session, entry_id: int, current_user: User) -> bool:
+def delete_production_entry(db: Session, entry_id: str, current_user: User) -> bool:
     """
     Soft delete production entry (sets is_active = False)
     SECURITY: Verifies user has access to the entry's client

@@ -6,7 +6,7 @@ All production CRUD and CSV upload endpoints
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 import io
@@ -38,6 +38,7 @@ from backend.services.production_crud_service import (
 from backend.calculations.efficiency import calculate_efficiency
 from backend.calculations.performance import calculate_performance, calculate_quality_rate
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.production_entry import ProductionEntry
 from backend.orm.user import User
 from backend.orm.product import Product
 from backend.orm.shift import Shift
@@ -120,7 +121,7 @@ def list_entries(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ProductionEntryResponse]:
+) -> List[ProductionEntry]:
     """List production entries with filters"""
     return get_production_entries(
         db,
@@ -136,9 +137,7 @@ def list_entries(
 
 
 @router.get("/{entry_id}", response_model=ProductionEntryWithKPIs)
-def get_entry(
-    entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-) -> ProductionEntryWithKPIs:
+def get_entry(entry_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """Get production entry with full KPI details"""
     entry = get_production_entry_with_details(db, entry_id, current_user)
     if not entry:
@@ -216,7 +215,7 @@ async def upload_csv(
     - ideal_cycle_time (decimal)
     - notes (text)
     """
-    if not file.filename.endswith(".csv"):
+    if not (file.filename or "").endswith(".csv"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be a CSV")
 
     # Read CSV
@@ -320,6 +319,7 @@ def batch_import_production(
         try:
             # Parse and validate the entry
             entry = ProductionEntryCreate(
+                client_id=row["client_id"],
                 product_id=int(row["product_id"]),
                 shift_id=int(row["shift_id"]),
                 production_date=row["production_date"],

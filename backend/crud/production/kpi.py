@@ -18,7 +18,7 @@ from backend.middleware.client_auth import verify_client_access
 
 
 def get_production_entry_with_details(
-    db: Session, entry_id: int, current_user: User
+    db: Session, entry_id: str, current_user: User
 ) -> Optional[ProductionEntryWithKPIs]:
     """
     Get production entry with full details and KPI breakdown
