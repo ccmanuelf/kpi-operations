@@ -10,6 +10,7 @@ from typing import List, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
+from backend.orm.hold_entry import HoldEntry
 from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse, WIPAgingResponse
 from backend.services.hold_service import (
     create_hold as create_wip_hold,
@@ -68,7 +69,7 @@ def list_holds(
     hold_reason_category: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[WIPHoldResponse]:
+) -> List[HoldEntry]:
     """List WIP holds with filters - uses HOLD_ENTRY schema"""
     return get_wip_holds(
         db,
@@ -91,14 +92,14 @@ def list_active_holds(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[WIPHoldResponse]:
+) -> List[HoldEntry]:
     """List all active (unreleased) WIP holds"""
     return get_wip_holds(db, current_user=current_user, skip=skip, limit=limit, client_id=client_id, released=False)
 
 
 @router.get("/{hold_id}", response_model=WIPHoldResponse)
 def get_hold(
-    hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> WIPHoldResponse:
     """
     Get WIP hold by ID.
@@ -115,7 +116,7 @@ def get_hold(
 
 @router.put("/{hold_id}", response_model=WIPHoldResponse)
 def update_hold(
-    hold_id: int,
+    hold_id: str,
     hold_update: WIPHoldUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -140,7 +141,7 @@ def update_hold(
 
 @router.delete("/{hold_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_hold(
-    hold_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
+    hold_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ) -> None:
     """Delete WIP hold (supervisor only)"""
     success = delete_wip_hold(db, hold_id, current_user)
@@ -285,7 +286,7 @@ def get_pending_approvals(
     approval_type: Optional[str] = None,  # "hold" or "resume"
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> list[WIPHoldResponse]:
+) -> List[HoldEntry]:
     """
     Get all holds pending approval (supervisor only).
     Returns holds with PENDING_HOLD_APPROVAL or PENDING_RESUME_APPROVAL status.

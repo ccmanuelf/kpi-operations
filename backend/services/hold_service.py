@@ -8,7 +8,9 @@ from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
 
+from backend.orm.hold_entry import HoldEntry as WIPHold
 from backend.orm.user import User
+from backend.schemas.hold import WIPHoldCreate, WIPHoldUpdate, WIPHoldResponse
 from backend.crud.hold import (
     create_wip_hold,
     get_wip_hold,
@@ -22,12 +24,12 @@ from backend.crud.hold_catalog import (
 )
 
 
-def create_hold(db: Session, hold_data, current_user: User):
+def create_hold(db: Session, hold_data: WIPHoldCreate, current_user: User) -> WIPHoldResponse:
     """Create a new WIP hold."""
     return create_wip_hold(db, hold_data, current_user)
 
 
-def get_hold(db: Session, hold_id: str, current_user: User):
+def get_hold(db: Session, hold_id: str, current_user: User) -> Optional[WIPHold]:
     """Get a WIP hold by ID."""
     return get_wip_hold(db, hold_id, current_user)
 
@@ -43,7 +45,7 @@ def list_holds(
     work_order_id: Optional[str] = None,
     released: Optional[bool] = None,
     hold_reason_category: Optional[str] = None,
-):
+) -> List[WIPHold]:
     """List WIP holds with filters."""
     return get_wip_holds(
         db,
@@ -59,7 +61,7 @@ def list_holds(
     )
 
 
-def update_hold(db: Session, hold_id: str, hold_data: dict, current_user: User):
+def update_hold(db: Session, hold_id: str, hold_data: WIPHoldUpdate, current_user: User) -> Optional[WIPHoldResponse]:
     """Update a WIP hold."""
     return update_wip_hold(db, hold_id, hold_data, current_user)
 

@@ -93,7 +93,7 @@ def get_wip_hold(db: Session, hold_id: str, current_user: User) -> Optional[WIPH
 
 
 def update_wip_hold(
-    db: Session, hold_id: int, hold_update: WIPHoldUpdate, current_user: User
+    db: Session, hold_id: str, hold_update: WIPHoldUpdate, current_user: User
 ) -> Optional[WIPHoldResponse]:
     """Update WIP hold record"""
     db_hold = get_wip_hold(db, hold_id, current_user)
@@ -101,7 +101,7 @@ def update_wip_hold(
     if not db_hold:
         return None
 
-    update_data = hold_update.dict(exclude_unset=True)
+    update_data = hold_update.model_dump(exclude_unset=True)
 
     # Verify client_id if being updated
     if "client_id" in update_data:
@@ -120,10 +120,10 @@ def update_wip_hold(
     db.flush()
     db.refresh(db_hold)
 
-    return WIPHoldResponse.from_orm(db_hold)
+    return WIPHoldResponse.model_validate(db_hold)
 
 
-def delete_wip_hold(db: Session, hold_id: int, current_user: User) -> bool:
+def delete_wip_hold(db: Session, hold_id: str, current_user: User) -> bool:
     """Soft delete WIP hold record (sets is_active = False)"""
     db_hold = get_wip_hold(db, hold_id, current_user)
 
