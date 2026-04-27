@@ -9,7 +9,7 @@ for backward compatibility with existing CSV processing code.
 import re
 from datetime import date, datetime, time
 from io import BytesIO
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import openpyxl
 
@@ -92,7 +92,7 @@ def get_sheet_names(file_content: bytes) -> List[str]:
         wb = openpyxl.load_workbook(BytesIO(file_content), read_only=True, data_only=True)
         names = wb.sheetnames
         wb.close()
-        return names
+        return cast(List[str], names)
     except Exception as exc:
         raise ValueError(f"Cannot read XLSX file: {exc}") from exc
 

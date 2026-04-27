@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.production_line import ProductionLine
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 from backend.schemas.production_line import (
@@ -42,7 +43,7 @@ def list_production_lines_endpoint(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ProductionLineResponse]:
+) -> List[ProductionLine]:
     """
     List active production lines for a client.
 
@@ -61,7 +62,7 @@ def get_production_line_tree_endpoint(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ProductionLineTreeResponse]:
+) -> List[ProductionLine]:
     """
     Get hierarchical tree view of production lines for a client.
 
@@ -80,7 +81,7 @@ def create_production_line_endpoint(
     data: ProductionLineCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> ProductionLineResponse:
+) -> ProductionLine:
     """
     Create a new production line for a client.
 
@@ -151,7 +152,7 @@ def get_unlinked_lines_endpoint(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ProductionLineResponse]:
+) -> List[ProductionLine]:
     """
     Return active operational lines that have no capacity planning link.
     """
@@ -169,7 +170,7 @@ def link_capacity_endpoint(
     body: LinkCapacityRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> ProductionLineResponse:
+) -> ProductionLine:
     """
     Manually link an operational production line to a capacity planning line.
 
@@ -195,7 +196,7 @@ def unlink_capacity_endpoint(
     line_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> ProductionLineResponse:
+) -> ProductionLine:
     """
     Remove the capacity planning link from an operational production line.
 
@@ -217,7 +218,7 @@ def get_production_line_endpoint(
     line_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> ProductionLineResponse:
+) -> ProductionLine:
     """
     Get a single production line by ID.
     """
@@ -233,7 +234,7 @@ def update_production_line_endpoint(
     data: ProductionLineUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> ProductionLineResponse:
+) -> ProductionLine:
     """
     Update a production line entry.
 

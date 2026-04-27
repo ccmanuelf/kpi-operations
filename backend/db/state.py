@@ -10,7 +10,7 @@ import json
 import fcntl
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional, cast
 from dataclasses import dataclass, asdict, field
 import logging
 
@@ -91,7 +91,7 @@ class ProviderStateManager:
             str: Provider name ('sqlite', 'mariadb', 'mysql', 'postgresql').
         """
         state = self._load_state()
-        return state.get("current_provider", "sqlite")
+        return cast(str, state.get("current_provider", "sqlite"))
 
     def get_database_url(self) -> Optional[str]:
         """Get current database URL from state file.
@@ -242,7 +242,7 @@ class ProviderStateManager:
         """
         if self.state_file.exists():
             try:
-                return json.loads(self.state_file.read_text())
+                return cast(Dict[str, Any], json.loads(self.state_file.read_text()))
             except (json.JSONDecodeError, IOError) as e:
                 logger.warning(f"Failed to load state file: {e}")
         return {"current_provider": "sqlite"}
