@@ -34,7 +34,12 @@ jobs:
         run: black --check .
 
       - name: Run type checking
-        run: mypy . --ignore-missing-imports --no-error-summary
+        # Run from project root so `from backend.X import ...` resolves
+        # against backend/ as a package. Running from backend/ with `mypy .`
+        # made every cross-module backend.* import unresolvable and silently
+        # downgraded type checking to Any. See pyproject.toml [tool.mypy].
+        working-directory: .
+        run: mypy backend --ignore-missing-imports --no-error-summary
 
       - name: Run linting
         run: flake8 . --count --show-source --statistics

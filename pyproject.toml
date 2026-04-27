@@ -21,6 +21,13 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+# Required so `from backend.X import ...` resolves correctly when mypy is
+# invoked from the project root with `mypy backend`. Without these flags mypy
+# either bails ("Source file found twice") or silently treats every cross-
+# module backend.* import as Any (because of ignore_missing_imports), which
+# masks ~700 real type errors as a single soft "511" floor.
+namespace_packages = true
+explicit_package_bases = true
 exclude = [
     "_archive/",
     "migrations/",
