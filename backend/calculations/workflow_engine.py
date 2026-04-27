@@ -22,14 +22,15 @@ Provides:
 - calculate_elapsed_hours: Calculate elapsed time between datetimes
 """
 
-import logging
 import json
-from typing import List, Optional, Dict, Tuple
+import logging
 from datetime import datetime, timezone
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import and_
+from typing import Any, Dict, List, Optional, Tuple
+
 from fastapi import HTTPException
+from sqlalchemy import and_
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -352,7 +353,7 @@ def execute_transition(
     if to_status == "ON_HOLD":
         work_order.previous_status = from_status
 
-    work_order.status = to_status
+    work_order.status = WorkOrderStatus(to_status)
 
     if to_status == "RELEASED":
         work_order.dispatch_date = now
@@ -432,7 +433,12 @@ def bulk_transition(
     Returns:
         Dictionary with results: {successful: [], failed: []}
     """
-    results = {"total_requested": len(work_order_ids), "successful": 0, "failed": 0, "results": []}
+    results: Dict[str, Any] = {
+        "total_requested": len(work_order_ids),
+        "successful": 0,
+        "failed": 0,
+        "results": [],
+    }
 
     for wo_id in work_order_ids:
         try:
