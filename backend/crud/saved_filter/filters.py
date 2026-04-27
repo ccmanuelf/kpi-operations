@@ -124,7 +124,7 @@ def get_saved_filters(
     )
 
 
-def get_saved_filter(db: Session, filter_id: int, user_id: str) -> Optional[SavedFilter]:
+def get_saved_filter(db: Session, filter_id: int, user_id: str) -> SavedFilter:
     """
     Get a specific saved filter by ID
 
@@ -136,7 +136,7 @@ def get_saved_filter(db: Session, filter_id: int, user_id: str) -> Optional[Save
         user_id: Authenticated user ID
 
     Returns:
-        SavedFilter object or None if not found
+        SavedFilter object
 
     Raises:
         HTTPException 403: If user doesn't own the filter

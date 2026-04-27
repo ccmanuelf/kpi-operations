@@ -4,8 +4,13 @@ Thin service layer wrapping Saved Filter CRUD operations.
 Routes should import from this module instead of backend.crud.saved_filter directly.
 """
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
 from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from backend.orm.saved_filter import FilterHistory
+    from backend.schemas.filters import FilterConfig
 
 from backend.crud.saved_filter import (
     create_saved_filter,
@@ -70,18 +75,18 @@ def unset_filter_as_default(db: Session, filter_id: int, user_id: str):
     return unset_default_filter(db, filter_id, user_id)
 
 
-def get_user_filter_history(db: Session, user_id: str, skip: int = 0, limit: int = 50):
-    """Get filter usage history for a user."""
-    return get_filter_history(db, user_id, skip, limit)
+def get_user_filter_history(db: Session, user_id: str, limit: int = 10) -> List["FilterHistory"]:
+    """Get filter usage history for a user (most recent first)."""
+    return get_filter_history(db, user_id, limit)
 
 
-def add_filter_to_history(db: Session, user_id: str, filter_id: int):
-    """Add a filter usage to history."""
-    return add_to_filter_history(db, user_id, filter_id)
+def add_filter_to_history(db: Session, user_id: str, filter_config: "FilterConfig") -> "FilterHistory":
+    """Add a filter usage to history (records the configuration that was applied)."""
+    return add_to_filter_history(db, user_id, filter_config)
 
 
-def clear_user_filter_history(db: Session, user_id: str) -> bool:
-    """Clear all filter history for a user."""
+def clear_user_filter_history(db: Session, user_id: str) -> int:
+    """Clear all filter history for a user. Returns the number of rows deleted."""
     return clear_filter_history(db, user_id)
 
 

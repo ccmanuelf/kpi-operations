@@ -162,7 +162,7 @@ def update_filter(
     All fields are optional - only provided fields will be updated.
     If is_default is set to True, existing default for the type is cleared.
     """
-    db_filter = update_saved_filter(db, filter_id=filter_id, user_id=current_user.user_id, filter_data=filter_data)
+    db_filter = update_saved_filter(db, filter_id=filter_id, user_id=current_user.user_id, update_data=filter_data)
 
     return _to_filter_response(db_filter)
 
