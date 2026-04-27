@@ -5,7 +5,7 @@ Implements Phase 10: Flexible Workflow Foundation
 """
 
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Any, Dict, List, Optional, cast
 from datetime import datetime
 from enum import Enum
 import json
@@ -137,10 +137,10 @@ class ClientConfigResponse(BaseModel):
             return None
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                return cast(Optional[List[str]], json.loads(v))
             except json.JSONDecodeError:
                 return None
-        return v
+        return cast(Optional[List[str]], v)
 
     @field_validator("workflow_transitions", mode="before")
     @classmethod
@@ -149,10 +149,10 @@ class ClientConfigResponse(BaseModel):
             return None
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                return cast(Optional[Dict[str, List[str]]], json.loads(v))
             except json.JSONDecodeError:
                 return None
-        return v
+        return cast(Optional[Dict[str, List[str]]], v)
 
     @field_validator("workflow_optional_statuses", mode="before")
     @classmethod
@@ -161,10 +161,10 @@ class ClientConfigResponse(BaseModel):
             return None
         if isinstance(v, str):
             try:
-                return json.loads(v)
+                return cast(Optional[List[str]], json.loads(v))
             except json.JSONDecodeError:
                 return None
-        return v
+        return cast(Optional[List[str]], v)
 
     class Config:
         from_attributes = True
