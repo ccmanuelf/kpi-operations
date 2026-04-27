@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.equipment import Equipment
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 from backend.schemas.equipment import EquipmentCreate, EquipmentUpdate, EquipmentResponse
@@ -32,7 +33,7 @@ def list_equipment_endpoint(
     line_id: Optional[int] = Query(None, description="Optional production line filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[EquipmentResponse]:
+) -> List[Equipment]:
     """
     List equipment for a client, optionally filtered by production line.
 
@@ -52,7 +53,7 @@ def list_shared_equipment_endpoint(
     client_id: str = Query(..., description="Client ID to filter shared equipment"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[EquipmentResponse]:
+) -> List[Equipment]:
     """
     List only shared equipment (common resources) for a client.
     """
@@ -69,7 +70,7 @@ def create_equipment_endpoint(
     data: EquipmentCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> EquipmentResponse:
+) -> Equipment:
     """
     Create a new equipment entry for a client.
 
@@ -94,7 +95,7 @@ def get_equipment_endpoint(
     equipment_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> EquipmentResponse:
+) -> Equipment:
     """
     Get a single equipment entry by ID.
     """
@@ -110,7 +111,7 @@ def update_equipment_endpoint(
     data: EquipmentUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> EquipmentResponse:
+) -> Equipment:
     """
     Update an equipment entry.
 

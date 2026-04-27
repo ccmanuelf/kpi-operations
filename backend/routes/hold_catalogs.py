@@ -5,10 +5,12 @@ Manage client-configurable hold statuses and hold reasons.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, cast
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.hold_reason_catalog import HoldReasonCatalog
+from backend.orm.hold_status_catalog import HoldStatusCatalog
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 from backend.schemas.hold_catalog import (
@@ -46,7 +48,7 @@ def get_hold_statuses(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[HoldStatusCatalogResponse]:
+) -> List[HoldStatusCatalog]:
     """
     List active hold statuses for a client.
 
@@ -61,7 +63,7 @@ def create_hold_status_endpoint(
     data: HoldStatusCatalogCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> HoldStatusCatalogResponse:
+) -> HoldStatusCatalog:
     """
     Create a custom hold status for a client.
 
@@ -81,13 +83,13 @@ def update_hold_status_endpoint(
     data: HoldStatusCatalogUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> HoldStatusCatalogResponse:
+) -> HoldStatusCatalog:
     """
     Update a hold status catalog entry.
 
     Requires supervisor or admin role.
     """
-    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    tenant_filter = cast(Optional[str], current_user.client_id_assigned) if current_user.client_id_assigned else None
     result = update_hold_status(db, catalog_id, data, client_id=tenant_filter)
     if not result:
         raise HTTPException(status_code=404, detail="Hold status catalog entry not found")
@@ -105,7 +107,7 @@ def delete_hold_status_endpoint(
 
     Requires supervisor or admin role.
     """
-    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    tenant_filter = cast(Optional[str], current_user.client_id_assigned) if current_user.client_id_assigned else None
     success = deactivate_hold_status(db, catalog_id, client_id=tenant_filter)
     if not success:
         raise HTTPException(status_code=404, detail="Hold status catalog entry not found")
@@ -121,7 +123,7 @@ def get_hold_reasons(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[HoldReasonCatalogResponse]:
+) -> List[HoldReasonCatalog]:
     """
     List active hold reasons for a client.
 
@@ -136,7 +138,7 @@ def create_hold_reason_endpoint(
     data: HoldReasonCatalogCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> HoldReasonCatalogResponse:
+) -> HoldReasonCatalog:
     """
     Create a custom hold reason for a client.
 
@@ -156,13 +158,13 @@ def update_hold_reason_endpoint(
     data: HoldReasonCatalogUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-) -> HoldReasonCatalogResponse:
+) -> HoldReasonCatalog:
     """
     Update a hold reason catalog entry.
 
     Requires supervisor or admin role.
     """
-    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    tenant_filter = cast(Optional[str], current_user.client_id_assigned) if current_user.client_id_assigned else None
     result = update_hold_reason(db, catalog_id, data, client_id=tenant_filter)
     if not result:
         raise HTTPException(status_code=404, detail="Hold reason catalog entry not found")
@@ -180,7 +182,7 @@ def delete_hold_reason_endpoint(
 
     Requires supervisor or admin role.
     """
-    tenant_filter = current_user.client_id_assigned if current_user.client_id_assigned else None
+    tenant_filter = cast(Optional[str], current_user.client_id_assigned) if current_user.client_id_assigned else None
     success = deactivate_hold_reason(db, catalog_id, client_id=tenant_filter)
     if not success:
         raise HTTPException(status_code=404, detail="Hold reason catalog entry not found")
