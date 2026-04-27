@@ -673,7 +673,7 @@ async def upload_defects_csv(
                 description=sanitize_csv_value(row.get("description") or ""),
             )
 
-            created = create_defect_detail(db, entry, current_user)
+            created = create_defect_detail(db, entry.model_dump(), current_user)
             created_ids.append(created.defect_detail_id)
             successful += 1
 
@@ -782,7 +782,7 @@ async def upload_work_orders_csv(
                 internal_notes=sanitize_csv_value(row.get("internal_notes") or ""),
             )
 
-            created = create_work_order(db, entry, current_user)
+            created = create_work_order(db, entry.model_dump(), current_user)
             created_ids.append(created.work_order_id)
             successful += 1
 
@@ -888,7 +888,7 @@ async def upload_jobs_csv(
                 notes=sanitize_csv_value(row.get("notes") or ""),
             )
 
-            created = create_job(db, entry, current_user)
+            created = create_job(db, entry.model_dump(), current_user)
             created_ids.append(created.job_id)
             successful += 1
 
@@ -977,7 +977,7 @@ async def upload_clients_csv(
                 is_active=int(row.get("is_active", 1)),
             )
 
-            created = create_client(db, entry, current_user)
+            created = create_client(db, entry.model_dump(), current_user)
             created_ids.append(created.client_id)
             successful += 1
 
@@ -1066,7 +1066,7 @@ async def upload_employees_csv(
                 hire_date=hire_date,
             )
 
-            created = create_employee(db, entry, current_user)
+            created = create_employee(db, entry.model_dump(), current_user)
             created_ids.append(created.employee_id)
             successful += 1
 
@@ -1152,7 +1152,7 @@ async def upload_floating_pool_csv(
                 notes=sanitize_csv_value(row.get("notes") or ""),
             )
 
-            created = create_floating_pool_entry(db, entry, current_user)
+            created = create_floating_pool_entry(db, entry.model_dump(), current_user)
             created_ids.append(created.pool_id)
             successful += 1
 
