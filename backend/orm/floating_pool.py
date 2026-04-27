@@ -4,8 +4,13 @@ Tracks shared resources across multiple clients
 Source: 01-Core_DataEntities_Inventory.csv lines 54-60
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
+
 from backend.database import Base
 
 
@@ -16,22 +21,24 @@ class FloatingPool(Base):
     __table_args__ = {"extend_existing": True}
 
     # Primary key
-    pool_id = Column(Integer, primary_key=True, autoincrement=True)
+    pool_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
     # Multi-tenant isolation - CRITICAL (nullable for shared resources)
-    client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=True, index=True)
+    client_id: Mapped[Optional[str]] = mapped_column(
+        String(50), ForeignKey("CLIENT.client_id"), nullable=True, index=True
+    )
 
     # Employee reference
-    employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"), nullable=False, index=True)
+    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("EMPLOYEE.employee_id"), nullable=False, index=True)
 
     # Availability tracking
-    available_from = Column(DateTime)
-    available_to = Column(DateTime)
-    current_assignment = Column(String(255))  # Current client_id or NULL if available
+    available_from: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    available_to: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    current_assignment: Mapped[Optional[str]] = mapped_column(String(255))  # Current client_id or NULL if available
 
     # Metadata
-    notes = Column(Text)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
 
     # Timestamps
-    created_at = Column(DateTime, nullable=False, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
