@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime
-from typing import Optional, List
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from backend.database import get_db
@@ -163,9 +163,11 @@ def get_my_shift_summary(
 
     # Get work orders with progress
     # Group production entries by work order
-    work_order_stats = {}
+    work_order_stats: Dict[str, Dict[str, Any]] = {}
     for p in productions:
         wo_id = p.work_order_id
+        if not wo_id:
+            continue  # Skip production entries with no associated work order
         if wo_id not in work_order_stats:
             work_order_stats[wo_id] = {"produced": 0, "target": 0, "product_name": p.product_name or "Unknown"}
         work_order_stats[wo_id]["produced"] += p.units_produced or 0
@@ -232,7 +234,7 @@ def get_my_shift_summary(
     expected_production = 8  # Hourly entries for 8-hour shift
     expected_quality = 2  # At least 2 quality checks per shift
 
-    data_completeness = {
+    data_completeness: Dict[str, Dict[str, Any]] = {
         "production": {
             "entered": len(productions),
             "expected": expected_production,
@@ -257,25 +259,18 @@ def get_my_shift_summary(
                 "complete" if quality_checks >= expected_quality else "warning" if quality_checks >= 1 else "incomplete"
             ),
         },
-        "overall": {
-            "percentage": (
-                round(
-                    (
-                        data_completeness.get("production", {}).get("percentage", 0)
-                        + 100
-                        + data_completeness.get("quality", {}).get("percentage", 0)
-                    )
-                    / 3
-                )
-                if "production" in data_completeness
-                else 50
-            ),
-            "status": (
-                "complete"
-                if len(productions) >= expected_production and quality_checks >= expected_quality
-                else "warning"
-            ),
-        },
+    }
+    # "overall" is computed after the dict is built so the references to the
+    # other categories actually resolve. The previous version referenced
+    # data_completeness inside its own literal definition — at runtime that
+    # would have raised NameError; in practice the request was failing.
+    data_completeness["overall"] = {
+        "percentage": round(
+            (data_completeness["production"]["percentage"] + 100 + data_completeness["quality"]["percentage"]) / 3
+        ),
+        "status": (
+            "complete" if len(productions) >= expected_production and quality_checks >= expected_quality else "warning"
+        ),
     }
 
     # Recalculate overall
@@ -445,7 +440,9 @@ def get_my_recent_activity(
             }
         )
 
-    # Sort all activities by timestamp descending
-    activities.sort(key=lambda x: x["timestamp"], reverse=True)
+    # Sort all activities by timestamp descending. timestamp is always set
+    # to an ISO datetime string when each activity is appended, so use a
+    # fallback empty string only to satisfy the static type check.
+    activities.sort(key=lambda x: str(x.get("timestamp") or ""), reverse=True)
 
     return {"date": target_date.isoformat(), "shift_number": shift_number, "activity": activities[:limit]}
