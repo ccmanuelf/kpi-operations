@@ -94,7 +94,7 @@ class WorkOrder(Base):
     calculated_cycle_time = Column(Numeric(10, 4))  # From production data
 
     # Status tracking
-    status = Column(SQLEnum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.ACTIVE, index=True)
+    status = Column(SQLEnum(WorkOrderStatus), nullable=False, default=WorkOrderStatus.ACTIVE, index=True)  # type: ignore[var-annotated]
     priority = Column(String(20))  # HIGH, MEDIUM, LOW
 
     # Quality gates

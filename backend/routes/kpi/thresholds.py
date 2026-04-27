@@ -6,7 +6,7 @@ CRUD endpoints for KPI threshold configuration (global and per-client).
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 import uuid
 
@@ -36,7 +36,7 @@ def get_kpi_thresholds(
     global_thresholds = db.query(KPIThreshold).filter(KPIThreshold.client_id.is_(None)).all()
 
     # Build response with global defaults
-    result = {"client_id": client_id, "client_name": None, "thresholds": {}}
+    result: Dict[str, Any] = {"client_id": client_id, "client_name": None, "thresholds": {}}
 
     # Add global defaults first
     for t in global_thresholds:

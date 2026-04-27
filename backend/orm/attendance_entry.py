@@ -53,7 +53,7 @@ class AttendanceEntry(Base):
 
     # Absence tracking
     is_absent = Column(Integer, nullable=False, default=0, index=True)  # Boolean
-    absence_type = Column(SQLEnum(AbsenceType))
+    absence_type = Column(SQLEnum(AbsenceType))  # type: ignore[var-annotated]
 
     # Coverage tracking - for floating pool assignments
     covered_by_employee_id = Column(Integer, ForeignKey("EMPLOYEE.employee_id"))  # FK to floating pool employee

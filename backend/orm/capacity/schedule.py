@@ -62,7 +62,7 @@ class CapacitySchedule(Base):
     period_end = Column(Date, nullable=False)
 
     # Status tracking (indexed via composite index in __table_args__)
-    status = Column(SQLEnum(ScheduleStatus), default=ScheduleStatus.DRAFT)
+    status = Column(SQLEnum(ScheduleStatus), default=ScheduleStatus.DRAFT)  # type: ignore[var-annotated]
 
     # Commitment tracking
     committed_at = Column(Date, nullable=True)

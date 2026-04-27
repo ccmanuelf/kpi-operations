@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from sqlalchemy.exc import SQLAlchemyError
-from typing import Optional
+from typing import Any, Dict, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
@@ -69,7 +69,7 @@ def get_aggregated_dashboard(
     start_dt = datetime.combine(start_date, datetime.min.time())
     end_dt = datetime.combine(end_date, datetime.max.time())
 
-    result = {
+    result: Dict[str, Any] = {
         "date_range": {"start_date": str(start_date), "end_date": str(end_date)},
         "client_id": effective_client_id,
         "efficiency": None,

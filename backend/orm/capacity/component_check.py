@@ -61,7 +61,7 @@ class CapacityComponentCheck(Base):
     shortage_quantity = Column(Numeric(12, 4), default=0)
 
     # Status (indexed via composite index in __table_args__)
-    status = Column(SQLEnum(ComponentStatus), default=ComponentStatus.OK)
+    status = Column(SQLEnum(ComponentStatus), default=ComponentStatus.OK)  # type: ignore[var-annotated]
 
     # Notes/metadata
     notes = Column(Text, nullable=True)

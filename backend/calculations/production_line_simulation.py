@@ -148,8 +148,8 @@ class ProductionLineSimulation:
             random.seed(random_seed)
 
         # Create resources for each station
-        self.stations = {}
-        self.station_queues = {}
+        self.stations: Dict[str, simpy.Resource] = {}
+        self.station_queues: Dict[str, List[Any]] = {}
         for station in config.stations:
             self.stations[station.name] = simpy.Resource(self.env, capacity=station.num_workers)
             self.station_queues[station.name] = []
@@ -163,9 +163,9 @@ class ProductionLineSimulation:
         self.units_started = 0
         self.units_completed = 0
         self.units_rejected = 0
-        self.events_log = []
-        self.station_times = {s.name: [] for s in config.stations}
-        self.station_waits = {s.name: [] for s in config.stations}
+        self.events_log: List[Dict[str, Any]] = []
+        self.station_times: Dict[str, List[Any]] = {s.name: [] for s in config.stations}
+        self.station_waits: Dict[str, List[Any]] = {s.name: [] for s in config.stations}
         self.station_busy_time = {s.name: 0 for s in config.stations}
         self.total_downtime = 0
 

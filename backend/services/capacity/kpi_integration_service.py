@@ -17,7 +17,7 @@ from decimal import Decimal
 from typing import List, Dict, Optional, Any, Tuple
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta  # type: ignore[import-untyped]
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, case
 

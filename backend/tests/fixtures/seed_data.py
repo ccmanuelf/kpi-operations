@@ -346,7 +346,7 @@ def seed_multi_tenant_data(db: Session) -> Dict[str, Any]:
     """
     TestDataFactory.reset_counters()
 
-    result = {"clients": {}, "users": {}}
+    result: Dict[str, Dict[str, Any]] = {"clients": {}, "users": {}}
 
     # Create clients first, then per-client products and shifts
     clients_created = {}

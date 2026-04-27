@@ -3,7 +3,7 @@ CRUD operations for User Preferences
 Dashboard customization and widget configuration management
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -358,7 +358,7 @@ def get_all_role_defaults(db: Session) -> dict:
         .all()
     )
 
-    result = {}
+    result: Dict[str, List[Any]] = {}
     for default in all_defaults:
         role = default.role
         if role not in result:

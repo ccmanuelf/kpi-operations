@@ -21,7 +21,7 @@ class Product(Base):
     product_code = Column(String(50), nullable=False, index=True)
     product_name = Column(String(100), nullable=False)
     description = Column(Text)
-    ideal_cycle_time = Column(DECIMAL(8, 4), nullable=True, comment="Hours per unit - NULL triggers inference")
+    ideal_cycle_time = Column(DECIMAL(8, 4), nullable=True, comment="Hours per unit - NULL triggers inference")  # type: ignore[var-annotated]
     unit_of_measure = Column(String(20), nullable=False, default="units")
     is_active = Column(Boolean, nullable=False, default=True, index=True)
     created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())

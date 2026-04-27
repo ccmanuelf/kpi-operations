@@ -22,7 +22,7 @@ from backend.db.state import ProviderStateManager, MigrationState
 TestBase = declarative_base()
 
 
-class TestUser(TestBase):
+class TestUser(TestBase):  # type: ignore[valid-type,misc]
     """Simple test model for schema testing."""
 
     __tablename__ = "test_users"

@@ -86,8 +86,8 @@ class CapacityOrder(Base):
     planned_end_date = Column(Date, nullable=True)  # Planned production end
 
     # Status and priority (status indexed via composite index in __table_args__)
-    priority = Column(SQLEnum(OrderPriority), default=OrderPriority.NORMAL)
-    status = Column(SQLEnum(OrderStatus), default=OrderStatus.DRAFT)
+    priority = Column(SQLEnum(OrderPriority), default=OrderPriority.NORMAL)  # type: ignore[var-annotated]
+    status = Column(SQLEnum(OrderStatus), default=OrderStatus.DRAFT)  # type: ignore[var-annotated]
 
     # SAM for this specific order (if different from standard)
     # Allows order-level override of production standard

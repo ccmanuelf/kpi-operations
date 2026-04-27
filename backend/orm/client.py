@@ -43,7 +43,7 @@ class Client(Base):
     engineering_id = Column(String(50))
 
     # Business configuration
-    client_type = Column(
+    client_type = Column(  # type: ignore[var-annotated]
         SQLEnum(ClientType, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         default=ClientType.PIECE_RATE,

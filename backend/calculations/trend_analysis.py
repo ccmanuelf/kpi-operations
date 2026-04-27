@@ -39,7 +39,7 @@ def calculate_moving_average(values: List[Decimal], window: int) -> List[Optiona
     if window < 1:
         raise ValueError("Window size must be at least 1")
 
-    result = []
+    result: List[Optional[Decimal]] = []
     for i in range(len(values)):
         if i < window - 1:
             result.append(None)  # Not enough data yet
@@ -230,7 +230,7 @@ def calculate_seasonal_decomposition(values: List[Decimal], period: int = 7) -> 
     n = len(values)
 
     # Calculate trend using centered moving average
-    trend = []
+    trend: List[Optional[Decimal]] = []
     half_window = period // 2
 
     for i in range(n):
@@ -242,10 +242,11 @@ def calculate_seasonal_decomposition(values: List[Decimal], period: int = 7) -> 
             trend.append(Decimal(str(round(avg, 4))))
 
     # Calculate detrended series
-    detrended = []
+    detrended: List[Optional[Decimal]] = []
     for i in range(n):
-        if trend[i] is not None:
-            detrended.append(values[i] - trend[i])
+        t = trend[i]
+        if t is not None:
+            detrended.append(values[i] - t)
         else:
             detrended.append(None)
 
@@ -270,8 +271,9 @@ def calculate_seasonal_decomposition(values: List[Decimal], period: int = 7) -> 
     # Calculate residual
     residual = []
     for i in range(n):
-        if trend[i] is not None:
-            res = values[i] - trend[i] - seasonal[i]
+        t = trend[i]
+        if t is not None:
+            res = values[i] - t - seasonal[i]
             residual.append(Decimal(str(round(res, 4))))
         else:
             residual.append(Decimal("0"))

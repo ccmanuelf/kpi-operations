@@ -105,8 +105,8 @@ async def get_alert_dashboard(
     all_active = base_query.all()
 
     # Build summary
-    by_severity = {}
-    by_category = {}
+    by_severity: dict[str, int] = {}
+    by_category: dict[str, int] = {}
     urgent_alerts = []
     critical_alerts = []
 
@@ -165,8 +165,8 @@ async def get_alert_summary(
 
     alerts = query.all()
 
-    by_severity = {}
-    by_category = {}
+    by_severity: dict[str, int] = {}
+    by_category: dict[str, int] = {}
 
     for alert in alerts:
         by_severity[alert.severity] = by_severity.get(alert.severity, 0) + 1

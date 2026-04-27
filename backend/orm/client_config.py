@@ -33,7 +33,7 @@ class ClientConfig(Base):
     client_id = Column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, unique=True, index=True)
 
     # OTD Configuration
-    otd_mode = Column(
+    otd_mode = Column(  # type: ignore[var-annotated]
         SQLEnum(OTDMode, values_callable=lambda x: [e.value for e in x]), nullable=False, default=OTDMode.STANDARD
     )
 
