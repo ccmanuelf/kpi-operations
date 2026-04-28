@@ -29,8 +29,10 @@
                 <div>
                   <strong>{{ summaryText }}</strong>
                   <div class="text-caption">
-                    Simulated {{ results.daily_summary.daily_throughput_pcs }} pieces/day vs
-                    {{ results.daily_summary.daily_demand_pcs }} demand
+                    {{ t('simulationResults.simulatedSummary', {
+                      throughput: results.daily_summary.daily_throughput_pcs,
+                      demand: results.daily_summary.daily_demand_pcs
+                    }) }}
                   </div>
                 </div>
                 <div class="text-right">
@@ -311,7 +313,7 @@
         <!-- Footer -->
         <v-divider class="my-4" />
         <div class="text-caption text-medium-emphasis text-center">
-          Simulation completed in {{ results.simulation_duration_seconds.toFixed(2) }} seconds
+          {{ t('simulationResults.simulationCompleted', { seconds: results.simulation_duration_seconds.toFixed(2) }) }}
         </div>
       </v-container>
     </v-card>
@@ -366,59 +368,61 @@ const donors = computed(() => {
   return props.results?.station_performance?.filter(s => s.is_donor) || []
 })
 
-// Table headers
-const weeklyHeaders = [
-  { title: 'Product', key: 'product' },
-  { title: 'Weekly Demand', key: 'weekly_demand_pcs' },
-  { title: 'Weekly Capacity', key: 'max_weekly_capacity_pcs' },
-  { title: 'Coverage', key: 'demand_coverage_pct' },
-  { title: 'Status', key: 'status' }
-]
+// Table headers — wrapped in computed() so the titles re-resolve when
+// the user switches locale at runtime (a static array would freeze
+// them at component-mount time).
+const weeklyHeaders = computed(() => [
+  { title: t('simulationResults.headers.product'), key: 'product' },
+  { title: t('simulationResults.headers.weeklyDemand'), key: 'weekly_demand_pcs' },
+  { title: t('simulationResults.headers.weeklyCapacity'), key: 'max_weekly_capacity_pcs' },
+  { title: t('simulationResults.headers.coverage'), key: 'demand_coverage_pct' },
+  { title: t('simulationResults.headers.status'), key: 'status' }
+])
 
-const stationHeaders = [
-  { title: 'Product', key: 'product', width: 100 },
-  { title: 'Step', key: 'step', width: 60 },
-  { title: 'Operation', key: 'operation' },
-  { title: 'Machine/Tool', key: 'machine_tool' },
-  { title: 'Operators', key: 'operators', width: 80 },
-  { title: 'Utilization', key: 'util_pct', width: 150 },
-  { title: 'Queue Wait', key: 'queue_wait_time_min', width: 100 },
-  { title: 'BN', key: 'is_bottleneck', width: 50 },
-  { title: 'DN', key: 'is_donor', width: 50 }
-]
+const stationHeaders = computed(() => [
+  { title: t('simulationResults.headers.product'), key: 'product', width: 100 },
+  { title: t('simulationResults.headers.step'), key: 'step', width: 60 },
+  { title: t('simulationResults.headers.operation'), key: 'operation' },
+  { title: t('simulationResults.headers.machineTool'), key: 'machine_tool' },
+  { title: t('simulationResults.headers.operators'), key: 'operators', width: 80 },
+  { title: t('simulationResults.headers.utilization'), key: 'util_pct', width: 150 },
+  { title: t('simulationResults.headers.queueWait'), key: 'queue_wait_time_min', width: 100 },
+  { title: t('simulationResults.headers.bottleneck'), key: 'is_bottleneck', width: 50 },
+  { title: t('simulationResults.headers.donor'), key: 'is_donor', width: 50 }
+])
 
-const productHeaders = [
-  { title: 'Product', key: 'product' },
-  { title: 'Bundle Size', key: 'bundle_size_pcs' },
-  { title: 'Mix %', key: 'mix_share_pct' },
-  { title: 'Daily Demand', key: 'daily_demand_pcs' },
-  { title: 'Daily Output', key: 'daily_throughput_pcs' },
-  { title: 'Coverage', key: 'daily_coverage_pct' },
-  { title: 'Weekly Demand', key: 'weekly_demand_pcs' },
-  { title: 'Weekly Output', key: 'weekly_throughput_pcs' }
-]
+const productHeaders = computed(() => [
+  { title: t('simulationResults.headers.product'), key: 'product' },
+  { title: t('simulationResults.headers.bundleSize'), key: 'bundle_size_pcs' },
+  { title: t('simulationResults.headers.mixPct'), key: 'mix_share_pct' },
+  { title: t('simulationResults.headers.dailyDemand'), key: 'daily_demand_pcs' },
+  { title: t('simulationResults.headers.dailyOutput'), key: 'daily_throughput_pcs' },
+  { title: t('simulationResults.headers.coverage'), key: 'daily_coverage_pct' },
+  { title: t('simulationResults.headers.weeklyDemand'), key: 'weekly_demand_pcs' },
+  { title: t('simulationResults.headers.weeklyOutput'), key: 'weekly_throughput_pcs' }
+])
 
-const bundleHeaders = [
-  { title: 'Product', key: 'product' },
-  { title: 'Bundle Size', key: 'bundle_size_pcs' },
-  { title: 'Bundles/Day', key: 'bundles_arriving_per_day' },
-  { title: 'Avg in System', key: 'avg_bundles_in_system' },
-  { title: 'Max in System', key: 'max_bundles_in_system' },
-  { title: 'Avg Cycle Time', key: 'avg_bundle_cycle_time_min' }
-]
+const bundleHeaders = computed(() => [
+  { title: t('simulationResults.headers.product'), key: 'product' },
+  { title: t('simulationResults.headers.bundleSize'), key: 'bundle_size_pcs' },
+  { title: t('simulationResults.headers.bundlesPerDay'), key: 'bundles_arriving_per_day' },
+  { title: t('simulationResults.headers.avgInSystem'), key: 'avg_bundles_in_system' },
+  { title: t('simulationResults.headers.maxInSystem'), key: 'max_bundles_in_system' },
+  { title: t('simulationResults.headers.avgCycleTime'), key: 'avg_bundle_cycle_time_min' }
+])
 
-const rebalanceHeaders = [
-  { title: 'Product', key: 'product' },
-  { title: 'Step', key: 'step' },
-  { title: 'Operation', key: 'operation' },
-  { title: 'Machine', key: 'machine_tool' },
-  { title: 'Ops Before', key: 'operators_before' },
-  { title: 'Ops After', key: 'operators_after' },
-  { title: 'Util Before', key: 'util_before_pct' },
-  { title: 'Util After', key: 'util_after_pct' },
-  { title: 'Role', key: 'role' },
-  { title: 'Action', key: 'comment' }
-]
+const rebalanceHeaders = computed(() => [
+  { title: t('simulationResults.headers.product'), key: 'product' },
+  { title: t('simulationResults.headers.step'), key: 'step' },
+  { title: t('simulationResults.headers.operation'), key: 'operation' },
+  { title: t('simulationResults.headers.machine'), key: 'machine_tool' },
+  { title: t('simulationResults.headers.operatorsBefore'), key: 'operators_before' },
+  { title: t('simulationResults.headers.operatorsAfter'), key: 'operators_after' },
+  { title: t('simulationResults.headers.utilBefore'), key: 'util_before_pct' },
+  { title: t('simulationResults.headers.utilAfter'), key: 'util_after_pct' },
+  { title: t('simulationResults.headers.role'), key: 'role' },
+  { title: t('simulationResults.headers.action'), key: 'comment' }
+])
 
 // Helper functions
 const getStatusColor = (status) => {

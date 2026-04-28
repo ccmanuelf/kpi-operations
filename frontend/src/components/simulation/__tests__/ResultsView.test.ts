@@ -155,8 +155,12 @@ describe('ResultsView', () => {
 
     it('should display throughput vs demand', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('950 pieces/day')
-      expect(wrapper.text()).toContain('1000 demand')
+      // The hardcoded `Simulated X pieces/day vs Y demand` block is
+      // now i18n-driven via `simulationResults.simulatedSummary`. The
+      // test's i18n mock returns the bare key (interpolation lives in
+      // the locale value, not the key string), so verify the key is
+      // emitted — runtime translation is exercised by E2E tests.
+      expect(wrapper.text()).toContain('simulationResults.simulatedSummary')
     })
 
     it('should show success message when coverage >= 100%', () => {
@@ -347,7 +351,10 @@ describe('ResultsView', () => {
   describe('Simulation Duration', () => {
     it('should display simulation duration', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('1.25 seconds')
+      // Footer is now `simulationResults.simulationCompleted` (bare key
+      // is what the test's i18n mock returns; {seconds} interpolation
+      // is in the locale value and exercised by E2E tests).
+      expect(wrapper.text()).toContain('simulationResults.simulationCompleted')
     })
   })
 
