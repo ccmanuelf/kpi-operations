@@ -166,8 +166,11 @@ class ProductionLineSimulation:
         self.events_log: List[Dict[str, Any]] = []
         self.station_times: Dict[str, List[Any]] = {s.name: [] for s in config.stations}
         self.station_waits: Dict[str, List[Any]] = {s.name: [] for s in config.stations}
-        self.station_busy_time = {s.name: 0 for s in config.stations}
-        self.total_downtime = 0
+        # Tracked in minutes as float — cycle times come from random.gauss
+        # which returns float, and integer initialisers would block the
+        # +=cycle_time accumulator.
+        self.station_busy_time: Dict[str, float] = {s.name: 0.0 for s in config.stations}
+        self.total_downtime: float = 0.0
 
     def log_event(self, event_type: SimulationEvent, data: Dict[str, Any]):
         """Log a simulation event"""
@@ -254,9 +257,13 @@ class ProductionLineSimulation:
 
                 self.log_event(SimulationEvent.DOWNTIME_START, {"station": station.name, "duration": duration})
 
-                # Temporarily reduce capacity
-                # In SimPy, we simulate this by using the resource
-                with self.stations[station.name].request(priority=0) as request:
+                # Temporarily reduce capacity by holding the station's
+                # resource for the downtime duration. The original code
+                # passed priority=0 to .request() but the simpy Resource
+                # type doesn't accept a priority kwarg (only PriorityResource
+                # does, and we're not using one) — the kwarg was silently
+                # ignored at runtime and rejected by mypy. Dropped it.
+                with self.stations[station.name].request() as request:
                     yield request
                     yield self.env.timeout(duration)
                     self.total_downtime += duration
@@ -331,8 +338,10 @@ class ProductionLineSimulation:
             busy_time = self.station_busy_time[station.name]
             utilization[station.name] = (busy_time / total_available_time * 100) if total_available_time > 0 else 0
 
-        # Find bottleneck (highest utilization)
-        bottleneck = max(utilization, key=utilization.get) if utilization else None
+        # Find bottleneck (highest utilization). Using a lambda rather
+        # than `utilization.get` because mypy can't pick the right
+        # overload of dict.get for the max() key parameter.
+        bottleneck = max(utilization, key=lambda name: utilization[name]) if utilization else None
 
         # Calculate average cycle time
         all_times = []
