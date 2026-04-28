@@ -24,18 +24,31 @@ pareto_router = APIRouter()
 
 @pareto_router.get("/kpi/top-defects")
 def get_top_defects(
-    product_id: Optional[int] = None,
+    work_order_id: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     limit: int = 10,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list:
     """
     Get top defect types (Pareto analysis)
-    Returns defects sorted by frequency for root cause analysis
+    Returns defects sorted by frequency for root cause analysis.
+
+    Previously took `product_id: int` and passed it positionally where
+    identify_top_defects expects `work_order_id: str`, with `limit` then
+    landing on the `client_id: str` slot. Aligned the route signature
+    with the underlying calculation contract.
     """
-    return identify_top_defects(db, product_id, start_date, end_date, limit)
+    return identify_top_defects(
+        db,
+        work_order_id=work_order_id,
+        start_date=start_date,
+        end_date=end_date,
+        client_id=client_id,
+        limit=limit,
+    )
 
 
 @pareto_router.get("/kpi/defects-by-type")
@@ -71,7 +84,11 @@ def get_defects_by_type(
     query = (
         db.query(
             DefectDetail.defect_type,
-            func.sum(DefectDetail.defect_count).label("count"),
+            # Labelled `defect_total` rather than `count` because `count`
+            # collides with `tuple.count(value)` on the Row, so mypy
+            # resolved `r.count` to the bound tuple method (Callable[[Any], int])
+            # rather than the aggregate sum.
+            func.sum(DefectDetail.defect_count).label("defect_total"),
         )
         .join(QualityEntry, DefectDetail.quality_entry_id == QualityEntry.quality_entry_id)
         .filter(
@@ -88,13 +105,13 @@ def get_defects_by_type(
     )
 
     # Calculate total for percentages
-    total_defects = sum(r.count or 0 for r in results)
+    total_defects = sum(int(r.defect_total or 0) for r in results)
 
     return [
         {
             "defect_type": str(r.defect_type),
-            "count": r.count or 0,
-            "percentage": round((r.count / total_defects) * 100, 1) if total_defects > 0 else 0,
+            "count": int(r.defect_total or 0),
+            "percentage": (round((int(r.defect_total or 0) / total_defects) * 100, 1) if total_defects > 0 else 0),
         }
         for r in results
     ]
