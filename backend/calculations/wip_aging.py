@@ -53,8 +53,24 @@ def get_client_wip_thresholds(db: Session, client_id: Optional[str] = None) -> T
         return (DEFAULT_AGING_THRESHOLD_DAYS, DEFAULT_CRITICAL_THRESHOLD_DAYS)
 
 
+def _to_date(value: Optional[datetime]) -> Optional[date]:
+    """Coerce an Optional[datetime] to Optional[date].
+
+    HoldEntry.hold_date is Mapped[Optional[datetime]] in the ORM, so the
+    legacy `hasattr(value, "date")` pattern made mypy think the variable
+    could still be None when later used in `(today - hold_date).days`.
+    Centralised here so the null check happens once.
+    """
+    if value is None:
+        return None
+    return value.date() if isinstance(value, datetime) else value
+
+
 def calculate_wip_aging(
-    db: Session, product_id: Optional[int] = None, as_of_date: date = None, client_id: Optional[str] = None
+    db: Session,
+    product_id: Optional[int] = None,
+    as_of_date: Optional[date] = None,
+    client_id: Optional[str] = None,
 ) -> Dict:
     """
     Calculate WIP aging analysis
@@ -102,7 +118,7 @@ def calculate_wip_aging(
 
     for hold in holds:
         # Calculate aging - hold_date is DateTime, need to convert to date
-        hold_date = hold.hold_date.date() if hasattr(hold.hold_date, "date") else hold.hold_date
+        hold_date = _to_date(hold.hold_date)
         if hold_date is None:
             continue
         aging_days = (as_of_date - hold_date).days
@@ -193,12 +209,13 @@ def calculate_hold_resolution_rate(
     # Count how many resolved within client threshold days
     resolved_on_time = 0
     for hold in holds:
-        if hold.resume_date and hold.hold_date:
-            hold_date = hold.hold_date.date() if hasattr(hold.hold_date, "date") else hold.hold_date
-            resume_date = hold.resume_date.date() if hasattr(hold.resume_date, "date") else hold.resume_date
-            resolution_days = (resume_date - hold_date).days
-            if resolution_days <= aging_threshold:
-                resolved_on_time += 1
+        hold_date = _to_date(hold.hold_date)
+        resume_date = _to_date(hold.resume_date)
+        if hold_date is None or resume_date is None:
+            continue
+        resolution_days = (resume_date - hold_date).days
+        if resolution_days <= aging_threshold:
+            resolved_on_time += 1
 
     resolution_rate = (Decimal(str(resolved_on_time)) / Decimal(str(len(holds)))) * 100
 
@@ -210,7 +227,9 @@ def calculate_hold_resolution_rate(
     }
 
 
-def identify_chronic_holds(db: Session, threshold_days: int = None, client_id: Optional[str] = None) -> List[Dict]:
+def identify_chronic_holds(
+    db: Session, threshold_days: Optional[int] = None, client_id: Optional[str] = None
+) -> List[Dict]:
     """
     Identify holds that have been open longer than threshold
 
@@ -238,9 +257,9 @@ def identify_chronic_holds(db: Session, threshold_days: int = None, client_id: O
 
     chronic_holds = query.all()
 
-    results = []
+    results: List[Dict] = []
     for hold in chronic_holds:
-        hold_date = hold.hold_date.date() if hasattr(hold.hold_date, "date") else hold.hold_date
+        hold_date = _to_date(hold.hold_date)
         if hold_date is None:
             continue
         aging_days = (today - hold_date).days
@@ -257,8 +276,10 @@ def identify_chronic_holds(db: Session, threshold_days: int = None, client_id: O
             }
         )
 
-    # Sort by aging (oldest first)
-    results.sort(key=lambda x: x["aging_days"], reverse=True)
+    # Sort by aging (oldest first). aging_days is always int from the
+    # comprehension above, but the dict value union includes None
+    # (product_id), so cast at the sort key to keep mypy happy.
+    results.sort(key=lambda x: int(x["aging_days"] or 0), reverse=True)
 
     return results
 
@@ -381,7 +402,10 @@ def calculate_work_order_wip_age(db: Session, work_order_id: str) -> Optional[Di
 
 
 def calculate_wip_aging_with_hold_adjustment(
-    db: Session, product_id: Optional[int] = None, client_id: Optional[str] = None, as_of_date: date = None
+    db: Session,
+    product_id: Optional[int] = None,
+    client_id: Optional[str] = None,
+    as_of_date: Optional[date] = None,
 ) -> Dict:
     """
     Enhanced WIP aging analysis with hold-time adjustment
@@ -423,7 +447,10 @@ def calculate_wip_aging_with_hold_adjustment(
 
     total_quantity = 0
     total_raw_aging_days = 0
-    total_adjusted_aging_days = 0
+    # adjusted aging mixes float days (from hold_duration_days) with int
+    # raw aging, so the running total must be float — was inferred as int
+    # and rejected the float assignment below.
+    total_adjusted_aging_days: float = 0.0
     total_hold_duration_hours = Decimal("0")
 
     # Group holds by work order for adjustment calculation
@@ -436,7 +463,7 @@ def calculate_wip_aging_with_hold_adjustment(
 
     for hold in holds:
         # Calculate raw aging - handle DateTime
-        hold_date = hold.hold_date.date() if hasattr(hold.hold_date, "date") else hold.hold_date
+        hold_date = _to_date(hold.hold_date)
         if hold_date is None:
             continue
         raw_aging_days = (as_of_date - hold_date).days
