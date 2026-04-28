@@ -24,12 +24,12 @@ def create_shift_record(db: Session, data):
     return create_shift(db, data)
 
 
-def list_client_shifts(db: Session, client_id: str, include_inactive: bool = False):
+def list_client_shifts(db: Session, client_id: str, include_inactive: bool = False) -> List[Shift]:
     """List shifts for a client."""
     return list_shifts(db, client_id, include_inactive)
 
 
-def get_shift_by_id(db: Session, shift_id: int):
+def get_shift_by_id(db: Session, shift_id: int) -> Optional[Shift]:
     """Get a shift by ID."""
     return get_shift(db, shift_id)
 

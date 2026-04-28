@@ -4,6 +4,7 @@ Create, Read, Update, Delete with multi-tenant client filtering
 SECURITY: All operations enforce client-based access control
 """
 
+from decimal import Decimal
 from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
@@ -32,8 +33,12 @@ def create_job(db: Session, job_data: dict, current_user: User) -> Job:
     Raises:
         ClientAccessError: If user doesn't have access to job_data['client_id_fk']
     """
-    # Verify client access
-    verify_client_access(current_user, job_data.get("client_id_fk"))
+    # Verify client access. .get returns Optional[Any]; require a real
+    # str client_id_fk so we don't pass None into the access check.
+    client_id_fk = job_data.get("client_id_fk")
+    if not isinstance(client_id_fk, str) or not client_id_fk:
+        raise ValueError("job_data['client_id_fk'] is required")
+    verify_client_access(current_user, client_id_fk)
 
     db_job = Job(**job_data)
     db.add(db_job)
@@ -192,7 +197,9 @@ def complete_job(
         return None
 
     job.completed_quantity = completed_quantity
-    job.actual_hours = actual_hours
+    # actual_hours column is Mapped[Decimal] in the ORM; the route
+    # passes a float, so coerce explicitly here.
+    job.actual_hours = Decimal(str(actual_hours))
     job.is_completed = 1
     job.completed_date = datetime.now(tz=timezone.utc)
 

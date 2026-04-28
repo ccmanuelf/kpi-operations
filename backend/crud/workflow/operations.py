@@ -17,6 +17,20 @@ from backend.calculations.workflow_engine import (
 )
 
 
+def _user_id_as_int(user: User) -> Optional[int]:
+    """Coerce a string User.user_id to the int that workflow_engine
+    needs (the transitioned_by/closed_by columns are
+    Mapped[Optional[int]] despite their FK to USER.user_id which is
+    String — pre-existing schema inconsistency). Returns None if the
+    user_id isn't numeric, which prevents an SQL type error at the
+    cost of an unattributed transition log row.
+    """
+    try:
+        return int(user.user_id)
+    except (TypeError, ValueError):
+        return None
+
+
 def transition_work_order(
     db: Session, work_order_id: str, to_status: str, current_user: User, notes: Optional[str] = None
 ) -> Dict:
@@ -50,7 +64,7 @@ def transition_work_order(
         db=db,
         work_order=work_order,
         to_status=to_status,
-        user_id=current_user.user_id,
+        user_id=_user_id_as_int(current_user),
         notes=notes,
         trigger_source="manual",
     )
@@ -153,6 +167,6 @@ def bulk_transition_work_orders(
         work_order_ids=work_order_ids,
         to_status=to_status,
         client_id=client_id,
-        user_id=current_user.user_id,
+        user_id=_user_id_as_int(current_user),
         notes=notes,
     )

@@ -32,8 +32,12 @@ def create_defect_detail(db: Session, defect_data: dict, current_user: User) -> 
     Raises:
         ClientAccessError: If user doesn't have access to defect_data['client_id_fk']
     """
-    # Verify client access
-    verify_client_access(current_user, defect_data.get("client_id_fk"))
+    # Verify client access. Require a real str client_id_fk rather
+    # than passing the Optional[Any] from .get into the access check.
+    client_id_fk = defect_data.get("client_id_fk")
+    if not isinstance(client_id_fk, str) or not client_id_fk:
+        raise ValueError("defect_data['client_id_fk'] is required")
+    verify_client_access(current_user, client_id_fk)
 
     db_defect = DefectDetail(**defect_data)
     db.add(db_defect)

@@ -6,7 +6,7 @@ Implements Phase 7.2: Client-Level Calculation Overrides
 Phase A.1: Added caching for client config lookups
 """
 
-from typing import Optional
+from typing import Optional, cast
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -55,7 +55,11 @@ def create_client_config(db: Session, config_data: dict, current_user: User) -> 
     """
     client_id = config_data.get("client_id")
 
-    # SECURITY: Verify user has access to this client
+    # SECURITY: Verify user has access to this client. .get returns
+    # Optional[Any]; require a real str so verify_client_access has
+    # something concrete to check.
+    if not isinstance(client_id, str) or not client_id:
+        raise HTTPException(status_code=400, detail="config_data['client_id'] is required")
     verify_client_access(current_user, client_id)
 
     # Verify client exists
@@ -161,7 +165,10 @@ def get_client_config_or_defaults(db: Session, client_id: str) -> dict:
         # Return global defaults
         return {**GLOBAL_DEFAULTS, "is_default": True}
 
-    return cache.get_or_set(cache_key, fetch_config, ttl_seconds=900)
+    # cache.get_or_set returns Any; the loader (`fetch_config`) returns
+    # a dict by construction, so cast to satisfy the declared dict
+    # return type without weakening the type system.
+    return cast(dict, cache.get_or_set(cache_key, fetch_config, ttl_seconds=900))
 
 
 def update_client_config(

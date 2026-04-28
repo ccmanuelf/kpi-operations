@@ -203,13 +203,26 @@ def update_work_order(
         # Store previous status for ON_HOLD tracking
         old_status = db_work_order.status
 
-        # Update status and log transition
+        # Update status and log transition. NOTE: WorkflowTransitionLog
+        # and WorkOrder.closed_by are Mapped[Optional[int]] in the ORM,
+        # but the FK references USER.user_id which is a String(50).
+        # That's a pre-existing schema inconsistency outside this fix.
+        # User.user_id is `str`, so coerce when it parses as int and
+        # log None otherwise — the alternative was passing a str into
+        # an int column and triggering an SQLAlchemy type error.
+        user_id_int: Optional[int] = None
+        if current_user is not None:
+            try:
+                user_id_int = int(current_user.user_id)
+            except (TypeError, ValueError):
+                user_id_int = None
+
         try:
             db_work_order, transition_log = execute_transition(
                 db=db,
                 work_order=db_work_order,
                 to_status=new_status,
-                user_id=current_user.user_id if current_user else None,
+                user_id=user_id_int,
                 notes=work_order_update.get("notes"),
                 trigger_source="api",
             )
