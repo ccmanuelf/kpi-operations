@@ -61,12 +61,12 @@ class ProductionService:
         """
         return create_production_entry(self.db, data, user)
 
-    def get_entry(self, entry_id: int, user: User) -> Optional[ProductionEntry]:
+    def get_entry(self, entry_id: str, user: User) -> Optional[ProductionEntry]:
         """
         Get a production entry by ID.
 
         Args:
-            entry_id: Production entry ID
+            entry_id: Production entry ID (string PK like "PE-AB12CD34")
             user: Authenticated user
 
         Returns:
@@ -74,12 +74,12 @@ class ProductionService:
         """
         return get_production_entry(self.db, entry_id, user)
 
-    def get_entry_with_kpis(self, entry_id: int, user: User) -> Optional[ProductionEntryWithKPIs]:
+    def get_entry_with_kpis(self, entry_id: str, user: User) -> Optional[ProductionEntryWithKPIs]:
         """
         Get a production entry with full KPI breakdown.
 
         Args:
-            entry_id: Production entry ID
+            entry_id: Production entry ID (string PK)
             user: Authenticated user
 
         Returns:
@@ -116,12 +116,12 @@ class ProductionService:
         """
         return get_production_entries(self.db, user, skip, limit, start_date, end_date, product_id, shift_id, client_id)
 
-    def update_entry(self, entry_id: int, data: ProductionEntryUpdate, user: User) -> Optional[ProductionEntry]:
+    def update_entry(self, entry_id: str, data: ProductionEntryUpdate, user: User) -> Optional[ProductionEntry]:
         """
         Update a production entry with KPI recalculation.
 
         Args:
-            entry_id: Entry ID to update
+            entry_id: Entry ID to update (string PK)
             data: Update data
             user: Authenticated user
 
@@ -130,12 +130,12 @@ class ProductionService:
         """
         return update_production_entry(self.db, entry_id, data, user)
 
-    def delete_entry(self, entry_id: int, user: User) -> bool:
+    def delete_entry(self, entry_id: str, user: User) -> bool:
         """
         Soft delete a production entry.
 
         Args:
-            entry_id: Entry ID to delete
+            entry_id: Entry ID to delete (string PK)
             user: Authenticated user
 
         Returns:
