@@ -100,7 +100,12 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
     client_ip = request.client.host if request.client else None
     user = db.query(User).filter(User.username == user_credentials.username).first()
 
-    if not user or not verify_password(user_credentials.password, user.password_hash):
+    # Reject the login if the user is missing, has no password hash on
+    # record (e.g. SSO-only or orphan account), or the password fails.
+    # Treating the missing-hash case as a hard rejection rather than
+    # passing None into verify_password also avoids a hash-comparison
+    # bypass surface area.
+    if not user or not user.password_hash or not verify_password(user_credentials.password, user.password_hash):
         log_security_event(
             logger,
             "LOGIN_FAILED",
@@ -244,7 +249,11 @@ def change_password(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     """Change password for authenticated user (rate limited: 10 requests/minute)"""
-    if not verify_password(password_data.current_password, current_user.password_hash):
+    # password_hash is Optional[str] in the ORM; treat a missing hash
+    # as a verification failure rather than dereferencing None.
+    if not current_user.password_hash or not verify_password(
+        password_data.current_password, current_user.password_hash
+    ):
         log_security_event(
             logger,
             "PASSWORD_CHANGE_FAILED",

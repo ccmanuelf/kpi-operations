@@ -18,6 +18,7 @@ from backend.orm.alert import (
     AlertCategory,
 )
 from backend.auth.jwt import get_current_user
+from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import (
     LOOKBACK_WEEKLY_DAYS,
@@ -38,7 +39,7 @@ config_history_router = APIRouter()
 async def list_alert_configs(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """List alert configurations"""
     if client_id:
@@ -54,7 +55,7 @@ async def list_alert_configs(
 async def create_alert_config(
     config_data: AlertConfigCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Create alert configuration"""
     if config_data.client_id:
@@ -86,7 +87,7 @@ async def get_prediction_accuracy(
     days: int = Query(LOOKBACK_MONTHLY_DAYS, ge=LOOKBACK_WEEKLY_DAYS, le=MAX_DAYS_LONG),
     category: Optional[AlertCategory] = Query(None),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get historical accuracy of prediction-based alerts

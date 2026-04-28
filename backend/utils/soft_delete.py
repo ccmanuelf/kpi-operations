@@ -121,8 +121,10 @@ def soft_delete_with_timestamp(
         if hasattr(entity, deleted_at_field):
             setattr(entity, deleted_at_field, datetime.now(tz=timezone.utc))
 
-        # Set deleted_by if field exists and value provided
-        if deleted_by_value is not None and hasattr(entity, deleted_by_field):
+        # Set deleted_by if field exists and value provided. The field
+        # name is Optional[str] in this helper's signature, so guard
+        # before calling hasattr/setattr (both require a non-None name).
+        if deleted_by_value is not None and deleted_by_field and hasattr(entity, deleted_by_field):
             setattr(entity, deleted_by_field, deleted_by_value)
 
         if commit:
