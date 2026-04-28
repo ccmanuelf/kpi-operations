@@ -500,6 +500,13 @@ class QualityKPIService:
 
         result = query.first()
 
+        # query.first() returns None when there are zero rows; aggregate
+        # queries with no matches still return a single row of NULLs, but
+        # mypy can't distinguish those at the type level. Treat None as
+        # an all-zeros result.
+        if result is None:
+            return {"total_inspected": 0, "total_defects": 0, "total_defects_count": 0}
+
         return {
             "total_inspected": result.total_inspected or 0,
             "total_defects": result.total_defects or 0,
@@ -528,6 +535,16 @@ class QualityKPIService:
             query = query.filter(QualityEntry.client_id == client_id)
 
         result = query.first()
+
+        # See _fetch_quality_aggregates for the None-vs-zero rationale.
+        if result is None:
+            return {
+                "total_inspected": 0,
+                "total_passed": 0,
+                "total_rework": 0,
+                "total_repair": 0,
+                "total_scrap": 0,
+            }
 
         return {
             "total_inspected": result.total_inspected or 0,
