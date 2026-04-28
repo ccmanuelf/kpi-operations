@@ -7,7 +7,7 @@ Decouples routes from analytics calculations.
 """
 
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, cast
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
@@ -242,7 +242,9 @@ class AnalyticsService:
 
         cached_result = cache.get(cache_key)
         if cached_result is not None:
-            return cached_result
+            # cache.get returns Any; the function contract guarantees the
+            # cached value is a dict[str, Any] (we set it that way below).
+            return cast(Dict[str, Any], cached_result)
 
         # Calculate date ranges
         today_start = as_of_date
@@ -297,7 +299,9 @@ class AnalyticsService:
 
         Useful for period-over-period analysis.
         """
-        results = {
+        # Annotated explicitly so the nested `metrics` dict isn't inferred
+        # as a frozen Collection[str] that rejects per-key assignment.
+        results: Dict[str, Any] = {
             "period1": {"start": period1_start.isoformat(), "end": period1_end.isoformat(), "metrics": {}},
             "period2": {"start": period2_start.isoformat(), "end": period2_end.isoformat(), "metrics": {}},
             "comparison": {},
@@ -462,8 +466,10 @@ class AnalyticsService:
 
         qual_result = qual_query.first()
 
-        total_inspected = qual_result.total_inspected or 0
-        total_defects = qual_result.total_defects or 0
+        # qual_query.first() can be None if there are no QualityEntry rows
+        # in the window. Treat that the same as zeros.
+        total_inspected = (qual_result.total_inspected or 0) if qual_result is not None else 0
+        total_defects = (qual_result.total_defects or 0) if qual_result is not None else 0
 
         if total_inspected > 0:
             ppm = (total_defects / total_inspected) * 1000000
@@ -481,7 +487,10 @@ class AnalyticsService:
 
     def _get_work_order_summary(self, client_id: Optional[str]) -> Dict[str, int]:
         """Get work order status counts."""
-        query = self.db.query(WorkOrder.status, func.count(WorkOrder.work_order_id).label("count")).group_by(
+        # Labeled `wo_count` rather than `count` because `count` collides
+        # with `tuple.count(value)` on the SQLAlchemy Row, which made
+        # mypy infer `r.count` as a Callable instead of an int.
+        query = self.db.query(WorkOrder.status, func.count(WorkOrder.work_order_id).label("wo_count")).group_by(
             WorkOrder.status
         )
 
@@ -490,7 +499,10 @@ class AnalyticsService:
 
         results = query.all()
 
-        summary = {r.status: r.count for r in results}
+        # WorkOrderStatus is a str-Enum, so .value is the bare status
+        # name (e.g. "ACTIVE") rather than "WorkOrderStatus.ACTIVE" that
+        # str() would yield on the enum member.
+        summary: Dict[str, int] = {r.status.value: int(r.wo_count) for r in results}
         summary["total"] = sum(summary.values())
 
         return summary
