@@ -57,7 +57,7 @@ from backend.events.domain_events import (
 class RecordingHandler(EventHandler):
     """Handler that records every event it processes."""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self.handled_events: List[DomainEvent] = []
 
@@ -381,10 +381,10 @@ class TestEventBusPublish:
         assert len(handler.handled_events) == 1
         assert handler.handled_events[0].event_type == "a.b"
 
-    def test_publish_priority_order(self, reset_event_bus):
+    def test_publish_priority_order(self, reset_event_bus) -> None:
         """Handlers should run in priority order (lower number first)."""
         bus = reset_event_bus
-        log: list = []
+        log: List[str] = []
         h1 = OrderTrackingHandler("first", log, priority=1)
         h2 = OrderTrackingHandler("second", log, priority=50)
         h3 = OrderTrackingHandler("third", log, priority=200)

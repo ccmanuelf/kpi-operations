@@ -22,13 +22,22 @@ repos:
         files: ^backend/
         additional_dependencies: []
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.17.1
+  # mypy as a local system hook rather than mirrors-mypy. The mirrors-
+  # mypy hook invokes mypy file-by-file on the staged paths, which
+  # collapses our `namespace_packages = true` cross-module resolution
+  # and emits cascading false positives like `backend.database has no
+  # attribute Base`. Running `mypy backend` once per commit (whole
+  # package) matches CI and the local dev workflow exactly.
+  - repo: local
     hooks:
       - id: mypy
-        args: [--ignore-missing-imports, --no-error-summary]
-        # Required for the pydantic.mypy plugin configured in pyproject.toml
-        additional_dependencies: ["pydantic>=2.12,<3"]
+        name: mypy (backend, whole-package)
+        entry: python -m mypy backend
+        language: system
+        # Trigger on any backend .py change but pass no filenames — the
+        # entry runs the whole-package check itself.
+        files: ^backend/.*\.py$
+        pass_filenames: false
 
   - repo: https://github.com/PyCQA/bandit
     rev: '1.8.3'
