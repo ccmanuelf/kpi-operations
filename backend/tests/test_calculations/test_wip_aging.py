@@ -17,13 +17,14 @@ Covers:
 import pytest
 from decimal import Decimal
 from datetime import date, timedelta
+from typing import Optional
 from unittest.mock import Mock, MagicMock, patch
 
 
 # ===== Helper Functions for Standalone Calculations =====
 
 
-def calculate_aging_days(hold_date: date, as_of_date: date = None) -> int:
+def calculate_aging_days(hold_date: date, as_of_date: Optional[date] = None) -> int:
     """
     Calculate aging days from hold date to as-of date.
 
@@ -61,7 +62,7 @@ def categorize_aging_bucket(aging_days: int) -> str:
         return "over_30"
 
 
-def calculate_average_wip_age(holds: list[dict], as_of_date: date = None) -> Decimal:
+def calculate_average_wip_age(holds: list[dict], as_of_date: Optional[date] = None) -> Decimal:
     """
     Calculate weighted average WIP age.
 
