@@ -90,18 +90,18 @@ def get_database_path() -> Path:
         # Default fallback
         db_url = "sqlite:///../database/kpi_platform.db"
 
-    # Parse SQLite URL
-    if db_url.startswith("sqlite:///"):
-        db_path = db_url.replace("sqlite:///", "")
-
-        # Handle relative paths
-        if not os.path.isabs(db_path):
-            base_dir = Path(__file__).parent.parent
-            db_path = (base_dir / db_path).resolve()
-        else:
-            db_path = Path(db_path).resolve()
-    else:
+    # Parse SQLite URL. Use distinct names for the str-stripped path and
+    # the resolved Path so mypy doesn't see a same-name str→Path
+    # narrowing violation on the absolute branch.
+    if not db_url.startswith("sqlite:///"):
         raise ValueError(f"Unsupported database URL format: {db_url}")
+
+    raw_path = db_url.replace("sqlite:///", "")
+    if os.path.isabs(raw_path):
+        db_path: Path = Path(raw_path).resolve()
+    else:
+        base_dir = Path(__file__).parent.parent
+        db_path = (base_dir / raw_path).resolve()
 
     if not db_path.exists():
         raise FileNotFoundError(f"Database file not found: {db_path}")
