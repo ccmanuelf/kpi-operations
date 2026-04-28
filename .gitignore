@@ -132,8 +132,9 @@ docs/reports/
 # Spreadsheets
 *.xlsx
 
-# Audit working files
+# Audit working files (current and legacy DDD audit archives)
 _audit/
+_ddd_audit/
 
 # Task management
 .taskmaster/
