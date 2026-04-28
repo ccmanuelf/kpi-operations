@@ -356,11 +356,23 @@ class SchedulingService:
             .first()
         )
 
-        total_scheduled = int(details.total_scheduled or 0)
-        total_completed = int(details.total_completed or 0)
+        # query.first() can be None when there are zero detail rows. The
+        # schedule itself was already verified to exist, so report it
+        # with all-zero aggregates rather than dereferencing a None row.
+        total_scheduled = int(details.total_scheduled or 0) if details is not None else 0
+        total_completed = int(details.total_completed or 0) if details is not None else 0
+        total_orders = int(details.total_orders or 0) if details is not None else 0
+        total_lines = int(details.total_lines or 0) if details is not None else 0
+
         completion_percent = 0.0
         if total_scheduled > 0:
             completion_percent = (total_completed / total_scheduled) * 100
+
+        # schedule.status is Mapped[ScheduleStatus] in the ORM but mypy
+        # treats Mapped attributes as Optional. The DB column is NOT NULL,
+        # so a missing status would be a data-integrity bug — assert and
+        # surface it eagerly rather than passing None into ScheduleSummary.
+        assert schedule.status is not None
 
         return ScheduleSummary(
             schedule_id=schedule.id,
@@ -368,9 +380,9 @@ class SchedulingService:
             status=schedule.status,
             period_start=schedule.period_start,
             period_end=schedule.period_end,
-            total_orders=int(details.total_orders or 0),
+            total_orders=total_orders,
             total_quantity=total_scheduled,
-            total_lines_used=int(details.total_lines or 0),
+            total_lines_used=total_lines,
             completion_percent=completion_percent,
         )
 
@@ -419,10 +431,17 @@ class SchedulingService:
         """Sort orders by priority."""
         priority_order = {OrderPriority.URGENT: 0, OrderPriority.HIGH: 1, OrderPriority.NORMAL: 2, OrderPriority.LOW: 3}
 
+        # CapacityOrder.priority is Mapped[OrderPriority] (NOT NULL on the
+        # DB) but mypy widens it to Optional. Default missing/None to
+        # NORMAL when computing the sort key so we don't hand a None into
+        # priority_order.get and trip the typing check.
+        def _priority_rank(o: CapacityOrder) -> int:
+            return priority_order.get(o.priority or OrderPriority.NORMAL, 2)
+
         if prioritize_by == "priority":
-            return sorted(orders, key=lambda o: (priority_order.get(o.priority, 2), o.required_date))
+            return sorted(orders, key=lambda o: (_priority_rank(o), o.required_date))
         else:
-            return sorted(orders, key=lambda o: (o.required_date, priority_order.get(o.priority, 2)))
+            return sorted(orders, key=lambda o: (o.required_date, _priority_rank(o)))
 
     def _get_production_lines(
         self, client_id: str, line_ids: Optional[List[int]] = None
