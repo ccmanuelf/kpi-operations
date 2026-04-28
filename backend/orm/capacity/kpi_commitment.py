@@ -82,12 +82,16 @@ class CapacityKPICommitment(Base):
             committed = float(self.committed_value)
             actual = float(self.actual_value)
 
-            self.variance = actual - committed
+            # variance/variance_percent are Mapped[Decimal] in the ORM,
+            # so write Decimal values rather than floats. Wrapping
+            # `actual - committed` in Decimal(str(...)) keeps precision
+            # parity with how the values came in.
+            self.variance = Decimal(str(actual - committed))
 
             if committed != 0:
-                self.variance_percent = ((actual - committed) / committed) * 100
+                self.variance_percent = Decimal(str(((actual - committed) / committed) * 100))
             else:
-                self.variance_percent = 0 if actual == 0 else 100
+                self.variance_percent = Decimal("0") if actual == 0 else Decimal("100")
 
     def is_on_target(self, tolerance_percent: float = 5.0) -> bool:
         """

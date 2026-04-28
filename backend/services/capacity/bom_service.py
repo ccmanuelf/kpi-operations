@@ -121,7 +121,12 @@ class BOMService:
                     gross_required=gross_required,
                     net_required=net_required,
                     waste_percentage=waste_pct,
-                    unit_of_measure=detail.unit_of_measure,
+                    # detail.unit_of_measure is Mapped[Optional[str]] in
+                    # the ORM, but BOMComponent.unit_of_measure is a
+                    # required str. Default to an empty string when the
+                    # source row is missing the value rather than
+                    # passing None into the dataclass constructor.
+                    unit_of_measure=detail.unit_of_measure or "",
                     component_type=detail.component_type,
                 )
             )
@@ -161,9 +166,13 @@ class BOMService:
         Returns:
             Dict of style_model -> BOMExplosionResult
         """
-        results = {}
+        results: Dict[str, BOMExplosionResult] = {}
         for order in orders:
             style_model = order.get("style_model")
+            if not isinstance(style_model, str) or not style_model:
+                # Skip rows missing a usable parent identifier rather
+                # than passing None into explode_bom (which expects str).
+                continue
             quantity = Decimal(str(order.get("quantity", 0)))
 
             try:

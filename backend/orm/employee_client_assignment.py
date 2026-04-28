@@ -149,7 +149,7 @@ def validate_employee_assignment(db, employee_id: int, client_id: str) -> tuple[
 
 
 def assign_employee_to_client(
-    db, employee_id: int, client_id: str, assigned_by: str, assignment_type: str = None
+    db, employee_id: int, client_id: str, assigned_by: str, assignment_type: Optional[str] = None
 ) -> EmployeeClientAssignment:
     """
     Assign an employee to a client.

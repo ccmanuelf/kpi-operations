@@ -82,7 +82,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     - X-RateLimit-Reset: Timestamp when limit resets
     """
 
-    def __init__(self, app, limiter_instance: Limiter = None):
+    def __init__(self, app, limiter_instance: Optional[Limiter] = None):
         super().__init__(app)
         self.limiter = limiter_instance or limiter
 
