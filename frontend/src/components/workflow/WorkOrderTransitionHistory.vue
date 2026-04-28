@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="d-flex align-center justify-space-between mb-3">
       <div class="text-subtitle-2 font-weight-bold">
-        {{ $t('workflow.transitionHistory') || 'Status History' }}
+        {{ t('workflow.transitionHistory') }}
       </div>
       <v-btn
         v-if="!loading && transitions.length > 0"
@@ -11,7 +11,7 @@
         size="x-small"
         variant="text"
         @click="fetchHistory"
-        :aria-label="$t('common.refresh') || 'Refresh'"
+        :aria-label="t('common.refresh')"
       >
         <v-icon size="small">mdi-refresh</v-icon>
       </v-btn>
@@ -29,7 +29,7 @@
       variant="tonal"
       density="compact"
     >
-      {{ $t('workflow.noTransitions') || 'No status changes recorded' }}
+      {{ t('workflow.noTransitions') }}
     </v-alert>
 
     <!-- Timeline -->
@@ -109,7 +109,7 @@
           color="primary"
           @click="showAll = true"
         >
-          {{ $t('common.showMore') || 'Show more' }}
+          {{ t('common.showMore') }}
           ({{ transitions.length - maxDisplay }})
         </v-btn>
       </v-timeline-item>
@@ -163,18 +163,19 @@ const loading = ref(false)
 const transitions = ref([])
 const showAll = ref(false)
 
-// Status configuration
+// Status configuration. Labels are sourced from workflow.status.*
+// i18n keys via getStatusLabel() — only color/icon are static here.
 const STATUS_CONFIG = {
-  RECEIVED: { color: 'blue-grey', icon: 'mdi-inbox', label: 'Received' },
-  DISPATCHED: { color: 'blue', icon: 'mdi-send', label: 'Dispatched' },
-  IN_WIP: { color: 'info', icon: 'mdi-progress-clock', label: 'In WIP' },
-  ON_HOLD: { color: 'warning', icon: 'mdi-pause-circle', label: 'On Hold' },
-  COMPLETED: { color: 'success', icon: 'mdi-check-circle', label: 'Completed' },
-  SHIPPED: { color: 'purple', icon: 'mdi-truck-delivery', label: 'Shipped' },
-  CLOSED: { color: 'grey', icon: 'mdi-archive', label: 'Closed' },
-  CANCELLED: { color: 'error', icon: 'mdi-cancel', label: 'Cancelled' },
-  REJECTED: { color: 'error', icon: 'mdi-alert-circle', label: 'Rejected' },
-  ACTIVE: { color: 'info', icon: 'mdi-progress-clock', label: 'Active' }
+  RECEIVED: { color: 'blue-grey', icon: 'mdi-inbox' },
+  DISPATCHED: { color: 'blue', icon: 'mdi-send' },
+  IN_WIP: { color: 'info', icon: 'mdi-progress-clock' },
+  ON_HOLD: { color: 'warning', icon: 'mdi-pause-circle' },
+  COMPLETED: { color: 'success', icon: 'mdi-check-circle' },
+  SHIPPED: { color: 'purple', icon: 'mdi-truck-delivery' },
+  CLOSED: { color: 'grey', icon: 'mdi-archive' },
+  CANCELLED: { color: 'error', icon: 'mdi-cancel' },
+  REJECTED: { color: 'error', icon: 'mdi-alert-circle' },
+  ACTIVE: { color: 'info', icon: 'mdi-progress-clock' }
 }
 
 // Computed
@@ -190,9 +191,11 @@ const displayedTransitions = computed(() => {
 // Methods
 const getStatusColor = (status) => STATUS_CONFIG[status]?.color || 'grey'
 const getStatusLabel = (status) => {
-  const key = `workflow.status.${status?.toLowerCase()}`
-  const translated = t(key)
-  return translated !== key ? translated : (STATUS_CONFIG[status]?.label || status)
+  // Same i18n-only resolution as WorkOrderStatusChip — workflow.status.*
+  // keys cover every known status; missing keys surface as the bare
+  // key string, which makes gaps visible.
+  if (!status) return ''
+  return t(`workflow.status.${status.toLowerCase()}`)
 }
 
 const getTransitionColor = (transition) => {

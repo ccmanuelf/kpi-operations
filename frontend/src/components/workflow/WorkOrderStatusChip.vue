@@ -149,19 +149,20 @@ const notesDialog = ref(false)
 const pendingStatus = ref(null)
 const transitionNotes = ref('')
 
-// Status configuration
+// Status configuration. Labels are sourced from workflow.status.*
+// i18n keys via getStatusLabel() — only color/icon are static here.
 const STATUS_CONFIG = {
-  RECEIVED: { color: 'blue-grey', icon: 'mdi-inbox', label: 'Received' },
-  DISPATCHED: { color: 'blue', icon: 'mdi-send', label: 'Dispatched' },
-  IN_WIP: { color: 'info', icon: 'mdi-progress-clock', label: 'In WIP' },
-  ON_HOLD: { color: 'warning', icon: 'mdi-pause-circle', label: 'On Hold' },
-  COMPLETED: { color: 'success', icon: 'mdi-check-circle', label: 'Completed' },
-  SHIPPED: { color: 'purple', icon: 'mdi-truck-delivery', label: 'Shipped' },
-  CLOSED: { color: 'grey', icon: 'mdi-archive', label: 'Closed' },
-  CANCELLED: { color: 'error', icon: 'mdi-cancel', label: 'Cancelled' },
-  REJECTED: { color: 'error', icon: 'mdi-alert-circle', label: 'Rejected' },
+  RECEIVED: { color: 'blue-grey', icon: 'mdi-inbox' },
+  DISPATCHED: { color: 'blue', icon: 'mdi-send' },
+  IN_WIP: { color: 'info', icon: 'mdi-progress-clock' },
+  ON_HOLD: { color: 'warning', icon: 'mdi-pause-circle' },
+  COMPLETED: { color: 'success', icon: 'mdi-check-circle' },
+  SHIPPED: { color: 'purple', icon: 'mdi-truck-delivery' },
+  CLOSED: { color: 'grey', icon: 'mdi-archive' },
+  CANCELLED: { color: 'error', icon: 'mdi-cancel' },
+  REJECTED: { color: 'error', icon: 'mdi-alert-circle' },
   // Legacy statuses
-  ACTIVE: { color: 'info', icon: 'mdi-progress-clock', label: 'Active' }
+  ACTIVE: { color: 'info', icon: 'mdi-progress-clock' }
 }
 
 // Computed
@@ -173,10 +174,12 @@ const statusLabel = computed(() => getStatusLabel(currentStatus.value))
 const getStatusColor = (status) => STATUS_CONFIG[status]?.color || 'grey'
 const getStatusIcon = (status) => STATUS_CONFIG[status]?.icon || 'mdi-help-circle'
 const getStatusLabel = (status) => {
-  const key = `workflow.status.${status?.toLowerCase()}`
-  const translated = t(key)
-  // Return translated if different from key, otherwise use config or status
-  return translated !== key ? translated : (STATUS_CONFIG[status]?.label || status)
+  if (!status) return ''
+  // All known statuses have a workflow.status.<status> key (verified
+  // in en.json/es.json). If a future status is added without a key,
+  // vue-i18n returns the key string verbatim — that surfaces the gap
+  // visibly rather than masking it with a stale English fallback.
+  return t(`workflow.status.${status.toLowerCase()}`)
 }
 
 const fetchAllowedTransitions = async () => {
@@ -219,9 +222,7 @@ const confirmTransition = async () => {
     )
 
     currentStatus.value = pendingStatus.value
-    notificationStore.showSuccess(
-      t('workflow.transitionSuccess') || `Status changed to ${getStatusLabel(pendingStatus.value)}`
-    )
+    notificationStore.showSuccess(t('workflow.transitionSuccess'))
     emit('transitioned', {
       workOrderId: props.workOrderId,
       fromStatus: props.status,
@@ -233,7 +234,11 @@ const confirmTransition = async () => {
     await fetchAllowedTransitions()
   } catch (error) {
     console.error('Transition error:', error)
-    const message = error.response?.data?.detail || t('workflow.transitionError') || 'Failed to change status'
+    // Prefer backend-provided detail (server-side validation message
+    // surfaces the real reason); otherwise use the i18n fallback. The
+    // earlier `|| 'Failed to change status'` literal was unreachable
+    // since workflow.transitionError is always present in en/es.
+    const message = error.response?.data?.detail || t('workflow.transitionError')
     notificationStore.showError(message)
     emit('error', { error, pendingStatus: pendingStatus.value })
   } finally {

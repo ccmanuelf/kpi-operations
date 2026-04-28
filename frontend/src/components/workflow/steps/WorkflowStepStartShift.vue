@@ -143,11 +143,13 @@ const shiftDetails = ref({
   notes: ''
 })
 
-const shiftOptions = [
-  { title: 'Shift 1 (6:00 AM - 2:00 PM)', value: 1 },
-  { title: 'Shift 2 (2:00 PM - 10:00 PM)', value: 2 },
-  { title: 'Shift 3 (10:00 PM - 6:00 AM)', value: 3 }
-]
+// Wrapped in computed() so the option titles re-resolve on locale
+// switch (a static array would freeze them at component-mount time).
+const shiftOptions = computed(() => [
+  { title: t('shifts.shift1WithHours'), value: 1 },
+  { title: t('shifts.shift2WithHours'), value: 2 },
+  { title: t('shifts.shift3WithHours'), value: 3 }
+])
 
 // Computed
 const checklistItems = computed(() => [
