@@ -5,7 +5,7 @@ SECURITY: All operations enforce client-based access control
 """
 
 import logging
-from typing import List, Optional, Dict
+from typing import Any, List, Optional, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import and_
@@ -35,8 +35,14 @@ def create_part_opportunity(db: Session, part_data: dict, current_user: User) ->
     Raises:
         ClientAccessError: If user doesn't have access to part_data['client_id_fk']
     """
-    # Verify client access
-    verify_client_access(current_user, part_data.get("client_id_fk"))
+    # Verify client access. .get returns Optional[Any] but
+    # verify_client_access requires a real client_id string — surface a
+    # KeyError early when the caller forgot to set it rather than handing
+    # None into the access check.
+    client_id_fk = part_data.get("client_id_fk")
+    if not isinstance(client_id_fk, str) or not client_id_fk:
+        raise ValueError("part_data['client_id_fk'] is required")
+    verify_client_access(current_user, client_id_fk)
 
     db_part = PartOpportunities(**part_data)
     db.add(db_part)
@@ -166,7 +172,7 @@ def delete_part_opportunity(db: Session, part_number: str, current_user: User) -
     return soft_delete(db, part)
 
 
-def bulk_import_opportunities(db: Session, opportunities_list: List[dict], current_user: User) -> Dict[str, int]:
+def bulk_import_opportunities(db: Session, opportunities_list: List[dict], current_user: User) -> Dict[str, Any]:
     """
     Bulk import part opportunities (for CSV imports)
     SECURITY: Validates client_id_fk for all records before import
@@ -188,11 +194,20 @@ def bulk_import_opportunities(db: Session, opportunities_list: List[dict], curre
 
     for idx, part_data in enumerate(opportunities_list):
         try:
-            # Verify client access for each record
-            verify_client_access(current_user, part_data.get("client_id_fk"))
+            # Verify client access for each record. Both client_id_fk
+            # and part_number must be present strings — bail with a
+            # clear error otherwise rather than passing None deeper.
+            row_client_id = part_data.get("client_id_fk")
+            row_part_number = part_data.get("part_number")
+            if not isinstance(row_client_id, str) or not row_client_id:
+                raise ValueError("client_id_fk is required")
+            if not isinstance(row_part_number, str) or not row_part_number:
+                raise ValueError("part_number is required")
+
+            verify_client_access(current_user, row_client_id)
 
             # Check if part already exists (update vs create)
-            existing = get_part_opportunity(db, part_data.get("part_number"), current_user)
+            existing = get_part_opportunity(db, row_part_number, current_user)
             if existing:
                 # Update existing
                 for key, value in part_data.items():
