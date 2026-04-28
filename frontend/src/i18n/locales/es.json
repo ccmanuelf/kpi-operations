@@ -2497,6 +2497,7 @@
       "onTime": "A Tiempo",
       "evaluate": "Evaluar",
       "apply": "Aplicar",
+      "applyComingSoon": "Promover un escenario al cronograma activo estará disponible pronto.",
       "noScenariosTitle": "Sin Escenarios Creados",
       "noScenariosDescription": "Cree escenarios hipotéticos para evaluar diferentes opciones de planificación como tiempo extra, líneas adicionales u órdenes urgentes.",
       "createDialogTitle": "Crear Escenario Hipotético",

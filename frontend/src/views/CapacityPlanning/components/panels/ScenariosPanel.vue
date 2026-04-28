@@ -95,16 +95,31 @@
                 <v-icon start>mdi-play</v-icon>
                 {{ t('capacityPlanning.scenarios.evaluate') }}
               </v-btn>
-              <v-btn
+              <v-tooltip
                 v-if="scenario.status === 'EVALUATED'"
-                color="success"
-                size="small"
-                variant="tonal"
-                @click="applyScenario(scenario)"
+                :text="t('capacityPlanning.scenarios.applyComingSoon')"
+                location="top"
               >
-                <v-icon start>mdi-check</v-icon>
-                {{ t('capacityPlanning.scenarios.apply') }}
-              </v-btn>
+                <template #activator="{ props: tooltipProps }">
+                  <!--
+                    Apply Scenario is intentionally disabled — the
+                    backend service for promoting an evaluated scenario
+                    into the live schedule isn't implemented yet. The
+                    button stays visible (with a tooltip) so users
+                    know the action exists for evaluated scenarios.
+                  -->
+                  <v-btn
+                    v-bind="tooltipProps"
+                    color="success"
+                    size="small"
+                    variant="tonal"
+                    disabled
+                  >
+                    <v-icon start>mdi-check</v-icon>
+                    {{ t('capacityPlanning.scenarios.apply') }}
+                  </v-btn>
+                </template>
+              </v-tooltip>
               <v-spacer />
               <v-btn
                 color="error"
@@ -395,12 +410,6 @@ const runScenario = async (scenario) => {
     console.error('Failed to run scenario:', error)
     notificationStore.showError(error.message || 'Failed to run scenario')
   }
-}
-
-const applyScenario = (scenario) => {
-  // TODO: Apply scenario to main schedule
-  console.log('Applying scenario:', scenario)
-  notificationStore.showInfo('Apply scenario is not yet implemented')
 }
 
 const deleteScenario = async (scenario) => {

@@ -2453,6 +2453,7 @@
       "onTime": "On-Time",
       "evaluate": "Evaluate",
       "apply": "Apply",
+      "applyComingSoon": "Promoting a scenario to the live schedule is coming soon.",
       "noScenariosTitle": "No Scenarios Created",
       "noScenariosDescription": "Create what-if scenarios to evaluate different planning options like overtime, adding lines, or rush orders.",
       "createDialogTitle": "Create What-If Scenario",
