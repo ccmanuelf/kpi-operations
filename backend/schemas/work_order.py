@@ -48,7 +48,7 @@ class WorkOrderCreate(BaseModel):
     dispatch_date: Optional[datetime] = Field(None, description="When released/dispatched to shopfloor")
     shipped_date: Optional[datetime] = Field(None, description="When shipped to client")
     closure_date: Optional[datetime] = Field(None, description="When formally closed")
-    closed_by: Optional[int] = Field(None, description="User ID who closed the order")
+    closed_by: Optional[str] = Field(None, description="User ID who closed the order")
 
     # Legacy date fields (OTD calculation)
     planned_start_date: Optional[datetime] = None
@@ -102,7 +102,7 @@ class WorkOrderUpdate(BaseModel):
     dispatch_date: Optional[datetime] = None
     shipped_date: Optional[datetime] = None
     closure_date: Optional[datetime] = None
-    closed_by: Optional[int] = None
+    closed_by: Optional[str] = None
 
     # Legacy date fields
     planned_start_date: Optional[datetime] = None
@@ -156,7 +156,7 @@ class WorkOrderResponse(BaseModel):
     dispatch_date: Optional[datetime] = None
     shipped_date: Optional[datetime] = None
     closure_date: Optional[datetime] = None
-    closed_by: Optional[int] = None
+    closed_by: Optional[str] = None
 
     # Legacy date fields
     planned_start_date: Optional[datetime] = None

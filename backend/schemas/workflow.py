@@ -65,7 +65,7 @@ class WorkflowTransitionResponse(BaseModel):
     client_id: str
     from_status: Optional[str] = None
     to_status: str
-    transitioned_by: Optional[int] = None
+    transitioned_by: Optional[str] = None
     transitioned_at: datetime
     notes: Optional[str] = None
     trigger_source: Optional[str] = None

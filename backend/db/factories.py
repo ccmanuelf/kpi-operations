@@ -689,7 +689,7 @@ class TestDataFactory:
             work_order_id=work_order_id,
             from_status=from_status,
             to_status=to_status,
-            transitioned_by=None,  # Integer FK, leave as NULL for test
+            transitioned_by=transitioned_by,
             client_id=client_id,
             notes=kwargs.get("notes", "Test transition"),
             trigger_source=kwargs.get("trigger_source", "manual"),

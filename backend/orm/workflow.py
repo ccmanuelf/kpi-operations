@@ -46,7 +46,10 @@ class WorkflowTransitionLog(Base):
     # Transition details
     from_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # NULL for initial creation
     to_status: Mapped[str] = mapped_column(String(20), nullable=False)
-    transitioned_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("USER.user_id"), nullable=True)
+    # USER.user_id is String(50). The column was historically Integer
+    # which mismatched the FK target — no rows ever stored a meaningful
+    # int (verified zero rows in the live demo DB before migration).
+    transitioned_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=True)
     transitioned_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)
 
     # Optional context

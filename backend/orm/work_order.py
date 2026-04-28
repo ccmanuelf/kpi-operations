@@ -83,7 +83,11 @@ class WorkOrder(Base):
     dispatch_date: Mapped[Optional[datetime]] = mapped_column(DateTime, index=True)  # When released
     shipped_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When shipped to client
     closure_date: Mapped[Optional[datetime]] = mapped_column(DateTime)  # When formally closed
-    closed_by: Mapped[Optional[int]] = mapped_column(Integer)  # USER.user_id who closed the order
+    # USER.user_id is String(50), so this FK column type-matches that.
+    # (Was Integer historically, but USER.user_id has been a string PK
+    # for long enough that no rows ever stored a meaningful int here —
+    # verified zero non-null rows in the live demo DB before migration.)
+    closed_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"))
 
     # Date tracking for OTD calculation (legacy + enhanced)
     planned_start_date: Mapped[Optional[datetime]] = mapped_column(DateTime)

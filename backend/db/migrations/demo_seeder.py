@@ -6,6 +6,7 @@ Creates sample data for demonstration and testing purposes.
 
 Phase C.2: Added capacity planning demo data seeding.
 """
+
 from typing import Any, Callable, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, date, timezone
 from decimal import Decimal
@@ -38,6 +39,7 @@ def _hash_password(password: str) -> str:
     """
     # Use bcrypt from auth module for compatibility with login
     from backend.auth.jwt import get_password_hash
+
     return get_password_hash(password)
 
 
@@ -57,10 +59,7 @@ class DemoDataSeeder:
         self.session = session
         self._seeded_counts: Dict[str, int] = {}
 
-    def seed_all(
-        self,
-        progress_callback: Optional[Callable[[str], None]] = None
-    ) -> dict:
+    def seed_all(self, progress_callback: Optional[Callable[[str], None]] = None) -> dict:
         """Seed all demo data in correct order.
 
         Args:
@@ -284,15 +283,17 @@ class DemoDataSeeder:
         products = []
         for client in clients:
             for p in products_data:
-                products.append(Product(
-                    client_id=client.client_id,
-                    product_code=p["code"],
-                    product_name=p["name"],
-                    description=f"Standard {p['name']} for manufacturing operations",
-                    unit_of_measure=p["uom"],
-                    ideal_cycle_time=Decimal(str(p["cycle_time"])),
-                    is_active=True,
-                ))
+                products.append(
+                    Product(
+                        client_id=client.client_id,
+                        product_code=p["code"],
+                        product_name=p["name"],
+                        description=f"Standard {p['name']} for manufacturing operations",
+                        unit_of_measure=p["uom"],
+                        ideal_cycle_time=Decimal(str(p["cycle_time"])),
+                        is_active=True,
+                    )
+                )
         self.session.add_all(products)
         return len(products)
 
@@ -315,13 +316,15 @@ class DemoDataSeeder:
         shifts = []
         for client in clients:
             for name, start, end in shifts_data:
-                shifts.append(Shift(
-                    client_id=client.client_id,
-                    shift_name=name,
-                    start_time=start,
-                    end_time=end,
-                    is_active=True,
-                ))
+                shifts.append(
+                    Shift(
+                        client_id=client.client_id,
+                        shift_name=name,
+                        start_time=start,
+                        end_time=end,
+                        is_active=True,
+                    )
+                )
         self.session.add_all(shifts)
         return len(shifts)
 
@@ -340,15 +343,64 @@ class DemoDataSeeder:
         # Work orders matching product/style codes for integrated experience
         work_orders_data: List[Dict[str, Any]] = [
             # Active orders (IN_PROGRESS) - link to Capacity Orders
-            {"id": "WO-0001", "style": "TSHIRT-001", "qty": 500, "status": WorkOrderStatus.IN_PROGRESS, "days": 14, "priority": "HIGH"},
-            {"id": "WO-0002", "style": "POLO-001", "qty": 300, "status": WorkOrderStatus.IN_PROGRESS, "days": 21, "priority": "NORMAL"},
-            {"id": "WO-0003", "style": "JACKET-001", "qty": 150, "status": WorkOrderStatus.IN_PROGRESS, "days": 28, "priority": "HIGH"},
+            {
+                "id": "WO-0001",
+                "style": "TSHIRT-001",
+                "qty": 500,
+                "status": WorkOrderStatus.IN_PROGRESS,
+                "days": 14,
+                "priority": "HIGH",
+            },
+            {
+                "id": "WO-0002",
+                "style": "POLO-001",
+                "qty": 300,
+                "status": WorkOrderStatus.IN_PROGRESS,
+                "days": 21,
+                "priority": "NORMAL",
+            },
+            {
+                "id": "WO-0003",
+                "style": "JACKET-001",
+                "qty": 150,
+                "status": WorkOrderStatus.IN_PROGRESS,
+                "days": 28,
+                "priority": "HIGH",
+            },
             # Released orders (ready for production)
-            {"id": "WO-0004", "style": "TSHIRT-002", "qty": 750, "status": WorkOrderStatus.RELEASED, "days": 35, "priority": "NORMAL"},
-            {"id": "WO-0005", "style": "POLO-002", "qty": 400, "status": WorkOrderStatus.RELEASED, "days": 42, "priority": "LOW"},
+            {
+                "id": "WO-0004",
+                "style": "TSHIRT-002",
+                "qty": 750,
+                "status": WorkOrderStatus.RELEASED,
+                "days": 35,
+                "priority": "NORMAL",
+            },
+            {
+                "id": "WO-0005",
+                "style": "POLO-002",
+                "qty": 400,
+                "status": WorkOrderStatus.RELEASED,
+                "days": 42,
+                "priority": "LOW",
+            },
             # Received orders (awaiting release)
-            {"id": "WO-0006", "style": "TSHIRT-001", "qty": 1000, "status": WorkOrderStatus.RECEIVED, "days": 56, "priority": "NORMAL"},
-            {"id": "WO-0007", "style": "POLO-001", "qty": 600, "status": WorkOrderStatus.RECEIVED, "days": 63, "priority": "LOW"},
+            {
+                "id": "WO-0006",
+                "style": "TSHIRT-001",
+                "qty": 1000,
+                "status": WorkOrderStatus.RECEIVED,
+                "days": 56,
+                "priority": "NORMAL",
+            },
+            {
+                "id": "WO-0007",
+                "style": "POLO-001",
+                "qty": 600,
+                "status": WorkOrderStatus.RECEIVED,
+                "days": 63,
+                "priority": "LOW",
+            },
         ]
 
         work_orders = []
@@ -432,8 +484,12 @@ class DemoDataSeeder:
 
         wo_product_map = {
             "WO-0001": product_by_code.get("TSHIRT-001", client_products[0].product_id if client_products else 1),
-            "WO-0002": product_by_code.get("POLO-001", client_products[1].product_id if len(client_products) > 1 else 1),
-            "WO-0003": product_by_code.get("JACKET-001", client_products[2].product_id if len(client_products) > 2 else 1),
+            "WO-0002": product_by_code.get(
+                "POLO-001", client_products[1].product_id if len(client_products) > 1 else 1
+            ),
+            "WO-0003": product_by_code.get(
+                "JACKET-001", client_products[2].product_id if len(client_products) > 2 else 1
+            ),
         }
 
         entries = []
@@ -495,12 +551,14 @@ class DemoDataSeeder:
                 client_id="DEMO-001",
                 work_order_id=f"WO-000{wo_num}",
                 shift_date=entry_date,
-                downtime_reason=random.choice([
-                    "Equipment Maintenance",
-                    "Material Shortage",
-                    "Changeover",
-                    "Unplanned Breakdown",
-                ]),
+                downtime_reason=random.choice(
+                    [
+                        "Equipment Maintenance",
+                        "Material Shortage",
+                        "Changeover",
+                        "Unplanned Breakdown",
+                    ]
+                ),
                 downtime_duration_minutes=random.randint(15, 120),
                 machine_id=f"MACHINE-{random.randint(1, 5):02d}",
                 reported_by=1,  # Admin user
@@ -522,10 +580,7 @@ class DemoDataSeeder:
 
         # Look up DEMO-001's 1st shift
         client_id = "DEMO-001"
-        day_shift = self.session.query(Shift).filter(
-            Shift.client_id == client_id,
-            Shift.shift_name == "1st"
-        ).first()
+        day_shift = self.session.query(Shift).filter(Shift.client_id == client_id, Shift.shift_name == "1st").first()
         day_shift_id = day_shift.shift_id if day_shift else 1
 
         entries = []
@@ -710,19 +765,21 @@ class DemoDataSeeder:
                 available_from=today - timedelta(days=30),
                 available_to=None,  # Open-ended availability
                 current_assignment=None if emp_num == 10 else "DEMO-001",
-                notes=f"Floating pool employee {emp_num} - cross-trained for multiple operations"
+                notes=f"Floating pool employee {emp_num} - cross-trained for multiple operations",
             )
             entries.append(entry)
 
         # Add one entry with specific date range assignment
-        entries.append(FloatingPool(
-            employee_id=7,
-            client_id="TEST-001",
-            available_from=today - timedelta(days=14),
-            available_to=today + timedelta(days=14),
-            current_assignment="TEST-001",
-            notes="Temporary assignment to TEST-001 for capacity support"
-        ))
+        entries.append(
+            FloatingPool(
+                employee_id=7,
+                client_id="TEST-001",
+                available_from=today - timedelta(days=14),
+                available_to=today + timedelta(days=14),
+                current_assignment="TEST-001",
+                notes="Temporary assignment to TEST-001 for capacity support",
+            )
+        )
 
         self.session.add_all(entries)
         return len(entries)
@@ -737,10 +794,7 @@ class DemoDataSeeder:
 
         # Look up DEMO-001's shift IDs
         client_id = "DEMO-001"
-        client_shift_ids = [
-            s.shift_id for s in
-            self.session.query(Shift).filter(Shift.client_id == client_id).all()
-        ]
+        client_shift_ids = [s.shift_id for s in self.session.query(Shift).filter(Shift.client_id == client_id).all()]
         if not client_shift_ids:
             client_shift_ids = [1, 2, 3]  # Fallback
 
@@ -753,7 +807,7 @@ class DemoDataSeeder:
             "Absence - Personal Day",
             "Additional Support - High Volume",
             "Training Coverage",
-            "Vacation Coverage"
+            "Vacation Coverage",
         ]
 
         for day_offset in range(7):
@@ -765,7 +819,7 @@ class DemoDataSeeder:
                     coverage_entry_id=f"COV-{entry_date.strftime('%Y%m%d')}-{random.randint(1, 99):02d}",
                     client_id=client_id,
                     floating_employee_id=random.randint(8, 10),  # Floating pool employees
-                    covered_employee_id=random.randint(1, 5),    # Regular employees
+                    covered_employee_id=random.randint(1, 5),  # Regular employees
                     shift_date=entry_date,
                     shift_id=random.choice(client_shift_ids),
                     coverage_start_time=entry_date.replace(hour=6, minute=0),
@@ -773,7 +827,7 @@ class DemoDataSeeder:
                     coverage_hours=8,
                     coverage_reason=random.choice(coverage_reasons),
                     notes=f"Coverage record for {entry_date.strftime('%Y-%m-%d')}",
-                    assigned_by=1  # Admin user
+                    assigned_by=1,  # Admin user
                 )
                 entries.append(entry)
 
@@ -833,7 +887,10 @@ class DemoDataSeeder:
                     client_id="DEMO-001",
                     from_status=from_st if idx > 0 else None,
                     to_status=to_st,
-                    transitioned_by=random.randint(1, 3),  # User IDs 1-3
+                    # USER.user_id is String(50). Pick a real demo user
+                    # ID rather than a random int — random ints didn't
+                    # match any USER row, so the FK was dangling.
+                    transitioned_by=random.choice(["admin", "supervisor1", "operator1"]),
                     transitioned_at=transition_time,
                     notes=notes,
                     trigger_source=random.choice(["manual", "automatic", "bulk"]),
@@ -868,8 +925,8 @@ class DemoDataSeeder:
                     "work_order_id": "WO-0001",
                     "product_id": "PROD-001",
                     "quantity_ordered": 500,
-                    "priority": 3
-                }
+                    "priority": 3,
+                },
             },
             {
                 "event_type": "WorkOrderStatusChanged",
@@ -880,8 +937,8 @@ class DemoDataSeeder:
                     "work_order_id": "WO-0001",
                     "from_status": "RECEIVED",
                     "to_status": "RELEASED",
-                    "reason": "Materials ready"
-                }
+                    "reason": "Materials ready",
+                },
             },
             {
                 "event_type": "WorkOrderStatusChanged",
@@ -892,8 +949,8 @@ class DemoDataSeeder:
                     "work_order_id": "WO-0001",
                     "from_status": "RELEASED",
                     "to_status": "IN_PROGRESS",
-                    "reason": "Production started"
-                }
+                    "reason": "Production started",
+                },
             },
             # Production Events
             {
@@ -901,22 +958,14 @@ class DemoDataSeeder:
                 "aggregate_type": "ProductionEntry",
                 "aggregate_id": "PE-0001",
                 "days_ago": 6,
-                "payload": {
-                    "work_order_id": "WO-0001",
-                    "quantity_produced": 150,
-                    "shift_id": "SHIFT-1"
-                }
+                "payload": {"work_order_id": "WO-0001", "quantity_produced": 150, "shift_id": "SHIFT-1"},
             },
             {
                 "event_type": "ProductionEntryCreated",
                 "aggregate_type": "ProductionEntry",
                 "aggregate_id": "PE-0002",
                 "days_ago": 5,
-                "payload": {
-                    "work_order_id": "WO-0001",
-                    "quantity_produced": 175,
-                    "shift_id": "SHIFT-2"
-                }
+                "payload": {"work_order_id": "WO-0001", "quantity_produced": 175, "shift_id": "SHIFT-2"},
             },
             # Quality Events
             {
@@ -929,8 +978,8 @@ class DemoDataSeeder:
                     "quantity_inspected": 100,
                     "quantity_passed": 98,
                     "quantity_failed": 2,
-                    "ppm": 20000
-                }
+                    "ppm": 20000,
+                },
             },
             # Hold Events
             {
@@ -941,19 +990,15 @@ class DemoDataSeeder:
                 "payload": {
                     "work_order_id": "WO-0003",
                     "quantity_on_hold": 50,
-                    "hold_reason": "Quality inspection required"
-                }
+                    "hold_reason": "Quality inspection required",
+                },
             },
             {
                 "event_type": "HoldResumed",
                 "aggregate_type": "HoldEntry",
                 "aggregate_id": "HE-0002",
                 "days_ago": 1,
-                "payload": {
-                    "work_order_id": "WO-0002",
-                    "quantity_released": 25,
-                    "resolution": "Rework completed"
-                }
+                "payload": {"work_order_id": "WO-0002", "quantity_released": 25, "resolution": "Rework completed"},
             },
             # KPI Events
             {
@@ -966,20 +1011,15 @@ class DemoDataSeeder:
                     "threshold": 85.0,
                     "actual_value": 78.5,
                     "shift_id": "SHIFT-1",
-                    "severity": "warning"
-                }
+                    "severity": "warning",
+                },
             },
             {
                 "event_type": "KPITargetAchieved",
                 "aggregate_type": "KPIAlert",
                 "aggregate_id": "KPI-QUAL-001",
                 "days_ago": 1,
-                "payload": {
-                    "kpi_type": "first_pass_yield",
-                    "target": 95.0,
-                    "actual_value": 97.2,
-                    "celebration": True
-                }
+                "payload": {"kpi_type": "first_pass_yield", "target": 95.0, "actual_value": 97.2, "celebration": True},
             },
             # Employee Assignment Events
             {
@@ -990,8 +1030,8 @@ class DemoDataSeeder:
                 "payload": {
                     "employee_id": "EMP-008",
                     "skills": ["assembly", "inspection", "packaging"],
-                    "availability": "full_time"
-                }
+                    "availability": "full_time",
+                },
             },
             {
                 "event_type": "EmployeeAssignedToClient",
@@ -1002,8 +1042,8 @@ class DemoDataSeeder:
                     "employee_id": "EMP-008",
                     "client_id": "DEMO-001",
                     "assignment_type": "temporary",
-                    "duration_days": 14
-                }
+                    "duration_days": 14,
+                },
             },
         ]
 
@@ -1018,7 +1058,7 @@ class DemoDataSeeder:
                 client_id="DEMO-001",
                 triggered_by=random.randint(1, 3),
                 occurred_at=event_time,
-                payload=event_data["payload"]
+                payload=event_data["payload"],
             )
             entries.append(entry)
 
@@ -1083,7 +1123,7 @@ class DemoDataSeeder:
                 shift1_hours=8.0 if is_working else 0,
                 shift2_hours=8.0 if is_working else 0,
                 shift3_hours=0,
-                holiday_name=holiday_name if holiday_name else ("Weekend" if is_weekend else None)
+                holiday_name=holiday_name if holiday_name else ("Weekend" if is_weekend else None),
             )
             calendar_entries.append(entry)
         self.session.add_all(calendar_entries)
@@ -1106,7 +1146,7 @@ class DemoDataSeeder:
                 max_operators=line["ops"],
                 efficiency_factor=0.85,
                 absenteeism_factor=0.05,
-                is_active=True
+                is_active=True,
             )
             line_entries.append(line_entry)
         self.session.add_all(line_entries)
@@ -1116,40 +1156,89 @@ class DemoDataSeeder:
         # This creates a direct link between operational execution and capacity planning
         orders_data: List[Dict[str, Any]] = [
             # LINKED to WO-0001 (TSHIRT-001, IN_PROGRESS)
-            {"num": "CPL-WO-0001", "cust": "Demo Manufacturing Co", "style": "TSHIRT-001",
-             "qty": 500, "days": 14, "priority": OrderPriority.HIGH, "status": OrderStatus.IN_PROGRESS,
-             "notes": "Linked to Work Order WO-0001"},
-
+            {
+                "num": "CPL-WO-0001",
+                "cust": "Demo Manufacturing Co",
+                "style": "TSHIRT-001",
+                "qty": 500,
+                "days": 14,
+                "priority": OrderPriority.HIGH,
+                "status": OrderStatus.IN_PROGRESS,
+                "notes": "Linked to Work Order WO-0001",
+            },
             # LINKED to WO-0002 (POLO-001, IN_PROGRESS)
-            {"num": "CPL-WO-0002", "cust": "Demo Manufacturing Co", "style": "POLO-001",
-             "qty": 300, "days": 21, "priority": OrderPriority.NORMAL, "status": OrderStatus.IN_PROGRESS,
-             "notes": "Linked to Work Order WO-0002"},
-
+            {
+                "num": "CPL-WO-0002",
+                "cust": "Demo Manufacturing Co",
+                "style": "POLO-001",
+                "qty": 300,
+                "days": 21,
+                "priority": OrderPriority.NORMAL,
+                "status": OrderStatus.IN_PROGRESS,
+                "notes": "Linked to Work Order WO-0002",
+            },
             # LINKED to WO-0003 (JACKET-001, IN_PROGRESS)
-            {"num": "CPL-WO-0003", "cust": "Demo Manufacturing Co", "style": "JACKET-001",
-             "qty": 150, "days": 28, "priority": OrderPriority.HIGH, "status": OrderStatus.IN_PROGRESS,
-             "notes": "Linked to Work Order WO-0003"},
-
+            {
+                "num": "CPL-WO-0003",
+                "cust": "Demo Manufacturing Co",
+                "style": "JACKET-001",
+                "qty": 150,
+                "days": 28,
+                "priority": OrderPriority.HIGH,
+                "status": OrderStatus.IN_PROGRESS,
+                "notes": "Linked to Work Order WO-0003",
+            },
             # Additional capacity planning orders (future orders for planning)
-            {"num": "CPL-2024-001", "cust": "ABC Corp", "style": "TSHIRT-001",
-             "qty": 5000, "days": 35, "priority": OrderPriority.HIGH, "status": OrderStatus.CONFIRMED,
-             "notes": "Large batch for Q2"},
-
-            {"num": "CPL-2024-002", "cust": "XYZ Inc", "style": "POLO-001",
-             "qty": 3000, "days": 42, "priority": OrderPriority.NORMAL, "status": OrderStatus.CONFIRMED,
-             "notes": "Standard seasonal order"},
-
-            {"num": "CPL-2024-003", "cust": "Fashion Co", "style": "TSHIRT-002",
-             "qty": 2000, "days": 49, "priority": OrderPriority.NORMAL, "status": OrderStatus.CONFIRMED,
-             "notes": "Premium line expansion"},
-
-            {"num": "CPL-2024-004", "cust": "Style Ltd", "style": "JACKET-001",
-             "qty": 1000, "days": 56, "priority": OrderPriority.LOW, "status": OrderStatus.DRAFT,
-             "notes": "Winter collection - pending confirmation"},
-
-            {"num": "CPL-2024-005", "cust": "Retail Plus", "style": "POLO-002",
-             "qty": 4000, "days": 63, "priority": OrderPriority.LOW, "status": OrderStatus.DRAFT,
-             "notes": "Performance line - pending quote"},
+            {
+                "num": "CPL-2024-001",
+                "cust": "ABC Corp",
+                "style": "TSHIRT-001",
+                "qty": 5000,
+                "days": 35,
+                "priority": OrderPriority.HIGH,
+                "status": OrderStatus.CONFIRMED,
+                "notes": "Large batch for Q2",
+            },
+            {
+                "num": "CPL-2024-002",
+                "cust": "XYZ Inc",
+                "style": "POLO-001",
+                "qty": 3000,
+                "days": 42,
+                "priority": OrderPriority.NORMAL,
+                "status": OrderStatus.CONFIRMED,
+                "notes": "Standard seasonal order",
+            },
+            {
+                "num": "CPL-2024-003",
+                "cust": "Fashion Co",
+                "style": "TSHIRT-002",
+                "qty": 2000,
+                "days": 49,
+                "priority": OrderPriority.NORMAL,
+                "status": OrderStatus.CONFIRMED,
+                "notes": "Premium line expansion",
+            },
+            {
+                "num": "CPL-2024-004",
+                "cust": "Style Ltd",
+                "style": "JACKET-001",
+                "qty": 1000,
+                "days": 56,
+                "priority": OrderPriority.LOW,
+                "status": OrderStatus.DRAFT,
+                "notes": "Winter collection - pending confirmation",
+            },
+            {
+                "num": "CPL-2024-005",
+                "cust": "Retail Plus",
+                "style": "POLO-002",
+                "qty": 4000,
+                "days": 63,
+                "priority": OrderPriority.LOW,
+                "status": OrderStatus.DRAFT,
+                "notes": "Performance line - pending quote",
+            },
         ]
         order_entries = []
         for order in orders_data:
@@ -1163,7 +1252,7 @@ class DemoDataSeeder:
                 required_date=today + timedelta(days=order["days"]),
                 priority=order["priority"],
                 status=order["status"],
-                notes=order.get("notes")
+                notes=order.get("notes"),
             )
             order_entries.append(order_entry)
         self.session.add_all(order_entries)
@@ -1175,22 +1264,18 @@ class DemoDataSeeder:
             {"style": "TSHIRT-001", "op": "CUT", "dept": "CUTTING", "sam": 0.5, "name": "CUT - Cutting"},
             {"style": "TSHIRT-001", "op": "SEW", "dept": "SEWING", "sam": 8.0, "name": "SEW - Sewing"},
             {"style": "TSHIRT-001", "op": "FIN", "dept": "FINISHING", "sam": 2.0, "name": "FIN - Finishing"},
-
             # POLO-001 (Classic Polo Shirt) - matches Product & WO-0002
             {"style": "POLO-001", "op": "CUT", "dept": "CUTTING", "sam": 0.6, "name": "CUT - Cutting"},
             {"style": "POLO-001", "op": "SEW", "dept": "SEWING", "sam": 12.0, "name": "SEW - Sewing"},
             {"style": "POLO-001", "op": "FIN", "dept": "FINISHING", "sam": 3.0, "name": "FIN - Finishing"},
-
             # JACKET-001 (Lightweight Jacket) - matches Product & WO-0003
             {"style": "JACKET-001", "op": "CUT", "dept": "CUTTING", "sam": 1.2, "name": "CUT - Cutting"},
             {"style": "JACKET-001", "op": "SEW", "dept": "SEWING", "sam": 25.0, "name": "SEW - Sewing"},
             {"style": "JACKET-001", "op": "FIN", "dept": "FINISHING", "sam": 5.0, "name": "FIN - Finishing"},
-
             # TSHIRT-002 (Premium T-Shirt) - matches Product & WO-0004
             {"style": "TSHIRT-002", "op": "CUT", "dept": "CUTTING", "sam": 0.6, "name": "CUT - Cutting"},
             {"style": "TSHIRT-002", "op": "SEW", "dept": "SEWING", "sam": 10.0, "name": "SEW - Sewing"},
             {"style": "TSHIRT-002", "op": "FIN", "dept": "FINISHING", "sam": 2.5, "name": "FIN - Finishing"},
-
             # POLO-002 (Performance Polo) - matches Product & WO-0005
             {"style": "POLO-002", "op": "CUT", "dept": "CUTTING", "sam": 0.7, "name": "CUT - Cutting"},
             {"style": "POLO-002", "op": "SEW", "dept": "SEWING", "sam": 14.0, "name": "SEW - Sewing"},
@@ -1204,7 +1289,7 @@ class DemoDataSeeder:
                 operation_code=std["op"],
                 operation_name=std["name"],
                 department=std["dept"],
-                sam_minutes=std["sam"]
+                sam_minutes=std["sam"],
             )
             standard_entries.append(std_entry)
         self.session.add_all(standard_entries)
@@ -1217,60 +1302,214 @@ class DemoDataSeeder:
                 "item": "TSHIRT-001",
                 "desc": "Basic T-Shirt",
                 "components": [
-                    {"code": "FABRIC-JERSEY", "desc": "Jersey Fabric", "qty": 0.5, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {
+                        "code": "FABRIC-JERSEY",
+                        "desc": "Jersey Fabric",
+                        "qty": 0.5,
+                        "uom": "M",
+                        "waste": 5,
+                        "type": "FABRIC",
+                    },
                     {"code": "THREAD-WHT", "desc": "White Thread", "qty": 50, "uom": "M", "waste": 2, "type": "TRIM"},
-                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                ]
+                    {
+                        "code": "LABEL-CARE",
+                        "desc": "Care Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-BRAND",
+                        "desc": "Brand Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                ],
             },
             {
                 "item": "POLO-001",
                 "desc": "Classic Polo Shirt",
                 "components": [
-                    {"code": "FABRIC-PIQUE", "desc": "Pique Fabric", "qty": 0.6, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {
+                        "code": "FABRIC-PIQUE",
+                        "desc": "Pique Fabric",
+                        "qty": 0.6,
+                        "uom": "M",
+                        "waste": 5,
+                        "type": "FABRIC",
+                    },
                     {"code": "THREAD-WHT", "desc": "White Thread", "qty": 75, "uom": "M", "waste": 2, "type": "TRIM"},
-                    {"code": "BUTTON-SM", "desc": "Small Button", "qty": 3, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
-                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {
+                        "code": "BUTTON-SM",
+                        "desc": "Small Button",
+                        "qty": 3,
+                        "uom": "EA",
+                        "waste": 1,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-CARE",
+                        "desc": "Care Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-BRAND",
+                        "desc": "Brand Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
                     {"code": "COLLAR-RIB", "desc": "Ribbed Collar", "qty": 1, "uom": "EA", "waste": 2, "type": "TRIM"},
-                ]
+                ],
             },
             {
                 "item": "JACKET-001",
                 "desc": "Lightweight Jacket",
                 "components": [
-                    {"code": "FABRIC-TWILL", "desc": "Twill Fabric", "qty": 1.5, "uom": "M", "waste": 8, "type": "FABRIC"},
-                    {"code": "FABRIC-LINING", "desc": "Lining Fabric", "qty": 1.2, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {
+                        "code": "FABRIC-TWILL",
+                        "desc": "Twill Fabric",
+                        "qty": 1.5,
+                        "uom": "M",
+                        "waste": 8,
+                        "type": "FABRIC",
+                    },
+                    {
+                        "code": "FABRIC-LINING",
+                        "desc": "Lining Fabric",
+                        "qty": 1.2,
+                        "uom": "M",
+                        "waste": 5,
+                        "type": "FABRIC",
+                    },
                     {"code": "THREAD-BLK", "desc": "Black Thread", "qty": 100, "uom": "M", "waste": 2, "type": "TRIM"},
-                    {"code": "ZIPPER-LG", "desc": "Large Zipper", "qty": 1, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
-                    {"code": "BUTTON-LG", "desc": "Large Button", "qty": 6, "uom": "EA", "waste": 2, "type": "ACCESSORY"},
-                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                ]
+                    {
+                        "code": "ZIPPER-LG",
+                        "desc": "Large Zipper",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 1,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "BUTTON-LG",
+                        "desc": "Large Button",
+                        "qty": 6,
+                        "uom": "EA",
+                        "waste": 2,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-CARE",
+                        "desc": "Care Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-BRAND",
+                        "desc": "Brand Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                ],
             },
             {
                 "item": "TSHIRT-002",
                 "desc": "Premium T-Shirt",
                 "components": [
-                    {"code": "FABRIC-PREMIUM", "desc": "Premium Cotton", "qty": 0.55, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {
+                        "code": "FABRIC-PREMIUM",
+                        "desc": "Premium Cotton",
+                        "qty": 0.55,
+                        "uom": "M",
+                        "waste": 5,
+                        "type": "FABRIC",
+                    },
                     {"code": "THREAD-WHT", "desc": "White Thread", "qty": 60, "uom": "M", "waste": 2, "type": "TRIM"},
-                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                    {"code": "LABEL-PREMIUM", "desc": "Premium Quality Tag", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                ]
+                    {
+                        "code": "LABEL-CARE",
+                        "desc": "Care Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-BRAND",
+                        "desc": "Brand Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-PREMIUM",
+                        "desc": "Premium Quality Tag",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                ],
             },
             {
                 "item": "POLO-002",
                 "desc": "Performance Polo",
                 "components": [
-                    {"code": "FABRIC-PERF", "desc": "Performance Fabric", "qty": 0.65, "uom": "M", "waste": 5, "type": "FABRIC"},
+                    {
+                        "code": "FABRIC-PERF",
+                        "desc": "Performance Fabric",
+                        "qty": 0.65,
+                        "uom": "M",
+                        "waste": 5,
+                        "type": "FABRIC",
+                    },
                     {"code": "THREAD-WHT", "desc": "White Thread", "qty": 80, "uom": "M", "waste": 2, "type": "TRIM"},
-                    {"code": "BUTTON-SM", "desc": "Small Button", "qty": 3, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
-                    {"code": "LABEL-CARE", "desc": "Care Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
-                    {"code": "LABEL-BRAND", "desc": "Brand Label", "qty": 1, "uom": "EA", "waste": 0, "type": "ACCESSORY"},
+                    {
+                        "code": "BUTTON-SM",
+                        "desc": "Small Button",
+                        "qty": 3,
+                        "uom": "EA",
+                        "waste": 1,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-CARE",
+                        "desc": "Care Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
+                    {
+                        "code": "LABEL-BRAND",
+                        "desc": "Brand Label",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 0,
+                        "type": "ACCESSORY",
+                    },
                     {"code": "COLLAR-TECH", "desc": "Tech Collar", "qty": 1, "uom": "EA", "waste": 2, "type": "TRIM"},
-                    {"code": "ZIPPER-SM", "desc": "Small Zipper", "qty": 1, "uom": "EA", "waste": 1, "type": "ACCESSORY"},
-                ]
+                    {
+                        "code": "ZIPPER-SM",
+                        "desc": "Small Zipper",
+                        "qty": 1,
+                        "uom": "EA",
+                        "waste": 1,
+                        "type": "ACCESSORY",
+                    },
+                ],
             },
         ]
 
@@ -1282,7 +1521,7 @@ class DemoDataSeeder:
                 parent_item_description=bom["desc"],
                 style_model=bom["item"],
                 revision="1.0",
-                is_active=True
+                is_active=True,
             )
             self.session.add(header)
             self.session.flush()
@@ -1296,7 +1535,7 @@ class DemoDataSeeder:
                     quantity_per=Decimal(str(comp["qty"])),
                     unit_of_measure=comp["uom"],
                     waste_percentage=Decimal(str(comp["waste"])),
-                    component_type=comp["type"]
+                    component_type=comp["type"],
                 )
                 self.session.add(detail)
                 bom_count += 1
@@ -1311,24 +1550,19 @@ class DemoDataSeeder:
             {"code": "FABRIC-LINING", "desc": "Lining Fabric", "oh": 2500, "uom": "M"},
             {"code": "FABRIC-PREMIUM", "desc": "Premium Cotton", "oh": 1500, "uom": "M"},  # LOW for shortage demo
             {"code": "FABRIC-PERF", "desc": "Performance Fabric", "oh": 800, "uom": "M"},  # LOW for shortage demo
-
             # Threads
             {"code": "THREAD-WHT", "desc": "White Thread", "oh": 500000, "uom": "M"},
             {"code": "THREAD-BLK", "desc": "Black Thread", "oh": 300000, "uom": "M"},
-
             # Buttons
             {"code": "BUTTON-SM", "desc": "Small Button", "oh": 50000, "uom": "EA"},
             {"code": "BUTTON-LG", "desc": "Large Button", "oh": 20000, "uom": "EA"},
-
             # Zippers
             {"code": "ZIPPER-LG", "desc": "Large Zipper", "oh": 5000, "uom": "EA"},
             {"code": "ZIPPER-SM", "desc": "Small Zipper", "oh": 3000, "uom": "EA"},
-
             # Labels
             {"code": "LABEL-CARE", "desc": "Care Label", "oh": 100000, "uom": "EA"},
             {"code": "LABEL-BRAND", "desc": "Brand Label", "oh": 80000, "uom": "EA"},
             {"code": "LABEL-PREMIUM", "desc": "Premium Quality Tag", "oh": 500, "uom": "EA"},  # LOW for shortage demo
-
             # Collars
             {"code": "COLLAR-RIB", "desc": "Ribbed Collar", "oh": 15000, "uom": "EA"},
             {"code": "COLLAR-TECH", "desc": "Tech Collar", "oh": 2000, "uom": "EA"},  # LOW for shortage demo
@@ -1345,19 +1579,20 @@ class DemoDataSeeder:
                 allocated_quantity=Decimal("0"),
                 on_order_quantity=Decimal("0"),
                 available_quantity=Decimal(str(item["oh"])),
-                unit_of_measure=item["uom"]
+                unit_of_measure=item["uom"],
             )
             stock_entries.append(stock_entry)
         self.session.add_all(stock_entries)
 
         # Calculate total entries seeded
         total_entries = (
-            len(calendar_entries) +
-            len(line_entries) +
-            len(order_entries) +
-            len(standard_entries) +
-            len(boms_data) + bom_count +  # Headers + Details
-            len(stock_entries)
+            len(calendar_entries)
+            + len(line_entries)
+            + len(order_entries)
+            + len(standard_entries)
+            + len(boms_data)
+            + bom_count  # Headers + Details
+            + len(stock_entries)
         )
 
         logger.info(f"Capacity planning demo data seeded: {total_entries} records")
@@ -1381,16 +1616,8 @@ class DemoDataSeeder:
 
         linked_count = 0
         for wo_id, cap_order_num in links:
-            work_order = (
-                self.session.query(WorkOrder)
-                .filter(WorkOrder.work_order_id == wo_id)
-                .first()
-            )
-            cap_order = (
-                self.session.query(CapacityOrder)
-                .filter(CapacityOrder.order_number == cap_order_num)
-                .first()
-            )
+            work_order = self.session.query(WorkOrder).filter(WorkOrder.work_order_id == wo_id).first()
+            cap_order = self.session.query(CapacityOrder).filter(CapacityOrder.order_number == cap_order_num).first()
             if work_order and cap_order:
                 work_order.capacity_order_id = cap_order.id
                 work_order.origin = "PLANNED"
@@ -1417,10 +1644,16 @@ class DemoDataSeeder:
             ("RELEASED", "Released", 4),
             ("ESCALATED", "Escalated", 5),
         ]:
-            self.session.add(HoldStatusCatalog(
-                client_id=client_id, status_code=code,
-                display_name=name, is_default=True, is_active=True, sort_order=order,
-            ))
+            self.session.add(
+                HoldStatusCatalog(
+                    client_id=client_id,
+                    status_code=code,
+                    display_name=name,
+                    is_default=True,
+                    is_active=True,
+                    sort_order=order,
+                )
+            )
             count += 1
 
         for code, name, order in [
@@ -1431,10 +1664,16 @@ class DemoDataSeeder:
             ("DESIGN_CHANGE", "Design Change", 5),
             ("CAPACITY_CONSTRAINT", "Capacity Constraint", 6),
         ]:
-            self.session.add(HoldReasonCatalog(
-                client_id=client_id, reason_code=code,
-                display_name=name, is_default=True, is_active=True, sort_order=order,
-            ))
+            self.session.add(
+                HoldReasonCatalog(
+                    client_id=client_id,
+                    reason_code=code,
+                    display_name=name,
+                    is_default=True,
+                    is_active=True,
+                    sort_order=order,
+                )
+            )
             count += 1
 
         return count
@@ -1447,16 +1686,28 @@ class DemoDataSeeder:
         count = 0
         shifts = self.session.query(Shift).all()
         for s in shifts:
-            self.session.add(BreakTime(
-                shift_id=s.shift_id, client_id=s.client_id,
-                break_name="Morning Break", start_offset_minutes=120,
-                duration_minutes=15, applies_to="ALL", is_active=True,
-            ))
-            self.session.add(BreakTime(
-                shift_id=s.shift_id, client_id=s.client_id,
-                break_name="Lunch Break", start_offset_minutes=240,
-                duration_minutes=30, applies_to="ALL", is_active=True,
-            ))
+            self.session.add(
+                BreakTime(
+                    shift_id=s.shift_id,
+                    client_id=s.client_id,
+                    break_name="Morning Break",
+                    start_offset_minutes=120,
+                    duration_minutes=15,
+                    applies_to="ALL",
+                    is_active=True,
+                )
+            )
+            self.session.add(
+                BreakTime(
+                    shift_id=s.shift_id,
+                    client_id=s.client_id,
+                    break_name="Lunch Break",
+                    start_offset_minutes=240,
+                    duration_minutes=30,
+                    applies_to="ALL",
+                    is_active=True,
+                )
+            )
             count += 2
         return count
 
@@ -1488,9 +1739,12 @@ class DemoDataSeeder:
         sew_line_id = None
         for i, (dept_code, dept_name, line_type) in enumerate(departments, 1):
             line = ProductionLine(
-                client_id=client_id, line_code=f"{dept_code}-DEMO-{i:02d}",
-                line_name=f"{dept_name} Line {i}", department=dept_name.upper(),
-                line_type=line_type, max_operators=8 if line_type == "DEDICATED" else 4,
+                client_id=client_id,
+                line_code=f"{dept_code}-DEMO-{i:02d}",
+                line_name=f"{dept_name} Line {i}",
+                department=dept_name.upper(),
+                line_type=line_type,
+                max_operators=8 if line_type == "DEDICATED" else 4,
                 is_active=True,
             )
             self.session.add(line)
@@ -1501,28 +1755,33 @@ class DemoDataSeeder:
                 sew_line_id = line.line_id
 
             for j, (eq_name, eq_type) in enumerate(eq_types.get(dept_code, []), 1):
-                self.session.add(Equipment(
-                    client_id=client_id, line_id=line.line_id,
-                    equipment_code=f"EQ-DEMO-{dept_code}-{j:02d}",
-                    equipment_name=eq_name, equipment_type=eq_type,
-                    status="ACTIVE", is_active=True,
-                ))
+                self.session.add(
+                    Equipment(
+                        client_id=client_id,
+                        line_id=line.line_id,
+                        equipment_code=f"EQ-DEMO-{dept_code}-{j:02d}",
+                        equipment_name=eq_name,
+                        equipment_type=eq_type,
+                        status="ACTIVE",
+                        is_active=True,
+                    )
+                )
                 count += 1
 
         # Employee-line assignments (first 5 employees to sewing line)
         if sew_line_id:
-            emps = (
-                self.session.query(Employee)
-                .filter(Employee.client_id_assigned == client_id)
-                .limit(5)
-                .all()
-            )
+            emps = self.session.query(Employee).filter(Employee.client_id_assigned == client_id).limit(5).all()
             for emp in emps:
-                self.session.add(EmployeeLineAssignment(
-                    employee_id=emp.employee_id, line_id=sew_line_id,
-                    client_id=client_id, allocation_percentage=100,
-                    is_primary=True, effective_date=date(2026, 1, 1),
-                ))
+                self.session.add(
+                    EmployeeLineAssignment(
+                        employee_id=emp.employee_id,
+                        line_id=sew_line_id,
+                        client_id=client_id,
+                        allocation_percentage=100,
+                        is_primary=True,
+                        effective_date=date(2026, 1, 1),
+                    )
+                )
                 count += 1
 
         return count

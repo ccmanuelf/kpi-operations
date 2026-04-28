@@ -307,7 +307,7 @@ def execute_transition(
     db: Session,
     work_order: WorkOrder,
     to_status: str,
-    user_id: Optional[int] = None,
+    user_id: Optional[str] = None,
     notes: Optional[str] = None,
     trigger_source: str = "manual",
 ) -> Tuple[WorkOrder, WorkflowTransitionLog]:
@@ -416,7 +416,7 @@ def bulk_transition(
     work_order_ids: List[str],
     to_status: str,
     client_id: str,
-    user_id: Optional[int] = None,
+    user_id: Optional[str] = None,
     notes: Optional[str] = None,
 ) -> Dict:
     """
