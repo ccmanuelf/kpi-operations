@@ -151,7 +151,7 @@ async def upload_defect_types_csv(
     SOLDER_DEF,Solder Defect,Issues with solder joints,Assembly,MAJOR,IPC-5.2,1
     COMP_MISS,Component Missing,Missing component on PCB,Assembly,CRITICAL,,2
     """
-    if not file.filename.endswith(".csv"):
+    if not file.filename or not file.filename.endswith(".csv"):
         raise HTTPException(status_code=400, detail="File must be a CSV")
 
     try:

@@ -416,6 +416,11 @@ class CapacityAnalysisService:
                 demand_by_line[detail.line_id] = {"hours": Decimal("0"), "units": 0}
 
             units = detail.scheduled_quantity or 0
+            # detail.style_model is Mapped[Optional[str]]; sam_by_style
+            # keyed on str. Skip rows without a style code rather than
+            # passing None into .get.
+            if not detail.style_model:
+                continue
             sam_minutes = sam_by_style.get(detail.style_model, Decimal("0"))
             hours = (Decimal(str(units)) * sam_minutes) / Decimal("60")
 

@@ -22,6 +22,7 @@ Write access control:
 """
 
 from fastapi import APIRouter, Depends
+from fastapi.routing import APIRoute
 
 from backend.middleware.write_access import require_capacity_write
 
@@ -57,6 +58,9 @@ _write_methods = {"POST", "PUT", "PATCH", "DELETE"}
 _cap_write_dep = Depends(require_capacity_write)
 
 for route in router.routes:
-    if hasattr(route, "methods") and route.methods & _write_methods:
+    # Only APIRoute instances expose `methods` and `dependencies`;
+    # mypy widens `router.routes` to `Sequence[BaseRoute]` so cast
+    # via isinstance to keep the attribute access checked.
+    if isinstance(route, APIRoute) and route.methods & _write_methods:
         if _cap_write_dep not in route.dependencies:
             route.dependencies.append(_cap_write_dep)

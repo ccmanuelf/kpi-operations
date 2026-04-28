@@ -324,8 +324,9 @@ class KPIIntegrationService:
             .first()
         )
 
-        total_orders = int(otd_result.total_orders or 0)
-        on_time_orders = int(otd_result.on_time_orders or 0)
+        # otd_result is Optional[Row] (None when zero orders match).
+        total_orders = int(otd_result.total_orders or 0) if otd_result is not None else 0
+        on_time_orders = int(otd_result.on_time_orders or 0) if otd_result is not None else 0
         otd_rate = (on_time_orders / total_orders * 100) if total_orders > 0 else 0.0
 
         # Calculate OEE = Availability * Performance * Quality (simplified)

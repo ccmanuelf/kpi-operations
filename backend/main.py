@@ -11,6 +11,7 @@ API Versioning:
 """
 
 from contextlib import asynccontextmanager
+from typing import Any, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -100,11 +101,18 @@ from backend.exceptions.domain_exceptions import (
 
 _logger = logging.getLogger(__name__)
 
-# Optional scheduler import for lifecycle events
+# Optional scheduler import for lifecycle events. Typed as Optional[Any]
+# because the apscheduler-backed scheduler is import-shielded — the
+# type can't be resolved when apscheduler isn't installed (e.g. in
+# slim test images), and the only call sites (`.start()` / `.stop()`)
+# already guard with `if report_scheduler is not None`.
+report_scheduler: Optional[Any] = None
 try:
-    from backend.tasks.daily_reports import scheduler as report_scheduler
+    from backend.tasks.daily_reports import scheduler as _imported_scheduler
+
+    report_scheduler = _imported_scheduler
 except ImportError:
-    report_scheduler = None
+    pass
 
 
 # ============================================================================

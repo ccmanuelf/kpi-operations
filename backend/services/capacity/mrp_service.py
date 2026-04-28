@@ -255,6 +255,11 @@ class MRPService:
             .all()
         )
 
+        # ComponentCheck.status is Mapped[Optional[ComponentStatus]] in
+        # the ORM but ComponentCheckResult.status is required. Default
+        # missing rows to OK rather than passing None into the dataclass.
+        # Same for order_number — Optional[str] but the result requires
+        # a list of non-None strings.
         return [
             ComponentCheckResult(
                 component_item_code=c.component_item_code,
@@ -262,8 +267,8 @@ class MRPService:
                 required_quantity=Decimal(str(c.required_quantity)),
                 available_quantity=Decimal(str(c.available_quantity)),
                 shortage_quantity=Decimal(str(c.shortage_quantity)),
-                status=c.status,
-                affected_orders=[c.order_number],
+                status=c.status if c.status is not None else ComponentStatus.OK,
+                affected_orders=[c.order_number] if c.order_number else [],
             )
             for c in checks
         ]

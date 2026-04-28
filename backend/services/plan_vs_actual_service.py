@@ -150,8 +150,12 @@ def _build_plan_vs_actual_entry(
         "order_number": cap_order.order_number,
         "customer_name": cap_order.customer_name,
         "style_model": cap_order.style_model,
-        "status": cap_order.status.value if hasattr(cap_order.status, "value") else cap_order.status,
-        "priority": cap_order.priority.value if hasattr(cap_order.priority, "value") else cap_order.priority,
+        # status/priority are Mapped[Optional[Enum]] in the ORM. Use
+        # an explicit None-or-value chain so mypy doesn't trip on
+        # `.value` access via hasattr-narrow (which doesn't actually
+        # exclude None).
+        "status": (cap_order.status.value if cap_order.status is not None else None),
+        "priority": (cap_order.priority.value if cap_order.priority is not None else None),
         "planned_quantity": planned_quantity,
         "actual_completed": actual_completed,
         "variance_quantity": variance_quantity,

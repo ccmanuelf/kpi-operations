@@ -5,7 +5,7 @@ Routes should import from this module instead of backend.crud.work_order directl
 """
 
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User
@@ -71,8 +71,15 @@ def list_orders_by_status(db: Session, status: str, current_user: User, skip: in
 def list_orders_by_date_range(
     db: Session, start_date: date, end_date: date, current_user: User, skip: int = 0, limit: int = 100
 ):
-    """Get work orders within a date range."""
-    return get_work_orders_by_date_range(db, start_date, end_date, current_user, skip, limit)
+    """Get work orders within a date range.
+
+    The CRUD takes datetimes for planned_ship_date comparison; promote
+    the date arguments to start-of-day / end-of-day datetimes so the
+    range stays inclusive at both ends.
+    """
+    start_dt = datetime.combine(start_date, datetime.min.time())
+    end_dt = datetime.combine(end_date, datetime.max.time())
+    return get_work_orders_by_date_range(db, start_dt, end_dt, current_user, skip, limit)
 
 
 def list_orders_by_capacity_order(

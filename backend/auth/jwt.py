@@ -122,7 +122,18 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
         HTTPException: If user not found or inactive
     """
     payload = decode_access_token(token)
-    username: str = payload.get("sub")
+    # JWT "sub" claim must be a non-empty string. payload.get returns
+    # Optional[Any] — refuse the token rather than passing None into
+    # the username filter (which would either match no rows or, on
+    # some dialects, raise).
+    raw_username = payload.get("sub")
+    if not isinstance(raw_username, str) or not raw_username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token: missing subject",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    username: str = raw_username
 
     user = db.query(User).filter(User.username == username).first()
 
