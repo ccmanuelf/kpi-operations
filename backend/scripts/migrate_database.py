@@ -168,6 +168,12 @@ class DatabaseMigrationTool:
         """
         logger.info("Running pre-flight validation...")
 
+        # Engines are created at the top of run() before _validate is called,
+        # so they cannot be None here. Asserts narrow the Optional[Engine]
+        # type for downstream calls without runtime cost in -O mode.
+        assert self.source_engine is not None
+        assert self.target_engine is not None
+
         # Validate source
         source_info = self.validate_source(self.source_engine)
         if not source_info["accessible"]:
@@ -235,7 +241,10 @@ class DatabaseMigrationTool:
         Returns:
             Dict with validation results.
         """
-        result = {
+        # Annotate explicitly so mypy permits .append on the list value.
+        # Without this, the inferred dict value union (bool | int | list)
+        # blocks `result["tables_with_data"].append(...)`.
+        result: Dict[str, Any] = {
             "accessible": False,
             "table_count": 0,
             "has_data": False,
@@ -283,6 +292,8 @@ class DatabaseMigrationTool:
         # Import all models to ensure they are registered with Base
         self._import_all_models()
 
+        # run() creates engines before any _migrate_* method is invoked.
+        assert self.target_engine is not None
         Base.metadata.create_all(bind=self.target_engine)
 
         # Verify tables were created
@@ -311,6 +322,10 @@ class DatabaseMigrationTool:
         schema_result = self._migrate_schema()
         if not schema_result["success"]:
             return schema_result
+
+        # Engines are created at the top of run() before _migrate_* runs.
+        assert self.source_engine is not None
+        assert self.target_engine is not None
 
         if self.dry_run:
             logger.info("[DRY RUN] Would copy all data from source to target")
@@ -371,6 +386,10 @@ class DatabaseMigrationTool:
         schema_result = self._migrate_schema()
         if not schema_result["success"]:
             return schema_result
+
+        # Engines are created at the top of run() before _migrate_* runs.
+        assert self.source_engine is not None
+        assert self.target_engine is not None
 
         # Reflect source metadata
         source_meta = MetaData()
@@ -455,6 +474,10 @@ class DatabaseMigrationTool:
         """
         columns = [col.name for col in source_table.columns]
         has_client_id = "client_id" in columns
+
+        # Engines are created at the top of run() before any per-table work.
+        assert self.source_engine is not None
+        assert self.target_engine is not None
 
         # Fetch all rows
         with self.source_engine.connect() as conn:
@@ -543,7 +566,10 @@ class DatabaseMigrationTool:
         Returns:
             Dict with verification results.
         """
-        mismatches = []
+        mismatches: List[Dict[str, Any]] = []
+
+        # Engines are created at the top of run() before verification runs.
+        assert self.target_engine is not None
 
         target_inspector = inspect(self.target_engine)
         target_tables = set(target_inspector.get_table_names())
@@ -562,7 +588,10 @@ class DatabaseMigrationTool:
                 continue
 
             with self.target_engine.connect() as conn:
-                actual = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                # .scalar() returns Optional[Any]; default None to 0 so
+                # the int subtraction below is well-typed.
+                actual_raw = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                actual = int(actual_raw or 0)
 
             if actual != expected_count:
                 mismatches.append(
