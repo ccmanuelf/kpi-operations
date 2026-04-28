@@ -46,6 +46,10 @@ class EventBus:
 
     _instance: Optional["EventBus"] = None
     _lock = threading.Lock()
+    # Singleton bookkeeping — set in __new__ before __init__ runs, so
+    # mypy needs a class-level declaration to avoid "Cannot determine
+    # type of '_initialized'" when __init__ reads it.
+    _initialized: bool = False
 
     def __new__(cls) -> "EventBus":
         """Singleton pattern for global event bus."""
@@ -56,7 +60,7 @@ class EventBus:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the event bus (only once due to singleton)."""
         if self._initialized:
             return

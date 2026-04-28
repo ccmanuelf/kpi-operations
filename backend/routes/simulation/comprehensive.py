@@ -4,6 +4,8 @@ Simulation API — Comprehensive Simulation Endpoint
 POST /api/simulation/comprehensive — run a comprehensive capacity simulation with multiple scenarios.
 """
 
+from typing import Any, Dict
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -43,7 +45,11 @@ async def run_comprehensive_simulation(
         Complete simulation results with all analyses
     """
     try:
-        config = {
+        # Mixed-value config (numerics + optional list scenarios), so
+        # annotate as Dict[str, Any] up front rather than letting mypy
+        # narrow the value type to `float` from the first four fields
+        # and reject the staffing/efficiency list assignments.
+        config: Dict[str, Any] = {
             "target_units": request.target_units,
             "current_employees": request.current_employees,
             "shift_hours": request.shift_hours,
@@ -57,7 +63,14 @@ async def run_comprehensive_simulation(
         if request.efficiency_scenarios:
             config["efficiency_scenarios"] = request.efficiency_scenarios
 
-        result = run_capacity_simulation(db=db, client_id=current_user.client_id_assigned, simulation_config=config)
+        # client_id_assigned is Optional[str] in the user model; the
+        # capacity simulation entrypoint requires a str. Reject the call
+        # eagerly with a 400 rather than handing None deeper.
+        client_id_assigned = current_user.client_id_assigned
+        if not client_id_assigned:
+            raise HTTPException(status_code=400, detail="User has no client assignment")
+
+        result = run_capacity_simulation(db=db, client_id=client_id_assigned, simulation_config=config)
 
         return result
 

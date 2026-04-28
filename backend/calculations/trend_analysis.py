@@ -378,9 +378,11 @@ def analyze_trend(dates: List[date], values: List[Decimal]) -> TrendResult:
     if len(dates) < 2:
         raise ValueError("Need at least 2 data points for trend analysis")
 
-    # Convert dates to day numbers (days since first date)
+    # Convert dates to day numbers (days since first date). linear_regression
+    # is annotated `list[float]` so cast the int day-counts here rather
+    # than relying on list-invariance to resolve the int→float widening.
     first_date = dates[0]
-    x_values = [(d - first_date).days for d in dates]
+    x_values = [float((d - first_date).days) for d in dates]
 
     # Calculate linear regression
     slope, intercept, r_squared = linear_regression(x_values, values)
