@@ -10,7 +10,7 @@ import json
 import fcntl
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional, cast
+from typing import IO, Any, Dict, Optional, cast
 from dataclasses import dataclass, asdict, field
 import logging
 
@@ -79,7 +79,11 @@ class ProviderStateManager:
         self.state_dir = Path(state_dir)
         self.state_file = self.state_dir / "provider_state.json"
         self.lock_file = self.state_dir / ".migration.lock"
-        self._lock_fd = None
+        # acquire_migration_lock assigns the open file handle here; the
+        # initial None gets overwritten on the success path. Annotated
+        # explicitly so the `self._lock_fd = open(...)` assignment isn't
+        # rejected as a None→TextIO narrowing violation.
+        self._lock_fd: Optional[IO[str]] = None
 
         # Ensure state directory exists
         self.state_dir.mkdir(parents=True, exist_ok=True)
