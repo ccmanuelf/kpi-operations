@@ -59,9 +59,11 @@ def simple_exponential_smoothing(
     last_smoothed = smoothed[-1]
     predictions = [last_smoothed] * forecast_periods
 
-    # Calculate prediction intervals based on historical error
+    # Calculate prediction intervals based on historical error.
+    # Decimal start for sum() so the result stays Decimal (the default
+    # int(0) seed would yield int|Decimal and break mae * Decimal("2")).
     errors = [abs(values[i] - smoothed[i]) for i in range(len(values))]
-    mae = sum(errors) / len(errors)  # Mean Absolute Error
+    mae: Decimal = sum(errors, Decimal("0")) / len(errors)  # Mean Absolute Error
 
     # 95% confidence interval (approximately 2 * MAE)
     confidence_margin = mae * Decimal("2")
@@ -76,8 +78,13 @@ def simple_exponential_smoothing(
         max(Decimal("50.0"), base_confidence - (confidence_decay * i)) for i in range(forecast_periods)
     ]
 
-    # Calculate accuracy score (based on historical fit)
-    mape = sum(abs((values[i] - smoothed[i]) / values[i]) for i in range(len(values)) if values[i] != 0)
+    # Calculate accuracy score (based on historical fit). Same Decimal
+    # seed reasoning — mape needs to stay Decimal through the divide
+    # and the final accuracy_score subtraction.
+    mape: Decimal = sum(
+        (abs((values[i] - smoothed[i]) / values[i]) for i in range(len(values)) if values[i] != 0),
+        Decimal("0"),
+    )
     mape = (mape / len(values)) * 100
     accuracy_score = max(Decimal("0"), Decimal("100") - mape)
 
@@ -135,9 +142,9 @@ def double_exponential_smoothing(
         forecast = last_level + last_trend * h
         predictions.append(forecast)
 
-    # Calculate prediction intervals
+    # Calculate prediction intervals (Decimal seeds — see SES variant).
     errors = [abs(values[i] - smoothed[i]) for i in range(len(values))]
-    mae = sum(errors) / len(errors)
+    mae: Decimal = sum(errors, Decimal("0")) / len(errors)
 
     confidence_margin = mae * Decimal("2.5")  # Slightly wider for trending data
 
@@ -152,7 +159,10 @@ def double_exponential_smoothing(
     ]
 
     # Accuracy
-    mape = sum(abs((values[i] - smoothed[i]) / values[i]) for i in range(len(values)) if values[i] != 0)
+    mape: Decimal = sum(
+        (abs((values[i] - smoothed[i]) / values[i]) for i in range(len(values)) if values[i] != 0),
+        Decimal("0"),
+    )
     mape = (mape / len(values)) * 100
     accuracy_score = max(Decimal("0"), Decimal("100") - mape)
 
@@ -192,7 +202,7 @@ def linear_trend_extrapolation(values: List[Decimal], forecast_periods: int = 7)
     denominator = sum((x - x_mean) ** 2 for x in x_values)
 
     if denominator == 0:
-        slope = 0
+        slope = 0.0
         intercept = y_mean
     else:
         slope = numerator / denominator
