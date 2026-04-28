@@ -156,16 +156,16 @@ async def lifespan(app: FastAPI):
 
         event_bus = get_event_bus()
         event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
-        print("[EVENTS] Domain events infrastructure initialized")
+        _logger.info("Domain events infrastructure initialized")
     except Exception as e:
-        print(f"Warning: Failed to initialize event infrastructure: {e}")
+        _logger.warning("Failed to initialize event infrastructure: %s", e)
 
     # Start daily report scheduler
     if report_scheduler is not None:
         try:
             report_scheduler.start()
         except Exception as e:
-            print(f"Warning: Failed to start report scheduler: {e}")
+            _logger.warning("Failed to start report scheduler: %s", e)
 
     # Auto-seed demo data if database is empty or incomplete
     # FORCE_RESEED=true: always drop and re-seed (one-time migration)
