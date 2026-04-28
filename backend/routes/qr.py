@@ -180,7 +180,7 @@ async def qr_lookup(
 )
 async def get_work_order_qr_image(
     work_order_id: str,
-    size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
+    size: int = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
@@ -227,7 +227,7 @@ async def get_work_order_qr_image(
 )
 async def get_product_qr_image(
     product_id: str,
-    size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
+    size: int = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
@@ -284,7 +284,7 @@ async def get_product_qr_image(
 )
 async def get_job_qr_image(
     job_id: str,
-    size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
+    size: int = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
@@ -331,7 +331,7 @@ async def get_job_qr_image(
 )
 async def get_employee_qr_image(
     employee_id: str,
-    size: Optional[int] = Query(200, ge=100, le=500, description="QR code image size in pixels"),
+    size: int = Query(200, ge=100, le=500, description="QR code image size in pixels"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
