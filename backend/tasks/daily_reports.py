@@ -4,7 +4,7 @@ Uses APScheduler for scheduling (Celery alternative for simplicity)
 """
 
 from datetime import datetime, date, timedelta, timezone
-from typing import List
+from typing import Any, Dict, List
 import logging
 
 from sqlalchemy.orm import Session
@@ -102,7 +102,7 @@ class DailyReportScheduler:
 
     def generate_and_send_report(
         self, db: Session, client: Client, start_date: date, end_date: date, report_date: datetime
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """Generate and send report for a single client"""
 
         # Get client admin emails
@@ -119,8 +119,11 @@ class DailyReportScheduler:
                 client_id=client.client_id, start_date=start_date, end_date=end_date
             )
 
-            # Send email
-            result = self.email_service.send_kpi_report(
+            # Send email. send_kpi_report is annotated Dict[str, Any] but
+            # passes through Any for at least the SendGrid path (the
+            # sendgrid client is import-shielded by try/except), so cast
+            # explicitly to keep the no-any-return rule honest.
+            result: Dict[str, Any] = self.email_service.send_kpi_report(
                 to_emails=recipient_emails,
                 client_name=client.client_name,
                 report_date=report_date,
@@ -133,7 +136,7 @@ class DailyReportScheduler:
             logger.error(f"Error generating/sending report for {client.client_name}: {e}")
             return {"success": False, "error": "Report generation failed"}
 
-    def _get_client_admin_emails(self, db: Session, client_id: int) -> List[str]:
+    def _get_client_admin_emails(self, db: Session, client_id: str) -> List[str]:
         """Get list of admin email addresses for a client"""
         # This should query the User table for admins of this client
         # For now, return a placeholder
@@ -153,7 +156,9 @@ class DailyReportScheduler:
 
         return [admin.email for admin in admins if admin.email]
 
-    def send_manual_report(self, client_id: int, start_date: date, end_date: date, recipient_emails: List[str]) -> dict:
+    def send_manual_report(
+        self, client_id: str, start_date: date, end_date: date, recipient_emails: List[str]
+    ) -> Dict[str, Any]:
         """Manually trigger a report for specific client and date range"""
 
         db = next(get_db())
@@ -168,8 +173,9 @@ class DailyReportScheduler:
             pdf_generator = PDFReportGenerator(db)
             pdf_buffer = pdf_generator.generate_report(client_id=client_id, start_date=start_date, end_date=end_date)
 
-            # Send email
-            result = self.email_service.send_kpi_report(
+            # Send email — see generate_and_send_report for the type cast
+            # rationale (sendgrid Any-leak via import-shielded fallback).
+            result: Dict[str, Any] = self.email_service.send_kpi_report(
                 to_emails=recipient_emails,
                 client_name=client.client_name,
                 report_date=datetime.now(tz=timezone.utc),

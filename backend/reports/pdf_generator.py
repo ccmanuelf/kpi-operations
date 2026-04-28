@@ -100,7 +100,7 @@ class PDFReportGenerator:
 
     def generate_report(
         self,
-        client_id: Optional[int],
+        client_id: Optional[str],
         start_date: date,
         end_date: date,
         kpis_to_include: Optional[List[str]] = None,
@@ -172,7 +172,7 @@ class PDFReportGenerator:
         buffer.seek(0)
         return buffer
 
-    def _build_header(self, client_id: Optional[int], start_date: date, end_date: date) -> List:
+    def _build_header(self, client_id: Optional[str], start_date: date, end_date: date) -> List:
         """Build report header"""
         elements = []
 
@@ -212,7 +212,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _build_executive_summary(self, client_id: Optional[int], start_date: date, end_date: date) -> List:
+    def _build_executive_summary(self, client_id: Optional[str], start_date: date, end_date: date) -> List:
         """Build executive summary section"""
         elements = []
 
@@ -261,7 +261,7 @@ class PDFReportGenerator:
         return elements
 
     def _build_kpi_section(
-        self, kpi_key: str, kpi_name: str, client_id: Optional[int], start_date: date, end_date: date
+        self, kpi_key: str, kpi_name: str, client_id: Optional[str], start_date: date, end_date: date
     ) -> List:
         """Build detailed KPI section"""
         elements = []
@@ -337,7 +337,7 @@ class PDFReportGenerator:
         canvas.drawRightString(7.5 * inch, 0.5 * inch, text)
         canvas.restoreState()
 
-    def _fetch_kpi_summary(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
+    def _fetch_kpi_summary(self, client_id: Optional[str], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch summary data for all KPIs from database"""
         from backend.orm.production_entry import ProductionEntry
         from backend.orm.quality_entry import QualityEntry
@@ -450,7 +450,7 @@ class PDFReportGenerator:
         return kpi_data
 
     def _fetch_kpi_details(
-        self, kpi_key: str, client_id: Optional[int], start_date: date, end_date: date
+        self, kpi_key: str, client_id: Optional[str], start_date: date, end_date: date
     ) -> Dict[str, Any]:
         """Fetch detailed metrics for specific KPI from database"""
         from backend.orm.production_entry import ProductionEntry

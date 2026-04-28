@@ -48,7 +48,7 @@ class ExcelReportGenerator:
         }
 
     def generate_report(
-        self, client_id: Optional[int], start_date: date, end_date: date, output_path: Optional[Path] = None
+        self, client_id: Optional[str], start_date: date, end_date: date, output_path: Optional[Path] = None
     ) -> BytesIO:
         """
         Generate comprehensive KPI Excel report
@@ -82,7 +82,7 @@ class ExcelReportGenerator:
 
         return buffer
 
-    def _create_summary_sheet(self, wb: Workbook, client_id: Optional[int], start_date: date, end_date: date):
+    def _create_summary_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
         """Create executive summary sheet"""
         ws = wb.create_sheet("Executive Summary")
 
@@ -184,7 +184,7 @@ class ExcelReportGenerator:
         ws.column_dimensions["E"].width = 15
         ws.column_dimensions["F"].width = 15
 
-    def _create_production_sheet(self, wb: Workbook, client_id: Optional[int], start_date: date, end_date: date):
+    def _create_production_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
         """Create production metrics sheet"""
         ws = wb.create_sheet("Production Metrics")
 
@@ -247,7 +247,7 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E", "F", "G", "H"]:
             ws.column_dimensions[col].width = 15
 
-    def _create_quality_sheet(self, wb: Workbook, client_id: Optional[int], start_date: date, end_date: date):
+    def _create_quality_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
         """Create quality metrics sheet"""
         ws = wb.create_sheet("Quality Metrics")
 
@@ -303,7 +303,7 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E", "F", "G"]:
             ws.column_dimensions[col].width = 18
 
-    def _create_downtime_sheet(self, wb: Workbook, client_id: Optional[int], start_date: date, end_date: date):
+    def _create_downtime_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
         """Create downtime analysis sheet"""
         ws = wb.create_sheet("Downtime Analysis")
 
@@ -354,7 +354,7 @@ class ExcelReportGenerator:
             ws.column_dimensions[col].width = 15
         ws.column_dimensions["F"].width = 30
 
-    def _create_attendance_sheet(self, wb: Workbook, client_id: Optional[int], start_date: date, end_date: date):
+    def _create_attendance_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
         """Create attendance/absenteeism sheet"""
         ws = wb.create_sheet("Attendance")
 
@@ -402,7 +402,7 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E"]:
             ws.column_dimensions[col].width = 20
 
-    def _create_charts_sheet(self, wb: Workbook, client_id: Optional[int], start_date: date, end_date: date):
+    def _create_charts_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
         """Create sheet with embedded charts"""
         ws = wb.create_sheet("Trend Charts")
 
@@ -435,7 +435,7 @@ class ExcelReportGenerator:
             for col in range(start_col, end_col + 1):
                 ws.cell(row=row, column=col).border = thin_border
 
-    def _get_client_name(self, client_id: Optional[int]) -> str:
+    def _get_client_name(self, client_id: Optional[str]) -> str:
         """Get client name from database"""
         if not client_id:
             return "All Clients"
@@ -446,7 +446,7 @@ class ExcelReportGenerator:
         return client.name if client else "Unknown Client"
 
     def _fetch_kpi_summary_data(
-        self, client_id: Optional[int], start_date: date, end_date: date
+        self, client_id: Optional[str], start_date: date, end_date: date
     ) -> List[Dict[str, Any]]:
         """Fetch KPI summary data from database"""
         from backend.orm.production_entry import ProductionEntry
@@ -561,7 +561,7 @@ class ExcelReportGenerator:
         return kpi_data
 
     def _fetch_production_data(
-        self, client_id: Optional[int], start_date: date, end_date: date
+        self, client_id: Optional[str], start_date: date, end_date: date
     ) -> List[Dict[str, Any]]:
         """Fetch production data from database"""
         from backend.orm.production_entry import ProductionEntry
@@ -601,7 +601,7 @@ class ExcelReportGenerator:
             for r in results
         ]
 
-    def _fetch_quality_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
+    def _fetch_quality_data(self, client_id: Optional[str], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch quality data from database"""
         from backend.orm.quality import QualityInspection
         from backend.orm.product import Product
@@ -628,7 +628,7 @@ class ExcelReportGenerator:
             for r in results
         ]
 
-    def _fetch_downtime_data(self, client_id: Optional[int], start_date: date, end_date: date) -> List[Dict[str, Any]]:
+    def _fetch_downtime_data(self, client_id: Optional[str], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch downtime data from database"""
         from backend.orm.downtime import DowntimeEvent
         from backend.orm.product import Product
@@ -657,7 +657,7 @@ class ExcelReportGenerator:
         ]
 
     def _fetch_attendance_data(
-        self, client_id: Optional[int], start_date: date, end_date: date
+        self, client_id: Optional[str], start_date: date, end_date: date
     ) -> List[Dict[str, Any]]:
         """Fetch attendance data from database"""
         from backend.orm.attendance import AttendanceRecord
