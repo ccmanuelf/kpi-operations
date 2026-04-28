@@ -337,13 +337,19 @@ class TestDailyReportsTask:
     """Tests for daily reports task"""
 
     def test_daily_reports_import(self):
-        """Test daily reports task can be imported"""
-        try:
-            from backend.tasks.daily_reports import generate_daily_report
+        """Test daily reports task can be imported.
 
-            assert generate_daily_report is not None
-        except ImportError:
-            pytest.skip("Daily reports task not available")
+        Previously imported a `generate_daily_report` function that
+        never existed on the module, so this test always silently
+        skipped via `pytest.skip` — pure dead weight in the suite.
+        Switched to the actual public symbols (DailyReportScheduler
+        + the global scheduler instance) so the smoke test exercises
+        what's really exported.
+        """
+        from backend.tasks.daily_reports import DailyReportScheduler, scheduler
+
+        assert DailyReportScheduler is not None
+        assert scheduler is not None
 
 
 class TestCRUDIntegration:

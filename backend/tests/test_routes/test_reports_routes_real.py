@@ -301,14 +301,23 @@ class TestEmailConfiguration:
 class TestTestEmail:
     """Tests for test email endpoint."""
 
-    @pytest.mark.skip(reason="Test email endpoint throws 500 in test environment (EmailService not available)")
     def test_send_test_email(self, supervisor_client):
-        """Test sending a test email."""
+        """Test sending a test email.
+
+        The endpoint tries to deliver via SMTP/SendGrid; in the test
+        environment neither is configured, so the route returns 500
+        (or 200 with the demo-fallback message if EmailService is
+        ImportError-shielded). Either status indicates the route is
+        reachable and reaches the email branch — that's what this
+        smoke test cares about. Previously this was hard-skipped,
+        which removed the only reachability check on the endpoint.
+        """
         client, setup = supervisor_client
 
         response = client.post("/api/reports/email-config/test", json={"email": "test@example.com"})
 
-        # Accept 200 or 500 (email service may not be configured)
+        # Accept 200 (email sent or demo-fallback) or 500 (real send
+        # failure due to missing SMTP/SendGrid credentials in test).
         assert response.status_code in [200, 500]
         if response.status_code == 200:
             data = response.json()
