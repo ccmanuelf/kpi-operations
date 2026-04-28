@@ -21,7 +21,7 @@ from backend.orm.work_order import WorkOrder
 from backend.orm.workflow import WorkflowTransitionLog
 
 
-def _ensure_tz_compatible(dt1: datetime, dt2: datetime) -> tuple:
+def _ensure_tz_compatible(dt1: datetime, dt2: datetime) -> Tuple[datetime, datetime]:
     """Normalize naive datetimes (from SQLite) to UTC for safe comparison."""
     if dt1.tzinfo is None and dt2.tzinfo is not None:
         dt1 = dt1.replace(tzinfo=timezone.utc)
@@ -78,7 +78,7 @@ def calculate_business_hours(
     from_datetime: Optional[datetime],
     to_datetime: Optional[datetime],
     hours_per_day: int = 8,
-    working_days: List[int] = None,
+    working_days: Optional[List[int]] = None,
 ) -> Optional[int]:
     """
     Calculate elapsed business hours between two datetimes.
