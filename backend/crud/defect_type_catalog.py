@@ -154,7 +154,7 @@ def update_defect_type(
     else:
         verify_client_access(current_user, db_defect_type.client_id)
 
-    update_data = defect_type_update.dict(exclude_unset=True)
+    update_data = defect_type_update.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_defect_type, field, value)
 

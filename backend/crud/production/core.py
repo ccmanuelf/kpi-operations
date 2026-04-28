@@ -166,7 +166,7 @@ def update_production_entry(
         verify_client_access(current_user, db_entry.client_id)
 
     # Update fields
-    update_data = entry_update.dict(exclude_unset=True)
+    update_data = entry_update.model_dump(exclude_unset=True)
 
     # Track if recalculation needed
     recalc_needed = any(field in update_data for field in ["units_produced", "run_time_hours", "employees_assigned"])
