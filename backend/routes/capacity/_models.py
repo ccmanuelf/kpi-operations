@@ -507,6 +507,12 @@ class ScenarioResponse(BaseModel):
 
 class ScenarioCompareRequest(BaseModel):
     scenario_ids: List[int] = Field(description="List of scenario IDs to compare side-by-side")
+    period_start: Optional[date] = Field(
+        default=None, description="Start date of the comparison period (defaults to today)"
+    )
+    period_end: Optional[date] = Field(
+        default=None, description="End date of the comparison period (defaults to today + 30 days)"
+    )
 
 
 class ScenarioRunRequest(BaseModel):

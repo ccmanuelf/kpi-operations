@@ -147,7 +147,9 @@ def get_client_id_from_user(user: Any, allow_admin_override: bool = False) -> Op
     return client_id
 
 
-def validate_resource_ownership(resource: T, current_client_id: str, resource_type: str = "resource") -> T:
+def validate_resource_ownership(
+    resource: Optional[T], current_client_id: str, resource_type: str = "resource"
+) -> Optional[T]:
     """
     Validate that a resource belongs to the current tenant and return it.
 

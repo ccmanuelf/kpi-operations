@@ -460,7 +460,14 @@ async def upload_coverage_csv(
         total_rows += 1
 
         try:
+            # SECURITY: Validate client_id — REQUIRED for tenant isolation
+            client_id = sanitize_csv_value(row.get("client_id", ""))
+            if not client_id:
+                raise ValueError("client_id is required")
+            verify_client_access(current_user, client_id)
+
             entry = ShiftCoverageCreate(
+                client_id=client_id,
                 shift_id=int(row["shift_id"]),
                 coverage_date=datetime.strptime(row["coverage_date"], "%Y-%m-%d").date(),
                 required_employees=int(row["required_employees"]),

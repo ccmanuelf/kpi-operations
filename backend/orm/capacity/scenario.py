@@ -83,11 +83,14 @@ class CapacityScenario(Base):
 
     def capacity_increase_percent(self) -> float:
         """Get capacity increase percentage from results."""
-        return self.get_result("capacity_increase_percent", 0.0)
+        # get_result reads from a JSON dict (Any-typed); coerce so the
+        # declared `-> float` return is honest even if the stored value
+        # is something like "12.5" or 12 instead of 12.5.
+        return float(self.get_result("capacity_increase_percent", 0.0) or 0.0)
 
     def cost_impact(self) -> float:
         """Get cost impact from results."""
-        return self.get_result("cost_impact", 0.0)
+        return float(self.get_result("cost_impact", 0.0) or 0.0)
 
     def __repr__(self):
         return f"<CapacityScenario(name={self.scenario_name}, type={self.scenario_type})>"

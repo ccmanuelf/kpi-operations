@@ -237,7 +237,16 @@ def compare_scenarios(
 
         service = ScenarioService(db)
 
-        comparison = service.compare_scenarios(client_id, request.scenario_ids)
+        # Default the comparison window when the caller omits dates —
+        # matches the period defaulting in adjacent scenario routes.
+        from datetime import date as _date, timedelta as _timedelta
+
+        period_start = request.period_start or _date.today()
+        period_end = request.period_end or (period_start + _timedelta(days=30))
+
+        comparison = service.compare_scenarios(
+            client_id, request.scenario_ids, period_start, period_end
+        )
         return comparison
     except ImportError:
         raise HTTPException(status_code=501, detail="Scenario service not yet implemented")

@@ -251,7 +251,10 @@ def get_all_shifts(db: Session) -> List[Tuple[str, str]]:
     Returns:
         List of (shift_id, shift_name) tuples
     """
-    from backend.schemas.job import Shift
+    # The ORM Shift lives in backend.orm.shift (the previous import
+    # path `backend.schemas.job` would have raised ImportError — the
+    # function was effectively dead code that no caller exercises).
+    from backend.orm.shift import Shift
 
     query = select(Shift.shift_id, Shift.shift_name).order_by(Shift.shift_id)
 
@@ -271,7 +274,9 @@ def get_client_info(db: Session, client_id: str) -> Optional[Tuple[str, str]]:
     Returns:
         Tuple of (client_id, client_name) or None if not found
     """
-    from backend.schemas.client import Client
+    # Client lives in backend.orm.client. `backend.schemas.client`
+    # exposes Pydantic ClientCreate/ClientUpdate, not the ORM model.
+    from backend.orm.client import Client
 
     query = select(Client.client_id, Client.client_name).where(Client.client_id == client_id)
 

@@ -16,7 +16,7 @@ from backend.orm.user import User
 
 
 def resume_hold(
-    db: Session, hold_id: int, resumed_by: int, current_user: User, notes: Optional[str] = None
+    db: Session, hold_id: str, resumed_by: str, current_user: User, notes: Optional[str] = None
 ) -> Optional[WIPHoldResponse]:
     """
     Resume a hold and auto-calculate hold duration
@@ -24,8 +24,8 @@ def resume_hold(
 
     Args:
         db: Database session
-        hold_id: ID of the hold to resume
-        resumed_by: User ID who is resuming
+        hold_id: ID of the hold to resume (string PK)
+        resumed_by: User ID who is resuming (string PK on USER.user_id)
         current_user: Authenticated user for access control
         notes: Optional notes about resumption
 

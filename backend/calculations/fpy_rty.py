@@ -775,9 +775,12 @@ def calculate_job_rty_summary(db: Session, start_date: date, end_date: date, cli
             operation_scrap[op_name] = 0
         operation_scrap[op_name] += scrapped
 
-    # Calculate average job yield
+    # Calculate average job yield. sum() defaults to int(0) so the
+    # result type is `int | Decimal`; pass an explicit Decimal seed so
+    # avg_yield stays Decimal and get_job_rty_interpretation (which
+    # requires Decimal) is happy at the call site below.
     if job_yields:
-        avg_yield = sum(job_yields) / len(job_yields)
+        avg_yield: Decimal = sum(job_yields, Decimal("0")) / len(job_yields)
     else:
         avg_yield = Decimal("0")
 

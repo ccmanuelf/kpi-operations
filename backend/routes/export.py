@@ -8,7 +8,7 @@ round-trip compatibility.
 """
 
 from datetime import date, datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -385,8 +385,12 @@ async def export_employees(
     When client_id is provided, filters for employees assigned to that client
     using LIKE matching on client_id_assigned.
     """
-    # Employees use client_id_assigned (comma-separated), not client_id
-    # Build a custom filter for this entity
+    # Employees use client_id_assigned (comma-separated), not client_id.
+    # Build a custom filter for this entity. Annotated as Optional[Any]
+    # because the branches mix BinaryExpression (LIKE), or_(...) ColumnElement,
+    # and None — let mypy treat it as a SQLAlchemy clause without trying
+    # to unify the variants.
+    client_filter: Any = None
     if client_id:
         client_filter = Employee.client_id_assigned.like(f"%{client_id}%")
     else:
@@ -399,8 +403,6 @@ async def export_employees(
             from sqlalchemy import or_
 
             client_filter = or_(*[Employee.client_id_assigned.like(f"%{c}%") for c in user_clients])
-        else:
-            client_filter = None
 
     timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d")
     filename = f"employees_{timestamp}.csv"

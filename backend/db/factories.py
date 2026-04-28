@@ -390,7 +390,9 @@ class TestDataFactory:
         client_id: str,
         created_by: str,
         hold_reason: str = "QUALITY_ISSUE",
-        hold_status: HoldStatus = HoldStatus.PENDING_HOLD_APPROVAL,
+        # HoldStatus is a constants holder (NOT a Python enum) — its
+        # class attributes are plain str, so the parameter type is str.
+        hold_status: str = HoldStatus.PENDING_HOLD_APPROVAL,
         **kwargs,
     ) -> HoldEntry:
         """Create a hold entry"""

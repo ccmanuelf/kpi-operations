@@ -312,19 +312,21 @@ class ProductionLineSimulator:
             bundle_size = demand.bundle_size
 
             # Calculate daily demand based on mode
+            # daily_demand stays float across both branches; the
+            # `demand.daily_demand` attribute is Optional[float] so
+            # default to 0.0 when missing.
+            daily_demand: float = 0.0
             if self.config.mode == DemandMode.MIX_DRIVEN:
                 # Mix-driven: calculate from total and percentage
                 if self.config.total_demand and demand.mix_share_pct:
                     daily_demand = self.config.total_demand * demand.mix_share_pct / 100
-                else:
-                    daily_demand = 0
             else:
                 # Demand-driven: use direct values
-                daily_demand = demand.daily_demand
+                daily_demand = demand.daily_demand or 0.0
                 if not daily_demand and demand.weekly_demand:
                     daily_demand = demand.weekly_demand / self.config.schedule.work_days
 
-            if not daily_demand or daily_demand <= 0:
+            if daily_demand <= 0:
                 continue
 
             # Scale by horizon

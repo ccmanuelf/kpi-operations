@@ -432,6 +432,8 @@ def calculate_required_components(db: Session, client_id: str, header_id: int, p
 
     requirements = []
     for detail in details:
+        # waste_percentage is Mapped[Optional[Decimal]]; default missing
+        # rows to 0% rather than passing None into float().
         requirements.append(
             {
                 "component_item_code": detail.component_item_code,
@@ -439,7 +441,7 @@ def calculate_required_components(db: Session, client_id: str, header_id: int, p
                 "component_type": detail.component_type,
                 "unit_of_measure": detail.unit_of_measure,
                 "quantity_per": float(detail.quantity_per),
-                "waste_percentage": float(detail.waste_percentage),
+                "waste_percentage": float(detail.waste_percentage or 0),
                 "required_quantity": detail.required_quantity(parent_quantity),
             }
         )
