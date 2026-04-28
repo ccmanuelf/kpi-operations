@@ -107,12 +107,18 @@ def update_wip_hold(
     if "client_id" in update_data:
         verify_client_access(current_user, update_data["client_id"])
 
-    # Update aging if resume date is set
-    if "resume_date" in update_data and update_data["resume_date"]:
-        update_data["aging_days"] = (update_data["resume_date"] - db_hold.hold_date).days
-    elif not db_hold.resume_date:
-        # Update aging for unresumed holds
-        update_data["aging_days"] = (date.today() - db_hold.hold_date).days
+    # Update aging if resume date is set. hold_date is Optional[datetime]
+    # in the ORM, so guard before computing the delta — the column should
+    # always be populated by create_wip_hold, but a partial fixture could
+    # carry None and we don't want a TypeError surfacing as a 500.
+    if db_hold.hold_date is not None:
+        if "resume_date" in update_data and update_data["resume_date"]:
+            update_data["aging_days"] = (update_data["resume_date"] - db_hold.hold_date).days
+        elif not db_hold.resume_date:
+            # Update aging for unresumed holds. Compare on hold_date itself
+            # (datetime - datetime) so we don't trip the date-vs-datetime
+            # subtype mismatch the previous code had.
+            update_data["aging_days"] = (datetime.now(tz=db_hold.hold_date.tzinfo) - db_hold.hold_date).days
 
     for field, value in update_data.items():
         setattr(db_hold, field, value)
