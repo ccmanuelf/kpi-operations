@@ -6,6 +6,7 @@ Component check (MRP), capacity analysis, and production schedule operations.
 
 from typing import List, Optional
 from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -66,26 +67,37 @@ def run_component_check(
 
         service = MRPService(db)
 
+        # MRPService exposes run_component_check(client_id, order_ids); the
+        # legacy check_components_for_orders / check_components_for_period
+        # names never existed. Both order- and period-scoped requests funnel
+        # through run_component_check (None means "no order filter").
         if request.order_ids:
-            results = service.check_components_for_orders(client_id, request.order_ids)
+            mrp_run = service.run_component_check(client_id, request.order_ids)
         elif request.start_date and request.end_date:
-            results = service.check_components_for_period(client_id, request.start_date, request.end_date)
+            mrp_run = service.run_component_check(client_id, None)
         else:
             raise HTTPException(status_code=400, detail="Must provide either order_ids or both start_date and end_date")
 
+        # mrp_service.ComponentCheckResult is component-scoped (one row per
+        # component_item_code aggregated across orders), not order-scoped.
+        # affected_orders carries the order numbers it touches; serialize
+        # them as a list rather than a single order_id/order_number per row.
+        # coverage_percent isn't on the dataclass; compute it inline.
+        def _coverage(req: Decimal, avail: Decimal) -> float:
+            return float((avail / req) * 100) if req > 0 else 100.0
+
         return [
             {
-                "order_id": r.order_id,
-                "order_number": r.order_number,
+                "affected_orders": r.affected_orders,
                 "component_item_code": r.component_item_code,
                 "component_description": r.component_description,
                 "required_quantity": float(r.required_quantity),
                 "available_quantity": float(r.available_quantity),
-                "shortage_quantity": float(r.shortage_quantity),
-                "status": r.status.value,
-                "coverage_percent": r.coverage_percent(),
+                "shortage_quantity": float(r.shortage_quantity or 0),
+                "status": r.status.value if r.status else None,
+                "coverage_percent": _coverage(r.required_quantity, r.available_quantity),
             }
-            for r in results
+            for r in mrp_run.components
         ]
     except ImportError:
         raise HTTPException(status_code=501, detail="MRP service not yet implemented")
@@ -130,8 +142,8 @@ def get_component_shortages(
             "component_description": r.component_description,
             "required_quantity": float(r.required_quantity),
             "available_quantity": float(r.available_quantity),
-            "shortage_quantity": float(r.shortage_quantity),
-            "status": r.status.value,
+            "shortage_quantity": float(r.shortage_quantity or 0),
+            "status": r.status.value if r.status else None,
             "coverage_percent": r.coverage_percent(),
         }
         for r in results
@@ -165,16 +177,21 @@ def run_capacity_analysis(
 
         service = CapacityAnalysisService(db)
 
-        results = service.analyze_capacity(
-            client_id, request.start_date, request.end_date, request.line_ids, request.department
-        )
+        # analyze_capacity takes line_ids and an Optional schedule_id (5th
+        # positional). The route's `request.department` is unrelated to the
+        # service contract — drop it. analyze_capacity returns a
+        # CapacityAnalysisResult container, not a list; iterate .lines.
+        analysis = service.analyze_capacity(client_id, request.start_date, request.end_date, request.line_ids)
 
+        # analysis_date lives on the parent CapacityAnalysisResult, not on
+        # each LineCapacityResult, so propagate it from the wrapper.
+        analysis_date = analysis.analysis_date
         return [
             {
                 "line_id": r.line_id,
                 "line_code": r.line_code,
                 "department": r.department,
-                "analysis_date": r.analysis_date,
+                "analysis_date": analysis_date,
                 "working_days": r.working_days,
                 "gross_hours": float(r.gross_hours),
                 "capacity_hours": float(r.capacity_hours),
@@ -182,7 +199,7 @@ def run_capacity_analysis(
                 "utilization_percent": float(r.utilization_percent),
                 "is_bottleneck": r.is_bottleneck,
             }
-            for r in results
+            for r in analysis.lines
         ]
     except ImportError:
         raise HTTPException(status_code=501, detail="Capacity analysis service not yet implemented")
@@ -389,7 +406,7 @@ def commit_schedule(
 
     schedule.status = ScheduleStatus.COMMITTED
     schedule.committed_at = date_type.today()
-    schedule.committed_by = current_user.user_id
+    schedule.committed_by = int(current_user.user_id) if current_user.user_id else None
     schedule.kpi_commitments_json = request.kpi_commitments
 
     db.commit()
