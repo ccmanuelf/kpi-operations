@@ -69,8 +69,9 @@ def calculate_fpy_rty_kpi(
         query = query.filter(QualityEntry.client_id == effective_client_id)
 
     result = query.first()
-    total = result.total or 0
-    good = result.good or 0
+    # query.first() returns Optional[Row]; guard the empty-window case.
+    total = (result.total or 0) if result is not None else 0
+    good = (result.good or 0) if result is not None else 0
     fpy = (good / total * 100) if total > 0 else 0
 
     # Total scrapped for Final Yield
@@ -81,7 +82,7 @@ def calculate_fpy_rty_kpi(
     if effective_client_id:
         scrapped_query = scrapped_query.filter(QualityEntry.client_id == effective_client_id)
     scrapped_result = scrapped_query.first()
-    total_scrapped = scrapped_result.scrapped or 0
+    total_scrapped = (scrapped_result.scrapped or 0) if scrapped_result is not None else 0
 
     # Final Yield = (Total Inspected - Scrapped) / Total Inspected × 100
     final_yield = ((total - total_scrapped) / total * 100) if total > 0 else 0

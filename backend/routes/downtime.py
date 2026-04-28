@@ -131,25 +131,89 @@ def delete_downtime(
 availability_router = APIRouter(prefix="/api/kpi", tags=["Downtime Tracking"])
 
 
-@availability_router.get("/availability", response_model=AvailabilityCalculationResponse)
+@availability_router.get("/availability")
 def calculate_availability_kpi(
-    product_id: int,
-    shift_id: int,
-    production_date: date,
+    work_order_id: Optional[str] = None,
+    target_date: Optional[date] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    shift_id: Optional[str] = None,
+    client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Calculate availability KPI"""
-    availability, scheduled, downtime, events = calculate_availability(db, product_id, shift_id, production_date)
+    """Calculate availability KPI.
 
-    return AvailabilityCalculationResponse(
-        product_id=product_id,
-        shift_id=shift_id,
-        production_date=production_date,
-        total_scheduled_hours=scheduled,
-        total_downtime_hours=downtime,
-        available_hours=scheduled - downtime,
-        availability_percentage=availability,
-        downtime_events=events,
-        calculation_timestamp=datetime.now(tz=timezone.utc),
-    )
+    Previously took required (product_id: int, shift_id: int,
+    production_date: date) and passed those positionally to
+    calculate_availability(db, work_order_id: str, target_date: date,
+    client_id: Optional[str]). Every dashboard load 422'd, and the
+    return body used `availability_percentage` while the frontend reads
+    `average_availability`. Reworked to:
+
+    - All filters optional. If neither work_order_id nor a date is
+      provided, defaults to today and aggregates over all downtime
+      entries for the client window.
+    - Returns both `availability_percentage` (typed numeric) and
+      `average_availability` (dashboard alias) so existing consumers
+      keep working.
+    """
+    from datetime import timedelta
+    from sqlalchemy import func, cast as sa_cast, Date as SADate
+    from decimal import Decimal as _Decimal
+    from backend.orm.downtime_entry import DowntimeEntry
+
+    # Effective client filter — admin pass-through, others scoped.
+    effective_client_id = client_id
+    if not effective_client_id and current_user.role != "admin" and current_user.client_id_assigned:
+        effective_client_id = current_user.client_id_assigned
+
+    # If a specific work order + date were provided, delegate to the
+    # per-work-order helper (which is what the original route name
+    # implied).
+    if work_order_id is not None and target_date is not None:
+        availability, scheduled, downtime, events = calculate_availability(
+            db, work_order_id, target_date, effective_client_id
+        )
+    else:
+        # Aggregate path. Default to last 7 days when no window provided.
+        if end_date is None:
+            end_date = date.today()
+        if start_date is None:
+            start_date = end_date - timedelta(days=7)
+
+        query = db.query(
+            func.coalesce(func.sum(DowntimeEntry.downtime_duration_minutes), 0).label("dt_minutes"),
+            func.count(DowntimeEntry.downtime_entry_id).label("event_count"),
+        ).filter(
+            sa_cast(DowntimeEntry.shift_date, SADate) >= start_date,
+            sa_cast(DowntimeEntry.shift_date, SADate) <= end_date,
+        )
+        if effective_client_id:
+            query = query.filter(DowntimeEntry.client_id == effective_client_id)
+        row = query.first()
+
+        days = max(1, (end_date - start_date).days + 1)
+        scheduled = _Decimal("8.0") * _Decimal(days)
+        dt_minutes = _Decimal(str(row.dt_minutes if row is not None else 0))
+        downtime = dt_minutes / _Decimal("60")
+        events = int(row.event_count if row is not None else 0)
+        if scheduled > 0:
+            availability = ((scheduled - downtime) / scheduled) * _Decimal("100")
+        else:
+            availability = _Decimal("0")
+
+    return {
+        "work_order_id": work_order_id,
+        "shift_id": shift_id,
+        "target_date": target_date.isoformat() if target_date else None,
+        "start_date": start_date.isoformat() if start_date else None,
+        "end_date": end_date.isoformat() if end_date else None,
+        "total_scheduled_hours": float(scheduled),
+        "total_downtime_hours": float(downtime),
+        "available_hours": float(scheduled - downtime),
+        "availability_percentage": float(round(availability, 2)),
+        "average_availability": float(round(availability, 2)),
+        "downtime_events": events,
+        "calculation_timestamp": datetime.now(tz=timezone.utc).isoformat(),
+    }
