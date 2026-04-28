@@ -1834,7 +1834,25 @@
       "emptyState": "Agregue operaciones manualmente o pegue desde Excel/CSV. Copie filas de su hoja de cálculo y péguelas directamente en la tabla.",
       "emptyTitle": "Sin Operaciones Configuradas",
       "emptyDescription": "Agregue operaciones manualmente, importe desde CSV o cargue datos de ejemplo para comenzar.",
-      "addManually": "Agregar Manual"
+      "addManually": "Agregar Manual",
+      "opsCount": "{ops} ops / {products} productos",
+      "csvLabel": "Pegue datos CSV aquí",
+      "csvRequired": "Columnas requeridas: product, step, operation, machine_tool, sam_min",
+      "csvOptional": "Opcional: sequence, grouping, operators, variability, rework_pct, grade_pct, fpd_pct",
+      "parseError": "Error al procesar datos CSV",
+      "columns": {
+        "product": "Producto",
+        "step": "Paso",
+        "operation": "Operación",
+        "machineTool": "Máquina/Herramienta",
+        "operators": "Operadores",
+        "gradePct": "Grado %",
+        "fpdPct": "FPD %",
+        "reworkPct": "Retrabajo %",
+        "variability": "Variabilidad",
+        "sequence": "Secuencia",
+        "grouping": "Agrupación"
+      }
     },
     "schedule": {
       "title": "Configuración de Horario",
@@ -3533,7 +3551,9 @@
     "bundleSize": "Tamaño de Paquete",
     "dailyDemand": "Demanda Diaria",
     "weeklyDemand": "Demanda Semanal",
-    "mixShare": "Participación %"
+    "mixShare": "Participación %",
+    "modeDemandDriven": "Por Demanda (especificar diaria/semanal)",
+    "modeMixDriven": "Por Mezcla (especificar porcentajes)"
   },
   "simulationBreakdowns": {
     "title": "Averías de Equipo (Opcional)",

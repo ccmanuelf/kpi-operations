@@ -102,28 +102,30 @@ describe('OperationsGrid', () => {
 
     it('should display Operations title', () => {
       const wrapper = mountComponent()
-      // Component uses $t() global with fallback 'Operations', not useI18n t()
-      expect(wrapper.text()).toContain('Operations')
+      // i18n mock returns the bare key; runtime translation is exercised
+      // by E2E. Hardcoded "Operations" text is now driven by
+      // simulation.operations.title.
+      expect(wrapper.text()).toContain('simulation.operations.title')
     })
 
     it('should display operation count chip', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('1 ops')
-    })
-
-    it('should display products count chip', () => {
-      const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('1 products')
+      // The chip uses simulation.operations.opsCount with {ops} / {products}
+      // placeholders. The mock returns the bare key, so we assert on
+      // the key rather than the interpolated values.
+      expect(wrapper.text()).toContain('simulation.operations.opsCount')
     })
 
     it('should render Add Operation button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationOperations.addOperation')
+      // Was simulationOperations.addOperation; consolidated into the
+      // simulation.operations namespace.
+      expect(wrapper.text()).toContain('simulation.operations.addOperation')
     })
 
     it('should render Import CSV button', () => {
       const wrapper = mountComponent()
-      expect(wrapper.text()).toContain('simulationOperations.importCsv')
+      expect(wrapper.text()).toContain('simulation.operations.importCsv')
     })
 
     it('should render AG Grid component', () => {
@@ -138,8 +140,9 @@ describe('OperationsGrid', () => {
       const wrapper = mountComponent()
       // Component should render successfully
       expect(wrapper.find('.v-card').exists()).toBe(true)
-      // Component uses $t() global with fallback 'Operations'
-      expect(wrapper.text()).toContain('Operations')
+      // Title now driven by simulation.operations.title (i18n mock
+      // returns the bare key).
+      expect(wrapper.text()).toContain('simulation.operations.title')
     })
   })
 
@@ -147,7 +150,7 @@ describe('OperationsGrid', () => {
     it('should call addOperation when Add Operation button is clicked', async () => {
       const wrapper = mountComponent()
       const buttons = wrapper.findAll('.v-btn')
-      const addButton = buttons.find(btn => btn.text().includes('simulationOperations.addOperation'))
+      const addButton = buttons.find(btn => btn.text().includes('simulation.operations.addOperation'))
 
       if (addButton) {
         await addButton.trigger('click')
@@ -158,7 +161,7 @@ describe('OperationsGrid', () => {
     it('should open import dialog when Import CSV button is clicked', async () => {
       const wrapper = mountComponent()
       const buttons = wrapper.findAll('.v-btn')
-      const importButton = buttons.find(btn => btn.text().includes('simulationOperations.importCsv'))
+      const importButton = buttons.find(btn => btn.text().includes('simulation.operations.importCsv'))
 
       if (importButton) {
         await importButton.trigger('click')
@@ -169,68 +172,63 @@ describe('OperationsGrid', () => {
   })
 
   describe('Column Definitions', () => {
+    // Column headerNames are now i18n keys (the test mock returns the
+    // bare key). Asserting the resolved key is sufficient to verify
+    // the column wiring; runtime translation is exercised by E2E.
     it('should define Product column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const productCol = columnDefs.find((c: { field: string }) => c.field === 'product')
+      const productCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'product')
       expect(productCol).toBeDefined()
-      expect(productCol.headerName).toBe('Product')
+      expect(productCol.headerName).toBe('simulation.operations.columns.product')
     })
 
     it('should define Step column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const stepCol = columnDefs.find((c: { field: string }) => c.field === 'step')
+      const stepCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'step')
       expect(stepCol).toBeDefined()
-      expect(stepCol.headerName).toBe('Step')
+      expect(stepCol.headerName).toBe('simulation.operations.columns.step')
     })
 
     it('should define Operation column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const opCol = columnDefs.find((c: { field: string }) => c.field === 'operation')
+      const opCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'operation')
       expect(opCol).toBeDefined()
-      expect(opCol.headerName).toBe('Operation')
+      expect(opCol.headerName).toBe('simulation.operations.columns.operation')
     })
 
     it('should define Machine/Tool column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const machineCol = columnDefs.find((c: { field: string }) => c.field === 'machine_tool')
+      const machineCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'machine_tool')
       expect(machineCol).toBeDefined()
-      expect(machineCol.headerName).toBe('Machine/Tool')
+      expect(machineCol.headerName).toBe('simulation.operations.columns.machineTool')
     })
 
     it('should define SAM column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const samCol = columnDefs.find((c: { field: string }) => c.field === 'sam_min')
+      const samCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'sam_min')
       expect(samCol).toBeDefined()
       expect(samCol.headerName).toBe('timeStandard.samMin')
     })
 
     it('should define Operators column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const opsCol = columnDefs.find((c: { field: string }) => c.field === 'operators')
+      const opsCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'operators')
       expect(opsCol).toBeDefined()
-      expect(opsCol.headerName).toBe('Operators')
+      expect(opsCol.headerName).toBe('simulation.operations.columns.operators')
     })
 
     it('should define Grade % column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const gradeCol = columnDefs.find((c: { field: string }) => c.field === 'grade_pct')
+      const gradeCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'grade_pct')
       expect(gradeCol).toBeDefined()
-      expect(gradeCol.headerName).toBe('Grade %')
+      expect(gradeCol.headerName).toBe('simulation.operations.columns.gradePct')
     })
 
     it('should define FPD % column', () => {
       const wrapper = mountComponent()
-      const columnDefs = wrapper.vm.columnDefs
-      const fpdCol = columnDefs.find((c: { field: string }) => c.field === 'fpd_pct')
+      const fpdCol = wrapper.vm.columnDefs.find((c: { field: string }) => c.field === 'fpd_pct')
       expect(fpdCol).toBeDefined()
-      expect(fpdCol.headerName).toBe('FPD %')
+      expect(fpdCol.headerName).toBe('simulation.operations.columns.fpdPct')
     })
   })
 

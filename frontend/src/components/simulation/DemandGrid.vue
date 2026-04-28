@@ -105,10 +105,13 @@ const gridApi = ref(null)
 
 const getRowId = (params) => String(params.data._id)
 
-const modeOptions = [
-  { title: 'Demand-Driven (specify daily/weekly)', value: 'demand-driven' },
-  { title: 'Mix-Driven (specify percentages)', value: 'mix-driven' }
-]
+// Wrapped in computed() so the option titles re-resolve when the user
+// switches locale at runtime (a static array would freeze them at
+// component-mount time).
+const modeOptions = computed(() => [
+  { title: t('simulationDemand.modeDemandDriven'), value: 'demand-driven' },
+  { title: t('simulationDemand.modeMixDriven'), value: 'mix-driven' }
+])
 
 const defaultColDef = {
   sortable: true,

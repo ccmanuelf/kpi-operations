@@ -1803,7 +1803,25 @@
       "emptyState": "Add operations manually or paste from Excel/CSV. Each product needs sequential steps starting from 1.",
       "emptyTitle": "No Operations Configured",
       "emptyDescription": "Add operations manually, import from CSV, or load sample data to get started.",
-      "addManually": "Add Manually"
+      "addManually": "Add Manually",
+      "opsCount": "{ops} ops / {products} products",
+      "csvLabel": "Paste CSV data here",
+      "csvRequired": "Required columns: product, step, operation, machine_tool, sam_min",
+      "csvOptional": "Optional: sequence, grouping, operators, variability, rework_pct, grade_pct, fpd_pct",
+      "parseError": "Failed to parse CSV data",
+      "columns": {
+        "product": "Product",
+        "step": "Step",
+        "operation": "Operation",
+        "machineTool": "Machine/Tool",
+        "operators": "Operators",
+        "gradePct": "Grade %",
+        "fpdPct": "FPD %",
+        "reworkPct": "Rework %",
+        "variability": "Variability",
+        "sequence": "Sequence",
+        "grouping": "Grouping"
+      }
     },
     "schedule": {
       "title": "Schedule Configuration",
@@ -3489,7 +3507,9 @@
     "bundleSize": "Bundle Size",
     "dailyDemand": "Daily Demand",
     "weeklyDemand": "Weekly Demand",
-    "mixShare": "Mix Share %"
+    "mixShare": "Mix Share %",
+    "modeDemandDriven": "Demand-Driven (specify daily/weekly)",
+    "modeMixDriven": "Mix-Driven (specify percentages)"
   },
   "simulationBreakdowns": {
     "title": "Equipment Breakdowns (Optional)",

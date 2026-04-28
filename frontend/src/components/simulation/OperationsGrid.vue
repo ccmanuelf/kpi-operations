@@ -4,9 +4,9 @@
       <div class="d-flex align-center justify-space-between" style="width: 100%;">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-cog-outline</v-icon>
-          <span class="text-h6">{{ $t('simulation.operations.title', 'Operations') }}</span>
+          <span class="text-h6">{{ t('simulation.operations.title') }}</span>
           <v-chip class="ml-2" size="small" color="white" variant="outlined">
-            {{ store.operationsCount }} ops / {{ store.productsCount }} products
+            {{ t('simulation.operations.opsCount', { ops: store.operationsCount, products: store.productsCount }) }}
           </v-chip>
         </div>
         <div>
@@ -18,7 +18,7 @@
             class="mr-2"
           >
             <v-icon left>mdi-plus</v-icon>
-            {{ t('simulationOperations.addOperation') }}
+            {{ t('simulation.operations.addOperation') }}
           </v-btn>
           <v-btn
             color="white"
@@ -28,7 +28,7 @@
             class="mr-2"
           >
             <v-icon left>mdi-file-import</v-icon>
-            {{ t('simulationOperations.importCsv') }}
+            {{ t('simulation.operations.importCsv') }}
           </v-btn>
         </div>
       </div>
@@ -38,22 +38,22 @@
       <!-- Empty State with Sample Data Option -->
       <v-card v-if="store.operations.length === 0" variant="outlined" class="mb-3 pa-6 text-center">
         <v-icon size="64" color="grey-lighten-1" class="mb-4">mdi-tshirt-crew-outline</v-icon>
-        <h3 class="text-h6 mb-2">{{ $t('simulation.operations.emptyTitle', 'No Operations Configured') }}</h3>
+        <h3 class="text-h6 mb-2">{{ t('simulation.operations.emptyTitle') }}</h3>
         <p class="text-body-2 text-grey mb-4">
-          {{ $t('simulation.operations.emptyDescription', 'Add operations manually, import from CSV, or load sample data to get started.') }}
+          {{ t('simulation.operations.emptyDescription') }}
         </p>
         <div class="d-flex justify-center gap-2">
           <v-btn color="primary" variant="tonal" @click="loadSampleData">
             <v-icon start>mdi-tshirt-crew</v-icon>
-            {{ $t('simulation.sampleData.loadSample', 'Load Sample Data') }}
+            {{ t('simulation.sampleData.loadSample') }}
           </v-btn>
           <v-btn color="secondary" variant="outlined" @click="addRow">
             <v-icon start>mdi-plus</v-icon>
-            {{ $t('simulation.operations.addManually', 'Add Manually') }}
+            {{ t('simulation.operations.addManually') }}
           </v-btn>
           <v-btn color="secondary" variant="outlined" @click="showImportDialog = true">
             <v-icon start>mdi-file-import</v-icon>
-            {{ $t('simulation.operations.importCsv', 'Import CSV') }}
+            {{ t('simulation.operations.importCsv') }}
           </v-btn>
         </div>
       </v-card>
@@ -82,20 +82,23 @@
         <v-card-text>
           <v-textarea
             v-model="csvText"
-            label="Paste CSV data here"
+            :label="t('simulation.operations.csvLabel')"
             placeholder="product,step,operation,machine_tool,sam_min,operators,grade_pct,fpd_pct&#10;TSHIRT_A,1,Cut fabric,Cutting Table,2.0,2,85,15"
             rows="10"
             variant="outlined"
           />
+          <!-- CSV column headers in the placeholder above are intentionally
+               left in English: they're literal field names that map 1:1 to
+               the backend Pydantic schema, not user-facing prose. -->
           <v-alert type="info" variant="tonal" density="compact" class="mt-2">
-            Required columns: product, step, operation, machine_tool, sam_min<br/>
-            Optional: sequence, grouping, operators, variability, rework_pct, grade_pct, fpd_pct
+            {{ t('simulation.operations.csvRequired') }}<br/>
+            {{ t('simulation.operations.csvOptional') }}
           </v-alert>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showImportDialog = false">Cancel</v-btn>
-          <v-btn color="primary" @click="importCsv">Import</v-btn>
+          <v-btn @click="showImportDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="primary" @click="importCsv">{{ t('common.import') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -166,26 +169,26 @@ const columnDefs = computed(() => [
     }
   },
   {
-    headerName: 'Product',
+    headerName: t('simulation.operations.columns.product'),
     field: 'product',
     width: 120,
     cellEditor: 'agTextCellEditor'
   },
   {
-    headerName: 'Step',
+    headerName: t('simulation.operations.columns.step'),
     field: 'step',
     width: 70,
     type: 'numericColumn',
     cellEditor: 'agNumberCellEditor'
   },
   {
-    headerName: 'Operation',
+    headerName: t('simulation.operations.columns.operation'),
     field: 'operation',
     width: 200,
     cellEditor: 'agTextCellEditor'
   },
   {
-    headerName: 'Machine/Tool',
+    headerName: t('simulation.operations.columns.machineTool'),
     field: 'machine_tool',
     width: 150,
     cellEditor: 'agTextCellEditor'
@@ -199,14 +202,14 @@ const columnDefs = computed(() => [
     valueFormatter: (params) => params.value?.toFixed(2)
   },
   {
-    headerName: 'Operators',
+    headerName: t('simulation.operations.columns.operators'),
     field: 'operators',
     width: 90,
     type: 'numericColumn',
     cellEditor: 'agNumberCellEditor'
   },
   {
-    headerName: 'Grade %',
+    headerName: t('simulation.operations.columns.gradePct'),
     field: 'grade_pct',
     width: 90,
     type: 'numericColumn',
@@ -214,7 +217,7 @@ const columnDefs = computed(() => [
     valueFormatter: (params) => params.value?.toFixed(0)
   },
   {
-    headerName: 'FPD %',
+    headerName: t('simulation.operations.columns.fpdPct'),
     field: 'fpd_pct',
     width: 80,
     type: 'numericColumn',
@@ -222,7 +225,7 @@ const columnDefs = computed(() => [
     valueFormatter: (params) => params.value?.toFixed(0)
   },
   {
-    headerName: 'Rework %',
+    headerName: t('simulation.operations.columns.reworkPct'),
     field: 'rework_pct',
     width: 90,
     type: 'numericColumn',
@@ -230,21 +233,21 @@ const columnDefs = computed(() => [
     valueFormatter: (params) => params.value?.toFixed(1)
   },
   {
-    headerName: 'Variability',
+    headerName: t('simulation.operations.columns.variability'),
     field: 'variability',
     width: 110,
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: { values: variabilityOptions }
   },
   {
-    headerName: 'Sequence',
+    headerName: t('simulation.operations.columns.sequence'),
     field: 'sequence',
     width: 110,
     cellEditor: 'agSelectCellEditor',
     cellEditorParams: { values: sequenceOptions }
   },
   {
-    headerName: 'Grouping',
+    headerName: t('simulation.operations.columns.grouping'),
     field: 'grouping',
     width: 100,
     cellEditor: 'agTextCellEditor'
@@ -312,7 +315,7 @@ const importCsv = () => {
       console.error('CSV parse error:', error)
       snackbar.value = {
         show: true,
-        text: 'Failed to parse CSV data',
+        text: t('simulation.operations.parseError'),
         color: 'error'
       }
     }
