@@ -122,7 +122,14 @@ def get_client_opportunities_default(db: Session, client_id: Optional[str] = Non
 
     try:
         config = get_client_config_or_defaults(db, client_id)
-        return config.get("dpmo_opportunities_default", DEFAULT_OPPORTUNITIES_PER_UNIT)
+        # config.get returns Any (the dict can hold heterogeneous types).
+        # Coerce to int and fall back to the default if the stored value
+        # isn't numeric.
+        raw = config.get("dpmo_opportunities_default", DEFAULT_OPPORTUNITIES_PER_UNIT)
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return DEFAULT_OPPORTUNITIES_PER_UNIT
     except Exception as e:
         logger.warning(f"Error calculating opportunities per unit: {e}")
         return DEFAULT_OPPORTUNITIES_PER_UNIT
@@ -206,7 +213,7 @@ def calculate_dpmo(
     work_order_id: str,
     start_date: date,
     end_date: date,
-    opportunities_per_unit: int = None,
+    opportunities_per_unit: Optional[int] = None,
     part_number: Optional[str] = None,
     client_id: Optional[str] = None,
 ) -> tuple[Decimal, Decimal, int, int]:

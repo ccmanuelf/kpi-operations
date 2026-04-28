@@ -112,7 +112,10 @@ def calculate_attendance_rate(db: Session, employee_id: int, start_date: date, e
 
 
 def identify_chronic_absentees(
-    db: Session, threshold_rate: Decimal = Decimal("10.0"), start_date: date = None, end_date: date = None
+    db: Session,
+    threshold_rate: Decimal = Decimal("10.0"),
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
 ) -> list[dict]:
     """
     Identify employees with absenteeism above threshold
@@ -121,9 +124,17 @@ def identify_chronic_absentees(
     """
     from datetime import timedelta
 
-    if not start_date:
-        end_date = date.today()
+    # Default a missing start_date to 30 days ago. Defaulting end_date
+    # only when start_date was missing was the original behaviour, but
+    # we also need to ensure end_date is non-None for the datetime.combine
+    # below — handle both branches explicitly so mypy can narrow the
+    # types away from Optional.
+    if start_date is None:
+        if end_date is None:
+            end_date = date.today()
         start_date = end_date - timedelta(days=30)
+    elif end_date is None:
+        end_date = date.today()
 
     # Convert date to datetime for comparison
     start_datetime = datetime.combine(start_date, datetime.min.time())
