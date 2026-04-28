@@ -52,9 +52,12 @@ async def calculate_capacity_requirements_endpoint(
         target_date_val = request.target_date or date.today()
         cycle_time = Decimal(str(request.cycle_time_hours)) if request.cycle_time_hours else None
 
+        client_id_assigned = current_user.client_id_assigned
+        if not client_id_assigned:
+            raise HTTPException(status_code=400, detail="User has no client assignment")
         result = calculate_capacity_requirements(
             db=db,
-            client_id=current_user.client_id_assigned,
+            client_id=client_id_assigned,
             target_units=request.target_units,
             target_date=target_date_val,
             cycle_time_hours=cycle_time,
@@ -192,9 +195,12 @@ async def quick_staffing_calculation(
     Returns:
         Quick staffing requirements
     """
+    client_id_assigned = current_user.client_id_assigned
+    if not client_id_assigned:
+        raise HTTPException(status_code=400, detail="User has no client assignment")
     result = calculate_capacity_requirements(
         db=db,
-        client_id=current_user.client_id_assigned,
+        client_id=client_id_assigned,
         target_units=target_units,
         target_date=date.today(),
         cycle_time_hours=Decimal(str(cycle_time_hours)),

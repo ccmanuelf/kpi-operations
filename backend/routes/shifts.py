@@ -9,6 +9,7 @@ from typing import List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.shift import Shift
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 from backend.schemas.shift import (
@@ -40,11 +41,14 @@ def list_shifts_endpoint(
     client_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> list[ShiftResponse]:
+) -> List[Shift]:
     """
     List active shifts for a client.
 
-    Returns all active shifts ordered by shift_name.
+    Returns all active shifts ordered by shift_name. The response is
+    serialised through ShiftResponse via FastAPI's response_model — the
+    function itself returns the ORM rows, so the annotation reflects
+    that rather than lying about the post-serialisation type.
     """
     logger.info("Listing shifts for client_id=%s by user=%s", client_id, current_user.user_id)
     return list_shifts(db, client_id)
@@ -115,7 +119,7 @@ def get_shift_endpoint(
     shift_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> ShiftResponse:
+) -> Shift:
     """
     Get a single shift by ID.
     """

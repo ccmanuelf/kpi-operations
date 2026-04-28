@@ -4,6 +4,7 @@ Thin service layer wrapping Defect Detail CRUD operations.
 Routes should import from this module instead of backend.crud.defect_detail directly.
 """
 
+from datetime import date
 from typing import List, Optional
 from sqlalchemy.orm import Session
 
@@ -55,6 +56,18 @@ def delete_defect(db: Session, defect_detail_id: str, current_user: User) -> boo
     return delete_defect_detail(db, defect_detail_id, current_user)
 
 
-def get_summary_by_type(db: Session, current_user: User, client_id: Optional[str] = None):
-    """Get defect summary grouped by type."""
-    return get_defect_summary_by_type(db, current_user, client_id)
+def get_summary_by_type(
+    db: Session,
+    current_user: User,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+):
+    """Get defect summary grouped by type with optional date filtering.
+
+    Previously took a `client_id: Optional[str]` parameter that was
+    forwarded onto the CRUD's `start_date` slot, mis-typed and
+    semantically wrong. The CRUD's real signature is
+    (db, user, start_date, end_date) — aligned the service with it
+    so the route's date filters reach the query.
+    """
+    return get_defect_summary_by_type(db, current_user, start_date, end_date)

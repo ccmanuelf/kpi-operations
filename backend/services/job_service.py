@@ -55,6 +55,11 @@ def delete_job_record(db: Session, job_id: str, current_user: User) -> bool:
     return delete_job(db, job_id, current_user)
 
 
-def complete_job_record(db: Session, job_id: str, current_user: User):
-    """Mark a job as complete."""
-    return complete_job(db, job_id, current_user)
+def complete_job_record(db: Session, job_id: str, completed_quantity: int, actual_hours: float, current_user: User):
+    """Mark a job as complete with actual quantities and hours.
+
+    Previously dropped completed_quantity and actual_hours, leaving the
+    job rows with the stale planned values — the route's caller passes
+    both, so this thin wrapper now forwards them to the CRUD layer.
+    """
+    return complete_job(db, job_id, completed_quantity, actual_hours, current_user)

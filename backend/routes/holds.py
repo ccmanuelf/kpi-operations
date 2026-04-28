@@ -368,19 +368,24 @@ def calculate_wip_aging_kpi(
     aging_over_30 = 0
 
     for hold in holds:
-        # Properly convert DateTime to date for comparison
-        hold_date = hold.hold_date
-        if hold_date is None:
+        # Properly convert DateTime to date for comparison. Use a
+        # separate `hold_date_only: date` binding so mypy doesn't see a
+        # narrowing-to-Never on the rebinding from datetime/str → date.
+        raw_hold_date = hold.hold_date
+        if raw_hold_date is None:
             continue
 
-        # Handle both datetime and date types, and string from SQLite
-        if hasattr(hold_date, "date"):
-            hold_date = hold_date.date()
-        elif isinstance(hold_date, str):
+        if isinstance(raw_hold_date, datetime):
+            hold_date_only: date = raw_hold_date.date()
+        elif isinstance(raw_hold_date, date):
+            hold_date_only = raw_hold_date
+        elif isinstance(raw_hold_date, str):
             # Parse date string from SQLite
-            hold_date = datetime.strptime(hold_date.split()[0], "%Y-%m-%d").date()
+            hold_date_only = datetime.strptime(raw_hold_date.split()[0], "%Y-%m-%d").date()
+        else:
+            continue
 
-        age_days = (calculation_date - hold_date).days
+        age_days = (calculation_date - hold_date_only).days
         total_age += age_days
 
         if age_days <= 7:
