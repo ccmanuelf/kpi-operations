@@ -228,8 +228,10 @@ class KPIHistoryGenerator:
             # 3. Random noise (Gaussian)
             noise = random.gauss(0, config.volatility)
 
-            # 4. Occasional anomalies (5% chance)
-            anomaly = 0
+            # 4. Occasional anomalies (5% chance). Float seed so the
+            # `anomaly = anomaly_direction * config.volatility * 2.5`
+            # assignment downstream stays numerically consistent.
+            anomaly: float = 0.0
             is_anomaly = False
             if random.random() < 0.05:
                 anomaly_direction = 1 if random.random() > 0.5 else -1

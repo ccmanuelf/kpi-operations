@@ -114,7 +114,10 @@ def calculate_cycle_time_hours(production_entries: list[dict]) -> float:
     if not production_entries:
         return 0.0
 
-    total_hours = sum(entry.get("run_time_hours", 0) for entry in production_entries)
+    # entry.get returns Any; coerce to float so the round() call has
+    # a known-numeric input and the function honours its `-> float`
+    # return annotation.
+    total_hours = sum(float(entry.get("run_time_hours", 0) or 0) for entry in production_entries)
     return round(total_hours, 2)
 
 

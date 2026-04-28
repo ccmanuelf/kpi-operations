@@ -52,7 +52,7 @@ def run_migrations_offline() -> None:
     No Engine is required; only the database URL is needed.
     """
     url = config.get_main_option("sqlalchemy.url")
-    is_sqlite = url and "sqlite" in url
+    is_sqlite = bool(url and "sqlite" in url)
 
     context.configure(
         url=url,
@@ -81,7 +81,7 @@ def run_migrations_online() -> None:
     )
 
     url = config.get_main_option("sqlalchemy.url")
-    is_sqlite = url and "sqlite" in url
+    is_sqlite = bool(url and "sqlite" in url)
 
     with connectable.connect() as connection:
         context.configure(

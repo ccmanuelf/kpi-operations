@@ -6,7 +6,7 @@ Supports different test scenarios: minimal, comprehensive, multi-tenant.
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from .factories import TestDataFactory
@@ -168,9 +168,15 @@ def seed_comprehensive_data(db: Session, days_of_data: int = 30) -> Dict[str, An
             )
             jobs.append(job)
 
-            # Create part opportunities
+            # Create part opportunities. job.part_number is
+            # Mapped[Optional[str]] in the ORM but the factory expects
+            # str — fallback to the deterministic part-number we pass
+            # to create_job above (same value, explicitly typed).
             TestDataFactory.create_part_opportunities(
-                db, part_number=job.part_number, client_id=client.client_id, opportunities_per_unit=10
+                db,
+                part_number=job.part_number or f"PART-{i+1:03d}-{j+1}",
+                client_id=client.client_id,
+                opportunities_per_unit=10,
             )
 
     db.flush()
@@ -293,7 +299,10 @@ def seed_comprehensive_data(db: Session, days_of_data: int = 30) -> Dict[str, An
     # ========================================================================
 
     filters = []
-    filter_configs = [
+    # Annotated explicitly so mypy doesn't widen the third tuple
+    # element to `object` because the dict-value types vary per row
+    # (str vs int).
+    filter_configs: List[Tuple[str, str, Dict[str, Any]]] = [
         ("My Production", "production", {"date_range": "last_7_days"}),
         ("Open Orders", "work_order", {"status": "RECEIVED"}),
         ("Quality Issues", "quality", {"defect_count_min": 1}),

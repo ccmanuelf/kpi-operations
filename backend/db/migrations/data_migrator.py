@@ -320,14 +320,17 @@ class DataMigrator:
                 count = conn.execute(
                     text(f"SELECT COUNT(*) FROM {table_name}")
                 ).scalar()
-                source_counts[table_name] = count
+                # .scalar() returns Optional[Any]; coerce to int (with
+                # 0 for the empty/None case) so the dict matches the
+                # declared dict[str, int] return type.
+                source_counts[table_name] = int(count or 0)
 
         for table_name in target_inspector.get_table_names():
             with self.target_engine.connect() as conn:
                 count = conn.execute(
                     text(f"SELECT COUNT(*) FROM {table_name}")
                 ).scalar()
-                target_counts[table_name] = count
+                target_counts[table_name] = int(count or 0)
 
         return source_counts, target_counts
 

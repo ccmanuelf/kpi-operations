@@ -197,12 +197,16 @@ def _validate_machine_tool_consistency(operations: List[OperationInput], report:
 
     tools = list(tool_counts.keys())
 
-    # Check for near-matches that might be typos
+    # Check for near-matches that might be typos. tuple(sorted(...))
+    # widens to tuple[str, ...] which mypy rejects against the
+    # tuple[str, str] set element type — bind the pair as a 2-tuple
+    # explicitly.
     checked_pairs: Set[Tuple[str, str]] = set()
     for i, tool1 in enumerate(tools):
         for tool2 in tools[i + 1 :]:
             # Skip if already checked
-            pair = tuple(sorted([tool1, tool2]))
+            ordered = sorted([tool1, tool2])
+            pair: Tuple[str, str] = (ordered[0], ordered[1])
             if pair in checked_pairs:
                 continue
             checked_pairs.add(pair)

@@ -4,6 +4,7 @@ Shared test fixtures for all test modules
 """
 
 import warnings
+from typing import Optional
 
 # python-multipart 0.0.22 warns about `import multipart` (used by starlette),
 # but starlette hasn't migrated yet. Suppress to avoid pytest -W error breakage.
@@ -357,71 +358,16 @@ def expected_availability():
     return 93.75
 
 
-# Test Data Factories
-class TestDataFactory:
-    """Factory for generating test data"""
-
-    @staticmethod
-    def create_production_entries(db: Session, count: int, client_id: str = "CLIENT-A", base_date: date = None):
-        """Create multiple production entries"""
-        if base_date is None:
-            base_date = date(2024, 1, 1)
-
-        entries = []
-        for i in range(count):
-            prod_date = datetime.combine(base_date + timedelta(days=i), datetime.min.time())
-            entry = ProductionEntry(
-                production_entry_id=f"PE-{client_id}-{i:03d}",
-                client_id=client_id,
-                product_id=101,
-                shift_id=1,
-                production_date=prod_date,
-                shift_date=prod_date,
-                units_produced=1000 + (i * 10),
-                employees_assigned=5,
-                run_time_hours=8.0,
-                entered_by=1,  # Test user ID
-            )
-            db.add(entry)
-            entries.append(entry)
-
-        db.commit()
-        return entries
-
-    @staticmethod
-    def create_quality_inspections(
-        db: Session, count: int, client_id: str = "CLIENT-A", defect_rate: float = 0.005  # 0.5% default
-    ):
-        """Create multiple quality inspections"""
-        inspections = []
-        for i in range(count):
-            units = 1000
-            defects = int(units * defect_rate)
-            shift_dt = datetime.combine(date(2024, 1, 1) + timedelta(days=i), datetime.min.time())
-
-            inspection = QualityInspection(
-                quality_entry_id=f"QE-{client_id}-{i:03d}",
-                client_id=client_id,
-                work_order_id=f"WO-{client_id}-001",  # Placeholder work order
-                shift_date=shift_dt,
-                inspection_date=shift_dt,
-                units_inspected=units,
-                units_passed=units - defects,
-                units_defective=defects,
-                total_defects_count=defects,
-                units_scrapped=defects // 2,
-                units_reworked=defects - (defects // 2),
-            )
-            db.add(inspection)
-            inspections.append(inspection)
-
-        db.commit()
-        return inspections
+# Test Data Factories — the canonical TestDataFactory lives in
+# backend.db.factories (re-exported by backend.tests.fixtures.factories).
+# A duplicate `class TestDataFactory:` used to live here and got shadowed
+# by the import below at module level, breaking type checking and risking
+# silent behaviour drift between the two definitions. Removed.
 
 
 @pytest.fixture
 def test_data_factory():
-    """Provide test data factory - uses enhanced fixtures"""
+    """Provide test data factory."""
     from backend.tests.fixtures.factories import TestDataFactory as EnhancedFactory
 
     return EnhancedFactory

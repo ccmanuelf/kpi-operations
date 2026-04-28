@@ -5,6 +5,8 @@ Uses in-memory SQLite databases for both source and target to validate
 migration logic without requiring external database servers.
 """
 
+from typing import Optional
+
 import pytest
 from sqlalchemy import Column, Integer, String, DateTime, MetaData, Table, create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -75,7 +77,7 @@ def _seed_client(session: Session, client_id: str, client_name: str = "Test Co")
     return client
 
 
-def _seed_user(session: Session, user_id: str, username: str, client_id: str = None):
+def _seed_user(session: Session, user_id: str, username: str, client_id: Optional[str] = None):
     """Insert a USER row."""
     from backend.orm.user import User, UserRole
 

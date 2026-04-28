@@ -20,6 +20,7 @@ import json
 import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
+from typing import Any, Dict, List
 import random
 
 # Ensure backend module is importable
@@ -90,7 +91,7 @@ from backend.schemas.alert import Alert, AlertConfig, AlertHistory
 # Single source of truth for product data used across ALL modules.
 # Total SAM / 60 = cycle_time_hours (e.g., 9.0/60 = 0.15h)
 # ============================================================================
-MASTER_PRODUCTS = [
+MASTER_PRODUCTS: List[Dict[str, Any]] = [
     {
         "code": "TSHIRT-100",
         "name": "Basic T-Shirt Assembly",

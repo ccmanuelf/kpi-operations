@@ -244,9 +244,7 @@ def compare_scenarios(
         period_start = request.period_start or _date.today()
         period_end = request.period_end or (period_start + _timedelta(days=30))
 
-        comparison = service.compare_scenarios(
-            client_id, request.scenario_ids, period_start, period_end
-        )
+        comparison = service.compare_scenarios(client_id, request.scenario_ids, period_start, period_end)
         return comparison
     except ImportError:
         raise HTTPException(status_code=501, detail="Scenario service not yet implemented")
