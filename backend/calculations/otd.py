@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Dict, Tuple, NamedTuple
+from typing import Any, Optional, Dict, List, Tuple, NamedTuple
 from dataclasses import dataclass
 
 from backend.orm.production_entry import ProductionEntry
@@ -198,17 +198,15 @@ def calculate_delivery_variance(
     }
 
 
-def identify_late_orders(db: Session, as_of_date: date = None) -> list[dict]:
+def identify_late_orders(db: Session, as_of_date: Optional[date] = None) -> List[Dict[str, Any]]:
     """
     Identify work orders that are potentially late
 
     In MVP: Orders without confirmation that are older than 7 days
     """
 
-    if not as_of_date:
+    if as_of_date is None:
         as_of_date = date.today()
-
-    from datetime import timedelta
 
     threshold_date = as_of_date - timedelta(days=7)
 
@@ -225,19 +223,23 @@ def identify_late_orders(db: Session, as_of_date: date = None) -> list[dict]:
     )
 
     # Group by work order
-    work_orders = {}
+    work_orders: Dict[str, Dict[str, Any]] = {}
     for entry in late_entries:
         wo = entry.work_order_id
+        # Filter excludes nulls but ORM column is Optional from mypy's POV.
+        if wo is None:
+            continue
         if wo not in work_orders:
-            # Handle both date and datetime types for production_date
-            prod_date = entry.production_date
-            if hasattr(prod_date, "date"):
-                prod_date = prod_date.date()
+            # production_date may be stored as datetime; normalise to date
+            # for the days_pending arithmetic without rebinding the variable
+            # to a different type (which mypy narrows away).
+            raw_prod = entry.production_date
+            prod_date_only: date = raw_prod.date() if isinstance(raw_prod, datetime) else raw_prod
             work_orders[wo] = {
                 "work_order": wo,
                 "product_id": entry.product_id,
                 "start_date": entry.production_date,
-                "days_pending": (as_of_date - prod_date).days,
+                "days_pending": (as_of_date - prod_date_only).days,
                 "total_units": 0,
             }
         work_orders[wo]["total_units"] += entry.units_produced
@@ -314,13 +316,20 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
             true_otd_skipped += 1
             continue
 
+        # The query filters on actual_delivery_date.isnot(None), but the
+        # ORM column is Optional from mypy's POV. Skip defensively if null.
+        actual_delivery = wo.actual_delivery_date
+        if actual_delivery is None:
+            true_otd_skipped += 1
+            continue
+
         if inferred.is_inferred:
             true_otd_inferred_count += 1
 
-        if wo.actual_delivery_date <= inferred.date:
+        if actual_delivery <= inferred.date:
             true_otd_on_time += 1
             # Check if early (more than 1 day before planned)
-            days_diff = (inferred.date - wo.actual_delivery_date).days
+            days_diff = (inferred.date - actual_delivery).days
             if days_diff > 1:
                 true_otd_early += 1
         else:
@@ -357,10 +366,16 @@ def calculate_true_otd(db: Session, client_id: str, start_date: date, end_date: 
             standard_skipped += 1
             continue
 
+        # Same null-defence as the TRUE-OTD loop above.
+        actual_delivery = wo.actual_delivery_date
+        if actual_delivery is None:
+            standard_skipped += 1
+            continue
+
         if inferred.is_inferred:
             standard_inferred_count += 1
 
-        if wo.actual_delivery_date <= inferred.date:
+        if actual_delivery <= inferred.date:
             standard_on_time += 1
 
     standard_total = len(standard_orders) - standard_skipped
@@ -433,7 +448,10 @@ def calculate_otd_by_work_order(db: Session, work_order_id: str) -> Optional[Dic
     # Use inference chain to get planned date
     inferred = infer_planned_delivery_date(work_order)
 
-    result = {
+    # Annotated explicitly so mypy permits writing int (days_variance) and
+    # bool (qualifies_for_true_otd) into the same mapping later without
+    # widening to a single union that breaks the `is_on_time = bool` write.
+    result: Dict[str, Any] = {
         "work_order_id": work_order_id,
         "status": work_order.status.value if work_order.status else None,
         "planned_ship_date": work_order.planned_ship_date.isoformat() if work_order.planned_ship_date else None,
@@ -516,10 +534,14 @@ def calculate_otd_trend(
             }
         )
 
-    # Calculate overall averages
+    # Calculate overall averages. sum() defaults to int(0) for the start
+    # value, so the inferred type is `int | Decimal` and `.quantize` below
+    # would fail on the int branch. Pass an explicit Decimal seed.
     if trend_data:
-        avg_true_otd = sum(Decimal(str(d["true_otd_percentage"])) for d in trend_data) / len(trend_data)
-        avg_standard_otd = sum(Decimal(str(d["standard_otd_percentage"])) for d in trend_data) / len(trend_data)
+        avg_true_otd = sum((Decimal(str(d["true_otd_percentage"])) for d in trend_data), Decimal("0")) / len(trend_data)
+        avg_standard_otd = sum((Decimal(str(d["standard_otd_percentage"])) for d in trend_data), Decimal("0")) / len(
+            trend_data
+        )
     else:
         avg_true_otd = Decimal("0")
         avg_standard_otd = Decimal("0")
@@ -573,8 +595,9 @@ def calculate_otd_by_product(db: Session, client_id: str, start_date: date, end_
         .all()
     )
 
-    # Group by style_model with inference tracking
-    product_metrics = {}
+    # Group by style_model with inference tracking. Annotated explicitly
+    # so the inner counter increments don't get inferred as `object + int`.
+    product_metrics: Dict[str, Dict[str, Any]] = {}
     total_inferred = 0
     total_skipped = 0
 
@@ -583,6 +606,11 @@ def calculate_otd_by_product(db: Session, client_id: str, start_date: date, end_
         inferred = infer_planned_delivery_date(wo)
 
         if inferred.date is None:
+            total_skipped += 1
+            continue
+
+        actual_delivery = wo.actual_delivery_date
+        if actual_delivery is None:
             total_skipped += 1
             continue
 
@@ -605,17 +633,17 @@ def calculate_otd_by_product(db: Session, client_id: str, start_date: date, end_
 
         # Standard OTD using inferred date
         product_metrics[style]["standard_total"] += 1
-        if wo.actual_delivery_date <= inferred.date:
+        if actual_delivery <= inferred.date:
             product_metrics[style]["standard_on_time"] += 1
 
         # TRUE-OTD (only COMPLETED)
         if wo.status == WorkOrderStatus.COMPLETED:
             product_metrics[style]["true_otd_total"] += 1
-            if wo.actual_delivery_date <= inferred.date:
+            if actual_delivery <= inferred.date:
                 product_metrics[style]["true_otd_on_time"] += 1
 
     # Calculate percentages
-    results = []
+    results: List[Dict[str, Any]] = []
     for style, metrics in product_metrics.items():
         true_pct = Decimal("0")
         if metrics["true_otd_total"] > 0:
