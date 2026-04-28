@@ -90,54 +90,60 @@
  * (net capacity, utilization, SAM per order, gross required, coverage).
  * Purely informational -- no store dependency, props, or emits.
  */
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const calculationSteps = [
-  { number: 1, title: 'Working Days', description: 'Count calendar working days in period' },
-  { number: 2, title: 'Shifts per Day', description: 'Multiply by available shifts' },
-  { number: 3, title: 'Hours per Shift', description: 'Standard hours (typically 8h)' },
-  { number: 4, title: 'Gross Available Hours', description: 'Days \u00d7 Shifts \u00d7 Hours' },
-  { number: 5, title: 'Efficiency Factor', description: 'Apply line efficiency (typically 85%)' },
-  { number: 6, title: 'Absenteeism Factor', description: 'Deduct absenteeism (typically 5%)' },
-  { number: 7, title: 'Net Available Hours', description: 'Gross \u00d7 Efficiency \u00d7 (1 \u2212 Absenteeism)' },
-  { number: 8, title: 'Operators per Line', description: 'Multiply by available operators' },
-  { number: 9, title: 'Total Capacity Hours', description: 'Net Hours \u00d7 Operators' },
+
+// Wrapped in computed() so the titles/descriptions re-resolve on
+// locale switch — were previously a mix of hardcoded English text
+// and t() calls only on step 10. All keys already exist under
+// capacityInstructions.steps.* / .pitfalls.* / .formulas.*
+const calculationSteps = computed(() => [
+  { number: 1, title: t('capacityInstructions.steps.workingDays'), description: t('capacityInstructions.steps.workingDaysDesc') },
+  { number: 2, title: t('capacityInstructions.steps.shiftsPerDay'), description: t('capacityInstructions.steps.shiftsPerDayDesc') },
+  { number: 3, title: t('capacityInstructions.steps.hoursPerShift'), description: t('capacityInstructions.steps.hoursPerShiftDesc') },
+  { number: 4, title: t('capacityInstructions.steps.grossHours'), description: t('capacityInstructions.steps.grossHoursDesc') },
+  { number: 5, title: t('capacityInstructions.steps.efficiency'), description: t('capacityInstructions.steps.efficiencyDesc') },
+  { number: 6, title: t('capacityInstructions.steps.absenteeism'), description: t('capacityInstructions.steps.absenteeismDesc') },
+  { number: 7, title: t('capacityInstructions.steps.netHours'), description: t('capacityInstructions.steps.netHoursDesc') },
+  { number: 8, title: t('capacityInstructions.steps.operators'), description: t('capacityInstructions.steps.operatorsDesc') },
+  { number: 9, title: t('capacityInstructions.steps.totalCapacity'), description: t('capacityInstructions.steps.totalCapacityDesc') },
   { number: 10, title: t('capacityInstructions.steps.demandHours'), description: t('capacityInstructions.steps.demandHoursDesc') },
-  { number: 11, title: 'Utilization %', description: '(Demand / Capacity) \u00d7 100' },
-  { number: 12, title: 'Bottleneck Detection', description: 'Flag lines above threshold' }
-]
+  { number: 11, title: t('capacityInstructions.steps.utilization'), description: t('capacityInstructions.steps.utilizationDesc') },
+  { number: 12, title: t('capacityInstructions.steps.bottleneck'), description: t('capacityInstructions.steps.bottleneckDesc') }
+])
 
-const commonPitfalls = [
-  'Forgetting to exclude holidays from working days',
-  'Using gross hours instead of net hours for capacity',
-  'Not accounting for setup time between style changes',
-  'Ignoring learning curve for new styles (first 3 days typically 70% efficiency)',
-  'Double-counting operators shared between lines',
-  'Not updating stock snapshots before running MRP',
-  'Comparing scenarios with different date ranges'
-]
+const commonPitfalls = computed(() => [
+  t('capacityInstructions.pitfalls.holidays'),
+  t('capacityInstructions.pitfalls.grossHours'),
+  t('capacityInstructions.pitfalls.setupTime'),
+  t('capacityInstructions.pitfalls.learningCurve'),
+  t('capacityInstructions.pitfalls.doubleCount'),
+  t('capacityInstructions.pitfalls.stockSnapshots'),
+  t('capacityInstructions.pitfalls.dateRanges')
+])
 
-const keyFormulas = [
+const keyFormulas = computed(() => [
   {
-    label: 'Net Capacity',
-    expression: 'Working Days \u00d7 Shifts \u00d7 Hours \u00d7 Efficiency \u00d7 (1 \u2212 Absenteeism) \u00d7 Operators'
+    label: t('capacityInstructions.formulas.netCapacity'),
+    expression: t('capacityInstructions.formulas.netCapacityExpr')
   },
   {
-    label: 'Utilization %',
-    expression: '(Total Demand Hours / Total Capacity Hours) \u00d7 100'
+    label: t('capacityInstructions.formulas.utilization'),
+    expression: t('capacityInstructions.formulas.utilizationExpr')
   },
   {
     label: t('timeStandard.samPerOrder'),
     expression: t('timeStandard.samExpression')
   },
   {
-    label: 'Gross Required',
-    expression: 'Quantity Per \u00d7 Order Qty \u00d7 (1 + Waste%)'
+    label: t('capacityInstructions.formulas.grossRequired'),
+    expression: t('capacityInstructions.formulas.grossRequiredExpr')
   },
   {
-    label: 'Coverage %',
-    expression: '(Available Qty / Required Qty) \u00d7 100'
+    label: t('capacityInstructions.formulas.coverage'),
+    expression: t('capacityInstructions.formulas.coverageExpr')
   }
-]
+])
 </script>

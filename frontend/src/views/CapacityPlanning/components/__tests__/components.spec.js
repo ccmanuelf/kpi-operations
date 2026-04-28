@@ -117,9 +117,12 @@ describe('InstructionsPanel', () => {
       global: { stubs: globalStubs }
     })
 
+    // Steps are now i18n-driven; the test mock returns the bare key.
+    // Verify both the first and last step's keys are emitted to confirm
+    // the full 1..12 array is rendered.
     const html = wrapper.html()
-    expect(html).toContain('Working Days')
-    expect(html).toContain('Bottleneck Detection')
+    expect(html).toContain('capacityInstructions.steps.workingDays')
+    expect(html).toContain('capacityInstructions.steps.bottleneck')
   })
 
   it('renders common pitfalls section', () => {
@@ -128,7 +131,8 @@ describe('InstructionsPanel', () => {
     })
 
     expect(wrapper.text()).toContain('capacityInstructions.commonPitfalls')
-    expect(wrapper.text()).toContain('Forgetting to exclude holidays')
+    // First pitfall key (was 'Forgetting to exclude holidays...').
+    expect(wrapper.text()).toContain('capacityInstructions.pitfalls.holidays')
   })
 
   it('renders key formulas section', () => {
@@ -137,8 +141,9 @@ describe('InstructionsPanel', () => {
     })
 
     expect(wrapper.text()).toContain('capacityInstructions.keyFormulas')
-    expect(wrapper.text()).toContain('Net Capacity')
-    expect(wrapper.text()).toContain('Utilization %')
+    // Both formulas now keyed under capacityInstructions.formulas.*
+    expect(wrapper.text()).toContain('capacityInstructions.formulas.netCapacity')
+    expect(wrapper.text()).toContain('capacityInstructions.formulas.utilization')
   })
 
   it('displays 3 expansion panels', () => {
