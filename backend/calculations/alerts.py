@@ -481,8 +481,21 @@ def generate_prediction_based_alert(
     if worst_prediction is None:
         return None
 
-    # Determine alert severity based on how soon and how bad
-    severity = check_threshold_breach(worst_prediction, target, warning_threshold, critical_threshold, higher_is_better)
+    # worst_period is assigned in lockstep with worst_prediction inside
+    # the loop, so it cannot be None once worst_prediction has a value —
+    # but mypy can't track that dual invariant. Narrow explicitly.
+    assert worst_period is not None
+
+    # Determine alert severity based on how soon and how bad. The loop
+    # only enters the "best prediction" branch when severity is truthy,
+    # so worst_prediction breaches at least one threshold. Re-derive a
+    # severity for it and fall back to "warning" if (defensively) the
+    # re-check returns None — keeps the AlertGenerationResult.severity
+    # contract (str, not Optional[str]) honest.
+    severity = (
+        check_threshold_breach(worst_prediction, target, warning_threshold, critical_threshold, higher_is_better)
+        or "warning"
+    )
 
     if worst_period <= 3:
         # Issue predicted within 3 days - escalate
