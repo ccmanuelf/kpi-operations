@@ -66,16 +66,18 @@ def calculate_otd_kpi(
     on_time_count = 0
 
     for wo in work_orders:
-        # Get the due date (required_date)
-        due_date = wo.required_date
-        if hasattr(due_date, "date"):
-            due_date = due_date.date()
+        # Get the due date (required_date). The query already filters
+        # required_date.isnot(None), but mypy still sees the column as
+        # Optional[datetime] — guard explicitly. Use isinstance rather
+        # than hasattr-rebind so the variable type stays stable.
+        if wo.required_date is None:
+            continue
+        due_date = wo.required_date.date() if isinstance(wo.required_date, datetime) else wo.required_date
 
         # Consider on-time if delivered by due date or still open before due date
-        if wo.actual_delivery_date:
-            delivery_date = wo.actual_delivery_date
-            if hasattr(delivery_date, "date"):
-                delivery_date = delivery_date.date()
+        if wo.actual_delivery_date is not None:
+            actual = wo.actual_delivery_date
+            delivery_date = actual.date() if isinstance(actual, datetime) else actual
             if delivery_date <= due_date:
                 on_time_count += 1
         elif due_date >= date.today():
