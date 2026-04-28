@@ -4,9 +4,10 @@ Thin service layer wrapping User Preferences CRUD operations.
 Routes should import from this module instead of backend.crud.preferences directly.
 """
 
-from typing import List, Optional
+from typing import Optional
 from sqlalchemy.orm import Session
 
+from backend.schemas.preferences import DashboardPreferences, DashboardPreferencesUpdate
 from backend.crud.preferences import (
     get_user_dashboard_preferences,
     get_user_dashboard_preferences_full,
@@ -30,13 +31,19 @@ def get_dashboard_preferences_full(db: Session, user_id: str):
     return get_user_dashboard_preferences_full(db, user_id)
 
 
-def save_dashboard_preferences(db: Session, user_id: str, preferences):
+def save_dashboard_preferences(db: Session, user_id: str, preferences: DashboardPreferences):
     """Save dashboard preferences for a user."""
     return save_user_dashboard_preferences(db, user_id, preferences)
 
 
-def update_dashboard_preferences(db: Session, user_id: str, updates: dict):
-    """Update dashboard preferences for a user."""
+def update_dashboard_preferences(db: Session, user_id: str, updates: DashboardPreferencesUpdate):
+    """Update dashboard preferences for a user.
+
+    Takes a DashboardPreferencesUpdate (Pydantic) rather than a raw dict
+    to match the CRUD layer's contract — the route was already passing
+    the typed form, but the previous `dict` annotation here was a
+    type-safety lie that mypy correctly flagged.
+    """
     return update_user_dashboard_preferences(db, user_id, updates)
 
 

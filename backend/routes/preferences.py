@@ -305,7 +305,7 @@ async def get_role_defaults(
     },
 )
 async def reset_preferences(
-    request: ResetPreferencesRequest = None,
+    request: Optional[ResetPreferencesRequest] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ResetPreferencesResponse:
