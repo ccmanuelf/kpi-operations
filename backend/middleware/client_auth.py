@@ -71,7 +71,7 @@ def _get_clients_from_legacy_field(user: User) -> Optional[List[str]]:
     return user_clients if user_clients else None
 
 
-def get_user_client_filter(user: User, db: Session = None) -> Optional[List[str]]:
+def get_user_client_filter(user: User, db: Optional[Session] = None) -> Optional[List[str]]:
     """
     Get list of client IDs the user can access
 
@@ -116,7 +116,7 @@ def get_user_client_filter(user: User, db: Session = None) -> Optional[List[str]
     return user_clients
 
 
-def verify_client_access(user: User, resource_client_id: str, db: Session = None) -> bool:
+def verify_client_access(user: User, resource_client_id: str, db: Optional[Session] = None) -> bool:
     """
     Verify user has access to a specific client's resource
 
@@ -182,8 +182,11 @@ def verify_client_access(user: User, resource_client_id: str, db: Session = None
                 db_client_ids.strip(),
             )
 
-    # Get user's authorized client list (always from DB record, not JWT)
+    # Get user's authorized client list (always from DB record, not JWT).
+    # ADMIN/POWERUSER returned True above, so by here the function is
+    # guaranteed to return a non-None list (or raise ClientAccessError).
     user_clients = get_user_client_filter(user, db)
+    assert user_clients is not None
 
     # Check if resource's client is in user's authorized list
     if resource_client_id not in user_clients:
