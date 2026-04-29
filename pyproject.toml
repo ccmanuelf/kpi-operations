@@ -21,6 +21,17 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+# Phase 1 stricter flags. Cheap wins that catch real bugs:
+# - warn_unused_ignores: flag stale `# type: ignore` comments so the
+#   suppressions don't outlive the bug they were silencing
+# - warn_redundant_casts: flag `cast(X, x)` where x is already X
+# - strict_equality: flag `x == y` when the operand types can't
+#   overlap (e.g. datetime vs. str — always False, almost always a bug)
+# - warn_no_return: functions declared to return X must reach a return
+warn_unused_ignores = true
+warn_redundant_casts = true
+strict_equality = true
+warn_no_return = true
 # Required so `from backend.X import ...` resolves correctly when mypy is
 # invoked from the project root with `mypy backend`. Without these flags mypy
 # either bails ("Source file found twice") or silently treats every cross-

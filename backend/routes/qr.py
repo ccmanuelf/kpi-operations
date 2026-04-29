@@ -109,7 +109,7 @@ async def qr_lookup(
     entity = None
 
     # Look up entity based on type
-    if entity_type == QREntityType.WORK_ORDER or entity_type == "work_order":
+    if entity_type == QREntityType.WORK_ORDER:
         entity = db.query(WorkOrder).filter(WorkOrder.work_order_id == entity_id).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{entity_id}' not found")
@@ -117,7 +117,7 @@ async def qr_lookup(
         verify_client_access(current_user, entity.client_id)
         entity_data = _entity_to_dict(entity)
 
-    elif entity_type == QREntityType.PRODUCT or entity_type == "product":
+    elif entity_type == QREntityType.PRODUCT:
         # Products can be looked up by product_id (int) or product_code (str)
         entity = (
             db.query(Product).filter((Product.product_id == entity_id) | (Product.product_code == entity_id)).first()
@@ -128,7 +128,7 @@ async def qr_lookup(
         verify_client_access(current_user, entity.client_id)
         entity_data = _entity_to_dict(entity)
 
-    elif entity_type == QREntityType.JOB or entity_type == "job":
+    elif entity_type == QREntityType.JOB:
         entity = db.query(Job).filter(Job.job_id == entity_id).first()
         if not entity:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{entity_id}' not found")
@@ -136,7 +136,7 @@ async def qr_lookup(
         verify_client_access(current_user, entity.client_id_fk)
         entity_data = _entity_to_dict(entity)
 
-    elif entity_type == QREntityType.EMPLOYEE or entity_type == "employee":
+    elif entity_type == QREntityType.EMPLOYEE:
         # Employees can be looked up by employee_id (int) or employee_code (str)
         try:
             emp_id = int(entity_id)
@@ -404,13 +404,13 @@ async def generate_qr_code(
     entity_id = request.entity_id
 
     # Validate entity exists and user has access
-    if entity_type == QREntityType.WORK_ORDER or entity_type == "work_order":
+    if entity_type == QREntityType.WORK_ORDER:
         work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == entity_id).first()
         if not work_order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{entity_id}' not found")
         verify_client_access(current_user, work_order.client_id)
 
-    elif entity_type == QREntityType.PRODUCT or entity_type == "product":
+    elif entity_type == QREntityType.PRODUCT:
         product = None
         try:
             prod_id = int(entity_id)
@@ -422,13 +422,13 @@ async def generate_qr_code(
         # Enforce client access control (products are now multi-tenant)
         verify_client_access(current_user, product.client_id)
 
-    elif entity_type == QREntityType.JOB or entity_type == "job":
+    elif entity_type == QREntityType.JOB:
         job = db.query(Job).filter(Job.job_id == entity_id).first()
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{entity_id}' not found")
         verify_client_access(current_user, job.client_id_fk)
 
-    elif entity_type == QREntityType.EMPLOYEE or entity_type == "employee":
+    elif entity_type == QREntityType.EMPLOYEE:
         employee = None
         try:
             emp_id = int(entity_id)
@@ -481,13 +481,13 @@ async def generate_qr_code_image(
     size = request.size or 200
 
     # Validate entity exists and user has access (same as /generate)
-    if entity_type == QREntityType.WORK_ORDER or entity_type == "work_order":
+    if entity_type == QREntityType.WORK_ORDER:
         work_order = db.query(WorkOrder).filter(WorkOrder.work_order_id == entity_id).first()
         if not work_order:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Work order '{entity_id}' not found")
         verify_client_access(current_user, work_order.client_id)
 
-    elif entity_type == QREntityType.PRODUCT or entity_type == "product":
+    elif entity_type == QREntityType.PRODUCT:
         product = None
         try:
             prod_id = int(entity_id)
@@ -499,13 +499,13 @@ async def generate_qr_code_image(
         # Enforce client access control (products are now multi-tenant)
         verify_client_access(current_user, product.client_id)
 
-    elif entity_type == QREntityType.JOB or entity_type == "job":
+    elif entity_type == QREntityType.JOB:
         job = db.query(Job).filter(Job.job_id == entity_id).first()
         if not job:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job '{entity_id}' not found")
         verify_client_access(current_user, job.client_id_fk)
 
-    elif entity_type == QREntityType.EMPLOYEE or entity_type == "employee":
+    elif entity_type == QREntityType.EMPLOYEE:
         employee = None
         try:
             emp_id = int(entity_id)

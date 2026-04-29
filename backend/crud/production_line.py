@@ -101,7 +101,7 @@ def create_production_line(
         raise ValueError(f"Line code '{data.line_code}' already exists for client '{data.client_id}'")
 
     # Attach warning as transient attribute so the route can surface it
-    db_entry._limit_warning = warning  # type: ignore[attr-defined]
+    db_entry._limit_warning = warning
 
     logger.info(
         "Created production line '%s' (%s) for client '%s'",
