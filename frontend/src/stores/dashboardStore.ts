@@ -1,7 +1,6 @@
 /**
- * Dashboard Preferences Store
- * Manages role-based dashboard layouts with drag-drop widget customization
- * Pattern follows keyboardShortcutsStore.js for localStorage + API sync
+ * Dashboard preferences store — role-based dashboard layouts with
+ * drag-drop widget customization. localStorage + API sync.
  */
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
@@ -10,19 +9,40 @@ import i18n from '@/i18n'
 import { useAuthStore } from './authStore'
 import { useNotificationStore } from './notificationStore'
 
+export type DashboardLayout = 'grid' | 'list' | 'compact'
+export type UserRole = 'operator' | 'leader' | 'poweruser' | 'admin'
+
+export interface Widget {
+  widget_key: string
+  widget_name: string
+  widget_order: number
+  is_visible: boolean
+  custom_config?: Record<string, unknown>
+}
+
+export interface WidgetMetadata {
+  name: string
+  description: string
+  icon: string
+  minRole: UserRole
+}
+
+export interface AvailableWidget extends WidgetMetadata {
+  widget_key: string
+}
+
 // Pinia stores can't use the composition useI18n() outside setup, so
 // route translation through the global i18n instance instead.
-const t = (key) => i18n.global.t(key)
+const t = (key: string): string => i18n.global.t(key)
 
 const STORAGE_KEY = 'kpi-dashboard-preferences'
 
-// Default widget configurations by role
-const ROLE_DEFAULTS = {
+const ROLE_DEFAULTS: Record<UserRole, Widget[]> = {
   operator: [
     { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 1, is_visible: true },
     { widget_key: 'my_kpis', widget_name: 'My KPIs', widget_order: 2, is_visible: true },
     { widget_key: 'data_entry_shortcuts', widget_name: 'Data Entry', widget_order: 3, is_visible: true },
-    { widget_key: 'recent_entries', widget_name: 'Recent Entries', widget_order: 4, is_visible: true }
+    { widget_key: 'recent_entries', widget_name: 'Recent Entries', widget_order: 4, is_visible: true },
   ],
   leader: [
     { widget_key: 'client_overview', widget_name: 'Client Overview', widget_order: 1, is_visible: true },
@@ -30,7 +50,7 @@ const ROLE_DEFAULTS = {
     { widget_key: 'bradford_factor', widget_name: 'Bradford Factor', widget_order: 3, is_visible: true },
     { widget_key: 'efficiency_trends', widget_name: 'Efficiency Trends', widget_order: 4, is_visible: true },
     { widget_key: 'attendance_summary', widget_name: 'Attendance', widget_order: 5, is_visible: true },
-    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 6, is_visible: true }
+    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 6, is_visible: true },
   ],
   poweruser: [
     { widget_key: 'all_kpis_grid', widget_name: 'All KPIs', widget_order: 1, is_visible: true },
@@ -39,7 +59,7 @@ const ROLE_DEFAULTS = {
     { widget_key: 'analytics_deep_dive', widget_name: 'Analytics', widget_order: 4, is_visible: true },
     { widget_key: 'reports', widget_name: 'Reports', widget_order: 5, is_visible: true },
     { widget_key: 'efficiency_trends', widget_name: 'Trends', widget_order: 6, is_visible: true },
-    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 7, is_visible: true }
+    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 7, is_visible: true },
   ],
   admin: [
     { widget_key: 'system_health', widget_name: 'System Health', widget_order: 1, is_visible: true },
@@ -48,12 +68,11 @@ const ROLE_DEFAULTS = {
     { widget_key: 'all_kpis_grid', widget_name: 'All KPIs', widget_order: 4, is_visible: true },
     { widget_key: 'audit_log', widget_name: 'Audit Log', widget_order: 5, is_visible: true },
     { widget_key: 'predictions', widget_name: 'Predictions', widget_order: 6, is_visible: true },
-    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 7, is_visible: true }
-  ]
+    { widget_key: 'qr_scanner', widget_name: 'QR Scanner', widget_order: 7, is_visible: true },
+  ],
 }
 
-// All available widgets with metadata
-const ALL_WIDGETS = {
+const ALL_WIDGETS: Record<string, WidgetMetadata> = {
   qr_scanner: { name: 'QR Scanner', description: 'Scan QR codes for quick data entry', icon: 'mdi-qrcode-scan', minRole: 'operator' },
   my_kpis: { name: 'My KPIs', description: 'Your assigned client KPIs', icon: 'mdi-chart-box', minRole: 'operator' },
   data_entry_shortcuts: { name: 'Data Entry', description: 'Quick links to entry forms', icon: 'mdi-form-select', minRole: 'operator' },
@@ -69,94 +88,102 @@ const ALL_WIDGETS = {
   reports: { name: 'Reports', description: 'Generate reports', icon: 'mdi-file-document-outline', minRole: 'poweruser' },
   system_health: { name: 'System Health', description: 'System status and metrics', icon: 'mdi-server', minRole: 'admin' },
   user_stats: { name: 'User Stats', description: 'User activity statistics', icon: 'mdi-account-cog', minRole: 'admin' },
-  audit_log: { name: 'Audit Log', description: 'System audit trail', icon: 'mdi-clipboard-text-clock', minRole: 'admin' }
+  audit_log: { name: 'Audit Log', description: 'System audit trail', icon: 'mdi-clipboard-text-clock', minRole: 'admin' },
 }
+
+const ROLE_HIERARCHY: UserRole[] = ['operator', 'leader', 'poweruser', 'admin']
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const authStore = useAuthStore()
 
-  // State
-  const layout = ref('grid') // 'grid', 'list', 'compact'
-  const widgets = ref([])
+  const layout = ref<DashboardLayout>('grid')
+  const widgets = ref<Widget[]>([])
   const theme = ref('default')
   const isCustomizing = ref(false)
   const isLoading = ref(false)
   const isSynced = ref(false)
-  const lastSyncedAt = ref(null)
+  const lastSyncedAt = ref<Date | null>(null)
 
-  // Getters
   const visibleWidgets = computed(() =>
     widgets.value
-      .filter(w => w.is_visible)
-      .sort((a, b) => a.widget_order - b.widget_order)
+      .filter((w) => w.is_visible)
+      .sort((a, b) => a.widget_order - b.widget_order),
   )
 
-  const hiddenWidgets = computed(() =>
-    widgets.value.filter(w => !w.is_visible)
-  )
+  const hiddenWidgets = computed(() => widgets.value.filter((w) => !w.is_visible))
 
-  const userRole = computed(() => authStore.currentUser?.role?.toLowerCase() || 'operator')
-
-  const availableWidgets = computed(() => {
-    const roleHierarchy = ['operator', 'leader', 'poweruser', 'admin']
-    const userRoleIndex = roleHierarchy.indexOf(userRole.value)
-
-    return Object.entries(ALL_WIDGETS)
-      .filter(([key, widget]) => {
-        const widgetRoleIndex = roleHierarchy.indexOf(widget.minRole)
-        return widgetRoleIndex <= userRoleIndex
-      })
-      .map(([key, widget]) => ({
-        widget_key: key,
-        ...widget
-      }))
+  const userRole = computed<UserRole>(() => {
+    const role = (authStore.currentUser?.role || 'operator').toLowerCase()
+    return (ROLE_HIERARCHY as string[]).includes(role) ? (role as UserRole) : 'operator'
   })
 
-  // Actions
-  const loadFromLocalStorage = () => {
+  const availableWidgets = computed<AvailableWidget[]>(() => {
+    const userRoleIndex = ROLE_HIERARCHY.indexOf(userRole.value)
+
+    return Object.entries(ALL_WIDGETS)
+      .filter(([, widget]) => {
+        const widgetRoleIndex = ROLE_HIERARCHY.indexOf(widget.minRole)
+        return widgetRoleIndex <= userRoleIndex
+      })
+      .map(([key, widget]) => ({ widget_key: key, ...widget }))
+  })
+
+  const loadFromLocalStorage = (): boolean => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
-        const data = JSON.parse(stored)
+        const data = JSON.parse(stored) as {
+          layout?: DashboardLayout
+          widgets?: Widget[]
+          theme?: string
+        }
         layout.value = data.layout || 'grid'
         widgets.value = data.widgets || []
         theme.value = data.theme || 'default'
         return true
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load dashboard preferences from localStorage:', e)
     }
     return false
   }
 
-  const saveToLocalStorage = () => {
+  const saveToLocalStorage = (): void => {
     try {
       const data = {
         layout: layout.value,
         widgets: widgets.value,
         theme: theme.value,
-        savedAt: new Date().toISOString()
+        savedAt: new Date().toISOString(),
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to save dashboard preferences to localStorage:', e)
     }
   }
 
-  const loadFromAPI = async () => {
+  const loadFromAPI = async (): Promise<boolean> => {
     try {
       isLoading.value = true
       const response = await api.getDashboardPreferences()
       if (response.data) {
-        layout.value = response.data.layout || 'grid'
-        widgets.value = response.data.widgets || []
-        theme.value = response.data.theme || 'default'
+        const d = response.data as {
+          layout?: DashboardLayout
+          widgets?: Widget[]
+          theme?: string
+        }
+        layout.value = d.layout || 'grid'
+        widgets.value = d.widgets || []
+        theme.value = d.theme || 'default'
         isSynced.value = true
         lastSyncedAt.value = new Date()
         saveToLocalStorage()
         return true
       }
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load dashboard preferences from API:', e)
       useNotificationStore().showError(t('notifications.dashboard.loadFailed'))
     } finally {
@@ -165,19 +192,20 @@ export const useDashboardStore = defineStore('dashboard', () => {
     return false
   }
 
-  const saveToAPI = async () => {
+  const saveToAPI = async (): Promise<boolean> => {
     try {
       isLoading.value = true
       await api.saveDashboardPreferences({
         layout: layout.value,
         widgets: widgets.value,
-        theme: theme.value
+        theme: theme.value,
       })
       isSynced.value = true
       lastSyncedAt.value = new Date()
       saveToLocalStorage()
       return true
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to save dashboard preferences to API:', e)
       useNotificationStore().showError(t('notifications.dashboard.saveFailed'))
       return false
@@ -186,51 +214,48 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  const initializePreferences = async () => {
-    // First try localStorage for immediate display
+  const applyRoleDefaults = (): void => {
+    const defaults = ROLE_DEFAULTS[userRole.value] || ROLE_DEFAULTS.operator
+    widgets.value = defaults.map((w, index) => ({
+      ...w,
+      widget_order: index + 1,
+    }))
+    saveToLocalStorage()
+  }
+
+  const initializePreferences = async (): Promise<void> => {
     const hasLocal = loadFromLocalStorage()
 
-    // If no local data, use role defaults
     if (!hasLocal || widgets.value.length === 0) {
       applyRoleDefaults()
     }
 
-    // Then sync with API in background
     if (authStore.isAuthenticated) {
       await loadFromAPI()
     }
   }
 
-  const applyRoleDefaults = () => {
-    const defaults = ROLE_DEFAULTS[userRole.value] || ROLE_DEFAULTS.operator
-    widgets.value = defaults.map((w, index) => ({
-      ...w,
-      widget_order: index + 1
-    }))
-    saveToLocalStorage()
-  }
-
-  const resetToDefaults = async () => {
+  const resetToDefaults = async (): Promise<void> => {
     applyRoleDefaults()
     if (authStore.isAuthenticated) {
       try {
         await api.resetDashboardPreferences()
         isSynced.value = true
       } catch (e) {
+        // eslint-disable-next-line no-console
         console.error('Failed to reset preferences on server:', e)
         useNotificationStore().showError(t('notifications.dashboard.resetFailed'))
       }
     }
   }
 
-  const moveWidget = (fromIndex, toIndex) => {
+  const moveWidget = (fromIndex: number, toIndex: number): void => {
     const visibleList = [...visibleWidgets.value]
     const [moved] = visibleList.splice(fromIndex, 1)
     visibleList.splice(toIndex, 0, moved)
 
-    // Update order for all visible widgets
     visibleList.forEach((w, idx) => {
-      const widget = widgets.value.find(x => x.widget_key === w.widget_key)
+      const widget = widgets.value.find((x) => x.widget_key === w.widget_key)
       if (widget) widget.widget_order = idx + 1
     })
 
@@ -238,8 +263,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     isSynced.value = false
   }
 
-  const toggleWidgetVisibility = (widgetKey) => {
-    const widget = widgets.value.find(w => w.widget_key === widgetKey)
+  const toggleWidgetVisibility = (widgetKey: string): void => {
+    const widget = widgets.value.find((w) => w.widget_key === widgetKey)
     if (widget) {
       widget.is_visible = !widget.is_visible
       saveToLocalStorage()
@@ -247,8 +272,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  const addWidget = (widgetKey) => {
-    const existing = widgets.value.find(w => w.widget_key === widgetKey)
+  const addWidget = (widgetKey: string): void => {
+    const existing = widgets.value.find((w) => w.widget_key === widgetKey)
     if (existing) {
       existing.is_visible = true
     } else {
@@ -259,7 +284,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
           widget_name: widgetInfo.name,
           widget_order: widgets.value.length + 1,
           is_visible: true,
-          custom_config: {}
+          custom_config: {},
         })
       }
     }
@@ -267,8 +292,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
     isSynced.value = false
   }
 
-  const removeWidget = (widgetKey) => {
-    const index = widgets.value.findIndex(w => w.widget_key === widgetKey)
+  const removeWidget = (widgetKey: string): void => {
+    const index = widgets.value.findIndex((w) => w.widget_key === widgetKey)
     if (index !== -1) {
       widgets.value[index].is_visible = false
       saveToLocalStorage()
@@ -276,41 +301,42 @@ export const useDashboardStore = defineStore('dashboard', () => {
     }
   }
 
-  const setLayout = (newLayout) => {
+  const setLayout = (newLayout: DashboardLayout): void => {
     layout.value = newLayout
     saveToLocalStorage()
     isSynced.value = false
   }
 
-  const setTheme = (newTheme) => {
+  const setTheme = (newTheme: string): void => {
     theme.value = newTheme
     saveToLocalStorage()
     isSynced.value = false
   }
 
-  const startCustomizing = () => {
+  const startCustomizing = (): void => {
     isCustomizing.value = true
   }
 
-  const finishCustomizing = async () => {
+  const finishCustomizing = async (): Promise<void> => {
     isCustomizing.value = false
     await saveToAPI()
   }
 
-  const cancelCustomizing = () => {
+  const cancelCustomizing = (): void => {
     isCustomizing.value = false
-    loadFromLocalStorage() // Revert to last saved state
+    loadFromLocalStorage()
   }
 
-  // Watch for auth changes to reload preferences
-  watch(() => authStore.currentUser, async (newUser, oldUser) => {
-    if (newUser && newUser.user_id !== oldUser?.user_id) {
-      await initializePreferences()
-    }
-  })
+  watch(
+    () => authStore.currentUser,
+    async (newUser, oldUser) => {
+      if (newUser && newUser.user_id !== oldUser?.user_id) {
+        await initializePreferences()
+      }
+    },
+  )
 
   return {
-    // State
     layout,
     widgets,
     theme,
@@ -318,14 +344,10 @@ export const useDashboardStore = defineStore('dashboard', () => {
     isLoading,
     isSynced,
     lastSyncedAt,
-
-    // Getters
     visibleWidgets,
     hiddenWidgets,
     userRole,
     availableWidgets,
-
-    // Actions
     initializePreferences,
     loadFromAPI,
     saveToAPI,
@@ -339,9 +361,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     startCustomizing,
     finishCustomizing,
     cancelCustomizing,
-
-    // Constants
     ALL_WIDGETS,
-    ROLE_DEFAULTS
+    ROLE_DEFAULTS,
   }
 })
