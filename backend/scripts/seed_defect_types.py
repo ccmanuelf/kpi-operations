@@ -10,13 +10,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine, text
 from datetime import datetime
+from typing import Any, Dict, List
 import uuid
 
 # Database connection
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database/kpi_platform.db")
 
-# Global defect types available to all clients
-GLOBAL_DEFECT_TYPES = {
+# Global defect types available to all clients. Annotated explicitly
+# so loop variables (`defect["code"]` etc.) are str rather than the
+# `object` mypy infers from a heterogeneous-value dict literal.
+GLOBAL_DEFECT_TYPES: Dict[str, Any] = {
     "industry": "Global (All Industries)",
     "defects": [
         {
@@ -117,7 +120,7 @@ GLOBAL_DEFECT_TYPES = {
 GLOBAL_CLIENT_ID = "GLOBAL"
 
 # Industry-specific defect type definitions
-DEFECT_TYPES_BY_INDUSTRY = {
+DEFECT_TYPES_BY_INDUSTRY: Dict[str, Dict[str, Any]] = {
     # General Manufacturing (ACME-MFG)
     "ACME-MFG": {
         "industry": "General Manufacturing",
@@ -539,9 +542,12 @@ def seed_defect_types():
         )
         conn.commit()
 
-        # Check existing data
+        # Check existing data. fetchone() returns Optional[Row] —
+        # the COUNT(*) query always returns one row, but mypy can't
+        # know that from the typing alone.
         result = conn.execute(text("SELECT COUNT(*) FROM DEFECT_TYPE_CATALOG"))
-        existing_count = result.fetchone()[0]
+        count_row = result.fetchone()
+        existing_count = int(count_row[0]) if count_row is not None else 0
 
         if existing_count > 0:
             print(f"Found {existing_count} existing defect types. Clearing and re-seeding...")

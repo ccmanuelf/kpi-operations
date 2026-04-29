@@ -401,7 +401,11 @@ def init_database():
         ]
 
         users = {}
-        for username, password, role, client_id, full_name in users_data:
+        # Renamed loop var to avoid colliding with the str-typed
+        # `client_id` used in the surrounding scope — the user
+        # `client_id_assigned` may be None (poweruser), and reusing
+        # the name would widen the outer variable to Optional[str].
+        for username, password, role, user_client_id, full_name in users_data:
             user = User(
                 user_id=f"USER-{username.upper()}",
                 username=username,
@@ -409,7 +413,7 @@ def init_database():
                 password_hash=pwd_context.hash(password),
                 full_name=full_name,
                 role=role,
-                client_id_assigned=client_id,
+                client_id_assigned=user_client_id,
                 is_active=True,
             )
             db.add(user)
@@ -784,6 +788,8 @@ def init_database():
 
                 for line in cap_lines:
                     dept = line.department
+                    if dept is None:
+                        continue
                     dept_total_minutes = dept_demand_minutes.get(dept, 0) * demand_fraction
                     dept_total_hours = dept_total_minutes / 60
 
@@ -832,8 +838,10 @@ def init_database():
 
             # Schedule details: distribute orders across lines and weeks (matching reference pattern)
             # Build a line lookup by department
-            dept_lines = {}
+            dept_lines: Dict[str, List[Any]] = {}
             for line in cap_lines:
+                if line.department is None:
+                    continue
                 dept_lines.setdefault(line.department, []).append(line)
 
             seq = 1
@@ -1176,9 +1184,12 @@ def init_database():
                         part_number=f"PART-{client_id[:4]}-{i+1:03d}-{j+1}",
                         quantity_required=wo.planned_quantity // 2 if wo.planned_quantity else 500,
                     )
+                    # job.part_number is Mapped[Optional[str]]; the
+                    # factory needs str. Fall back to the deterministic
+                    # PART-... we just constructed when None.
                     TestDataFactory.create_part_opportunities(
                         db,
-                        part_number=job.part_number,
+                        part_number=job.part_number or f"PART-{client_id[:4]}-{i+1:03d}-{j+1}",
                         client_id=client_id,
                         opportunities_per_unit=10,
                     )
@@ -1361,14 +1372,18 @@ def init_database():
             ("operator", "quality_entry", "Quality Entry", 3, True, "{}"),
         ]
 
-        for role, widget_key, widget_name, order, visible, config in widget_configs:
+        # Renamed loop vars (`order`, `config`) to avoid colliding
+        # with the CapacityOrder/ClientConfig types used in the
+        # surrounding scope — reuse would widen those typed
+        # variables to `int`/`str` and break later assignments.
+        for role, widget_key, widget_name, w_order, visible, w_config in widget_configs:
             widget = DashboardWidgetDefaults(
                 role=role,
                 widget_key=widget_key,
                 widget_name=widget_name,
-                widget_order=order,
+                widget_order=w_order,
                 is_visible=visible,
-                default_config=config,
+                default_config=w_config,
             )
             db.add(widget)
 
@@ -1384,16 +1399,19 @@ def init_database():
             ("TEXTILE-PRO", "quality_ppm", True, 3000.0, 8000.0),
         ]
 
-        for client_id, alert_type, enabled, warning, critical in alert_configs:
-            config = AlertConfig(
+        # Renamed `client_id` loop var: the outer scope has
+        # `client_id: str` (no None possible), but the alert_configs
+        # tuples include None entries (global alerts).
+        for ac_client_id, alert_type, enabled, warning, critical in alert_configs:
+            alert_cfg = AlertConfig(
                 config_id=f"ALERT-CFG-{uuid.uuid4().hex[:8].upper()}",
-                client_id=client_id,
+                client_id=ac_client_id,
                 alert_type=alert_type,
                 enabled=enabled,
                 warning_threshold=warning,
                 critical_threshold=critical,
             )
-            db.add(config)
+            db.add(alert_cfg)
 
         print(f"  Created {len(alert_configs)} alert configurations")
 
@@ -1465,7 +1483,7 @@ def init_database():
         ]
         hs_count = 0
         for cid in CLIENT_IDS:
-            for code, name, order in hold_statuses:
+            for code, name, hs_order in hold_statuses:
                 db.add(
                     HoldStatusCatalog(
                         client_id=cid,
@@ -1473,14 +1491,16 @@ def init_database():
                         display_name=name,
                         is_default=True,
                         is_active=True,
-                        sort_order=order,
+                        sort_order=hs_order,
                     )
                 )
                 hs_count += 1
         print(f"  Created {hs_count} hold status catalog entries")
 
-        # Hold Reason Catalogs — per client
-        hold_reasons = [
+        # Hold Reason Catalogs — per client. Renamed to avoid mypy
+        # widening from the earlier `hold_reasons = [str, ...]` use
+        # in the demo-hold-entry block above.
+        hold_reason_catalog_data = [
             ("QUALITY_ISSUE", "Quality Issue", 1),
             ("MATERIAL_SHORTAGE", "Material Shortage", 2),
             ("MACHINE_BREAKDOWN", "Machine Breakdown", 3),
@@ -1490,7 +1510,7 @@ def init_database():
         ]
         hr_count = 0
         for cid in CLIENT_IDS:
-            for code, name, order in hold_reasons:
+            for code, name, hr_order in hold_reason_catalog_data:
                 db.add(
                     HoldReasonCatalog(
                         client_id=cid,
@@ -1498,7 +1518,7 @@ def init_database():
                         display_name=name,
                         is_default=True,
                         is_active=True,
-                        sort_order=order,
+                        sort_order=hr_order,
                     )
                 )
                 hr_count += 1
@@ -1594,14 +1614,17 @@ def init_database():
 
         db.flush()
 
-        # Employee-Line Assignments — assign first 5 employees per client to the SEW line
+        # Employee-Line Assignments — assign first 5 employees per client to the SEW line.
+        # Renamed local to `all_employees_list` because the outer
+        # scope already declared `all_employees = {}` (dict-by-client)
+        # for an earlier section, and reusing the name would conflict.
         ela_count = 0
-        all_employees = db.query(Employee).all()
+        all_employees_list = db.query(Employee).all()
         for cid in CLIENT_IDS:
             sew_line_id = line_map.get((cid, "SEW"))
             if not sew_line_id:
                 continue
-            client_emps = [e for e in all_employees if e.client_id_assigned == cid][:5]
+            client_emps = [e for e in all_employees_list if e.client_id_assigned == cid][:5]
             for emp in client_emps:
                 db.add(
                     EmployeeLineAssignment(

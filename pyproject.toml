@@ -32,6 +32,10 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 strict_equality = true
 warn_no_return = true
+# Phase 2: type-check the bodies of unannotated functions too.
+# Without this, mypy silently skips bodies of `def foo(x):` (no
+# return annotation), which lets bugs hide in legacy untyped helpers.
+check_untyped_defs = true
 # Required so `from backend.X import ...` resolves correctly when mypy is
 # invoked from the project root with `mypy backend`. Without these flags mypy
 # either bails ("Source file found twice") or silently treats every cross-
@@ -48,3 +52,12 @@ exclude = [
     "migrations/",
     "venv/",
 ]
+
+# Test files use Mock/MagicMock heavily and have many fixtures whose
+# return types are deliberately loose. Type-checking the bodies of
+# unannotated test helpers floods the gate with mock-vs-real-signature
+# noise that doesn't catch real bugs. Disable check_untyped_defs for
+# the test tree only — production code keeps the strict gate.
+[[tool.mypy.overrides]]
+module = "backend.tests.*"
+check_untyped_defs = false

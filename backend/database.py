@@ -102,7 +102,15 @@ def get_pool_status():
     if isinstance(engine.pool, NullPool):
         return {"pool_type": "NullPool", "description": "SQLite - No connection pooling"}
 
+    # `size()`, `checkedout()`, `overflow()` are QueuePool-specific
+    # methods. The static `engine.pool` is typed `Pool` (the abstract
+    # base), so we narrow with isinstance for type-safe access.
+    from sqlalchemy.pool import QueuePool
+
     pool = engine.pool
+    if not isinstance(pool, QueuePool):
+        return {"pool_type": type(pool).__name__, "description": "Pool stats unavailable for this pool type"}
+
     return {
         "pool_type": "QueuePool",
         "pool_size": pool.size(),
