@@ -5,7 +5,7 @@ All part opportunities CRUD endpoints (KPI #5: DPMO Calculation)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 
 from backend.database import get_db
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/api/part-opportunities", tags=["Part Opportunities"]
 @router.post("", response_model=PartOpportunityResponse, status_code=status.HTTP_201_CREATED)
 def create_part_opportunity_endpoint(
     part: PartOpportunityCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create new part opportunity record
     SECURITY: Enforces client filtering
@@ -49,7 +49,7 @@ def create_part_opportunity_endpoint(
 @router.get("", response_model=List[PartOpportunityResponse])
 def list_part_opportunities(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     List part opportunities
     SECURITY: Returns only part opportunities for user's authorized clients
@@ -60,7 +60,7 @@ def list_part_opportunities(
 @router.get("/category/{category}", response_model=List[PartOpportunityResponse])
 def get_part_opportunities_by_category_endpoint(
     category: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get all part opportunities for a specific category
     SECURITY: Returns only part opportunities for user's authorized clients
@@ -71,7 +71,7 @@ def get_part_opportunities_by_category_endpoint(
 @router.get("/{part_number}", response_model=PartOpportunityResponse)
 def get_part_opportunity_endpoint(
     part_number: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get part opportunity by part number
     SECURITY: Verifies user has access to part's client
@@ -88,7 +88,7 @@ def update_part_opportunity_endpoint(
     part_update: PartOpportunityUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update part opportunity
     SECURITY: Verifies user has access to part's client
@@ -103,7 +103,7 @@ def update_part_opportunity_endpoint(
 @router.delete("/{part_number}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_part_opportunity_endpoint(
     part_number: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """
     Delete part opportunity (supervisor only)
     SECURITY: Only deletes if user has access to part's client
@@ -116,7 +116,7 @@ def delete_part_opportunity_endpoint(
 @router.post("/bulk-import", response_model=BulkImportResponse)
 def bulk_import_part_opportunities(
     import_request: BulkImportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Bulk import part opportunities (for CSV imports)
     SECURITY: Validates client_id_fk for all records

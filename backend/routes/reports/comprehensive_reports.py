@@ -6,7 +6,7 @@ plus the /available endpoint listing all report types.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -33,7 +33,7 @@ async def generate_comprehensive_pdf_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Generate comprehensive PDF report with all KPIs
 
@@ -88,7 +88,7 @@ async def generate_comprehensive_excel_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Generate comprehensive Excel report with all KPIs and detailed worksheets
 
@@ -135,7 +135,7 @@ async def generate_comprehensive_excel_report(
 
 
 @comprehensive_reports_router.get("/available")
-async def get_available_reports(current_user: User = Depends(get_current_user)):
+async def get_available_reports(current_user: User = Depends(get_current_user)) -> Any:
     """
     Get list of available report types and their descriptions
     """

@@ -5,7 +5,7 @@ Links committed KPI targets to schedules for variance analysis.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -119,5 +119,5 @@ class CapacityKPICommitment(Base):
             return False
         return float(self.variance) < 0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityKPICommitment(schedule_id={self.schedule_id}, kpi={self.kpi_key}, committed={self.committed_value}, actual={self.actual_value})>"

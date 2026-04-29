@@ -4,7 +4,7 @@ Thin service layer wrapping Saved Filter CRUD operations.
 Routes should import from this module instead of backend.crud.saved_filter directly.
 """
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import Any, TYPE_CHECKING, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -30,27 +30,27 @@ from backend.crud.saved_filter import (
 )
 
 
-def create_filter(db: Session, user_id: str, filter_data):
+def create_filter(db: Session, user_id: str, filter_data: Any) -> Any:
     """Create a new saved filter."""
     return create_saved_filter(db, user_id, filter_data)
 
 
-def list_filters(db: Session, user_id: str, filter_type: Optional[str] = None, skip: int = 0, limit: int = 100):
+def list_filters(db: Session, user_id: str, filter_type: Optional[str] = None, skip: int = 0, limit: int = 100) -> Any:
     """List saved filters for a user."""
     return get_saved_filters(db, user_id, filter_type, skip, limit)
 
 
-def get_filter(db: Session, filter_id: int, user_id: str):
+def get_filter(db: Session, filter_id: int, user_id: str) -> Any:
     """Get a specific filter by ID."""
     return get_saved_filter(db, filter_id, user_id)
 
 
-def get_user_default_filter(db: Session, user_id: str, filter_type: str):
+def get_user_default_filter(db: Session, user_id: str, filter_type: str) -> Any:
     """Get the user's default filter for a type."""
     return get_default_filter(db, user_id, filter_type)
 
 
-def update_filter(db: Session, filter_id: int, user_id: str, update_data):
+def update_filter(db: Session, filter_id: int, user_id: str, update_data: Any) -> Any:
     """Update a saved filter."""
     return update_saved_filter(db, filter_id, user_id, update_data)
 
@@ -60,17 +60,17 @@ def delete_filter(db: Session, filter_id: int, user_id: str) -> bool:
     return delete_saved_filter(db, filter_id, user_id)
 
 
-def apply_saved_filter(db: Session, filter_id: int, user_id: str):
+def apply_saved_filter(db: Session, filter_id: int, user_id: str) -> Any:
     """Apply a saved filter."""
     return apply_filter(db, filter_id, user_id)
 
 
-def set_filter_as_default(db: Session, filter_id: int, user_id: str):
+def set_filter_as_default(db: Session, filter_id: int, user_id: str) -> Any:
     """Set a filter as default for its type."""
     return set_default_filter(db, filter_id, user_id)
 
 
-def unset_filter_as_default(db: Session, filter_id: int, user_id: str):
+def unset_filter_as_default(db: Session, filter_id: int, user_id: str) -> Any:
     """Unset a filter as default."""
     return unset_default_filter(db, filter_id, user_id)
 
@@ -90,11 +90,11 @@ def clear_user_filter_history(db: Session, user_id: str) -> int:
     return clear_filter_history(db, user_id)
 
 
-def get_user_filter_statistics(db: Session, user_id: str):
+def get_user_filter_statistics(db: Session, user_id: str) -> Any:
     """Get filter usage statistics for a user."""
     return get_filter_statistics(db, user_id)
 
 
-def duplicate_saved_filter(db: Session, filter_id: int, user_id: str, new_name: Optional[str] = None):
+def duplicate_saved_filter(db: Session, filter_id: int, user_id: str, new_name: Optional[str] = None) -> Any:
     """Duplicate an existing filter."""
     return duplicate_filter(db, filter_id, user_id, new_name)

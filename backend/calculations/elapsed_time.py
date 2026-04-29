@@ -11,7 +11,7 @@ Provides calculations for:
 - Custom date range calculations
 """
 
-from typing import Optional, Dict, List, Tuple
+from typing import Any, Optional, Dict, List, Tuple
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -365,7 +365,7 @@ def calculate_client_average_times(
         if calc.is_overdue:
             overdue_count += 1
 
-    def safe_avg(lst):
+    def safe_avg(lst: Any) -> Any:
         return round(sum(lst) / len(lst), 2) if lst else None
 
     return {

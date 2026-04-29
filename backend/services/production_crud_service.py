@@ -65,7 +65,7 @@ def delete_entry(db: Session, entry_id: str, current_user: User) -> bool:
     return delete_production_entry(db, entry_id, current_user)
 
 
-def get_entry_with_details(db: Session, entry_id: str, current_user: User):
+def get_entry_with_details(db: Session, entry_id: str, current_user: User) -> Any:
     """Get a production entry with full KPI breakdown."""
     return get_production_entry_with_details(db, entry_id, current_user)
 

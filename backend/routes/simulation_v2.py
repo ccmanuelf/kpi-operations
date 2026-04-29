@@ -36,6 +36,7 @@ from backend.simulation_v2.constants import (
     DEFAULT_VARIABILITY,
 )
 from backend.utils.logging_utils import get_module_logger
+from typing import Any
 
 logger = get_module_logger(__name__)
 
@@ -107,7 +108,7 @@ def _track_defaults(config: SimulationConfig) -> list:
 
 
 @router.get("/")
-async def simulation_info():
+async def simulation_info() -> Any:
     """
     Get simulation tool information and capabilities.
 
@@ -265,7 +266,7 @@ async def run_simulation_endpoint(
 
 
 @router.get("/schema")
-async def get_input_schema():
+async def get_input_schema() -> Any:
     """
     Get the JSON schema for simulation input configuration.
 

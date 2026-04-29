@@ -6,7 +6,7 @@ Covers: alert config list/create, prediction accuracy history.
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timedelta, timezone
 import uuid
 
@@ -40,7 +40,7 @@ async def list_alert_configs(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """List alert configurations"""
     if client_id:
         verify_client_access(current_user, client_id)
@@ -56,7 +56,7 @@ async def create_alert_config(
     config_data: AlertConfigCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create alert configuration"""
     if config_data.client_id:
         verify_client_access(current_user, config_data.client_id)
@@ -88,7 +88,7 @@ async def get_prediction_accuracy(
     category: Optional[AlertCategory] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get historical accuracy of prediction-based alerts
 

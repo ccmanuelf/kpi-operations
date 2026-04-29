@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 class DailyReportScheduler:
     """Schedule and execute daily KPI reports"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.scheduler = BackgroundScheduler()
         self.email_service = EmailService()
         self.enabled = getattr(settings, "REPORT_EMAIL_ENABLED", True)
         self.report_time = getattr(settings, "REPORT_EMAIL_TIME", "06:00")
 
-    def start(self):
+    def start(self) -> None:
         """Start the scheduler"""
         if not self.enabled:
             logger.info("Daily reports are disabled in configuration")
@@ -52,12 +52,12 @@ class DailyReportScheduler:
         self.scheduler.start()
         logger.info(f"Daily report scheduler started. Reports will be sent at {self.report_time}")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the scheduler"""
         self.scheduler.shutdown()
         logger.info("Daily report scheduler stopped")
 
-    def send_daily_reports(self):
+    def send_daily_reports(self) -> None:
         """Generate and send reports for all active clients"""
         logger.info("Starting daily report generation")
 

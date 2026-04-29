@@ -161,7 +161,7 @@ class ScheduleConfig(BaseModel):
     weekend_ot_hours: float = Field(default=0.0, ge=0, le=12, description="Hours per weekend overtime day")
 
     @model_validator(mode="after")
-    def validate_total_hours(self):
+    def validate_total_hours(self) -> Any:
         """Ensure total daily hours don't exceed 24."""
         total = self.shift1_hours + self.shift2_hours + self.shift3_hours
         if total > 24:
@@ -169,7 +169,7 @@ class ScheduleConfig(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_overtime_hours(self):
+    def validate_overtime_hours(self) -> Any:
         """Ensure overtime doesn't create impossible schedules."""
         if self.ot_enabled:
             max_shift = max(self.shift1_hours, self.shift2_hours, self.shift3_hours)
@@ -286,7 +286,7 @@ class SimulationConfig(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_mix_mode_total_demand(self):
+    def validate_mix_mode_total_demand(self) -> Any:
         """Ensure total_demand is provided in mix-driven mode."""
         if self.mode == DemandMode.MIX_DRIVEN and not self.total_demand:
             raise ValueError("total_demand is required when mode is 'mix-driven'")

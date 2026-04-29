@@ -97,7 +97,7 @@ def get_my_shift_summary(
     operator_id: Optional[str] = Query(None, description="Operator employee ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get personalized shift summary for an operator.
 
@@ -300,7 +300,7 @@ def get_my_shift_stats(
     operator_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get just the statistics portion of shift summary.
     Lightweight endpoint for dashboard widgets.
@@ -371,7 +371,7 @@ def get_my_recent_activity(
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get recent activity entries for the shift.
     Returns production, downtime, and quality entries combined.

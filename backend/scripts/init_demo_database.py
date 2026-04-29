@@ -306,7 +306,7 @@ for _prod in MASTER_PRODUCTS:
             }
 
 
-def init_database():
+def init_database() -> None:
     """Initialize database with schema and comprehensive demo data."""
     print("=" * 70)
     print("KPI Operations Platform - Comprehensive Database Initialization")

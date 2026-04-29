@@ -8,7 +8,7 @@ generate/capacity, and the private _check_* helpers.
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -43,7 +43,7 @@ async def generate_all_alerts(
     client_id: Optional[str] = Query(None, description="Check for specific client"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Run all alert checks and generate new alerts
 
@@ -109,7 +109,7 @@ async def check_otd_risk_alerts(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Check for OTD risk alerts on pending work orders"""
     if client_id:
         verify_client_access(current_user, client_id)
@@ -122,7 +122,7 @@ async def check_quality_alerts(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Check for quality KPI alerts"""
     if client_id:
         verify_client_access(current_user, client_id)
@@ -140,7 +140,7 @@ async def check_capacity_alerts(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Check for capacity planning alerts
 

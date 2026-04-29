@@ -5,7 +5,7 @@ Stores capacity analysis results following the 12-step calculation method.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -142,5 +142,5 @@ class CapacityAnalysis(Base):
         """Calculate over-capacity hours (negative available)."""
         return max(0, float(self.demand_hours or 0) - float(self.capacity_hours or 0))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityAnalysis(line={self.line_code}, date={self.analysis_date}, util={self.utilization_percent}%)>"

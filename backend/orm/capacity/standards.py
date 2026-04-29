@@ -5,7 +5,7 @@ Standard Allowed Minutes (SAM) define the expected time for each operation.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -79,7 +79,7 @@ class CapacityProductionStandard(Base):
         """Return SAM in hours."""
         return self.total_minutes() / 60.0
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<CapacityProductionStandard(style={self.style_model}, op={self.operation_code}, sam={self.sam_minutes})>"
         )

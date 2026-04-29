@@ -6,7 +6,7 @@ Covers: list, dashboard, summary, get, create, acknowledge, resolve, dismiss.
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, timedelta, timezone
 import uuid
 
@@ -53,7 +53,7 @@ async def list_alerts(
     limit: int = Query(MEDIUM_PAGE_SIZE, ge=MIN_DAYS_LOOKBACK, le=MAX_ALERT_PAGE_SIZE, description="Maximum results"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List alerts with optional filters
 
@@ -89,7 +89,7 @@ async def get_alert_dashboard(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get comprehensive alert dashboard
 
@@ -150,7 +150,7 @@ async def get_alert_summary(
     client_id: Optional[str] = Query(None, description="Filter by client"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get quick summary of active alerts
 
@@ -187,7 +187,7 @@ async def get_alert(
     alert_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get specific alert by ID"""
     alert = db.query(Alert).filter(Alert.alert_id == alert_id).first()
     if not alert:
@@ -200,7 +200,7 @@ async def create_alert(
     alert_data: AlertCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Create new alert manually
 
@@ -240,7 +240,7 @@ async def acknowledge_alert(
     ack_data: AlertAcknowledge,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Any:
     """
     Acknowledge an alert
 
@@ -269,7 +269,7 @@ async def resolve_alert(
     resolve_data: AlertResolve,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Any:
     """
     Resolve an alert
 
@@ -310,7 +310,7 @@ async def dismiss_alert(
     alert_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-):
+) -> Any:
     """
     Dismiss an alert
 

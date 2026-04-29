@@ -5,7 +5,7 @@ Defines production lines with capacity parameters for capacity planning.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -67,5 +67,5 @@ class CapacityProductionLine(Base):
         abs_factor = 1 - float(self.absenteeism_factor or 0.05)
         return base * eff * abs_factor
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityProductionLine(client_id={self.client_id}, code={self.line_code}, dept={self.department})>"

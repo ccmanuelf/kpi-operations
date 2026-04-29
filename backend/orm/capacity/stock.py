@@ -5,7 +5,7 @@ Point-in-time inventory data for capacity planning and MRP.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -85,5 +85,5 @@ class CapacityStockSnapshot(Base):
         shortage = required_quantity - self.calculate_available()
         return max(0, shortage)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityStockSnapshot(item={self.item_code}, date={self.snapshot_date}, avail={self.available_quantity})>"

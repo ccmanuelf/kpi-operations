@@ -5,7 +5,7 @@ All client CRUD endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from backend.database import get_db
 from backend.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientSummary
@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/clients", tags=["Clients"])
 @router.post("", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
 def create_client_endpoint(
     client: ClientCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create new client
     SECURITY: Admin only
@@ -45,7 +45,7 @@ def list_clients(
     is_active: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List clients with filters
     SECURITY: Returns only clients user has access to
@@ -56,7 +56,7 @@ def list_clients(
 @router.get("/active/list", response_model=List[ClientResponse])
 def get_active_clients_endpoint(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get all active clients
     SECURITY: Returns only clients user has access to
@@ -65,7 +65,9 @@ def get_active_clients_endpoint(
 
 
 @router.get("/{client_id}", response_model=ClientResponse)
-def get_client_endpoint(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_client_endpoint(
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """
     Get client by ID
     SECURITY: Verifies user has access to client
@@ -82,7 +84,7 @@ def update_client_endpoint(
     client_update: ClientUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update client
     SECURITY: Verifies user has access to client
@@ -97,7 +99,7 @@ def update_client_endpoint(
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_client_endpoint(
     client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> None:
     """
     Delete client (soft delete - admin only)
     SECURITY: Admin only

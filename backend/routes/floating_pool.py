@@ -50,7 +50,7 @@ router = APIRouter(prefix="/api/floating-pool", tags=["Floating Pool"])
 @router.post("", response_model=FloatingPoolResponse, status_code=status.HTTP_201_CREATED)
 def create_floating_pool_entry_endpoint(
     pool_entry: FloatingPoolCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create new floating pool entry
     SECURITY: Supervisor/admin only
@@ -67,7 +67,7 @@ def list_floating_pool_entries(
     available_only: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List floating pool entries with filters
     """
@@ -77,7 +77,7 @@ def list_floating_pool_entries(
 @router.get("/available/list")
 def get_available_floating_pool_list(
     as_of_date: Optional[datetime] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get all currently available floating pool employees
     """
@@ -91,7 +91,7 @@ def check_employee_availability(
     proposed_end: Optional[datetime] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Check if an employee is available for a new assignment.
     Returns availability status with conflict details if any.
@@ -110,7 +110,9 @@ def check_employee_availability(
 
 
 @router.get("/summary")
-def get_floating_pool_summary_endpoint(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_floating_pool_summary_endpoint(
+    db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """
     Get summary statistics for floating pool.
     Useful for dashboard widgets.
@@ -129,7 +131,7 @@ def get_floating_pool_summary_endpoint(db: Session = Depends(get_db), current_us
 @router.get("/{pool_id}", response_model=FloatingPoolResponse)
 def get_floating_pool_entry_endpoint(
     pool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get floating pool entry by ID
     """
@@ -145,7 +147,7 @@ def update_floating_pool_entry_endpoint(
     pool_update: FloatingPoolUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update floating pool entry
     SECURITY: Supervisor/admin only
@@ -160,7 +162,7 @@ def update_floating_pool_entry_endpoint(
 @router.delete("/{pool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_floating_pool_entry_endpoint(
     pool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> None:
     """
     Delete floating pool entry
     SECURITY: Supervisor/admin only
@@ -175,7 +177,7 @@ def assign_floating_pool_employee_to_client(
     assignment: FloatingPoolAssignmentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Assign floating pool employee to a client
     SECURITY: Supervisor/admin only, verifies client access
@@ -196,7 +198,7 @@ def unassign_floating_pool_employee_from_client(
     unassignment: FloatingPoolUnassignmentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Unassign floating pool employee from client
     SECURITY: Supervisor/admin only
@@ -215,7 +217,7 @@ def get_client_floating_pool_assignments(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get all floating pool assignments for a specific client
     SECURITY: Verifies user has access to client
@@ -231,7 +233,7 @@ def get_client_floating_pool_assignments(
 @router.get("/simulation/insights")
 def get_floating_pool_simulation_insights(
     target_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Dict[str, Any]:
     """
     Get simulation-based insights for floating pool optimization.
     Analyzes current staffing levels and provides recommendations.
@@ -359,7 +361,7 @@ def optimize_floating_pool_allocation_endpoint(
     target_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Optimize floating pool allocation across shifts/lines.
 
@@ -468,7 +470,7 @@ def simulate_shift_coverage_endpoint(
     target_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Simulate coverage for a specific shift with floating pool.
 

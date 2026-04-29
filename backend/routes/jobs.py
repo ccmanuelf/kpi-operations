@@ -7,7 +7,7 @@ Phase 6.6: Includes job-level RTY calculation endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import date
 
 from backend.database import get_db
@@ -32,7 +32,9 @@ router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
 
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
-def create_job_endpoint(job: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def create_job_endpoint(
+    job: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """
     Create new job (work order line item)
     SECURITY: Enforces client filtering
@@ -48,7 +50,7 @@ def list_jobs(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List jobs with optional work order filter
     SECURITY: Returns only jobs for user's authorized clients
@@ -57,7 +59,7 @@ def list_jobs(
 
 
 @router.get("/{job_id}", response_model=JobResponse)
-def get_job_endpoint(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_endpoint(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Get job by ID
     SECURITY: Verifies user has access to job's client
@@ -71,7 +73,7 @@ def get_job_endpoint(job_id: str, db: Session = Depends(get_db), current_user: U
 @router.put("/{job_id}", response_model=JobResponse)
 def update_job_endpoint(
     job_id: str, job_update: JobUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Update job
     SECURITY: Verifies user has access to job's client
@@ -86,7 +88,7 @@ def update_job_endpoint(
 @router.post("/{job_id}/complete", response_model=JobResponse)
 def complete_job_endpoint(
     job_id: str, completion: JobComplete, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Mark job as completed with actual quantities and hours
     SECURITY: Verifies user has access to job's client
@@ -100,7 +102,7 @@ def complete_job_endpoint(
 @router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_job_endpoint(
     job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """
     Delete job (supervisor only)
     SECURITY: Only deletes if user has access to job's client
@@ -117,7 +119,7 @@ work_order_jobs_router = APIRouter(prefix="/api/work-orders", tags=["Jobs"])
 @work_order_jobs_router.get("/{work_order_id}/jobs", response_model=List[JobResponse])
 def get_work_order_jobs(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get all jobs for a specific work order
     SECURITY: Returns only jobs for user's authorized clients
@@ -131,7 +133,7 @@ def get_work_order_jobs(
 
 
 @router.get("/{job_id}/yield")
-def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Calculate yield metrics for a specific job (line item).
 
@@ -150,7 +152,7 @@ def get_job_yield(job_id: str, db: Session = Depends(get_db), current_user: User
 @work_order_jobs_router.get("/{work_order_id}/rty")
 def get_work_order_job_rty(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Calculate RTY across all jobs within a work order.
 
@@ -182,7 +184,7 @@ def get_job_rty_summary(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get aggregate job-level RTY summary for a date range.
 
@@ -217,7 +219,9 @@ def get_job_rty_summary(
 
 
 @router.get("/{job_id}/efficiency")
-def get_job_efficiency(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_efficiency(
+    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Calculate efficiency metrics for a specific job.
 
@@ -288,7 +292,9 @@ def get_job_efficiency(job_id: str, db: Session = Depends(get_db), current_user:
 
 
 @router.get("/{job_id}/performance")
-def get_job_performance(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_performance(
+    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Calculate performance metrics for a specific job.
 
@@ -342,7 +348,9 @@ def get_job_performance(job_id: str, db: Session = Depends(get_db), current_user
 
 
 @router.get("/{job_id}/ppm")
-def get_job_ppm(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_ppm(
+    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Calculate PPM (Parts Per Million) for a specific job.
 
@@ -388,7 +396,9 @@ def get_job_ppm(job_id: str, db: Session = Depends(get_db), current_user: User =
 
 
 @router.get("/{job_id}/dpmo")
-def get_job_dpmo(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_dpmo(
+    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Calculate DPMO (Defects Per Million Opportunities) for a specific job.
 
@@ -454,7 +464,9 @@ def get_job_dpmo(job_id: str, db: Session = Depends(get_db), current_user: User 
 
 
 @router.get("/{job_id}/kpi-summary")
-def get_job_kpi_summary(job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_kpi_summary(
+    job_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Dict[str, Any]:
     """
     Get comprehensive KPI summary for a specific job.
 

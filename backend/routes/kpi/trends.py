@@ -8,7 +8,7 @@ on-time delivery, and absenteeism; plus performance breakdown by shift and produ
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
-from typing import Optional
+from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
@@ -28,7 +28,7 @@ def get_performance_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get daily performance trend data.
 
@@ -73,7 +73,7 @@ def get_performance_by_shift(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get performance aggregated by shift.
 
@@ -139,7 +139,7 @@ def get_performance_by_product(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get performance aggregated by product.
 
@@ -205,7 +205,7 @@ def get_quality_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get daily quality (FPY) trend data"""
     from backend.orm.quality_entry import QualityEntry
 
@@ -248,7 +248,7 @@ def get_availability_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get daily availability trend data (calculated from downtime)"""
     from backend.orm.downtime_entry import DowntimeEntry
     from backend.orm.production_entry import ProductionEntry
@@ -309,7 +309,7 @@ def get_oee_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get daily OEE trend data (Availability x Performance x Quality)"""
     from backend.orm.production_entry import ProductionEntry
     from backend.orm.quality_entry import QualityEntry
@@ -392,7 +392,7 @@ def get_otd_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get daily On-Time Delivery trend data"""
     from backend.orm.work_order import WorkOrder
 
@@ -433,7 +433,7 @@ def get_absenteeism_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get daily absenteeism trend data"""
     from backend.orm.attendance_entry import AttendanceEntry
 

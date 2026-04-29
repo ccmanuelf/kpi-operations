@@ -4,7 +4,7 @@ Thin service layer wrapping Shift CRUD operations.
 Routes should import from this module instead of backend.crud.shift directly.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import time
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,7 @@ from backend.crud.shift import (
 from backend.orm.shift import Shift
 
 
-def create_shift_record(db: Session, data):
+def create_shift_record(db: Session, data: Any) -> Any:
     """Create a new shift for a client."""
     return create_shift(db, data)
 
@@ -34,7 +34,7 @@ def get_shift_by_id(db: Session, shift_id: int) -> Optional[Shift]:
     return get_shift(db, shift_id)
 
 
-def update_shift_record(db: Session, shift_id: int, data):
+def update_shift_record(db: Session, shift_id: int, data: Any) -> Any:
     """Update a shift."""
     return update_shift(db, shift_id, data)
 

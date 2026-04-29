@@ -42,7 +42,7 @@ class PDFReportGenerator:
         self.styles = getSampleStyleSheet()
         self._setup_custom_styles()
 
-    def _setup_custom_styles(self):
+    def _setup_custom_styles(self) -> None:
         """Setup custom paragraph styles with IBM Carbon Design System colors"""
         # IBM Carbon color tokens
         self.carbon_colors = {
@@ -328,7 +328,7 @@ class PDFReportGenerator:
 
         return elements
 
-    def _add_page_number(self, canvas, doc):
+    def _add_page_number(self, canvas: Any, doc: Any) -> None:
         """Add page numbers to each page"""
         page_num = canvas.getPageNumber()
         text = f"Page {page_num}"

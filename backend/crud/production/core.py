@@ -7,7 +7,7 @@ Phase 1.3: Decoupled from direct calculation imports.
 KPI calculations are now handled by ProductionKPIService.
 """
 
-from typing import Optional
+from typing import Any, Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
@@ -24,7 +24,7 @@ from backend.middleware.client_auth import verify_client_access
 from backend.utils.soft_delete import soft_delete
 
 
-def _calculate_entry_kpis(db: Session, entry: ProductionEntry, product: Optional[Product] = None):
+def _calculate_entry_kpis(db: Session, entry: ProductionEntry, product: Optional[Product] = None) -> Any:
     """
     Internal helper to calculate and update KPIs for an entry.
     Uses ProductionKPIService for calculation logic.

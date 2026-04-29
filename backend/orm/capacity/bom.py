@@ -6,7 +6,7 @@ Used for MRP explosion and component availability checking.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -65,7 +65,7 @@ class CapacityBOMHeader(Base):
         "CapacityBOMDetail", back_populates="header", cascade="all, delete-orphan", lazy="dynamic"
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityBOMHeader(parent={self.parent_item_code}, rev={self.revision})>"
 
 
@@ -136,5 +136,5 @@ class CapacityBOMDetail(Base):
         waste_factor = 1 + (float(self.waste_percentage or 0) / 100)
         return base_qty * waste_factor
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityBOMDetail(component={self.component_item_code}, qty_per={self.quantity_per})>"

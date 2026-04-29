@@ -201,7 +201,7 @@ class WidgetDefaultResponse(BaseModel):
 
     @field_validator("default_config", mode="before")
     @classmethod
-    def parse_default_config(cls, v):
+    def parse_default_config(cls, v: Any) -> Any:
         """Parse JSON string to dict if needed"""
         if isinstance(v, str):
             try:

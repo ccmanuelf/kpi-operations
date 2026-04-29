@@ -65,7 +65,7 @@ class TestDataFactory:
         return cls._counters[prefix]
 
     @classmethod
-    def reset_counters(cls):
+    def reset_counters(cls) -> None:
         """Reset all ID counters - call at start of each test"""
         cls._counters = {}
 
@@ -80,7 +80,7 @@ class TestDataFactory:
         client_name: Optional[str] = None,
         client_type: ClientType = ClientType.HOURLY_RATE,
         is_active: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> Client:
         """Create a test client with minimal required fields"""
         if client_id is None:
@@ -110,7 +110,7 @@ class TestDataFactory:
         role: str = "operator",
         client_id: Optional[str] = None,
         is_active: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> User:
         """Create a test user with hashed password"""
         if username is None:
@@ -143,7 +143,7 @@ class TestDataFactory:
         employee_code: Optional[str] = None,
         is_floating_pool: bool = False,
         is_active: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> Employee:
         """Create a test employee"""
         if employee_code is None:
@@ -173,7 +173,7 @@ class TestDataFactory:
         employee_id: int,
         client_id: Optional[str] = None,
         current_assignment: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> FloatingPool:
         """Create a floating pool availability entry"""
         assignment = FloatingPool(
@@ -199,7 +199,7 @@ class TestDataFactory:
         product_code: Optional[str] = None,
         product_name: Optional[str] = None,
         ideal_cycle_time: Optional[Decimal] = Decimal("0.15"),
-        **kwargs,
+        **kwargs: Any,
     ) -> Product:
         """Create a test product scoped to a client"""
         if product_code is None:
@@ -227,7 +227,7 @@ class TestDataFactory:
         shift_name: Optional[str] = None,
         start_time: str = "06:00:00",
         end_time: str = "14:00:00",
-        **kwargs,
+        **kwargs: Any,
     ) -> Shift:
         """Create a test shift scoped to a client"""
         if shift_name is None:
@@ -261,7 +261,7 @@ class TestDataFactory:
         style_model: Optional[str] = None,
         status: WorkOrderStatus = WorkOrderStatus.RECEIVED,
         planned_quantity: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> WorkOrder:
         """Create a test work order"""
         if work_order_id is None:
@@ -293,7 +293,7 @@ class TestDataFactory:
         job_id: Optional[str] = None,
         part_number: Optional[str] = None,
         quantity_required: int = 100,
-        **kwargs,
+        **kwargs: Any,
     ) -> Job:
         """Create a test job under a work order"""
         if job_id is None:
@@ -318,7 +318,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_part_opportunities(
-        db: Session, part_number: str, client_id: str, opportunities_per_unit: int = 10, **kwargs
+        db: Session, part_number: str, client_id: str, opportunities_per_unit: int = 10, **kwargs: Any
     ) -> PartOpportunities:
         """Create part opportunities (defect opportunities per unit)"""
         part_opp = PartOpportunities(
@@ -344,7 +344,7 @@ class TestDataFactory:
         entered_by: str,
         production_date: Optional[date] = None,
         units_produced: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> ProductionEntry:
         """Create a production entry with real data"""
         if production_date is None:
@@ -393,7 +393,7 @@ class TestDataFactory:
         # HoldStatus is a constants holder (NOT a Python enum) — its
         # class attributes are plain str, so the parameter type is str.
         hold_status: str = HoldStatus.PENDING_HOLD_APPROVAL,
-        **kwargs,
+        **kwargs: Any,
     ) -> HoldEntry:
         """Create a hold entry"""
         from backend.orm.hold_entry import HoldReason
@@ -429,7 +429,7 @@ class TestDataFactory:
         downtime_reason: str = "EQUIPMENT_FAILURE",
         shift_date: Optional[datetime] = None,
         duration_minutes: int = 60,
-        **kwargs,
+        **kwargs: Any,
     ) -> DowntimeEntry:
         """Create a downtime entry (work_order_id is optional)"""
         entry_id = TestDataFactory._next_id("DT")
@@ -459,7 +459,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_attendance_entry(
-        db: Session, employee_id: int, client_id: str, shift_id: int, shift_date: Optional[date] = None, **kwargs
+        db: Session, employee_id: int, client_id: str, shift_id: int, shift_date: Optional[date] = None, **kwargs: Any
     ) -> AttendanceEntry:
         """Create an attendance entry"""
         if shift_date is None:
@@ -497,7 +497,7 @@ class TestDataFactory:
         client_id: str,
         floating_employee_id: Optional[int] = None,
         covered_employee_id: Optional[int] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> CoverageEntry:
         """Create a shift coverage entry"""
         entry_id = TestDataFactory._next_id("COV")
@@ -530,7 +530,7 @@ class TestDataFactory:
         shift_id: int,
         client_id: str,
         entered_by: int,
-        **kwargs,
+        **kwargs: Any,
     ) -> ShiftCoverage:
         """Create a ShiftCoverage record (shift_coverage table) for coverage CRUD tests"""
         coverage = ShiftCoverage(
@@ -559,7 +559,7 @@ class TestDataFactory:
         inspector_id: str,
         inspection_date: Optional[date] = None,
         units_inspected: int = 1000,
-        **kwargs,
+        **kwargs: Any,
     ) -> QualityEntry:
         """Create a quality entry"""
         if inspection_date is None:
@@ -595,7 +595,7 @@ class TestDataFactory:
         quality_entry_id: str,
         defect_type: DefectType = DefectType.STITCHING,
         defect_count: int = 1,
-        **kwargs,
+        **kwargs: Any,
     ) -> DefectDetail:
         """Create a defect detail record"""
         detail_id = TestDataFactory._next_id("DD")
@@ -616,7 +616,7 @@ class TestDataFactory:
 
     @staticmethod
     def create_defect_type_catalog(
-        db: Session, client_id: str, defect_code: Optional[str] = None, defect_name: Optional[str] = None, **kwargs
+        db: Session, client_id: str, defect_code: Optional[str] = None, defect_name: Optional[str] = None, **kwargs: Any
     ) -> DefectTypeCatalog:
         """Create a defect type catalog entry"""
         if defect_code is None:
@@ -649,7 +649,7 @@ class TestDataFactory:
         filter_name: Optional[str] = None,
         filter_type: str = "production",
         filter_criteria: Optional[dict] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> SavedFilter:
         """Create a saved filter"""
         if filter_name is None:
@@ -682,7 +682,7 @@ class TestDataFactory:
         to_status: str,
         transitioned_by: str,
         client_id: str,
-        **kwargs,
+        **kwargs: Any,
     ) -> WorkflowTransitionLog:
         """Create a workflow transition log"""
         transition = WorkflowTransitionLog(

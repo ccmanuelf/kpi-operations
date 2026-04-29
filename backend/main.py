@@ -11,9 +11,9 @@ API Versioning:
 """
 
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime, timezone
@@ -40,7 +40,7 @@ class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
     V1_SUNSET_DATE = "2026-06-01T00:00:00Z"
     V2_API_URL = "/api/v2/simulation"
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         response = await call_next(request)
 
         # Only add deprecation headers for v1 simulation routes
@@ -71,7 +71,7 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
     Both /api/v1/<path> and /api/<path> resolve to the same handler.
     """
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         path = request.scope["path"]
         if path.startswith("/api/v1/"):
             # Strip the /v1 segment: "/api/v1/foo" -> "/api/foo"
@@ -121,7 +121,7 @@ except ImportError:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan: startup and shutdown logic."""
     # ------------------------------------------------------------------
     # STARTUP
@@ -446,7 +446,7 @@ app.add_middleware(
 
 
 @app.exception_handler(DomainValidationError)
-async def domain_validation_error_handler(request: Request, exc: DomainValidationError):
+async def domain_validation_error_handler(request: Request, exc: DomainValidationError) -> JSONResponse:
     """Handle domain validation errors -> 400"""
     return JSONResponse(
         status_code=400,
@@ -455,7 +455,7 @@ async def domain_validation_error_handler(request: Request, exc: DomainValidatio
 
 
 @app.exception_handler(ResourceNotFoundError)
-async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError):
+async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError) -> JSONResponse:
     """Handle resource not found -> 404"""
     return JSONResponse(
         status_code=404,
@@ -464,7 +464,7 @@ async def resource_not_found_handler(request: Request, exc: ResourceNotFoundErro
 
 
 @app.exception_handler(DomainException)
-async def domain_exception_handler(request: Request, exc: DomainException):
+async def domain_exception_handler(request: Request, exc: DomainException) -> JSONResponse:
     """Handle all other domain exceptions -> 400"""
     return JSONResponse(
         status_code=400,
@@ -473,7 +473,7 @@ async def domain_exception_handler(request: Request, exc: DomainException):
 
 
 @app.exception_handler(SQLAlchemyError)
-async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
     """Handle database errors -> 503"""
     _logger.exception("Database error: %s", exc)
     return JSONResponse(
@@ -483,7 +483,7 @@ async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
 
 
 @app.exception_handler(Exception)
-async def generic_exception_handler(request: Request, exc: Exception):
+async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle unexpected errors -> 500 with sanitized message"""
     _logger.exception("Unhandled exception: %s", exc)
     return JSONResponse(
@@ -498,7 +498,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 
 @app.get("/")
-def root():
+def root() -> Dict[str, Any]:
     """API health check"""
     return {
         "status": "healthy",

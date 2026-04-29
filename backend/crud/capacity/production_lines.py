@@ -7,7 +7,7 @@ including operators, efficiency factors, and department assignments.
 Multi-tenant: All operations enforce client_id isolation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -134,7 +134,9 @@ def get_production_line_by_code(db: Session, client_id: str, line_code: str) -> 
     )
 
 
-def update_production_line(db: Session, client_id: str, line_id: int, **updates) -> Optional[CapacityProductionLine]:
+def update_production_line(
+    db: Session, client_id: str, line_id: int, **updates: Any
+) -> Optional[CapacityProductionLine]:
     """
     Update a production line.
 

@@ -7,7 +7,7 @@ details (components) for MRP explosion and component availability.
 Multi-tenant: All operations enforce client_id isolation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -135,7 +135,7 @@ def get_bom_header_by_item(
     return db.query(CapacityBOMHeader).filter(and_(*filters)).first()
 
 
-def update_bom_header(db: Session, client_id: str, header_id: int, **updates) -> Optional[CapacityBOMHeader]:
+def update_bom_header(db: Session, client_id: str, header_id: int, **updates: Any) -> Optional[CapacityBOMHeader]:
     """
     Update a BOM header.
 
@@ -315,7 +315,7 @@ def get_bom_detail(db: Session, client_id: str, detail_id: int) -> Optional[Capa
     )
 
 
-def update_bom_detail(db: Session, client_id: str, detail_id: int, **updates) -> Optional[CapacityBOMDetail]:
+def update_bom_detail(db: Session, client_id: str, detail_id: int, **updates: Any) -> Optional[CapacityBOMDetail]:
     """
     Update a BOM detail.
 

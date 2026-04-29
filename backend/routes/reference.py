@@ -5,7 +5,7 @@ Products, shifts, and inference engine endpoints
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import datetime, time, timezone
 
 from backend.database import get_db
@@ -23,7 +23,7 @@ router = APIRouter(prefix="/api", tags=["Reference Data"])
 
 
 @router.get("/products", response_model=List[dict])
-def list_products(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_products(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """List active products filtered by client access"""
     query = db.query(Product).filter(Product.is_active == True)
     client_filter = build_client_filter_clause(current_user, Product.client_id)
@@ -42,7 +42,7 @@ def list_products(db: Session = Depends(get_db), current_user: User = Depends(ge
 
 
 @router.get("/shifts", response_model=List[dict])
-def list_shifts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_shifts(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """List active shifts filtered by client access"""
     query = db.query(Shift).filter(Shift.is_active == True)
     client_filter = build_client_filter_clause(current_user, Shift.client_id)
@@ -61,7 +61,7 @@ def list_shifts(db: Session = Depends(get_db), current_user: User = Depends(get_
 
 
 @router.get("/shifts/active", response_model=Optional[dict])
-def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """Get the currently active shift based on current time, filtered by client access"""
     now = datetime.now(tz=timezone.utc).time()
     query = db.query(Shift).filter(Shift.is_active == True)
@@ -101,7 +101,7 @@ def get_active_shift(db: Session = Depends(get_db), current_user: User = Depends
 
 
 @router.get("/downtime-reasons", response_model=List[dict])
-def list_downtime_reasons(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_downtime_reasons(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """List all downtime reason categories"""
     # Standard downtime reason categories (can be extended from DB if needed)
     reasons = [
@@ -124,7 +124,7 @@ def infer_cycle_time(
     shift_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Infer ideal cycle time using 5-level fallback"""
     value, confidence, source, is_estimated = InferenceEngine.infer_ideal_cycle_time(db, product_id, shift_id)
 

@@ -7,7 +7,7 @@ for capacity planning calculations.
 Multi-tenant: All operations enforce client_id isolation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -129,7 +129,7 @@ def get_calendar_entry_by_date(db: Session, client_id: str, calendar_date: date)
     )
 
 
-def update_calendar_entry(db: Session, client_id: str, entry_id: int, **updates) -> Optional[CapacityCalendar]:
+def update_calendar_entry(db: Session, client_id: str, entry_id: int, **updates: Any) -> Optional[CapacityCalendar]:
     """
     Update a calendar entry.
 

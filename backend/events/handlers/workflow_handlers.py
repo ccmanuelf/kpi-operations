@@ -10,6 +10,7 @@ Handles workflow-related events:
 import logging
 from backend.events.base import DomainEvent, EventHandler
 from backend.events.domain_events import WorkOrderStatusChanged
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ class WorkflowAuditHandler(EventHandler):
     Records workflow transitions to audit log for compliance.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_async=False, priority=10)
 
     async def handle(self, event: DomainEvent) -> None:
@@ -49,7 +50,7 @@ class WorkOrderAutoCloseHandler(EventHandler):
     based on status transitions and business rules.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_async=False, priority=50)
 
     async def handle(self, event: DomainEvent) -> None:

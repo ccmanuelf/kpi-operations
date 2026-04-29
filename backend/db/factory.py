@@ -144,7 +144,7 @@ class DatabaseProviderFactory:
         logger.info(f"Created {provider.provider_name} provider for URL")
         return provider
 
-    def get_engine(self, url: str, echo: bool = False, **kwargs) -> Engine:
+    def get_engine(self, url: str, echo: bool = False, **kwargs: Any) -> Engine:
         """Get or create engine for URL.
 
         Returns cached engine if URL matches, otherwise creates new engine.

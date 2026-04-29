@@ -7,7 +7,7 @@ Note: The AnalyticsService class in backend.services.analytics_service provides
 higher-level trend analysis. This module handles CRUD query passthrough.
 """
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 from datetime import date
 from sqlalchemy.orm import Session
 
@@ -30,7 +30,7 @@ def get_time_series(
     start_date: date,
     end_date: date,
     current_user: User,
-):
+) -> Any:
     """Get KPI time series data."""
     return get_kpi_time_series_data(db, client_id, kpi_type, start_date, end_date, current_user)
 
@@ -42,7 +42,7 @@ def get_heatmap(
     start_date: date,
     end_date: date,
     current_user: User,
-):
+) -> Any:
     """Get shift performance heatmap data."""
     return get_shift_heatmap_data(db, client_id, kpi_type, start_date, end_date, current_user)
 
@@ -53,7 +53,7 @@ def get_comparison(
     start_date: date,
     end_date: date,
     current_user: User,
-):
+) -> Any:
     """Get client comparison data."""
     return get_client_comparison_data(db, kpi_type, start_date, end_date, current_user)
 
@@ -64,21 +64,21 @@ def get_pareto(
     start_date: date,
     end_date: date,
     current_user: User,
-):
+) -> Any:
     """Get defect Pareto data."""
     return get_defect_pareto_data(db, client_id, start_date, end_date, current_user)
 
 
-def list_all_shifts(db: Session):
+def list_all_shifts(db: Session) -> Any:
     """Get all shifts."""
     return get_all_shifts(db)
 
 
-def get_client_details(db: Session, client_id: str):
+def get_client_details(db: Session, client_id: str) -> Any:
     """Get client info for analytics."""
     return get_client_info(db, client_id)
 
 
-def get_data_availability(db: Session, client_id: str, current_user: User):
+def get_data_availability(db: Session, client_id: str, current_user: User) -> Any:
     """Get date range data availability."""
     return get_date_range_data_availability(db, client_id, current_user)

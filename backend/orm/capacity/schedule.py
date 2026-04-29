@@ -99,7 +99,7 @@ class CapacitySchedule(Base):
         """Calculate total completed quantity across all details."""
         return sum(d.completed_quantity or 0 for d in self.details)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacitySchedule(name={self.schedule_name}, period={self.period_start}-{self.period_end}, status={self.status})>"
 
 
@@ -170,5 +170,5 @@ class CapacityScheduleDetail(Base):
             return 0.0
         return min(100.0, (self.completed_quantity or 0) / self.scheduled_quantity * 100)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityScheduleDetail(schedule_id={self.schedule_id}, date={self.scheduled_date}, order={self.order_number})>"

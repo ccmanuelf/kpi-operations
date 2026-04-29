@@ -6,7 +6,7 @@ Stores results of component availability checks for orders.
 import enum
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Date, DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -100,5 +100,5 @@ class CapacityComponentCheck(Base):
             return 100.0
         return min(100.0, float(self.available_quantity or 0) / float(self.required_quantity) * 100)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityComponentCheck(order={self.order_number}, component={self.component_item_code}, status={self.status})>"

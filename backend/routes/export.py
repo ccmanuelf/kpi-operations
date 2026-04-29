@@ -40,11 +40,11 @@ router = APIRouter(prefix="/api/export", tags=["Data Export"])
 def _build_csv_response(
     db: Session,
     current_user: User,
-    model_class,
-    columns,
+    model_class: Any,
+    columns: Any,
     entity_name: str,
     client_id: Optional[str],
-    date_field=None,
+    date_field: Any = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     line_id: Optional[int] = None,
@@ -147,7 +147,7 @@ async def export_production_entries(
     line_id: Optional[int] = Query(None, description="Filter by production line ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export production entries as CSV."""
     return _build_csv_response(
         db=db,
@@ -196,7 +196,7 @@ async def export_work_orders(
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export work orders as CSV."""
     return _build_csv_response(
         db=db,
@@ -245,7 +245,7 @@ async def export_quality_inspections(
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export quality inspection entries as CSV."""
     return _build_csv_response(
         db=db,
@@ -288,7 +288,7 @@ async def export_downtime_events(
     line_id: Optional[int] = Query(None, description="Filter by production line ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export downtime events as CSV."""
     return _build_csv_response(
         db=db,
@@ -337,7 +337,7 @@ async def export_attendance(
     line_id: Optional[int] = Query(None, description="Filter by production line ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export attendance entries as CSV."""
     return _build_csv_response(
         db=db,
@@ -377,7 +377,7 @@ async def export_employees(
     client_id: Optional[str] = Query(None, description="Filter by client ID (matches client_id_assigned)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Export employees as CSV.
 
@@ -448,7 +448,7 @@ async def export_products(
     client_id: Optional[str] = Query(None, description="Filter by client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export products as CSV."""
     return _build_csv_response(
         db=db,
@@ -480,7 +480,7 @@ async def export_shifts(
     client_id: Optional[str] = Query(None, description="Filter by client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export shifts as CSV."""
     return _build_csv_response(
         db=db,
@@ -521,7 +521,7 @@ async def export_holds(
     end_date: Optional[date] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Export hold entries as CSV."""
     return _build_csv_response(
         db=db,

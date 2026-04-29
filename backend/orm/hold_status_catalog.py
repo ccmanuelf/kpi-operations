@@ -5,7 +5,7 @@ Replaces hardcoded HoldStatus enum with configurable per-client catalog.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -46,5 +46,5 @@ class HoldStatusCatalog(Base):
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<HoldStatusCatalog {self.client_id}:{self.status_code}>"

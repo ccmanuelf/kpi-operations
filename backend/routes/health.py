@@ -43,7 +43,7 @@ APP_START_TIME = datetime.now(tz=timezone.utc)
 
 
 @router.get("/", response_model=Dict[str, Any])
-async def health_check():
+async def health_check() -> Any:
     """
     Basic health check endpoint
     Returns service status and timestamp
@@ -57,7 +57,7 @@ async def health_check():
 
 
 @router.get("/database", response_model=Dict[str, Any])
-async def database_health(db: Session = Depends(get_db)):
+async def database_health(db: Session = Depends(get_db)) -> Any:
     """
     Database health check
     Tests database connectivity and returns basic status
@@ -74,7 +74,7 @@ async def database_health(db: Session = Depends(get_db)):
 
 
 @router.get("/pool", response_model=Dict[str, Any])
-async def connection_pool_status():
+async def connection_pool_status() -> Any:
     """
     Connection pool monitoring endpoint
     Returns detailed statistics about database connection pool
@@ -99,7 +99,7 @@ async def connection_pool_status():
 async def detailed_health_check(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Comprehensive health check with system metrics (DEP-001)
 
@@ -255,7 +255,7 @@ async def detailed_health_check(
 async def readiness_check(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Kubernetes-style readiness probe
 
@@ -273,7 +273,7 @@ async def readiness_check(
 
 
 @router.api_route("/live", methods=["GET", "HEAD"], response_model=Dict[str, Any])
-async def liveness_check():
+async def liveness_check() -> Any:
     """
     Kubernetes-style liveness probe
 

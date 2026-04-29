@@ -6,7 +6,7 @@ Orders specifically for capacity planning, with their own lifecycle.
 import enum
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Date, DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -115,5 +115,5 @@ class CapacityOrder(Base):
             return 0.0
         return min(100.0, (self.completed_quantity or 0) / self.order_quantity * 100)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityOrder(client_id={self.client_id}, order={self.order_number}, style={self.style_model})>"

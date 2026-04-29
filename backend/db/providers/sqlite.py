@@ -37,7 +37,7 @@ class SQLiteProvider(DatabaseProvider):
         """SQLite cannot receive migrations from other providers."""
         return []  # SQLite is always the source, never the target
 
-    def create_engine(self, url: str, **kwargs) -> Engine:
+    def create_engine(self, url: str, **kwargs: Any) -> Engine:
         """Create SQLAlchemy engine with SQLite-specific settings.
 
         Configures:
@@ -59,7 +59,7 @@ class SQLiteProvider(DatabaseProvider):
 
         # Enable foreign keys on connect
         @event.listens_for(engine, "connect")
-        def set_sqlite_pragma(dbapi_conn, connection_record):
+        def set_sqlite_pragma(dbapi_conn: Any, connection_record: Any) -> None:
             """Enable foreign key constraints."""
             cursor = dbapi_conn.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")

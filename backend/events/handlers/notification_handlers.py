@@ -14,6 +14,7 @@ from backend.events.domain_events import (
     HoldApprovalRequired,
     KPIThresholdViolated,
 )
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class HoldNotificationHandler(EventHandler):
     Runs asynchronously to avoid blocking request.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_async=True, priority=100)
 
     async def handle(self, event: DomainEvent) -> None:
@@ -66,7 +67,7 @@ class KPIAlertHandler(EventHandler):
     Runs asynchronously to avoid blocking request.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_async=True, priority=100)
 
     async def handle(self, event: DomainEvent) -> None:

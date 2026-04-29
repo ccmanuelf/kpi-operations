@@ -4,7 +4,7 @@ Thin service layer wrapping User Preferences CRUD operations.
 Routes should import from this module instead of backend.crud.preferences directly.
 """
 
-from typing import Optional
+from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from backend.schemas.preferences import DashboardPreferences, DashboardPreferencesUpdate
@@ -21,22 +21,22 @@ from backend.crud.preferences import (
 )
 
 
-def get_dashboard_preferences(db: Session, user_id: str):
+def get_dashboard_preferences(db: Session, user_id: str) -> Any:
     """Get dashboard preferences for a user."""
     return get_user_dashboard_preferences(db, user_id)
 
 
-def get_dashboard_preferences_full(db: Session, user_id: str):
+def get_dashboard_preferences_full(db: Session, user_id: str) -> Any:
     """Get full dashboard preferences for a user."""
     return get_user_dashboard_preferences_full(db, user_id)
 
 
-def save_dashboard_preferences(db: Session, user_id: str, preferences: DashboardPreferences):
+def save_dashboard_preferences(db: Session, user_id: str, preferences: DashboardPreferences) -> Any:
     """Save dashboard preferences for a user."""
     return save_user_dashboard_preferences(db, user_id, preferences)
 
 
-def update_dashboard_preferences(db: Session, user_id: str, updates: DashboardPreferencesUpdate):
+def update_dashboard_preferences(db: Session, user_id: str, updates: DashboardPreferencesUpdate) -> Any:
     """Update dashboard preferences for a user.
 
     Takes a DashboardPreferencesUpdate (Pydantic) rather than a raw dict
@@ -47,12 +47,12 @@ def update_dashboard_preferences(db: Session, user_id: str, updates: DashboardPr
     return update_user_dashboard_preferences(db, user_id, updates)
 
 
-def get_default_widgets_for_role(db: Session, role: str):
+def get_default_widgets_for_role(db: Session, role: str) -> Any:
     """Get default widgets for a role."""
     return get_role_default_widgets(db, role)
 
 
-def reset_preferences_to_defaults(db: Session, user_id: str, role: str):
+def reset_preferences_to_defaults(db: Session, user_id: str, role: str) -> Any:
     """Reset user preferences to role defaults."""
     return reset_to_role_defaults(db, user_id, role)
 
@@ -67,6 +67,6 @@ def get_all_defaults(db: Session) -> dict:
     return get_all_role_defaults(db)
 
 
-def get_fallback_widgets():
+def get_fallback_widgets() -> Any:
     """Get fallback default widgets when no DB defaults exist."""
     return FALLBACK_DEFAULT_WIDGETS

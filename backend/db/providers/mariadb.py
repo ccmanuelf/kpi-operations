@@ -36,7 +36,7 @@ class MariaDBProvider(DatabaseProvider):
         """MariaDB can receive migrations from SQLite."""
         return ["sqlite"]
 
-    def create_engine(self, url: str, **kwargs) -> Engine:
+    def create_engine(self, url: str, **kwargs: Any) -> Engine:
         """Create SQLAlchemy engine with MariaDB-specific settings.
 
         Configures:

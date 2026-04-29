@@ -36,6 +36,10 @@ warn_no_return = true
 # Without this, mypy silently skips bodies of `def foo(x):` (no
 # return annotation), which lets bugs hide in legacy untyped helpers.
 check_untyped_defs = true
+# Phase 3: every function must declare param + return types. Catches
+# the case where a function body type-checks fine in isolation but
+# was returning the wrong type compared to what callers expect.
+disallow_untyped_defs = true
 # Required so `from backend.X import ...` resolves correctly when mypy is
 # invoked from the project root with `mypy backend`. Without these flags mypy
 # either bails ("Source file found twice") or silently treats every cross-
@@ -56,8 +60,11 @@ exclude = [
 # Test files use Mock/MagicMock heavily and have many fixtures whose
 # return types are deliberately loose. Type-checking the bodies of
 # unannotated test helpers floods the gate with mock-vs-real-signature
-# noise that doesn't catch real bugs. Disable check_untyped_defs for
-# the test tree only — production code keeps the strict gate.
+# noise that doesn't catch real bugs. Disable check_untyped_defs and
+# disallow_untyped_defs for the test tree only — production code keeps
+# the strict gate. Annotating ~5000 test functions would be churn
+# that doesn't catch new bugs (mocks return Any anyway).
 [[tool.mypy.overrides]]
 module = "backend.tests.*"
 check_untyped_defs = false
+disallow_untyped_defs = false

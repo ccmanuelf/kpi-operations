@@ -6,7 +6,7 @@ Enforces allocation rules: max 2 active lines per employee, total <= 100%.
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_, or_, func as sqlfunc
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from decimal import Decimal
 
@@ -24,7 +24,7 @@ MAX_ACTIVE_ASSIGNMENTS = 2
 MAX_ALLOCATION_PERCENTAGE = Decimal("100.00")
 
 
-def _active_filter():
+def _active_filter() -> Any:
     """
     SQLAlchemy filter clause for active assignments.
     Active means: end_date IS NULL or end_date > today.

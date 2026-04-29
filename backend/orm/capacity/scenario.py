@@ -69,13 +69,13 @@ class CapacityScenario(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    def get_parameter(self, key: str, default=None):
+    def get_parameter(self, key: str, default: Any = None) -> Any:
         """Get a parameter value from parameters_json."""
         if not self.parameters_json:
             return default
         return self.parameters_json.get(key, default)
 
-    def get_result(self, key: str, default=None):
+    def get_result(self, key: str, default: Any = None) -> Any:
         """Get a result value from results_json."""
         if not self.results_json:
             return default
@@ -92,5 +92,5 @@ class CapacityScenario(Base):
         """Get cost impact from results."""
         return float(self.get_result("cost_impact", 0.0) or 0.0)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<CapacityScenario(name={self.scenario_name}, type={self.scenario_type})>"

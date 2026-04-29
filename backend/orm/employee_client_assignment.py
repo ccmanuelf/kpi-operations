@@ -8,7 +8,7 @@ Provides normalized employee-to-client relationship with assignment type support
 
 import enum
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -80,7 +80,7 @@ class EmployeeClientAssignment(Base):
     )
 
 
-def get_employee_assigned_clients(db, employee_id: int, active_only: bool = True):
+def get_employee_assigned_clients(db: Any, employee_id: int, active_only: bool = True) -> Any:
     """
     Get all clients assigned to an employee.
 
@@ -102,7 +102,7 @@ def get_employee_assigned_clients(db, employee_id: int, active_only: bool = True
     return [(row.client_id, row.assignment_type) for row in query.all()]
 
 
-def validate_employee_assignment(db, employee_id: int, client_id: str) -> tuple[bool, str]:
+def validate_employee_assignment(db: Any, employee_id: int, client_id: str) -> tuple[bool, str]:
     """
     Validate if an employee can be assigned to a client.
 
@@ -149,7 +149,7 @@ def validate_employee_assignment(db, employee_id: int, client_id: str) -> tuple[
 
 
 def assign_employee_to_client(
-    db, employee_id: int, client_id: str, assigned_by: str, assignment_type: Optional[str] = None
+    db: Any, employee_id: int, client_id: str, assigned_by: str, assignment_type: Optional[str] = None
 ) -> EmployeeClientAssignment:
     """
     Assign an employee to a client.
@@ -191,7 +191,7 @@ def assign_employee_to_client(
     return assignment
 
 
-def remove_employee_from_client(db, employee_id: int, client_id: str, removed_by: str) -> bool:
+def remove_employee_from_client(db: Any, employee_id: int, client_id: str, removed_by: str) -> bool:
     """
     Remove (deactivate) an employee's client assignment.
 

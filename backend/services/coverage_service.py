@@ -4,7 +4,7 @@ Thin service layer wrapping Shift Coverage CRUD operations.
 Routes should import from this module instead of backend.crud.coverage directly.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
 
@@ -18,12 +18,12 @@ from backend.crud.coverage import (
 )
 
 
-def create_coverage(db: Session, coverage_data, current_user: User):
+def create_coverage(db: Session, coverage_data: Any, current_user: User) -> Any:
     """Create a new shift coverage record."""
     return create_shift_coverage(db, coverage_data, current_user)
 
 
-def get_coverage(db: Session, coverage_id: int, current_user: User):
+def get_coverage(db: Session, coverage_id: int, current_user: User) -> Any:
     """Get a shift coverage record by ID."""
     return get_shift_coverage(db, coverage_id, current_user)
 
@@ -37,12 +37,12 @@ def list_coverages(
     end_date: Optional[date] = None,
     shift_id: Optional[int] = None,
     client_id: Optional[str] = None,
-):
+) -> Any:
     """List shift coverage records with filters."""
     return get_shift_coverages(db, current_user, skip, limit, start_date, end_date, shift_id, client_id)
 
 
-def update_coverage(db: Session, coverage_id: int, coverage_data, current_user: User):
+def update_coverage(db: Session, coverage_id: int, coverage_data: Any, current_user: User) -> Any:
     """Update a shift coverage record."""
     return update_shift_coverage(db, coverage_id, coverage_data, current_user)
 

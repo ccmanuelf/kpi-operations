@@ -23,7 +23,7 @@ thresholds_router = APIRouter(prefix="/api/kpi-thresholds", tags=["KPI Threshold
 @thresholds_router.get("")
 def get_kpi_thresholds(
     client_id: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get KPI thresholds for a specific client or global defaults.
     If client_id is provided, returns client-specific thresholds merged with global defaults.
@@ -77,7 +77,7 @@ def get_kpi_thresholds(
 @thresholds_router.put("")
 def update_kpi_thresholds(
     thresholds_data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Update KPI thresholds for a client or global.
     Expects: { "client_id": "xxx" or null, "thresholds": { "efficiency": { "target_value": 85 }, ... } }
@@ -141,7 +141,7 @@ def update_kpi_thresholds(
 @thresholds_router.delete("/{client_id}/{kpi_key}")
 def delete_client_threshold(
     client_id: str, kpi_key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Delete a client-specific threshold (reverts to global default).
     Cannot delete global thresholds.

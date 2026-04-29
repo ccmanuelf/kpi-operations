@@ -10,7 +10,7 @@ Business Rules:
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -81,7 +81,7 @@ class EmployeeLineAssignment(Base):
     # Audit
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<EmployeeLineAssignment(id={self.assignment_id}, "
             f"emp={self.employee_id}, line={self.line_id}, "

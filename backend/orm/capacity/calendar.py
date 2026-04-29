@@ -6,7 +6,7 @@ Used to determine available production hours per day.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -67,7 +67,7 @@ class CapacityCalendar(Base):
             return 0.0
         return float(self.shift1_hours or 0) + float(self.shift2_hours or 0) + float(self.shift3_hours or 0)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<CapacityCalendar(client_id={self.client_id}, date={self.calendar_date}, working={self.is_working_day})>"
         )

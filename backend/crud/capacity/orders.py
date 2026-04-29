@@ -7,7 +7,7 @@ planning and scheduling. Separate from operational work orders.
 Multi-tenant: All operations enforce client_id isolation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -143,7 +143,7 @@ def get_order_by_number(db: Session, client_id: str, order_number: str) -> Optio
     )
 
 
-def update_order(db: Session, client_id: str, order_id: int, **updates) -> Optional[CapacityOrder]:
+def update_order(db: Session, client_id: str, order_id: int, **updates: Any) -> Optional[CapacityOrder]:
     """
     Update an order.
 

@@ -6,7 +6,7 @@ All endpoints enforce multi-tenant client filtering
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime
 
 from backend.database import get_db
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/coverage", tags=["Shift Coverage"])
 @router.post("", response_model=ShiftCoverageResponse, status_code=status.HTTP_201_CREATED)
 def create_coverage(
     coverage: ShiftCoverageCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create new shift coverage record
     SECURITY: Enforces client filtering through user authentication
@@ -47,7 +47,7 @@ def list_coverage(
     shift_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List shift coverage records with filters
     SECURITY: Returns only coverage for user's authorized clients
@@ -64,7 +64,9 @@ def list_coverage(
 
 
 @router.get("/{coverage_id}", response_model=ShiftCoverageResponse)
-def get_coverage(coverage_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_coverage(
+    coverage_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """
     Get shift coverage record by ID
     SECURITY: Verifies user has access to this coverage record
@@ -84,7 +86,7 @@ def get_coverage_by_shift(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get all coverage records for a specific shift
     SECURITY: Returns only coverage for user's authorized clients
@@ -106,7 +108,7 @@ def update_coverage(
     coverage_update: ShiftCoverageUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update shift coverage record
     SECURITY: Verifies user has access to this coverage record
@@ -120,7 +122,7 @@ def update_coverage(
 @router.delete("/{coverage_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_coverage(
     coverage_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """
     Delete shift coverage record (supervisor only)
     SECURITY: Supervisor/admin only, verifies client access

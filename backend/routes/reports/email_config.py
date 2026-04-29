@@ -5,7 +5,7 @@ Email report configuration CRUD, test email, and manual report sending.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ _email_configs: dict = {}
 async def get_email_report_config(
     client_id: Optional[str] = Query(None, description="Client ID"),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get email report configuration for a client
 
@@ -64,7 +64,7 @@ async def get_email_report_config(
 async def save_email_report_config(
     config: EmailReportConfig,
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Save email report configuration
 
@@ -105,7 +105,7 @@ async def save_email_report_config(
 async def update_email_report_config(
     config: EmailReportConfig,
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update existing email report configuration
 
@@ -139,7 +139,7 @@ async def update_email_report_config(
 async def send_test_email(
     request: TestEmailRequest,
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Send a test email to verify email configuration
 
@@ -179,7 +179,7 @@ async def send_manual_report(
     request: ManualReportRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Manually trigger a report to be sent via email
 

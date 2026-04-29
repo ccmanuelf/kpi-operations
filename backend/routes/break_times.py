@@ -5,7 +5,7 @@ CRUD endpoints for managing configurable break periods per shift.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
@@ -33,7 +33,7 @@ def list_breaks(
     client_id: Optional[str] = Query(None, max_length=50, description="Filter by client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """List break times, optionally filtered by shift and/or client."""
     if shift_id is not None and client_id is not None:
         return list_break_times(db, shift_id, client_id)
@@ -53,7 +53,7 @@ def create_break(
     break_data: BreakTimeCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Create a new break time entry (supervisor or admin required)."""
     try:
         result = create_break_time(db, break_data)
@@ -79,7 +79,7 @@ def update_break(
     break_data: BreakTimeUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Update an existing break time entry (supervisor or admin required)."""
     try:
         result = update_break_time(db, break_id, break_data)
@@ -105,7 +105,7 @@ def delete_break(
     break_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> None:
     """Soft-delete a break time entry (supervisor or admin required)."""
     try:
         success = deactivate_break_time(db, break_id)

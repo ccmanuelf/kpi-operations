@@ -10,12 +10,13 @@ from sqlalchemy import event
 import logging
 
 from backend.events.bus import get_event_bus
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
 
 
-def setup_session_hooks(session_factory) -> None:
+def setup_session_hooks(session_factory: Any) -> None:
     """
     Set up SQLAlchemy event listeners for automatic event handling.
 
@@ -29,7 +30,7 @@ def setup_session_hooks(session_factory) -> None:
     """
 
     @event.listens_for(session_factory, "after_commit")
-    def after_commit(session):
+    def after_commit(session: Any) -> None:
         """Flush collected events after successful commit."""
         bus = get_event_bus()
         count = bus.flush_collected()
@@ -37,7 +38,7 @@ def setup_session_hooks(session_factory) -> None:
             logger.debug(f"Flushed {count} events after commit")
 
     @event.listens_for(session_factory, "after_rollback")
-    def after_rollback(session):
+    def after_rollback(session: Any) -> None:
         """Discard collected events on rollback."""
         bus = get_event_bus()
         count = bus.discard_collected()

@@ -4,7 +4,7 @@ Capacity Planning - Orders Endpoints
 Planning order CRUD operations and scheduling queries.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -39,7 +39,7 @@ def list_orders(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get orders for a client."""
     verify_client_access(current_user, client_id, db)
     return orders.get_orders(db, client_id, skip, limit, status_filter)
@@ -51,7 +51,7 @@ def create_order(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new order."""
     verify_client_access(current_user, client_id, db)
     return orders.create_order(
@@ -80,7 +80,7 @@ def get_orders_for_scheduling(
     end_date: date = Query(..., description="Schedule period end"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get confirmed orders ready for scheduling within a date range."""
     verify_client_access(current_user, client_id, db)
     return orders.get_orders_for_scheduling(db, client_id, start_date, end_date)
@@ -94,7 +94,7 @@ def get_order(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific order."""
     verify_client_access(current_user, client_id, db)
     order = orders.get_order(db, client_id, order_id)
@@ -112,7 +112,7 @@ def update_order(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update an order."""
     verify_client_access(current_user, client_id, db)
     order = orders.update_order(db, client_id, order_id, **update.model_dump(exclude_unset=True))
@@ -130,7 +130,7 @@ def update_order_status(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update order status."""
     verify_client_access(current_user, client_id, db)
     order = orders.update_order_status(db, client_id, order_id, new_status)
@@ -147,7 +147,7 @@ def delete_order(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Delete an order."""
     verify_client_access(current_user, client_id, db)
     if not orders.delete_order(db, client_id, order_id):

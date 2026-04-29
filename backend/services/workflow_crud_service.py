@@ -7,7 +7,7 @@ Note: This wraps the CRUD layer functions. The core workflow state machine
 logic lives in backend.services.workflow_service (WorkflowStateMachine).
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User
@@ -26,7 +26,7 @@ from backend.crud.workflow import (
 )
 
 
-def get_transitions_for_work_order(db: Session, work_order_id: str, current_user: User):
+def get_transitions_for_work_order(db: Session, work_order_id: str, current_user: User) -> Any:
     """Get transition history for a work order."""
     return get_work_order_transitions(db, work_order_id, current_user)
 
@@ -40,7 +40,7 @@ def get_transitions_for_client(
     from_status: Optional[str] = None,
     to_status: Optional[str] = None,
     trigger_source: Optional[str] = None,
-):
+) -> Any:
     """Get transition history for a client."""
     return get_client_transitions(
         db,

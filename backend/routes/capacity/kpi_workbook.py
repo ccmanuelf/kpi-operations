@@ -44,7 +44,7 @@ def get_kpi_commitments(
     kpi_key: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get KPI commitments for a client."""
     verify_client_access(current_user, client_id, db)
 
@@ -72,7 +72,7 @@ def get_kpi_variance_report(
     schedule_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get KPI variance report."""
     verify_client_access(current_user, client_id, db)
 
@@ -111,7 +111,7 @@ def get_kpi_variance_report(
 @kpi_workbook_router.get(
     "/workbook/{client_id}", response_model=Dict[str, Any], responses={403: {"description": "Client access denied"}}
 )
-def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """Load all worksheet data for a client (capacity planning workbook).
 
     Returns all 13 worksheets with snake_case keys matching the frontend store mapping:
@@ -428,7 +428,7 @@ def save_worksheet(
     data: List[Dict[str, Any]],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Save a specific worksheet's data (bulk update/create)."""
     verify_client_access(current_user, client_id, db)
 

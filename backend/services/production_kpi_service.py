@@ -129,7 +129,7 @@ class ProductionKPIService:
         """
         cache_key = build_cache_key("product", product_id)
 
-        def fetch_product():
+        def fetch_product() -> Any:
             product = self.db.query(Product).filter(Product.product_id == product_id).first()
             if product:
                 # Return a dict representation for caching (ORM objects can't be pickled)
@@ -166,7 +166,7 @@ class ProductionKPIService:
         """
         cache_key = build_cache_key("shift", shift_id)
 
-        def fetch_shift():
+        def fetch_shift() -> Any:
             shift = self.db.query(Shift).filter(Shift.shift_id == shift_id).first()
             if shift:
                 # Return a dict representation for caching
@@ -453,7 +453,7 @@ class ProductionKPIService:
         # Build cache key
         cache_key = build_cache_key("daily_summary", client_id or "all", target_date.isoformat())
 
-        def compute_summary():
+        def compute_summary() -> Any:
             query = self.db.query(
                 func.sum(ProductionEntry.units_produced).label("total_units"),
                 func.avg(ProductionEntry.efficiency_percentage).label("avg_efficiency"),

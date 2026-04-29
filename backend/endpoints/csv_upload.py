@@ -117,7 +117,7 @@ async def upload_downtime_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload downtime events via CSV or XLSX - ALIGNED WITH DOWNTIME_ENTRY SCHEMA
 
@@ -219,7 +219,7 @@ async def upload_holds_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload WIP hold/resume events via CSV or XLSX - ALIGNED WITH HOLD_ENTRY SCHEMA
 
@@ -320,7 +320,7 @@ async def upload_attendance_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload attendance records via CSV or XLSX - ALIGNED WITH ATTENDANCE_ENTRY SCHEMA
 
@@ -426,7 +426,7 @@ async def upload_coverage_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload shift coverage records via CSV or XLSX
 
@@ -504,7 +504,7 @@ async def upload_quality_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload quality inspection records via CSV or XLSX - ALIGNED WITH QUALITY_ENTRY SCHEMA
 
@@ -627,7 +627,7 @@ async def upload_defects_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload defect detail records via CSV or XLSX
 
@@ -709,7 +709,7 @@ async def upload_work_orders_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload work orders via CSV or XLSX
 
@@ -759,7 +759,7 @@ async def upload_work_orders_csv(
             verify_client_access(current_user, sanitize_csv_value(row["client_id"]))
 
             # Parse optional datetime fields
-            def parse_datetime(date_str):
+            def parse_datetime(date_str: Optional[str]) -> Optional[datetime]:
                 if not date_str:
                     return None
                 try:
@@ -818,7 +818,7 @@ async def upload_jobs_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload job line items via CSV or XLSX
 
@@ -924,7 +924,7 @@ async def upload_clients_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload clients via CSV or XLSX (Admin only)
 
@@ -1013,7 +1013,7 @@ async def upload_employees_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload employees via CSV or XLSX (Admin only)
 
@@ -1102,7 +1102,7 @@ async def upload_floating_pool_csv(
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CSVUploadResponse:
     """
     Upload floating pool assignments via CSV or XLSX (Supervisor/Admin only)
 
@@ -1143,7 +1143,7 @@ async def upload_floating_pool_csv(
 
         try:
             # Parse datetime fields
-            def parse_datetime(date_str):
+            def parse_datetime(date_str: Optional[str]) -> Optional[datetime]:
                 if not date_str:
                     return None
                 try:

@@ -41,7 +41,7 @@ router = APIRouter(prefix="/api/work-orders", tags=["Work Orders"])
 @router.post("", response_model=WorkOrderResponse, status_code=status.HTTP_201_CREATED)
 def create_work_order_endpoint(
     work_order: WorkOrderCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create new work order
     SECURITY: Enforces client filtering
@@ -61,7 +61,7 @@ def list_work_orders(
     style_model: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List work orders with filters
     SECURITY: Returns only work orders for user's authorized clients
@@ -76,7 +76,7 @@ def get_work_orders_by_status_endpoint(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get work orders by status
     SECURITY: Returns only work orders for user's authorized clients
@@ -92,7 +92,7 @@ def get_work_orders_by_date_range_endpoint(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get work orders within date range
     SECURITY: Returns only work orders for user's authorized clients
@@ -103,7 +103,7 @@ def get_work_orders_by_date_range_endpoint(
 @router.get("/{work_order_id}", response_model=WorkOrderResponse)
 def get_work_order_endpoint(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get work order by ID
     SECURITY: Verifies user has access to work order's client
@@ -411,7 +411,7 @@ def update_work_order_endpoint(
     work_order_update: WorkOrderUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update work order
     SECURITY: Verifies user has access to work order's client
@@ -430,7 +430,7 @@ def update_work_order_status(
     status_update: dict,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update only the status of a work order.
     Accepts: { "status": "ACTIVE" | "ON_HOLD" | "COMPLETED" | "REJECTED" | "CANCELLED" }
@@ -582,7 +582,7 @@ def link_to_capacity_order(
     link_data: Dict[str, Any],
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Link a work order to a capacity order."""
     from backend.services.work_order_service import link_to_capacity
 
@@ -599,7 +599,7 @@ def unlink_from_capacity_order(
     work_order_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Unlink a work order from its capacity order."""
     from backend.services.work_order_service import unlink_from_capacity
 
@@ -611,7 +611,7 @@ def unlink_from_capacity_order(
 @router.delete("/{work_order_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_work_order_endpoint(
     work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """
     Delete work order (supervisor only)
     SECURITY: Only deletes if user has access to work order's client
@@ -633,7 +633,7 @@ def get_client_work_orders(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get all work orders for a specific client
     SECURITY: Returns only work orders for user's authorized clients

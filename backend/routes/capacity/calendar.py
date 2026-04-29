@@ -4,7 +4,7 @@ Capacity Planning - Calendar Endpoints
 Master Calendar (working days, shifts, holidays) CRUD operations.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -39,7 +39,7 @@ def list_calendar_entries(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get calendar entries for a client."""
     verify_client_access(current_user, client_id, db)
     if start_date and end_date:
@@ -53,7 +53,7 @@ def create_calendar(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new calendar entry."""
     verify_client_access(current_user, client_id, db)
     return calendar.create_calendar_entry(
@@ -80,7 +80,7 @@ def get_calendar(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific calendar entry."""
     verify_client_access(current_user, client_id, db)
     entry = calendar.get_calendar_entry(db, client_id, entry_id)
@@ -100,7 +100,7 @@ def update_calendar(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update a calendar entry."""
     verify_client_access(current_user, client_id, db)
     entry = calendar.update_calendar_entry(db, client_id, entry_id, **update.model_dump(exclude_unset=True))
@@ -117,7 +117,7 @@ def delete_calendar(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Delete a calendar entry."""
     verify_client_access(current_user, client_id, db)
     if not calendar.delete_calendar_entry(db, client_id, entry_id):

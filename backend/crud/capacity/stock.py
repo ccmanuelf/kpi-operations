@@ -7,7 +7,7 @@ for MRP calculations and component availability checking.
 Multi-tenant: All operations enforce client_id isolation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from decimal import Decimal
 from sqlalchemy.orm import Session
@@ -121,7 +121,9 @@ def get_stock_snapshot(db: Session, client_id: str, snapshot_id: int) -> Optiona
     )
 
 
-def update_stock_snapshot(db: Session, client_id: str, snapshot_id: int, **updates) -> Optional[CapacityStockSnapshot]:
+def update_stock_snapshot(
+    db: Session, client_id: str, snapshot_id: int, **updates: Any
+) -> Optional[CapacityStockSnapshot]:
     """
     Update a stock snapshot.
 

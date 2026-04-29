@@ -5,7 +5,7 @@ All downtime CRUD and availability KPI endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime, timezone
 
 from backend.database import get_db
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/downtime", tags=["Downtime Tracking"])
 @router.post("", response_model=DowntimeEventResponse, status_code=status.HTTP_201_CREATED)
 def create_downtime(
     downtime: DowntimeEventCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """Create downtime event"""
     try:
         result = create_downtime_event(db, downtime, current_user)
@@ -65,7 +65,7 @@ def list_downtime(
     downtime_reason: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """List downtime events with filters"""
     return get_downtime_events(
         db,
@@ -81,7 +81,9 @@ def list_downtime(
 
 
 @router.get("/{downtime_id}", response_model=DowntimeEventResponse)
-def get_downtime(downtime_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_downtime(
+    downtime_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """Get downtime event by ID"""
     event = get_downtime_event(db, downtime_id, current_user)
     if not event:
@@ -95,7 +97,7 @@ def update_downtime(
     downtime_update: DowntimeEventUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update downtime event"""
     try:
         updated = update_downtime_event(db, downtime_id, downtime_update, current_user)
@@ -113,7 +115,7 @@ def update_downtime(
 @router.delete("/{downtime_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_downtime(
     downtime_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """Delete downtime event (supervisor only)"""
     try:
         success = delete_downtime_event(db, downtime_id, current_user)
@@ -141,7 +143,7 @@ def calculate_availability_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Calculate availability KPI.
 
     Previously took required (product_id: int, shift_id: int,

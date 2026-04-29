@@ -21,7 +21,7 @@ KPI Types Supported:
 10. OTD - On-Time Delivery percentage
 """
 
-from typing import List, Dict, Optional, Tuple
+from typing import Any, List, Dict, Optional, Tuple
 from datetime import date, timedelta
 from decimal import Decimal
 import random
@@ -343,7 +343,7 @@ def generate_all_kpi_histories(
     return all_data
 
 
-def seed_demo_predictions(db, client_ids: Optional[List[str]] = None, days: int = 90):
+def seed_demo_predictions(db: Any, client_ids: Optional[List[str]] = None, days: int = 90) -> Any:
     """
     Seed database with demo KPI history data for prediction demonstration
 

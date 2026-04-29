@@ -4,7 +4,7 @@ Thin service layer wrapping Break Time CRUD operations.
 Routes should import from this module instead of backend.crud.break_time directly.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy.orm import Session
 
 from backend.crud.break_time import (
@@ -17,17 +17,17 @@ from backend.crud.break_time import (
 )
 
 
-def create_break_time_record(db: Session, data):
+def create_break_time_record(db: Session, data: Any) -> Any:
     """Create a new break time."""
     return create_break_time(db, data)
 
 
-def list_break_times_for_shift(db: Session, shift_id: int, client_id: str):
+def list_break_times_for_shift(db: Session, shift_id: int, client_id: str) -> Any:
     """List break times for a specific shift."""
     return list_break_times(db, shift_id, client_id)
 
 
-def list_all_break_times_for_client(db: Session, client_id: str):
+def list_all_break_times_for_client(db: Session, client_id: str) -> Any:
     """List all break times for a client."""
     return list_break_times_for_client(db, client_id)
 
@@ -37,7 +37,7 @@ def get_total_break_minutes_for_shift(db: Session, shift_id: int, client_id: str
     return get_total_break_minutes(db, shift_id, client_id)
 
 
-def update_break_time_record(db: Session, break_id: int, data):
+def update_break_time_record(db: Session, break_id: int, data: Any) -> Any:
     """Update a break time."""
     return update_break_time(db, break_id, data)
 

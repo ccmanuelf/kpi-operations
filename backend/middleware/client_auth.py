@@ -8,7 +8,7 @@ Phase 2.2: Updated to support both:
 """
 
 import logging
-from typing import Optional, List
+from typing import Any, Optional, List
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from backend.orm.user import User, UserRole
@@ -197,7 +197,7 @@ def verify_client_access(user: User, resource_client_id: str, db: Optional[Sessi
     return True
 
 
-def build_client_filter_clause(user: User, client_id_column):
+def build_client_filter_clause(user: User, client_id_column: Any) -> Any:
     """
     Build SQLAlchemy filter clause for client isolation
 

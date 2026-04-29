@@ -6,7 +6,7 @@ SECURITY: All endpoints enforce user ownership - filters are not shared
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 from backend.database import get_db
@@ -61,7 +61,7 @@ def list_saved_filters(
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> List[SavedFilterResponse]:
     """
     List all saved filters for the authenticated user
 
@@ -88,7 +88,7 @@ def list_saved_filters(
 @router.post("", response_model=SavedFilterResponse, status_code=status.HTTP_201_CREATED)
 def create_filter(
     filter_data: SavedFilterCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> SavedFilterResponse:
     """
     Create a new saved filter
 
@@ -105,7 +105,7 @@ def create_filter(
 @router.get("/default/{filter_type}", response_model=Optional[SavedFilterResponse])
 def get_default_filter_by_type(
     filter_type: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Optional[SavedFilterResponse]:
     """
     Get the default filter for a specific type
 
@@ -122,7 +122,7 @@ def get_default_filter_by_type(
 
 
 @router.get("/statistics")
-def get_user_filter_statistics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_user_filter_statistics(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> Any:
     """
     Get filter usage statistics for the current user
 
@@ -136,7 +136,9 @@ def get_user_filter_statistics(db: Session = Depends(get_db), current_user: User
 
 
 @router.get("/{filter_id}", response_model=SavedFilterResponse)
-def get_filter(filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_filter(
+    filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> SavedFilterResponse:
     """
     Get a specific saved filter by ID
 
@@ -153,7 +155,7 @@ def update_filter(
     filter_data: SavedFilterUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> SavedFilterResponse:
     """
     Update an existing saved filter
 
@@ -168,7 +170,9 @@ def update_filter(
 
 
 @router.delete("/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_filter(filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_filter(
+    filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> None:
     """
     Delete a saved filter
 
@@ -178,7 +182,9 @@ def delete_filter(filter_id: int, db: Session = Depends(get_db), current_user: U
 
 
 @router.post("/{filter_id}/apply", response_model=ApplyFilterResponse)
-def apply_saved_filter(filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def apply_saved_filter(
+    filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> ApplyFilterResponse:
     """
     Apply a saved filter and track usage
 
@@ -206,7 +212,7 @@ def apply_saved_filter(filter_id: int, db: Session = Depends(get_db), current_us
 @router.post("/{filter_id}/set-default", response_model=SetDefaultResponse)
 def set_filter_as_default(
     filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> SetDefaultResponse:
     """
     Set a filter as the default for its type
 
@@ -229,7 +235,7 @@ def set_filter_as_default(
 @router.post("/{filter_id}/unset-default", response_model=SetDefaultResponse)
 def unset_filter_as_default(
     filter_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> SetDefaultResponse:
     """
     Remove default status from a filter
 
@@ -252,7 +258,7 @@ def duplicate_saved_filter(
     new_name: Optional[str] = Query(None, max_length=100, description="Name for the duplicate"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> SavedFilterResponse:
     """
     Duplicate an existing filter
 
@@ -279,7 +285,7 @@ def get_recent_filter_history(
     limit: int = Query(10, ge=1, le=50, description="Maximum entries to return"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> List[FilterHistoryResponse]:
     """
     Get recent filter history
 
@@ -296,7 +302,7 @@ def get_recent_filter_history(
 @router.post("/history", response_model=FilterHistoryResponse, status_code=status.HTTP_201_CREATED)
 def add_filter_to_history(
     filter_config: FilterConfig, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> FilterHistoryResponse:
     """
     Add a filter configuration to history
 
@@ -311,7 +317,7 @@ def add_filter_to_history(
 
 
 @router.delete("/history", status_code=status.HTTP_204_NO_CONTENT)
-def clear_user_filter_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def clear_user_filter_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> None:
     """
     Clear all filter history for the current user
 
@@ -325,7 +331,7 @@ def clear_user_filter_history(db: Session = Depends(get_db), current_user: User 
 # ============================================================================
 
 
-def _to_filter_response(db_filter) -> SavedFilterResponse:
+def _to_filter_response(db_filter: Any) -> SavedFilterResponse:
     """
     Convert database SavedFilter to response model
 
@@ -345,7 +351,7 @@ def _to_filter_response(db_filter) -> SavedFilterResponse:
     )
 
 
-def _to_history_response(history_entry) -> FilterHistoryResponse:
+def _to_history_response(history_entry: Any) -> FilterHistoryResponse:
     """
     Convert database FilterHistory to response model
 

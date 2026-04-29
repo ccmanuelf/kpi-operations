@@ -8,7 +8,7 @@ Started checklist to show operational setup progress.
 All queries are multi-tenant isolated via client_id.
 """
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -61,7 +61,7 @@ def get_onboarding_status(
     client_id: Optional[str] = Query(None, description="Client ID to check onboarding for"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Check which onboarding steps are completed for the given client.
 

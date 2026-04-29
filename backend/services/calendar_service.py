@@ -8,7 +8,7 @@ This wraps the capacity calendar CRUD functions for use by operational routes
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy.orm import Session
 
 from backend.crud.capacity.calendar import (
@@ -17,11 +17,11 @@ from backend.crud.capacity.calendar import (
 )
 
 
-def get_calendar_entry(db: Session, client_id: str, entry_date: date):
+def get_calendar_entry(db: Session, client_id: str, entry_date: date) -> Any:
     """Get a calendar entry for a specific date."""
     return get_calendar_entry_by_date(db, client_id, entry_date)
 
 
-def get_calendar_period(db: Session, client_id: str, start_date: date, end_date: date):
+def get_calendar_period(db: Session, client_id: str, start_date: date, end_date: date) -> Any:
     """Get calendar entries for a date range."""
     return get_calendar_for_period(db, client_id, start_date, end_date)

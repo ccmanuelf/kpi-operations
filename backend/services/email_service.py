@@ -29,7 +29,7 @@ from backend.config import settings
 class EmailService:
     """Service for sending emails with attachments"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.use_sendgrid = SENDGRID_AVAILABLE and hasattr(settings, "SENDGRID_API_KEY") and settings.SENDGRID_API_KEY
 
         if not self.use_sendgrid:

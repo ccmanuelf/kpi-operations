@@ -5,7 +5,7 @@ Distinct from CapacityProductionLine which is used for capacity planning.
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -63,7 +63,7 @@ class ProductionLine(Base):
         backref="children",
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"<ProductionLine(line_id={self.line_id}, client_id={self.client_id}, "
             f"code={self.line_code}, dept={self.department})>"

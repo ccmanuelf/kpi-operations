@@ -4,7 +4,7 @@ Capacity Planning - Standards Endpoints
 Production standards (SAM data) CRUD operations.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -38,7 +38,7 @@ def list_standards(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get production standards for a client."""
     verify_client_access(current_user, client_id, db)
     return standards.get_standards(db, client_id, skip, limit, department)
@@ -50,7 +50,7 @@ def create_standard(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new production standard."""
     verify_client_access(current_user, client_id, db)
     return standards.create_standard(
@@ -74,7 +74,7 @@ def get_standards_by_style(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get all standards for a specific style."""
     verify_client_access(current_user, client_id, db)
     return standards.get_standards_by_style(db, client_id, style_model)
@@ -87,7 +87,7 @@ def get_total_sam_for_style(
     department: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get total SAM minutes for a style."""
     verify_client_access(current_user, client_id, db)
     total = standards.get_total_sam_for_style(db, client_id, style_model, department)
@@ -102,7 +102,7 @@ def get_standard(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific production standard."""
     verify_client_access(current_user, client_id, db)
     standard = standards.get_standard(db, client_id, standard_id)
@@ -120,7 +120,7 @@ def update_standard(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update a production standard."""
     verify_client_access(current_user, client_id, db)
     standard = standards.update_standard(db, client_id, standard_id, **update.model_dump(exclude_unset=True))
@@ -137,7 +137,7 @@ def delete_standard(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Delete a production standard."""
     verify_client_access(current_user, client_id, db)
     if not standards.delete_standard(db, client_id, standard_id):

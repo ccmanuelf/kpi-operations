@@ -11,7 +11,7 @@ isolation via the required client_id query parameter.
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -89,7 +89,7 @@ def get_working_days(
     end_date: date = Query(..., description="End of date range (inclusive)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Return calendar entries for a date range with working/non-working status.
 
@@ -121,7 +121,7 @@ def get_summary(
     end_date: date = Query(..., description="End of date range (inclusive)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Return an aggregated summary (working days, hours, holidays) for a date range.
     """
@@ -152,7 +152,7 @@ def get_single_day(
     client_id: str = Query(..., description="Client ID for multi-tenant isolation"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Return detailed information for a single calendar date.
 

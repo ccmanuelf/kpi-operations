@@ -17,7 +17,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 import time
 import os
 
@@ -82,7 +82,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     - X-RateLimit-Reset: Timestamp when limit resets
     """
 
-    def __init__(self, app, limiter_instance: Optional[Limiter] = None):
+    def __init__(self, app: Any, limiter_instance: Optional[Limiter] = None):
         super().__init__(app)
         self.limiter = limiter_instance or limiter
 
@@ -130,52 +130,52 @@ def get_rate_limit_key(request: Request) -> str:
 
 
 # No-op decorator for when rate limiting is disabled
-def _noop_decorator():
+def _noop_decorator() -> Any:
     """No-op decorator that does nothing (for disabled rate limiting)"""
 
-    def decorator(func):
+    def decorator(func: Any) -> Any:
         return func
 
     return decorator
 
 
 # Pre-defined rate limiters for different endpoint types
-def auth_rate_limit():
+def auth_rate_limit() -> Any:
     """Rate limiter for authentication endpoints (login, register)"""
     if RATE_LIMIT_DISABLED:
         return _noop_decorator()
     return limiter.limit(RateLimitConfig.AUTH_LIMIT)
 
 
-def general_rate_limit():
+def general_rate_limit() -> Any:
     """Rate limiter for general API endpoints"""
     if RATE_LIMIT_DISABLED:
         return _noop_decorator()
     return limiter.limit(RateLimitConfig.GENERAL_LIMIT)
 
 
-def sensitive_rate_limit():
+def sensitive_rate_limit() -> Any:
     """Rate limiter for sensitive operations (password reset)"""
     if RATE_LIMIT_DISABLED:
         return _noop_decorator()
     return limiter.limit(RateLimitConfig.SENSITIVE_LIMIT)
 
 
-def upload_rate_limit():
+def upload_rate_limit() -> Any:
     """Rate limiter for CSV upload/batch operations"""
     if RATE_LIMIT_DISABLED:
         return _noop_decorator()
     return limiter.limit(RateLimitConfig.UPLOAD_LIMIT)
 
 
-def report_rate_limit():
+def report_rate_limit() -> Any:
     """Rate limiter for report generation"""
     if RATE_LIMIT_DISABLED:
         return _noop_decorator()
     return limiter.limit(RateLimitConfig.REPORT_LIMIT)
 
 
-def configure_rate_limiting(app):
+def configure_rate_limiting(app: Any) -> Any:
     """
     Configure rate limiting for FastAPI application
 

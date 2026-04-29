@@ -205,7 +205,7 @@ def with_logging(operation: str, resource: str, id_param: Optional[str] = None) 
 
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             logger = get_module_logger(func.__module__)
 
             # Extract user_id and client_id if available

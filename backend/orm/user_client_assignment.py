@@ -7,7 +7,7 @@ Provides normalized user-to-client many-to-many relationship.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -61,7 +61,7 @@ class UserClientAssignment(Base):
     )
 
 
-def get_user_assigned_clients(db, user_id: str, active_only: bool = True):
+def get_user_assigned_clients(db: Any, user_id: str, active_only: bool = True) -> Any:
     """
     Get all clients assigned to a user.
 
@@ -82,7 +82,7 @@ def get_user_assigned_clients(db, user_id: str, active_only: bool = True):
 
 
 def assign_user_to_client(
-    db, user_id: str, client_id: str, assigned_by: str, is_primary: bool = False
+    db: Any, user_id: str, client_id: str, assigned_by: str, is_primary: bool = False
 ) -> UserClientAssignment:
     """
     Assign a user to a client.
@@ -110,7 +110,7 @@ def assign_user_to_client(
     return assignment
 
 
-def remove_user_from_client(db, user_id: str, client_id: str, removed_by: str) -> bool:
+def remove_user_from_client(db: Any, user_id: str, client_id: str, removed_by: str) -> bool:
     """
     Remove (deactivate) a user's client assignment.
 

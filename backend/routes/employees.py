@@ -5,7 +5,7 @@ All employee CRUD endpoints
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from backend.database import get_db
 from backend.schemas.employee import (
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/api/employees", tags=["Employees"])
 @router.post("", response_model=EmployeeResponse, status_code=status.HTTP_201_CREATED)
 def create_employee_endpoint(
     employee: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create new employee
     SECURITY: Supervisor/admin only
@@ -57,7 +57,7 @@ def list_employees(
     is_floating_pool: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List employees with filters.
 
@@ -71,7 +71,7 @@ def list_employees(
 @router.get("/floating-pool/list", response_model=List[EmployeeResponse])
 def get_floating_pool_employees_endpoint(
     skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get all floating pool employees.
 
@@ -86,7 +86,7 @@ def get_floating_pool_employees_endpoint(
 @router.get("/{employee_id}", response_model=EmployeeResponse)
 def get_employee_endpoint(
     employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get employee by ID
     """
@@ -102,7 +102,7 @@ def update_employee_endpoint(
     employee_update: EmployeeUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update employee
     SECURITY: Supervisor/admin only
@@ -117,7 +117,7 @@ def update_employee_endpoint(
 @router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_employee_endpoint(
     employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> None:
     """
     Delete employee (admin only)
     SECURITY: Admin only
@@ -130,7 +130,7 @@ def delete_employee_endpoint(
 @router.post("/{employee_id}/floating-pool/assign", response_model=EmployeeResponse)
 def assign_employee_to_floating_pool(
     employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Assign employee to floating pool
     SECURITY: Supervisor/admin only
@@ -141,7 +141,7 @@ def assign_employee_to_floating_pool(
 @router.post("/{employee_id}/floating-pool/remove", response_model=EmployeeResponse)
 def remove_employee_from_floating_pool(
     employee_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Remove employee from floating pool
     SECURITY: Supervisor/admin only
@@ -155,7 +155,7 @@ def assign_employee_to_client_endpoint(
     assignment: EmployeeAssignmentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Assign employee to a client
     SECURITY: Supervisor/admin only, verifies client access
@@ -174,7 +174,7 @@ def get_client_employees(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get all employees assigned to a specific client
     SECURITY: Verifies user has access to client

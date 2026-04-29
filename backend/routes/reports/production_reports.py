@@ -6,7 +6,7 @@ Exports parse_date helper for use by other report sub-modules.
 """
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -42,7 +42,7 @@ async def generate_production_pdf_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Generate production efficiency PDF report
 
@@ -98,7 +98,7 @@ async def generate_production_excel_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Generate production efficiency Excel report
 

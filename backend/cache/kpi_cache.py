@@ -236,7 +236,7 @@ def build_cache_key(*parts: Any) -> str:
     return ":".join(str(part) for part in parts)
 
 
-def build_hash_key(prefix: str, **kwargs) -> str:
+def build_hash_key(prefix: str, **kwargs: Any) -> str:
     """
     Build a cache key with a hash of the parameters.
 
@@ -315,7 +315,7 @@ def reset_cache() -> None:
 # =============================================================================
 
 
-def cached(key_prefix: str, ttl_seconds: int = 300, key_builder: Optional[Callable[..., str]] = None):
+def cached(key_prefix: str, ttl_seconds: int = 300, key_builder: Optional[Callable[..., str]] = None) -> Any:
     """
     Decorator to cache function results.
 
@@ -333,8 +333,8 @@ def cached(key_prefix: str, ttl_seconds: int = 300, key_builder: Optional[Callab
         # Cache key will be: "dashboard_summary:client123:2024-01-15"
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Any) -> Any:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache = get_cache()
 
             # Build cache key

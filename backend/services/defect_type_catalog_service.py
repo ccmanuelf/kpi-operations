@@ -4,7 +4,7 @@ Thin service layer wrapping Defect Type Catalog CRUD operations.
 Routes should import from this module instead of backend.crud.defect_type_catalog directly.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User
@@ -23,12 +23,12 @@ from backend.crud.defect_type_catalog import (
 )
 
 
-def create_defect_type_record(db: Session, defect_type_data, current_user: User):
+def create_defect_type_record(db: Session, defect_type_data: Any, current_user: User) -> Any:
     """Create a new defect type catalog entry."""
     return create_defect_type(db, defect_type_data, current_user)
 
 
-def get_defect_type_by_id(db: Session, defect_type_id: str, current_user: User):
+def get_defect_type_by_id(db: Session, defect_type_id: str, current_user: User) -> Any:
     """Get a defect type by ID."""
     return get_defect_type(db, defect_type_id, current_user)
 
@@ -39,7 +39,7 @@ def list_defect_types_by_client(
     current_user: User,
     include_inactive: bool = False,
     include_global: bool = True,
-):
+) -> Any:
     """List defect types for a client."""
     return get_defect_types_by_client(
         db,
@@ -50,12 +50,12 @@ def list_defect_types_by_client(
     )
 
 
-def list_global_defect_types(db: Session, include_inactive: bool = False):
+def list_global_defect_types(db: Session, include_inactive: bool = False) -> Any:
     """List global defect types."""
     return get_global_defect_types(db, include_inactive)
 
 
-def update_defect_type_record(db: Session, defect_type_id: str, data, current_user: User):
+def update_defect_type_record(db: Session, defect_type_id: str, data: Any, current_user: User) -> Any:
     """Update a defect type catalog entry."""
     return update_defect_type(db, defect_type_id, data, current_user)
 
@@ -71,7 +71,7 @@ def bulk_create_defect_type_records(
     defect_types: list,
     current_user: User,
     replace_existing: bool = False,
-):
+) -> Any:
     """Bulk create defect type catalog entries."""
     return bulk_create_defect_types(
         db,
@@ -87,6 +87,6 @@ def validate_defect_type(db: Session, client_id: str, defect_type_name: str) -> 
     return validate_defect_type_for_client(db, client_id, defect_type_name)
 
 
-def get_defect_type_by_name_and_client(db: Session, client_id: str, defect_type_name: str):
+def get_defect_type_by_name_and_client(db: Session, client_id: str, defect_type_name: str) -> Any:
     """Get a defect type by name within a client."""
     return get_defect_type_by_name(db, client_id, defect_type_name)

@@ -7,7 +7,7 @@ Efficiency aggregation endpoints by shift, product, and trend data.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import Optional
+from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
@@ -27,7 +27,7 @@ def get_efficiency_by_shift(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get efficiency aggregated by shift.
 
@@ -81,7 +81,7 @@ def get_efficiency_by_product(
     limit: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get top products by efficiency.
 
@@ -138,7 +138,7 @@ def get_efficiency_trend(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get daily efficiency trend data.
 

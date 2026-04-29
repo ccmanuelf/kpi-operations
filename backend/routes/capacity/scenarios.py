@@ -4,7 +4,7 @@ Capacity Planning - Scenario Endpoints
 What-if scenario CRUD, run/evaluate, compare, and delete operations.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -40,7 +40,7 @@ def list_scenarios(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get scenarios for a client."""
     verify_client_access(current_user, client_id, db)
 
@@ -60,7 +60,7 @@ def create_scenario(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new scenario."""
     verify_client_access(current_user, client_id, db)
 
@@ -89,7 +89,7 @@ def get_scenario(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific scenario."""
     verify_client_access(current_user, client_id, db)
 
@@ -121,7 +121,7 @@ def run_scenario(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Run/evaluate a scenario by applying its parameters and analyzing impact."""
     verify_client_access(current_user, client_id, db)
 
@@ -196,7 +196,7 @@ def delete_scenario(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Delete a scenario."""
     verify_client_access(current_user, client_id, db)
 
@@ -228,7 +228,7 @@ def compare_scenarios(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Compare multiple scenarios."""
     verify_client_access(current_user, client_id, db)
 

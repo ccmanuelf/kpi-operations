@@ -6,7 +6,7 @@ Implements Phase 7.2: Client-Level Calculation Overrides
 Phase A.1: Added caching for client config lookups
 """
 
-from typing import Optional, cast
+from typing import Any, Optional, cast
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
@@ -142,7 +142,7 @@ def get_client_config_or_defaults(db: Session, client_id: str) -> dict:
     cache = get_cache()
     cache_key = build_cache_key("client_config", client_id)
 
-    def fetch_config():
+    def fetch_config() -> Any:
         config = db.query(ClientConfig).filter(ClientConfig.client_id == client_id).first()
 
         if config:

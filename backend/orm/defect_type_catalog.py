@@ -4,7 +4,7 @@ Allows each client to define their own defect types based on their industry
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -51,5 +51,5 @@ class DefectTypeCatalog(Base):
     # Relationships
     client = relationship("Client", back_populates="defect_types")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<DefectTypeCatalog {self.defect_code}: {self.defect_name}>"

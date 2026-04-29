@@ -6,7 +6,7 @@ Phase 10: Integrated with Workflow State Machine
 """
 
 import logging
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
@@ -371,7 +371,7 @@ def get_work_orders_by_capacity_order(
     return query.order_by(WorkOrder.created_at.desc()).offset(skip).limit(limit).all()
 
 
-def get_capacity_order_for_work_order(db: Session, work_order_id: str, current_user: User):
+def get_capacity_order_for_work_order(db: Session, work_order_id: str, current_user: User) -> Any:
     """Get the capacity order linked to a work order. Returns None if no link."""
     from backend.orm.capacity.orders import CapacityOrder
 

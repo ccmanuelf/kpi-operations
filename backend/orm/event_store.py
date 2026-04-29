@@ -46,11 +46,11 @@ class EventStore(Base):
         Index("ix_event_store_type_time", "event_type", "occurred_at"),
     )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<EventStore(id={self.id}, event_type={self.event_type}, " f"aggregate_id={self.aggregate_id})>"
 
     @classmethod
-    def from_domain_event(cls, event) -> "EventStore":
+    def from_domain_event(cls, event: Any) -> "EventStore":
         """
         Create EventStore record from a DomainEvent.
 
@@ -72,7 +72,7 @@ class EventStore(Base):
         )
 
 
-def create_event_persistence_handler(db_session_factory):
+def create_event_persistence_handler(db_session_factory: Any) -> Any:
     """
     Create a persistence handler for the event bus.
 
@@ -83,7 +83,7 @@ def create_event_persistence_handler(db_session_factory):
         Handler function for persisting events
     """
 
-    def persist_event(event) -> None:
+    def persist_event(event: Any) -> None:
         """Persist a domain event to EVENT_STORE."""
         session = db_session_factory()
         try:

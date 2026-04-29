@@ -6,7 +6,7 @@ Implements Phase 7.2: Client-Level Calculation Overrides
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -32,7 +32,7 @@ router = APIRouter(
 @router.post("/", response_model=ClientConfigResponse, status_code=201)
 def create_client_config(
     config: ClientConfigCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Create a new client configuration.
 
@@ -43,7 +43,7 @@ def create_client_config(
 
 
 @router.get("/defaults", response_model=GlobalDefaults)
-def get_global_defaults():
+def get_global_defaults() -> Any:
     """
     Get global default configuration values.
 
@@ -59,7 +59,7 @@ def get_client_config(
     create_if_missing: bool = Query(default=False, description="Create config with defaults if not found"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get client configuration by client ID.
 
@@ -83,7 +83,9 @@ def get_client_config(
 
 
 @router.get("/{client_id}/effective")
-def get_effective_config(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_effective_config(
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """
     Get effective configuration values for a client.
 
@@ -103,7 +105,7 @@ def update_client_config(
     config_update: ClientConfigUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Update client configuration.
 
@@ -116,7 +118,9 @@ def update_client_config(
 
 
 @router.delete("/{client_id}", status_code=204)
-def delete_client_config(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_client_config(
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> None:
     """
     Delete client configuration.
 
@@ -132,7 +136,7 @@ def list_client_configs(
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     List all client configurations.
 
@@ -142,7 +146,9 @@ def list_client_configs(
 
 
 @router.post("/{client_id}/reset-to-defaults", response_model=ClientConfigResponse)
-def reset_to_defaults(client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def reset_to_defaults(
+    client_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+) -> Any:
     """
     Reset client configuration to global defaults.
 

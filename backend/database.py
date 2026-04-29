@@ -16,6 +16,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, NullPool
 from backend.config import settings
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +59,19 @@ else:
 
 # Connection pool event listeners for monitoring and debugging
 @event.listens_for(engine, "connect")
-def receive_connect(dbapi_conn, connection_record):
+def receive_connect(dbapi_conn: Any, connection_record: Any) -> None:
     """Log new database connections"""
     logger.debug("New database connection established")
 
 
 @event.listens_for(engine, "checkout")
-def receive_checkout(dbapi_conn, connection_record, connection_proxy):
+def receive_checkout(dbapi_conn: Any, connection_record: Any, connection_proxy: Any) -> None:
     """Log connection checkout from pool"""
     logger.debug("Connection checked out from pool")
 
 
 @event.listens_for(engine, "checkin")
-def receive_checkin(dbapi_conn, connection_record):
+def receive_checkin(dbapi_conn: Any, connection_record: Any) -> None:
     """Log connection return to pool"""
     logger.debug("Connection returned to pool")
 
@@ -82,7 +83,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-def get_db():
+def get_db() -> Any:
     """
     Dependency for FastAPI routes
     Yields database session and ensures cleanup
@@ -94,7 +95,7 @@ def get_db():
         db.close()
 
 
-def get_pool_status():
+def get_pool_status() -> Any:
     """
     Get current connection pool statistics
     Returns dictionary with pool metrics for monitoring

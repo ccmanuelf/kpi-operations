@@ -10,7 +10,7 @@ from backend.utils.logging_utils import get_module_logger
 logger = get_module_logger(__name__)
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import unquote
 
 from backend.database import get_db
@@ -29,7 +29,7 @@ from backend.orm.employee import Employee
 router = APIRouter(prefix="/api/qr", tags=["qr"])
 
 
-def _entity_to_dict(entity) -> dict:
+def _entity_to_dict(entity: Any) -> dict:
     """
     Convert SQLAlchemy ORM object to dictionary
 

@@ -6,7 +6,7 @@ Provides data entry completeness indicators for dashboard and data entry views
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import Optional
+from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.database import get_db
@@ -20,7 +20,7 @@ logger = get_module_logger(__name__)
 router = APIRouter(prefix="/api/data-completeness", tags=["Data Completeness"])
 
 
-def get_date_filter(target_date: date, model_date_column):
+def get_date_filter(target_date: date, model_date_column: Any) -> Any:
     """Create date filter for a specific date (handles both date and datetime columns)"""
     start_of_day = datetime.combine(target_date, datetime.min.time())
     end_of_day = datetime.combine(target_date, datetime.max.time())
@@ -95,7 +95,7 @@ def get_data_completeness(
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get data completeness indicators for a specific date and shift.
 
@@ -128,7 +128,7 @@ def get_data_completeness(
         effective_client_id = current_user.client_id_assigned
 
     # Helper function to count entries
-    def count_entries(model, date_column, extra_filters=None):
+    def count_entries(model: Any, date_column: Any, extra_filters: Any = None) -> Any:
         date_start, date_end = get_date_filter(target_date, date_column)
         query = db.query(func.count()).filter(date_start, date_end)
 
@@ -238,7 +238,7 @@ def get_completeness_summary(
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get data completeness summary for a date range.
 
@@ -294,7 +294,7 @@ def get_completeness_by_category(
     client_id: Optional[str] = Query(None, description="Client ID filter"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get detailed completeness breakdown by category.
 

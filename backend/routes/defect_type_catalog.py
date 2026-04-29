@@ -5,7 +5,7 @@ Allows clients to manage their own defect types
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Any, List, Optional
 import csv
 import io
 
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/api/defect-types", tags=["Defect Type Catalog"])
 
 
 @router.get("/constants")
-def get_constants():
+def get_constants() -> Any:
     """
     Get constants used for defect type management
     """
@@ -49,7 +49,7 @@ def create_defect_type_endpoint(
     defect_type: DefectTypeCatalogCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """
     Create a new defect type for a client
     Requires supervisor or admin role
@@ -64,7 +64,7 @@ def create_defect_type_endpoint(
 @router.get("/global", response_model=List[DefectTypeCatalogResponse])
 def get_global_defect_types_endpoint(
     include_inactive: bool = False, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Get all global defect types (available to all clients)
     """
@@ -78,7 +78,7 @@ def get_client_defect_types(
     include_global: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get all defect types for a specific client
 
@@ -96,7 +96,7 @@ def get_client_defect_types(
 @router.get("/{defect_type_id}", response_model=DefectTypeCatalogResponse)
 def get_defect_type_endpoint(
     defect_type_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """Get a specific defect type by ID"""
     defect_type = get_defect_type(db, defect_type_id, current_user)
     if not defect_type:
@@ -110,7 +110,7 @@ def update_defect_type_endpoint(
     defect_type_update: DefectTypeCatalogUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """
     Update a defect type
     Requires supervisor or admin role
@@ -124,7 +124,7 @@ def update_defect_type_endpoint(
 @router.delete("/{defect_type_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_defect_type_endpoint(
     defect_type_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
-):
+) -> None:
     """
     Soft delete a defect type (deactivate)
     Requires supervisor or admin role
@@ -140,7 +140,7 @@ async def upload_defect_types_csv(
     replace_existing: bool = Form(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """
     Upload defect types from CSV file
 
@@ -183,7 +183,7 @@ async def upload_defect_types_csv(
 
 
 @router.get("/template/download")
-def download_csv_template():
+def download_csv_template() -> Any:
     """
     Get CSV template for defect type upload
     Returns the expected format and example data

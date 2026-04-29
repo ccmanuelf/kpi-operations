@@ -172,7 +172,7 @@ class ProductionLineSimulation:
         self.station_busy_time: Dict[str, float] = {s.name: 0.0 for s in config.stations}
         self.total_downtime: float = 0.0
 
-    def log_event(self, event_type: SimulationEvent, data: Dict[str, Any]):
+    def log_event(self, event_type: SimulationEvent, data: Dict[str, Any]) -> None:
         """Log a simulation event"""
         self.events_log.append({"time": self.env.now, "event_type": event_type.value, **data})
 
@@ -183,7 +183,7 @@ class ProductionLineSimulation:
                 return station
         raise ValueError(f"Station not found: {station_name}")
 
-    def process_unit(self, unit_id: int):
+    def process_unit(self, unit_id: int) -> Any:
         """
         Process a single unit through all stations.
 
@@ -238,7 +238,7 @@ class ProductionLineSimulation:
             self.units_completed += 1
             self.log_event(SimulationEvent.UNIT_COMPLETE, {"unit_id": unit_id})
 
-    def equipment_downtime(self, station: WorkStation):
+    def equipment_downtime(self, station: WorkStation) -> Any:
         """
         Simulate random equipment downtime for a station.
 
@@ -270,7 +270,7 @@ class ProductionLineSimulation:
 
                 self.log_event(SimulationEvent.DOWNTIME_END, {"station": station.name})
 
-    def unit_generator(self, arrival_rate_per_hour: float, max_units: Optional[int] = None):
+    def unit_generator(self, arrival_rate_per_hour: float, max_units: Optional[int] = None) -> Any:
         """
         Generate units for processing at specified arrival rate.
 

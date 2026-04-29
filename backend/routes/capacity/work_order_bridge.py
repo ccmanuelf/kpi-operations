@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Any, List
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
@@ -22,7 +22,7 @@ def get_capacity_order_work_orders(
     pagination: PaginationParams = Depends(),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get all work orders linked to a capacity order."""
     from backend.services.work_order_service import list_orders_by_capacity_order
 

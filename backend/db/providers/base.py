@@ -42,7 +42,7 @@ class DatabaseProvider(ABC):
         pass
 
     @abstractmethod
-    def create_engine(self, url: str, **kwargs) -> "Engine":
+    def create_engine(self, url: str, **kwargs: Any) -> "Engine":
         """Create SQLAlchemy engine with provider-specific settings.
 
         Args:

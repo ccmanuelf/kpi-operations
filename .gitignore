@@ -145,6 +145,7 @@ reference_not_to_sync/
 
 # Claude settings and MCP config (contains API keys)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 .claude.json
 
 # Claude Flow telemetry and memory (regenerated per session)

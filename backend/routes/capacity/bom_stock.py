@@ -4,7 +4,7 @@ Capacity Planning - BOM and Stock Endpoints
 Bill of Materials (headers + details + explosion) and Stock Snapshot CRUD.
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import date
 from decimal import Decimal
 
@@ -54,7 +54,7 @@ def list_bom_headers(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get BOM headers for a client."""
     verify_client_access(current_user, client_id, db)
     return bom.get_bom_headers(db, client_id, skip, limit, include_inactive)
@@ -66,7 +66,7 @@ def create_bom_header(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new BOM header."""
     verify_client_access(current_user, client_id, db)
     return bom.create_bom_header(
@@ -89,7 +89,7 @@ def get_bom_header(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific BOM header."""
     verify_client_access(current_user, client_id, db)
     header = bom.get_bom_header(db, client_id, header_id)
@@ -107,7 +107,7 @@ def update_bom_header(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update a BOM header."""
     verify_client_access(current_user, client_id, db)
     header = bom.update_bom_header(db, client_id, header_id, **update.model_dump(exclude_unset=True))
@@ -125,7 +125,7 @@ def delete_bom_header(
     cascade: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Dict[str, str]:
     """Delete a BOM header (and optionally its details)."""
     verify_client_access(current_user, client_id, db)
     if not bom.delete_bom_header(db, client_id, header_id, cascade):
@@ -139,7 +139,7 @@ def list_bom_details(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get details for a BOM header."""
     verify_client_access(current_user, client_id, db)
     return bom.get_bom_details(db, client_id, header_id)
@@ -154,7 +154,7 @@ def create_bom_detail(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Add a component to a BOM."""
     verify_client_access(current_user, client_id, db)
     return bom.create_bom_detail(
@@ -182,7 +182,7 @@ def update_bom_detail(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update a BOM detail."""
     verify_client_access(current_user, client_id, db)
     detail = bom.update_bom_detail(db, client_id, detail_id, **update.model_dump(exclude_unset=True))
@@ -199,7 +199,7 @@ def delete_bom_detail(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Dict[str, str]:
     """Delete a BOM detail."""
     verify_client_access(current_user, client_id, db)
     if not bom.delete_bom_detail(db, client_id, detail_id):
@@ -215,7 +215,7 @@ def explode_bom(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Dict[str, Any]:
     """Run BOM explosion for a parent item."""
     verify_client_access(current_user, client_id, db)
     from backend.services.capacity.bom_service import BOMService
@@ -268,7 +268,7 @@ def list_stock_snapshots(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get stock snapshots for a client."""
     verify_client_access(current_user, client_id, db)
     return stock.get_stock_snapshots(db, client_id, skip, limit, snapshot_date)
@@ -280,7 +280,7 @@ def create_stock_snapshot(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new stock snapshot."""
     verify_client_access(current_user, client_id, db)
     return stock.create_stock_snapshot(
@@ -308,7 +308,7 @@ def get_latest_stock_for_item(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get the most recent stock snapshot for an item."""
     verify_client_access(current_user, client_id, db)
     snapshot = stock.get_latest_stock(db, client_id, item_code)
@@ -324,7 +324,7 @@ def get_available_stock_for_item(
     as_of_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Dict[str, Any]:
     """Get available stock quantity for an item."""
     verify_client_access(current_user, client_id, db)
     available = stock.get_available_stock(db, client_id, item_code, as_of_date)
@@ -337,7 +337,7 @@ def get_shortage_items(
     snapshot_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get items with shortage (zero or negative available quantity)."""
     verify_client_access(current_user, client_id, db)
     return stock.get_shortage_items(db, client_id, snapshot_date)
@@ -353,7 +353,7 @@ def get_stock_snapshot(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific stock snapshot."""
     verify_client_access(current_user, client_id, db)
     snapshot = stock.get_stock_snapshot(db, client_id, snapshot_id)
@@ -373,7 +373,7 @@ def update_stock_snapshot(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update a stock snapshot."""
     verify_client_access(current_user, client_id, db)
     snapshot = stock.update_stock_snapshot(db, client_id, snapshot_id, **update.model_dump(exclude_unset=True))
@@ -390,7 +390,7 @@ def delete_stock_snapshot(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Dict[str, str]:
     """Delete a stock snapshot."""
     verify_client_access(current_user, client_id, db)
     if not stock.delete_stock_snapshot(db, client_id, snapshot_id):

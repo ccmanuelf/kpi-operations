@@ -6,7 +6,7 @@ in both PDF and Excel formats.
 """
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -38,7 +38,7 @@ async def generate_quality_pdf_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Generate quality metrics PDF report
 
@@ -92,7 +92,7 @@ async def generate_quality_excel_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Generate quality metrics Excel report with detailed worksheets"""
     try:
         if client_id:
@@ -139,7 +139,7 @@ async def generate_attendance_pdf_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Generate attendance and absenteeism PDF report
 
@@ -191,7 +191,7 @@ async def generate_attendance_excel_report(
     end_date: Optional[str] = Query(None, description="End date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Generate attendance and absenteeism Excel report"""
     try:
         if client_id:

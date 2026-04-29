@@ -8,7 +8,7 @@ Implements two-phase validation:
 All validation is stateless with no database dependencies.
 """
 
-from typing import List, Dict, Set, Tuple
+from typing import Any, List, Dict, Set, Tuple
 from collections import defaultdict
 import difflib
 
@@ -337,7 +337,7 @@ def _validate_demand_driven_demand(config: SimulationConfig, report: ValidationR
                 )
 
 
-def _validate_schedule_reasonableness(schedule, report: ValidationReport) -> None:
+def _validate_schedule_reasonableness(schedule: Any, report: ValidationReport) -> None:
     """Validate schedule is reasonable for manufacturing."""
 
     # Info about shifts not fully utilized

@@ -514,7 +514,7 @@ def generate_id(client_id: str, code: str) -> str:
     return f"DT-{client_id}-{code}-{uuid.uuid4().hex[:6].upper()}"
 
 
-def seed_defect_types():
+def seed_defect_types() -> None:
     """Seed defect types for all clients including global types"""
     engine = create_engine(DATABASE_URL)
 

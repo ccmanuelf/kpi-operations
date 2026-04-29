@@ -29,7 +29,7 @@ def get_aggregated_dashboard(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get aggregated KPI dashboard data in a single API call.
 

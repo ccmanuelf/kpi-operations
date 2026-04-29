@@ -4,7 +4,7 @@ Capacity Planning - Analysis and Schedule Endpoints
 Component check (MRP), capacity analysis, and production schedule operations.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from decimal import Decimal
 
@@ -54,7 +54,7 @@ def run_component_check(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Run component availability check (MRP explosion).
 
@@ -119,7 +119,7 @@ def get_component_shortages(
     run_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get component shortages from the most recent check run."""
     verify_client_access(current_user, client_id, db)
 
@@ -168,7 +168,7 @@ def run_capacity_analysis(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Run capacity analysis for lines within a date range."""
     verify_client_access(current_user, client_id, db)
 
@@ -221,7 +221,7 @@ def get_bottleneck_lines(
     analysis_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get lines identified as bottlenecks."""
     verify_client_access(current_user, client_id, db)
 
@@ -266,7 +266,7 @@ def list_schedules(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get schedules for a client."""
     verify_client_access(current_user, client_id, db)
 
@@ -286,7 +286,7 @@ def create_schedule(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new schedule."""
     verify_client_access(current_user, client_id, db)
 
@@ -314,7 +314,7 @@ def get_schedule(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific schedule."""
     verify_client_access(current_user, client_id, db)
 
@@ -346,7 +346,7 @@ def generate_schedule(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Auto-generate a schedule from confirmed orders."""
     verify_client_access(current_user, client_id, db)
 
@@ -385,7 +385,7 @@ def commit_schedule(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Commit a schedule, locking KPI targets."""
     verify_client_access(current_user, client_id, db)
 

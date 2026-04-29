@@ -82,7 +82,7 @@ class ExcelReportGenerator:
 
         return buffer
 
-    def _create_summary_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
+    def _create_summary_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
         """Create executive summary sheet"""
         ws = wb.create_sheet("Executive Summary")
 
@@ -184,7 +184,9 @@ class ExcelReportGenerator:
         ws.column_dimensions["E"].width = 15
         ws.column_dimensions["F"].width = 15
 
-    def _create_production_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
+    def _create_production_sheet(
+        self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date
+    ) -> None:
         """Create production metrics sheet"""
         ws = wb.create_sheet("Production Metrics")
 
@@ -247,7 +249,7 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E", "F", "G", "H"]:
             ws.column_dimensions[col].width = 15
 
-    def _create_quality_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
+    def _create_quality_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
         """Create quality metrics sheet"""
         ws = wb.create_sheet("Quality Metrics")
 
@@ -303,7 +305,7 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E", "F", "G"]:
             ws.column_dimensions[col].width = 18
 
-    def _create_downtime_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
+    def _create_downtime_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
         """Create downtime analysis sheet"""
         ws = wb.create_sheet("Downtime Analysis")
 
@@ -354,7 +356,9 @@ class ExcelReportGenerator:
             ws.column_dimensions[col].width = 15
         ws.column_dimensions["F"].width = 30
 
-    def _create_attendance_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
+    def _create_attendance_sheet(
+        self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date
+    ) -> None:
         """Create attendance/absenteeism sheet"""
         ws = wb.create_sheet("Attendance")
 
@@ -402,7 +406,7 @@ class ExcelReportGenerator:
         for col in ["A", "B", "C", "D", "E"]:
             ws.column_dimensions[col].width = 20
 
-    def _create_charts_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date):
+    def _create_charts_sheet(self, wb: Workbook, client_id: Optional[str], start_date: date, end_date: date) -> None:
         """Create sheet with embedded charts"""
         ws = wb.create_sheet("Trend Charts")
 
@@ -417,7 +421,7 @@ class ExcelReportGenerator:
         ws["A6"] = "- Availability trends"
         ws["A7"] = "- OEE performance"
 
-    def _apply_table_borders(self, ws, start_cell: str, end_cell: str):
+    def _apply_table_borders(self, ws: Any, start_cell: str, end_cell: str) -> None:
         """Apply borders to table range"""
         thin_border = Border(
             left=Side(style="thin", color=self.colors["dark_gray"]),

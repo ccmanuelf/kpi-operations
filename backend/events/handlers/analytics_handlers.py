@@ -15,6 +15,7 @@ from backend.events.domain_events import (
     QualityInspectionRecorded,
     QualityDefectReported,
 )
+from typing import Any
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class ProductionMetricsHandler(EventHandler):
     Updates aggregate metrics when production entries change.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_async=False, priority=50)
 
     async def handle(self, event: DomainEvent) -> None:
@@ -64,7 +65,7 @@ class QualityMetricsHandler(EventHandler):
     Updates aggregate quality metrics when inspections are recorded.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(is_async=False, priority=50)
 
     async def handle(self, event: DomainEvent) -> None:

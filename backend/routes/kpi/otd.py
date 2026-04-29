@@ -7,7 +7,7 @@ OTD calculation, late order identification, and client-level OTD aggregation.
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
-from typing import Optional
+from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
 
 from backend.utils.logging_utils import get_module_logger
@@ -28,7 +28,7 @@ def calculate_otd_kpi(
     client_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Calculate On-Time Delivery KPI with client filtering
 
     OTD = (Orders Delivered On Time / Total Orders with Due Dates) x 100
@@ -100,7 +100,7 @@ def calculate_otd_kpi(
 @otd_router.get("/late-orders")
 def get_late_orders(
     as_of_date: Optional[date] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
-):
+) -> Any:
     """
     Identify late orders.
 
@@ -118,7 +118,7 @@ def get_otd_by_client(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get OTD metrics aggregated by client.
 
@@ -187,7 +187,7 @@ def get_late_deliveries(
     limit: int = 20,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     Get recent late deliveries with details.
 

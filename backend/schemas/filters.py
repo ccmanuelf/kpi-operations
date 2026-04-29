@@ -49,7 +49,7 @@ class DateRangeConfig(BaseModel):
 
     @field_validator("end_date")
     @classmethod
-    def validate_date_range(cls, v, info):
+    def validate_date_range(cls, v: Any, info: Any) -> Any:
         """Ensure end_date is after start_date when both are provided"""
         if v is not None and info.data.get("start_date") is not None:
             if v < info.data["start_date"]:

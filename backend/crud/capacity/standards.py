@@ -7,7 +7,7 @@ by style and operation for capacity calculations.
 Multi-tenant: All operations enforce client_id isolation.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
@@ -145,7 +145,9 @@ def get_standard_by_style_operation(
     )
 
 
-def update_standard(db: Session, client_id: str, standard_id: int, **updates) -> Optional[CapacityProductionStandard]:
+def update_standard(
+    db: Session, client_id: str, standard_id: int, **updates: Any
+) -> Optional[CapacityProductionStandard]:
     """
     Update a production standard.
 

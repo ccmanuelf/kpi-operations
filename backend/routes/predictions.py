@@ -13,7 +13,7 @@ All endpoints enforce client access control and multi-tenant isolation
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Any, Optional, List
 from datetime import date, timedelta, datetime, timezone
 from decimal import Decimal
 
@@ -471,7 +471,7 @@ async def get_all_kpi_predictions(
     description="Get industry benchmark values for all 10 KPIs",
     responses={200: {"description": "Benchmarks retrieved successfully"}},
 )
-async def get_benchmarks(current_user: User = Depends(get_current_user)):
+async def get_benchmarks(current_user: User = Depends(get_current_user)) -> Any:
     """
     GET /api/predictions/benchmarks - Industry benchmark values
     """
@@ -494,7 +494,7 @@ async def seed_demo_data(
     days: int = Query(90, ge=30, le=365, description="Days of historical data"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     POST /api/predictions/demo/seed - Seed demo prediction data
     """
@@ -523,7 +523,7 @@ async def get_kpi_health(
     client_id: Optional[str] = Query(None, description="Client ID (defaults to user's client)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """
     GET /api/predictions/health/{kpi_type} - Quick health check for KPI
     """

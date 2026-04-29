@@ -5,7 +5,7 @@ Routes should import from this module instead of backend.crud.defect_detail dire
 """
 
 from datetime import date
-from typing import List, Optional
+from typing import Any, List, Optional
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User
@@ -20,12 +20,12 @@ from backend.crud.defect_detail import (
 )
 
 
-def create_defect(db: Session, defect_data: dict, current_user: User):
+def create_defect(db: Session, defect_data: dict, current_user: User) -> Any:
     """Create a new defect detail."""
     return create_defect_detail(db, defect_data, current_user)
 
 
-def get_defect(db: Session, defect_detail_id: str, current_user: User):
+def get_defect(db: Session, defect_detail_id: str, current_user: User) -> Any:
     """Get a defect detail by ID."""
     return get_defect_detail(db, defect_detail_id, current_user)
 
@@ -36,17 +36,17 @@ def list_defects(
     quality_entry_id: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
-):
+) -> Any:
     """List defect details with filters."""
     return get_defect_details(db, current_user, quality_entry_id, skip, limit)
 
 
-def list_defects_by_quality_entry(db: Session, quality_entry_id: str, current_user: User):
+def list_defects_by_quality_entry(db: Session, quality_entry_id: str, current_user: User) -> Any:
     """Get defect details for a quality entry."""
     return get_defect_details_by_quality_entry(db, quality_entry_id, current_user)
 
 
-def update_defect(db: Session, defect_detail_id: str, defect_data: dict, current_user: User):
+def update_defect(db: Session, defect_detail_id: str, defect_data: dict, current_user: User) -> Any:
     """Update a defect detail."""
     return update_defect_detail(db, defect_detail_id, defect_data, current_user)
 
@@ -61,7 +61,7 @@ def get_summary_by_type(
     current_user: User,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-):
+) -> Any:
     """Get defect summary grouped by type with optional date filtering.
 
     Previously took a `client_id: Optional[str]` parameter that was

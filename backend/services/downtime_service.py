@@ -4,7 +4,7 @@ Thin service layer wrapping Downtime CRUD operations.
 Routes should import from this module instead of backend.crud.downtime directly.
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
 
@@ -18,12 +18,12 @@ from backend.crud.downtime import (
 )
 
 
-def create_event(db: Session, downtime_data, current_user: User):
+def create_event(db: Session, downtime_data: Any, current_user: User) -> Any:
     """Create a new downtime event."""
     return create_downtime_event(db, downtime_data, current_user)
 
 
-def get_event(db: Session, downtime_id: str, current_user: User):
+def get_event(db: Session, downtime_id: str, current_user: User) -> Any:
     """Get a downtime event by ID."""
     return get_downtime_event(db, downtime_id, current_user)
 
@@ -38,7 +38,7 @@ def list_events(
     client_id: Optional[str] = None,
     work_order_id: Optional[str] = None,
     downtime_reason: Optional[str] = None,
-):
+) -> Any:
     """List downtime events with filters."""
     return get_downtime_events(
         db,
@@ -53,7 +53,7 @@ def list_events(
     )
 
 
-def update_event(db: Session, downtime_id: str, downtime_data, current_user: User):
+def update_event(db: Session, downtime_id: str, downtime_data: Any, current_user: User) -> Any:
     """Update a downtime event."""
     return update_downtime_event(db, downtime_id, downtime_data, current_user)
 

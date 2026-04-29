@@ -111,7 +111,7 @@ class AvailableProvidersResponse(BaseModel):
 @router.get("/status", response_model=DatabaseStatus)
 async def get_database_status(
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Get current database provider status.
 
     Returns information about the current provider and whether
@@ -140,7 +140,7 @@ async def get_database_status(
 @router.get("/providers", response_model=AvailableProvidersResponse)
 async def get_available_providers(
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Get information about available database providers.
 
     Requires supervisor or admin role.
@@ -153,7 +153,7 @@ async def get_available_providers(
 async def test_connection(
     request: ConnectionTestRequest,
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Test connection to target database.
 
     Attempts to connect to the specified database URL and validates
@@ -195,7 +195,7 @@ async def start_migration(
     request: MigrationRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Start database migration (schema + demo data).
 
     This is a ONE-WAY operation from SQLite to MariaDB/MySQL.
@@ -273,7 +273,7 @@ async def start_migration(
 @router.get("/migration/status", response_model=MigrationStatusResponse)
 async def get_migration_status(
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Get current migration progress.
 
     Poll this endpoint to monitor migration progress.
@@ -298,7 +298,7 @@ async def get_migration_status(
 @router.get("/full-status")
 async def get_full_status(
     current_user: User = Depends(get_current_active_supervisor),
-):
+) -> Any:
     """Get complete database status including migration history.
 
     Requires supervisor or admin role.
@@ -318,7 +318,7 @@ async def run_migration(
     target_provider: str,
     preserve_data: bool = True,
     include_demo_data: bool = True,
-):
+) -> None:
     """Background migration: create schema, optionally copy data, optionally seed demo data.
 
     Args:
@@ -358,7 +358,7 @@ async def run_migration(
 
         initializer = SchemaInitializer(target_engine, target_provider)
 
-        def schema_progress(table_name: str, current: int, total: int):
+        def schema_progress(table_name: str, current: int, total: int) -> None:
             state_manager.update_migration_state(
                 MigrationState(
                     status="in_progress",
@@ -398,7 +398,7 @@ async def run_migration(
                 target_provider=target_provider,
             )
 
-            def data_progress(table_name: str, current: int, total: int, rows: int):
+            def data_progress(table_name: str, current: int, total: int, rows: int) -> None:
                 nonlocal total_rows_migrated
                 total_rows_migrated = rows
                 state_manager.update_migration_state(
@@ -440,7 +440,7 @@ async def run_migration(
             with SessionLocal() as session:
                 seeder = DemoDataSeeder(session)
 
-                def seed_progress(entity_name: str):
+                def seed_progress(entity_name: str) -> None:
                     state_manager.update_migration_state(
                         MigrationState(
                             status="in_progress",

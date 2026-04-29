@@ -4,7 +4,7 @@ Capacity Planning - Production Lines Endpoints
 Production line CRUD operations (capacity specifications, efficiency factors).
 """
 
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -38,7 +38,7 @@ def list_production_lines(
     limit: int = DEFAULT_PAGE_SIZE,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get production lines for a client."""
     verify_client_access(current_user, client_id, db)
     if department:
@@ -52,7 +52,7 @@ def create_production_line(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Create a new production line."""
     verify_client_access(current_user, client_id, db)
     return production_lines.create_production_line(
@@ -80,7 +80,7 @@ def get_production_line(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Get a specific production line."""
     verify_client_access(current_user, client_id, db)
     line = production_lines.get_production_line(db, client_id, line_id)
@@ -100,7 +100,7 @@ def update_production_line(
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Update a production line."""
     verify_client_access(current_user, client_id, db)
     line = production_lines.update_production_line(db, client_id, line_id, **update.model_dump(exclude_unset=True))
@@ -118,7 +118,7 @@ def delete_production_line(
     soft_delete: bool = True,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Any:
     """Delete a production line."""
     verify_client_access(current_user, client_id, db)
     if not production_lines.delete_production_line(db, client_id, line_id, soft_delete):
