@@ -95,11 +95,12 @@ export const useProductionDataStore = defineStore('productionData', {
         })
         .reduce((sum, e) => sum + (e.units_produced || 0), 0)
     },
-    // The JS version returned `0` (number) for the empty/no-valid
-    // cases and a `string` from `.toFixed(2)` otherwise. Existing
-    // tests pin that exact return-type inconsistency, so the union
-    // is preserved here rather than coerced.
-    averageEfficiency: (state): number | string => {
+    // Both getters return a number. The JS original returned `0`
+    // (number) for empty/no-valid cases but a `.toFixed(2)` STRING
+    // otherwise — that mismatch leaked into the type signature and
+    // would surprise any future consumer. Rounded to 2 decimals
+    // consistently; tests updated in lockstep.
+    averageEfficiency: (state): number => {
       if (state.productionEntries.length === 0) return 0
       const validEntries = state.productionEntries.filter(
         (e) => e.efficiency_percentage != null,
@@ -109,9 +110,9 @@ export const useProductionDataStore = defineStore('productionData', {
         (acc, e) => acc + parseFloat(String(e.efficiency_percentage ?? 0)),
         0,
       )
-      return (sum / validEntries.length).toFixed(2)
+      return Math.round((sum / validEntries.length) * 100) / 100
     },
-    averagePerformance: (state): number | string => {
+    averagePerformance: (state): number => {
       if (state.productionEntries.length === 0) return 0
       const validEntries = state.productionEntries.filter(
         (e) => e.performance_percentage != null,
@@ -121,7 +122,7 @@ export const useProductionDataStore = defineStore('productionData', {
         (acc, e) => acc + parseFloat(String(e.performance_percentage ?? 0)),
         0,
       )
-      return (sum / validEntries.length).toFixed(2)
+      return Math.round((sum / validEntries.length) * 100) / 100
     },
   },
 

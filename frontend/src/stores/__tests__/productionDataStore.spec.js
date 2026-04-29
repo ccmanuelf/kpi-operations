@@ -73,7 +73,7 @@ describe('KPI Store', () => {
         { efficiency_percentage: 85 }
       ]
 
-      expect(store.averageEfficiency).toBe('85.00')
+      expect(store.averageEfficiency).toBe(85)
     })
 
     it('averageEfficiency returns 0 when no entries', () => {
@@ -91,7 +91,7 @@ describe('KPI Store', () => {
         { efficiency_percentage: 90 }
       ]
 
-      expect(store.averageEfficiency).toBe('85.00')
+      expect(store.averageEfficiency).toBe(85)
     })
 
     it('averagePerformance calculates correctly', () => {
@@ -102,7 +102,7 @@ describe('KPI Store', () => {
         { performance_percentage: 95 }
       ]
 
-      expect(store.averagePerformance).toBe('85.00')
+      expect(store.averagePerformance).toBe(85)
     })
   })
 
