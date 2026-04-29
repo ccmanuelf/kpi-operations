@@ -172,12 +172,9 @@ export const useWorkflowDesignerStore = defineStore('workflowDesigner', () => {
   }
 
   const runValidation = (): void => {
-    const result = validateWorkflow(workflowConfig.value) as {
-      errors: ValidationIssue[]
-      warnings: ValidationIssue[]
-    }
-    validationErrors.value = result.errors
-    validationWarnings.value = result.warnings
+    const result = validateWorkflow(workflowConfig.value)
+    validationErrors.value = result.errors as unknown as ValidationIssue[]
+    validationWarnings.value = result.warnings as unknown as ValidationIssue[]
   }
 
   const syncMermaidCode = (): void => {

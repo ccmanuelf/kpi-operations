@@ -1,47 +1,45 @@
 /**
- * Mermaid Parser
- * Parses Mermaid flowchart syntax into workflow configuration
+ * Mermaid parser — converts flowchart syntax into a workflow
+ * configuration shape.
  */
 
-import { classifyStatus } from './statusClassifier'
+import type { WorkflowConfig, MermaidValidationResult } from './types'
 
-/**
- * Parse Mermaid flowchart code into workflow configuration
- * @param {string} mermaidCode - Mermaid flowchart code
- * @returns {Object|null} Workflow configuration { statuses, transitions } or null on error
- */
-export function parseMermaid(mermaidCode) {
+export function parseMermaid(mermaidCode: string | null | undefined): WorkflowConfig | null {
   if (!mermaidCode || typeof mermaidCode !== 'string') {
     return null
   }
 
   try {
-    const lines = mermaidCode.split('\n')
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('%') && !line.startsWith('```'))
+    const lines = mermaidCode
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('%') && !line.startsWith('```'))
 
-    const statuses = new Set()
-    const transitions = {}
+    const statuses = new Set<string>()
+    const transitions: Record<string, string[]> = {}
 
-    lines.forEach(line => {
-      // Skip flowchart declaration
+    lines.forEach((line) => {
       if (line.startsWith('flowchart') || line.startsWith('graph')) {
         return
       }
 
-      // Skip style definitions
-      if (line.startsWith('classDef') || line.startsWith('class ') || line.startsWith('style ')) {
+      if (
+        line.startsWith('classDef') ||
+        line.startsWith('class ') ||
+        line.startsWith('style ')
+      ) {
         return
       }
 
-      // Check for edge definition: SOURCE --> TARGET or SOURCE -> TARGET
-      const edgeMatch = line.match(/^([A-Z][A-Z0-9_]*)\s*(?:-->|->|-->>|-.->)\s*([A-Z][A-Z0-9_]*)/)
+      const edgeMatch = line.match(
+        /^([A-Z][A-Z0-9_]*)\s*(?:-->|->|-->>|-.->)\s*([A-Z][A-Z0-9_]*)/,
+      )
       if (edgeMatch) {
         const [, source, target] = edgeMatch
         statuses.add(source)
         statuses.add(target)
 
-        // Add transition (target: [sources])
         if (!transitions[target]) {
           transitions[target] = []
         }
@@ -51,13 +49,6 @@ export function parseMermaid(mermaidCode) {
         return
       }
 
-      // Check for node definition with various shapes
-      // Examples:
-      //   STATUS([Label]):::class
-      //   STATUS[Label]:::class
-      //   STATUS[[Label]]:::class
-      //   STATUS{{Label}}:::class
-      //   STATUS[/Label/]:::class
       const nodeMatch = line.match(/^([A-Z][A-Z0-9_]*)(?:\(?\[{1,2}|{{|\[\/)/)
       if (nodeMatch) {
         const [, status] = nodeMatch
@@ -65,7 +56,6 @@ export function parseMermaid(mermaidCode) {
         return
       }
 
-      // Check for simple node (just a name)
       const simpleNodeMatch = line.match(/^([A-Z][A-Z0-9_]*)(?:\s|$|:::)/)
       if (simpleNodeMatch && !line.includes('-->') && !line.includes('->')) {
         const [, status] = simpleNodeMatch
@@ -75,9 +65,7 @@ export function parseMermaid(mermaidCode) {
       }
     })
 
-    // Convert Set to sorted Array
     const statusArray = Array.from(statuses).sort((a, b) => {
-      // Put RECEIVED first
       if (a === 'RECEIVED') return -1
       if (b === 'RECEIVED') return 1
       return a.localeCompare(b)
@@ -89,51 +77,50 @@ export function parseMermaid(mermaidCode) {
 
     return {
       statuses: statusArray,
-      transitions
+      transitions,
     }
   } catch (e) {
+    // eslint-disable-next-line no-console
     console.error('Error parsing Mermaid code:', e)
     return null
   }
 }
 
-/**
- * Validate Mermaid syntax without full parsing
- * @param {string} mermaidCode - Mermaid code to validate
- * @returns {Object} { isValid, errors }
- */
-export function validateMermaidSyntax(mermaidCode) {
-  const errors = []
+export function validateMermaidSyntax(
+  mermaidCode: string | null | undefined,
+): MermaidValidationResult {
+  const errors: string[] = []
 
   if (!mermaidCode || typeof mermaidCode !== 'string') {
     errors.push('Empty or invalid input')
     return { isValid: false, errors }
   }
 
-  const lines = mermaidCode.split('\n')
+  const lines = mermaidCode
+    .split('\n')
     .map((line, i) => ({ text: line.trim(), lineNum: i + 1 }))
     .filter(({ text }) => text && !text.startsWith('%') && !text.startsWith('```'))
 
-  // Check for flowchart declaration
-  const hasFlowchart = lines.some(({ text }) =>
-    text.startsWith('flowchart') || text.startsWith('graph')
+  const hasFlowchart = lines.some(
+    ({ text }) => text.startsWith('flowchart') || text.startsWith('graph'),
   )
 
   if (!hasFlowchart) {
     errors.push('Missing flowchart or graph declaration')
   }
 
-  // Check for common syntax errors
   lines.forEach(({ text, lineNum }) => {
-    // Skip declarations
     if (text.startsWith('flowchart') || text.startsWith('graph')) {
       return
     }
-    if (text.startsWith('classDef') || text.startsWith('class ') || text.startsWith('style ')) {
+    if (
+      text.startsWith('classDef') ||
+      text.startsWith('class ') ||
+      text.startsWith('style ')
+    ) {
       return
     }
 
-    // Check for unclosed brackets
     const openBrackets = (text.match(/\[/g) || []).length
     const closeBrackets = (text.match(/\]/g) || []).length
     const openParens = (text.match(/\(/g) || []).length
@@ -151,8 +138,12 @@ export function validateMermaidSyntax(mermaidCode) {
       errors.push(`Line ${lineNum}: Unbalanced braces`)
     }
 
-    // Check for invalid arrow syntax
-    if (text.includes('--') && !text.includes('-->') && !text.includes('--.') && !text.includes('-.')) {
+    if (
+      text.includes('--') &&
+      !text.includes('-->') &&
+      !text.includes('--.') &&
+      !text.includes('-.')
+    ) {
       if (!text.startsWith('---') && !text.includes('-- ')) {
         errors.push(`Line ${lineNum}: Invalid arrow syntax`)
       }
@@ -161,32 +152,22 @@ export function validateMermaidSyntax(mermaidCode) {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
   }
 }
 
-/**
- * Extract status names from Mermaid code
- * @param {string} mermaidCode - Mermaid code
- * @returns {string[]} Array of status names
- */
-export function extractStatuses(mermaidCode) {
+export function extractStatuses(mermaidCode: string): string[] {
   const result = parseMermaid(mermaidCode)
   return result?.statuses || []
 }
 
-/**
- * Extract edges from Mermaid code
- * @param {string} mermaidCode - Mermaid code
- * @returns {Array} Array of { source, target } objects
- */
-export function extractEdges(mermaidCode) {
+export function extractEdges(mermaidCode: string): { source: string; target: string }[] {
   const result = parseMermaid(mermaidCode)
   if (!result?.transitions) return []
 
-  const edges = []
+  const edges: { source: string; target: string }[] = []
   Object.entries(result.transitions).forEach(([target, sources]) => {
-    sources.forEach(source => {
+    sources.forEach((source) => {
       edges.push({ source, target })
     })
   })
@@ -198,5 +179,5 @@ export default {
   parseMermaid,
   validateMermaidSyntax,
   extractStatuses,
-  extractEdges
+  extractEdges,
 }
