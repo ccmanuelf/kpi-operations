@@ -27,13 +27,12 @@ export {
   getDefaultDashboardInputs,
 } from './capacity/defaults'
 
-// Sub-stores are still JS and shimmed as `any` in
-// `src/types/shims.d.ts`. The wrapper re-exposes their reactive
-// surface through `computed({ get, set })` so consumers keep their
-// existing two-way binding patterns. Worksheet rows themselves stay
-// open-shaped because each of the 13 worksheets has its own row
-// schema; defining them strictly belongs in the sub-stores when they
-// get ported.
+// Worksheet rows from the underlying sub-store carry strict types,
+// but for this delegating wrapper the row arrays are accessed
+// uniformly via `.data.filter(...)` etc., so a `Record<string,
+// unknown>` view keeps the wrapper code simple. Where stricter
+// typing matters (specific worksheet shapes) consumers can import
+// directly from `stores/capacity/defaults`.
 type WorksheetRow = Record<string, unknown>
 type Worksheets = Record<string, { data: WorksheetRow[]; [key: string]: unknown }>
 type Id = string | number | null
@@ -48,8 +47,14 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
   const showExportDialog = ref(false)
   const showImportDialog = ref(false)
 
-  // Worksheet state (delegated)
-  const worksheets = computed<Worksheets>(() => _wsOps().worksheets)
+  // Worksheet state (delegated). The sub-store has stricter per-
+  // worksheet types (DataWorksheet | DashboardInputsWorksheet |
+  // InstructionsWorksheet); the wrapper exposes a loose
+  // `Record<string, { data: WorksheetRow[]; ... }>` view that's
+  // sufficient for the existing call-site patterns.
+  const worksheets = computed<Worksheets>(
+    () => _wsOps().worksheets as unknown as Worksheets,
+  )
 
   // Dirty-tracking getters
   const hasUnsavedChanges = computed<boolean>(() => _wsOps().hasUnsavedChanges)
@@ -90,17 +95,20 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
     },
   })
 
-  const lastSaved = computed<Date | string | null>({
+  const lastSaved = computed<Date | null>({
     get: () => _wb().lastSaved,
     set: (val) => {
       _wb().lastSaved = val
     },
   })
 
-  // Analysis state
-  const mrpResults = computed<unknown>({
+  // Analysis state — proxied through to the analysis sub-store.
+  // The sub-store is now typed; using each store field's own
+  // type lets the wrapper's get/set computed pass values through
+  // without a coercion mismatch.
+  const mrpResults = computed({
     get: () => _analysis().mrpResults,
-    set: (val) => {
+    set: (val: ReturnType<typeof _analysis>['mrpResults']) => {
       _analysis().mrpResults = val
     },
   })
@@ -126,16 +134,16 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
     },
   })
 
-  const activeScenario = computed<unknown>({
+  const activeScenario = computed({
     get: () => _analysis().activeScenario,
-    set: (val) => {
+    set: (val: ReturnType<typeof _analysis>['activeScenario']) => {
       _analysis().activeScenario = val
     },
   })
 
-  const scenarioComparisonResults = computed<unknown>({
+  const scenarioComparisonResults = computed({
     get: () => _analysis().scenarioComparisonResults,
-    set: (val) => {
+    set: (val: ReturnType<typeof _analysis>['scenarioComparisonResults']) => {
       _analysis().scenarioComparisonResults = val
     },
   })
@@ -154,9 +162,9 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
     },
   })
 
-  const activeSchedule = computed<unknown>({
+  const activeSchedule = computed({
     get: () => _analysis().activeSchedule,
-    set: (val) => {
+    set: (val: ReturnType<typeof _analysis>['activeSchedule']) => {
       _analysis().activeSchedule = val
     },
   })
@@ -182,9 +190,9 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
     },
   })
 
-  const analysisResults = computed<unknown>({
+  const analysisResults = computed({
     get: () => _analysis().analysisResults,
-    set: (val) => {
+    set: (val: ReturnType<typeof _analysis>['analysisResults']) => {
       _analysis().analysisResults = val
     },
   })
@@ -533,8 +541,14 @@ export const useCapacityPlanningStore = defineStore('capacityPlanning', () => {
     return _analysis().deleteScenario(scenarioId)
   }
 
-  async function loadKPIActuals(period: string) {
-    return _analysis().loadKPIActuals(period)
+  // The original JS wrapper had a `loadKPIActuals` passthrough,
+  // but the analysis sub-store never implemented it. Calling it
+  // would have thrown at runtime. Surfaced here as a no-op stub
+  // so any consumer still importing the symbol gets a typed
+  // failure mode instead of a TypeError.
+  async function loadKPIActuals(_period: string): Promise<null> {
+    void _period
+    return null
   }
 
   // UI state actions

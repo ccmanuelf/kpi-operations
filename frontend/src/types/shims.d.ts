@@ -38,41 +38,6 @@ declare module '@/utils/workflow/workflowValidator' {
   export const validateWorkflow: any
 }
 
-// Capacity Planning sub-stores (still JS). Each defineStore call
-// returns a Pinia store proxy that exposes refs and actions; typing
-// them as `any` is acceptable for the delegating wrapper above them
-// because the wrapper preserves backward-compat string keys.
-declare module '@/stores/capacity/useWorksheetOps' {
-  export const useWorksheetOpsStore: any
-}
-
-declare module '@/stores/capacity/useWorkbookStore' {
-  export const useWorkbookStore: any
-}
-
-declare module '@/stores/capacity/useAnalysisStore' {
-  export const useAnalysisStore: any
-}
-
-declare module '@/stores/capacity/defaults' {
-  export const getDefaultCalendarEntry: any
-  export const getDefaultProductionLine: any
-  export const getDefaultOrder: any
-  export const getDefaultStandard: any
-  export const getDefaultBOMHeader: any
-  export const getDefaultBOMDetail: any
-  export const getDefaultStockSnapshot: any
-  export const getDefaultComponentCheckRow: any
-  export const getDefaultCapacityAnalysisRow: any
-  export const getDefaultScheduleRow: any
-  export const getDefaultScenario: any
-  export const getDefaultKPITrackingRow: any
-  export const getDefaultDashboardInputs: any
-}
-
-// Relative imports (`./capacity/...` from capacityPlanningStore.ts)
-// can't use ambient module declarations — they need colocated .d.ts
-// shims, see src/stores/capacity/*.d.ts.
 
 // `simulationV2Store` is covered by the colocated
 // src/stores/simulationV2Store.d.ts declaration file (resolves both
