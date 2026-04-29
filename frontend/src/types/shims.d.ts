@@ -27,6 +27,17 @@ declare module '@/utils/performance' {
   export default value
 }
 
+declare module '@/utils/workflow/mermaidConverter' {
+  export const configToVueFlow: any
+  export const vueFlowToConfig: any
+  export const configToMermaid: any
+  export const mermaidToConfig: any
+}
+
+declare module '@/utils/workflow/workflowValidator' {
+  export const validateWorkflow: any
+}
+
 // `simulationV2Store` is covered by the colocated
 // src/stores/simulationV2Store.d.ts declaration file (resolves both
 // `@/stores/simulationV2Store` and relative `../simulationV2Store`
