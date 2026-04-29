@@ -1,7 +1,7 @@
 /**
  * Composable for Capacity Planning workbook data management.
- * Handles: client selection, workbook loading, store interactions,
- * keyboard shortcuts, save/reset, analysis, schedule, and component check.
+ * Client selection, workbook loading, store interactions,
+ * keyboard shortcuts, save/reset, analysis, schedule, MRP.
  */
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
@@ -9,71 +9,72 @@ import { useAuthStore } from '@/stores/authStore'
 import { useRoute } from 'vue-router'
 import api from '@/services/api/client'
 
+export interface CapacityClient {
+  client_id: string | number
+  client_name?: string
+  [key: string]: unknown
+}
+
 export function useCapacityData() {
   const store = useCapacityPlanningStore()
   const authStore = useAuthStore()
   const route = useRoute()
 
-  // Client selection
-  const clients = ref([])
-  const selectedClient = ref(null)
+  const clients = ref<CapacityClient[]>([])
+  const selectedClient = ref<string | number | null>(null)
   const clientsLoading = ref(false)
 
-  // Tab navigation
   const activeTab = ref('orders')
 
-  // Dialog visibility
   const showAnalysisDialog = ref(false)
   const showScheduleDialog = ref(false)
   const showResetDialog = ref(false)
 
-  // Analysis form
   const analysisStartDate = ref('')
   const analysisEndDate = ref('')
 
-  // Schedule form
   const scheduleName = ref('')
   const scheduleStartDate = ref('')
   const scheduleEndDate = ref('')
 
-  // Helpers
-  const worksheetIsDirty = (key) => {
-    return store.worksheets[key]?.dirty || false
-  }
+  // The wrapper's worksheets type is `Record<string, { data, ... }>`
+  // with a string-indexed `unknown`, so `dirty` is `unknown` here.
+  // Coerce to boolean for the view's binding contract.
+  const worksheetIsDirty = (key: string): boolean =>
+    !!store.worksheets[key]?.dirty
 
-  // Client loading
-  const loadClients = async () => {
+  const loadClients = async (): Promise<void> => {
     clientsLoading.value = true
     try {
       const response = await api.get('/clients')
       clients.value = response.data || []
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load clients:', error)
     } finally {
       clientsLoading.value = false
     }
   }
 
-  const onClientChange = async (clientId) => {
+  const onClientChange = async (clientId: string | number): Promise<void> => {
     if (clientId) {
-      localStorage.setItem('selectedClientId', clientId)
+      localStorage.setItem('selectedClientId', String(clientId))
       try {
         await store.loadWorkbook(clientId)
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error('Failed to load workbook:', error)
       }
     }
   }
 
-  // Watch for client selection changes
   watch(selectedClient, (newValue) => {
     if (newValue) {
       onClientChange(newValue)
     }
   })
 
-  // Keyboard shortcuts
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent): void => {
     if ((e.ctrlKey || e.metaKey) && !e.altKey) {
       if (e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
@@ -88,18 +89,19 @@ export function useCapacityData() {
     }
   }
 
-  const handleBeforeUnload = (e) => {
+  const handleBeforeUnload = (e: BeforeUnloadEvent): void => {
     if (store.hasUnsavedChanges) {
       e.preventDefault()
       e.returnValue = ''
     }
   }
 
-  // Lifecycle
   onMounted(async () => {
     await loadClients()
 
-    let clientId = route.query.client_id || localStorage.getItem('selectedClientId')
+    let clientId: string | number | null =
+      (route.query.client_id as string | undefined) ||
+      localStorage.getItem('selectedClientId')
 
     const user = authStore.currentUser
     if (!clientId && user?.client_id_assigned) {
@@ -114,7 +116,6 @@ export function useCapacityData() {
       selectedClient.value = clientId
     }
 
-    // Set default dates for analysis and schedule
     const today = new Date()
     const thirtyDaysLater = new Date(today)
     thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30)
@@ -133,57 +134,65 @@ export function useCapacityData() {
     window.removeEventListener('keydown', handleKeyDown)
   })
 
-  // Actions
-  const saveAll = async () => {
+  const saveAll = async (): Promise<void> => {
     try {
       await store.saveAllDirty()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to save:', error)
     }
   }
 
-  const runComponentCheck = async () => {
+  const runComponentCheck = async (): Promise<void> => {
     try {
       await store.runComponentCheck()
       activeTab.value = 'componentCheck'
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Component check failed:', error)
     }
   }
 
-  const runCapacityAnalysis = async () => {
+  const runCapacityAnalysis = async (): Promise<void> => {
     showAnalysisDialog.value = false
     try {
       await store.runCapacityAnalysis(analysisStartDate.value, analysisEndDate.value)
       activeTab.value = 'capacityAnalysis'
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Capacity analysis failed:', error)
     }
   }
 
-  const generateSchedule = async () => {
+  const generateSchedule = async (): Promise<void> => {
     showScheduleDialog.value = false
     try {
       await store.generateSchedule(
         scheduleName.value || 'New Schedule',
         scheduleStartDate.value,
-        scheduleEndDate.value
+        scheduleEndDate.value,
       )
       activeTab.value = 'productionSchedule'
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Schedule generation failed:', error)
     }
   }
 
-  const handleCommitSchedule = async (kpiCommitments) => {
+  const handleCommitSchedule = async (
+    kpiCommitments: Record<string, unknown>,
+  ): Promise<void> => {
     try {
-      await store.commitSchedule(store.activeSchedule.id, kpiCommitments)
+      const activeId = (store.activeSchedule as { id?: string | number } | null)?.id
+      if (!activeId) return
+      await store.commitSchedule(activeId, kpiCommitments)
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Schedule commit failed:', error)
     }
   }
 
-  const handleReset = () => {
+  const handleReset = (): void => {
     showResetDialog.value = false
     store.reset()
   }
