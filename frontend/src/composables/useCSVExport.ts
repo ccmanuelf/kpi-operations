@@ -2,24 +2,22 @@ import { ref } from 'vue'
 import api from '@/services/api/client'
 import { useNotificationStore } from '@/stores/notificationStore'
 
-/**
- * Composable for downloading CSV exports from the backend.
- *
- * Usage:
- *   const { downloading, downloadCSV } = useCSVExport()
- *   await downloadCSV('production-entries', { client_id: 'ABC', start_date: '2026-01-01' })
- */
+export interface CSVExportParams {
+  client_id?: string | number
+  start_date?: string
+  end_date?: string
+  line_id?: string | number
+  [key: string]: unknown
+}
+
 export function useCSVExport() {
   const downloading = ref(false)
 
-  /**
-   * Download a CSV export for the given entity type.
-   *
-   * @param {string} entityType - The entity endpoint name (e.g. 'production-entries', 'work-orders')
-   * @param {Object} params - Optional query parameters (client_id, start_date, end_date, line_id)
-   * @param {string|null} filename - Optional custom filename; auto-generated if null
-   */
-  async function downloadCSV(entityType, params = {}, filename = null) {
+  async function downloadCSV(
+    entityType: string,
+    params: CSVExportParams = {},
+    filename: string | null = null,
+  ): Promise<void> {
     const notificationStore = useNotificationStore()
     downloading.value = true
 
@@ -29,8 +27,7 @@ export function useCSVExport() {
         responseType: 'blob',
       })
 
-      // Extract filename from Content-Disposition header or use provided/default
-      const contentDisposition = response.headers['content-disposition']
+      const contentDisposition = response.headers['content-disposition'] as string | undefined
       let resolvedFilename = filename
       if (!resolvedFilename && contentDisposition) {
         const match = contentDisposition.match(/filename="?([^";\n]+)"?/)
@@ -42,8 +39,7 @@ export function useCSVExport() {
         resolvedFilename = `${entityType}_export.csv`
       }
 
-      // Create blob download link and trigger browser download
-      const blob = new Blob([response.data], { type: 'text/csv' })
+      const blob = new Blob([response.data as BlobPart], { type: 'text/csv' })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -55,7 +51,8 @@ export function useCSVExport() {
 
       notificationStore.showSuccess(`${entityType} CSV downloaded successfully`)
     } catch (error) {
-      const message = error.response?.data?.detail || error.message || 'CSV download failed'
+      const ax = error as { response?: { data?: { detail?: string } }; message?: string }
+      const message = ax?.response?.data?.detail || ax?.message || 'CSV download failed'
       notificationStore.showError(`Export failed: ${message}`)
       throw error
     } finally {
