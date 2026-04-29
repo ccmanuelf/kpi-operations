@@ -1,47 +1,66 @@
 /**
- * Composable for KPI Dashboard saved filter management.
- * Handles: saving filters, applying quick filters, filter form state.
+ * Composable for KPI Dashboard saved-filter management.
+ * Saving filters, applying quick filters, filter form state.
  */
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
-import { useFiltersStore } from '@/stores/filtersStore'
+import { useFiltersStore, type FilterConfig, type SavedFilter, type FilterType } from '@/stores/filtersStore'
 
-export function useKPIFilters(showSnackbar, handleFilterChange, getSelectedClient, getDateRange) {
+export interface FilterTypeOption {
+  title: string
+  value: FilterType
+}
+
+type SnackbarFn = (message: string, color?: string) => void
+type FilterChangeFn = (config: FilterConfig) => void
+type SelectedClientGetter = () => string | number | null
+type DateRangeGetter = () => Date[] | null | undefined
+
+interface SaveFilterFormHandle {
+  validate?: () => Promise<{ valid: boolean }>
+  resetValidation?: () => void
+}
+
+export function useKPIFilters(
+  showSnackbar: SnackbarFn,
+  handleFilterChange: FilterChangeFn,
+  getSelectedClient: SelectedClientGetter,
+  getDateRange: DateRangeGetter,
+) {
   const { t } = useI18n()
   const filtersStore = useFiltersStore()
 
-  // Save filter dialog state
   const showSaveFilterDialog = ref(false)
-  const saveFilterForm = ref(null)
+  const saveFilterForm: Ref<SaveFilterFormHandle | null> = ref(null)
   const saveFilterFormValid = ref(false)
   const newFilterName = ref('')
-  const newFilterType = ref('dashboard')
+  const newFilterType = ref<FilterType>('dashboard')
   const newFilterIsDefault = ref(false)
   const savingFilter = ref(false)
-  const filterTypeOptions = [
+  const filterTypeOptions: FilterTypeOption[] = [
     { title: 'Dashboard', value: 'dashboard' },
     { title: 'Production', value: 'production' },
     { title: 'Quality', value: 'quality' },
     { title: 'Attendance', value: 'attendance' },
-    { title: 'Downtime', value: 'downtime' }
+    { title: 'Downtime', value: 'downtime' },
   ]
 
-  // Filter manager dialog
   const showFilterManager = ref(false)
 
-  const applyQuickSavedFilter = async (filter) => {
+  const applyQuickSavedFilter = async (filter: SavedFilter): Promise<void> => {
     try {
       const filterConfig = await filtersStore.applyFilter(filter)
       handleFilterChange(filterConfig)
       showSnackbar(`${t('success.filterApplied')}: ${filter.filter_name}`, 'success')
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error applying filter:', error)
       showSnackbar(t('success.filterApplyFailed'), 'error')
     }
   }
 
-  const saveCurrentFilter = async () => {
+  const saveCurrentFilter = async (): Promise<void> => {
     if (!saveFilterFormValid.value || !newFilterName.value) {
       showSnackbar(t('success.pleaseEnterFilterName'), 'warning')
       return
@@ -52,18 +71,21 @@ export function useKPIFilters(showSnackbar, handleFilterChange, getSelectedClien
       const dateRange = getDateRange()
       const filterConfig = filtersStore.createFilterConfig({
         client_id: getSelectedClient(),
-        date_range: dateRange && dateRange.length === 2 ? {
-          type: 'absolute',
-          start_date: format(dateRange[0], 'yyyy-MM-dd'),
-          end_date: format(dateRange[1], 'yyyy-MM-dd')
-        } : { type: 'relative', relative_days: 30 }
+        date_range:
+          dateRange && dateRange.length === 2
+            ? {
+                type: 'absolute',
+                start_date: format(dateRange[0], 'yyyy-MM-dd'),
+                end_date: format(dateRange[1], 'yyyy-MM-dd'),
+              }
+            : { type: 'relative', relative_days: 30 },
       })
 
       const newFilter = await filtersStore.createFilter({
         filter_name: newFilterName.value,
         filter_type: newFilterType.value,
         filter_config: filterConfig,
-        is_default: newFilterIsDefault.value
+        is_default: newFilterIsDefault.value,
       })
 
       if (newFilter) {
@@ -75,6 +97,7 @@ export function useKPIFilters(showSnackbar, handleFilterChange, getSelectedClien
         showSnackbar(t('success.filterSaveFailed'), 'error')
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error saving filter:', error)
       showSnackbar(t('success.filterSaveFailed'), 'error')
     } finally {
@@ -83,7 +106,6 @@ export function useKPIFilters(showSnackbar, handleFilterChange, getSelectedClien
   }
 
   return {
-    // State
     showSaveFilterDialog,
     saveFilterForm,
     saveFilterFormValid,
@@ -93,8 +115,7 @@ export function useKPIFilters(showSnackbar, handleFilterChange, getSelectedClien
     savingFilter,
     filterTypeOptions,
     showFilterManager,
-    // Methods
     applyQuickSavedFilter,
-    saveCurrentFilter
+    saveCurrentFilter,
   }
 }
