@@ -12,12 +12,6 @@
  * to .ts, drop its line here.
  */
 
-declare module '@/composables/useDashboardOverviewData' {
-  export const useDashboardOverviewData: any
-  const value: any
-  export default value
-}
-
 declare module '@/utils/performance' {
   export const referenceDataCache: any
   export const performanceMonitor: any

@@ -1,30 +1,46 @@
 /**
- * Composable for DashboardOverview data fetching, computed dates, and event handlers.
- * Extracted from DashboardOverview.vue to keep component under 500 lines.
+ * Composable for DashboardOverview data fetching, computed date
+ * range, navigation handlers, and shift-workflow triggers.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useWorkflowStore } from '@/stores/workflowStore'
 
-export function useDashboardOverviewData(props) {
+export type DateRangeOption = '7d' | '30d' | '90d' | string
+
+export interface DashboardOverviewProps {
+  dateRange?: DateRangeOption
+  [key: string]: unknown
+}
+
+export interface DashboardKPIData {
+  efficiency: number
+  performance: number
+  wipAging: number
+  otd: number
+  availability: number
+  absenteeism: number
+  ppm: number
+  dpmo: number
+  fpy: number
+  rty: number
+}
+
+export function useDashboardOverviewData(props: DashboardOverviewProps) {
   const router = useRouter()
   const workflowStore = useWorkflowStore()
 
-  // Computed date range
-  const startDate = computed(() => {
+  const startDate = computed<string>(() => {
     const today = new Date()
     const days = props.dateRange === '7d' ? 7 : props.dateRange === '90d' ? 90 : 30
     const start = new Date(today.getTime() - days * 24 * 60 * 60 * 1000)
     return start.toISOString().split('T')[0]
   })
 
-  const endDate = computed(() => {
-    return new Date().toISOString().split('T')[0]
-  })
+  const endDate = computed<string>(() => new Date().toISOString().split('T')[0])
 
-  // KPI data state
-  const kpiData = ref({
+  const kpiData = ref<DashboardKPIData>({
     efficiency: 0,
     performance: 0,
     wipAging: 0,
@@ -34,10 +50,10 @@ export function useDashboardOverviewData(props) {
     ppm: 0,
     dpmo: 0,
     fpy: 0,
-    rty: 0
+    rty: 0,
   })
 
-  const fetchKPIData = async () => {
+  const fetchKPIData = async (): Promise<void> => {
     try {
       const [
         efficiencyRes,
@@ -49,7 +65,7 @@ export function useDashboardOverviewData(props) {
         ppmRes,
         dpmoRes,
         fpyRes,
-        rtyRes
+        rtyRes,
       ] = await Promise.all([
         axios.get('/api/kpi/efficiency/trend'),
         axios.get('/api/kpi/performance/trend'),
@@ -60,7 +76,7 @@ export function useDashboardOverviewData(props) {
         axios.get('/api/quality/kpi/ppm'),
         axios.get('/api/quality/kpi/dpmo'),
         axios.get('/api/quality/kpi/fpy-rty'),
-        axios.get('/api/quality/kpi/fpy-rty')
+        axios.get('/api/quality/kpi/fpy-rty'),
       ])
 
       kpiData.value = {
@@ -73,9 +89,10 @@ export function useDashboardOverviewData(props) {
         ppm: parseInt(ppmRes.data.ppm),
         dpmo: parseInt(dpmoRes.data.dpmo),
         fpy: parseFloat(fpyRes.data.fpy.toFixed(1)),
-        rty: parseFloat(rtyRes.data.rty.toFixed(1))
+        rty: parseFloat(rtyRes.data.rty.toFixed(1)),
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error fetching KPI data:', error)
     }
   }
@@ -84,66 +101,64 @@ export function useDashboardOverviewData(props) {
     fetchKPIData()
   })
 
-  // Navigation methods
-  const navigateToAbsenteeism = () => {
+  const navigateToAbsenteeism = (): void => {
     router.push('/kpi/absenteeism')
   }
 
-  const navigateToDowntimeAnalysis = () => {
+  const navigateToDowntimeAnalysis = (): void => {
     router.push('/kpi/availability')
   }
 
-  const navigateToAttendance = () => {
+  const navigateToAttendance = (): void => {
     router.push('/kpi/absenteeism')
   }
 
-  const navigateToQualityTrends = () => {
+  const navigateToQualityTrends = (): void => {
     router.push('/kpi/quality')
   }
 
-  const navigateToReworkAnalysis = () => {
+  const navigateToReworkAnalysis = (): void => {
     router.push('/kpi/quality')
   }
 
-  // Action handlers
-  const openScheduleDialog = () => {
+  const openScheduleDialog = (): void => {
+    // eslint-disable-next-line no-console
     console.log('Opening schedule review dialog')
   }
 
-  const handleAbsenteeismAction = (actionId) => {
+  const handleAbsenteeismAction = (actionId: string | number): void => {
+    // eslint-disable-next-line no-console
     console.log('Handling absenteeism action:', actionId)
   }
 
-  const exportQualityReport = () => {
+  const exportQualityReport = (): void => {
+    // eslint-disable-next-line no-console
     console.log('Exporting quality by operator report')
   }
 
-  const openActionDialog = () => {
+  const openActionDialog = (): void => {
+    // eslint-disable-next-line no-console
     console.log('Opening corrective action dialog')
   }
 
-  const handleCompletenessNavigate = (categoryId, route) => {
+  const handleCompletenessNavigate = (categoryId: string, route: string): void => {
+    // eslint-disable-next-line no-console
     console.log(`Navigating to ${categoryId} at ${route}`)
   }
 
-  // Shift workflow handlers
-  const handleStartShift = () => {
+  const handleStartShift = (): void => {
     workflowStore.startWorkflow('shift-start')
   }
 
-  const handleEndShift = () => {
+  const handleEndShift = (): void => {
     workflowStore.startWorkflow('shift-end')
   }
 
   return {
-    // Stores
     workflowStore,
-    // Computed
     startDate,
     endDate,
-    // State
     kpiData,
-    // Methods
     fetchKPIData,
     navigateToAbsenteeism,
     navigateToDowntimeAnalysis,
@@ -156,6 +171,6 @@ export function useDashboardOverviewData(props) {
     openActionDialog,
     handleCompletenessNavigate,
     handleStartShift,
-    handleEndShift
+    handleEndShift,
   }
 }
