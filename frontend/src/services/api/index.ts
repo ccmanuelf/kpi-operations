@@ -1,21 +1,33 @@
-// Re-export the base axios client
 import axiosClient from './client'
+
 export { default as api, api as axiosInstance } from './client'
 
-// Re-export all domain modules
 export * from './auth'
 export * from './production'
 export * from './kpi'
 export * from './dataEntry'
 export * from './reports'
-export * from './reference'
+// `reference` and `admin` both expose `getClients` and `getDefectTypes`
+// (admin: direct endpoints, reference: cached wrappers). Re-export the
+// non-conflicting names from reference so TS doesn't reject the
+// duplicate; the cached versions remain reachable via direct module
+// imports (`@/services/api/reference`) and the default-export below
+// where `...reference` overrides `...admin`, preserving JS behavior.
+export {
+  getProducts,
+  getShifts,
+  getDowntimeReasons,
+  invalidateReferenceCache,
+  invalidateReferenceType,
+  prefetchReferenceData,
+  getReferenceDataCacheStats,
+} from './reference'
 export * from './admin'
 export * from './preferences'
 export * from './qr'
 export * from './predictions'
 export * from './workOrders'
 export * from './myShift'
-// alerts.js exports removed (DC-05: 15 unused functions)
 export * from './workflow'
 export * from './simulation'
 export * from './productionLines'
@@ -24,7 +36,6 @@ export * from './csvExport'
 export * from './onboarding'
 export * as capacityPlanning from './capacityPlanning'
 
-// Import all modules for default export object
 import * as auth from './auth'
 import * as production from './production'
 import * as kpi from './kpi'
@@ -37,7 +48,6 @@ import * as qr from './qr'
 import * as predictions from './predictions'
 import * as workOrders from './workOrders'
 import * as myShift from './myShift'
-// alerts module cleared (DC-05)
 import * as workflow from './workflow'
 import * as simulation from './simulation'
 import * as productionLines from './productionLines'
@@ -46,17 +56,15 @@ import * as csvExport from './csvExport'
 import * as onboarding from './onboarding'
 import * as capacityPlanning from './capacityPlanning'
 
-// Default export object with all methods for backward compatibility
-// This allows: import api from '@/services/api' + api.login(...)
-// Also includes axios methods (get, post, put, delete) for direct API calls
+// Default export object — backwards-compatible single namespace for
+// `import api from '@/services/api'` callers that do `api.login(...)`.
+// Also exposes the axios verbs for direct calls.
 export default {
-  // Axios instance methods for direct API calls
   get: axiosClient.get.bind(axiosClient),
   post: axiosClient.post.bind(axiosClient),
   put: axiosClient.put.bind(axiosClient),
   delete: axiosClient.delete.bind(axiosClient),
   patch: axiosClient.patch.bind(axiosClient),
-  // All domain-specific functions
   ...auth,
   ...production,
   ...kpi,
@@ -69,13 +77,11 @@ export default {
   ...predictions,
   ...workOrders,
   ...myShift,
-  // alerts functions removed (DC-05)
   ...workflow,
   ...simulation,
   ...productionLines,
   ...planVsActual,
   ...csvExport,
   ...onboarding,
-  // Capacity Planning module (namespaced to avoid conflicts)
-  capacityPlanning
+  capacityPlanning,
 }

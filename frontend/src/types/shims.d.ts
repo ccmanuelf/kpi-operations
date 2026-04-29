@@ -12,31 +12,6 @@
  * to .ts, drop its line here.
  */
 
-// Catch-all for the JS API surface. Each .js module imported from a
-// .ts file gets an `any`-typed declaration so TS doesn't trip on
-// TS7016. Drop a line here when the underlying module is ported to
-// .ts and starts emitting real types.
-declare module '@/services/api' {
-  const value: any
-  export default value
-  export const getSavedFilters: any
-  export const createSavedFilter: any
-  export const updateSavedFilter: any
-  export const deleteSavedFilter: any
-  export const applyFilter: any
-  export const setDefaultFilter: any
-  export const clearFilterHistory: any
-  export const duplicateFilter: any
-  export const getDashboardPreferences: any
-  export const saveDashboardPreferences: any
-  export const resetDashboardPreferences: any
-  export const getWorkOrders: any
-  export const updateWorkOrder: any
-  export const createWorkOrder: any
-  export const deleteWorkOrder: any
-  export const getDataCompleteness: any
-}
-
 declare module '@/composables/useDashboardOverviewData' {
   export const useDashboardOverviewData: any
   const value: any
