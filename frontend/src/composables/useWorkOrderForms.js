@@ -4,6 +4,7 @@
  *          status transitions via workflow API.
  */
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import { transitionWorkOrder } from '@/services/api/workflow'
 import { useNotificationStore } from '@/stores/notificationStore'
@@ -25,6 +26,7 @@ const DEFAULT_FORM_DATA = {
 
 export function useWorkOrderForms(loadWorkOrders, formatStatus) {
   const notificationStore = useNotificationStore()
+  const { t } = useI18n()
 
   // Dialog state
   const formDialog = ref(false)
@@ -90,10 +92,10 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
 
       if (editingWorkOrder.value) {
         await api.updateWorkOrder(editingWorkOrder.value.work_order_id, data)
-        notificationStore.showSuccess('Work order updated successfully')
+        notificationStore.showSuccess(t('notifications.workOrders.updateSuccess'))
       } else {
         await api.createWorkOrder(data)
-        notificationStore.showSuccess('Work order created successfully')
+        notificationStore.showSuccess(t('notifications.workOrders.createSuccess'))
       }
 
       formDialog.value = false
@@ -101,7 +103,7 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
     } catch (error) {
       console.error('Error saving work order:', error)
       notificationStore.showError(
-        error.response?.data?.detail || 'Failed to save work order'
+        error.response?.data?.detail || t('notifications.workOrders.saveFailed')
       )
     } finally {
       saving.value = false
@@ -112,16 +114,20 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
   const updateStatus = async (workOrder, newStatus) => {
     try {
       await transitionWorkOrder(workOrder.work_order_id, newStatus)
-      notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
+      notificationStore.showSuccess(
+        t('notifications.workOrders.statusUpdated', { status: formatStatus(newStatus) })
+      )
       await loadWorkOrders()
     } catch (error) {
       console.error('Error updating status:', error)
       try {
         await api.updateWorkOrder(workOrder.work_order_id, { status: newStatus })
-        notificationStore.showSuccess(`Work order status updated to ${formatStatus(newStatus)}`)
+        notificationStore.showSuccess(
+          t('notifications.workOrders.statusUpdated', { status: formatStatus(newStatus) })
+        )
         await loadWorkOrders()
       } catch (fallbackError) {
-        notificationStore.showError('Failed to update status')
+        notificationStore.showError(t('notifications.workOrders.statusUpdateFailed'))
       }
     }
   }
@@ -144,14 +150,14 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
     deleting.value = true
     try {
       await api.deleteWorkOrder(workOrderToDelete.value.work_order_id)
-      notificationStore.showSuccess('Work order deleted successfully')
+      notificationStore.showSuccess(t('notifications.workOrders.deleteSuccess'))
       deleteDialog.value = false
       workOrderToDelete.value = null
       await loadWorkOrders()
     } catch (error) {
       console.error('Error deleting work order:', error)
       notificationStore.showError(
-        error.response?.data?.detail || 'Failed to delete work order'
+        error.response?.data?.detail || t('notifications.workOrders.deleteFailed')
       )
     } finally {
       deleting.value = false

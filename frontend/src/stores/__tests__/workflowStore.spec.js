@@ -23,6 +23,14 @@ vi.mock('@/services/api', () => ({
   }
 }))
 
+// Mock i18n — workflowStore now imports the global i18n instance to
+// translate snackbar messages. Loading the real module here would
+// touch localStorage at module-init (before the localStorageMock
+// below is defined).
+vi.mock('@/i18n', () => ({
+  default: { global: { t: (key) => key } }
+}))
+
 // Mock localStorage
 const localStorageMock = {
   store: {},

@@ -20,6 +20,14 @@ vi.mock('@/services/api', () => ({
   }
 }))
 
+// Mock i18n — filtersStore now imports the global i18n instance to
+// translate snackbar messages. Loading the real i18n module here
+// would touch localStorage at module-init (before beforeEach runs
+// the localStorage stub), so stub it inline.
+vi.mock('@/i18n', () => ({
+  default: { global: { t: (key) => key } }
+}))
+
 // Mock auth store
 vi.mock('../authStore', () => ({
   useAuthStore: vi.fn(() => ({

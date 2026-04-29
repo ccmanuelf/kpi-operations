@@ -4,11 +4,13 @@
  * running scenario comparison against a baseline configuration.
  */
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { compareProductionScenarios } from '@/services/api/simulation'
 import { useNotificationStore } from '@/stores/notificationStore'
 
 export function useSimulationScenarios(productionLineConfig, simulationParams, loading) {
   const notificationStore = useNotificationStore()
+  const { t } = useI18n()
 
   const scenarios = ref([])
   const newScenario = ref({
@@ -42,7 +44,7 @@ export function useSimulationScenarios(productionLineConfig, simulationParams, l
       comparisonResult.value = response.data
     } catch (error) {
       console.error('Failed to compare scenarios:', error)
-      notificationStore.showError('Failed to compare scenarios. Please try again.')
+      notificationStore.showError(t('notifications.simulation.scenarioCompareFailed'))
     } finally {
       loading.value = false
     }

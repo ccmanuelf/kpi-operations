@@ -875,7 +875,41 @@
     "newNotification": "Nueva notificación",
     "saveTriggered": "Guardado activado",
     "newEntryTriggered": "Nuevo registro activado",
-    "refreshingData": "Actualizando datos..."
+    "refreshingData": "Actualizando datos...",
+    "filters": {
+      "loadFailed": "Error al cargar filtros guardados. Usando configuración local.",
+      "createFailed": "Error al crear filtro. Por favor intente de nuevo.",
+      "updateFailed": "Error al actualizar filtro. Por favor intente de nuevo.",
+      "deleteFailed": "Error al eliminar filtro. Por favor intente de nuevo.",
+      "setDefaultFailed": "Error al establecer filtro predeterminado. Por favor intente de nuevo.",
+      "duplicateFailed": "Error al duplicar filtro. Por favor intente de nuevo."
+    },
+    "simulation": {
+      "guideLoadFailed": "Error al cargar guía de simulación. Por favor recargue la página.",
+      "capacityCalcFailed": "Error al calcular requisitos de capacidad. Por favor intente de nuevo.",
+      "lineConfigLoadFailed": "Error al cargar configuración de línea de producción. Por favor intente de nuevo.",
+      "runFailed": "Error al ejecutar simulación. Por favor intente de nuevo.",
+      "scenarioCompareFailed": "Error al comparar escenarios. Por favor intente de nuevo."
+    },
+    "workOrders": {
+      "loadFailed": "Error al cargar órdenes de trabajo",
+      "updateSuccess": "Orden de trabajo actualizada exitosamente",
+      "createSuccess": "Orden de trabajo creada exitosamente",
+      "saveFailed": "Error al guardar orden de trabajo",
+      "deleteFailed": "Error al eliminar orden de trabajo",
+      "statusUpdated": "Estado de orden actualizado a {status}",
+      "statusUpdateFailed": "Error al actualizar estado",
+      "deleteSuccess": "Orden de trabajo eliminada exitosamente"
+    },
+    "dashboard": {
+      "loadFailed": "Error al cargar preferencias del panel. Usando configuración local.",
+      "saveFailed": "Error al guardar preferencias del panel. Por favor intente de nuevo.",
+      "resetFailed": "Error al restablecer preferencias en el servidor. Valores predeterminados locales aplicados."
+    },
+    "workflow": {
+      "templateLoadFailed": "Error al cargar plantillas de flujo de trabajo. Por favor intente de nuevo.",
+      "activeShiftFetchFailed": "Error al obtener turno activo. Por favor recargue la página."
+    }
   },
   "errors": {
     "general": "Ocurrió un error. Por favor intenta de nuevo.",

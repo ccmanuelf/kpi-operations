@@ -97,7 +97,7 @@ export function useWorkOrderData() {
       workOrders.value = response.data || []
     } catch (error) {
       console.error('Error loading work orders:', error)
-      notificationStore.showError('Failed to load work orders')
+      notificationStore.showError(t('notifications.workOrders.loadFailed'))
     } finally {
       loading.value = false
       initialLoading.value = false

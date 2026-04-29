@@ -4,6 +4,7 @@
  * production line configuration, and simulation execution.
  */
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   calculateCapacityRequirements,
   getProductionLineGuide,
@@ -14,6 +15,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 
 export function useSimulationData() {
   const notificationStore = useNotificationStore()
+  const { t } = useI18n()
 
   // UI state
   const activeTab = ref('production-line')
@@ -54,7 +56,7 @@ export function useSimulationData() {
       guide.value = response.data
     } catch (error) {
       console.error('Failed to load guide:', error)
-      notificationStore.showError('Failed to load simulation guide. Please refresh the page.')
+      notificationStore.showError(t('notifications.simulation.guideLoadFailed'))
     }
   })
 
@@ -65,7 +67,7 @@ export function useSimulationData() {
       capacityResult.value = response.data
     } catch (error) {
       console.error('Failed to calculate capacity:', error)
-      notificationStore.showError('Failed to calculate capacity requirements. Please try again.')
+      notificationStore.showError(t('notifications.simulation.capacityCalcFailed'))
     } finally {
       loading.value = false
     }
@@ -78,7 +80,7 @@ export function useSimulationData() {
       productionLineConfig.value = response.data
     } catch (error) {
       console.error('Failed to load config:', error)
-      notificationStore.showError('Failed to load production line configuration. Please try again.')
+      notificationStore.showError(t('notifications.simulation.lineConfigLoadFailed'))
     } finally {
       loading.value = false
     }
@@ -93,7 +95,7 @@ export function useSimulationData() {
       simulationResult.value = response.data
     } catch (error) {
       console.error('Failed to run simulation:', error)
-      notificationStore.showError('Failed to run simulation. Please try again.')
+      notificationStore.showError(t('notifications.simulation.runFailed'))
     } finally {
       loading.value = false
     }

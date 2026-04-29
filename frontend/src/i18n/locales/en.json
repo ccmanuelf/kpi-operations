@@ -875,7 +875,41 @@
     "newNotification": "New notification",
     "saveTriggered": "Save triggered",
     "newEntryTriggered": "New entry triggered",
-    "refreshingData": "Refreshing data..."
+    "refreshingData": "Refreshing data...",
+    "filters": {
+      "loadFailed": "Failed to load saved filters. Using local settings.",
+      "createFailed": "Failed to create filter. Please try again.",
+      "updateFailed": "Failed to update filter. Please try again.",
+      "deleteFailed": "Failed to delete filter. Please try again.",
+      "setDefaultFailed": "Failed to set default filter. Please try again.",
+      "duplicateFailed": "Failed to duplicate filter. Please try again."
+    },
+    "simulation": {
+      "guideLoadFailed": "Failed to load simulation guide. Please refresh the page.",
+      "capacityCalcFailed": "Failed to calculate capacity requirements. Please try again.",
+      "lineConfigLoadFailed": "Failed to load production line configuration. Please try again.",
+      "runFailed": "Failed to run simulation. Please try again.",
+      "scenarioCompareFailed": "Failed to compare scenarios. Please try again."
+    },
+    "workOrders": {
+      "loadFailed": "Failed to load work orders",
+      "updateSuccess": "Work order updated successfully",
+      "createSuccess": "Work order created successfully",
+      "saveFailed": "Failed to save work order",
+      "deleteFailed": "Failed to delete work order",
+      "statusUpdated": "Work order status updated to {status}",
+      "statusUpdateFailed": "Failed to update status",
+      "deleteSuccess": "Work order deleted successfully"
+    },
+    "dashboard": {
+      "loadFailed": "Failed to load dashboard preferences. Using local settings.",
+      "saveFailed": "Failed to save dashboard preferences. Please try again.",
+      "resetFailed": "Failed to reset preferences on server. Local defaults applied."
+    },
+    "workflow": {
+      "templateLoadFailed": "Failed to load workflow templates. Please try again.",
+      "activeShiftFetchFailed": "Failed to fetch active shift. Please refresh the page."
+    }
   },
   "errors": {
     "general": "An error occurred. Please try again.",

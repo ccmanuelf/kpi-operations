@@ -23,6 +23,13 @@ vi.mock('../authStore', () => ({
   }))
 }))
 
+// Mock i18n — dashboardStore now imports the global i18n instance to
+// translate snackbar messages. Loading the real module here would
+// touch localStorage at module-init (before beforeEach stubs it).
+vi.mock('@/i18n', () => ({
+  default: { global: { t: (key) => key } }
+}))
+
 import api from '@/services/api'
 
 describe('Dashboard Store', () => {

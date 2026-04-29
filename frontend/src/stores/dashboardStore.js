@@ -6,8 +6,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import api from '@/services/api'
+import i18n from '@/i18n'
 import { useAuthStore } from './authStore'
 import { useNotificationStore } from './notificationStore'
+
+// Pinia stores can't use the composition useI18n() outside setup, so
+// route translation through the global i18n instance instead.
+const t = (key) => i18n.global.t(key)
 
 const STORAGE_KEY = 'kpi-dashboard-preferences'
 
@@ -153,7 +158,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       }
     } catch (e) {
       console.error('Failed to load dashboard preferences from API:', e)
-      useNotificationStore().showError('Failed to load dashboard preferences. Using local settings.')
+      useNotificationStore().showError(t('notifications.dashboard.loadFailed'))
     } finally {
       isLoading.value = false
     }
@@ -174,7 +179,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       return true
     } catch (e) {
       console.error('Failed to save dashboard preferences to API:', e)
-      useNotificationStore().showError('Failed to save dashboard preferences. Please try again.')
+      useNotificationStore().showError(t('notifications.dashboard.saveFailed'))
       return false
     } finally {
       isLoading.value = false
@@ -213,7 +218,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         isSynced.value = true
       } catch (e) {
         console.error('Failed to reset preferences on server:', e)
-        useNotificationStore().showError('Failed to reset preferences on server. Local defaults applied.')
+        useNotificationStore().showError(t('notifications.dashboard.resetFailed'))
       }
     }
   }

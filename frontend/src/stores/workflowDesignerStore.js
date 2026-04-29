@@ -9,7 +9,12 @@ import { useVueFlow } from '@vue-flow/core'
 import { getWorkflowConfig, updateWorkflowConfig, getWorkflowTemplates, applyWorkflowTemplate } from '@/services/api/workflow'
 import { configToVueFlow, vueFlowToConfig, configToMermaid, mermaidToConfig } from '@/utils/workflow/mermaidConverter'
 import { validateWorkflow } from '@/utils/workflow/workflowValidator'
+import i18n from '@/i18n'
 import { useNotificationStore } from './notificationStore'
+
+// Pinia stores can't use the composition useI18n() outside setup, so
+// route translation through the global i18n instance instead.
+const t = (key) => i18n.global.t(key)
 
 // Maximum history stack size
 const MAX_HISTORY_SIZE = 50
@@ -168,7 +173,7 @@ export const useWorkflowDesignerStore = defineStore('workflowDesigner', () => {
       templates.value = response.data || []
     } catch (e) {
       console.error('Failed to load templates:', e)
-      useNotificationStore().showError('Failed to load workflow templates. Please try again.')
+      useNotificationStore().showError(t('notifications.workflow.templateLoadFailed'))
     }
   }
 

@@ -6,8 +6,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/services/api'
+import i18n from '@/i18n'
 import { useAuthStore } from './authStore'
 import { useNotificationStore } from './notificationStore'
+
+// Pinia stores can't use the composition useI18n() outside setup, so
+// route translation through the global i18n instance instead.
+const t = (key) => i18n.global.t(key)
 
 const STORAGE_KEY = 'kpi-saved-filters'
 const HISTORY_KEY = 'kpi-filter-history'
@@ -99,7 +104,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to load filters from API:', e)
-      useNotificationStore().showError('Failed to load saved filters. Using local settings.')
+      useNotificationStore().showError(t('notifications.filters.loadFailed'))
     } finally {
       isLoading.value = false
     }
@@ -125,7 +130,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to create filter:', e)
-      useNotificationStore().showError('Failed to create filter. Please try again.')
+      useNotificationStore().showError(t('notifications.filters.createFailed'))
       return null
     } finally {
       isLoading.value = false
@@ -147,7 +152,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to update filter:', e)
-      useNotificationStore().showError('Failed to update filter. Please try again.')
+      useNotificationStore().showError(t('notifications.filters.updateFailed'))
       return null
     } finally {
       isLoading.value = false
@@ -168,7 +173,7 @@ export const useFiltersStore = defineStore('filters', () => {
       return true
     } catch (e) {
       console.error('Failed to delete filter:', e)
-      useNotificationStore().showError('Failed to delete filter. Please try again.')
+      useNotificationStore().showError(t('notifications.filters.deleteFailed'))
       return false
     } finally {
       isLoading.value = false
@@ -230,7 +235,7 @@ export const useFiltersStore = defineStore('filters', () => {
       return true
     } catch (e) {
       console.error('Failed to set default filter:', e)
-      useNotificationStore().showError('Failed to set default filter. Please try again.')
+      useNotificationStore().showError(t('notifications.filters.setDefaultFailed'))
       return false
     } finally {
       isLoading.value = false
@@ -280,7 +285,7 @@ export const useFiltersStore = defineStore('filters', () => {
       }
     } catch (e) {
       console.error('Failed to duplicate filter:', e)
-      useNotificationStore().showError('Failed to duplicate filter. Please try again.')
+      useNotificationStore().showError(t('notifications.filters.duplicateFailed'))
       return null
     } finally {
       isLoading.value = false
