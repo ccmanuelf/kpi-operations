@@ -1,7 +1,7 @@
 /**
  * Composable for Work Order form handling and CRUD operations.
- * Handles: create/edit dialogs, form state, validation, save, delete,
- *          status transitions via workflow API.
+ * Create/edit dialogs, form state, validation, save, delete,
+ * status transitions via workflow API.
  */
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -9,7 +9,38 @@ import api from '@/services/api'
 import { transitionWorkOrder } from '@/services/api/workflow'
 import { useNotificationStore } from '@/stores/notificationStore'
 
-const DEFAULT_FORM_DATA = {
+export interface WorkOrderFormData {
+  work_order_id: string
+  client_id: string
+  style_model: string
+  planned_quantity: number | null
+  actual_quantity: number
+  status: string
+  priority: string | null
+  planned_start_date: string
+  planned_ship_date: string
+  customer_po_number: string
+  ideal_cycle_time: number | null
+  notes: string
+}
+
+export interface WorkOrder extends WorkOrderFormData {
+  [key: string]: unknown
+}
+
+interface FormHandle {
+  validate: () => Promise<{ valid: boolean }>
+}
+
+type ValidationRule = (v: unknown) => true | string
+
+interface ValidationRules {
+  required: ValidationRule
+  positive: ValidationRule
+  nonNegative: ValidationRule
+}
+
+const DEFAULT_FORM_DATA = (): WorkOrderFormData => ({
   work_order_id: '',
   client_id: 'CLIENT001',
   style_model: '',
@@ -21,44 +52,45 @@ const DEFAULT_FORM_DATA = {
   planned_ship_date: '',
   customer_po_number: '',
   ideal_cycle_time: null,
-  notes: ''
-}
+  notes: '',
+})
 
-export function useWorkOrderForms(loadWorkOrders, formatStatus) {
+export function useWorkOrderForms(
+  loadWorkOrders: () => Promise<void>,
+  formatStatus: (status: string) => string,
+) {
   const notificationStore = useNotificationStore()
   const { t } = useI18n()
 
-  // Dialog state
   const formDialog = ref(false)
   const deleteDialog = ref(false)
-  const editingWorkOrder = ref(null)
-  const workOrderToDelete = ref(null)
-  const formRef = ref(null)
+  const editingWorkOrder = ref<WorkOrder | null>(null)
+  const workOrderToDelete = ref<WorkOrder | null>(null)
+  const formRef = ref<FormHandle | null>(null)
   const formValid = ref(false)
 
-  // Loading flags
   const saving = ref(false)
   const deleting = ref(false)
 
-  // Form data
-  const formData = ref({ ...DEFAULT_FORM_DATA })
+  const formData = ref<WorkOrderFormData>(DEFAULT_FORM_DATA())
 
-  // Validation rules
-  const rules = {
-    required: v => !!v || 'Required',
-    positive: v => (v && v > 0) || 'Must be greater than 0',
-    nonNegative: v => v === null || v === '' || v >= 0 || 'Cannot be negative'
+  const rules: ValidationRules = {
+    required: (v) => !!v || 'Required',
+    positive: (v) => (typeof v === 'number' && v > 0) || 'Must be greater than 0',
+    nonNegative: (v) =>
+      v === null ||
+      v === '' ||
+      (typeof v === 'number' && v >= 0) ||
+      'Cannot be negative',
   }
 
-  // Create dialog
-  const openCreateDialog = () => {
+  const openCreateDialog = (): void => {
     editingWorkOrder.value = null
-    formData.value = { ...DEFAULT_FORM_DATA }
+    formData.value = DEFAULT_FORM_DATA()
     formDialog.value = true
   }
 
-  // Edit dialog
-  const openEditDialog = (workOrder) => {
+  const openEditDialog = (workOrder: WorkOrder): void => {
     editingWorkOrder.value = workOrder
     formData.value = {
       work_order_id: workOrder.work_order_id,
@@ -72,19 +104,18 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
       planned_ship_date: workOrder.planned_ship_date?.split('T')[0] || '',
       customer_po_number: workOrder.customer_po_number || '',
       ideal_cycle_time: workOrder.ideal_cycle_time,
-      notes: workOrder.notes || ''
+      notes: workOrder.notes || '',
     }
     formDialog.value = true
   }
 
-  // Save (create or update)
-  const saveWorkOrder = async () => {
-    const { valid } = await formRef.value.validate()
-    if (!valid) return
+  const saveWorkOrder = async (): Promise<void> => {
+    const validateResult = await formRef.value?.validate()
+    if (!validateResult?.valid) return
 
     saving.value = true
     try {
-      const data = { ...formData.value }
+      const data: Partial<WorkOrderFormData> = { ...formData.value }
       if (!data.planned_start_date) delete data.planned_start_date
       if (!data.planned_ship_date) delete data.planned_ship_date
       if (!data.ideal_cycle_time) delete data.ideal_cycle_time
@@ -101,50 +132,53 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
       formDialog.value = false
       await loadWorkOrders()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error saving work order:', error)
+      const ax = error as { response?: { data?: { detail?: string } } }
       notificationStore.showError(
-        error.response?.data?.detail || t('notifications.workOrders.saveFailed')
+        ax?.response?.data?.detail || t('notifications.workOrders.saveFailed'),
       )
     } finally {
       saving.value = false
     }
   }
 
-  // Status transition via workflow API with direct-update fallback
-  const updateStatus = async (workOrder, newStatus) => {
+  // Status transition via workflow API with direct-update fallback —
+  // the workflow endpoint enforces guarded transitions; the JS path
+  // fell back to a direct PUT if the workflow rejected, preserved
+  // here for parity even though it bypasses workflow validation.
+  const updateStatus = async (workOrder: WorkOrder, newStatus: string): Promise<void> => {
     try {
       await transitionWorkOrder(workOrder.work_order_id, newStatus)
       notificationStore.showSuccess(
-        t('notifications.workOrders.statusUpdated', { status: formatStatus(newStatus) })
+        t('notifications.workOrders.statusUpdated', { status: formatStatus(newStatus) }),
       )
       await loadWorkOrders()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error updating status:', error)
       try {
         await api.updateWorkOrder(workOrder.work_order_id, { status: newStatus })
         notificationStore.showSuccess(
-          t('notifications.workOrders.statusUpdated', { status: formatStatus(newStatus) })
+          t('notifications.workOrders.statusUpdated', { status: formatStatus(newStatus) }),
         )
         await loadWorkOrders()
-      } catch (fallbackError) {
+      } catch {
         notificationStore.showError(t('notifications.workOrders.statusUpdateFailed'))
       }
     }
   }
 
-  // Handle status transition from WorkOrderStatusChip
-  const onStatusTransitioned = () => {
+  const onStatusTransitioned = (): void => {
     loadWorkOrders()
   }
 
-  // Delete confirmation
-  const confirmDelete = (workOrder) => {
+  const confirmDelete = (workOrder: WorkOrder): void => {
     workOrderToDelete.value = workOrder
     deleteDialog.value = true
   }
 
-  // Delete work order
-  const deleteWorkOrder = async () => {
+  const deleteWorkOrder = async (): Promise<void> => {
     if (!workOrderToDelete.value) return
 
     deleting.value = true
@@ -155,9 +189,11 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
       workOrderToDelete.value = null
       await loadWorkOrders()
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error deleting work order:', error)
+      const ax = error as { response?: { data?: { detail?: string } } }
       notificationStore.showError(
-        error.response?.data?.detail || t('notifications.workOrders.deleteFailed')
+        ax?.response?.data?.detail || t('notifications.workOrders.deleteFailed'),
       )
     } finally {
       deleting.value = false
@@ -165,26 +201,22 @@ export function useWorkOrderForms(loadWorkOrders, formatStatus) {
   }
 
   return {
-    // Dialog state
     formDialog,
     deleteDialog,
     editingWorkOrder,
     workOrderToDelete,
     formRef,
     formValid,
-    // Loading
     saving,
     deleting,
-    // Form
     formData,
     rules,
-    // Methods
     openCreateDialog,
     openEditDialog,
     saveWorkOrder,
     updateStatus,
     onStatusTransitioned,
     confirmDelete,
-    deleteWorkOrder
+    deleteWorkOrder,
   }
 }
