@@ -16,9 +16,10 @@ vi.mock('vue-i18n', () => ({
   }})
 }))
 
-// Mock date-fns
+// Mock date-fns. The two args are unused in the stub (we always
+// return a fixed timestamp); prefix with _ to silence noUnusedParameters.
 vi.mock('date-fns', () => ({
-  format: vi.fn((date, formatStr) => '2025-01-15 10:30:00')
+  format: vi.fn((_date, _formatStr) => '2025-01-15 10:30:00')
 }))
 
 // Create mock results object

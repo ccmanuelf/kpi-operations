@@ -24,8 +24,22 @@ vi.mock('ag-grid-vue3', () => ({
   }
 }))
 
-// Mock the store
-const mockStore = {
+// Mock the store. The breakdown row shape is loose (object literal),
+// so type the array as `any[]` rather than `never[]` (TS's default
+// inference for `[]`) so individual tests can push typed rows.
+interface BreakdownRow {
+  _id: string
+  machine_tool: string
+  breakdown_pct: number
+}
+
+const mockStore: {
+  breakdowns: BreakdownRow[]
+  machineTools: string[]
+  addBreakdown: ReturnType<typeof vi.fn>
+  removeBreakdown: ReturnType<typeof vi.fn>
+  updateBreakdown: ReturnType<typeof vi.fn>
+} = {
   breakdowns: [],
   machineTools: ['Cutting Table', 'Sewing Machine', 'Pressing Station'],
   addBreakdown: vi.fn(),

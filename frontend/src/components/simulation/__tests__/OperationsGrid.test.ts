@@ -2,7 +2,7 @@
  * Unit tests for OperationsGrid component
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import OperationsGrid from '../OperationsGrid.vue'
 
@@ -19,16 +19,18 @@ vi.mock('ag-grid-vue3', () => ({
   }
 }))
 
-// Mock papaparse
+// Mock papaparse — minimal CSV parser that mirrors the real
+// `parse(text, { complete })` contract. Args typed loosely because
+// the real signature has many overloads we don't need to model.
 vi.mock('papaparse', () => ({
   default: {
-    parse: vi.fn((text, options) => {
+    parse: vi.fn((text: string, options: { complete: (result: { data: Record<string, string>[] }) => void }) => {
       const lines = text.trim().split('\n')
       const headers = lines[0].split(',')
-      const data = lines.slice(1).map(line => {
+      const data = lines.slice(1).map((line: string) => {
         const values = line.split(',')
         const obj: Record<string, string> = {}
-        headers.forEach((h, i) => {
+        headers.forEach((h: string, i: number) => {
           obj[h] = values[i]
         })
         return obj

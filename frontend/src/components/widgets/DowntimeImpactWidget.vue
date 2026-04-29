@@ -46,7 +46,7 @@
               <div class="text-caption text-grey">{{ t('widgets.downtimeImpact.totalDowntime') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
-              <div class="text-h5 font-weight-bold text-error">-{{ totalOeeImpact }}%</div>
+              <div class="text-h5 font-weight-bold text-error">-{{ totalOeeImpactDisplay }}%</div>
               <div class="text-caption text-grey">{{ t('widgets.downtimeImpact.oeeImpact') }}</div>
             </v-col>
             <v-col cols="4" class="text-center">
@@ -59,7 +59,7 @@
         <!-- Downtime Categories List -->
         <v-list density="compact" class="pa-0">
           <v-list-item
-            v-for="(item, index) in downtimeRanking"
+            v-for="item in downtimeRanking"
             :key="item.category"
             class="mb-2"
           >
@@ -178,9 +178,14 @@ const totalDowntimeHours = computed(() => {
   return downtimeRanking.value.reduce((sum, item) => sum + item.totalHours, 0).toFixed(1)
 })
 
+// Numeric total — used in arithmetic for the per-row impact bar.
 const totalOeeImpact = computed(() => {
-  return downtimeRanking.value.reduce((sum, item) => sum + item.oeeImpact, 0).toFixed(1)
+  return downtimeRanking.value.reduce((sum, item) => sum + item.oeeImpact, 0)
 })
+
+// Display-formatted total for the headline (kept separate so the
+// numeric total above stays in arithmetic-friendly form).
+const totalOeeImpactDisplay = computed(() => totalOeeImpact.value.toFixed(1))
 
 // Methods
 const getSeverityColor = (severity: string): string => {

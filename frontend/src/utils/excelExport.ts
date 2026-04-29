@@ -366,7 +366,10 @@ export async function exportOperationsToExcel(
     'Rework %', 'Grade %', 'FPD %'
   ]
 
-  const data = [headers]
+  // Each row mixes string (product, machine_tool, etc.) and numeric
+  // (step, sam_min, operators, percentages) cells; type the row union
+  // so TS lets numeric values be pushed.
+  const data: (string | number)[][] = [headers]
 
   operations.forEach(op => {
     data.push([

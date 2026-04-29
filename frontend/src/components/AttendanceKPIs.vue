@@ -144,11 +144,14 @@ const fetchData = async () => {
     const response = await axios.get('/api/attendance/kpi/absenteeism')
     absenteeism.value = parseFloat(response.data.absenteeism_rate.toFixed(1))
 
-    // Mock absence breakdown (would come from API)
-    absenceBreakdown.value[0].percentage = (absenteeism.value * 0.4).toFixed(1)
-    absenceBreakdown.value[1].percentage = (absenteeism.value * 0.3).toFixed(1)
-    absenceBreakdown.value[2].percentage = (absenteeism.value * 0.2).toFixed(1)
-    absenceBreakdown.value[3].percentage = (absenteeism.value * 0.1).toFixed(1)
+    // Mock absence breakdown (would come from API). Round numerically
+    // — the template formats the value with `{{ item.percentage }}%`
+    // so keeping `percentage` as a number matches the breakdown's
+    // initial `percentage: 0` typing.
+    absenceBreakdown.value[0].percentage = Math.round(absenteeism.value * 0.4 * 10) / 10
+    absenceBreakdown.value[1].percentage = Math.round(absenteeism.value * 0.3 * 10) / 10
+    absenceBreakdown.value[2].percentage = Math.round(absenteeism.value * 0.2 * 10) / 10
+    absenceBreakdown.value[3].percentage = Math.round(absenteeism.value * 0.1 * 10) / 10
 
     // Mock floating pool data
     floatingPool.value = {

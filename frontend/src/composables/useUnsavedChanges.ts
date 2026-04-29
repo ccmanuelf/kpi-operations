@@ -17,7 +17,7 @@
  * ```
  */
 import { ref, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave } from 'vue-router'
 
 export interface UnsavedChangesOptions {
   message?: string
@@ -52,8 +52,10 @@ export function useUnsavedChanges(options: UnsavedChangesOptions = {}) {
     window.removeEventListener('beforeunload', handleBeforeUnload)
   })
 
-  // Handle Vue Router navigation
-  onBeforeRouteLeave((to, from, next) => {
+  // Handle Vue Router navigation. The `to` and `from` route args are
+  // unused (we only consult our own dirty flag), prefixed with _ to
+  // tell TS noUnusedParameters they're intentionally ignored.
+  onBeforeRouteLeave((_to, _from, next) => {
     if (hasUnsavedChanges.value && isEnabled.value) {
       // TODO(CQ-19): Replace with Vuetify dialog when async navigation guards are supported
       const confirmed = window.confirm(message)
@@ -92,11 +94,13 @@ export function useUnsavedChanges(options: UnsavedChangesOptions = {}) {
     return true
   }
 
-  // Watch a reactive value and auto-mark dirty
-  const watchForChanges = <T>(source: () => T, initialValue?: T) => {
+  // Watch a reactive value and auto-mark dirty. The first emission
+  // is treated as the initial-value baseline (no dirty mark); every
+  // subsequent change marks dirty.
+  const watchForChanges = <T>(source: () => T) => {
     let isInitialized = false
 
-    watch(source, (newVal) => {
+    watch(source, () => {
       if (!isInitialized) {
         isInitialized = true
         return

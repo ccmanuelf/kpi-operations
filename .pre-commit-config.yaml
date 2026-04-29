@@ -54,6 +54,16 @@ repos:
         files: ^frontend/src/.*\.(vue|js|jsx|cjs|mjs)$
         pass_filenames: false
 
+      # vue-tsc whole-project type-check. JS files are not in the
+      # check graph (allowJs is off and ambient .d.ts files cover JS
+      # imports), so the gate only enforces .ts / .vue strict types.
+      - id: vue-tsc
+        name: vue-tsc (frontend, whole-project)
+        entry: bash -c 'cd frontend && npx vue-tsc --noEmit'
+        language: system
+        files: ^frontend/src/.*\.(ts|tsx|vue)$
+        pass_filenames: false
+
       # NOTE: Full frontend build verification (npm run build) is intentionally
       # NOT included as a pre-commit hook because it takes 30-60s per commit.
       # Build verification is enforced in CI (ci.yml frontend-lint-and-tests job)

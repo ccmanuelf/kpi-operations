@@ -62,7 +62,7 @@
               <div class="text-caption text-grey">{{ t('widgets.reworkByOperation.targetRate') }}</div>
             </div>
             <div class="text-h4 font-weight-bold" :class="reworkRateTextColor">
-              {{ reworkRate }}%
+              {{ reworkRateDisplay }}%
             </div>
           </div>
           <v-progress-linear
@@ -237,10 +237,15 @@ const totalReworkCost = computed(() => {
   return reworkOperations.value.reduce((sum, op) => sum + op.estimated_cost, 0)
 })
 
+// Numeric rework rate (kept as a number for arithmetic in the
+// progress-linear computation). The template formats it via
+// reworkRateDisplay.
 const reworkRate = computed(() => {
   if (totalUnitsProduced.value === 0) return 0
-  return ((totalReworkUnits.value / totalUnitsProduced.value) * 100).toFixed(1)
+  return Math.round((totalReworkUnits.value / totalUnitsProduced.value) * 1000) / 10
 })
+
+const reworkRateDisplay = computed(() => reworkRate.value.toFixed(1))
 
 const maxReworkUnits = computed(() => {
   if (!reworkOperations.value.length) return 1
@@ -248,21 +253,21 @@ const maxReworkUnits = computed(() => {
 })
 
 const reworkRateColor = computed(() => {
-  const rate = parseFloat(reworkRate.value as string)
+  const rate = reworkRate.value
   if (rate <= 2) return 'success'
   if (rate <= 5) return 'warning'
   return 'error'
 })
 
 const reworkRateTextColor = computed(() => {
-  const rate = parseFloat(reworkRate.value as string)
+  const rate = reworkRate.value
   if (rate <= 2) return 'text-success'
   if (rate <= 5) return 'text-warning'
   return 'text-error'
 })
 
 const reworkRateBackgroundColor = computed(() => {
-  const rate = parseFloat(reworkRate.value as string)
+  const rate = reworkRate.value
   if (rate <= 2) return 'bg-success-lighten-5'
   if (rate <= 5) return 'bg-warning-lighten-5'
   return 'bg-error-lighten-5'

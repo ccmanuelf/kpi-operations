@@ -279,13 +279,6 @@ const getTrendColor = (trend: string): string => {
   return 'grey'
 }
 
-const determineTrend = (current: number, previous: number): 'up' | 'down' | 'stable' => {
-  const diff = current - previous
-  if (diff > 1) return 'up'
-  if (diff < -1) return 'down'
-  return 'stable'
-}
-
 const fetchData = async () => {
   loading.value = true
   error.value = null
