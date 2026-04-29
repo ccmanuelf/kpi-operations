@@ -37,14 +37,6 @@ declare module '@/services/api' {
   export const getDataCompleteness: any
 }
 
-declare module '@/services/api/simulationV2' {
-  const value: any
-  export default value
-  export const validateSimulationConfig: any
-  export const runSimulation: any
-  export const markAsVisited: any
-}
-
 declare module '@/composables/useDashboardOverviewData' {
   export const useDashboardOverviewData: any
   const value: any
