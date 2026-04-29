@@ -1,6 +1,6 @@
 /**
- * Composable for AG Grid base configuration, event handling, and Excel paste logic.
- * Extracted from AGGridBase.vue to keep component under 500 lines.
+ * Composable for AG Grid base configuration, event handling, and
+ * Excel paste logic.
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -11,52 +11,88 @@ import {
   convertToGridRows,
   validateRows,
   readClipboard,
-  entrySchemas
+  entrySchemas,
+  type ParsedClipboard,
+  type GridColumnDef,
+  type GridRow,
+  type ValidationResult,
+  type MapColumnsResult,
 } from '@/utils/clipboardParser'
 
-export function useAGGridBase(props, emit) {
+type EmitFn = (event: string, payload?: unknown) => void
+
+interface RowSelectionConfig {
+  mode: 'singleRow' | 'multiRow'
+  enableClickSelection?: boolean
+  checkboxes?: boolean
+  headerCheckbox?: boolean
+}
+
+export interface AGGridBaseProps {
+  enableExcelPaste?: boolean
+  height?: string | number
+  rowSelection?: 'single' | 'multi' | RowSelectionConfig
+  columnDefs: GridColumnDef[]
+  gridOptions?: Record<string, unknown>
+  pagination?: boolean
+  paginationPageSize?: number
+  entryType?: string
+}
+
+interface SnackbarState {
+  show: boolean
+  text: string
+  color: string
+}
+
+interface GridApi {
+  sizeColumnsToFit: () => void
+  exportDataAsCsv: (params: { fileName: string }) => void
+  exportDataAsExcel: (params: { fileName: string }) => void
+  deselectAll: () => void
+  getSelectedRows: () => GridRow[]
+  refreshCells: () => void
+  applyTransaction: (params: { add: GridRow[]; addIndex?: number }) => void
+  getGridOptions?: () => { context?: { eGridDiv?: HTMLElement } }
+}
+
+export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
   const { t } = useI18n()
   const {
     isMobile,
     isTablet,
     isDesktop,
     getGridHeight,
-    getColumnWidth,
     getRowHeight,
-    isTouchDevice
+    isTouchDevice,
   } = useResponsive()
 
-  // Grid API refs
-  const gridApi = ref(null)
-  const columnApi = ref(null)
+  const gridApi = ref<GridApi | null>(null)
+  const columnApi = ref<unknown | null>(null)
 
-  // Excel paste state
   const pasteLoading = ref(false)
   const lastPasteCount = ref(0)
   const showPasteDialog = ref(false)
-  const parsedPasteData = ref(null)
-  const convertedPasteRows = ref([])
-  const pasteValidationResult = ref(null)
-  const pasteColumnMapping = ref(null)
-  const snackbar = ref({ show: false, text: '', color: 'info' })
+  const parsedPasteData = ref<ParsedClipboard | null>(null)
+  const convertedPasteRows = ref<GridRow[]>([])
+  const pasteValidationResult = ref<ValidationResult | null>(null)
+  const pasteColumnMapping = ref<MapColumnsResult | null>(null)
+  const snackbar = ref<SnackbarState>({ show: false, text: '', color: 'info' })
 
-  // Calculate toolbar height (approximately 56px when visible including margin)
-  const toolbarHeight = computed(() => props.enableExcelPaste ? 56 : 0)
+  const toolbarHeight = computed(() => (props.enableExcelPaste ? 56 : 0))
 
-  // AG Grid requires explicit dimensions directly on the ag-grid-vue component
   const gridStyle = computed(() => {
     const totalHeight = props.height || getGridHeight()
-    const heightValue = parseInt(totalHeight, 10) || 600
+    const heightValue = parseInt(String(totalHeight), 10) || 600
     const gridHeight = heightValue - toolbarHeight.value
 
     return {
       width: '100%',
-      height: `${gridHeight}px`
+      height: `${gridHeight}px`,
     }
   })
 
-  // AG Grid v32.2+ requires object format for rowSelection
-  const rowSelectionConfig = computed(() => {
+  const rowSelectionConfig = computed<RowSelectionConfig>(() => {
     if (typeof props.rowSelection === 'object') {
       return props.rowSelection
     }
@@ -67,11 +103,10 @@ export function useAGGridBase(props, emit) {
       mode,
       enableClickSelection: false,
       checkboxes: false,
-      headerCheckbox: false
+      headerCheckbox: false,
     }
   })
 
-  // Default column configuration for Excel-like behavior with responsive adjustments
   const defaultColDef = computed(() => ({
     sortable: true,
     filter: true,
@@ -81,10 +116,10 @@ export function useAGGridBase(props, emit) {
     maxWidth: isMobile.value ? 200 : undefined,
     cellStyle: {
       fontFamily: 'Roboto, sans-serif',
-      fontSize: isMobile.value ? '13px' : isTablet.value ? '14px' : '14px'
+      fontSize: isMobile.value ? '13px' : isTablet.value ? '14px' : '14px',
     },
     enableCellChangeFlash: true,
-    suppressKeyboardEvent: (params) => {
+    suppressKeyboardEvent: (params: { event: KeyboardEvent }) => {
       const keyCode = params.event.keyCode
       const ctrlPressed = params.event.ctrlKey || params.event.metaKey
 
@@ -92,10 +127,9 @@ export function useAGGridBase(props, emit) {
       if (keyCode === 46) return false
 
       return false
-    }
+    },
   }))
 
-  // Merge user grid options with defaults and responsive settings
   const mergedGridOptions = computed(() => ({
     ...props.gridOptions,
     theme: 'legacy',
@@ -112,7 +146,11 @@ export function useAGGridBase(props, emit) {
     suppressColumnVirtualisation: isMobile.value,
     singleClickEdit: isMobile.value || isTouchDevice(),
 
-    navigateToNextCell: (params) => {
+    navigateToNextCell: (params: {
+      key: number
+      nextCellPosition: unknown
+      previousCellPosition: { rowIndex: number; column: unknown }
+    }) => {
       const suggestedNextCell = params.nextCellPosition
 
       if (params.key === 9) {
@@ -122,7 +160,7 @@ export function useAGGridBase(props, emit) {
       if (params.key === 13) {
         return {
           rowIndex: params.previousCellPosition.rowIndex + 1,
-          column: params.previousCellPosition.column
+          column: params.previousCellPosition.column,
         }
       }
 
@@ -132,53 +170,53 @@ export function useAGGridBase(props, emit) {
     ...(isMobile.value && {
       suppressMenuHide: false,
       suppressMovableColumns: true,
-      suppressRowClickSelection: false
-    })
+      suppressRowClickSelection: false,
+    }),
   }))
 
-  // Event handlers
-  const onGridReady = (params) => {
+  const onGridReady = (params: { api: GridApi; columnApi?: unknown }): void => {
     gridApi.value = params.api
-    columnApi.value = params.columnApi
+    columnApi.value = params.columnApi ?? null
 
     params.api.sizeColumnsToFit()
 
     if (isTouchDevice()) {
-      const eGridDiv = params.api.getGridOptions().context?.eGridDiv
+      const eGridDiv = params.api.getGridOptions?.()?.context?.eGridDiv
       if (eGridDiv) {
-        eGridDiv.style.webkitOverflowScrolling = 'touch'
+        ;(eGridDiv.style as CSSStyleDeclaration & {
+          webkitOverflowScrolling?: string
+        }).webkitOverflowScrolling = 'touch'
       }
     }
 
     emit('grid-ready', params)
   }
 
-  const handleCellValueChanged = (event) => {
+  const handleCellValueChanged = (event: unknown): void => {
     emit('cell-value-changed', event)
   }
 
-  const handleRowEditingStarted = (event) => {
+  const handleRowEditingStarted = (event: unknown): void => {
     emit('row-editing-started', event)
   }
 
-  const handleRowEditingStopped = (event) => {
+  const handleRowEditingStopped = (event: unknown): void => {
     emit('row-editing-stopped', event)
   }
 
-  const handleCellClicked = (event) => {
+  const handleCellClicked = (event: unknown): void => {
     emit('cell-clicked', event)
   }
 
-  const handlePasteStart = (event) => {
+  const handlePasteStart = (event: unknown): void => {
     emit('paste-start', event)
   }
 
-  const handlePasteEnd = (event) => {
+  const handlePasteEnd = (event: unknown): void => {
     emit('paste-end', event)
   }
 
-  // Excel paste functionality
-  const handlePasteFromExcel = async () => {
+  const handlePasteFromExcel = async (): Promise<void> => {
     pasteLoading.value = true
 
     try {
@@ -188,7 +226,7 @@ export function useAGGridBase(props, emit) {
         snackbar.value = {
           show: true,
           text: t('paste.emptyClipboard'),
-          color: 'warning'
+          color: 'warning',
         }
         return
       }
@@ -199,32 +237,43 @@ export function useAGGridBase(props, emit) {
         snackbar.value = {
           show: true,
           text: t('paste.parseError'),
-          color: 'error'
+          color: 'error',
         }
         return
       }
 
       parsedPasteData.value = parsed
 
-      let columnMapping = { mapping: {}, unmappedClipboard: [], unmappedGrid: [] }
+      let columnMapping: MapColumnsResult = {
+        mapping: {},
+        unmappedClipboard: [],
+        unmappedGrid: [],
+      }
 
       if (parsed.hasHeaders && parsed.headers.length > 0) {
         columnMapping = mapColumnsToGrid(parsed.headers, props.columnDefs)
       } else {
-        const editableColumns = props.columnDefs.filter(c => c.field && c.field !== 'actions')
+        const editableColumns = props.columnDefs.filter(
+          (c) => c.field && c.field !== 'actions',
+        )
         editableColumns.forEach((col, idx) => {
-          if (idx < parsed.totalColumns) {
-            columnMapping.mapping[idx] = col.field
+          if (idx < (parsed.totalColumns || 0)) {
+            if (col.field) columnMapping.mapping[idx] = col.field
           }
         })
       }
 
       pasteColumnMapping.value = columnMapping
 
-      const converted = convertToGridRows(parsed.rows, columnMapping.mapping, props.columnDefs)
+      const converted = convertToGridRows(
+        parsed.rows,
+        columnMapping.mapping,
+        props.columnDefs,
+      )
       convertedPasteRows.value = converted
 
-      const schema = entrySchemas[props.entryType] || entrySchemas.production
+      const schema =
+        entrySchemas[props.entryType ?? 'production'] || entrySchemas.production
       const validation = validateRows(converted, schema)
       pasteValidationResult.value = validation
 
@@ -233,7 +282,7 @@ export function useAGGridBase(props, emit) {
         convertedRows: converted,
         validationResult: validation,
         columnMapping,
-        gridColumns: props.columnDefs
+        gridColumns: props.columnDefs,
       })
 
       if (validation.isValid) {
@@ -241,28 +290,26 @@ export function useAGGridBase(props, emit) {
       } else {
         lastPasteCount.value = validation.totalValid
       }
-
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Paste error:', error)
       snackbar.value = {
         show: true,
         text: t('paste.accessDenied'),
-        color: 'error'
+        color: 'error',
       }
     } finally {
       pasteLoading.value = false
     }
   }
 
-  // Handle keyboard shortcut for paste
-  const handleKeyboardPaste = (event) => {
+  const handleKeyboardPaste = (event: KeyboardEvent): void => {
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'V') {
       event.preventDefault()
       handlePasteFromExcel()
     }
   }
 
-  // Set up keyboard listener
   onMounted(() => {
     if (props.enableExcelPaste) {
       document.addEventListener('keydown', handleKeyboardPaste)
@@ -273,39 +320,25 @@ export function useAGGridBase(props, emit) {
     document.removeEventListener('keydown', handleKeyboardPaste)
   })
 
-  // Public methods for parent components
-  const exportToCsv = (filename = 'export.csv') => {
-    if (gridApi.value) {
-      gridApi.value.exportDataAsCsv({ fileName: filename })
-    }
+  const exportToCsv = (filename: string = 'export.csv'): void => {
+    gridApi.value?.exportDataAsCsv({ fileName: filename })
   }
 
-  const exportToExcel = (filename = 'export.xlsx') => {
-    if (gridApi.value) {
-      gridApi.value.exportDataAsExcel({ fileName: filename })
-    }
+  const exportToExcel = (filename: string = 'export.xlsx'): void => {
+    gridApi.value?.exportDataAsExcel({ fileName: filename })
   }
 
-  const clearSelection = () => {
-    if (gridApi.value) {
-      gridApi.value.deselectAll()
-    }
+  const clearSelection = (): void => {
+    gridApi.value?.deselectAll()
   }
 
-  const getSelectedRows = () => {
-    if (gridApi.value) {
-      return gridApi.value.getSelectedRows()
-    }
-    return []
+  const getSelectedRows = (): GridRow[] => gridApi.value?.getSelectedRows() ?? []
+
+  const refreshCells = (): void => {
+    gridApi.value?.refreshCells()
   }
 
-  const refreshCells = () => {
-    if (gridApi.value) {
-      gridApi.value.refreshCells()
-    }
-  }
-
-  const addRowsToGrid = (rows) => {
+  const addRowsToGrid = (rows: GridRow[]): boolean => {
     if (gridApi.value && rows.length > 0) {
       gridApi.value.applyTransaction({ add: rows, addIndex: 0 })
       lastPasteCount.value = rows.length
@@ -315,14 +348,11 @@ export function useAGGridBase(props, emit) {
   }
 
   return {
-    // Responsive refs (needed by template)
     isMobile,
     isTablet,
     isDesktop,
-    // Grid API refs
     gridApi,
     columnApi,
-    // Paste state
     pasteLoading,
     lastPasteCount,
     showPasteDialog,
@@ -331,12 +361,10 @@ export function useAGGridBase(props, emit) {
     pasteValidationResult,
     pasteColumnMapping,
     snackbar,
-    // Computed
     gridStyle,
     rowSelectionConfig,
     defaultColDef,
     mergedGridOptions,
-    // Event handlers
     onGridReady,
     handleCellValueChanged,
     handleRowEditingStarted,
@@ -345,12 +373,11 @@ export function useAGGridBase(props, emit) {
     handlePasteStart,
     handlePasteEnd,
     handlePasteFromExcel,
-    // Public methods
     exportToCsv,
     exportToExcel,
     clearSelection,
     getSelectedRows,
     refreshCells,
-    addRowsToGrid
+    addRowsToGrid,
   }
 }

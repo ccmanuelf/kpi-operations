@@ -1,38 +1,67 @@
 /**
- * Composable for FilterBar local state and filter-application logic.
- * Handles: date-range management, client/shift selectors, saved-filter
- * application, formatting helpers, and debounced filter emission.
+ * Composable for FilterBar local state and filter-application
+ * logic. Date-range management, client/shift selectors, saved-
+ * filter application, debounced filter emission.
  */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useFiltersStore } from '@/stores/filtersStore'
+import {
+  useFiltersStore,
+  type DateRange,
+  type FilterConfig,
+  type FilterType,
+  type SavedFilter,
+  type FilterHistoryEntry,
+} from '@/stores/filtersStore'
 import { format, formatDistanceToNow } from 'date-fns'
 import api from '@/services/api'
 import { debounce } from '@/utils/performance'
 
-// Static date range options (shared across all instances)
-const DATE_RANGE_OPTIONS = [
+interface DateRangeOption {
+  value: string
+  label: string
+  icon: string
+  days: number | null
+}
+
+interface ClientRow {
+  client_id: string | number
+  client_name?: string
+  [key: string]: unknown
+}
+
+interface FilterBarProps {
+  filterType: FilterType | string
+  [key: string]: unknown
+}
+
+type EmitFn = (event: string, payload?: unknown) => void
+
+interface DebouncedFn {
+  (): void
+  cancel?: () => void
+}
+
+const DATE_RANGE_OPTIONS: DateRangeOption[] = [
   { value: 'today', label: 'Today', icon: 'mdi-calendar-today', days: 0 },
   { value: '7d', label: 'Last 7 Days', icon: 'mdi-calendar-week', days: 7 },
   { value: '30d', label: 'Last 30 Days', icon: 'mdi-calendar-month', days: 30 },
   { value: '90d', label: 'Last 90 Days', icon: 'mdi-calendar-range', days: 90 },
   { value: 'ytd', label: 'Year to Date', icon: 'mdi-calendar-star', days: null },
-  { value: 'custom', label: 'Custom Range', icon: 'mdi-calendar-edit', days: null }
+  { value: 'custom', label: 'Custom Range', icon: 'mdi-calendar-edit', days: null },
 ]
 
-export default function useFilterBarData(props, emit) {
+export default function useFilterBarData(props: FilterBarProps, emit: EmitFn) {
   const filtersStore = useFiltersStore()
 
-  // ---------- Local state ----------
-  const clients = ref([])
-  const selectedClientId = ref(null)
-  const selectedShifts = ref([])
-  const dateRangeType = ref('30d')
+  const clients = ref<ClientRow[]>([])
+  const selectedClientId = ref<string | number | null>(null)
+  const selectedShifts = ref<(string | number)[]>([])
+  const dateRangeType = ref<string>('30d')
   const customStartDate = ref('')
   const customEndDate = ref('')
   const showSaveDialog = ref(false)
   const showFilterManager = ref(false)
 
-  // ---------- Store-derived computed ----------
   const activeFilter = computed(() => filtersStore.activeFilter)
   const hasActiveFilter = computed(() => filtersStore.hasActiveFilter)
   const recentFilters = computed(() => filtersStore.recentFilters)
@@ -40,7 +69,7 @@ export default function useFilterBarData(props, emit) {
   const savedFiltersCount = computed(() => filtersStore.savedFilters.length)
 
   const filtersByTypeFiltered = computed(() => {
-    const filtered = {}
+    const filtered: Record<string, SavedFilter[]> = {}
     Object.entries(filtersByType.value).forEach(([type, filters]) => {
       if (filters.length > 0) {
         filtered[type] = filters
@@ -49,61 +78,57 @@ export default function useFilterBarData(props, emit) {
     return filtered
   })
 
-  // ---------- Derived local computed ----------
-  const currentClientName = computed(() => {
+  const currentClientName = computed<string | null>(() => {
     if (!selectedClientId.value) return null
-    const client = clients.value.find(c => c.client_id === selectedClientId.value)
+    const client = clients.value.find((c) => c.client_id === selectedClientId.value)
     return client?.client_name || null
   })
 
-  const hasDateFilter = computed(() => {
-    return dateRangeType.value !== '30d' || customStartDate.value || customEndDate.value
-  })
+  const hasDateFilter = computed(
+    () =>
+      dateRangeType.value !== '30d' || !!customStartDate.value || !!customEndDate.value,
+  )
 
-  const hasAnyFilter = computed(() => {
-    return hasActiveFilter.value || selectedClientId.value || hasDateFilter.value || selectedShifts.value.length > 0
-  })
+  const hasAnyFilter = computed(
+    () =>
+      hasActiveFilter.value ||
+      !!selectedClientId.value ||
+      hasDateFilter.value ||
+      selectedShifts.value.length > 0,
+  )
 
-  const canSaveFilter = computed(() => {
-    return selectedClientId.value || hasDateFilter.value || selectedShifts.value.length > 0
-  })
+  const canSaveFilter = computed(
+    () =>
+      !!selectedClientId.value || hasDateFilter.value || selectedShifts.value.length > 0,
+  )
 
   const suggestedFilterType = computed(() => props.filterType)
 
   const dateRangeLabel = computed(() => {
     if (dateRangeType.value === 'custom' && customStartDate.value && customEndDate.value) {
-      return `${format(new Date(customStartDate.value), 'MMM d')} - ${format(new Date(customEndDate.value), 'MMM d')}`
+      return `${format(new Date(customStartDate.value), 'MMM d')} - ${format(
+        new Date(customEndDate.value),
+        'MMM d',
+      )}`
     }
-    const option = DATE_RANGE_OPTIONS.find(o => o.value === dateRangeType.value)
+    const option = DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeType.value)
     return option?.label || 'Select Date Range'
   })
 
-  const currentFilterConfig = computed(() => {
-    return filtersStore.createFilterConfig({
-      client_id: selectedClientId.value,
-      date_range: getDateRangeConfig(),
-      shift_ids: selectedShifts.value,
-      product_ids: [],
-      work_order_status: [],
-      kpi_thresholds: {}
-    })
-  })
-
-  // ---------- Internal helpers ----------
-  const getDateRangeConfig = () => {
+  const getDateRangeConfig = (): DateRange => {
     if (dateRangeType.value === 'custom' && customStartDate.value && customEndDate.value) {
       return {
         type: 'absolute',
         start_date: customStartDate.value,
-        end_date: customEndDate.value
+        end_date: customEndDate.value,
       }
     }
 
-    const option = DATE_RANGE_OPTIONS.find(o => o.value === dateRangeType.value)
+    const option = DATE_RANGE_OPTIONS.find((o) => o.value === dateRangeType.value)
     if (option?.days !== null && option?.days !== undefined) {
       return {
         type: 'relative',
-        relative_days: option.days || 1
+        relative_days: option.days || 1,
       }
     }
 
@@ -112,50 +137,65 @@ export default function useFilterBarData(props, emit) {
       return {
         type: 'absolute',
         start_date: `${now.getFullYear()}-01-01`,
-        end_date: format(now, 'yyyy-MM-dd')
+        end_date: format(now, 'yyyy-MM-dd'),
       }
     }
 
     return {
       type: 'relative',
-      relative_days: 30
+      relative_days: 30,
     }
   }
 
-  const applyFilterConfigToLocal = (config) => {
+  const currentFilterConfig = computed<FilterConfig>(() =>
+    filtersStore.createFilterConfig({
+      client_id: selectedClientId.value,
+      date_range: getDateRangeConfig(),
+      shift_ids: selectedShifts.value,
+      product_ids: [],
+      work_order_status: [],
+      kpi_thresholds: {},
+    }),
+  )
+
+  const applyFilterConfigToLocal = (config: FilterConfig): void => {
     if (config.client_id) {
-      selectedClientId.value = config.client_id
+      selectedClientId.value = config.client_id as string | number
     }
     if (config.shift_ids?.length) {
       selectedShifts.value = config.shift_ids
     }
     if (config.date_range) {
-      if (config.date_range.type === 'absolute') {
+      if (
+        config.date_range.type === 'absolute' &&
+        config.date_range.start_date &&
+        config.date_range.end_date
+      ) {
         dateRangeType.value = 'custom'
         customStartDate.value = config.date_range.start_date
         customEndDate.value = config.date_range.end_date
       } else if (config.date_range.relative_days) {
-        const match = DATE_RANGE_OPTIONS.find(o => o.days === config.date_range.relative_days)
+        const match = DATE_RANGE_OPTIONS.find(
+          (o) => o.days === config.date_range?.relative_days,
+        )
         dateRangeType.value = match?.value || '30d'
       }
     }
   }
 
-  // ---------- Debounced emission ----------
   const debouncedEmitFilterChange = debounce(() => {
     const filterParams = {
       ...currentFilterConfig.value,
-      ...filtersStore.getFilterParams
+      ...filtersStore.getFilterParams,
     }
     emit('filter-change', filterParams)
-  }, 300)
+  }, 300) as DebouncedFn
 
-  const emitFilterChange = () => {
+  const emitFilterChange = (): void => {
     debouncedEmitFilterChange()
   }
 
-  // ---------- Public actions ----------
-  const applyDateRange = (value) => {
+  const applyDateRange = (value: string): void => {
     dateRangeType.value = value
     if (value !== 'custom') {
       customStartDate.value = ''
@@ -164,40 +204,40 @@ export default function useFilterBarData(props, emit) {
     }
   }
 
-  const applyCustomDateRange = () => {
+  const applyCustomDateRange = (): void => {
     if (customStartDate.value && customEndDate.value) {
       dateRangeType.value = 'custom'
       emitFilterChange()
     }
   }
 
-  const onClientChange = () => {
+  const onClientChange = (): void => {
     emitFilterChange()
   }
 
-  const clearClientFilter = () => {
+  const clearClientFilter = (): void => {
     selectedClientId.value = null
     emitFilterChange()
   }
 
-  const clearDateFilter = () => {
+  const clearDateFilter = (): void => {
     dateRangeType.value = '30d'
     customStartDate.value = ''
     customEndDate.value = ''
     emitFilterChange()
   }
 
-  const clearShiftFilter = () => {
+  const clearShiftFilter = (): void => {
     selectedShifts.value = []
     emitFilterChange()
   }
 
-  const clearFilter = () => {
+  const clearFilter = (): void => {
     filtersStore.clearActiveFilter()
     emitFilterChange()
   }
 
-  const clearAllFilters = () => {
+  const clearAllFilters = (): void => {
     filtersStore.clearActiveFilter()
     selectedClientId.value = null
     selectedShifts.value = []
@@ -207,39 +247,38 @@ export default function useFilterBarData(props, emit) {
     emitFilterChange()
   }
 
-  const applySavedFilter = async (filter) => {
+  const applySavedFilter = async (filter: SavedFilter): Promise<void> => {
     await filtersStore.applyFilter(filter)
     applyFilterConfigToLocal(filter.filter_config)
     emitFilterChange()
   }
 
-  const applyRecentFilter = (historyItem) => {
+  const applyRecentFilter = (historyItem: FilterHistoryEntry): void => {
     filtersStore.applyQuickFilter(historyItem.filter_config)
     applyFilterConfigToLocal(historyItem.filter_config)
     emitFilterChange()
   }
 
-  const openSaveDialog = () => {
+  const openSaveDialog = (): void => {
     showSaveDialog.value = true
   }
 
-  const openFilterManager = () => {
+  const openFilterManager = (): void => {
     showFilterManager.value = true
   }
 
-  const onFilterSaved = (savedFilter) => {
+  const onFilterSaved = (savedFilter: SavedFilter): void => {
     applySavedFilter(savedFilter)
   }
 
-  const onFilterAppliedFromManager = (filter) => {
+  const onFilterAppliedFromManager = (filter: SavedFilter): void => {
     applySavedFilter(filter)
   }
 
-  // ---------- Formatting ----------
-  const formatFilterPreview = (config) => {
-    const parts = []
+  const formatFilterPreview = (config: FilterConfig): string => {
+    const parts: string[] = []
     if (config.client_id) {
-      const client = clients.value.find(c => c.client_id === config.client_id)
+      const client = clients.value.find((c) => c.client_id === config.client_id)
       parts.push(client?.client_name || 'Client')
     }
     if (config.date_range?.relative_days) {
@@ -253,7 +292,8 @@ export default function useFilterBarData(props, emit) {
     return parts.length > 0 ? parts.join(' + ') : 'All data'
   }
 
-  const formatTimeAgo = (dateString) => {
+  const formatTimeAgo = (dateString: string | null | undefined): string => {
+    if (!dateString) return ''
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true })
     } catch {
@@ -261,34 +301,29 @@ export default function useFilterBarData(props, emit) {
     }
   }
 
-  // ---------- Data loading ----------
-  const loadClients = async () => {
+  const loadClients = async (): Promise<void> => {
     try {
       const response = await api.getClients()
       clients.value = response.data || []
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load clients:', e)
     }
   }
 
-  // ---------- Lifecycle ----------
   onMounted(async () => {
-    await Promise.all([
-      filtersStore.initializeFilters(),
-      loadClients()
-    ])
+    await Promise.all([filtersStore.initializeFilters(), loadClients()])
 
-    const defaultFilter = filtersStore.getDefaultForType(props.filterType)
+    const defaultFilter = filtersStore.getDefaultForType(props.filterType as FilterType)
     if (defaultFilter) {
       await applySavedFilter(defaultFilter)
     }
   })
 
   onUnmounted(() => {
-    debouncedEmitFilterChange.cancel()
+    debouncedEmitFilterChange.cancel?.()
   })
 
-  // Watch for active filter changes from store
   watch(activeFilter, (newFilter) => {
     if (newFilter?.filter_config) {
       applyFilterConfigToLocal(newFilter.filter_config)
@@ -296,9 +331,7 @@ export default function useFilterBarData(props, emit) {
   })
 
   return {
-    // Static
     dateRangeOptions: DATE_RANGE_OPTIONS,
-    // State
     clients,
     selectedClientId,
     selectedShifts,
@@ -307,7 +340,6 @@ export default function useFilterBarData(props, emit) {
     customEndDate,
     showSaveDialog,
     showFilterManager,
-    // Computed
     activeFilter,
     hasActiveFilter,
     recentFilters,
@@ -320,7 +352,6 @@ export default function useFilterBarData(props, emit) {
     suggestedFilterType,
     dateRangeLabel,
     currentFilterConfig,
-    // Actions
     applyDateRange,
     applyCustomDateRange,
     onClientChange,
@@ -335,8 +366,7 @@ export default function useFilterBarData(props, emit) {
     openFilterManager,
     onFilterSaved,
     onFilterAppliedFromManager,
-    // Formatters
     formatFilterPreview,
-    formatTimeAgo
+    formatTimeAgo,
   }
 }
