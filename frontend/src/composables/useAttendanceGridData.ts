@@ -1,47 +1,106 @@
 /**
- * Composable for AttendanceEntryGrid script logic.
- *
- * Encapsulates reactive state, column definitions, CRUD operations,
- * paste handling, employee loading, bulk status, status counts,
- * and read-back confirmation for the attendance entry grid.
- *
- * API dependency: @/services/api (direct, no store)
+ * Composable for AttendanceEntryGrid script logic — reactive
+ * state, column definitions, CRUD, paste handling, employee
+ * loading, bulk status, status counts, read-back confirmation.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
 import { format } from 'date-fns'
 
-export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
+export interface AttendanceRow {
+  attendance_id?: string | number
+  employee_id?: string | number
+  employee_name?: string
+  department?: string
+  date?: string
+  shift_id?: string | number | null
+  status?: string
+  clock_in?: string
+  clock_out?: string
+  late_minutes?: number
+  absence_reason?: string
+  is_excused?: boolean
+  notes?: string
+  _hasChanges?: boolean
+  _isNew?: boolean
+  _isExisting?: boolean
+  [key: string]: unknown
+}
+
+export interface ShiftRef {
+  shift_id: string | number
+  shift_name?: string
+  [key: string]: unknown
+}
+
+interface AGGridApi {
+  sizeColumnsToFit: () => void
+  refreshCells: () => void
+  applyTransaction: (params: { add?: AttendanceRow[]; addIndex?: number }) => void
+  forEachNode: (cb: (node: { data: AttendanceRow }) => void) => void
+}
+
+interface AGGridRef {
+  gridApi?: AGGridApi
+  refreshCells?: () => void
+}
+
+interface SnackbarState {
+  show: boolean
+  message: string
+  color: string
+}
+
+export interface ConfirmationField {
+  key: string
+  label: string
+  type: 'text' | 'date' | 'number' | 'boolean'
+  displayValue?: string | number
+}
+
+interface PasteData {
+  parsedData: unknown
+  convertedRows: AttendanceRow[]
+  validationResult: unknown
+  columnMapping: unknown
+  [key: string]: unknown
+}
+
+interface UseAttendanceGridDataOptions {
+  TimePickerCellEditor?: unknown
+}
+
+export default function useAttendanceGridData(
+  { TimePickerCellEditor }: UseAttendanceGridDataOptions = {},
+) {
   const { t } = useI18n()
 
-  const gridRef = ref(null)
+  const gridRef = ref<AGGridRef | null>(null)
   const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
-  const selectedShift = ref(null)
-  const selectedLine = ref(null)
-  const shifts = ref([])
-  const attendanceData = ref([])
+  const selectedShift = ref<string | number | null>(null)
+  const selectedLine = ref<string | number | null>(null)
+  const shifts = ref<ShiftRef[]>([])
+  const attendanceData = ref<AttendanceRow[]>([])
   const loading = ref(false)
   const saving = ref(false)
-  const snackbar = ref({ show: false, message: '', color: 'success' })
+  const snackbar = ref<SnackbarState>({ show: false, message: '', color: 'success' })
 
-  // Read-back confirmation state
   const showConfirmDialog = ref(false)
-  const pendingData = ref({})
-  const pendingRows = ref([])
+  const pendingData = ref<AttendanceRow>({})
+  const pendingRows = ref<AttendanceRow[]>([])
 
-  // Paste preview state
   const showPasteDialog = ref(false)
-  const parsedPasteData = ref(null)
-  const convertedPasteRows = ref([])
-  const pasteValidationResult = ref(null)
-  const pasteColumnMapping = ref(null)
+  const parsedPasteData = ref<unknown | null>(null)
+  const convertedPasteRows = ref<AttendanceRow[]>([])
+  const pasteValidationResult = ref<unknown | null>(null)
+  const pasteColumnMapping = ref<unknown | null>(null)
 
   const pendingRowsCount = computed(() => pendingRows.value.length)
 
-  // Field configuration for confirmation dialog
-  const confirmationFieldConfig = computed(() => {
-    const shiftName = shifts.value.find(s => s.shift_id === selectedShift.value)?.shift_name || 'N/A'
+  const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
+    const shiftName =
+      shifts.value.find((s) => s.shift_id === selectedShift.value)?.shift_name || 'N/A'
 
     return [
       { key: 'employee_id', label: 'Employee ID', type: 'text' },
@@ -54,24 +113,20 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       { key: 'clock_out', label: 'Clock Out', type: 'text' },
       { key: 'late_minutes', label: 'Late (minutes)', type: 'number' },
       { key: 'absence_reason', label: 'Absence Reason', type: 'text' },
-      { key: 'is_excused', label: 'Excused', type: 'boolean' }
+      { key: 'is_excused', label: 'Excused', type: 'boolean' },
     ]
   })
 
-  // Track changed rows
-  const hasChanges = computed(() => {
-    return attendanceData.value.some(row => row._hasChanges)
-  })
+  const hasChanges = computed(() => attendanceData.value.some((row) => row._hasChanges))
 
-  const changedRowsCount = computed(() => {
-    return attendanceData.value.filter(row => row._hasChanges).length
-  })
+  const changedRowsCount = computed(
+    () => attendanceData.value.filter((row) => row._hasChanges).length,
+  )
 
-  // Status counts for quick stats
   const statusCounts = computed(() => {
     const counts = { present: 0, absent: 0, late: 0, leave: 0, halfDay: 0 }
 
-    attendanceData.value.forEach(row => {
+    attendanceData.value.forEach((row) => {
       const status = row.status?.toLowerCase()
       if (status === 'present') counts.present++
       else if (status === 'absent') counts.absent++
@@ -83,49 +138,46 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     return counts
   })
 
-  // Column definitions
   const columnDefs = computed(() => [
     {
       headerName: t('grids.columns.employeeId'),
       field: 'employee_id',
       editable: false,
-      pinned: 'left',
+      pinned: 'left' as const,
       width: 130,
-      cellClass: 'font-weight-bold'
+      cellClass: 'font-weight-bold',
     },
     {
       headerName: t('grids.columns.employeeName'),
       field: 'employee_name',
       editable: false,
-      pinned: 'left',
+      pinned: 'left' as const,
       width: 200,
-      cellClass: 'font-weight-bold'
+      cellClass: 'font-weight-bold',
     },
     {
       headerName: t('grids.columns.department'),
       field: 'department',
       editable: false,
-      width: 150
+      width: 150,
     },
     {
       headerName: t('grids.columns.status'),
       field: 'status',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['Present', 'Absent', 'Late', 'Half Day', 'Leave']
-      },
-      cellClass: (params) => {
-        const classes = {
-          'Present': 'ag-cell-success ag-cell-bold',
-          'Absent': 'ag-cell-error ag-cell-bold',
-          'Late': 'ag-cell-warning ag-cell-bold',
+      cellEditorParams: { values: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'] },
+      cellClass: (params: { value?: string }) => {
+        const classes: Record<string, string> = {
+          Present: 'ag-cell-success ag-cell-bold',
+          Absent: 'ag-cell-error ag-cell-bold',
+          Late: 'ag-cell-warning ag-cell-bold',
           'Half Day': 'ag-cell-warning-light ag-cell-bold',
-          'Leave': 'ag-cell-purple ag-cell-bold'
+          Leave: 'ag-cell-purple ag-cell-bold',
         }
-        return classes[params.value] || ''
+        return classes[params.value || ''] || ''
       },
-      width: 130
+      width: 130,
     },
     {
       headerName: t('grids.columns.clockIn'),
@@ -134,7 +186,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       cellEditor: TimePickerCellEditor || undefined,
       cellEditorPopup: false,
       width: 120,
-      valueFormatter: (params) => params.value || '--:--'
+      valueFormatter: (params: { value?: string }) => params.value || '--:--',
     },
     {
       headerName: t('grids.columns.clockOut'),
@@ -143,7 +195,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       cellEditor: TimePickerCellEditor || undefined,
       cellEditorPopup: false,
       width: 120,
-      valueFormatter: (params) => params.value || '--:--'
+      valueFormatter: (params: { value?: string }) => params.value || '--:--',
     },
     {
       headerName: t('grids.columns.lateMinutes'),
@@ -152,10 +204,9 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { min: 0, precision: 0 },
-      cellClass: (params) => {
-        return params.value > 0 ? 'ag-cell-warning' : ''
-      },
-      width: 120
+      cellClass: (params: { value?: number }) =>
+        (params.value ?? 0) > 0 ? 'ag-cell-warning' : '',
+      width: 120,
     },
     {
       headerName: t('grids.columns.absenceReason'),
@@ -164,23 +215,26 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: [
-          'Sick Leave', 'Personal Leave', 'Family Emergency',
-          'Medical Appointment', 'No Show', 'Unauthorized',
-          'Vacation', 'Other'
-        ]
+          'Sick Leave',
+          'Personal Leave',
+          'Family Emergency',
+          'Medical Appointment',
+          'No Show',
+          'Unauthorized',
+          'Vacation',
+          'Other',
+        ],
       },
-      width: 180
+      width: 180,
     },
     {
       headerName: t('grids.columns.excused'),
       field: 'is_excused',
       editable: true,
-      cellRenderer: (params) => {
-        return params.value ? '\u2713' : ''
-      },
+      cellRenderer: (params: { value?: boolean }) => (params.value ? '\u2713' : ''),
       cellEditor: 'agCheckboxCellEditor',
       cellStyle: { textAlign: 'center' },
-      width: 100
+      width: 100,
     },
     {
       headerName: t('grids.columns.notes'),
@@ -188,19 +242,19 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       editable: true,
       cellEditor: 'agLargeTextCellEditor',
       cellEditorPopup: true,
-      width: 250
-    }
+      width: 250,
+    },
   ])
 
-  // --- Methods ---
-
-  const onGridReady = (params) => {
-    setTimeout(() => {
-      params.api.sizeColumnsToFit()
-    }, 100)
+  const showSnackbar = (message: string, color: string = 'success'): void => {
+    snackbar.value = { show: true, message, color }
   }
 
-  const loadEmployees = async () => {
+  const onGridReady = (params: { api: AGGridApi }): void => {
+    setTimeout(() => params.api.sizeColumnsToFit(), 100)
+  }
+
+  const loadEmployees = async (): Promise<void> => {
     if (!selectedDate.value || !selectedShift.value) {
       showSnackbar('Please select both date and shift', 'warning')
       return
@@ -209,33 +263,33 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     loading.value = true
     try {
       const response = await api.get('/employees', {
-        params: { shift_id: selectedShift.value, active: true }
+        params: { shift_id: selectedShift.value, active: true },
       })
 
       const existingAttendance = await api.getAttendanceEntries({
         date: selectedDate.value,
-        shift_id: selectedShift.value
+        shift_id: selectedShift.value,
       })
 
       const existingMap = new Map(
-        existingAttendance.data.map(a => [a.employee_id, a])
+        (existingAttendance.data as AttendanceRow[]).map((a) => [a.employee_id, a]),
       )
 
-      attendanceData.value = response.data.map(emp => {
+      attendanceData.value = (response.data as AttendanceRow[]).map((emp) => {
         const existing = existingMap.get(emp.employee_id)
 
         if (existing) {
           return {
             ...existing,
-            employee_name: emp.full_name || emp.name,
+            employee_name: emp.employee_name || (emp as { name?: string }).name,
             department: emp.department,
-            _isExisting: true
+            _isExisting: true,
           }
         }
 
         return {
           employee_id: emp.employee_id,
-          employee_name: emp.full_name || emp.name,
+          employee_name: emp.employee_name || (emp as { name?: string }).name,
           department: emp.department,
           date: selectedDate.value,
           shift_id: selectedShift.value,
@@ -247,34 +301,42 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
           late_minutes: 0,
           notes: '',
           _hasChanges: false,
-          _isNew: true
+          _isNew: true,
         }
       })
 
-      showSnackbar(t('grids.attendance.loadedEmployees', { count: attendanceData.value.length }), 'success')
+      showSnackbar(
+        t('grids.attendance.loadedEmployees', { count: attendanceData.value.length }),
+        'success',
+      )
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error loading employees:', error)
-      showSnackbar('Error loading employees: ' + error.message, 'error')
+      const ax = error as { message?: string }
+      showSnackbar('Error loading employees: ' + (ax?.message || ''), 'error')
     } finally {
       loading.value = false
     }
   }
 
-  const markRowAsChanged = (event) => {
+  const markRowAsChanged = (event: {
+    data: AttendanceRow
+    colDef: { field: string }
+  }): void => {
     event.data._hasChanges = true
 
     if (event.colDef.field === 'clock_in' && event.data.clock_in) {
       event.data.status = 'Late'
     }
 
-    gridRef.value?.refreshCells()
+    gridRef.value?.refreshCells?.()
   }
 
-  const bulkSetStatus = () => {
+  const bulkSetStatus = (): void => {
     const gridApi = gridRef.value?.gridApi
     if (!gridApi) return
 
-    gridApi.forEachNode(node => {
+    gridApi.forEachNode((node) => {
       node.data.status = 'Present'
       node.data._hasChanges = true
     })
@@ -283,15 +345,13 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     showSnackbar(t('grids.attendance.markedPresent'), 'success')
   }
 
-  const saveAttendance = async () => {
+  const saveAttendance = async (): Promise<void> => {
     const gridApi = gridRef.value?.gridApi
     if (!gridApi) return
 
-    const changedRows = []
-    gridApi.forEachNode(node => {
-      if (node.data._hasChanges) {
-        changedRows.push(node.data)
-      }
+    const changedRows: AttendanceRow[] = []
+    gridApi.forEachNode((node) => {
+      if (node.data._hasChanges) changedRows.push(node.data)
     })
 
     if (changedRows.length === 0) {
@@ -304,7 +364,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     showConfirmDialog.value = true
   }
 
-  const onConfirmSave = async () => {
+  const onConfirmSave = async (): Promise<void> => {
     showConfirmDialog.value = false
     saving.value = true
 
@@ -323,7 +383,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
           late_minutes: row.late_minutes || 0,
           absence_reason: row.absence_reason || null,
           is_excused: row.is_excused || false,
-          notes: row.notes || ''
+          notes: row.notes || '',
         }
 
         try {
@@ -342,18 +402,29 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
           row._isNew = false
         } catch (err) {
           errorCount++
+          // eslint-disable-next-line no-console
           console.error('Error saving attendance for employee:', row.employee_id, err)
         }
       }
 
       if (errorCount === 0) {
-        showSnackbar(t('grids.attendance.savedRecords', { success: successCount }), 'success')
+        showSnackbar(
+          t('grids.attendance.savedRecords', { success: successCount }),
+          'success',
+        )
         attendanceData.value = []
       } else {
-        showSnackbar(t('grids.attendance.savedWithErrors', { success: successCount, failed: errorCount }), 'warning')
+        showSnackbar(
+          t('grids.attendance.savedWithErrors', {
+            success: successCount,
+            failed: errorCount,
+          }),
+          'warning',
+        )
       }
     } catch (error) {
-      showSnackbar('Error saving attendance: ' + error.message, 'error')
+      const ax = error as { message?: string }
+      showSnackbar('Error saving attendance: ' + (ax?.message || ''), 'error')
     } finally {
       saving.value = false
       pendingRows.value = []
@@ -361,19 +432,14 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     }
   }
 
-  const onCancelSave = () => {
+  const onCancelSave = (): void => {
     showConfirmDialog.value = false
     pendingRows.value = []
     pendingData.value = {}
     showSnackbar(t('grids.saveCancelled'), 'info')
   }
 
-  const showSnackbar = (message, color = 'success') => {
-    snackbar.value = { show: true, message, color }
-  }
-
-  // Paste handlers
-  const onRowsPasted = (pasteData) => {
+  const onRowsPasted = (pasteData: PasteData): void => {
     parsedPasteData.value = pasteData.parsedData
     convertedPasteRows.value = pasteData.convertedRows
     pasteValidationResult.value = pasteData.validationResult
@@ -381,11 +447,11 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     showPasteDialog.value = true
   }
 
-  const onPasteConfirm = (rowsToAdd) => {
+  const onPasteConfirm = (rowsToAdd: Partial<AttendanceRow>[]): void => {
     const gridApi = gridRef.value?.gridApi
     if (!gridApi) return
 
-    const preparedRows = rowsToAdd.map(row => ({
+    const preparedRows: AttendanceRow[] = rowsToAdd.map((row) => ({
       attendance_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       employee_id: row.employee_id || '',
       employee_name: row.employee_name || '',
@@ -400,7 +466,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
       is_excused: row.is_excused || false,
       notes: row.notes || '',
       _hasChanges: true,
-      _isNew: true
+      _isNew: true,
     }))
 
     gridApi.applyTransaction({ add: preparedRows, addIndex: 0 })
@@ -408,7 +474,7 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     showSnackbar(t('paste.rowsAdded', { count: preparedRows.length }), 'success')
   }
 
-  const onPasteCancel = () => {
+  const onPasteCancel = (): void => {
     showPasteDialog.value = false
     parsedPasteData.value = null
     convertedPasteRows.value = []
@@ -416,7 +482,6 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     pasteColumnMapping.value = null
   }
 
-  // Lifecycle
   onMounted(async () => {
     try {
       const response = await api.getShifts()
@@ -425,13 +490,13 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
         selectedShift.value = shifts.value[0].shift_id
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error loading shifts:', error)
       showSnackbar('Error loading shifts', 'error')
     }
   })
 
   return {
-    // Refs
     gridRef,
     selectedDate,
     selectedShift,
@@ -441,23 +506,19 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     loading,
     saving,
     snackbar,
-    // Confirmation
     showConfirmDialog,
     pendingData,
     pendingRowsCount,
     confirmationFieldConfig,
-    // Paste
     showPasteDialog,
     parsedPasteData,
     convertedPasteRows,
     pasteValidationResult,
     pasteColumnMapping,
-    // Data
     hasChanges,
     changedRowsCount,
     statusCounts,
     columnDefs,
-    // Methods
     onGridReady,
     loadEmployees,
     markRowAsChanged,
@@ -467,6 +528,6 @@ export default function useAttendanceGridData({ TimePickerCellEditor } = {}) {
     onCancelSave,
     onRowsPasted,
     onPasteConfirm,
-    onPasteCancel
+    onPasteCancel,
   }
 }
