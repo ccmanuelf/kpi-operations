@@ -51,6 +51,15 @@ declare module '@/composables/useDashboardOverviewData' {
   export default value
 }
 
+declare module '@/utils/performance' {
+  export const referenceDataCache: any
+  export const performanceMonitor: any
+  export const debounce: any
+  export const throttle: any
+  const value: any
+  export default value
+}
+
 // `simulationV2Store` is covered by the colocated
 // src/stores/simulationV2Store.d.ts declaration file (resolves both
 // `@/stores/simulationV2Store` and relative `../simulationV2Store`
