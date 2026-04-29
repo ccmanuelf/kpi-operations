@@ -21,7 +21,7 @@ export default defineConfig({
       '**/*.e2e.*',
       '**/playwright/**'
     ],
-    setupFiles: ['./src/test/setup.js'],
+    setupFiles: ['./src/test/setup.ts'],
     deps: {
       optimizer: {
         web: {

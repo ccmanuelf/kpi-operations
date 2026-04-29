@@ -1,87 +1,130 @@
 /**
- * Integration Tests for KPI Platform Workflows
- * Phase 8.2: End-to-end workflow testing
+ * Integration tests for KPI platform workflows.
+ * Phase 8.2: end-to-end coverage of paste, hold/resume, KPI, and
+ * multi-tenant flows.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 
-/**
- * Integration test suite covering complete workflows:
- * - 8.2.1: Excel paste workflow (clipboard → validation → grid)
- * - 8.2.2: Hold/resume/approve cycle (full state machine)
- * - 8.2.3: Client-specific KPI calculations
- * - 8.2.4: Multi-tenant data isolation
- */
+interface ProductionRecord {
+  id: number
+  client_id: string
+  production_date: string
+  units_produced: number
+  run_time_hours: number
+}
 
-// Mock API responses
-const mockApiResponses = {
+interface HoldRecord {
+  id: number
+  client_id: string
+  work_order_id: string
+  status: string
+}
+
+interface ClientRecord {
+  client_id: string
+  name: string
+  otd_mode: string
+}
+
+interface MockApiResponses {
+  production: ProductionRecord[]
+  holds: HoldRecord[]
+  clients: ClientRecord[]
+}
+
+const mockApiResponses: MockApiResponses = {
   production: [
-    { id: 1, client_id: 'client_1', production_date: '2024-01-15', units_produced: 500, run_time_hours: 8 },
-    { id: 2, client_id: 'client_1', production_date: '2024-01-16', units_produced: 450, run_time_hours: 8 }
+    {
+      id: 1,
+      client_id: 'client_1',
+      production_date: '2024-01-15',
+      units_produced: 500,
+      run_time_hours: 8,
+    },
+    {
+      id: 2,
+      client_id: 'client_1',
+      production_date: '2024-01-16',
+      units_produced: 450,
+      run_time_hours: 8,
+    },
   ],
   holds: [
-    { id: 1, client_id: 'client_1', work_order_id: 'WO-001', status: 'PENDING_HOLD_APPROVAL' },
-    { id: 2, client_id: 'client_2', work_order_id: 'WO-002', status: 'ON_HOLD' }
+    {
+      id: 1,
+      client_id: 'client_1',
+      work_order_id: 'WO-001',
+      status: 'PENDING_HOLD_APPROVAL',
+    },
+    { id: 2, client_id: 'client_2', work_order_id: 'WO-002', status: 'ON_HOLD' },
   ],
   clients: [
     { client_id: 'client_1', name: 'Client One', otd_mode: 'TRUE' },
-    { client_id: 'client_2', name: 'Client Two', otd_mode: 'STANDARD' }
-  ]
+    { client_id: 'client_2', name: 'Client Two', otd_mode: 'STANDARD' },
+  ],
 }
 
-// Simulate fetch API
+interface FetchOptions {
+  method?: string
+  body?: string
+  headers?: Record<string, string>
+}
+
 function createMockFetch() {
-  return vi.fn((url, options = {}) => {
-    const method = options.method || 'GET'
+  return vi.fn(
+    (url: string, options: FetchOptions = {}): Promise<Response> => {
+      const method = options.method || 'GET'
 
-    // Route-based responses
-    if (url.includes('/production') && method === 'GET') {
+      if (url.includes('/production') && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockApiResponses.production),
+        } as unknown as Response)
+      }
+
+      if (url.includes('/holds') && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockApiResponses.holds),
+        } as unknown as Response)
+      }
+
+      if (url.includes('/holds') && method === 'POST') {
+        const body = JSON.parse(options.body || '{}') as Record<string, unknown>
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ id: 3, ...body, status: 'PENDING_HOLD_APPROVAL' }),
+        } as unknown as Response)
+      }
+
+      if (url.includes('/holds') && method === 'PATCH') {
+        const body = JSON.parse(options.body || '{}') as Record<string, unknown>
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ...body }),
+        } as unknown as Response)
+      }
+
+      if (url.includes('/clients') && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(mockApiResponses.clients),
+        } as unknown as Response)
+      }
+
       return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponses.production)
-      })
-    }
-
-    if (url.includes('/holds') && method === 'GET') {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponses.holds)
-      })
-    }
-
-    if (url.includes('/holds') && method === 'POST') {
-      const body = JSON.parse(options.body)
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ id: 3, ...body, status: 'PENDING_HOLD_APPROVAL' })
-      })
-    }
-
-    if (url.includes('/holds') && method === 'PATCH') {
-      const body = JSON.parse(options.body)
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ ...body })
-      })
-    }
-
-    if (url.includes('/clients') && method === 'GET') {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockApiResponses.clients)
-      })
-    }
-
-    return Promise.resolve({
-      ok: false,
-      status: 404,
-      json: () => Promise.resolve({ error: 'Not found' })
-    })
-  })
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: 'Not found' }),
+      } as unknown as Response)
+    },
+  )
 }
 
 describe('Integration Workflows', () => {
-  let mockFetch
+  let mockFetch: ReturnType<typeof createMockFetch>
 
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -90,60 +133,82 @@ describe('Integration Workflows', () => {
   })
 
   describe('8.2.1: Excel Paste Workflow', () => {
-    /**
-     * Complete workflow: Excel clipboard → Parse → Validate → Transform → Submit
-     */
-
     const excelClipboard = `Date\tProduct\tUnits Produced\tRuntime Hours\tEmployees
 2024-01-15\tPROD-001\t500\t8.0\t5
 2024-01-16\tPROD-002\t450\t7.5\t4
 2024-01-17\tPROD-001\t600\t8.0\t6`
 
-    function parseClipboardData(text) {
+    interface ParsedClipboard {
+      hasHeaders?: boolean
+      headers?: string[] | null
+      rows: string[][]
+      totalColumns?: number
+      error?: string
+    }
+
+    function parseClipboardData(text: string): ParsedClipboard {
       if (!text || typeof text !== 'string') {
         return { error: 'No data in clipboard', rows: [] }
       }
 
       const lines = text.trim().split(/\r?\n/)
-      const rows = lines.map(line => line.split('\t').map(cell => cell.trim()))
+      const rows = lines.map((line) => line.split('\t').map((cell) => cell.trim()))
 
-      // Detect headers
-      const headerKeywords = ['date', 'product', 'units', 'hours', 'employee', 'id', 'name', 'shift']
-      const firstRow = rows[0].map(cell => cell.toLowerCase())
-      const hasHeaders = firstRow.some(cell =>
-        headerKeywords.some(keyword => cell.includes(keyword))
+      const headerKeywords = [
+        'date',
+        'product',
+        'units',
+        'hours',
+        'employee',
+        'id',
+        'name',
+        'shift',
+      ]
+      const firstRow = rows[0].map((cell) => cell.toLowerCase())
+      const hasHeaders = firstRow.some((cell) =>
+        headerKeywords.some((keyword) => cell.includes(keyword)),
       )
 
       return {
         hasHeaders,
         headers: hasHeaders ? rows[0] : null,
         rows: hasHeaders ? rows.slice(1) : rows,
-        totalColumns: rows[0]?.length || 0
+        totalColumns: rows[0]?.length || 0,
       }
     }
 
-    function validateProductionRow(row, index) {
-      const errors = []
+    interface ProductionData {
+      production_date: string
+      product_id: string
+      units_produced: number
+      run_time_hours: number
+      employees_assigned: number
+    }
+
+    interface ValidationResult {
+      valid: boolean
+      errors: string[]
+      data: ProductionData | null
+    }
+
+    function validateProductionRow(row: string[], index: number): ValidationResult {
+      const errors: string[] = []
       const [date, product, units, hours, employees] = row
 
-      // Date validation
       if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         errors.push(`Row ${index + 1}: Invalid date format`)
       }
 
-      // Units validation
       const unitsNum = parseInt(units, 10)
       if (isNaN(unitsNum) || unitsNum < 0) {
         errors.push(`Row ${index + 1}: Units must be a positive number`)
       }
 
-      // Hours validation
       const hoursNum = parseFloat(hours)
       if (isNaN(hoursNum) || hoursNum <= 0 || hoursNum > 24) {
         errors.push(`Row ${index + 1}: Hours must be between 0 and 24`)
       }
 
-      // Employees validation
       const empNum = parseInt(employees, 10)
       if (isNaN(empNum) || empNum < 1) {
         errors.push(`Row ${index + 1}: Employees must be at least 1`)
@@ -152,22 +217,28 @@ describe('Integration Workflows', () => {
       return {
         valid: errors.length === 0,
         errors,
-        data: errors.length === 0 ? {
-          production_date: date,
-          product_id: product,
-          units_produced: unitsNum,
-          run_time_hours: hoursNum,
-          employees_assigned: empNum
-        } : null
+        data:
+          errors.length === 0
+            ? {
+                production_date: date,
+                product_id: product,
+                units_produced: unitsNum,
+                run_time_hours: hoursNum,
+                employees_assigned: empNum,
+              }
+            : null,
       }
     }
 
-    function transformToApiPayload(validatedRows, clientId) {
+    function transformToApiPayload(
+      validatedRows: ValidationResult[],
+      clientId: string,
+    ): (ProductionData & { client_id: string })[] {
       return validatedRows
-        .filter(row => row.valid)
-        .map(row => ({
+        .filter((row): row is ValidationResult & { data: ProductionData } => row.valid && row.data !== null)
+        .map((row) => ({
           client_id: clientId,
-          ...row.data
+          ...row.data,
         }))
     }
 
@@ -175,7 +246,13 @@ describe('Integration Workflows', () => {
       const parsed = parseClipboardData(excelClipboard)
 
       expect(parsed.hasHeaders).toBe(true)
-      expect(parsed.headers).toEqual(['Date', 'Product', 'Units Produced', 'Runtime Hours', 'Employees'])
+      expect(parsed.headers).toEqual([
+        'Date',
+        'Product',
+        'Units Produced',
+        'Runtime Hours',
+        'Employees',
+      ])
       expect(parsed.rows).toHaveLength(3)
       expect(parsed.rows[0]).toEqual(['2024-01-15', 'PROD-001', '500', '8.0', '5'])
     })
@@ -184,8 +261,8 @@ describe('Integration Workflows', () => {
       const parsed = parseClipboardData(excelClipboard)
       const validationResults = parsed.rows.map((row, i) => validateProductionRow(row, i))
 
-      expect(validationResults.every(r => r.valid)).toBe(true)
-      expect(validationResults.every(r => r.data !== null)).toBe(true)
+      expect(validationResults.every((r) => r.valid)).toBe(true)
+      expect(validationResults.every((r) => r.data !== null)).toBe(true)
     })
 
     it('catches invalid rows in validation', () => {
@@ -204,7 +281,7 @@ invalid-date\tPROD-001\t500\t8\t5
       expect(validationResults[1].errors[0]).toContain('positive number')
 
       expect(validationResults[2].valid).toBe(false)
-      expect(validationResults[2].errors.length).toBeGreaterThanOrEqual(2) // Hours and employees
+      expect(validationResults[2].errors.length).toBeGreaterThanOrEqual(2)
     })
 
     it('transforms validated data to API payload', () => {
@@ -219,68 +296,78 @@ invalid-date\tPROD-001\t500\t8\t5
         product_id: 'PROD-001',
         units_produced: 500,
         run_time_hours: 8.0,
-        employees_assigned: 5
+        employees_assigned: 5,
       })
     })
 
     it('completes full paste-to-submit workflow', async () => {
-      // Step 1: Parse clipboard
       const parsed = parseClipboardData(excelClipboard)
       expect(parsed.rows).toHaveLength(3)
 
-      // Step 2: Validate all rows
       const validationResults = parsed.rows.map((row, i) => validateProductionRow(row, i))
-      const allValid = validationResults.every(r => r.valid)
+      const allValid = validationResults.every((r) => r.valid)
       expect(allValid).toBe(true)
 
-      // Step 3: Transform to API payload
       const payload = transformToApiPayload(validationResults, 'client_1')
       expect(payload).toHaveLength(3)
 
-      // Step 4: Submit to API (mocked)
-      const response = await fetch('/api/production/batch', {
+      await fetch('/api/production/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: payload })
+        body: JSON.stringify({ entries: payload }),
       })
 
-      // Verify API was called with correct data
       expect(mockFetch).toHaveBeenCalled()
     })
   })
 
   describe('8.2.2: Hold/Resume/Approve Cycle', () => {
-    /**
-     * Complete workflow: Request Hold → Approve → On Hold → Request Resume → Approve → Resumed
-     */
+    type HoldState =
+      | 'PENDING_HOLD_APPROVAL'
+      | 'ON_HOLD'
+      | 'PENDING_RESUME_APPROVAL'
+      | 'RESUMED'
+      | 'CANCELLED'
 
-    const HoldStateMachine = {
+    const HoldStateMachine: Record<HoldState, HoldState[]> = {
       PENDING_HOLD_APPROVAL: ['ON_HOLD', 'CANCELLED'],
       ON_HOLD: ['PENDING_RESUME_APPROVAL', 'CANCELLED'],
       PENDING_RESUME_APPROVAL: ['RESUMED', 'CANCELLED'],
       RESUMED: [],
-      CANCELLED: []
+      CANCELLED: [],
     }
 
-    function canTransition(currentState, targetState) {
+    function canTransition(currentState: HoldState, targetState: HoldState): boolean {
       const validTransitions = HoldStateMachine[currentState] || []
       return validTransitions.includes(targetState)
     }
 
-    async function requestHold(workOrderId, reason, requestedBy) {
+    interface HoldResponse {
+      id: number
+      status: HoldState | string
+      hold_approved_by?: string
+      hold_approved_at?: string
+      [key: string]: unknown
+    }
+
+    async function requestHold(
+      workOrderId: string,
+      reason: string,
+      requestedBy: string,
+    ): Promise<HoldResponse> {
       const response = await fetch('/api/holds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           work_order_id: workOrderId,
           hold_reason: reason,
-          requested_by: requestedBy
-        })
+          requested_by: requestedBy,
+        }),
       })
       return response.json()
     }
 
-    async function approveHold(holdId, approvedBy) {
+    async function approveHold(holdId: number, approvedBy: string): Promise<HoldResponse> {
       if (!canTransition('PENDING_HOLD_APPROVAL', 'ON_HOLD')) {
         throw new Error('Invalid state transition')
       }
@@ -291,13 +378,17 @@ invalid-date\tPROD-001\t500\t8\t5
         body: JSON.stringify({
           status: 'ON_HOLD',
           hold_approved_by: approvedBy,
-          hold_approved_at: new Date().toISOString()
-        })
+          hold_approved_at: new Date().toISOString(),
+        }),
       })
       return response.json()
     }
 
-    async function requestResume(holdId, resumeReason, requestedBy) {
+    async function requestResume(
+      holdId: number,
+      resumeReason: string,
+      requestedBy: string,
+    ): Promise<HoldResponse> {
       if (!canTransition('ON_HOLD', 'PENDING_RESUME_APPROVAL')) {
         throw new Error('Invalid state transition')
       }
@@ -308,13 +399,16 @@ invalid-date\tPROD-001\t500\t8\t5
         body: JSON.stringify({
           status: 'PENDING_RESUME_APPROVAL',
           resume_reason: resumeReason,
-          resume_requested_by: requestedBy
-        })
+          resume_requested_by: requestedBy,
+        }),
       })
       return response.json()
     }
 
-    async function approveResume(holdId, approvedBy) {
+    async function approveResume(
+      holdId: number,
+      approvedBy: string,
+    ): Promise<HoldResponse> {
       if (!canTransition('PENDING_RESUME_APPROVAL', 'RESUMED')) {
         throw new Error('Invalid state transition')
       }
@@ -325,8 +419,8 @@ invalid-date\tPROD-001\t500\t8\t5
         body: JSON.stringify({
           status: 'RESUMED',
           resumed_by: approvedBy,
-          resumed_at: new Date().toISOString()
-        })
+          resumed_at: new Date().toISOString(),
+        }),
       })
       return response.json()
     }
@@ -339,19 +433,19 @@ invalid-date\tPROD-001\t500\t8\t5
     })
 
     it('completes full hold-approve-resume-approve cycle', async () => {
-      // Step 1: Operator requests hold
       const holdRequest = await requestHold('WO-001', 'Material shortage', 'operator_1')
       expect(holdRequest.status).toBe('PENDING_HOLD_APPROVAL')
 
-      // Step 2: Leader approves hold
       const approvedHold = await approveHold(holdRequest.id, 'leader_1')
       expect(approvedHold.status).toBe('ON_HOLD')
 
-      // Step 3: Operator requests resume
-      const resumeRequest = await requestResume(holdRequest.id, 'Material received', 'operator_1')
+      const resumeRequest = await requestResume(
+        holdRequest.id,
+        'Material received',
+        'operator_1',
+      )
       expect(resumeRequest.status).toBe('PENDING_RESUME_APPROVAL')
 
-      // Step 4: Leader approves resume
       const resumed = await approveResume(holdRequest.id, 'leader_1')
       expect(resumed.status).toBe('RESUMED')
     })
@@ -360,7 +454,6 @@ invalid-date\tPROD-001\t500\t8\t5
       const holdRequest = await requestHold('WO-001', 'Quality issue', 'operator_1')
       const approvedHold = await approveHold(holdRequest.id, 'leader_1')
 
-      // Verify audit fields
       expect(approvedHold.hold_approved_by).toBe('leader_1')
       expect(approvedHold.hold_approved_at).toBeDefined()
     })
@@ -375,59 +468,57 @@ invalid-date\tPROD-001\t500\t8\t5
   })
 
   describe('8.2.3: Client-Specific KPI Calculations', () => {
-    /**
-     * Verify KPI calculations use client-specific parameters
-     */
+    interface ClientConfig {
+      cycle_time_hours: number
+      efficiency_target?: number
+      otd_mode?: string
+    }
 
-    const clientConfigs = {
+    const clientConfigs: Record<string, ClientConfig> = {
       client_1: {
         cycle_time_hours: 0.08,
         efficiency_target: 90,
-        otd_mode: 'TRUE'
+        otd_mode: 'TRUE',
       },
       client_2: {
         cycle_time_hours: 0.05,
         efficiency_target: 85,
-        otd_mode: 'STANDARD'
-      }
+        otd_mode: 'STANDARD',
+      },
     }
 
-    function calculateEfficiency(unitsProduced, runTimeHours, clientId) {
+    function calculateEfficiency(
+      unitsProduced: number,
+      runTimeHours: number,
+      clientId: string,
+    ): number {
       const config = clientConfigs[clientId] || { cycle_time_hours: 0.05 }
       const standardHours = unitsProduced * config.cycle_time_hours
       const efficiency = (standardHours / runTimeHours) * 100
       return Math.min(efficiency, 100)
     }
 
-    function meetsTarget(efficiency, clientId) {
+    function meetsTarget(efficiency: number, clientId: string): boolean {
       const config = clientConfigs[clientId] || { efficiency_target: 85 }
-      return efficiency >= config.efficiency_target
+      return efficiency >= (config.efficiency_target ?? 85)
     }
 
-    function getOtdMode(clientId) {
+    function getOtdMode(clientId: string): string {
       return clientConfigs[clientId]?.otd_mode || 'STANDARD'
     }
 
     it('calculates efficiency with client-specific cycle time', () => {
-      // Same production data, different clients
-      const effClient1 = calculateEfficiency(100, 8, 'client_1') // 0.08 cycle time
-      const effClient2 = calculateEfficiency(100, 8, 'client_2') // 0.05 cycle time
+      const effClient1 = calculateEfficiency(100, 8, 'client_1')
+      const effClient2 = calculateEfficiency(100, 8, 'client_2')
 
-      // Client 1: 100 * 0.08 = 8 std hours / 8 actual = 100%
       expect(effClient1).toBe(100)
-
-      // Client 2: 100 * 0.05 = 5 std hours / 8 actual = 62.5%
       expect(effClient2).toBe(62.5)
     })
 
     it('uses client-specific targets for evaluation', () => {
-      // 88% efficiency
       const efficiency = 88
 
-      // Client 1 has 90% target - should fail
       expect(meetsTarget(efficiency, 'client_1')).toBe(false)
-
-      // Client 2 has 85% target - should pass
       expect(meetsTarget(efficiency, 'client_2')).toBe(true)
     })
 
@@ -439,26 +530,29 @@ invalid-date\tPROD-001\t500\t8\t5
 
     it('integrates with API to get client config', async () => {
       const response = await fetch('/api/clients')
-      const clients = await response.json()
+      const clients = (await response.json()) as ClientRecord[]
 
-      const client1 = clients.find(c => c.client_id === 'client_1')
-      expect(client1.otd_mode).toBe('TRUE')
+      const client1 = clients.find((c) => c.client_id === 'client_1')
+      expect(client1?.otd_mode).toBe('TRUE')
 
-      const client2 = clients.find(c => c.client_id === 'client_2')
-      expect(client2.otd_mode).toBe('STANDARD')
+      const client2 = clients.find((c) => c.client_id === 'client_2')
+      expect(client2?.otd_mode).toBe('STANDARD')
     })
   })
 
   describe('8.2.4: Multi-Tenant Data Isolation', () => {
-    /**
-     * Verify data is properly isolated between clients/tenants
-     */
-
-    function filterByClient(data, clientId) {
-      return data.filter(item => item.client_id === clientId)
+    function filterByClient<T extends { client_id: string }>(
+      data: T[],
+      clientId: string,
+    ): T[] {
+      return data.filter((item) => item.client_id === clientId)
     }
 
-    function validateClientAccess(userId, clientId, userClients) {
+    function validateClientAccess(
+      _userId: string,
+      clientId: string,
+      userClients: string[],
+    ): boolean {
       return userClients.includes(clientId)
     }
 
@@ -466,7 +560,7 @@ invalid-date\tPROD-001\t500\t8\t5
       const allData = [
         { id: 1, client_id: 'client_1', units: 100 },
         { id: 2, client_id: 'client_2', units: 200 },
-        { id: 3, client_id: 'client_1', units: 150 }
+        { id: 3, client_id: 'client_1', units: 150 },
       ]
 
       const client1Data = filterByClient(allData, 'client_1')
@@ -474,7 +568,7 @@ invalid-date\tPROD-001\t500\t8\t5
 
       expect(client1Data).toHaveLength(2)
       expect(client2Data).toHaveLength(1)
-      expect(client1Data.every(d => d.client_id === 'client_1')).toBe(true)
+      expect(client1Data.every((d) => d.client_id === 'client_1')).toBe(true)
     })
 
     it('filters hold records by client', () => {
@@ -501,7 +595,6 @@ invalid-date\tPROD-001\t500\t8\t5
       const hasAccess = validateClientAccess('user_1', requestedClientId, userClients)
       expect(hasAccess).toBe(false)
 
-      // Simulation of what API would do
       if (!hasAccess) {
         const error = { status: 403, message: 'Access denied to client data' }
         expect(error.status).toBe(403)
@@ -512,15 +605,15 @@ invalid-date\tPROD-001\t500\t8\t5
       const allProduction = [
         { client_id: 'client_1', units_produced: 100 },
         { client_id: 'client_1', units_produced: 150 },
-        { client_id: 'client_2', units_produced: 200 }
+        { client_id: 'client_2', units_produced: 200 },
       ]
 
       const client1Total = allProduction
-        .filter(p => p.client_id === 'client_1')
+        .filter((p) => p.client_id === 'client_1')
         .reduce((sum, p) => sum + p.units_produced, 0)
 
       const client2Total = allProduction
-        .filter(p => p.client_id === 'client_2')
+        .filter((p) => p.client_id === 'client_2')
         .reduce((sum, p) => sum + p.units_produced, 0)
 
       expect(client1Total).toBe(250)
@@ -528,8 +621,8 @@ invalid-date\tPROD-001\t500\t8\t5
     })
 
     it('isolates KPI calculations by client', () => {
-      const calculateClientKpi = (data, clientId) => {
-        const clientData = data.filter(d => d.client_id === clientId)
+      const calculateClientKpi = (data: ProductionRecord[], clientId: string) => {
+        const clientData = data.filter((d) => d.client_id === clientId)
         const totalUnits = clientData.reduce((sum, d) => sum + d.units_produced, 0)
         const avgUnits = clientData.length > 0 ? totalUnits / clientData.length : 0
         return { clientId, totalUnits, avgUnits, recordCount: clientData.length }

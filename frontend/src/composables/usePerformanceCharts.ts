@@ -2,7 +2,8 @@
  * Composable for the Performance KPI chart with optional forecast
  * overlay. Mirrors the shape of useEfficiencyCharts but pulls
  * `kpi.trends.performance` and uses the dark-blue palette + 95
- * target.
+ * target. Series + forecast padding is built by the shared
+ * `buildForecastChartData` helper.
  */
 import { computed, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -17,9 +18,13 @@ import {
   Legend,
   Filler,
 } from 'chart.js'
-import { format } from 'date-fns'
 import { useKPIStore } from '@/stores/kpi'
 import { useChartTheme } from '@/composables/useChartTheme'
+import {
+  buildForecastChartData,
+  type PredictionData,
+  type TrendPoint,
+} from '@/composables/useChartForecastDataset'
 
 ChartJS.register(
   CategoryScale,
@@ -31,25 +36,6 @@ ChartJS.register(
   Legend,
   Filler,
 )
-
-interface PredictionPoint {
-  date: string
-  predicted_value: number
-  upper_bound: number
-  lower_bound: number
-  [key: string]: unknown
-}
-
-interface PredictionData {
-  predictions?: PredictionPoint[]
-  [key: string]: unknown
-}
-
-interface TrendPoint {
-  date: string
-  value: number
-  [key: string]: unknown
-}
 
 export interface ForecastChartOptions {
   showForecast: Ref<boolean>
@@ -64,107 +50,32 @@ export default function usePerformanceCharts({
   const kpiStore = useKPIStore()
   const { scaleDefaults, legendDefaults, chartColors } = useChartTheme()
 
-  const chartData = computed(() => {
-    const trend = kpiStore.trends.performance as TrendPoint[]
-    const trendLabels = trend.map((d) => format(new Date(d.date), 'MMM dd'))
-    const trendData = trend.map((d) => d.value)
-
-    const datasets: Array<Record<string, unknown>> = [
-      {
-        label: t('kpi.charts.performancePercent'),
-        data: trendData,
+  const chartData = computed(() =>
+    buildForecastChartData({
+      trend: kpiStore.trends.performance as TrendPoint[],
+      prediction: predictionData.value,
+      showForecast: showForecast.value,
+      target: 95,
+      palette: {
         borderColor: chartColors.value.darkBlue,
         backgroundColor: chartColors.value.darkBlueFill,
-        tension: 0.3,
-        fill: true,
+        // The Performance variant uses green for the target line
+        // (efficiency uses orange) — preserved per the original.
+        targetBorderColor: chartColors.value.green,
+        forecastBorder: chartColors.value.purple,
+        forecastFill: chartColors.value.purpleFill,
+        confidenceBorder: chartColors.value.purpleBorder,
+        confidenceFill: chartColors.value.purpleConfidence,
       },
-      {
-        label: t('kpi.charts.targetValue', { value: 95 }),
-        data: Array(trendLabels.length).fill(95),
-        borderColor: chartColors.value.green,
-        borderDash: [5, 5],
-        pointRadius: 0,
+      labels: {
+        seriesLabel: t('kpi.charts.performancePercent'),
+        targetLabel: t('kpi.charts.targetValue', { value: 95 }),
+        forecastLabel: t('kpi.charts.forecast'),
+        confidenceUpperLabel: t('kpi.charts.confidenceUpper'),
+        confidenceLowerLabel: t('kpi.charts.confidenceLower'),
       },
-    ]
-
-    if (showForecast.value && predictionData.value?.predictions) {
-      const forecastLabels = predictionData.value.predictions.map((p) =>
-        format(new Date(p.date), 'MMM dd'),
-      )
-      const forecastValues = predictionData.value.predictions.map((p) => p.predicted_value)
-      const upperBounds = predictionData.value.predictions.map((p) => p.upper_bound)
-      const lowerBounds = predictionData.value.predictions.map((p) => p.lower_bound)
-
-      const allLabels = [...trendLabels, ...forecastLabels]
-      const paddedTrendData: (number | null)[] = [
-        ...trendData,
-        ...Array(forecastLabels.length).fill(null),
-      ]
-      const paddedTarget = Array(allLabels.length).fill(95)
-
-      const lastHistoricalValue: number | null =
-        trendData.length > 0 ? trendData[trendData.length - 1] : null
-      const padding = Array(trendLabels.length - 1).fill(null)
-      const paddedForecast = [...padding, lastHistoricalValue, ...forecastValues]
-      const paddedUpper = [...padding, lastHistoricalValue, ...upperBounds]
-      const paddedLower = [...padding, lastHistoricalValue, ...lowerBounds]
-
-      return {
-        labels: allLabels,
-        datasets: [
-          {
-            label: t('kpi.charts.performancePercent'),
-            data: paddedTrendData,
-            borderColor: chartColors.value.darkBlue,
-            backgroundColor: chartColors.value.darkBlueFill,
-            tension: 0.3,
-            fill: true,
-          },
-          {
-            label: t('kpi.charts.targetValue', { value: 95 }),
-            data: paddedTarget,
-            borderColor: chartColors.value.green,
-            borderDash: [5, 5],
-            pointRadius: 0,
-          },
-          {
-            label: t('kpi.charts.forecast'),
-            data: paddedForecast,
-            borderColor: chartColors.value.purple,
-            backgroundColor: chartColors.value.purpleFill,
-            borderDash: [6, 4],
-            tension: 0.3,
-            fill: false,
-            pointStyle: 'rectRot',
-            pointRadius: 4,
-            pointBackgroundColor: chartColors.value.purple,
-          },
-          {
-            label: t('kpi.charts.confidenceUpper'),
-            data: paddedUpper,
-            borderColor: chartColors.value.purpleBorder,
-            backgroundColor: chartColors.value.purpleConfidence,
-            borderDash: [2, 2],
-            tension: 0.3,
-            fill: '+1',
-            pointRadius: 0,
-          },
-          {
-            label: t('kpi.charts.confidenceLower'),
-            data: paddedLower,
-            borderColor: chartColors.value.purpleBorder,
-            backgroundColor: 'transparent',
-            borderDash: [2, 2],
-            tension: 0.3,
-            fill: false,
-            pointRadius: 0,
-          },
-        ],
-      }
-    }
-
-    return { labels: trendLabels, datasets }
-  })
+    }),
+  )
 
   const chartOptions = computed(() => ({
     responsive: true,
