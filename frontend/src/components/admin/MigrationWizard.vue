@@ -83,9 +83,9 @@
             <template v-if="connectionTestResult.success && connectionTestResult.connection_info">
               <v-divider class="my-2" />
               <div class="text-body-2">
-                <strong>Provider:</strong> {{ connectionTestResult.provider }}<br>
-                <strong>Host:</strong> {{ connectionTestResult.connection_info.host }}<br>
-                <strong>Database:</strong> {{ connectionTestResult.connection_info.database }}
+                <strong>{{ t('migrationWizard.providerLabel') }}</strong> {{ connectionTestResult.provider }}<br>
+                <strong>{{ t('migrationWizard.hostLabel') }}</strong> {{ connectionTestResult.connection_info.host }}<br>
+                <strong>{{ t('migrationWizard.databaseLabel') }}</strong> {{ connectionTestResult.connection_info.database }}
               </div>
             </template>
           </v-alert>
@@ -108,7 +108,7 @@
               <li>{{ t('migrationWizard.switchApp') }}</li>
             </ul>
             <p class="mb-0">
-              Type <code>MIGRATE</code> below to confirm this operation.
+              {{ t('migrationWizard.typeConfirm') }}
             </p>
           </v-alert>
 
@@ -116,7 +116,7 @@
             v-model="confirmationText"
             :label="t('migration.typeToConfirm')"
             variant="outlined"
-            :rules="[v => v === 'MIGRATE' || 'You must type MIGRATE exactly']"
+            :rules="[v => v === 'MIGRATE' || t('migrationWizard.mustTypeMigrate')]"
             class="mb-4"
           />
 

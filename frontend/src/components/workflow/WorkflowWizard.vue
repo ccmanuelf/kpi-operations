@@ -101,7 +101,7 @@
                     {{ currentStepData?.title }}
                   </div>
                   <div class="text-caption text-grey">
-                    {{ currentStepData?.required ? 'Required' : 'Optional' }}
+                    {{ currentStepData?.required ? t('common.required') : t('common.optional') }}
                   </div>
                 </div>
               </div>
@@ -219,7 +219,7 @@
           @click="handlePrevious"
           prepend-icon="mdi-chevron-left"
         >
-          Back
+          {{ t('common.back') }}
         </v-btn>
 
         <v-spacer />
@@ -230,7 +230,7 @@
           color="grey"
           @click="handleSkip"
         >
-          Skip
+          {{ t('common.skip') }}
         </v-btn>
 
         <v-btn
@@ -241,7 +241,7 @@
           @click="handleNext"
           append-icon="mdi-chevron-right"
         >
-          Next
+          {{ t('common.next') }}
         </v-btn>
 
         <v-btn
@@ -253,7 +253,7 @@
           @click="handleComplete"
           append-icon="mdi-check"
         >
-          {{ currentWorkflow === 'shift-start' ? 'Start Shift' : 'End Shift' }}
+          {{ currentWorkflow === 'shift-start' ? t('workflowWizard.startShift') : t('workflowWizard.endShift') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -261,18 +261,17 @@
     <!-- Confirmation Dialog -->
     <v-dialog v-model="showCloseConfirm" max-width="400" persistent>
       <v-card>
-        <v-card-title class="text-h6">Cancel Workflow?</v-card-title>
+        <v-card-title class="text-h6">{{ t('workflowWizard.cancelTitle') }}</v-card-title>
         <v-card-text>
-          Are you sure you want to cancel this workflow? Your progress will be saved
-          and you can resume later.
+          {{ t('workflowWizard.cancelMessage') }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="showCloseConfirm = false">
-            Continue Workflow
+            {{ t('workflowWizard.continueWorkflow') }}
           </v-btn>
           <v-btn color="error" variant="elevated" @click="confirmClose">
-            Cancel Workflow
+            {{ t('workflowWizard.cancelWorkflow') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -282,8 +281,11 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { useResponsive } from '@/composables/useResponsive'
+
+const { t } = useI18n()
 
 // Import step components
 import WorkflowStepPreviousShift from './steps/WorkflowStepPreviousShift.vue'

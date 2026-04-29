@@ -85,7 +85,16 @@
     "description": "Description",
     "unit": "Unit",
     "target": "Target",
-    "notSet": "Not set"
+    "notSet": "Not set",
+    "skip": "Skip"
+  },
+  "workflowWizard": {
+    "startShift": "Start Shift",
+    "endShift": "End Shift",
+    "cancelTitle": "Cancel Workflow?",
+    "cancelMessage": "Are you sure you want to cancel this workflow? Your progress will be saved and you can resume later.",
+    "continueWorkflow": "Continue Workflow",
+    "cancelWorkflow": "Cancel Workflow"
   },
   "navigation": {
     "dashboard": "Dashboard",
@@ -949,6 +958,23 @@
     "english": "English",
     "spanish": "Spanish",
     "select": "Select Language"
+  },
+  "quickActionsFab": {
+    "shiftActive": "Shift Active",
+    "activeShift": "Active Shift",
+    "shiftNumber": "Shift {number}",
+    "started": "Started: {time}",
+    "close": "Close",
+    "endShift": "End Shift",
+    "startShift": "Start Shift",
+    "logProduction": "Log Production",
+    "reportDowntime": "Report Downtime",
+    "qualityEntry": "Quality Entry",
+    "attendance": "Attendance",
+    "cannotStartShiftWorkflow": "Cannot start shift workflow",
+    "cannotStartEndShiftWorkflow": "Cannot start end shift workflow",
+    "shiftStartedSuccess": "Shift started successfully!",
+    "shiftEndedSuccess": "Shift ended successfully!"
   },
   "shifts": {
     "shift1": "Shift 1 (Morning)",
@@ -2929,6 +2955,17 @@
     "categoryCapacity": "Capacity",
     "categoryAttendance": "Attendance",
     "categoryHold": "Holds",
+    "categoryDowntime": "Downtime",
+    "categoryTrend": "Trend",
+    "recommendation": "Recommendation:",
+    "currentValue": "Current:",
+    "thresholdValue": "Threshold:",
+    "predictedValue": "Predicted:",
+    "confidencePct": "({percent}% confidence)",
+    "acknowledge": "Acknowledge",
+    "dismiss": "Dismiss",
+    "resolvedBy": "Resolved by {user}",
+    "system": "System",
     "guide": {
       "title": "How to Use Intelligent Alerts",
       "quickStart": "Quick Start",
@@ -3598,7 +3635,11 @@
     "seedDemo": "Seed demo data on the new database",
     "switchApp": "Switch the application to use the new database",
     "typeConfirm": "Type MIGRATE below to confirm this operation.",
-    "startMigration": "Start Migration"
+    "startMigration": "Start Migration",
+    "providerLabel": "Provider:",
+    "hostLabel": "Host:",
+    "databaseLabel": "Database:",
+    "mustTypeMigrate": "You must type MIGRATE exactly"
   },
   "migrationProgress": {
     "currentTable": "Current Table",

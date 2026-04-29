@@ -22,20 +22,20 @@
       <p class="message">{{ alert.message }}</p>
 
       <div v-if="alert.recommendation" class="recommendation">
-        <strong>Recommendation:</strong> {{ alert.recommendation }}
+        <strong>{{ t('alerts.recommendation') }}</strong> {{ alert.recommendation }}
       </div>
 
       <div v-if="hasValues" class="values">
         <span v-if="alert.current_value !== null" class="value">
-          Current: <strong>{{ formatValue(alert.current_value) }}</strong>
+          {{ t('alerts.currentValue') }} <strong>{{ formatValue(alert.current_value) }}</strong>
         </span>
         <span v-if="alert.threshold_value !== null" class="value">
-          Threshold: <strong>{{ formatValue(alert.threshold_value) }}</strong>
+          {{ t('alerts.thresholdValue') }} <strong>{{ formatValue(alert.threshold_value) }}</strong>
         </span>
         <span v-if="alert.predicted_value !== null" class="value predicted">
-          Predicted: <strong>{{ formatValue(alert.predicted_value) }}</strong>
+          {{ t('alerts.predictedValue') }} <strong>{{ formatValue(alert.predicted_value) }}</strong>
           <span v-if="alert.confidence" class="confidence">
-            ({{ alert.confidence }}% confidence)
+            {{ t('alerts.confidencePct', { percent: alert.confidence }) }}
           </span>
         </span>
       </div>
@@ -43,18 +43,18 @@
 
     <div v-if="alert.status === 'active'" class="alert-actions">
       <button @click="$emit('acknowledge', alert.alert_id)" class="btn-acknowledge">
-        Acknowledge
+        {{ t('alerts.acknowledge') }}
       </button>
       <button @click="$emit('resolve', alert)" class="btn-resolve">
-        Resolve
+        {{ t('alerts.resolve') }}
       </button>
       <button @click="$emit('dismiss', alert.alert_id)" class="btn-dismiss">
-        Dismiss
+        {{ t('alerts.dismiss') }}
       </button>
     </div>
 
     <div v-else-if="alert.status === 'resolved'" class="resolved-info">
-      <span>Resolved by {{ alert.resolved_by || 'System' }}</span>
+      <span>{{ t('alerts.resolvedBy', { user: alert.resolved_by || t('alerts.system') }) }}</span>
       <span v-if="alert.resolution_notes" class="resolution-notes">
         {{ alert.resolution_notes }}
       </span>
@@ -64,6 +64,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   alert: {
@@ -85,17 +88,21 @@ const severityIcon = computed(() => {
 })
 
 const categoryLabel = computed(() => {
-  const labels = {
-    otd: 'On-Time Delivery',
-    quality: 'Quality',
-    efficiency: 'Efficiency',
-    capacity: 'Capacity',
-    attendance: 'Attendance',
-    downtime: 'Downtime',
-    hold: 'Holds',
-    trend: 'Trend'
+  // Map the API's category key to its alerts.category* i18n key.
+  // Falls back to the raw category string when an unknown category
+  // appears (surfaces gaps without crashing).
+  const keyMap = {
+    otd: 'alerts.categoryOtd',
+    quality: 'alerts.categoryQuality',
+    efficiency: 'alerts.categoryEfficiency',
+    capacity: 'alerts.categoryCapacity',
+    attendance: 'alerts.categoryAttendance',
+    downtime: 'alerts.categoryDowntime',
+    hold: 'alerts.categoryHold',
+    trend: 'alerts.categoryTrend'
   }
-  return labels[props.alert.category] || props.alert.category
+  const key = keyMap[props.alert.category]
+  return key ? t(key) : props.alert.category
 })
 
 const hasValues = computed(() => {

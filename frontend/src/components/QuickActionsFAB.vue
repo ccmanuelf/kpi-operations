@@ -53,7 +53,7 @@
       @click="showShiftInfo = true"
     >
       <v-icon start size="16">mdi-clock-outline</v-icon>
-      Shift Active
+      {{ t('quickActionsFab.shiftActive') }}
     </v-chip>
 
     <!-- Shift Info Dialog -->
@@ -61,7 +61,7 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon color="success" class="mr-2">mdi-clock-check</v-icon>
-          Active Shift
+          {{ t('quickActionsFab.activeShift') }}
         </v-card-title>
         <v-card-text>
           <v-list density="compact">
@@ -69,13 +69,17 @@
               <template v-slot:prepend>
                 <v-icon color="grey">mdi-identifier</v-icon>
               </template>
-              <v-list-item-title>Shift {{ activeShift.shift_number }}</v-list-item-title>
+              <v-list-item-title>
+                {{ t('quickActionsFab.shiftNumber', { number: activeShift.shift_number }) }}
+              </v-list-item-title>
             </v-list-item>
             <v-list-item v-if="activeShift?.start_time">
               <template v-slot:prepend>
                 <v-icon color="grey">mdi-clock-start</v-icon>
               </template>
-              <v-list-item-title>Started: {{ formatTime(activeShift.start_time) }}</v-list-item-title>
+              <v-list-item-title>
+                {{ t('quickActionsFab.started', { time: formatTime(activeShift.start_time) }) }}
+              </v-list-item-title>
             </v-list-item>
             <v-list-item v-if="activeShift?.supervisor">
               <template v-slot:prepend>
@@ -87,9 +91,9 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="showShiftInfo = false">Close</v-btn>
+          <v-btn variant="text" @click="showShiftInfo = false">{{ t('quickActionsFab.close') }}</v-btn>
           <v-btn color="error" variant="elevated" @click="startEndShift">
-            End Shift
+            {{ t('quickActionsFab.endShift') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -106,6 +110,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useWorkflowStore } from '@/stores/workflowStore'
@@ -113,6 +118,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import { useResponsive } from '@/composables/useResponsive'
 import WorkflowWizard from './workflow/WorkflowWizard.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const workflowStore = useWorkflowStore()
@@ -129,11 +135,13 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 const hasActiveShift = computed(() => workflowStore.hasActiveShift)
 const activeShift = computed(() => workflowStore.activeShift)
 
-// Define all quick actions
-const allActions = [
+// Define all quick actions. Wrapped in computed() so the action
+// labels re-resolve on locale switch (the speed dial tooltips and
+// aria-labels read from these labels at runtime).
+const allActions = computed(() => [
   {
     id: 'start-shift',
-    label: 'Start Shift',
+    label: t('quickActionsFab.startShift'),
     icon: 'mdi-play-circle',
     color: 'success',
     requiresNoShift: true,
@@ -141,7 +149,7 @@ const allActions = [
   },
   {
     id: 'end-shift',
-    label: 'End Shift',
+    label: t('quickActionsFab.endShift'),
     icon: 'mdi-stop-circle',
     color: 'error',
     requiresShift: true,
@@ -149,37 +157,38 @@ const allActions = [
   },
   {
     id: 'log-production',
-    label: 'Log Production',
+    label: t('quickActionsFab.logProduction'),
     icon: 'mdi-factory',
     color: 'primary',
     route: '/production-entry'
   },
   {
     id: 'report-downtime',
-    label: 'Report Downtime',
+    label: t('quickActionsFab.reportDowntime'),
     icon: 'mdi-clock-alert',
     color: 'warning',
     route: '/data-entry/downtime'
   },
   {
     id: 'quality-entry',
-    label: 'Quality Entry',
+    label: t('quickActionsFab.qualityEntry'),
     icon: 'mdi-check-decagram',
     color: 'info',
     route: '/data-entry/quality'
   },
   {
     id: 'attendance',
-    label: 'Attendance',
+    label: t('quickActionsFab.attendance'),
     icon: 'mdi-account-check',
     color: 'secondary',
     route: '/data-entry/attendance'
   }
-]
+])
 
-// Filter visible actions based on shift status
+// Filter visible actions based on shift status. allActions is now a
+// computed; unwrap via .value to iterate.
 const visibleActions = computed(() => {
-  return allActions.filter(action => {
+  return allActions.value.filter(action => {
     if (action.requiresShift && !hasActiveShift.value) return false
     if (action.requiresNoShift && hasActiveShift.value) return false
     return true
@@ -204,7 +213,7 @@ const startStartShift = () => {
   if (success) {
     showWorkflowWizard.value = true
   } else {
-    notificationStore.error(workflowStore.error || 'Cannot start shift workflow')
+    notificationStore.error(workflowStore.error || t('quickActionsFab.cannotStartShiftWorkflow'))
   }
 }
 
@@ -214,15 +223,15 @@ const startEndShift = () => {
   if (success) {
     showWorkflowWizard.value = true
   } else {
-    notificationStore.error(workflowStore.error || 'Cannot start end shift workflow')
+    notificationStore.error(workflowStore.error || t('quickActionsFab.cannotStartEndShiftWorkflow'))
   }
 }
 
 const onWorkflowComplete = (data) => {
   showWorkflowWizard.value = false
   const message = workflowStore.currentWorkflow === 'shift-start'
-    ? 'Shift started successfully!'
-    : 'Shift ended successfully!'
+    ? t('quickActionsFab.shiftStartedSuccess')
+    : t('quickActionsFab.shiftEndedSuccess')
   notificationStore.success(message)
 }
 

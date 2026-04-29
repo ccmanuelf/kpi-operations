@@ -85,7 +85,16 @@
     "description": "Descripción",
     "unit": "Unidad",
     "target": "Meta",
-    "notSet": "No establecido"
+    "notSet": "No establecido",
+    "skip": "Omitir"
+  },
+  "workflowWizard": {
+    "startShift": "Iniciar Turno",
+    "endShift": "Finalizar Turno",
+    "cancelTitle": "¿Cancelar Flujo de Trabajo?",
+    "cancelMessage": "¿Está seguro de que desea cancelar este flujo de trabajo? Su progreso se guardará y podrá reanudar más tarde.",
+    "continueWorkflow": "Continuar Flujo",
+    "cancelWorkflow": "Cancelar Flujo"
   },
   "navigation": {
     "dashboard": "Tablero",
@@ -949,6 +958,23 @@
     "english": "Inglés",
     "spanish": "Español",
     "select": "Seleccionar Idioma"
+  },
+  "quickActionsFab": {
+    "shiftActive": "Turno Activo",
+    "activeShift": "Turno Activo",
+    "shiftNumber": "Turno {number}",
+    "started": "Iniciado: {time}",
+    "close": "Cerrar",
+    "endShift": "Finalizar Turno",
+    "startShift": "Iniciar Turno",
+    "logProduction": "Registrar Producción",
+    "reportDowntime": "Reportar Tiempo Inactivo",
+    "qualityEntry": "Entrada de Calidad",
+    "attendance": "Asistencia",
+    "cannotStartShiftWorkflow": "No se puede iniciar el flujo de inicio de turno",
+    "cannotStartEndShiftWorkflow": "No se puede iniciar el flujo de fin de turno",
+    "shiftStartedSuccess": "¡Turno iniciado exitosamente!",
+    "shiftEndedSuccess": "¡Turno finalizado exitosamente!"
   },
   "shifts": {
     "shift1": "Turno 1 (Mañana)",
@@ -2973,6 +2999,17 @@
     "categoryCapacity": "Capacidad",
     "categoryAttendance": "Asistencia",
     "categoryHold": "Retenciones",
+    "categoryDowntime": "Tiempo Inactivo",
+    "categoryTrend": "Tendencia",
+    "recommendation": "Recomendación:",
+    "currentValue": "Actual:",
+    "thresholdValue": "Umbral:",
+    "predictedValue": "Predicho:",
+    "confidencePct": "({percent}% de confianza)",
+    "acknowledge": "Reconocer",
+    "dismiss": "Descartar",
+    "resolvedBy": "Resuelto por {user}",
+    "system": "Sistema",
     "guide": {
       "title": "Como Usar las Alertas Inteligentes",
       "quickStart": "Inicio Rapido",
@@ -3642,7 +3679,11 @@
     "seedDemo": "Poblar datos de demostración en la nueva base de datos",
     "switchApp": "Cambiar la aplicación para usar la nueva base de datos",
     "typeConfirm": "Escriba MIGRATE abajo para confirmar esta operación.",
-    "startMigration": "Iniciar Migración"
+    "startMigration": "Iniciar Migración",
+    "providerLabel": "Proveedor:",
+    "hostLabel": "Host:",
+    "databaseLabel": "Base de Datos:",
+    "mustTypeMigrate": "Debe escribir MIGRATE exactamente"
   },
   "migrationProgress": {
     "currentTable": "Tabla Actual",
