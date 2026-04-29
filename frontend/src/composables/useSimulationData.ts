@@ -1,7 +1,7 @@
 /**
- * Composable for Simulation view reactive state and data fetching.
- * Handles: loading state, guide data, capacity planning calculation,
- * production line configuration, and simulation execution.
+ * Composable for the Simulation view's reactive state and data
+ * fetching. Loading state, guide data, capacity calculation,
+ * production line config, simulation execution, sample data.
  */
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -9,63 +9,101 @@ import {
   calculateCapacityRequirements,
   getProductionLineGuide,
   getDefaultProductionLineConfig,
-  runProductionLineSimulation
+  runProductionLineSimulation,
 } from '@/services/api/simulation'
 import { useNotificationStore } from '@/stores/notificationStore'
+
+export interface CapacityFormState {
+  target_units: number
+  shift_hours: number
+  cycle_time_hours: number
+  target_efficiency: number
+  absenteeism_rate: number
+  include_buffer: boolean
+  target_date?: string
+}
+
+export interface LineConfigState {
+  num_stations: number
+  workers_per_station: number
+  floating_pool_size: number
+  base_cycle_time: number
+}
+
+export interface SimulationParamsState {
+  duration_hours: number
+  random_seed: number
+  arrival_rate_per_hour?: number
+  max_units?: number
+}
+
+export interface ExampleScenario {
+  name: string
+  config_change?: boolean
+  station_modifications?: boolean
+  [key: string]: unknown
+}
 
 export function useSimulationData() {
   const notificationStore = useNotificationStore()
   const { t } = useI18n()
 
-  // UI state
   const activeTab = ref('production-line')
   const loading = ref(false)
   const showGuide = ref(false)
   const guideTab = ref('quick-start')
-  const guide = ref(null)
+  const guide = ref<unknown | null>(null)
 
-  // Capacity Planning
-  const capacityForm = ref({
+  const capacityForm = ref<CapacityFormState>({
     target_units: 100,
     shift_hours: 8,
     cycle_time_hours: 0.25,
     target_efficiency: 85,
     absenteeism_rate: 5,
-    include_buffer: true
+    include_buffer: true,
   })
-  const capacityResult = ref(null)
+  const capacityResult = ref<unknown | null>(null)
 
-  // Production Line Simulation
-  const lineConfig = ref({
+  const lineConfig = ref<LineConfigState>({
     num_stations: 4,
     workers_per_station: 2,
     floating_pool_size: 0,
-    base_cycle_time: 15
+    base_cycle_time: 15,
   })
-  const simulationParams = ref({
+  const simulationParams = ref<SimulationParamsState>({
     duration_hours: 8,
-    random_seed: 42
+    random_seed: 42,
   })
-  const productionLineConfig = ref(null)
-  const simulationResult = ref(null)
+  const productionLineConfig = ref<Record<string, unknown> | null>(null)
+  const simulationResult = ref<unknown | null>(null)
 
-  // Fetch guide on mount
   onMounted(async () => {
     try {
       const response = await getProductionLineGuide()
       guide.value = response.data
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load guide:', error)
       notificationStore.showError(t('notifications.simulation.guideLoadFailed'))
     }
   })
 
-  async function calculateCapacity() {
+  async function calculateCapacity(): Promise<void> {
     loading.value = true
     try {
-      const response = await calculateCapacityRequirements(capacityForm.value)
+      // The capacity API requires `target_date` (ISO YYYY-MM-DD)
+      // even though the form doesn't expose it; default to today
+      // for behavioral parity with the JS version which passed the
+      // form object directly and let the backend reject undefined.
+      const payload = {
+        ...capacityForm.value,
+        target_date:
+          capacityForm.value.target_date || new Date().toISOString().split('T')[0],
+      }
+      const response = await calculateCapacityRequirements(payload)
       capacityResult.value = response.data
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to calculate capacity:', error)
       notificationStore.showError(t('notifications.simulation.capacityCalcFailed'))
     } finally {
@@ -73,12 +111,13 @@ export function useSimulationData() {
     }
   }
 
-  async function loadDefaultConfig() {
+  async function loadDefaultConfig(): Promise<void> {
     loading.value = true
     try {
       const response = await getDefaultProductionLineConfig(lineConfig.value)
       productionLineConfig.value = response.data
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to load config:', error)
       notificationStore.showError(t('notifications.simulation.lineConfigLoadFailed'))
     } finally {
@@ -86,14 +125,18 @@ export function useSimulationData() {
     }
   }
 
-  async function runSimulation() {
+  async function runSimulation(): Promise<void> {
     if (!productionLineConfig.value) return
 
     loading.value = true
     try {
-      const response = await runProductionLineSimulation(productionLineConfig.value, simulationParams.value)
+      const response = await runProductionLineSimulation(
+        productionLineConfig.value,
+        simulationParams.value,
+      )
       simulationResult.value = response.data
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Failed to run simulation:', error)
       notificationStore.showError(t('notifications.simulation.runFailed'))
     } finally {
@@ -101,13 +144,14 @@ export function useSimulationData() {
     }
   }
 
-  function loadExampleScenario(scenario) {
+  function loadExampleScenario(scenario: ExampleScenario): void {
     if (scenario.config_change) {
-      if (scenario.name.toLowerCase().includes('floating')) {
+      const lower = scenario.name.toLowerCase()
+      if (lower.includes('floating')) {
         lineConfig.value.floating_pool_size = 2
-      } else if (scenario.name.toLowerCase().includes('worker')) {
+      } else if (lower.includes('worker')) {
         lineConfig.value.workers_per_station = 3
-      } else if (scenario.name.toLowerCase().includes('cycle') || scenario.name.toLowerCase().includes('time')) {
+      } else if (lower.includes('cycle') || lower.includes('time')) {
         lineConfig.value.base_cycle_time = 12
       }
     }
@@ -120,16 +164,16 @@ export function useSimulationData() {
     loadDefaultConfig()
   }
 
-  function loadSampleData() {
+  function loadSampleData(): void {
     lineConfig.value = {
       num_stations: 4,
       workers_per_station: 2,
       floating_pool_size: 0,
-      base_cycle_time: 15
+      base_cycle_time: 15,
     }
     simulationParams.value = {
       duration_hours: 8,
-      random_seed: 42
+      random_seed: 42,
     }
 
     showGuide.value = false
@@ -138,25 +182,21 @@ export function useSimulationData() {
   }
 
   return {
-    // UI state
     activeTab,
     loading,
     showGuide,
     guideTab,
     guide,
-    // Capacity planning
     capacityForm,
     capacityResult,
     calculateCapacity,
-    // Production line
     lineConfig,
     simulationParams,
     productionLineConfig,
     simulationResult,
     loadDefaultConfig,
     runSimulation,
-    // Guide helpers
     loadExampleScenario,
-    loadSampleData
+    loadSampleData,
   }
 }
