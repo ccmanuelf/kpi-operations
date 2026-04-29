@@ -1,60 +1,72 @@
 /**
- * Composable for FilterManager dialog actions.
- * Handles: edit, duplicate, delete, set-default, clear-history,
- * plus formatting helpers (filter summary, time-ago, type icons).
+ * Composable for FilterManager dialog actions — edit, duplicate,
+ * delete, set-default, clear-history. Plus formatting helpers
+ * (filter summary, time-ago, type icons).
  */
 import { ref, computed } from 'vue'
-import { useFiltersStore, FILTER_TYPES } from '@/stores/filtersStore'
+import {
+  useFiltersStore,
+  FILTER_TYPES,
+  type FilterType,
+  type SavedFilter,
+  type FilterConfig,
+} from '@/stores/filtersStore'
 import { formatDistanceToNow } from 'date-fns'
 
-export default function useFilterManagerActions(emit) {
+export interface FilterTypeOption {
+  value: FilterType
+  label: string
+}
+
+interface EditingFilterState {
+  filter_name?: string
+  filter_type?: FilterType
+  is_default?: boolean
+}
+
+type EmitFn = (event: string, payload: unknown) => void
+
+export default function useFilterManagerActions(emit: EmitFn) {
   const filtersStore = useFiltersStore()
 
-  // ---------- Edit state ----------
   const showEditDialog = ref(false)
-  const editingFilter = ref({})
-  const originalFilter = ref(null)
+  const editingFilter = ref<EditingFilterState>({})
+  const originalFilter = ref<SavedFilter | null>(null)
 
-  // ---------- Duplicate state ----------
   const showDuplicateDialog = ref(false)
-  const duplicatingFilter = ref(null)
+  const duplicatingFilter = ref<SavedFilter | null>(null)
   const duplicateName = ref('')
 
-  // ---------- Delete state ----------
   const showDeleteDialog = ref(false)
-  const deletingFilter = ref(null)
+  const deletingFilter = ref<SavedFilter | null>(null)
 
-  // ---------- Clear-history state ----------
   const showClearHistoryDialog = ref(false)
 
-  // ---------- Loading states ----------
   const isSaving = ref(false)
   const isDeleting = ref(false)
 
-  // ---------- Computed ----------
-  const filterTypeOptions = computed(() => {
-    return Object.entries(FILTER_TYPES).map(([value, label]) => ({
-      value,
-      label
-    }))
-  })
+  const filterTypeOptions = computed<FilterTypeOption[]>(() =>
+    Object.entries(FILTER_TYPES).map(([value, label]) => ({
+      value: value as FilterType,
+      label,
+    })),
+  )
 
-  // ---------- Formatting helpers ----------
-  const getTypeIcon = (type) => {
-    const icons = {
+  const getTypeIcon = (type: FilterType | string): string => {
+    const icons: Record<string, string> = {
       dashboard: 'mdi-view-dashboard',
       production: 'mdi-factory',
       quality: 'mdi-check-decagram',
       attendance: 'mdi-account-clock',
       downtime: 'mdi-clock-alert',
       hold: 'mdi-pause-circle',
-      coverage: 'mdi-shield-check'
+      coverage: 'mdi-shield-check',
     }
     return icons[type] || 'mdi-filter'
   }
 
-  const formatFilterSummary = (config) => {
-    const parts = []
+  const formatFilterSummary = (config: FilterConfig): string => {
+    const parts: string[] = []
 
     if (config.date_range?.type === 'relative' && config.date_range.relative_days) {
       parts.push(`Last ${config.date_range.relative_days} days`)
@@ -77,7 +89,8 @@ export default function useFilterManagerActions(emit) {
     return parts.length > 0 ? parts.join(' | ') : 'All data'
   }
 
-  const formatTimeAgo = (dateString) => {
+  const formatTimeAgo = (dateString: string | null | undefined): string => {
+    if (!dateString) return ''
     try {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true })
     } catch {
@@ -85,109 +98,119 @@ export default function useFilterManagerActions(emit) {
     }
   }
 
-  // ---------- Actions ----------
-  const applyFilter = async (filter) => {
+  const applyFilter = async (filter: SavedFilter): Promise<void> => {
     await filtersStore.applyFilter(filter)
     emit('filter-applied', filter)
   }
 
-  const editFilter = (filter) => {
+  const editFilter = (filter: SavedFilter): void => {
     originalFilter.value = filter
     editingFilter.value = {
       filter_name: filter.filter_name,
       filter_type: filter.filter_type,
-      is_default: filter.is_default
+      is_default: filter.is_default,
     }
     showEditDialog.value = true
   }
 
-  const cancelEdit = () => {
+  const cancelEdit = (): void => {
     showEditDialog.value = false
     editingFilter.value = {}
     originalFilter.value = null
   }
 
-  const saveEdit = async () => {
-    if (!originalFilter.value) return
+  const saveEdit = async (): Promise<void> => {
+    if (!originalFilter.value || !originalFilter.value.filter_id) return
 
     isSaving.value = true
     try {
       await filtersStore.updateFilter(originalFilter.value.filter_id, {
         filter_name: editingFilter.value.filter_name,
         filter_type: editingFilter.value.filter_type,
-        is_default: editingFilter.value.is_default
+        is_default: editingFilter.value.is_default,
       })
       showEditDialog.value = false
       editingFilter.value = {}
       originalFilter.value = null
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to update filter:', e)
     } finally {
       isSaving.value = false
     }
   }
 
-  const duplicateFilter = (filter) => {
+  const duplicateFilter = (filter: SavedFilter): void => {
     duplicatingFilter.value = filter
     duplicateName.value = `Copy of ${filter.filter_name}`
     showDuplicateDialog.value = true
   }
 
-  const cancelDuplicate = () => {
+  const cancelDuplicate = (): void => {
     showDuplicateDialog.value = false
     duplicatingFilter.value = null
     duplicateName.value = ''
   }
 
-  const saveDuplicate = async () => {
-    if (!duplicatingFilter.value || !duplicateName.value) return
+  const saveDuplicate = async (): Promise<void> => {
+    if (
+      !duplicatingFilter.value ||
+      !duplicatingFilter.value.filter_id ||
+      !duplicateName.value
+    )
+      return
 
     isSaving.value = true
     try {
       await filtersStore.duplicateFilter(
         duplicatingFilter.value.filter_id,
-        duplicateName.value
+        duplicateName.value,
       )
       showDuplicateDialog.value = false
       duplicatingFilter.value = null
       duplicateName.value = ''
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to duplicate filter:', e)
     } finally {
       isSaving.value = false
     }
   }
 
-  const setAsDefault = async (filter) => {
+  const setAsDefault = async (filter: SavedFilter): Promise<void> => {
+    if (!filter.filter_id || !filter.filter_type) return
     try {
       await filtersStore.setDefaultFilter(filter.filter_id, filter.filter_type)
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to set default filter:', e)
     }
   }
 
-  const removeDefault = async (filter) => {
+  const removeDefault = async (filter: SavedFilter): Promise<void> => {
+    if (!filter.filter_id) return
     try {
       await filtersStore.updateFilter(filter.filter_id, {
-        is_default: false
+        is_default: false,
       })
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to remove default:', e)
     }
   }
 
-  const confirmDelete = (filter) => {
+  const confirmDelete = (filter: SavedFilter): void => {
     deletingFilter.value = filter
     showDeleteDialog.value = true
   }
 
-  const cancelDelete = () => {
+  const cancelDelete = (): void => {
     showDeleteDialog.value = false
     deletingFilter.value = null
   }
 
-  const executeDelete = async () => {
-    if (!deletingFilter.value) return
+  const executeDelete = async (): Promise<void> => {
+    if (!deletingFilter.value || !deletingFilter.value.filter_id) return
 
     isDeleting.value = true
     try {
@@ -195,44 +218,37 @@ export default function useFilterManagerActions(emit) {
       showDeleteDialog.value = false
       deletingFilter.value = null
     } catch (e) {
+      // eslint-disable-next-line no-console
       console.error('Failed to delete filter:', e)
     } finally {
       isDeleting.value = false
     }
   }
 
-  const confirmClearHistory = () => {
+  const confirmClearHistory = (): void => {
     showClearHistoryDialog.value = true
   }
 
-  const executeClearHistory = async () => {
+  const executeClearHistory = async (): Promise<void> => {
     await filtersStore.clearHistory()
     showClearHistoryDialog.value = false
   }
 
   return {
-    // Edit state
     showEditDialog,
     editingFilter,
-    // Duplicate state
     showDuplicateDialog,
     duplicatingFilter,
     duplicateName,
-    // Delete state
     showDeleteDialog,
     deletingFilter,
-    // Clear-history state
     showClearHistoryDialog,
-    // Loading
     isSaving,
     isDeleting,
-    // Computed
     filterTypeOptions,
-    // Formatters
     getTypeIcon,
     formatFilterSummary,
     formatTimeAgo,
-    // Actions
     applyFilter,
     editFilter,
     cancelEdit,
@@ -246,6 +262,6 @@ export default function useFilterManagerActions(emit) {
     cancelDelete,
     executeDelete,
     confirmClearHistory,
-    executeClearHistory
+    executeClearHistory,
   }
 }

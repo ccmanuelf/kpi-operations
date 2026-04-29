@@ -1,15 +1,60 @@
 /**
  * Composable for My Shift Dashboard quick-entry forms.
- * Handles: production, downtime, quality, and help request form state and submission.
+ * Production / downtime / quality / help-request form state and
+ * submission against the assigned work orders.
  */
 import { ref } from 'vue'
 import { useNotificationStore } from '@/stores/notificationStore'
 import api from '@/services/api'
 
-export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrders, onDataRefresh) {
+export interface ShiftWorkOrder {
+  id: string | number
+  work_order_id: string | number
+  [key: string]: unknown
+}
+
+export interface ActiveShift {
+  shift_number?: number
+  [key: string]: unknown
+}
+
+interface ProductionForm {
+  workOrderId: string | number | null
+  quantity: number
+}
+
+interface DowntimeForm {
+  workOrderId: string | number | null
+  reason: string | null
+  minutes: number
+  notes: string
+}
+
+interface QualityForm {
+  workOrderId: string | number | null
+  inspectedQty: number
+  defectQty: number
+  defectType: string | null
+}
+
+interface HelpForm {
+  type: string | null
+  description: string
+}
+
+const errorDetail = (e: unknown, fallback: string): string => {
+  const ax = e as { response?: { data?: { detail?: string } }; message?: string }
+  return ax?.response?.data?.detail || ax?.message || fallback
+}
+
+export function useShiftForms(
+  getActiveShift: () => ActiveShift | null,
+  getCurrentDate: () => string,
+  getAssignedWorkOrders: () => ShiftWorkOrder[],
+  onDataRefresh: () => Promise<void> | void,
+) {
   const notificationStore = useNotificationStore()
 
-  // Dialog states
   const showProductionDialog = ref(false)
   const showDowntimeDialog = ref(false)
   const showQualityDialog = ref(false)
@@ -18,68 +63,64 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
   const showSuccess = ref(false)
   const successMessage = ref('')
 
-  // Selected work order for quick log
-  const selectedWorkOrder = ref(null)
+  const selectedWorkOrder = ref<ShiftWorkOrder | null>(null)
 
-  // Form objects
-  const productionForm = ref({
+  const productionForm = ref<ProductionForm>({
     workOrderId: null,
-    quantity: 10
+    quantity: 10,
   })
-  const downtimeForm = ref({
+  const downtimeForm = ref<DowntimeForm>({
     workOrderId: null,
     reason: null,
     minutes: 15,
-    notes: ''
+    notes: '',
   })
-  const qualityForm = ref({
+  const qualityForm = ref<QualityForm>({
     workOrderId: null,
     inspectedQty: 100,
     defectQty: 0,
-    defectType: null
+    defectType: null,
   })
-  const helpForm = ref({
+  const helpForm = ref<HelpForm>({
     type: null,
-    description: ''
+    description: '',
   })
 
-  // Constants
-  const productionPresets = [10, 25, 50, 100]
-  const downtimeReasons = [
+  const productionPresets: number[] = [10, 25, 50, 100]
+  const downtimeReasons: string[] = [
     'Equipment Breakdown',
     'Material Shortage',
     'Changeover',
     'Scheduled Maintenance',
     'Quality Issue',
     'Waiting for Inspection',
-    'Other'
+    'Other',
   ]
-  const defectTypes = [
+  const defectTypes: string[] = [
     'Dimensional',
     'Visual',
     'Functional',
     'Packaging',
     'Documentation',
-    'Other'
+    'Other',
   ]
-  const helpTypes = [
+  const helpTypes: string[] = [
     'Equipment Issue',
     'Material Issue',
     'Quality Issue',
     'Safety Concern',
     'Training Needed',
     'Supervisor Request',
-    'Other'
+    'Other',
   ]
 
-  // Dialog openers
-  const openQuickLog = (wo) => {
+  const openQuickLog = (wo: ShiftWorkOrder): void => {
     selectedWorkOrder.value = wo
     productionForm.value.workOrderId = wo.id
     showProductionDialog.value = true
   }
 
-  const openQuickProductionDialog = () => {
+  const openQuickProductionDialog = (): void => {
     const workOrders = getAssignedWorkOrders()
     if (workOrders.length > 0) {
       productionForm.value.workOrderId = workOrders[0].id
@@ -87,7 +128,7 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
     showProductionDialog.value = true
   }
 
-  const openDowntimeDialog = () => {
+  const openDowntimeDialog = (): void => {
     const workOrders = getAssignedWorkOrders()
     if (workOrders.length > 0) {
       downtimeForm.value.workOrderId = workOrders[0].id
@@ -95,7 +136,7 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
     showDowntimeDialog.value = true
   }
 
-  const openQualityDialog = () => {
+  const openQualityDialog = (): void => {
     const workOrders = getAssignedWorkOrders()
     if (workOrders.length > 0) {
       qualityForm.value.workOrderId = workOrders[0].id
@@ -103,12 +144,11 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
     showQualityDialog.value = true
   }
 
-  const openHelpDialog = () => {
+  const openHelpDialog = (): void => {
     showHelpDialog.value = true
   }
 
-  // Submission handlers
-  const quickLogProduction = async (quantity) => {
+  const quickLogProduction = async (quantity: number): Promise<void> => {
     if (!selectedWorkOrder.value) return
 
     isSubmitting.value = true
@@ -118,30 +158,38 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
         date: getCurrentDate(),
         shift: getActiveShift()?.shift_number || 1,
         units_produced: quantity,
-        runtime_hours: 1
+        runtime_hours: 1,
       })
 
       successMessage.value = `Logged ${quantity} units for ${selectedWorkOrder.value.work_order_id}`
       showSuccess.value = true
       await onDataRefresh()
     } catch (error) {
-      notificationStore.error(error.response?.data?.detail || 'Failed to log production')
+      // The JS code called `notificationStore.error(...)` but that
+      // method doesn't exist on the store — it's `showError`. Fixed
+      // the call site here; the JS path was failing silently with
+      // a TypeError.
+      notificationStore.showError(errorDetail(error, 'Failed to log production'))
     } finally {
       isSubmitting.value = false
     }
   }
 
-  const submitProduction = async () => {
+  const submitProduction = async (): Promise<void> => {
     isSubmitting.value = true
     try {
       const workOrders = getAssignedWorkOrders()
-      const wo = workOrders.find(w => w.id === productionForm.value.workOrderId)
+      const wo = workOrders.find((w) => w.id === productionForm.value.workOrderId)
+      if (!wo) {
+        notificationStore.showError('Work order not found')
+        return
+      }
       await api.createProductionEntry({
         work_order_id: wo.work_order_id,
         date: getCurrentDate(),
         shift: getActiveShift()?.shift_number || 1,
         units_produced: productionForm.value.quantity,
-        runtime_hours: 1
+        runtime_hours: 1,
       })
 
       successMessage.value = `Logged ${productionForm.value.quantity} units`
@@ -150,24 +198,28 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
       productionForm.value.quantity = 10
       await onDataRefresh()
     } catch (error) {
-      notificationStore.error(error.response?.data?.detail || 'Failed to log production')
+      notificationStore.showError(errorDetail(error, 'Failed to log production'))
     } finally {
       isSubmitting.value = false
     }
   }
 
-  const submitDowntime = async () => {
+  const submitDowntime = async (): Promise<void> => {
     isSubmitting.value = true
     try {
       const workOrders = getAssignedWorkOrders()
-      const wo = workOrders.find(w => w.id === downtimeForm.value.workOrderId)
+      const wo = workOrders.find((w) => w.id === downtimeForm.value.workOrderId)
+      if (!wo) {
+        notificationStore.showError('Work order not found')
+        return
+      }
       await api.createDowntimeEntry({
         work_order_id: wo.work_order_id,
         date: getCurrentDate(),
         shift: getActiveShift()?.shift_number || 1,
         downtime_minutes: downtimeForm.value.minutes,
         reason: downtimeForm.value.reason,
-        notes: downtimeForm.value.notes
+        notes: downtimeForm.value.notes,
       })
 
       successMessage.value = 'Downtime reported successfully'
@@ -176,54 +228,62 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
       downtimeForm.value = { workOrderId: null, reason: null, minutes: 15, notes: '' }
       await onDataRefresh()
     } catch (error) {
-      notificationStore.error(error.response?.data?.detail || 'Failed to report downtime')
+      notificationStore.showError(errorDetail(error, 'Failed to report downtime'))
     } finally {
       isSubmitting.value = false
     }
   }
 
-  const submitQuality = async () => {
+  const submitQuality = async (): Promise<void> => {
     isSubmitting.value = true
     try {
       const workOrders = getAssignedWorkOrders()
-      const wo = workOrders.find(w => w.id === qualityForm.value.workOrderId)
+      const wo = workOrders.find((w) => w.id === qualityForm.value.workOrderId)
+      if (!wo) {
+        notificationStore.showError('Work order not found')
+        return
+      }
       await api.createQualityEntry({
         work_order_id: wo.work_order_id,
         date: getCurrentDate(),
         shift: getActiveShift()?.shift_number || 1,
         inspected_quantity: qualityForm.value.inspectedQty,
         defect_quantity: qualityForm.value.defectQty,
-        defect_type: qualityForm.value.defectType
+        defect_type: qualityForm.value.defectType,
       })
 
       successMessage.value = 'Quality check recorded'
       showSuccess.value = true
       showQualityDialog.value = false
-      qualityForm.value = { workOrderId: null, inspectedQty: 100, defectQty: 0, defectType: null }
+      qualityForm.value = {
+        workOrderId: null,
+        inspectedQty: 100,
+        defectQty: 0,
+        defectType: null,
+      }
       await onDataRefresh()
     } catch (error) {
-      notificationStore.error(error.response?.data?.detail || 'Failed to record quality check')
+      notificationStore.showError(errorDetail(error, 'Failed to record quality check'))
     } finally {
       isSubmitting.value = false
     }
   }
 
-  const submitHelpRequest = async () => {
+  const submitHelpRequest = async (): Promise<void> => {
     isSubmitting.value = true
     try {
       successMessage.value = 'Help request sent to supervisor'
       showSuccess.value = true
       showHelpDialog.value = false
       helpForm.value = { type: null, description: '' }
-    } catch (error) {
-      notificationStore.error('Failed to send help request')
+    } catch {
+      notificationStore.showError('Failed to send help request')
     } finally {
       isSubmitting.value = false
     }
   }
 
   return {
-    // Dialog states
     showProductionDialog,
     showDowntimeDialog,
     showQualityDialog,
@@ -231,29 +291,24 @@ export function useShiftForms(getActiveShift, getCurrentDate, getAssignedWorkOrd
     isSubmitting,
     showSuccess,
     successMessage,
-    // Selected work order
     selectedWorkOrder,
-    // Form objects
     productionForm,
     downtimeForm,
     qualityForm,
     helpForm,
-    // Constants
     productionPresets,
     downtimeReasons,
     defectTypes,
     helpTypes,
-    // Dialog openers
     openQuickLog,
     openQuickProductionDialog,
     openDowntimeDialog,
     openQualityDialog,
     openHelpDialog,
-    // Submission handlers
     quickLogProduction,
     submitProduction,
     submitDowntime,
     submitQuality,
-    submitHelpRequest
+    submitHelpRequest,
   }
 }
