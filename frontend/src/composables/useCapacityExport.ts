@@ -1,11 +1,17 @@
 /**
- * Composable for Capacity Planning import/export functionality.
- * Handles: export to JSON/CSV, import from file, format selection.
+ * Composable for Capacity Planning import/export. JSON/CSV export
+ * for the active worksheet, JSON import that goes through the
+ * worksheet ops sub-store.
  */
-import { ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
 
-const worksheetOptions = [
+export interface WorksheetOption {
+  title: string
+  value: string
+}
+
+const worksheetOptions: WorksheetOption[] = [
   { title: 'Orders', value: 'orders' },
   { title: 'Calendar', value: 'masterCalendar' },
   { title: 'Production Lines', value: 'productionLines' },
@@ -14,39 +20,32 @@ const worksheetOptions = [
   { title: 'Stock', value: 'stockSnapshot' },
 ]
 
-export function useCapacityExport(activeTab) {
+type ExportFormat = 'JSON' | 'CSV'
+
+export function useCapacityExport(activeTab: Ref<string>) {
   const store = useCapacityPlanningStore()
 
-  // Dialog visibility
   const showExportDialog = ref(false)
   const showImportDialog = ref(false)
 
-  // Export/Import state
-  const exportFormat = ref('JSON')
-  const importFile = ref(null)
+  const exportFormat = ref<ExportFormat>('JSON')
+  const importFile = ref<File | null>(null)
   const importTarget = ref('orders')
 
-  /**
-   * Convert an array of objects to a CSV string.
-   * Properly escapes fields containing commas, quotes, or newlines.
-   */
-  const arrayToCSV = (data) => {
+  const arrayToCSV = (data: Record<string, unknown>[]): string => {
     if (!Array.isArray(data) || data.length === 0) return ''
-    const headers = Object.keys(data[0]).filter(k => !k.startsWith('_'))
-    const escapeField = (val) => {
+    const headers = Object.keys(data[0]).filter((k) => !k.startsWith('_'))
+    const escapeField = (val: unknown): string => {
       const str = val == null ? '' : String(val)
       return str.includes(',') || str.includes('"') || str.includes('\n')
         ? `"${str.replace(/"/g, '""')}"`
         : str
     }
-    const rows = data.map(row => headers.map(h => escapeField(row[h])).join(','))
+    const rows = data.map((row) => headers.map((h) => escapeField(row[h])).join(','))
     return [headers.join(','), ...rows].join('\n')
   }
 
-  /**
-   * Trigger a file download from a Blob.
-   */
-  const downloadBlob = (blob, filename) => {
+  const downloadBlob = (blob: Blob, filename: string): void => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -55,7 +54,7 @@ export function useCapacityExport(activeTab) {
     URL.revokeObjectURL(url)
   }
 
-  const exportWorkbook = () => {
+  const exportWorkbook = (): void => {
     showExportDialog.value = false
     const dateStr = new Date().toISOString().slice(0, 10)
 
@@ -63,21 +62,21 @@ export function useCapacityExport(activeTab) {
       const wsKey = activeTab.value
       const worksheet = store.worksheets[wsKey]
       if (!worksheet || !Array.isArray(worksheet.data)) return
-      const csv = arrayToCSV(worksheet.data)
+      const csv = arrayToCSV(worksheet.data as Record<string, unknown>[])
       downloadBlob(
         new Blob([csv], { type: 'text/csv;charset=utf-8' }),
-        `capacity-${wsKey}-${dateStr}.csv`
+        `capacity-${wsKey}-${dateStr}.csv`,
       )
     } else {
       const json = store.exportWorkbookJSON()
       downloadBlob(
         new Blob([json], { type: 'application/json' }),
-        `capacity-workbook-${dateStr}.json`
+        `capacity-workbook-${dateStr}.json`,
       )
     }
   }
 
-  const importData = async () => {
+  const importData = async (): Promise<void> => {
     showImportDialog.value = false
     if (!importFile.value) return
 
@@ -86,6 +85,7 @@ export function useCapacityExport(activeTab) {
       const data = JSON.parse(text)
       store.importData(importTarget.value, Array.isArray(data) ? data : [data])
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Import failed:', error)
     }
   }
