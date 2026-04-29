@@ -15,12 +15,12 @@ import { useNotificationStore } from '@/stores/notificationStore'
 
 export interface CapacityFormState {
   target_units: number
+  target_date: string
   shift_hours: number
   cycle_time_hours: number
   target_efficiency: number
   absenteeism_rate: number
   include_buffer: boolean
-  target_date?: string
 }
 
 export interface LineConfigState {
@@ -56,6 +56,10 @@ export function useSimulationData() {
 
   const capacityForm = ref<CapacityFormState>({
     target_units: 100,
+    // Default to today; the form's date picker lets the user
+    // change it. The backend's `calculate_capacity` endpoint
+    // requires this field — passing it through unset would 422.
+    target_date: new Date().toISOString().split('T')[0],
     shift_hours: 8,
     cycle_time_hours: 0.25,
     target_efficiency: 85,
@@ -91,16 +95,7 @@ export function useSimulationData() {
   async function calculateCapacity(): Promise<void> {
     loading.value = true
     try {
-      // The capacity API requires `target_date` (ISO YYYY-MM-DD)
-      // even though the form doesn't expose it; default to today
-      // for behavioral parity with the JS version which passed the
-      // form object directly and let the backend reject undefined.
-      const payload = {
-        ...capacityForm.value,
-        target_date:
-          capacityForm.value.target_date || new Date().toISOString().split('T')[0],
-      }
-      const response = await calculateCapacityRequirements(payload)
+      const response = await calculateCapacityRequirements(capacityForm.value)
       capacityResult.value = response.data
     } catch (error) {
       // eslint-disable-next-line no-console

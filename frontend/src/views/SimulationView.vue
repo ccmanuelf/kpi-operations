@@ -49,6 +49,12 @@
                             required
                           />
                           <v-text-field
+                            v-model="capacityForm.target_date"
+                            :label="$t('simulation.targetDate')"
+                            type="date"
+                            required
+                          />
+                          <v-text-field
                             v-model.number="capacityForm.shift_hours"
                             :label="$t('simulation.shiftHours')"
                             type="number"
