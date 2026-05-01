@@ -1,6 +1,6 @@
 <template>
   <div class="workflow-step-downtime">
-    <!-- Downtime Summary -->
+    <!-- Summary -->
     <v-row class="mb-4">
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
@@ -19,7 +19,7 @@
           <div class="text-h4" :class="openCount > 0 ? 'text-error' : 'text-grey'">
             {{ openCount }}
           </div>
-          <div class="text-caption text-grey">{{ $t('workflow.open') }}</div>
+          <div class="text-caption text-grey">{{ $t('workflow.needsAttention') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
@@ -30,7 +30,7 @@
       </v-col>
     </v-row>
 
-    <!-- Open Incidents -->
+    <!-- Open Incidents (read-only — link out to grid for entry) -->
     <v-card
       v-if="openIncidents.length > 0"
       variant="outlined"
@@ -42,41 +42,39 @@
         <v-chip size="small" color="error" class="ml-2">
           {{ $t('workflow.toResolve', { count: openIncidents.length }) }}
         </v-chip>
+        <v-spacer />
+        <v-btn
+          size="small"
+          color="primary"
+          variant="elevated"
+          :to="{ path: '/data-entry/downtime' }"
+          target="_blank"
+        >
+          <v-icon start size="16">mdi-open-in-new</v-icon>
+          {{ $t('workflow.openDowntimeGrid') }}
+        </v-btn>
       </v-card-title>
 
       <v-card-text class="pa-0">
         <v-list density="compact">
           <v-list-item
             v-for="incident in openIncidents"
-            :key="incident.id"
+            :key="incident.downtime_entry_id"
             class="border-b"
           >
             <template v-slot:prepend>
-              <v-avatar color="error" size="40">
-                <v-icon color="white" size="20">mdi-clock-alert</v-icon>
+              <v-avatar color="error" size="36">
+                <v-icon color="white" size="18">mdi-clock-alert</v-icon>
               </v-avatar>
             </template>
 
             <v-list-item-title class="font-weight-medium">
-              {{ incident.machine }}
+              {{ incident.machine_id || incident.equipment_code || $t('workflow.unspecifiedMachine') }}
             </v-list-item-title>
             <v-list-item-subtitle>
-              {{ $t('workflow.started') }}: {{ formatTime(incident.startTime) }} |
-              {{ $t('workflow.duration') }}: {{ incident.duration }} min |
-              {{ incident.reason }}
+              {{ formatReason(incident.downtime_reason) }} —
+              {{ incident.downtime_duration_minutes || 0 }} min
             </v-list-item-subtitle>
-
-            <template v-slot:append>
-              <v-btn
-                color="success"
-                variant="elevated"
-                size="small"
-                @click="openResolveDialog(incident)"
-              >
-                <v-icon start size="16">mdi-check</v-icon>
-                {{ $t('workflow.resolve') }}
-              </v-btn>
-            </template>
           </v-list-item>
         </v-list>
       </v-card-text>
@@ -102,7 +100,7 @@
         <v-list v-else density="compact">
           <v-list-item
             v-for="incident in resolvedIncidents"
-            :key="incident.id"
+            :key="incident.downtime_entry_id"
           >
             <template v-slot:prepend>
               <v-avatar color="success" size="36">
@@ -110,39 +108,56 @@
               </v-avatar>
             </template>
 
-            <v-list-item-title>{{ incident.machine }}</v-list-item-title>
+            <v-list-item-title>
+              {{ incident.machine_id || incident.equipment_code || $t('workflow.unspecifiedMachine') }}
+            </v-list-item-title>
             <v-list-item-subtitle>
-              {{ incident.reason }} - {{ incident.duration }} min
+              {{ formatReason(incident.downtime_reason) }} —
+              {{ incident.downtime_duration_minutes || 0 }} min
             </v-list-item-subtitle>
 
-            <template v-slot:append>
-              <span class="text-caption text-grey">
-                {{ formatTime(incident.endTime) }}
-              </span>
+            <template v-slot:append v-if="incident.corrective_action">
+              <v-tooltip :text="incident.corrective_action" location="left">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" size="16" color="grey">mdi-information</v-icon>
+                </template>
+              </v-tooltip>
             </template>
           </v-list-item>
         </v-list>
       </v-card-text>
     </v-card>
 
-    <!-- Downtime by Category -->
+    <!-- Downtime by Reason -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-chart-pie</v-icon>
-        {{ $t('workflow.downtimeByCategory') }}
+        {{ $t('workflow.downtimeByReason') }}
       </v-card-title>
       <v-card-text>
-        <div v-for="category in downtimeByCategory" :key="category.name" class="mb-3">
-          <div class="d-flex justify-space-between align-center mb-1">
-            <span class="text-body-2">{{ category.name }}</span>
-            <span class="text-caption text-grey">{{ category.minutes }} min ({{ category.percentage }}%)</span>
+        <v-alert
+          v-if="downtimeByReason.length === 0"
+          type="info"
+          variant="tonal"
+          density="compact"
+        >
+          {{ $t('workflow.noDowntimeData') }}
+        </v-alert>
+        <div v-else>
+          <div v-for="reason in downtimeByReason" :key="reason.code" class="mb-3">
+            <div class="d-flex justify-space-between align-center mb-1">
+              <span class="text-body-2">{{ formatReason(reason.code) }}</span>
+              <span class="text-caption text-grey">
+                {{ reason.minutes }} min ({{ reason.percentage }}%)
+              </span>
+            </div>
+            <v-progress-linear
+              :model-value="reason.percentage"
+              :color="reason.color"
+              height="8"
+              rounded
+            />
           </div>
-          <v-progress-linear
-            :model-value="category.percentage"
-            :color="category.color"
-            height="8"
-            rounded
-          />
         </div>
       </v-card-text>
     </v-card>
@@ -165,182 +180,85 @@
     >
       {{ $t('workflow.downtimeMustResolve', { count: openCount }) }}
     </v-alert>
-
-    <!-- Resolve Dialog -->
-    <v-dialog v-model="resolveDialog" max-width="500" persistent>
-      <v-card v-if="selectedIncident">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2" color="success">mdi-check-circle</v-icon>
-          {{ $t('workflow.resolveDowntime') }}
-        </v-card-title>
-        <v-card-text>
-          <div class="text-subtitle-1 mb-3">{{ selectedIncident.machine }}</div>
-
-          <v-text-field
-            v-model="resolveForm.endTime"
-            :label="$t('workflow.endTime')"
-            type="time"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-select
-            v-model="resolveForm.rootCause"
-            :items="rootCauseOptions"
-            :label="$t('workflow.rootCause')"
-            variant="outlined"
-            density="compact"
-            class="mb-3"
-          />
-
-          <v-textarea
-            v-model="resolveForm.resolution"
-            :label="$t('workflow.resolutionNotes')"
-            variant="outlined"
-            density="compact"
-            rows="3"
-            :placeholder="$t('workflow.resolutionPlaceholder')"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="resolveDialog = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn
-            color="success"
-            variant="elevated"
-            :loading="resolving"
-            :disabled="!resolveForm.rootCause"
-            @click="resolveIncident"
-          >
-            {{ $t('workflow.resolve') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { format } from 'date-fns'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
+import { useNotificationStore } from '@/stores/notificationStore'
 
+const { t } = useI18n()
 const emit = defineEmits(['complete', 'update'])
 
-// State
+const authStore = useAuthStore()
+const kpiStore = useKPIStore()
+const notificationStore = useNotificationStore()
+
 const loading = ref(true)
 const confirmed = ref(false)
-const resolveDialog = ref(false)
-const resolving = ref(false)
-const selectedIncident = ref(null)
 const incidents = ref([])
 
-const resolveForm = ref({
-  endTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-  rootCause: null,
-  resolution: ''
-})
-
-const rootCauseOptions = [
-  'Mechanical Failure',
-  'Electrical Issue',
-  'Sensor Malfunction',
-  'Operator Error',
-  'Material Issue',
-  'Scheduled Maintenance',
-  'Changeover',
-  'Other'
-]
-
-// Computed
-const openIncidents = computed(() => incidents.value.filter(i => !i.resolved))
-const resolvedIncidents = computed(() => incidents.value.filter(i => i.resolved))
+// "Open" = no corrective_action recorded yet (operator must add one in the Downtime grid).
+const openIncidents = computed(() =>
+  incidents.value.filter((i) => !(i.corrective_action || '').trim()),
+)
+const resolvedIncidents = computed(() =>
+  incidents.value.filter((i) => (i.corrective_action || '').trim()),
+)
 const totalIncidents = computed(() => incidents.value.length)
 const resolvedCount = computed(() => resolvedIncidents.value.length)
 const openCount = computed(() => openIncidents.value.length)
-const totalMinutes = computed(() => incidents.value.reduce((sum, i) => sum + i.duration, 0))
+const totalMinutes = computed(() =>
+  incidents.value.reduce((sum, i) => sum + (i.downtime_duration_minutes || 0), 0),
+)
 
-const downtimeByCategory = computed(() => {
-  const categories = {}
-  const colors = ['primary', 'error', 'warning', 'info', 'success', 'grey']
+const reasonColorMap = {
+  EQUIPMENT_FAILURE: 'error',
+  MATERIAL_SHORTAGE: 'warning',
+  SETUP_CHANGEOVER: 'info',
+  QUALITY_HOLD: 'pink',
+  MAINTENANCE: 'primary',
+  POWER_OUTAGE: 'error',
+  OTHER: 'grey',
+}
 
-  incidents.value.forEach(incident => {
-    const cat = incident.category || 'Other'
-    if (!categories[cat]) {
-      categories[cat] = { name: cat, minutes: 0 }
-    }
-    categories[cat].minutes += incident.duration
+const formatReason = (code) => {
+  if (!code) return t('workflow.unspecifiedReason')
+  return code
+    .split('_')
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ')
+}
+
+const downtimeByReason = computed(() => {
+  const buckets = new Map()
+  incidents.value.forEach((i) => {
+    const code = i.downtime_reason || 'OTHER'
+    const minutes = i.downtime_duration_minutes || 0
+    buckets.set(code, (buckets.get(code) || 0) + minutes)
   })
-
-  return Object.values(categories).map((cat, idx) => ({
-    ...cat,
-    percentage: totalMinutes.value > 0 ? Math.round((cat.minutes / totalMinutes.value) * 100) : 0,
-    color: colors[idx % colors.length]
-  })).sort((a, b) => b.minutes - a.minutes)
+  return [...buckets.entries()]
+    .map(([code, minutes]) => ({
+      code,
+      minutes,
+      percentage:
+        totalMinutes.value > 0 ? Math.round((minutes / totalMinutes.value) * 100) : 0,
+      color: reasonColorMap[code] || 'grey',
+    }))
+    .sort((a, b) => b.minutes - a.minutes)
 })
-
-// Methods
-const formatTime = (timeString) => {
-  if (!timeString) return ''
-  const date = new Date(timeString)
-  return date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const openResolveDialog = (incident) => {
-  selectedIncident.value = incident
-  resolveForm.value = {
-    endTime: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-    rootCause: null,
-    resolution: ''
-  }
-  resolveDialog.value = true
-}
-
-const resolveIncident = async () => {
-  if (!selectedIncident.value) return
-
-  resolving.value = true
-  try {
-    await api.patch(`/downtime/${selectedIncident.value.id}/resolve`, {
-      end_time: resolveForm.value.endTime,
-      root_cause: resolveForm.value.rootCause,
-      resolution: resolveForm.value.resolution
-    })
-
-    // Update local state
-    const incident = incidents.value.find(i => i.id === selectedIncident.value.id)
-    if (incident) {
-      incident.resolved = true
-      incident.endTime = new Date().toISOString()
-      incident.rootCause = resolveForm.value.rootCause
-    }
-
-    resolveDialog.value = false
-    emitUpdate()
-  } catch (error) {
-    console.error('Failed to resolve incident:', error)
-    // Still update locally for demo
-    const incident = incidents.value.find(i => i.id === selectedIncident.value.id)
-    if (incident) {
-      incident.resolved = true
-      incident.endTime = new Date().toISOString()
-    }
-    resolveDialog.value = false
-    emitUpdate()
-  } finally {
-    resolving.value = false
-  }
-}
 
 const emitUpdate = () => {
   emit('update', {
     incidents: incidents.value,
     openCount: openCount.value,
     totalMinutes: totalMinutes.value,
-    isValid: confirmed.value && openCount.value === 0
+    isValid: confirmed.value && openCount.value === 0,
   })
 }
 
@@ -350,7 +268,7 @@ const handleConfirm = (value) => {
       incidents: incidents.value,
       totalIncidents: totalIncidents.value,
       totalMinutes: totalMinutes.value,
-      byCategory: downtimeByCategory.value
+      byReason: downtimeByReason.value,
     })
   }
   emitUpdate()
@@ -359,16 +277,27 @@ const handleConfirm = (value) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const response = await api.get('/downtime/shift')
-    incidents.value = response.data
+    const params = { shift_date: format(new Date(), 'yyyy-MM-dd') }
+    const clientId = authStore.user?.client_id_assigned ?? kpiStore.selectedClient
+    if (clientId) params.client_id = clientId
+    const response = await api.get('/downtime', { params })
+    incidents.value = (response.data || []).map((entry) => ({
+      ...entry,
+      shift_date:
+        typeof entry.shift_date === 'string'
+          ? entry.shift_date.slice(0, 10)
+          : entry.shift_date,
+    }))
+    emitUpdate()
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Failed to fetch downtime data:', error)
-    // Mock data
-    incidents.value = [
-      { id: 1, machine: 'CNC Machine #2', startTime: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), endTime: new Date(Date.now() - 3.5 * 60 * 60 * 1000).toISOString(), duration: 30, reason: 'Sensor malfunction', category: 'Mechanical Failure', resolved: true },
-      { id: 2, machine: 'Conveyor System', startTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), endTime: new Date(Date.now() - 1.75 * 60 * 60 * 1000).toISOString(), duration: 15, reason: 'Belt adjustment', category: 'Scheduled Maintenance', resolved: true },
-      { id: 3, machine: 'Press #1', startTime: new Date(Date.now() - 45 * 60 * 1000).toISOString(), endTime: null, duration: 45, reason: 'Hydraulic leak', category: 'Mechanical Failure', resolved: false }
-    ]
+    notificationStore.show({
+      type: 'error',
+      message: t('workflow.errors.loadDowntime'),
+    })
+    incidents.value = []
+    emitUpdate()
   } finally {
     loading.value = false
   }

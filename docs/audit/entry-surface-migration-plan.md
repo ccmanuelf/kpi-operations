@@ -36,29 +36,48 @@ Original plan implicitly treated the 4 surfaces as equivalent. Revised ordering,
 3. **Attendance** — adds status enum translation + datetime format conversion + clipboardParser edit.
 4. **Downtime** — largest divergence (enum mapping + unit conversion); reuses adapter pattern from #1–#3.
 
-### 0.3 Group B requires its own runtime validation
+### 0.3 Group B Phase 0 — runtime validation findings (2026-05-01)
 
-The wizard steps (plan rows 5, 6, 7) do **not** share payload code with Group A grids. Each wizard step has its own ad-hoc API call:
+The Group B Phase 0 runtime validation is COMPLETE. Findings in `docs/audit/group-b-runtime-validation.md`:
 
-- `WorkflowStepProduction.vue:244` posts to `/production-entries` (different from the production grid's `/production`) — **endpoint existence not verified**.
-- `WorkflowStepDowntime.vue:307` calls `PATCH /downtime/{id}/resolve` — **endpoint does NOT exist** on the backend (only `PUT /downtime/{id}` exists). The wizard's error path silently swallows failures into local state, masking the bug.
-- `WorkflowStepAttendance.vue` does **not save anything** — only reads roster + stations; presence/assignment held in local state and emitted upward.
+| Plan row | Surface | Endpoint status | Recommended option |
+|---|---|---|---|
+| 5 | WorkflowStepProduction | `POST /production-entries` and `GET /work-orders/shift-production` both 404 | **(c) skip persistence** — read-only checkpoint linking out to the Group A ProductionEntryGrid |
+| 6 | WorkflowStepDowntime | `PATCH /downtime/{id}/resolve` and `GET /downtime/shift` both 404 + **data-integrity bug**: catch block forges success state on failure (operator advances thinking incidents persisted when they did not) | **(c) skip persistence** — read-only checkpoint, fix the forged-success bug as part of the migration |
+| 7 | WorkflowStepAttendance | Never persists; `GET /employees/shift-roster` and `GET /stations` both 404 | **(c) skip persistence** + fix the roster read to `/api/employees?shift_id=...`, drop the dead `/stations` call |
 
-**New requirement:** before Group B starts, run the same runtime validation pass on the 3 wizard steps. Decide per surface whether to (a) fix the wizard's API call to use existing endpoints, (b) make the wizard embed the corresponding Group A grid (which by then will have a working save), or (c) skip the wizard step's persistence and rely on the grid post-shift. Document decisions in `docs/audit/group-b-runtime-validation.md`. **Add this as a Phase 0 pre-task to Group B in §5 below.**
+**Recommendation: option (c) for all three surfaces.** Total revised effort: **1.5–2.5 days** (option c) vs 3–5 days (option a) vs 6–8 days (option b — the original plan).
+
+Why (c) wins:
+- (b) would require reopening the just-closed Group A grids to add `compactMode` props, risking regressions
+- (a) papers over the cracks but the wizard's UX still falls short of the dedicated grid
+- (c) is the smallest change, directly serves the "Excel adoption" goal (operators use the dedicated grid for entry, the wizard becomes a checkpoint), and **runs cleanly in parallel** with later groups (no shared composables / stores touched)
+
+### 0.4 Cross-cutting findings from Group B Phase 0 — to fix in scope
+
+Per CLAUDE.md "Self-audit findings expand scope; no tech debt allowed", four findings from the wizard validation expand Group B's scope:
+
+1. **All 3 steps swallow API errors with `console.error` only** — no `useNotificationStore` (the Run-5 silent-catch fix was never applied here). Fix in scope.
+2. **None of the 3 steps import `useAuthStore` / `useKPIStore`** — same systemic gap as Group A's "client_id missing" finding. Even if the steps no longer create records (option c), reads should be tenant-aware. Fix in scope.
+3. **WorkflowStepDowntime forges success on failure** (`WorkflowStepDowntime.vue:323-331`) — active data-integrity bug. Independent of endpoint mismatch. Fix in scope (delete the forged-success path).
+4. **All 3 steps ship hard-coded mock fixtures in fetch catch blocks** — pre-dates the seeded-DB era and now hides endpoint failures from developers. Remove the fixtures so failures surface clearly.
+
+### 0.5 Status badge amendment
 
 ### 0.4 Status badge amendment
 
 The 4 grids classified "Compliant" in Phase 0 inventory (rows 4, 6, 8, 10) are amended to **"UI-compliant; payload-divergent"**. They satisfy the visual/interaction Spreadsheet Standard; the save path needs fixing as part of each surface's migration. The "Compliant" status is restored only when the grid completes a full save round-trip with the backend.
 
-### 0.5 Effort summary delta
+### 0.6 Effort summary delta
 
 | Group | Original estimate | Revised estimate | Delta |
 |---|---|---|---|
-| A | ½ day | 2–4 days | +1.5–3.5 days |
-| B (Phase 0 pre-task) | n/a | ~½ day | +½ day |
-| B (migrations) | 1–2 days | 1–2 days (unchanged unless Phase 0 finds bigger gaps) | tbd |
+| A | ½ day | **2.5 days actual** (Quality M, Holds M, Attendance M, Downtime M) | +2 days |
+| B Phase 0 | n/a | ½ day actual | +½ day |
+| B migrations (option c) | 1–2 days (embed plan) | 1.5–2.5 days (option c — skip persistence, fix reads, fix integrity bug) | minor delta |
+| B can parallelise? | no (was embed) | **yes** (no shared composables touched) | enables overlap |
 
-**Phase 2 total estimate revised:** 5.5–7 weeks → **6–7.5 weeks** (single-engineer, sequential per surface).
+**Phase 2 total estimate revised:** 5.5–7 weeks → **6–7.5 weeks** (single-engineer, sequential per surface). Group A actual outcome confirmed lower bound.
 
 ---
 
