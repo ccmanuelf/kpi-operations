@@ -2,25 +2,35 @@
  * Composable for AttendanceEntryGrid script logic — reactive
  * state, column definitions, CRUD, paste handling, employee
  * loading, bulk status, status counts, read-back confirmation.
+ *
+ * Backend alignment: payload matches backend/schemas/attendance.py
+ * AttendanceRecordCreate. shift_date and shift_id come from the
+ * composable-level selectedDate/selectedShift. UI status string
+ * (Present/Absent/Late/Half Day/Leave/Vacation/Medical) is translated
+ * to is_absent + absence_type + is_late on save. clock_in/clock_out
+ * (HH:MM strings) are combined with shift_date to produce ISO
+ * arrival_time/departure_time datetimes.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 import { format } from 'date-fns'
 
 export interface AttendanceRow {
-  attendance_id?: string | number
+  attendance_entry_id?: string | number
   employee_id?: string | number
   employee_name?: string
   department?: string
-  date?: string
+  shift_date?: string
   shift_id?: string | number | null
   status?: string
   clock_in?: string
   clock_out?: string
-  late_minutes?: number
+  scheduled_hours?: number
+  actual_hours?: number
   absence_reason?: string
-  is_excused?: boolean
   notes?: string
   _hasChanges?: boolean
   _isNew?: boolean
@@ -71,10 +81,55 @@ interface UseAttendanceGridDataOptions {
   TimePickerCellEditor?: unknown
 }
 
+const DEFAULT_SCHEDULED_HOURS = 8
+
+// Mirrors backend/schemas/attendance.py from_legacy_csv mapping.
+// Half Day is not a backend concept — represented as Present with
+// reduced actual_hours = scheduled / 2 (operator can adjust).
+export interface StatusTranslation {
+  is_absent: 0 | 1
+  absence_type: string | null
+  is_late: 0 | 1
+  actualHoursFactor: number
+}
+
+export const translateStatus = (status: string | undefined): StatusTranslation => {
+  switch ((status || 'Present').toLowerCase()) {
+    case 'absent':
+      return { is_absent: 1, absence_type: 'UNSCHEDULED_ABSENCE', is_late: 0, actualHoursFactor: 0 }
+    case 'late':
+      return { is_absent: 0, absence_type: null, is_late: 1, actualHoursFactor: 1 }
+    case 'half day':
+      return { is_absent: 0, absence_type: null, is_late: 0, actualHoursFactor: 0.5 }
+    case 'leave':
+      return { is_absent: 1, absence_type: 'PERSONAL_LEAVE', is_late: 0, actualHoursFactor: 0 }
+    case 'vacation':
+      return { is_absent: 1, absence_type: 'VACATION', is_late: 0, actualHoursFactor: 0 }
+    case 'medical':
+      return { is_absent: 1, absence_type: 'MEDICAL_LEAVE', is_late: 0, actualHoursFactor: 0 }
+    case 'present':
+    default:
+      return { is_absent: 0, absence_type: null, is_late: 0, actualHoursFactor: 1 }
+  }
+}
+
+export const combineDateTime = (
+  date: string | undefined,
+  time: string | undefined,
+): string | undefined => {
+  if (!date || !time) return undefined
+  const trimmed = time.trim()
+  if (!/^\d{1,2}:\d{2}$/.test(trimmed)) return undefined
+  const [h, m] = trimmed.split(':')
+  return `${date}T${h.padStart(2, '0')}:${m}:00`
+}
+
 export default function useAttendanceGridData(
   { TimePickerCellEditor }: UseAttendanceGridDataOptions = {},
 ) {
   const { t } = useI18n()
+  const authStore = useAuthStore()
+  const kpiSelectionStore = useKPIStore()
 
   const gridRef = ref<AGGridRef | null>(null)
   const selectedDate = ref(format(new Date(), 'yyyy-MM-dd'))
@@ -98,22 +153,32 @@ export default function useAttendanceGridData(
 
   const pendingRowsCount = computed(() => pendingRows.value.length)
 
+  // Operators inherit client_id from auth; admin users fall back to KPI store selection.
+  const activeClientId = (): string | number | null => {
+    return authStore.user?.client_id_assigned ?? kpiSelectionStore.selectedClient ?? null
+  }
+
   const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
     const shiftName =
       shifts.value.find((s) => s.shift_id === selectedShift.value)?.shift_name || 'N/A'
 
     return [
-      { key: 'employee_id', label: 'Employee ID', type: 'text' },
-      { key: 'employee_name', label: 'Employee Name', type: 'text' },
-      { key: 'department', label: 'Department', type: 'text' },
-      { key: 'date', label: 'Date', type: 'date', displayValue: selectedDate.value },
-      { key: 'shift_id', label: 'Shift', type: 'text', displayValue: shiftName },
-      { key: 'status', label: 'Status', type: 'text' },
-      { key: 'clock_in', label: 'Clock In', type: 'text' },
-      { key: 'clock_out', label: 'Clock Out', type: 'text' },
-      { key: 'late_minutes', label: 'Late (minutes)', type: 'number' },
-      { key: 'absence_reason', label: 'Absence Reason', type: 'text' },
-      { key: 'is_excused', label: 'Excused', type: 'boolean' },
+      { key: 'employee_id', label: t('grids.columns.employeeId'), type: 'text' },
+      { key: 'employee_name', label: t('grids.columns.employeeName'), type: 'text' },
+      { key: 'department', label: t('grids.columns.department'), type: 'text' },
+      {
+        key: 'shift_date',
+        label: t('grids.columns.shiftDate'),
+        type: 'date',
+        displayValue: selectedDate.value,
+      },
+      { key: 'shift_id', label: t('filters.shift'), type: 'text', displayValue: shiftName },
+      { key: 'status', label: t('grids.columns.status'), type: 'text' },
+      { key: 'clock_in', label: t('grids.columns.clockIn'), type: 'text' },
+      { key: 'clock_out', label: t('grids.columns.clockOut'), type: 'text' },
+      { key: 'scheduled_hours', label: t('grids.columns.scheduledHours'), type: 'number' },
+      { key: 'actual_hours', label: t('grids.columns.actualHours'), type: 'number' },
+      { key: 'absence_reason', label: t('grids.columns.absenceReason'), type: 'text' },
     ]
   })
 
@@ -131,7 +196,8 @@ export default function useAttendanceGridData(
       if (status === 'present') counts.present++
       else if (status === 'absent') counts.absent++
       else if (status === 'late') counts.late++
-      else if (status === 'leave') counts.leave++
+      else if (status === 'leave' || status === 'vacation' || status === 'medical')
+        counts.leave++
       else if (status === 'half day') counts.halfDay++
     })
 
@@ -166,7 +232,9 @@ export default function useAttendanceGridData(
       field: 'status',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: ['Present', 'Absent', 'Late', 'Half Day', 'Leave'] },
+      cellEditorParams: {
+        values: ['Present', 'Absent', 'Late', 'Half Day', 'Leave', 'Vacation', 'Medical'],
+      },
       cellClass: (params: { value?: string }) => {
         const classes: Record<string, string> = {
           Present: 'ag-cell-success ag-cell-bold',
@@ -174,6 +242,8 @@ export default function useAttendanceGridData(
           Late: 'ag-cell-warning ag-cell-bold',
           'Half Day': 'ag-cell-warning-light ag-cell-bold',
           Leave: 'ag-cell-purple ag-cell-bold',
+          Vacation: 'ag-cell-purple ag-cell-bold',
+          Medical: 'ag-cell-purple ag-cell-bold',
         }
         return classes[params.value || ''] || ''
       },
@@ -198,15 +268,22 @@ export default function useAttendanceGridData(
       valueFormatter: (params: { value?: string }) => params.value || '--:--',
     },
     {
-      headerName: t('grids.columns.lateMinutes'),
-      field: 'late_minutes',
+      headerName: t('grids.columns.scheduledHours'),
+      field: 'scheduled_hours',
       editable: true,
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { min: 0, precision: 0 },
-      cellClass: (params: { value?: number }) =>
-        (params.value ?? 0) > 0 ? 'ag-cell-warning' : '',
-      width: 120,
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      width: 130,
+    },
+    {
+      headerName: t('grids.columns.actualHours'),
+      field: 'actual_hours',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, max: 24, precision: 2 },
+      width: 130,
     },
     {
       headerName: t('grids.columns.absenceReason'),
@@ -228,15 +305,6 @@ export default function useAttendanceGridData(
       width: 180,
     },
     {
-      headerName: t('grids.columns.excused'),
-      field: 'is_excused',
-      editable: true,
-      cellRenderer: (params: { value?: boolean }) => (params.value ? '\u2713' : ''),
-      cellEditor: 'agCheckboxCellEditor',
-      cellStyle: { textAlign: 'center' },
-      width: 100,
-    },
-    {
       headerName: t('grids.columns.notes'),
       field: 'notes',
       editable: true,
@@ -256,7 +324,7 @@ export default function useAttendanceGridData(
 
   const loadEmployees = async (): Promise<void> => {
     if (!selectedDate.value || !selectedShift.value) {
-      showSnackbar('Please select both date and shift', 'warning')
+      showSnackbar(t('grids.attendance.errors.dateAndShift'), 'warning')
       return
     }
 
@@ -267,7 +335,7 @@ export default function useAttendanceGridData(
       })
 
       const existingAttendance = await api.getAttendanceEntries({
-        date: selectedDate.value,
+        shift_date: selectedDate.value,
         shift_id: selectedShift.value,
       })
 
@@ -279,8 +347,23 @@ export default function useAttendanceGridData(
         const existing = existingMap.get(emp.employee_id)
 
         if (existing) {
+          // Backend returns shift_date as ISO datetime; normalise to YYYY-MM-DD.
+          const shiftDate =
+            typeof existing.shift_date === 'string'
+              ? existing.shift_date.slice(0, 10)
+              : existing.shift_date
+          // arrival_time/departure_time are ISO datetimes on response; extract HH:MM.
+          const arrival = typeof existing.arrival_time === 'string'
+            ? (existing.arrival_time as string).slice(11, 16)
+            : ''
+          const departure = typeof existing.departure_time === 'string'
+            ? (existing.departure_time as string).slice(11, 16)
+            : ''
           return {
             ...existing,
+            shift_date: shiftDate,
+            clock_in: arrival,
+            clock_out: departure,
             employee_name: emp.employee_name || (emp as { name?: string }).name,
             department: emp.department,
             _isExisting: true,
@@ -291,14 +374,14 @@ export default function useAttendanceGridData(
           employee_id: emp.employee_id,
           employee_name: emp.employee_name || (emp as { name?: string }).name,
           department: emp.department,
-          date: selectedDate.value,
+          shift_date: selectedDate.value,
           shift_id: selectedShift.value,
           status: 'Present',
           clock_in: '',
           clock_out: '',
+          scheduled_hours: DEFAULT_SCHEDULED_HOURS,
+          actual_hours: DEFAULT_SCHEDULED_HOURS,
           absence_reason: '',
-          is_excused: false,
-          late_minutes: 0,
           notes: '',
           _hasChanges: false,
           _isNew: true,
@@ -345,6 +428,36 @@ export default function useAttendanceGridData(
     showSnackbar(t('grids.attendance.markedPresent'), 'success')
   }
 
+  const buildPayload = (
+    row: AttendanceRow,
+    clientId: string | number,
+  ): Record<string, unknown> => {
+    const translated = translateStatus(row.status)
+    const scheduledHours = row.scheduled_hours ?? DEFAULT_SCHEDULED_HOURS
+    const actualHours =
+      row.actual_hours !== undefined && row.actual_hours !== null
+        ? row.actual_hours
+        : scheduledHours * translated.actualHoursFactor
+    const absenceHours = translated.is_absent ? Math.max(0, scheduledHours - actualHours) : 0
+
+    return {
+      client_id: String(clientId),
+      employee_id: Number(row.employee_id),
+      shift_date: row.shift_date || selectedDate.value,
+      shift_id: row.shift_id ? Number(row.shift_id) : undefined,
+      scheduled_hours: scheduledHours,
+      actual_hours: actualHours,
+      absence_hours: absenceHours,
+      is_absent: translated.is_absent,
+      absence_type: translated.absence_type || undefined,
+      arrival_time: combineDateTime(row.shift_date || selectedDate.value, row.clock_in),
+      departure_time: combineDateTime(row.shift_date || selectedDate.value, row.clock_out),
+      is_late: translated.is_late,
+      absence_reason: row.absence_reason || undefined,
+      notes: row.notes || undefined,
+    }
+  }
+
   const saveAttendance = async (): Promise<void> => {
     const gridApi = gridRef.value?.gridApi
     if (!gridApi) return
@@ -356,6 +469,11 @@ export default function useAttendanceGridData(
 
     if (changedRows.length === 0) {
       showSnackbar(t('grids.noChanges'), 'info')
+      return
+    }
+
+    if (!activeClientId()) {
+      showSnackbar(t('grids.attendance.errors.noClient'), 'error')
       return
     }
 
@@ -371,27 +489,25 @@ export default function useAttendanceGridData(
     let successCount = 0
     let errorCount = 0
 
+    const clientId = activeClientId()
+    if (!clientId) {
+      saving.value = false
+      pendingRows.value = []
+      pendingData.value = {}
+      showSnackbar(t('grids.attendance.errors.noClient'), 'error')
+      return
+    }
+
     try {
       for (const row of pendingRows.value) {
-        const data = {
-          employee_id: row.employee_id,
-          date: selectedDate.value,
-          shift_id: selectedShift.value,
-          status: row.status,
-          clock_in: row.clock_in || null,
-          clock_out: row.clock_out || null,
-          late_minutes: row.late_minutes || 0,
-          absence_reason: row.absence_reason || null,
-          is_excused: row.is_excused || false,
-          notes: row.notes || '',
-        }
+        const data = buildPayload(row, clientId)
 
         try {
           if (row._isNew && !row._isExisting) {
             await api.createAttendanceEntry(data)
             successCount++
-          } else if (row.attendance_id) {
-            await api.updateAttendanceEntry(row.attendance_id, data)
+          } else if (row.attendance_entry_id) {
+            await api.updateAttendanceEntry(row.attendance_entry_id, data)
             successCount++
           } else {
             await api.createAttendanceEntry(data)
@@ -452,18 +568,18 @@ export default function useAttendanceGridData(
     if (!gridApi) return
 
     const preparedRows: AttendanceRow[] = rowsToAdd.map((row) => ({
-      attendance_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      attendance_entry_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       employee_id: row.employee_id || '',
       employee_name: row.employee_name || '',
       department: row.department || '',
-      date: row.date || selectedDate.value,
+      shift_date: row.shift_date || selectedDate.value,
       shift_id: row.shift_id || selectedShift.value,
       status: row.status || 'Present',
       clock_in: row.clock_in || '',
       clock_out: row.clock_out || '',
-      late_minutes: row.late_minutes || 0,
+      scheduled_hours: row.scheduled_hours ?? DEFAULT_SCHEDULED_HOURS,
+      actual_hours: row.actual_hours ?? DEFAULT_SCHEDULED_HOURS,
       absence_reason: row.absence_reason || '',
-      is_excused: row.is_excused || false,
       notes: row.notes || '',
       _hasChanges: true,
       _isNew: true,
@@ -492,7 +608,7 @@ export default function useAttendanceGridData(
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Error loading shifts:', error)
-      showSnackbar('Error loading shifts', 'error')
+      showSnackbar(t('grids.attendance.errors.loadShifts'), 'error')
     }
   })
 

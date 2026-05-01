@@ -101,6 +101,7 @@
     "production": "Production",
     "productionEntry": "Production Entry",
     "qualityEntry": "Quality Entry",
+    "attendanceEntry": "Attendance Entry",
     "quality": "Quality",
     "attendance": "Attendance",
     "downtime": "Downtime",
@@ -1072,7 +1073,9 @@
       "expectedResolution": "Expected Resolution",
       "resumeDate": "Resume Date",
       "holdInitiatedBy": "Initiated By",
-      "holdApprovedBy": "Approved By"
+      "holdApprovedBy": "Approved By",
+      "scheduledHours": "Scheduled Hours",
+      "actualHours": "Actual Hours"
     },
     "production": {
       "title": "Production Entry",
@@ -1100,7 +1103,12 @@
       "savedWithErrors": "{success} saved, {failed} failed",
       "confirmTitle": "Confirm Attendance Entry - Read Back",
       "confirmSubtitle": "Please verify the following attendance data before saving:",
-      "confirmWarning": "This will save {count} attendance records."
+      "confirmWarning": "This will save {count} attendance records.",
+      "errors": {
+        "noClient": "Cannot save: no client is selected. Choose a client before saving.",
+        "dateAndShift": "Please select both date and shift",
+        "loadShifts": "Error loading shifts"
+      }
     },
     "quality": {
       "title": "Quality Inspection - Batch Entry",

@@ -92,7 +92,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/data-entry/attendance',
     name: 'attendance-entry',
-    component: () => import('@/components/entries/AttendanceEntry.vue'),
+    component: () => import('@/views/AttendanceEntry.vue'),
     meta: { requiresAuth: true },
   },
   {

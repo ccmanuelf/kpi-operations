@@ -326,9 +326,9 @@ describe('Clipboard Parser', () => {
 
       it('validates attendance entries', () => {
         const rows = [{
-          attendance_date: '2024-01-15',
+          shift_date: '2024-01-15',
           scheduled_hours: 8,
-          worked_hours: 8
+          actual_hours: 8
         }]
 
         const result = validateRows(rows, schema)
@@ -338,7 +338,7 @@ describe('Clipboard Parser', () => {
 
       it('rejects hours over 24', () => {
         const rows = [{
-          attendance_date: '2024-01-15',
+          shift_date: '2024-01-15',
           scheduled_hours: 25
         }]
 
@@ -391,7 +391,7 @@ describe('Clipboard Parser', () => {
 
     it('defines attendance schema', () => {
       expect(entrySchemas.attendance).toBeDefined()
-      expect(entrySchemas.attendance.required).toContain('attendance_date')
+      expect(entrySchemas.attendance.required).toContain('shift_date')
     })
 
     it('defines downtime schema', () => {

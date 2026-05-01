@@ -101,6 +101,7 @@
     "production": "Producción",
     "productionEntry": "Captura de Producción",
     "qualityEntry": "Captura de Calidad",
+    "attendanceEntry": "Captura de Asistencia",
     "quality": "Calidad",
     "attendance": "Asistencia",
     "downtime": "Tiempo Muerto",
@@ -1072,7 +1073,9 @@
       "expectedResolution": "Resolución Esperada",
       "resumeDate": "Fecha de Reanudación",
       "holdInitiatedBy": "Iniciado Por",
-      "holdApprovedBy": "Aprobado Por"
+      "holdApprovedBy": "Aprobado Por",
+      "scheduledHours": "Horas Programadas",
+      "actualHours": "Horas Reales"
     },
     "production": {
       "title": "Entrada de Producción",
@@ -1100,7 +1103,12 @@
       "savedWithErrors": "{success} guardados, {failed} fallaron",
       "confirmTitle": "Confirmar Entrada de Asistencia - Verificación",
       "confirmSubtitle": "Por favor verifique los siguientes datos de asistencia antes de guardar:",
-      "confirmWarning": "Esto guardará {count} registros de asistencia."
+      "confirmWarning": "Esto guardará {count} registros de asistencia.",
+      "errors": {
+        "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar.",
+        "dateAndShift": "Por favor seleccione fecha y turno",
+        "loadShifts": "Error al cargar turnos"
+      }
     },
     "quality": {
       "title": "Inspección de Calidad - Entrada por Lotes",

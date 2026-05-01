@@ -330,11 +330,11 @@ export const entrySchemas: Record<string, EntrySchema> = {
     },
   },
   attendance: {
-    required: ['attendance_date'],
+    required: ['shift_date'],
     fields: {
-      attendance_date: { type: 'date' },
+      shift_date: { type: 'date' },
       scheduled_hours: { type: 'number', min: 0, max: 24 },
-      worked_hours: { type: 'number', min: 0, max: 24 },
+      actual_hours: { type: 'number', min: 0, max: 24 },
     },
   },
   downtime: {
