@@ -126,15 +126,24 @@
                     <div v-if="kpi.subtitle" class="text-caption text-medium-emphasis mt-1">{{ kpi.subtitle }}</div>
                   </div>
                   <div class="d-flex align-center ga-1">
-                    <v-btn
+                    <v-tooltip
                       v-if="isDualViewCapable(kpi.key)"
-                      icon="mdi-magnify-scan"
-                      variant="text"
-                      size="small"
-                      :loading="inspectorLoading"
-                      :aria-label="t('dualView.inspector.title')"
-                      @click.stop="openInspector(kpi.key)"
-                    />
+                      location="top"
+                      :text="!selectedClient ? t('dualView.inspector.selectClientFirst') : t('dualView.inspector.title')"
+                    >
+                      <template #activator="{ props: tipProps }">
+                        <v-btn
+                          v-bind="tipProps"
+                          icon="mdi-magnify-scan"
+                          variant="text"
+                          size="small"
+                          :loading="inspectorLoading"
+                          :disabled="!selectedClient"
+                          :aria-label="t('dualView.inspector.title')"
+                          @click.stop="openInspector(kpi.key)"
+                        />
+                      </template>
+                    </v-tooltip>
                     <v-icon :color="getStatusColor(kpi)" size="40">
                       {{ kpiStore.kpiIcon(kpi.value, kpi.target, kpi.higherBetter) }}
                     </v-icon>

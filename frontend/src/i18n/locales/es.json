@@ -3813,7 +3813,11 @@
       "approvedBy": "Aprobado por",
       "approvedAt": "Aprobado el",
       "calculatedAt": "Calculado el",
-      "calculatedBy": "Calculado por"
+      "calculatedBy": "Calculado por",
+      "selectClientFirst": "Seleccione un cliente para ver la trazabilidad del calculo",
+      "noClientSelected": "Seleccione un cliente antes de abrir la trazabilidad del calculo",
+      "notAvailable": "La trazabilidad del calculo no esta disponible para esta metrica",
+      "openFailed": "No se pudo abrir la trazabilidad del calculo"
     }
   }
 }

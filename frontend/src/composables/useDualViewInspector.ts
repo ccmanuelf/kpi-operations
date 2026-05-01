@@ -16,6 +16,7 @@
  */
 
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 import {
   calculateFPYFromPeriod,
@@ -54,6 +55,7 @@ export function useDualViewInspector(
   getClientId: () => string | null,
   getPeriod?: () => PeriodLike | null
 ) {
+  const { t } = useI18n()
   const open = ref(false)
   const resultId = ref<number | null>(null)
   const loading = ref(false)
@@ -72,18 +74,21 @@ export function useDualViewInspector(
   }
 
   const openForKpi = async (kpiKey: string) => {
+    // Reset before validation so the watch always fires for repeated clicks
+    // (Vue's watch skips identical-value reassignments).
+    error.value = null
+
     if (!DUAL_VIEW_CAPABLE_KEYS.has(kpiKey as DualViewCapableKey)) {
-      error.value = `Inspector not available for metric: ${kpiKey}`
+      error.value = t('dualView.inspector.notAvailable')
       return
     }
     const clientId = getClientId()
     if (!clientId) {
-      error.value = 'No client selected'
+      error.value = t('dualView.inspector.noClientSelected')
       return
     }
 
     loading.value = true
-    error.value = null
     try {
       const period = resolvePeriod()
       const body = { client_id: clientId, ...period }
@@ -102,7 +107,7 @@ export function useDualViewInspector(
       resultId.value = response.data.result_id
       open.value = true
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to open inspector'
+      error.value = err instanceof Error ? err.message : t('dualView.inspector.openFailed')
     } finally {
       loading.value = false
     }

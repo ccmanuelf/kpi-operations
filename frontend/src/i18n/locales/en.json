@@ -3769,7 +3769,11 @@
       "approvedBy": "Approved by",
       "approvedAt": "Approved at",
       "calculatedAt": "Calculated at",
-      "calculatedBy": "Calculated by"
+      "calculatedBy": "Calculated by",
+      "selectClientFirst": "Select a client to view calculation lineage",
+      "noClientSelected": "Select a client before opening the calculation lineage",
+      "notAvailable": "Calculation lineage is not available for this metric",
+      "openFailed": "Could not open calculation lineage"
     }
   }
 }
