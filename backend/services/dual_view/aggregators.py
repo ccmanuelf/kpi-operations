@@ -69,7 +69,41 @@ from backend.services.dual_view.oee_service import OEERawInputs
 from backend.services.dual_view.otd_service import OrderDelay, OTDRawInputs
 
 
-_DEFAULT_CYCLE_TIME = Decimal("0.25")  # 15 min/unit fallback when nothing in data
+_DEFAULT_CYCLE_TIME = Decimal("0.25")  # 15 min/unit, used only when no production rows exist
+_NEUTRAL_CYCLE_TIME_FLOOR = Decimal("0.0001")  # 0.36s — guards divide-by-zero when units == 0
+
+
+def _resolve_ideal_cycle_time(
+    avg_cycle: Optional[Decimal],
+    units_produced: int,
+    run_time_hours: Decimal,
+) -> Decimal:
+    """
+    Pick the ideal_cycle_time used by Performance.
+
+    Order of preference:
+      1. Master/product cycle time from ProductionEntry rows (avg_cycle).
+      2. Observed rate (run_time / units) — implicit standard from real
+         production. This makes Performance == 100% when no published
+         standard exists, instead of fabricating a value out of thin air.
+      3. _DEFAULT_CYCLE_TIME — only when the period has no production at all
+         (units_produced == 0 and run_time_hours == 0). Performance is 0
+         in that branch anyway, so the value doesn't materially matter.
+
+    Why not the old hardcoded 0.25h fallback: it routinely produced
+    Performance > 100% (and therefore OEE > 100%) on demo data where rows
+    don't carry a master cycle time, because real run rates are usually far
+    faster than 15 min/unit.
+    """
+
+    if avg_cycle is not None and avg_cycle > 0:
+        return Decimal(str(avg_cycle))
+
+    if units_produced > 0 and run_time_hours > 0:
+        observed = run_time_hours / Decimal(str(units_produced))
+        return max(observed, _NEUTRAL_CYCLE_TIME_FLOOR)
+
+    return _DEFAULT_CYCLE_TIME
 
 
 # --------------------------------------------------------------- helpers
@@ -153,8 +187,10 @@ def aggregate_oee_inputs(
     maintenance = Decimal(str(p.maintenance_hours or 0))
     scheduled = run_time + downtime + setup + maintenance
 
-    cycle_time = (
-        Decimal(str(p.avg_cycle)) if p.avg_cycle is not None and p.avg_cycle > 0 else _DEFAULT_CYCLE_TIME
+    cycle_time = _resolve_ideal_cycle_time(
+        p.avg_cycle,
+        int(p.units_produced or 0),
+        run_time,
     )
 
     rework_q = db.query(func.coalesce(func.sum(QualityEntry.units_reworked), 0)).filter(

@@ -157,6 +157,24 @@ class TestAggregateOEE:
         )
         assert result.units_reworked == 12
 
+    def test_missing_master_cycle_time_falls_back_to_observed_rate(self, transactional_db):
+        # Regression: with the old hardcoded 0.25h fallback, demo data without
+        # a master ideal_cycle_time produced Performance > 100% (and OEE > 100%).
+        # The aggregator now derives the standard from the observed rate
+        # (run_time / units), which makes Performance == 100% — the conservative
+        # interpretation when no published standard exists.
+        client, _ = _client_user(transactional_db)
+        _make_production_entry(
+            transactional_db, client_id=client.client_id,
+            units_produced=200, run_time_hours=Decimal("8.0"),
+            ideal_cycle_time=None,
+        )
+        result = aggregate_oee_inputs(
+            transactional_db, client.client_id, PERIOD_START, PERIOD_END
+        )
+        # 8h / 200 units = 0.04 h/unit observed
+        assert result.ideal_cycle_time_hours == Decimal("0.04")
+
 
 class TestAggregateOTD:
     def test_empty_period_yields_zero_orders(self, transactional_db):
