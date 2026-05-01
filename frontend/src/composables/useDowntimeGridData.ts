@@ -2,23 +2,33 @@
  * Composable for DowntimeEntryGrid script logic — reactive state,
  * column definitions, CRUD, paste handling, filters, summary stats,
  * read-back confirmation.
+ *
+ * Backend alignment: payload matches backend/schemas/downtime.py
+ * DowntimeEventCreate. client_id derived from authStore (operators)
+ * or kpiSelectionStore.selectedClient (admin). Reasons use the
+ * canonical DowntimeReasonEnum codes; legacy UI categories were
+ * removed in the 2026-05-01 entry-audit migration.
  */
 import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
 import { useProductionDataStore } from '@/stores/productionDataStore'
 import { format } from 'date-fns'
 
 export interface DowntimeRow {
-  downtime_id?: string | number
-  downtime_start_time?: string
-  work_order_id?: string | number
+  downtime_entry_id?: string | number
+  client_id?: string
+  shift_date?: string
+  work_order_id?: string | number | null
+  line_id?: string | number | null
   downtime_reason?: string
-  category?: string
-  duration_hours?: number
-  impact_on_wip_hours?: number
-  is_resolved?: boolean
-  resolution_notes?: string
-  line_id?: string | number
+  downtime_duration_minutes?: number
+  machine_id?: string | null
+  equipment_code?: string | null
+  root_cause_category?: string | null
+  corrective_action?: string | null
+  notes?: string | null
   _hasChanges?: boolean
   _isNew?: boolean
   [key: string]: unknown
@@ -27,11 +37,6 @@ export interface DowntimeRow {
 export interface WorkOrderRef {
   work_order_id?: string | number
   work_order_number?: string
-  [key: string]: unknown
-}
-
-export interface DowntimeReasonRef {
-  reason_name?: string
   [key: string]: unknown
 }
 
@@ -70,12 +75,27 @@ interface PasteData {
 export interface ConfirmationField {
   key: string
   label: string
-  type: 'datetime' | 'text' | 'number' | 'boolean'
+  type: 'date' | 'text' | 'number'
   displayValue?: string | number
 }
 
+// Canonical DowntimeReasonEnum codes (mirrors backend/schemas/downtime.py:13-22).
+export const DOWNTIME_REASON_CODES: string[] = [
+  'EQUIPMENT_FAILURE',
+  'MATERIAL_SHORTAGE',
+  'SETUP_CHANGEOVER',
+  'QUALITY_HOLD',
+  'MAINTENANCE',
+  'POWER_OUTAGE',
+  'OTHER',
+]
+
+const DEFAULT_REASON = 'OTHER'
+
 export default function useDowntimeGridData() {
   const { t } = useI18n()
+  const authStore = useAuthStore()
+  const kpiSelectionStore = useKPIStore()
   const kpiStore = useProductionDataStore()
   const gridRef = ref<AGGridRef | null>(null)
   const unsavedChanges = ref<Set<string | number>>(new Set())
@@ -95,19 +115,13 @@ export default function useDowntimeGridData() {
   const pendingRowsCount = computed(() => pendingRows.value.length)
 
   const dateFilter = ref<string | null>(null)
-  const categoryFilter = ref<string | null>(null)
-  const statusFilter = ref<'Resolved' | 'Unresolved' | null>(null)
+  const reasonFilter = ref<string | null>(null)
   const lineFilter = ref<string | number | null>(null)
 
-  const categories: string[] = [
-    'Planned Maintenance',
-    'Unplanned Breakdown',
-    'Changeover',
-    'Material Shortage',
-    'Quality Issue',
-    'Operator Absence',
-    'Other',
-  ]
+  // Operators inherit client_id from auth; admin users fall back to KPI store selection.
+  const activeClientId = (): string | number | null => {
+    return authStore.user?.client_id_assigned ?? kpiSelectionStore.selectedClient ?? null
+  }
 
   const entries = computed<DowntimeRow[]>(
     () => (kpiStore.downtimeEntries as DowntimeRow[]) || [],
@@ -115,24 +129,25 @@ export default function useDowntimeGridData() {
   const workOrders = computed<WorkOrderRef[]>(
     () => (kpiStore.workOrders as WorkOrderRef[]) || [],
   )
-  const downtimeReasons = computed<DowntimeReasonRef[]>(
-    () => (kpiStore.downtimeReasons as DowntimeReasonRef[]) || [],
-  )
   const hasUnsavedChanges = computed(() => unsavedChanges.value.size > 0)
 
   const filteredEntries = ref<DowntimeRow[]>([])
 
   const totalHours = computed(() =>
-    filteredEntries.value.reduce((sum, e) => sum + (e.duration_hours || 0), 0),
+    filteredEntries.value.reduce(
+      (sum, e) => sum + (e.downtime_duration_minutes || 0) / 60,
+      0,
+    ),
   )
 
-  const unresolvedCount = computed(
-    () => filteredEntries.value.filter((e) => !e.is_resolved).length,
+  const totalMinutes = computed(() =>
+    filteredEntries.value.reduce(
+      (sum, e) => sum + (e.downtime_duration_minutes || 0),
+      0,
+    ),
   )
 
-  const resolvedCount = computed(
-    () => filteredEntries.value.filter((e) => e.is_resolved).length,
-  )
+  const eventCount = computed(() => filteredEntries.value.length)
 
   const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
     const workOrderNumber =
@@ -140,7 +155,7 @@ export default function useDowntimeGridData() {
         ?.work_order_number || 'N/A'
 
     return [
-      { key: 'downtime_start_time', label: t('grids.columns.startTime'), type: 'datetime' },
+      { key: 'shift_date', label: t('grids.columns.shiftDate'), type: 'date' },
       {
         key: 'work_order_id',
         label: t('grids.columns.workOrder'),
@@ -148,15 +163,24 @@ export default function useDowntimeGridData() {
         displayValue: workOrderNumber,
       },
       { key: 'downtime_reason', label: t('grids.columns.reason'), type: 'text' },
-      { key: 'category', label: t('grids.columns.category'), type: 'text' },
-      { key: 'duration_hours', label: t('grids.columns.duration'), type: 'number' },
-      { key: 'impact_on_wip_hours', label: t('grids.columns.wipImpact'), type: 'number' },
-      { key: 'is_resolved', label: t('grids.columns.resolved'), type: 'boolean' },
       {
-        key: 'resolution_notes',
-        label: t('grids.columns.resolutionNotes'),
+        key: 'downtime_duration_minutes',
+        label: t('grids.columns.durationMin'),
+        type: 'number',
+      },
+      { key: 'machine_id', label: t('grids.columns.machineId'), type: 'text' },
+      { key: 'equipment_code', label: t('grids.columns.equipmentCode'), type: 'text' },
+      {
+        key: 'root_cause_category',
+        label: t('grids.columns.rootCauseCategory'),
         type: 'text',
       },
+      {
+        key: 'corrective_action',
+        label: t('grids.columns.correctiveAction'),
+        type: 'text',
+      },
+      { key: 'notes', label: t('grids.columns.notes'), type: 'text' },
     ]
   })
 
@@ -172,18 +196,18 @@ export default function useDowntimeGridData() {
 
     if (rowData._isNew) {
       api.applyTransaction({ remove: [rowData] })
-      if (rowData.downtime_id !== undefined)
-        unsavedChanges.value.delete(rowData.downtime_id)
+      if (rowData.downtime_entry_id !== undefined)
+        unsavedChanges.value.delete(rowData.downtime_entry_id)
       showSnackbar(t('grids.downtime.entryRemoved'), 'info')
       return
     }
 
-    if (rowData.downtime_id === undefined) return
+    if (rowData.downtime_entry_id === undefined) return
 
     try {
-      await kpiStore.deleteDowntimeEntry(rowData.downtime_id)
+      await kpiStore.deleteDowntimeEntry(rowData.downtime_entry_id)
       api.applyTransaction({ remove: [rowData] })
-      unsavedChanges.value.delete(rowData.downtime_id)
+      unsavedChanges.value.delete(rowData.downtime_entry_id)
       showSnackbar(t('grids.downtime.deleteSuccess'), 'success')
     } catch (error) {
       const ax = error as { message?: string }
@@ -193,15 +217,15 @@ export default function useDowntimeGridData() {
 
   const columnDefs = computed(() => [
     {
-      headerName: t('grids.columns.startTime'),
-      field: 'downtime_start_time',
+      headerName: t('grids.columns.shiftDate'),
+      field: 'shift_date',
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params: { value?: string }) =>
-        params.value ? format(new Date(params.value), 'MMM dd, yyyy HH:mm') : '',
+        params.value ? format(new Date(params.value), 'MMM dd, yyyy') : '',
       cellClass: 'font-weight-bold',
       pinned: 'left' as const,
-      width: 180,
+      width: 140,
       sort: 'desc' as const,
     },
     {
@@ -214,7 +238,7 @@ export default function useDowntimeGridData() {
       }),
       valueFormatter: (params: { value?: string | number }) => {
         const wo = workOrders.value.find((w) => w.work_order_id === params.value)
-        return wo?.work_order_number || (params.value as string) || 'N/A'
+        return wo?.work_order_number || (params.value as string) || ''
       },
       width: 150,
     },
@@ -223,76 +247,71 @@ export default function useDowntimeGridData() {
       field: 'downtime_reason',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({
-        values: downtimeReasons.value.map((r) => r.reason_name),
-      }),
-      width: 200,
-    },
-    {
-      headerName: t('grids.columns.category'),
-      field: 'category',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: categories },
+      cellEditorParams: { values: DOWNTIME_REASON_CODES },
       cellClass: (params: { value?: string }) => {
         const classes: Record<string, string> = {
-          'Planned Maintenance': 'ag-cell-info',
-          'Unplanned Breakdown': 'ag-cell-error ag-cell-bold',
-          Changeover: 'ag-cell-warning-light',
-          'Material Shortage': 'ag-cell-warning',
-          'Quality Issue': 'ag-cell-pink',
-          'Operator Absence': 'ag-cell-purple',
+          EQUIPMENT_FAILURE: 'ag-cell-error ag-cell-bold',
+          MATERIAL_SHORTAGE: 'ag-cell-warning',
+          SETUP_CHANGEOVER: 'ag-cell-warning-light',
+          QUALITY_HOLD: 'ag-cell-pink',
+          MAINTENANCE: 'ag-cell-info',
+          POWER_OUTAGE: 'ag-cell-error ag-cell-bold',
+          OTHER: 'ag-cell-purple',
         }
         return classes[params.value || ''] || ''
       },
       width: 180,
     },
     {
-      headerName: t('grids.columns.durationHrs'),
-      field: 'duration_hours',
+      headerName: t('grids.columns.durationMin'),
+      field: 'downtime_duration_minutes',
       editable: true,
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { min: 0, precision: 2 },
+      cellEditorParams: { min: 1, max: 1440, precision: 0 },
       valueFormatter: (params: { value?: number }) =>
-        params.value ? params.value.toFixed(2) : '0.00',
+        params.value !== undefined && params.value !== null ? String(params.value) : '0',
       cellClass: (params: { value?: number }) => {
-        const hours = params.value || 0
-        if (hours >= 4) return 'ag-cell-error ag-cell-bold'
-        if (hours >= 2) return 'ag-cell-warning'
+        const minutes = params.value || 0
+        if (minutes >= 240) return 'ag-cell-error ag-cell-bold'
+        if (minutes >= 120) return 'ag-cell-warning'
         return ''
       },
       width: 140,
     },
     {
-      headerName: t('grids.columns.wipImpactHrs'),
-      field: 'impact_on_wip_hours',
+      headerName: t('grids.columns.machineId'),
+      field: 'machine_id',
       editable: true,
-      type: 'numericColumn',
-      cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { min: 0, precision: 2 },
-      valueFormatter: (params: { value?: number }) =>
-        params.value ? params.value.toFixed(2) : '0.00',
-      width: 150,
+      width: 140,
     },
     {
-      headerName: t('grids.columns.status'),
-      field: 'is_resolved',
+      headerName: t('grids.columns.equipmentCode'),
+      field: 'equipment_code',
       editable: true,
-      cellRenderer: (params: { value?: boolean }) =>
-        params.value ? t('grids.downtime.resolved') : t('grids.downtime.unresolved'),
-      cellEditor: 'agCheckboxCellEditor',
-      cellClass: (params: { value?: boolean }) =>
-        params.value ? 'ag-cell-success ag-cell-bold' : 'ag-cell-error ag-cell-bold',
-      width: 130,
+      width: 140,
     },
     {
-      headerName: t('grids.columns.resolutionNotes'),
-      field: 'resolution_notes',
+      headerName: t('grids.columns.rootCauseCategory'),
+      field: 'root_cause_category',
+      editable: true,
+      width: 160,
+    },
+    {
+      headerName: t('grids.columns.correctiveAction'),
+      field: 'corrective_action',
       editable: true,
       cellEditor: 'agLargeTextCellEditor',
       cellEditorPopup: true,
-      width: 250,
+      width: 220,
+    },
+    {
+      headerName: t('grids.columns.notes'),
+      field: 'notes',
+      editable: true,
+      cellEditor: 'agLargeTextCellEditor',
+      cellEditorPopup: true,
+      width: 200,
     },
     {
       headerName: t('grids.columns.actions'),
@@ -328,7 +347,7 @@ export default function useDowntimeGridData() {
   }
 
   const onCellValueChanged = (event: CellValueChangedEvent): void => {
-    const rowId = event.data.downtime_id || event.node.id
+    const rowId = event.data.downtime_entry_id || event.node.id
     if (rowId !== undefined) unsavedChanges.value.add(rowId)
     event.data._hasChanges = true
     event.api.refreshCells({ rowNodes: [event.node], force: true })
@@ -336,26 +355,27 @@ export default function useDowntimeGridData() {
 
   const addNewEntry = (): void => {
     const newEntry: DowntimeRow = {
-      downtime_id: `temp_${Date.now()}`,
-      downtime_start_time: new Date().toISOString(),
-      work_order_id: workOrders.value[0]?.work_order_id || undefined,
-      downtime_reason: downtimeReasons.value[0]?.reason_name || '',
-      category: 'Unplanned Breakdown',
-      duration_hours: 0,
-      impact_on_wip_hours: 0,
-      is_resolved: false,
-      resolution_notes: '',
+      downtime_entry_id: `temp_${Date.now()}`,
+      shift_date: format(new Date(), 'yyyy-MM-dd'),
+      work_order_id: workOrders.value[0]?.work_order_id || null,
+      downtime_reason: DEFAULT_REASON,
+      downtime_duration_minutes: 0,
+      machine_id: null,
+      equipment_code: null,
+      root_cause_category: null,
+      corrective_action: null,
+      notes: null,
       _isNew: true,
       _hasChanges: true,
     }
 
     const api = gridRef.value?.gridApi
-    if (api && newEntry.downtime_id !== undefined) {
+    if (api && newEntry.downtime_entry_id !== undefined) {
       api.applyTransaction({ add: [newEntry], addIndex: 0 })
-      unsavedChanges.value.add(newEntry.downtime_id)
+      unsavedChanges.value.add(newEntry.downtime_entry_id)
 
       setTimeout(() => {
-        api.startEditingCell({ rowIndex: 0, colKey: 'downtime_start_time' })
+        api.startEditingCell({ rowIndex: 0, colKey: 'shift_date' })
       }, 100)
     }
   }
@@ -365,17 +385,13 @@ export default function useDowntimeGridData() {
 
     if (dateFilter.value) {
       filtered = filtered.filter((e) => {
-        if (!e.downtime_start_time) return false
-        const entryDate = new Date(e.downtime_start_time).toISOString().split('T')[0]
+        if (!e.shift_date) return false
+        const entryDate = new Date(e.shift_date).toISOString().split('T')[0]
         return entryDate === dateFilter.value
       })
     }
-    if (categoryFilter.value) {
-      filtered = filtered.filter((e) => e.category === categoryFilter.value)
-    }
-    if (statusFilter.value) {
-      const isResolved = statusFilter.value === 'Resolved'
-      filtered = filtered.filter((e) => e.is_resolved === isResolved)
+    if (reasonFilter.value) {
+      filtered = filtered.filter((e) => e.downtime_reason === reasonFilter.value)
     }
     if (lineFilter.value) {
       filtered = filtered.filter((e) => e.line_id === lineFilter.value)
@@ -383,6 +399,23 @@ export default function useDowntimeGridData() {
 
     filteredEntries.value = filtered
   }
+
+  const buildPayload = (
+    row: DowntimeRow,
+    clientId: string | number,
+  ): Record<string, unknown> => ({
+    client_id: String(clientId),
+    work_order_id: row.work_order_id || undefined,
+    line_id: row.line_id ? Number(row.line_id) : undefined,
+    shift_date: row.shift_date,
+    downtime_reason: row.downtime_reason || DEFAULT_REASON,
+    downtime_duration_minutes: row.downtime_duration_minutes || 0,
+    machine_id: row.machine_id || undefined,
+    equipment_code: row.equipment_code || undefined,
+    root_cause_category: row.root_cause_category || undefined,
+    corrective_action: row.corrective_action || undefined,
+    notes: row.notes || undefined,
+  })
 
   const saveChanges = async (): Promise<void> => {
     const gridApi = gridRef.value?.gridApi
@@ -398,6 +431,11 @@ export default function useDowntimeGridData() {
       return
     }
 
+    if (!activeClientId()) {
+      showSnackbar(t('grids.downtime.errors.noClient'), 'error')
+      return
+    }
+
     pendingRows.value = rowsToSave
     pendingData.value = rowsToSave[0]
     showConfirmDialog.value = true
@@ -410,31 +448,32 @@ export default function useDowntimeGridData() {
     let successCount = 0
     let errorCount = 0
 
+    const clientId = activeClientId()
+    if (!clientId) {
+      saving.value = false
+      pendingRows.value = []
+      pendingData.value = {}
+      showSnackbar(t('grids.downtime.errors.noClient'), 'error')
+      return
+    }
+
     try {
       for (const row of pendingRows.value) {
-        const data = {
-          work_order_id: row.work_order_id,
-          downtime_start_time: row.downtime_start_time,
-          downtime_reason: row.downtime_reason,
-          category: row.category,
-          duration_hours: row.duration_hours || 0,
-          impact_on_wip_hours: row.impact_on_wip_hours || 0,
-          is_resolved: row.is_resolved || false,
-          resolution_notes: row.resolution_notes || '',
-        }
+        const data = buildPayload(row, clientId)
 
         try {
           if (row._isNew) {
             const result = await kpiStore.createDowntimeEntry(data)
             if (result.success && result.data) {
-              row.downtime_id = (result.data as DowntimeRow).downtime_id
+              row.downtime_entry_id =
+                (result.data as DowntimeRow).downtime_entry_id ?? row.downtime_entry_id
               row._isNew = false
               successCount++
             } else {
               errorCount++
             }
-          } else if (row.downtime_id !== undefined) {
-            const result = await kpiStore.updateDowntimeEntry(row.downtime_id, data)
+          } else if (row.downtime_entry_id !== undefined) {
+            const result = await kpiStore.updateDowntimeEntry(row.downtime_entry_id, data)
             if (result.success) {
               successCount++
             } else {
@@ -446,7 +485,8 @@ export default function useDowntimeGridData() {
           }
 
           row._hasChanges = false
-          if (row.downtime_id !== undefined) unsavedChanges.value.delete(row.downtime_id)
+          if (row.downtime_entry_id !== undefined)
+            unsavedChanges.value.delete(row.downtime_entry_id)
         } catch (err) {
           errorCount++
           // eslint-disable-next-line no-console
@@ -498,22 +538,24 @@ export default function useDowntimeGridData() {
     if (!api) return
 
     const preparedRows: DowntimeRow[] = rowsToAdd.map((row) => ({
-      downtime_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      downtime_start_time: row.downtime_start_time || new Date().toISOString(),
-      work_order_id: row.work_order_id || workOrders.value[0]?.work_order_id || undefined,
-      downtime_reason: row.downtime_reason || downtimeReasons.value[0]?.reason_name || '',
-      category: row.category || 'Unplanned Breakdown',
-      duration_hours: row.duration_hours || 0,
-      impact_on_wip_hours: row.impact_on_wip_hours || 0,
-      is_resolved: row.is_resolved || false,
-      resolution_notes: row.resolution_notes || '',
+      downtime_entry_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      shift_date: row.shift_date || format(new Date(), 'yyyy-MM-dd'),
+      work_order_id: row.work_order_id || workOrders.value[0]?.work_order_id || null,
+      downtime_reason: row.downtime_reason || DEFAULT_REASON,
+      downtime_duration_minutes: row.downtime_duration_minutes ?? 0,
+      machine_id: row.machine_id || null,
+      equipment_code: row.equipment_code || null,
+      root_cause_category: row.root_cause_category || null,
+      corrective_action: row.corrective_action || null,
+      notes: row.notes || null,
       _isNew: true,
       _hasChanges: true,
     }))
 
     api.applyTransaction({ add: preparedRows, addIndex: 0 })
     preparedRows.forEach((row) => {
-      if (row.downtime_id !== undefined) unsavedChanges.value.add(row.downtime_id)
+      if (row.downtime_entry_id !== undefined)
+        unsavedChanges.value.add(row.downtime_entry_id)
     })
     showPasteDialog.value = false
     showSnackbar(t('paste.rowsAdded', { count: preparedRows.length }), 'success')
@@ -550,16 +592,15 @@ export default function useDowntimeGridData() {
     pasteValidationResult,
     pasteColumnMapping,
     dateFilter,
-    categoryFilter,
-    statusFilter,
+    reasonFilter,
     lineFilter,
-    categories,
+    reasons: DOWNTIME_REASON_CODES,
     filteredEntries,
     hasUnsavedChanges,
     columnDefs,
     totalHours,
-    unresolvedCount,
-    resolvedCount,
+    totalMinutes,
+    eventCount,
     onGridReady,
     onCellValueChanged,
     addNewEntry,

@@ -86,7 +86,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/data-entry/downtime',
     name: 'downtime-entry',
-    component: () => import('@/components/entries/DowntimeEntry.vue'),
+    component: () => import('@/views/DowntimeEntry.vue'),
     meta: { requiresAuth: true },
   },
   {

@@ -397,7 +397,8 @@ describe('Clipboard Parser', () => {
     it('defines downtime schema', () => {
       expect(entrySchemas.downtime).toBeDefined()
       expect(entrySchemas.downtime.required).toContain('shift_date')
-      expect(entrySchemas.downtime.required).toContain('downtime_minutes')
+      expect(entrySchemas.downtime.required).toContain('downtime_duration_minutes')
+      expect(entrySchemas.downtime.required).toContain('downtime_reason')
     })
 
     it('defines hold schema', () => {

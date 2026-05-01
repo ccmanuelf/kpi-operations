@@ -338,12 +338,15 @@ export const entrySchemas: Record<string, EntrySchema> = {
     },
   },
   downtime: {
-    required: ['shift_date', 'downtime_minutes'],
+    required: ['shift_date', 'downtime_duration_minutes', 'downtime_reason'],
     fields: {
       shift_date: { type: 'date' },
-      downtime_minutes: { type: 'number', min: 0 },
-      start_time: { type: 'time' },
-      end_time: { type: 'time' },
+      downtime_duration_minutes: { type: 'number', min: 0, max: 1440 },
+      downtime_reason: { type: 'string' },
+      machine_id: { type: 'string' },
+      equipment_code: { type: 'string' },
+      corrective_action: { type: 'string' },
+      notes: { type: 'string' },
     },
   },
   hold: {

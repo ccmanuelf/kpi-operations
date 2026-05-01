@@ -47,22 +47,11 @@
             hide-details
           />
         </v-col>
-        <v-col cols="12" md="2">
+        <v-col cols="12" md="3">
           <v-select
-            v-model="categoryFilter"
-            :items="categories"
-            :label="$t('grids.filterByCategory')"
-            variant="outlined"
-            density="compact"
-            clearable
-            hide-details
-          />
-        </v-col>
-        <v-col cols="12" md="2">
-          <v-select
-            v-model="statusFilter"
-            :items="['Resolved', 'Unresolved']"
-            :label="$t('grids.filterByStatus')"
+            v-model="reasonFilter"
+            :items="reasons"
+            :label="$t('grids.filterByReason')"
             variant="outlined"
             density="compact"
             clearable
@@ -75,7 +64,7 @@
             :label="$t('productionLines.filterByLine')"
           />
         </v-col>
-        <v-col cols="12" md="2">
+        <v-col cols="12" md="3">
           <v-btn color="primary" @click="applyFilters" block>
             <v-icon left>mdi-filter</v-icon>
             {{ $t('grids.applyFilters') }}
@@ -98,7 +87,7 @@
 
       <!-- Summary stats -->
       <v-row class="mt-3">
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="4">
           <v-card variant="outlined">
             <v-card-text>
               <div class="text-caption">{{ $t('grids.downtime.totalDowntimeEntries') }}</div>
@@ -106,27 +95,19 @@
             </v-card-text>
           </v-card>
         </v-col>
-        <v-col cols="12" md="3">
+        <v-col cols="12" md="4">
           <v-card variant="outlined" color="error">
+            <v-card-text>
+              <div class="text-caption">{{ $t('grids.downtime.totalMinutesLost') }}</div>
+              <div class="text-h6">{{ totalMinutes }} min</div>
+            </v-card-text>
+          </v-card>
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-card variant="outlined" color="warning">
             <v-card-text>
               <div class="text-caption">{{ $t('grids.downtime.totalHoursLost') }}</div>
               <div class="text-h6">{{ totalHours.toFixed(1) }} hrs</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-card variant="outlined" color="warning">
-            <v-card-text>
-              <div class="text-caption">{{ $t('grids.downtime.unresolvedIssues') }}</div>
-              <div class="text-h6">{{ unresolvedCount }}</div>
-            </v-card-text>
-          </v-card>
-        </v-col>
-        <v-col cols="12" md="3">
-          <v-card variant="outlined" color="success">
-            <v-card-text>
-              <div class="text-caption">{{ $t('grids.downtime.resolvedIssues') }}</div>
-              <div class="text-h6">{{ resolvedCount }}</div>
             </v-card-text>
           </v-card>
         </v-col>
@@ -187,16 +168,14 @@ const {
   pasteValidationResult,
   pasteColumnMapping,
   dateFilter,
-  categoryFilter,
-  statusFilter,
+  reasonFilter,
   lineFilter,
-  categories,
+  reasons,
   filteredEntries,
   hasUnsavedChanges,
   columnDefs,
   totalHours,
-  unresolvedCount,
-  resolvedCount,
+  totalMinutes,
   onGridReady,
   onCellValueChanged,
   addNewEntry,

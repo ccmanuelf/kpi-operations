@@ -102,6 +102,7 @@
     "productionEntry": "Captura de Producción",
     "qualityEntry": "Captura de Calidad",
     "attendanceEntry": "Captura de Asistencia",
+    "downtimeEntry": "Captura de Tiempo Muerto",
     "quality": "Calidad",
     "attendance": "Asistencia",
     "downtime": "Tiempo Muerto",
@@ -1075,7 +1076,12 @@
       "holdInitiatedBy": "Iniciado Por",
       "holdApprovedBy": "Aprobado Por",
       "scheduledHours": "Horas Programadas",
-      "actualHours": "Horas Reales"
+      "actualHours": "Horas Reales",
+      "durationMin": "Duración (min)",
+      "machineId": "ID de Máquina",
+      "equipmentCode": "Código de Equipo",
+      "rootCauseCategory": "Categoría de Causa Raíz",
+      "correctiveAction": "Acción Correctiva"
     },
     "production": {
       "title": "Entrada de Producción",
@@ -1200,7 +1206,11 @@
       "saveSuccess": "¡{count} registros de tiempo muerto guardados exitosamente!",
       "savePartial": "{success} guardados, {failed} fallaron",
       "saveError": "Error al guardar cambios: {error}",
-      "saveCancelled": "Guardado cancelado"
+      "saveCancelled": "Guardado cancelado",
+      "totalMinutesLost": "Total de Minutos Perdidos",
+      "errors": {
+        "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar."
+      }
     },
     "deleteConfirm": "¿Estás seguro de que deseas eliminar este registro?",
     "entryRemoved": "Registro eliminado",
