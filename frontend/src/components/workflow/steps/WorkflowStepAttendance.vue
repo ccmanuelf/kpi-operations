@@ -24,17 +24,28 @@
       </v-col>
     </v-row>
 
-    <!-- Employee List -->
+    <!-- Employee List (read-only roster from canonical /api/employees) -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-account-group</v-icon>
         {{ $t('workflow.employeeAttendance') }}
         <v-spacer />
+        <v-btn
+          size="small"
+          color="primary"
+          variant="elevated"
+          :to="{ path: '/data-entry/attendance' }"
+          target="_blank"
+          class="mr-2"
+        >
+          <v-icon start size="16">mdi-open-in-new</v-icon>
+          {{ $t('workflow.openAttendanceGrid') }}
+        </v-btn>
         <v-text-field
           v-model="searchQuery"
           density="compact"
           variant="outlined"
-          placeholder="Search..."
+          :placeholder="$t('common.search')"
           prepend-inner-icon="mdi-magnify"
           hide-details
           single-line
@@ -44,6 +55,14 @@
 
       <v-card-text class="pa-0">
         <v-skeleton-loader v-if="loading" type="list-item-avatar-two-line@5" />
+        <v-alert
+          v-else-if="employees.length === 0"
+          type="info"
+          variant="tonal"
+          class="ma-3"
+        >
+          {{ $t('workflow.noEmployeesFound') }}
+        </v-alert>
         <v-list v-else density="compact" class="employee-list">
           <v-list-item
             v-for="employee in filteredEmployees"
@@ -63,7 +82,7 @@
 
             <v-list-item-title>{{ employee.name }}</v-list-item-title>
             <v-list-item-subtitle>
-              {{ employee.role }} - {{ employee.station || $t('workflow.unassigned') }}
+              {{ employee.role || $t('workflow.unspecifiedRole') }}
             </v-list-item-subtitle>
 
             <template v-slot:append>
@@ -71,7 +90,7 @@
                 v-model="employee.present"
                 mandatory
                 density="compact"
-                @update:model-value="updateAttendance(employee)"
+                @update:model-value="emitUpdate"
               >
                 <v-btn :value="true" color="success" size="small" variant="outlined">
                   <v-icon size="16">mdi-check</v-icon>
@@ -86,81 +105,31 @@
       </v-card-text>
     </v-card>
 
-    <!-- Station Assignments -->
-    <v-card variant="outlined" class="mb-4">
-      <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
-        <v-icon class="mr-2" size="20">mdi-account-hard-hat</v-icon>
-        {{ $t('workflow.stationAssignments') }}
-        <v-spacer />
-        <v-btn
-          variant="text"
-          size="small"
-          color="primary"
-          @click="autoAssign"
-          :disabled="loading"
-        >
-          <v-icon start size="16">mdi-auto-fix</v-icon>
-          {{ $t('workflow.autoAssign') }}
-        </v-btn>
-      </v-card-title>
-
-      <v-card-text>
-        <v-row>
-          <v-col
-            v-for="station in stations"
-            :key="station.id"
-            cols="12"
-            sm="6"
-            md="4"
-          >
-            <v-card
-              variant="outlined"
-              :class="{ 'border-success': station.assignedEmployee }"
-            >
-              <v-card-text class="pa-3">
-                <div class="d-flex align-center mb-2">
-                  <v-icon size="18" class="mr-2" color="grey">mdi-tools</v-icon>
-                  <span class="text-body-2 font-weight-medium">{{ station.name }}</span>
-                </div>
-                <v-select
-                  v-model="station.assignedEmployee"
-                  :items="availableEmployees"
-                  item-title="name"
-                  item-value="id"
-                  density="compact"
-                  variant="outlined"
-                  :placeholder="$t('workflow.selectOperator')"
-                  hide-details
-                  clearable
-                  @update:model-value="updateAssignment(station)"
-                />
-              </v-card-text>
-            </v-card>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
     <!-- Coverage Alert -->
     <v-alert
-      v-if="coverageIssue"
+      v-if="!hasCoverage"
       type="warning"
       variant="tonal"
       class="mb-4"
     >
       <v-alert-title>{{ $t('workflow.coverageIssue') }}</v-alert-title>
-      {{ coverageMessage }}
-      <template v-slot:append>
-        <v-btn variant="text" size="small" @click="requestFloatingPool">
-          {{ $t('workflow.requestCoverage') }}
-        </v-btn>
-      </template>
+      {{ $t('workflow.coverageMessage', { count: minRequired - presentCount }) }}
+    </v-alert>
+
+    <!-- Persistence note -->
+    <v-alert
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mb-4"
+    >
+      {{ $t('workflow.attendancePersistenceNote') }}
     </v-alert>
 
     <!-- Confirmation -->
     <v-checkbox
       v-model="confirmed"
-      :disabled="!isValid"
+      :disabled="!canConfirm"
       :label="$t('workflow.attendanceConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
@@ -170,135 +139,99 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
+import { useNotificationStore } from '@/stores/notificationStore'
 
+const { t } = useI18n()
 const emit = defineEmits(['complete', 'update'])
 
-// State
+const authStore = useAuthStore()
+const kpiStore = useKPIStore()
+const notificationStore = useNotificationStore()
+
 const loading = ref(true)
 const searchQuery = ref('')
 const confirmed = ref(false)
 const employees = ref([])
-const stations = ref([])
 
-// Computed
 const expectedCount = computed(() => employees.value.length)
-const presentCount = computed(() => employees.value.filter(e => e.present).length)
-const absentCount = computed(() => employees.value.filter(e => !e.present).length)
+const presentCount = computed(() => employees.value.filter((e) => e.present).length)
+const absentCount = computed(() => employees.value.filter((e) => !e.present).length)
 
 const filteredEmployees = computed(() => {
   if (!searchQuery.value) return employees.value
   const query = searchQuery.value.toLowerCase()
-  return employees.value.filter(e =>
-    e.name.toLowerCase().includes(query) ||
-    e.role.toLowerCase().includes(query)
+  return employees.value.filter(
+    (e) =>
+      (e.name || '').toLowerCase().includes(query) ||
+      (e.role || '').toLowerCase().includes(query),
   )
 })
 
-const availableEmployees = computed(() => {
-  return employees.value.filter(e => e.present)
-})
+// Coverage threshold: 80% of expected employees must be present.
+const minRequired = computed(() => Math.ceil(expectedCount.value * 0.8))
+const hasCoverage = computed(() => presentCount.value >= minRequired.value)
+const canConfirm = computed(() => expectedCount.value > 0 && hasCoverage.value)
 
-const coverageIssue = computed(() => {
-  const required = stations.value.length
-  const available = presentCount.value
-  return available < required
-})
+const isValid = computed(() => canConfirm.value && confirmed.value)
 
-const coverageMessage = computed(() => {
-  const shortfall = stations.value.length - presentCount.value
-  return `${shortfall} additional operator(s) needed for full coverage.`
-})
-
-const isValid = computed(() => {
-  // At least 80% attendance required
-  const attendancePercent = (presentCount.value / expectedCount.value) * 100
-  return attendancePercent >= 80
-})
-
-// Methods
-const updateAttendance = (employee) => {
-  emitUpdate()
-}
-
-const updateAssignment = (station) => {
-  emitUpdate()
-}
-
-const autoAssign = () => {
-  const available = [...availableEmployees.value]
-  stations.value.forEach(station => {
-    if (!station.assignedEmployee && available.length > 0) {
-      const employee = available.shift()
-      station.assignedEmployee = employee.id
-    }
+const emitUpdate = () => {
+  emit('update', {
+    employees: employees.value,
+    presentCount: presentCount.value,
+    absentCount: absentCount.value,
+    isValid: isValid.value,
   })
-  emitUpdate()
-}
-
-const requestFloatingPool = () => {
-  // This would trigger a notification/request in a real implementation
-  console.log('Requesting floating pool coverage')
 }
 
 const handleConfirm = (value) => {
-  if (value && isValid.value) {
+  if (value && canConfirm.value) {
     emit('complete', {
       employees: employees.value,
-      stations: stations.value,
       presentCount: presentCount.value,
-      absentCount: absentCount.value
+      absentCount: absentCount.value,
     })
   }
   emitUpdate()
 }
 
-const emitUpdate = () => {
-  emit('update', {
-    employees: employees.value,
-    stations: stations.value,
-    isValid: isValid.value && confirmed.value
-  })
-}
-
 const fetchData = async () => {
   loading.value = true
   try {
-    const [employeesRes, stationsRes] = await Promise.all([
-      api.get('/employees/shift-roster'),
-      api.get('/stations')
-    ])
-    employees.value = employeesRes.data
-    stations.value = stationsRes.data
+    const params = { active: true }
+    const clientId = authStore.user?.client_id_assigned ?? kpiStore.selectedClient
+    if (clientId) params.client_id = clientId
+    const response = await api.get('/employees', { params })
+    employees.value = (response.data || []).map((e) => ({
+      id: e.employee_id ?? e.id,
+      name:
+        e.employee_name ??
+        e.name ??
+        [e.first_name, e.last_name].filter(Boolean).join(' '),
+      role: e.role ?? e.position ?? '',
+      // Default everyone to "present" until the operator marks otherwise.
+      // Persistence happens later via the standalone Attendance Entry grid.
+      present: true,
+    }))
+    emitUpdate()
   } catch (error) {
-    console.error('Failed to fetch attendance data:', error)
-    // Mock data for demonstration
-    employees.value = [
-      { id: 1, name: 'John Smith', role: 'Operator', present: true, station: 'Line 1' },
-      { id: 2, name: 'Maria Garcia', role: 'Operator', present: true, station: 'Line 2' },
-      { id: 3, name: 'James Wilson', role: 'Operator', present: true, station: null },
-      { id: 4, name: 'Sarah Johnson', role: 'Quality Inspector', present: true, station: null },
-      { id: 5, name: 'Michael Brown', role: 'Operator', present: false, station: null },
-      { id: 6, name: 'Emily Davis', role: 'Operator', present: true, station: 'Line 3' },
-      { id: 7, name: 'David Martinez', role: 'Technician', present: true, station: null },
-      { id: 8, name: 'Lisa Anderson', role: 'Operator', present: true, station: null }
-    ]
-    stations.value = [
-      { id: 1, name: 'Line 1', assignedEmployee: 1 },
-      { id: 2, name: 'Line 2', assignedEmployee: 2 },
-      { id: 3, name: 'Line 3', assignedEmployee: 6 },
-      { id: 4, name: 'Line 4', assignedEmployee: null },
-      { id: 5, name: 'Quality Station', assignedEmployee: 4 }
-    ]
+    // eslint-disable-next-line no-console
+    console.error('Failed to fetch employee roster:', error)
+    notificationStore.show({
+      type: 'error',
+      message: t('workflow.errors.loadRoster'),
+    })
+    employees.value = []
+    emitUpdate()
   } finally {
     loading.value = false
   }
 }
 
-// Watch for validity changes
-watch(isValid, (newValue) => {
-  emitUpdate()
-})
+watch([presentCount, expectedCount], () => emitUpdate())
 
 onMounted(() => {
   fetchData()
@@ -309,9 +242,5 @@ onMounted(() => {
 .employee-list {
   max-height: 300px;
   overflow-y: auto;
-}
-
-.border-success {
-  border-color: rgb(var(--v-theme-success)) !important;
 }
 </style>
