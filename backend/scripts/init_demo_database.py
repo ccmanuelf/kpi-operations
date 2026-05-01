@@ -1225,15 +1225,20 @@ def init_database() -> None:
             for i in range(10):
                 prod_idx = i % len(client_products)
                 product = client_products[prod_idx]
-                units = 1000 + (i * 50)
                 run_time = Decimal("8.0")
+                ideal_ct = product.ideal_cycle_time or Decimal("0.15")
+                # Derive units from the master cycle time so Performance lands
+                # in a realistic 82-98% range. The previous hardcoded
+                # `units = 1000 + i*50` ignored cycle_time entirely and made
+                # Performance saturate at 150% (and OEE come back > 100%).
+                target_perf = Decimal(str(round(random.uniform(0.82, 0.98), 2)))
+                units = max(1, int((run_time / ideal_ct) * target_perf))
                 defects = max(1, int(units * random.uniform(0.003, 0.012)))
                 scrap = max(0, defects // 3)
                 rework = defects - scrap
                 efficiency = Decimal(str(round(random.uniform(78, 95), 2)))
-                performance = Decimal(str(round(random.uniform(82, 98), 2)))
+                performance = (target_perf * Decimal("100")).quantize(Decimal("0.01"))
                 quality = Decimal(str(round(100 - (defects + scrap) / units * 100, 2)))
-                ideal_ct = product.ideal_cycle_time or Decimal("0.15")
                 actual_ct = run_time / units
 
                 work_order_id = wo_ids[i % len(wo_ids)] if wo_ids else None
