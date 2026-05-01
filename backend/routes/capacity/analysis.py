@@ -29,6 +29,10 @@ from ._models import (
     ScheduleCommitRequest,
     MessageResponse,
 )
+from backend.services.calculations.capacity import (
+    ComponentCoverageInputs,
+    calculate_component_coverage,
+)
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -82,10 +86,6 @@ def run_component_check(
         # component_item_code aggregated across orders), not order-scoped.
         # affected_orders carries the order numbers it touches; serialize
         # them as a list rather than a single order_id/order_number per row.
-        # coverage_percent isn't on the dataclass; compute it inline.
-        def _coverage(req: Decimal, avail: Decimal) -> float:
-            return float((avail / req) * 100) if req > 0 else 100.0
-
         return [
             {
                 "affected_orders": r.affected_orders,
@@ -95,7 +95,14 @@ def run_component_check(
                 "available_quantity": float(r.available_quantity),
                 "shortage_quantity": float(r.shortage_quantity or 0),
                 "status": r.status.value if r.status else None,
-                "coverage_percent": _coverage(r.required_quantity, r.available_quantity),
+                "coverage_percent": float(
+                    calculate_component_coverage(
+                        ComponentCoverageInputs(
+                            available_quantity=r.available_quantity,
+                            required_quantity=r.required_quantity,
+                        )
+                    ).value
+                ),
             }
             for r in mrp_run.components
         ]

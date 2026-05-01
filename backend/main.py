@@ -114,6 +114,16 @@ try:
 except ImportError:
     pass
 
+# Dual-view nightly calculation scheduler (F.4). Same import-shield pattern
+# so projects without apscheduler still boot.
+dual_view_scheduler: Optional[Any] = None
+try:
+    from backend.tasks.dual_view_calculation import scheduler as _imported_dv_scheduler
+
+    dual_view_scheduler = _imported_dv_scheduler
+except ImportError:
+    pass
+
 
 # ============================================================================
 # APPLICATION LIFESPAN
@@ -166,6 +176,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             report_scheduler.start()
         except Exception as e:
             _logger.warning("Failed to start report scheduler: %s", e)
+
+    # Start nightly dual-view calculation scheduler (F.4).
+    if dual_view_scheduler is not None:
+        try:
+            dual_view_scheduler.start()
+        except Exception as e:
+            _logger.warning("Failed to start dual-view scheduler: %s", e)
 
     # Auto-seed demo data if database is empty or incomplete
     # FORCE_RESEED=true: always drop and re-seed (one-time migration)
@@ -234,11 +251,40 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as e:
         _logger.warning("Auto-seed check failed: %s", e)
 
+    # Idempotently seed the canonical metric→assumption dependency map (Phase 2
+    # dual-view architecture). Static engineering-curated reference data; safe
+    # to call on every startup because seed_metric_dependencies() inserts only
+    # missing rows.
+    try:
+        from backend.database import SessionLocal
+        from backend.services.calculations.assumption_catalog import (
+            seed_metric_dependencies,
+        )
+
+        dep_db = SessionLocal()
+        try:
+            inserted = seed_metric_dependencies(dep_db)
+            if inserted:
+                _logger.info(
+                    "Seeded %d metric→assumption dependency rows", inserted
+                )
+        finally:
+            dep_db.close()
+    except Exception as e:
+        _logger.warning("Failed to seed metric_assumption_dependencies: %s", e)
+
     yield
 
     # ------------------------------------------------------------------
     # SHUTDOWN
     # ------------------------------------------------------------------
+
+    # Stop dual-view scheduler (F.4)
+    if dual_view_scheduler is not None:
+        try:
+            dual_view_scheduler.stop()
+        except Exception as e:
+            _logger.warning("Failed to stop dual-view scheduler: %s", e)
 
     # Stop report scheduler
     if report_scheduler is not None:
@@ -591,6 +637,15 @@ from backend.routes.onboarding import router as onboarding_router
 # Import CSV upload endpoints
 from backend.endpoints.csv_upload import router as csv_upload_router
 
+# Dual-View Architecture Phase 2: Calculation Assumption Registry
+from backend.routes.calculation_assumptions import router as calculation_assumptions_router
+
+# Dual-View Architecture Phase 4: Inspector API for metric calculation results
+from backend.routes.metric_results import router as metric_results_router
+
+# Dual-View Architecture Phase 4c: On-demand calculation endpoints
+from backend.routes.dual_view_calculate import router as dual_view_calculate_router
+
 # ============================================================================
 # Register health check and monitoring routes
 # ============================================================================
@@ -811,6 +866,21 @@ app.include_router(export_router)
 # Sprint 5: Onboarding status routes
 # ============================================================================
 app.include_router(onboarding_router)
+
+# ============================================================================
+# Dual-View Architecture Phase 2: Calculation Assumption Registry
+# ============================================================================
+app.include_router(calculation_assumptions_router)
+
+# ============================================================================
+# Dual-View Architecture Phase 4: Inspector API for metric calculation results
+# ============================================================================
+app.include_router(metric_results_router)
+
+# ============================================================================
+# Dual-View Architecture Phase 4c: On-demand calculation endpoints
+# ============================================================================
+app.include_router(dual_view_calculate_router)
 
 # ============================================================================
 # NOTE: Report routes are now in routes/reports.py with proper authentication

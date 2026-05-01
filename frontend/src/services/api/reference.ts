@@ -24,7 +24,11 @@ export const getProducts = (options: CacheOptions = {}) => {
 }
 
 export const getShifts = (options: CacheOptions = {}) => {
-  return referenceDataCache.get('reference:shifts', () => api.get('/shifts'), {
+  // Trailing slash matches backend prefix `/api/shifts` + route `/`. Without
+  // it, FastAPI returns a 307 — and axios drops Authorization on cross-origin
+  // redirects (Vite proxy makes the redirect Location cross-origin), which
+  // would 401 the request and trigger the response interceptor's logout.
+  return referenceDataCache.get('reference:shifts', () => api.get('/shifts/'), {
     ttl: CACHE_TTL.SHIFTS,
     staleWhileRevalidate: true,
     forceRefresh: options.forceRefresh || false,

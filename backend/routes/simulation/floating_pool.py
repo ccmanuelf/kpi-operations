@@ -19,7 +19,7 @@ from backend.orm.simulation import (
     FloatingPoolOptimizationResponse,
     AllocationSuggestion,
 )
-from backend.calculations.simulation import optimize_floating_pool_allocation
+from backend.services.simulation_service import SimulationService
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)
@@ -63,8 +63,7 @@ async def optimize_floating_pool_endpoint(
             for s in request.shift_requirements
         ]
 
-        result = optimize_floating_pool_allocation(
-            db=db,
+        result = SimulationService(db).optimize_floating_pool_allocation(
             client_id=current_user.client_id_assigned or "",
             target_date=target_date_val,
             available_pool_employees=pool_employees,

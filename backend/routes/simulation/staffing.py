@@ -15,7 +15,7 @@ from backend.orm.simulation import (
     StaffingSimulationRequest,
     SimulationResultResponse,
 )
-from backend.calculations.simulation import run_staffing_simulation
+from backend.services.simulation_service import run_staffing_simulation
 from backend.utils.logging_utils import get_module_logger
 
 logger = get_module_logger(__name__)

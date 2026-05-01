@@ -22,8 +22,8 @@ from backend.orm.simulation import (
     ProductionCapacityRequest,
     ProductionCapacityResponse,
 )
-from backend.calculations.simulation import (
-    calculate_capacity_requirements,
+from backend.services.simulation_service import (
+    SimulationService,
     calculate_production_capacity,
 )
 from backend.utils.logging_utils import get_module_logger
@@ -55,8 +55,7 @@ async def calculate_capacity_requirements_endpoint(
         client_id_assigned = current_user.client_id_assigned
         if not client_id_assigned:
             raise HTTPException(status_code=400, detail="User has no client assignment")
-        result = calculate_capacity_requirements(
-            db=db,
+        result = SimulationService(db).calculate_capacity_requirements(
             client_id=client_id_assigned,
             target_units=request.target_units,
             target_date=target_date_val,

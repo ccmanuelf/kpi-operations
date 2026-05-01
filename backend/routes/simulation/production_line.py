@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
-from backend.calculations.production_line_simulation import (
+from backend.services.simulation_service import (
     ProductionLineConfig,
     WorkStation,
     WorkStationType,

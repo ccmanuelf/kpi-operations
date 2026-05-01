@@ -135,6 +135,7 @@
     "partOpportunities": "Oport. por Parte",
     "workflowConfig": "Config. Flujo",
     "databaseConfig": "Config. Base de Datos",
+    "varianceReport": "Reporte de Variación",
     "alerts": "Alertas",
     "simulation": "Simulación",
     "tools": "Herramientas",
@@ -2260,6 +2261,7 @@
     "unitsProduced": "Unidades Producidas",
     "targetUnits": "Unidades Meta",
     "efficiency": "Eficiencia",
+    "targetCompletion": "Cumplimiento de Meta",
     "pendingEntries": "Entradas Pendientes",
     "workOrdersFinalCount": "Ordenes de Trabajo - Conteo Final de Produccion",
     "entered": "Ingresado",
@@ -3767,5 +3769,51 @@
     "goTo": "Ir",
     "completed": "Listo",
     "pending": "Pendiente"
+  },
+  "variance": {
+    "title": "Reporte de Variación de Ajustes",
+    "subtitle": "Supuestos de cálculo activos por sitio, con desviación respecto al valor por defecto.",
+    "staleThresholdLabel": "Obsoleto después de (días)",
+    "totalActive": "Supuestos activos",
+    "deviatingFromDefault": "Desviados del valor por defecto",
+    "staleCount": "Sin revisión > {days}d",
+    "matchesDefault": "Coincide con el por defecto",
+    "deviates": "Difiere",
+    "daysAgo": "Hace {count} días",
+    "noData": "No hay supuestos activos.",
+    "colClient": "Sitio",
+    "colAssumption": "Supuesto",
+    "colValue": "Valor",
+    "colDefault": "Por defecto",
+    "colDeviation": "Desviación",
+    "colMagnitude": "Magnitud",
+    "colApprovedBy": "Aprobado por",
+    "colApprovedAt": "Fecha de aprobación",
+    "colStale": "Vigente"
+  },
+  "dualView": {
+    "panel": {
+      "title": "KPIs Doble Vista",
+      "showingStandard": "Mostrando valores estandar (textbook).",
+      "showingSiteAdjusted": "Mostrando valores ajustados al sitio."
+    },
+    "toggle": {
+      "standard": "Estandar",
+      "siteAdjusted": "Ajustado al Sitio"
+    },
+    "inspector": {
+      "title": "Trazabilidad del Calculo",
+      "standard": "Estandar",
+      "siteAdjusted": "Ajustado al Sitio",
+      "formula": "Formula",
+      "inputs": "Entradas",
+      "assumptions": "Supuestos Aplicados",
+      "noAssumptions": "Ningun supuesto especifico del sitio afecto este valor.",
+      "rationale": "Justificacion",
+      "approvedBy": "Aprobado por",
+      "approvedAt": "Aprobado el",
+      "calculatedAt": "Calculado el",
+      "calculatedBy": "Calculado por"
+    }
   }
 }

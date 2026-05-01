@@ -135,6 +135,7 @@
     "partOpportunities": "Part Opportunities",
     "workflowConfig": "Workflow Config",
     "databaseConfig": "Database Config",
+    "varianceReport": "Variance Report",
     "alerts": "Alerts",
     "simulation": "Simulation",
     "capacityPlanning": "Capacity Planning",
@@ -2216,6 +2217,7 @@
     "unitsProduced": "Units Produced",
     "targetUnits": "Target Units",
     "efficiency": "Efficiency",
+    "targetCompletion": "Target Completion",
     "pendingEntries": "Pending Entries",
     "workOrdersFinalCount": "Work Orders - Final Production Count",
     "entered": "Entered",
@@ -3723,5 +3725,51 @@
     "goTo": "Go",
     "completed": "Done",
     "pending": "Pending"
+  },
+  "variance": {
+    "title": "Adjustment Variance Report",
+    "subtitle": "Active calculation assumptions across all sites, with deviation from textbook defaults.",
+    "staleThresholdLabel": "Stale after (days)",
+    "totalActive": "Active assumptions",
+    "deviatingFromDefault": "Deviating from default",
+    "staleCount": "Not reviewed > {days}d",
+    "matchesDefault": "Matches default",
+    "deviates": "Deviates",
+    "daysAgo": "{count} days ago",
+    "noData": "No active assumptions yet.",
+    "colClient": "Site",
+    "colAssumption": "Assumption",
+    "colValue": "Value",
+    "colDefault": "Default",
+    "colDeviation": "Deviation",
+    "colMagnitude": "Magnitude",
+    "colApprovedBy": "Approved by",
+    "colApprovedAt": "Approved at",
+    "colStale": "Fresh"
+  },
+  "dualView": {
+    "panel": {
+      "title": "Dual-View KPIs",
+      "showingStandard": "Showing standard (textbook) values.",
+      "showingSiteAdjusted": "Showing site-adjusted values."
+    },
+    "toggle": {
+      "standard": "Standard",
+      "siteAdjusted": "Site-Adjusted"
+    },
+    "inspector": {
+      "title": "Calculation Lineage",
+      "standard": "Standard",
+      "siteAdjusted": "Site-Adjusted",
+      "formula": "Formula",
+      "inputs": "Inputs",
+      "assumptions": "Assumptions Applied",
+      "noAssumptions": "No site-specific assumptions affected this value.",
+      "rationale": "Rationale",
+      "approvedBy": "Approved by",
+      "approvedAt": "Approved at",
+      "calculatedAt": "Calculated at",
+      "calculatedBy": "Calculated by"
+    }
   }
 }

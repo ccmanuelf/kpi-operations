@@ -415,40 +415,6 @@ def get_details_by_type(db: Session, client_id: str, header_id: int, component_t
     )
 
 
-def calculate_required_components(db: Session, client_id: str, header_id: int, parent_quantity: int) -> List[dict]:
-    """
-    Calculate required component quantities for a given parent quantity.
-
-    Args:
-        db: Database session
-        client_id: Client identifier for multi-tenant isolation
-        header_id: BOM header ID
-        parent_quantity: Number of parent units to produce
-
-    Returns:
-        List of dicts with component info and required quantities
-    """
-    details = get_bom_details(db, client_id, header_id)
-
-    requirements = []
-    for detail in details:
-        # waste_percentage is Mapped[Optional[Decimal]]; default missing
-        # rows to 0% rather than passing None into float().
-        requirements.append(
-            {
-                "component_item_code": detail.component_item_code,
-                "component_description": detail.component_description,
-                "component_type": detail.component_type,
-                "unit_of_measure": detail.unit_of_measure,
-                "quantity_per": float(detail.quantity_per),
-                "waste_percentage": float(detail.waste_percentage or 0),
-                "required_quantity": detail.required_quantity(parent_quantity),
-            }
-        )
-
-    return requirements
-
-
 def bulk_create_bom_details(
     db: Session, client_id: str, header_id: int, details: List[dict]
 ) -> List[CapacityBOMDetail]:

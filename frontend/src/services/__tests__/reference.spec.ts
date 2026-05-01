@@ -97,7 +97,7 @@ describe('Reference Data API Service', () => {
       // Call the fetcher directly
       await referenceApi.getShifts()
 
-      expect(api.get).toHaveBeenCalledWith('/shifts')
+      expect(api.get).toHaveBeenCalledWith('/shifts/')
     })
   })
 

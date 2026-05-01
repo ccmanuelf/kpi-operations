@@ -10,10 +10,16 @@ from sqlalchemy import func
 from typing import Any, Optional
 from datetime import date, datetime, timedelta, timezone
 
+from decimal import Decimal
+
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
+from backend.services.calculations.performance import (
+    ExpectedOutputInputs,
+    calculate_expected_output,
+)
 
 logger = get_module_logger(__name__)
 
@@ -61,12 +67,22 @@ def get_efficiency_by_shift(
 
     results = query.group_by(ProductionEntry.shift_id, Shift.shift_name).all()
 
+    def _expected_output(actual: int, efficiency: Optional[float]) -> int:
+        if not efficiency or efficiency <= 0:
+            return 0
+        return calculate_expected_output(
+            ExpectedOutputInputs(
+                actual_output=actual,
+                efficiency_pct=Decimal(str(efficiency)),
+            )
+        ).value
+
     return [
         {
             "shift_id": r.shift_id,
             "shift_name": r.shift_name or f"Shift {r.shift_id}",
             "actual_output": r.actual_output or 0,
-            "expected_output": int((r.actual_output or 0) / ((r.efficiency or 100) / 100)) if r.efficiency else 0,
+            "expected_output": _expected_output(r.actual_output or 0, float(r.efficiency) if r.efficiency else None),
             "efficiency": float(r.efficiency) if r.efficiency else 0,
         }
         for r in results

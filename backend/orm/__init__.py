@@ -77,6 +77,17 @@ from .saved_filter import SavedFilter, FilterHistory
 # Phase 10: Workflow Foundation
 from .workflow import WorkflowTransitionLog
 
+# Dual-View Architecture Phase 2: Calculation Assumption Registry
+from .calculation_assumption import (
+    AssumptionChange,
+    AssumptionStatus,
+    CalculationAssumption,
+    MetricAssumptionDependency,
+)
+
+# Dual-View Architecture Phase 3: Metric Calculation Results
+from .metric_calculation_result import MetricCalculationResult
+
 # Phase B.1: Capacity Planning (13 tables)
 from .capacity import (
     CapacityCalendar,
@@ -159,6 +170,13 @@ __all__ = [
     "FilterHistory",
     # Phase 10
     "WorkflowTransitionLog",
+    # Dual-View Phase 2
+    "AssumptionChange",
+    "AssumptionStatus",
+    "CalculationAssumption",
+    "MetricAssumptionDependency",
+    # Dual-View Phase 3
+    "MetricCalculationResult",
     # Phase B.1 Capacity Planning
     "CapacityCalendar",
     "CapacityProductionLine",

@@ -104,6 +104,14 @@ class DataMigrator:
         "capacity_analysis",            # depends on capacity_production_lines
         "capacity_schedule_detail",     # depends on capacity_schedule, capacity_orders, capacity_production_lines
         "capacity_kpi_commitment",      # depends on capacity_schedule
+
+        # Tier 12: Dual-View Architecture Phase 2 — Calculation Assumption Registry
+        "METRIC_ASSUMPTION_DEPENDENCY",  # static reference data, no FK to user data
+        "CALCULATION_ASSUMPTION",        # depends on CLIENT, USER
+        "ASSUMPTION_CHANGE",             # depends on CALCULATION_ASSUMPTION, USER
+
+        # Tier 13: Dual-View Architecture Phase 3 — Metric Calculation Results
+        "METRIC_CALCULATION_RESULT",     # depends on CLIENT, USER
     ]
 
     def __init__(

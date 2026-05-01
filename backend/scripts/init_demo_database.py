@@ -1709,6 +1709,13 @@ def init_database() -> None:
             print(f"  {client_id}: {client.client_name}")
         print("-" * 70)
 
+        # Seed canonical metric→assumption dependencies (Phase 2 dual-view).
+        from backend.services.calculations.assumption_catalog import (
+            seed_metric_dependencies,
+        )
+
+        seed_metric_dependencies(db)
+
     except Exception as e:
         db.rollback()
         print(f"\nError: {str(e)}")

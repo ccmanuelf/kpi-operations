@@ -103,6 +103,8 @@ class DemoDataSeeder:
             ("alert_configs", self._seed_alert_configs),
             ("active_alerts", self._seed_active_alerts),
             ("dashboard_defaults", self._seed_dashboard_defaults),
+            # Phase 2 dual-view: canonical metric→assumption dependency map
+            ("metric_assumption_dependencies", self._seed_metric_assumption_dependencies),
         ]
 
         logger.info(f"Starting demo data seeding ({len(seeders)} entities)")
@@ -1950,6 +1952,21 @@ class DemoDataSeeder:
             count += 1
 
         return count
+
+    def _seed_metric_assumption_dependencies(self) -> int:
+        """Phase 2 dual-view: canonical metric→assumption dependency map.
+
+        Idempotent — calls into the centrally-maintained list in
+        backend.services.calculations.assumption_catalog so this seeder and
+        the dev seeder (init_demo_database.py) and lifespan startup all share
+        a single source of truth.
+        """
+
+        from backend.services.calculations.assumption_catalog import (
+            seed_metric_dependencies,
+        )
+
+        return seed_metric_dependencies(self.session)
 
     def get_seeded_counts(self) -> dict:
         """Get counts of seeded records.

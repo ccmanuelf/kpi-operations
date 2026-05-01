@@ -10,9 +10,9 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, cast
 
 from backend.database import get_db
-from backend.calculations.simulation import (
-    OptimizationGoal,
-    optimize_floating_pool_allocation,
+from backend.orm.simulation import OptimizationGoal
+from backend.services.simulation_service import (
+    SimulationService,
     run_staffing_simulation,
     simulate_shift_coverage,
 )
@@ -397,8 +397,7 @@ def optimize_floating_pool_allocation_endpoint(
         # Non-admin users always have client_id_assigned populated; admins
         # supplying no client_id will fail this branch and use the fallback.
         effective_client_id = current_user.client_id_assigned or ""
-        result = optimize_floating_pool_allocation(
-            db=db,
+        result = SimulationService(db).optimize_floating_pool_allocation(
             client_id=effective_client_id,
             target_date=target_date or date.today(),
             available_pool_employees=available_pool_employees,

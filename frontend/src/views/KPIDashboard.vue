@@ -83,6 +83,7 @@
             </v-list-item>
           </v-list>
         </v-menu>
+        <DualViewToggle />
         <v-btn icon="mdi-refresh" variant="text" @click="refreshData" :loading="loading"
           :aria-label="t('kpi.ariaRefreshDashboard')" :aria-busy="loading" />
       </v-col>
@@ -124,9 +125,20 @@
                     </div>
                     <div v-if="kpi.subtitle" class="text-caption text-medium-emphasis mt-1">{{ kpi.subtitle }}</div>
                   </div>
-                  <v-icon :color="getStatusColor(kpi)" size="40">
-                    {{ kpiStore.kpiIcon(kpi.value, kpi.target, kpi.higherBetter) }}
-                  </v-icon>
+                  <div class="d-flex align-center ga-1">
+                    <v-btn
+                      v-if="isDualViewCapable(kpi.key)"
+                      icon="mdi-magnify-scan"
+                      variant="text"
+                      size="small"
+                      :loading="inspectorLoading"
+                      :aria-label="t('dualView.inspector.title')"
+                      @click.stop="openInspector(kpi.key)"
+                    />
+                    <v-icon :color="getStatusColor(kpi)" size="40">
+                      {{ kpiStore.kpiIcon(kpi.value, kpi.target, kpi.higherBetter) }}
+                    </v-icon>
+                  </div>
                 </div>
                 <v-progress-linear :model-value="getProgress(kpi)" :color="getStatusColor(kpi)"
                   height="8" rounded class="mb-2" />
@@ -262,6 +274,9 @@
     <DashboardCustomizer v-model="showCustomizer" @saved="onCustomizerSaved" />
     <FilterManager v-model="showFilterManager" />
 
+    <!-- Dual-View Inspector (Phase 4) -->
+    <MetricInspector v-model="inspectorOpen" :result-id="inspectorResultId" />
+
     <!-- QR Scanner Dialog -->
     <v-dialog v-model="showQRScanner" max-width="500px" role="dialog" aria-modal="true" aria-labelledby="qr-scanner-title">
       <v-card>
@@ -308,7 +323,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Line } from 'vue-chartjs'
 import {
@@ -331,6 +346,14 @@ import FilterManager from '@/components/filters/FilterManager.vue'
 import QRCodeScanner from '@/components/QRCodeScanner.vue'
 import InferenceIndicator from '@/components/kpi/InferenceIndicator.vue'
 import LineSelector from '@/components/common/LineSelector.vue'
+import DualViewToggle from '@/components/dual_view/DualViewToggle.vue'
+import MetricInspector from '@/components/dual_view/MetricInspector.vue'
+
+// Dual-view inspector composable + capability check
+import {
+  useDualViewInspector,
+  DUAL_VIEW_CAPABLE_KEYS,
+} from '@/composables/useDualViewInspector'
 
 // Composables
 import { useKPIDashboardData } from '@/composables/useKPIDashboardData'
@@ -392,6 +415,24 @@ const {
 
 // Template refs
 const emailForm = ref(null)
+
+// Dual-view inspector wiring
+const {
+  open: inspectorOpen,
+  resultId: inspectorResultId,
+  loading: inspectorLoading,
+  error: inspectorError,
+  openForKpi: openInspector,
+} = useDualViewInspector(
+  () => selectedClient.value || null,
+  () => ({ start: dateRange.value?.start, end: dateRange.value?.end })
+)
+
+const isDualViewCapable = (key) => DUAL_VIEW_CAPABLE_KEYS.has(key)
+
+watch(inspectorError, (msg) => {
+  if (msg) showSnackbar(msg, 'error')
+})
 
 onMounted(async () => {
   await initialize()

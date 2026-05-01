@@ -18,7 +18,7 @@ from backend.orm.simulation import (
     MultiShiftCoverageResponse,
     MultiShiftCoverageSummary,
 )
-from backend.calculations.simulation import (
+from backend.services.simulation_service import (
     simulate_shift_coverage,
     simulate_multi_shift_coverage,
 )

@@ -146,6 +146,18 @@
       </v-col>
     </v-row>
 
+    <!-- Dual-View KPI Panel (Phase 4 + F.3): live OEE/OTD/FPY for the
+         selected client over the planning month. Click a tile to inspect. -->
+    <v-row v-if="selectedClient" class="mt-3">
+      <v-col cols="12">
+        <DualViewKPIPanel
+          :client-id="selectedClient"
+          :period-start="dualViewPeriodStart"
+          :period-end="dualViewPeriodEnd"
+        />
+      </v-col>
+    </v-row>
+
     <!-- Tab Navigation -->
     <v-row v-if="selectedClient" class="mt-3">
       <v-col cols="12">
@@ -382,10 +394,11 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCapacityData } from '@/composables/useCapacityData'
 import { useCapacityExport } from '@/composables/useCapacityExport'
+import DualViewKPIPanel from '@/components/dual_view/DualViewKPIPanel.vue'
 
 // Grid components
 import OrdersGrid from './components/grids/OrdersGrid.vue'
@@ -435,6 +448,19 @@ const {
   handleCommitSchedule,
   handleReset,
 } = useCapacityData()
+
+// Dual-view panel period: prefer the analysis date range when set, otherwise
+// the calendar month containing today.
+const dualViewPeriodStart = computed(() => {
+  if (analysisStartDate.value) return new Date(analysisStartDate.value).toISOString()
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+})
+const dualViewPeriodEnd = computed(() => {
+  if (analysisEndDate.value) return new Date(analysisEndDate.value).toISOString()
+  const d = new Date()
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString()
+})
 
 // Import/export functionality
 const {

@@ -379,7 +379,11 @@ const fetchSummary = async () => {
     const attendanceData = props.workflowData['confirm-attendance'] || {}
 
     summary.value = {
-      efficiency: productionData.efficiency || 92,
+      // Production step now emits targetCompletion (produced/target ratio), not the
+      // backend's true efficiency metric. Use it as a fallback indicator until the
+      // /shifts/current/summary endpoint is wired to the calculate_efficiency
+      // orchestrator and returns the real value.
+      efficiency: productionData.targetCompletion || 92,
       quality: 99.1,
       availability: 94,
       oee: 81,

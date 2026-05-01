@@ -194,8 +194,17 @@
         </v-card>
       </v-col>
 
-      <!-- Right Column: Data Completeness & Quick Entry -->
+      <!-- Right Column: Dual-View KPIs, Data Completeness & Quick Entry -->
       <v-col cols="12" lg="4">
+        <!-- Dual-View KPIs (Phase 4 + F.3) -->
+        <DualViewKPIPanel
+          v-if="dualViewClientId"
+          :client-id="dualViewClientId"
+          :period-start="dualViewPeriodStart"
+          :period-end="dualViewPeriodEnd"
+          class="mb-4"
+        />
+
         <!-- Data Completeness -->
         <v-card class="mb-4" elevation="2">
           <v-card-title class="bg-grey-darken-3 text-white py-3">
@@ -303,10 +312,26 @@ import ShiftDashboardDialogs from '@/components/dialogs/ShiftDashboardDialogs.vu
 // Composables
 import { useShiftDashboardData } from '@/composables/useShiftDashboardData'
 import { useShiftForms } from '@/composables/useShiftForms'
+import { useAuthStore } from '@/stores/authStore'
+import DualViewKPIPanel from '@/components/dual_view/DualViewKPIPanel.vue'
 
 const { t } = useI18n()
 const router = useRouter()
 const workflowStore = useWorkflowStore()
+const authStore = useAuthStore()
+
+// Dual-view panel inputs (today's window for the operator's assigned client).
+const dualViewClientId = computed(() => authStore.currentUser?.client_id_assigned ?? null)
+const dualViewPeriodStart = computed(() => {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString()
+})
+const dualViewPeriodEnd = computed(() => {
+  const d = new Date()
+  d.setHours(23, 59, 59, 999)
+  return d.toISOString()
+})
 
 // Data, timer, and display logic
 const {

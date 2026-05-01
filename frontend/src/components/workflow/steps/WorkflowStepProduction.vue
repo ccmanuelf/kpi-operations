@@ -16,8 +16,8 @@
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
-          <div class="text-h4" :class="efficiencyColor">{{ efficiency }}%</div>
-          <div class="text-caption text-grey">{{ $t('workflow.efficiency') }}</div>
+          <div class="text-h4" :class="targetCompletionColor">{{ targetCompletion }}%</div>
+          <div class="text-caption text-grey">{{ $t('workflow.targetCompletion') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
@@ -86,13 +86,13 @@
             />
           </template>
 
-          <template v-slot:item.efficiency="{ item }">
+          <template v-slot:item.targetCompletion="{ item }">
             <v-chip
-              :color="getEfficiencyColor(item.efficiency)"
+              :color="getTargetCompletionColor(item.targetCompletion)"
               size="small"
               variant="tonal"
             >
-              {{ item.efficiency }}%
+              {{ item.targetCompletion }}%
             </v-chip>
           </template>
 
@@ -184,7 +184,7 @@ const headers = computed(() => [
   { title: t('common.status'), key: 'status', width: '90px' },
   { title: t('workflow.produced'), key: 'produced', width: '120px' },
   { title: t('workflow.defects'), key: 'defects', width: '100px' },
-  { title: t('workflow.efficiency'), key: 'efficiency', width: '100px' },
+  { title: t('workflow.targetCompletion'), key: 'targetCompletion', width: '100px' },
   { title: '', key: 'actions', width: '100px', sortable: false }
 ])
 
@@ -197,14 +197,14 @@ const totalTarget = computed(() => {
   return workOrders.value.reduce((sum, wo) => sum + wo.target, 0)
 })
 
-const efficiency = computed(() => {
+const targetCompletion = computed(() => {
   if (totalTarget.value === 0) return 0
   return Math.round((totalProduced.value / totalTarget.value) * 100)
 })
 
-const efficiencyColor = computed(() => {
-  if (efficiency.value >= 95) return 'text-success'
-  if (efficiency.value >= 85) return 'text-warning'
+const targetCompletionColor = computed(() => {
+  if (targetCompletion.value >= 95) return 'text-success'
+  if (targetCompletion.value >= 85) return 'text-warning'
   return 'text-error'
 })
 
@@ -221,16 +221,19 @@ const getStatusColor = (item) => {
   return item.hasEntry ? 'success' : 'warning'
 }
 
-const getEfficiencyColor = (eff) => {
+const getTargetCompletionColor = (eff) => {
   if (eff >= 95) return 'success'
   if (eff >= 85) return 'warning'
   return 'error'
 }
 
 const updateEntry = (item) => {
-  // Calculate efficiency
+  // Target completion = produced / target × 100. This is NOT the backend's
+  // efficiency metric (which uses ideal_cycle_time × employees × scheduled_hours
+  // and lives behind the calculate_efficiency orchestrator). Backend efficiency
+  // is populated via the API after the entry is saved.
   if (item.target > 0) {
-    item.efficiency = Math.round(((item.produced || 0) / item.target) * 100)
+    item.targetCompletion = Math.round(((item.produced || 0) / item.target) * 100)
   }
   emitUpdate()
 }
@@ -257,7 +260,7 @@ const markRemainingZero = async () => {
   for (const wo of pendingWorkOrders.value) {
     wo.produced = 0
     wo.defects = 0
-    wo.efficiency = 0
+    wo.targetCompletion = 0
     await submitEntry(wo)
   }
 }
@@ -266,7 +269,7 @@ const emitUpdate = () => {
   emit('update', {
     workOrders: workOrders.value,
     totalProduced: totalProduced.value,
-    efficiency: efficiency.value,
+    targetCompletion: targetCompletion.value,
     isValid: confirmed.value && pendingEntries.value === 0
   })
 }
@@ -277,7 +280,7 @@ const handleConfirm = (value) => {
       workOrders: workOrders.value,
       totalProduced: totalProduced.value,
       totalTarget: totalTarget.value,
-      efficiency: efficiency.value
+      targetCompletion: targetCompletion.value
     })
   }
   emitUpdate()
@@ -291,7 +294,7 @@ const fetchData = async () => {
       ...wo,
       produced: wo.produced || 0,
       defects: wo.defects || 0,
-      efficiency: wo.efficiency || 0,
+      targetCompletion: wo.targetCompletion || 0,
       hasEntry: wo.hasEntry || false,
       submitting: false
     }))
@@ -299,11 +302,11 @@ const fetchData = async () => {
     console.error('Failed to fetch production data:', error)
     // Mock data
     workOrders.value = [
-      { id: 'WO-2024-001', product: 'Widget A', target: 500, produced: 485, defects: 3, efficiency: 97, hasEntry: true, submitting: false },
-      { id: 'WO-2024-002', product: 'Widget B', target: 1000, produced: 920, defects: 8, efficiency: 92, hasEntry: true, submitting: false },
-      { id: 'WO-2024-003', product: 'Gadget X', target: 300, produced: 0, defects: 0, efficiency: 0, hasEntry: false, submitting: false },
-      { id: 'WO-2024-004', product: 'Component C', target: 200, produced: 195, defects: 1, efficiency: 98, hasEntry: true, submitting: false },
-      { id: 'WO-2024-005', product: 'Assembly D', target: 750, produced: 0, defects: 0, efficiency: 0, hasEntry: false, submitting: false }
+      { id: 'WO-2024-001', product: 'Widget A', target: 500, produced: 485, defects: 3, targetCompletion: 97, hasEntry: true, submitting: false },
+      { id: 'WO-2024-002', product: 'Widget B', target: 1000, produced: 920, defects: 8, targetCompletion: 92, hasEntry: true, submitting: false },
+      { id: 'WO-2024-003', product: 'Gadget X', target: 300, produced: 0, defects: 0, targetCompletion: 0, hasEntry: false, submitting: false },
+      { id: 'WO-2024-004', product: 'Component C', target: 200, produced: 195, defects: 1, targetCompletion: 98, hasEntry: true, submitting: false },
+      { id: 'WO-2024-005', product: 'Assembly D', target: 750, produced: 0, defects: 0, targetCompletion: 0, hasEntry: false, submitting: false }
     ]
   } finally {
     loading.value = false

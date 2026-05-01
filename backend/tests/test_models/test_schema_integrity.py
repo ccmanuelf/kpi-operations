@@ -93,6 +93,12 @@ class TestAllORMTablesRegistered:
             "FILTER_HISTORY",
             # Workflow
             "WORKFLOW_TRANSITION_LOG",
+            # Dual-View Phase 2: assumption registry
+            "CALCULATION_ASSUMPTION",
+            "ASSUMPTION_CHANGE",
+            "METRIC_ASSUMPTION_DEPENDENCY",
+            # Dual-View Phase 3: calculation results
+            "METRIC_CALCULATION_RESULT",
             # Alerts
             "ALERT",
             "ALERT_CONFIG",

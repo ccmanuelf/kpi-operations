@@ -408,7 +408,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     try {
       isLoading.value = true
       error.value = null
-      const response = await api.post('/shifts', shiftData)
+      // Trailing slash matches backend `POST /api/shifts/` — without it,
+      // FastAPI returns 307 and axios strips Authorization on the redirect.
+      const response = await api.post('/shifts/', shiftData)
       activeShift.value = response.data
       saveToLocalStorage()
       return { success: true, data: response.data }

@@ -128,6 +128,7 @@
           <v-list-item prepend-icon="mdi-account-switch" :title="$t('navigation.floatingPool')" value="floating-pool" to="/admin/floating-pool" />
           <v-list-item prepend-icon="mdi-sitemap" :title="$t('navigation.workflowConfig')" value="workflow-config" to="/admin/workflow-config" />
           <v-list-item prepend-icon="mdi-database-cog" :title="$t('navigation.databaseConfig')" value="database-config" to="/admin/database" />
+          <v-list-item prepend-icon="mdi-chart-bell-curve-cumulative" :title="$t('navigation.varianceReport')" value="variance-report" to="/admin/variance-report" />
         </v-list-group>
       </v-list>
     </v-navigation-drawer>
@@ -202,6 +203,7 @@ import { useNotificationStore } from '@/stores/notificationStore'
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import { useKeyboardShortcutsStore } from '@/stores/keyboardShortcutsStore'
 import { useThemeStore } from '@/stores/themeStore'
+import { useDualViewStore } from '@/stores/dualViewStore'
 import KeyboardShortcutsHelp from '@/components/KeyboardShortcutsHelp.vue'
 import QuickActionsFAB from '@/components/QuickActionsFAB.vue'
 import LanguageToggle from '@/components/LanguageToggle.vue'
@@ -216,12 +218,20 @@ const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 const shortcutsStore = useKeyboardShortcutsStore()
 const themeStore = useThemeStore()
+const dualViewStore = useDualViewStore()
 const onboardingState = useOnboarding()
 
 // Sync theme store → Vuetify + Carbon tokens
 watch(() => themeStore.isDark, (dark) => {
   vuetifyTheme.global.name.value = dark ? 'dark' : 'light'
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
+}, { immediate: true })
+
+// Initialise dual-view mode from the user's role on login (Phase 4).
+// initFromUserRole respects a saved preference if one exists, otherwise
+// applies the role default per the ratified mapping.
+watch(() => authStore.currentUser?.role, (role) => {
+  dualViewStore.initFromUserRole(role ?? null)
 }, { immediate: true })
 
 // Error handling for child components

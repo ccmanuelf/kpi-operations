@@ -207,6 +207,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/DatabaseConfigView.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
   },
+  {
+    path: '/admin/variance-report',
+    name: 'admin-variance-report',
+    component: () => import('@/views/admin/AssumptionVarianceReport.vue'),
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 ]
 
 const router = createRouter({

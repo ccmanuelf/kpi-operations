@@ -15,10 +15,20 @@ from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.schemas.quality import FPYRTYCalculationResponse, InferenceMetadata
+from decimal import Decimal
+
 from backend.calculations.fpy_rty import (
     calculate_quality_score,
     calculate_fpy_with_repair_breakdown,
     calculate_rty_with_repair_impact,
+)
+from backend.services.calculations.quality import (
+    FPYInputs,
+    RTYInputs,
+    ScrapRateInputs,
+    calculate_fpy as calculate_fpy_orchestrator,
+    calculate_rty as calculate_rty_orchestrator,
+    calculate_scrap_rate,
 )
 from backend.utils.logging_utils import get_module_logger
 
@@ -72,7 +82,9 @@ def calculate_fpy_rty_kpi(
     # query.first() returns Optional[Row]; guard the empty-window case.
     total = (result.total or 0) if result is not None else 0
     good = (result.good or 0) if result is not None else 0
-    fpy = (good / total * 100) if total > 0 else 0
+    fpy = float(
+        calculate_fpy_orchestrator(FPYInputs(total_passed=good, total_inspected=total)).value
+    )
 
     # Total scrapped for Final Yield
     scrapped_query = db.query(func.sum(QualityEntry.units_scrapped).label("scrapped")).filter(
@@ -84,8 +96,11 @@ def calculate_fpy_rty_kpi(
     scrapped_result = scrapped_query.first()
     total_scrapped = (scrapped_result.scrapped or 0) if scrapped_result is not None else 0
 
-    # Final Yield = (Total Inspected - Scrapped) / Total Inspected × 100
-    final_yield = ((total - total_scrapped) / total * 100) if total > 0 else 0
+    # Final Yield = 100% - scrap_rate (units that survived inspection vs total inspected).
+    scrap_pct = calculate_scrap_rate(
+        ScrapRateInputs(units_scrapped=total_scrapped, total_produced=total)
+    ).value
+    final_yield = float(Decimal("100") - scrap_pct) if total > 0 else 0
 
     # RTY per inspection stage
     stage_query = db.query(
@@ -102,23 +117,28 @@ def calculate_fpy_rty_kpi(
     stage_results = stage_query.group_by(QualityEntry.inspection_stage).all()
 
     steps = []
-    rty_decimal = 1.0
+    stage_fpys: list[Decimal] = []
     for stage in stage_results:
         stage_total = stage.stage_total or 0
         stage_passed = stage.stage_passed or 0
         if stage_total > 0:
-            stage_fpy = stage_passed / stage_total
-            rty_decimal *= stage_fpy
+            stage_fpy_pct = calculate_fpy_orchestrator(
+                FPYInputs(total_passed=stage_passed, total_inspected=stage_total)
+            ).value
+            stage_fpys.append(stage_fpy_pct)
             steps.append(
                 {
                     "stage": stage.inspection_stage,
-                    "fpy": round(stage_fpy * 100, 2),
+                    "fpy": float(stage_fpy_pct),
                     "total": stage_total,
                     "passed": stage_passed,
                 }
             )
 
-    rty = rty_decimal * 100 if steps else fpy
+    if stage_fpys:
+        rty = float(calculate_rty_orchestrator(RTYInputs(step_fpys_pct=stage_fpys)).value)
+    else:
+        rty = fpy
 
     is_estimated = total == 0 or (not steps and fpy > 0)
     inference = InferenceMetadata(
