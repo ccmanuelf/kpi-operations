@@ -2227,7 +2227,13 @@
     "downtimeMustResolve": "{count} downtime incident(s) must be resolved before proceeding.",
     "needsAttention": "Needs attention",
     "openDowntimeGrid": "Open Downtime Grid",
+    "openProductionGrid": "Open Production Grid",
     "noDowntimeData": "No downtime recorded this shift",
+    "noProductionEntries": "No production entries recorded for today yet. Use the Production Grid to enter today's production.",
+    "productionNoEntriesAlert": "At least one production entry must exist for the shift before this step can be confirmed.",
+    "totalDefects": "Total Defects",
+    "workOrdersCovered": "Work Orders Covered",
+    "entriesRecorded": "Entries",
     "unspecifiedMachine": "Unspecified machine",
     "unspecifiedReason": "Unspecified",
     "errors": {

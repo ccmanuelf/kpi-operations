@@ -10,277 +10,187 @@
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
-          <div class="text-h4 text-info">{{ totalTarget }}</div>
-          <div class="text-caption text-grey">{{ $t('workflow.targetUnits') }}</div>
+          <div class="text-h4 text-error">{{ totalDefects }}</div>
+          <div class="text-caption text-grey">{{ $t('workflow.totalDefects') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
-          <div class="text-h4" :class="targetCompletionColor">{{ targetCompletion }}%</div>
-          <div class="text-caption text-grey">{{ $t('workflow.targetCompletion') }}</div>
+          <div class="text-h4 text-info">{{ workOrdersCount }}</div>
+          <div class="text-caption text-grey">{{ $t('workflow.workOrdersCovered') }}</div>
         </v-card>
       </v-col>
       <v-col cols="6" md="3">
         <v-card variant="outlined" class="text-center pa-3">
-          <div class="text-h4" :class="pendingEntries > 0 ? 'text-warning' : 'text-success'">
-            {{ pendingEntries }}
+          <div class="text-h4" :class="entries.length > 0 ? 'text-success' : 'text-grey'">
+            {{ entries.length }}
           </div>
-          <div class="text-caption text-grey">{{ $t('workflow.pendingEntries') }}</div>
+          <div class="text-caption text-grey">{{ $t('workflow.entriesRecorded') }}</div>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- Work Orders with Pending Production -->
+    <!-- Today's Entries (read-only — link out to grid for entry) -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-clipboard-list</v-icon>
         {{ $t('workflow.workOrdersFinalCount') }}
+        <v-spacer />
+        <v-btn
+          size="small"
+          color="primary"
+          variant="elevated"
+          :to="{ path: '/production-entry' }"
+          target="_blank"
+        >
+          <v-icon start size="16">mdi-open-in-new</v-icon>
+          {{ $t('workflow.openProductionGrid') }}
+        </v-btn>
       </v-card-title>
 
       <v-card-text class="pa-0">
         <v-skeleton-loader v-if="loading" type="table-tbody" />
+        <v-alert
+          v-else-if="entries.length === 0"
+          type="warning"
+          variant="tonal"
+          class="ma-3"
+        >
+          {{ $t('workflow.noProductionEntries') }}
+        </v-alert>
         <v-data-table
           v-else
           :headers="headers"
-          :items="workOrders"
+          :items="byWorkOrder"
           :items-per-page="-1"
           :no-data-text="$t('common.noData')"
           density="compact"
-          class="production-table"
         >
-          <template v-slot:item.status="{ item }">
+          <template v-slot:item.units_produced="{ item }">
+            <span class="font-weight-medium">{{ item.units_produced }}</span>
+          </template>
+          <template v-slot:item.defect_count="{ item }">
             <v-chip
-              :color="getStatusColor(item)"
+              v-if="item.defect_count > 0"
               size="x-small"
-              variant="flat"
-            >
-              {{ item.hasEntry ? $t('workflow.entered') : $t('common.pending') }}
-            </v-chip>
-          </template>
-
-          <template v-slot:item.produced="{ item }">
-            <v-text-field
-              v-model.number="item.produced"
-              type="number"
-              density="compact"
-              variant="outlined"
-              hide-details
-              single-line
-              :disabled="item.hasEntry"
-              style="max-width: 100px"
-              @update:model-value="updateEntry(item)"
-            />
-          </template>
-
-          <template v-slot:item.defects="{ item }">
-            <v-text-field
-              v-model.number="item.defects"
-              type="number"
-              density="compact"
-              variant="outlined"
-              hide-details
-              single-line
-              :disabled="item.hasEntry"
-              style="max-width: 80px"
-              @update:model-value="updateEntry(item)"
-            />
-          </template>
-
-          <template v-slot:item.targetCompletion="{ item }">
-            <v-chip
-              :color="getTargetCompletionColor(item.targetCompletion)"
-              size="small"
+              color="error"
               variant="tonal"
             >
-              {{ item.targetCompletion }}%
+              {{ item.defect_count }}
+            </v-chip>
+            <span v-else class="text-grey">0</span>
+          </template>
+          <template v-slot:item.entry_count="{ item }">
+            <v-chip size="x-small" variant="flat" color="success">
+              {{ item.entry_count }}
             </v-chip>
           </template>
-
-          <template v-slot:item.actions="{ item }">
-            <v-btn
-              v-if="!item.hasEntry && item.produced > 0"
-              size="small"
-              color="primary"
-              variant="elevated"
-              @click="submitEntry(item)"
-              :loading="item.submitting"
-            >
-              {{ $t('common.submit') }}
-            </v-btn>
-            <v-icon v-else-if="item.hasEntry" color="success" size="20">
-              mdi-check-circle
-            </v-icon>
-          </template>
         </v-data-table>
-      </v-card-text>
-    </v-card>
-
-    <!-- Quick Entry for Remaining -->
-    <v-card
-      v-if="pendingWorkOrders.length > 0"
-      variant="outlined"
-      class="mb-4"
-    >
-      <v-card-title class="d-flex align-center bg-warning-lighten-4 py-2">
-        <v-icon class="mr-2" size="20" color="warning">mdi-alert</v-icon>
-        {{ $t('workflow.quickEntryPending') }}
-      </v-card-title>
-      <v-card-text>
-        <v-alert type="info" variant="tonal" density="compact" class="mb-3">
-          {{ $t('workflow.quickEntryInfo') }}
-        </v-alert>
-
-        <v-btn
-          color="warning"
-          variant="outlined"
-          @click="markRemainingZero"
-          :disabled="pendingWorkOrders.length === 0"
-        >
-          <v-icon start>mdi-numeric-0-circle</v-icon>
-          {{ $t('workflow.markRemainingZero') }}
-        </v-btn>
       </v-card-text>
     </v-card>
 
     <!-- Confirmation -->
     <v-checkbox
       v-model="confirmed"
-      :disabled="pendingEntries > 0"
+      :disabled="!canConfirm"
       :label="$t('workflow.productionConfirmLabel')"
       color="primary"
       @update:model-value="handleConfirm"
     />
 
     <v-alert
-      v-if="pendingEntries > 0"
+      v-if="entries.length === 0"
       type="warning"
       variant="tonal"
       density="compact"
       class="mt-2"
     >
-      {{ $t('workflow.productionPendingAlert', { count: pendingEntries }) }}
+      {{ $t('workflow.productionNoEntriesAlert') }}
     </v-alert>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { format } from 'date-fns'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 const { t } = useI18n()
-
 const emit = defineEmits(['complete', 'update'])
 
-// State
+const authStore = useAuthStore()
+const kpiStore = useKPIStore()
+const notificationStore = useNotificationStore()
+
 const loading = ref(true)
 const confirmed = ref(false)
-const workOrders = ref([])
+const entries = ref([])
 
-// Table headers
 const headers = computed(() => [
-  { title: t('workflow.workOrder'), key: 'id', width: '120px' },
-  { title: t('workflow.product'), key: 'product' },
-  { title: t('common.status'), key: 'status', width: '90px' },
-  { title: t('workflow.produced'), key: 'produced', width: '120px' },
-  { title: t('workflow.defects'), key: 'defects', width: '100px' },
-  { title: t('workflow.targetCompletion'), key: 'targetCompletion', width: '100px' },
-  { title: '', key: 'actions', width: '100px', sortable: false }
+  { title: t('workflow.workOrder'), key: 'work_order_id', width: '180px' },
+  { title: t('workflow.entriesRecorded'), key: 'entry_count', width: '120px' },
+  { title: t('workflow.unitsProduced'), key: 'units_produced', width: '140px' },
+  { title: t('grids.columns.defectQty'), key: 'defect_count', width: '110px' },
 ])
 
-// Computed
-const totalProduced = computed(() => {
-  return workOrders.value.reduce((sum, wo) => sum + (wo.produced || 0), 0)
+const totalProduced = computed(() =>
+  entries.value.reduce((sum, e) => sum + (e.units_produced || 0), 0),
+)
+
+const totalDefects = computed(() =>
+  entries.value.reduce((sum, e) => sum + (e.defect_count || 0), 0),
+)
+
+// Group entries by work_order_id for the summary table.
+const byWorkOrder = computed(() => {
+  const buckets = new Map()
+  entries.value.forEach((e) => {
+    const key = e.work_order_id || '—'
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        work_order_id: key,
+        entry_count: 0,
+        units_produced: 0,
+        defect_count: 0,
+      })
+    }
+    const row = buckets.get(key)
+    row.entry_count += 1
+    row.units_produced += e.units_produced || 0
+    row.defect_count += e.defect_count || 0
+  })
+  return [...buckets.values()].sort((a, b) =>
+    String(a.work_order_id).localeCompare(String(b.work_order_id)),
+  )
 })
 
-const totalTarget = computed(() => {
-  return workOrders.value.reduce((sum, wo) => sum + wo.target, 0)
-})
+const workOrdersCount = computed(() => byWorkOrder.value.length)
 
-const targetCompletion = computed(() => {
-  if (totalTarget.value === 0) return 0
-  return Math.round((totalProduced.value / totalTarget.value) * 100)
-})
-
-const targetCompletionColor = computed(() => {
-  if (targetCompletion.value >= 95) return 'text-success'
-  if (targetCompletion.value >= 85) return 'text-warning'
-  return 'text-error'
-})
-
-const pendingEntries = computed(() => {
-  return workOrders.value.filter(wo => !wo.hasEntry).length
-})
-
-const pendingWorkOrders = computed(() => {
-  return workOrders.value.filter(wo => !wo.hasEntry)
-})
-
-// Methods
-const getStatusColor = (item) => {
-  return item.hasEntry ? 'success' : 'warning'
-}
-
-const getTargetCompletionColor = (eff) => {
-  if (eff >= 95) return 'success'
-  if (eff >= 85) return 'warning'
-  return 'error'
-}
-
-const updateEntry = (item) => {
-  // Target completion = produced / target × 100. This is NOT the backend's
-  // efficiency metric (which uses ideal_cycle_time × employees × scheduled_hours
-  // and lives behind the calculate_efficiency orchestrator). Backend efficiency
-  // is populated via the API after the entry is saved.
-  if (item.target > 0) {
-    item.targetCompletion = Math.round(((item.produced || 0) / item.target) * 100)
-  }
-  emitUpdate()
-}
-
-const submitEntry = async (item) => {
-  item.submitting = true
-  try {
-    await api.post('/production-entries', {
-      work_order_id: item.id,
-      quantity_produced: item.produced,
-      defect_quantity: item.defects || 0,
-      date: new Date().toISOString().split('T')[0]
-    })
-    item.hasEntry = true
-    emitUpdate()
-  } catch (error) {
-    console.error('Failed to submit production entry:', error)
-  } finally {
-    item.submitting = false
-  }
-}
-
-const markRemainingZero = async () => {
-  for (const wo of pendingWorkOrders.value) {
-    wo.produced = 0
-    wo.defects = 0
-    wo.targetCompletion = 0
-    await submitEntry(wo)
-  }
-}
+// Operator can confirm only when at least one entry exists for today.
+// The wizard's role is to verify completeness, not to be an entry surface.
+const canConfirm = computed(() => entries.value.length > 0)
 
 const emitUpdate = () => {
   emit('update', {
-    workOrders: workOrders.value,
+    entries: entries.value,
     totalProduced: totalProduced.value,
-    targetCompletion: targetCompletion.value,
-    isValid: confirmed.value && pendingEntries.value === 0
+    totalDefects: totalDefects.value,
+    workOrdersCount: workOrdersCount.value,
+    isValid: confirmed.value && canConfirm.value,
   })
 }
 
 const handleConfirm = (value) => {
-  if (value && pendingEntries.value === 0) {
+  if (value && canConfirm.value) {
     emit('complete', {
-      workOrders: workOrders.value,
+      entries: entries.value,
       totalProduced: totalProduced.value,
-      totalTarget: totalTarget.value,
-      targetCompletion: targetCompletion.value
+      totalDefects: totalDefects.value,
+      workOrdersCount: workOrdersCount.value,
     })
   }
   emitUpdate()
@@ -289,25 +199,22 @@ const handleConfirm = (value) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const response = await api.get('/work-orders/shift-production')
-    workOrders.value = response.data.map(wo => ({
-      ...wo,
-      produced: wo.produced || 0,
-      defects: wo.defects || 0,
-      targetCompletion: wo.targetCompletion || 0,
-      hasEntry: wo.hasEntry || false,
-      submitting: false
-    }))
+    const today = format(new Date(), 'yyyy-MM-dd')
+    const params = { start_date: today, end_date: today }
+    const clientId = authStore.user?.client_id_assigned ?? kpiStore.selectedClient
+    if (clientId) params.client_id = clientId
+    const response = await api.get('/production', { params })
+    entries.value = response.data || []
+    emitUpdate()
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Failed to fetch production data:', error)
-    // Mock data
-    workOrders.value = [
-      { id: 'WO-2024-001', product: 'Widget A', target: 500, produced: 485, defects: 3, targetCompletion: 97, hasEntry: true, submitting: false },
-      { id: 'WO-2024-002', product: 'Widget B', target: 1000, produced: 920, defects: 8, targetCompletion: 92, hasEntry: true, submitting: false },
-      { id: 'WO-2024-003', product: 'Gadget X', target: 300, produced: 0, defects: 0, targetCompletion: 0, hasEntry: false, submitting: false },
-      { id: 'WO-2024-004', product: 'Component C', target: 200, produced: 195, defects: 1, targetCompletion: 98, hasEntry: true, submitting: false },
-      { id: 'WO-2024-005', product: 'Assembly D', target: 750, produced: 0, defects: 0, targetCompletion: 0, hasEntry: false, submitting: false }
-    ]
+    notificationStore.show({
+      type: 'error',
+      message: t('workflow.errors.loadProduction'),
+    })
+    entries.value = []
+    emitUpdate()
   } finally {
     loading.value = false
   }
@@ -318,8 +225,4 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-.production-table :deep(.v-data-table__td) {
-  padding: 8px 16px;
-}
-</style>
+<style scoped></style>

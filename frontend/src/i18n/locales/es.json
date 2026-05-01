@@ -2271,7 +2271,13 @@
     "downtimeMustResolve": "{count} incidente(s) de tiempo muerto deben resolverse antes de continuar.",
     "needsAttention": "Requiere atención",
     "openDowntimeGrid": "Abrir Grid de Tiempo Muerto",
+    "openProductionGrid": "Abrir Grid de Producción",
     "noDowntimeData": "Sin tiempo muerto registrado este turno",
+    "noProductionEntries": "No hay entradas de producción registradas hoy. Use el Grid de Producción para registrar la producción del turno.",
+    "productionNoEntriesAlert": "Debe existir al menos una entrada de producción del turno antes de confirmar este paso.",
+    "totalDefects": "Total de Defectos",
+    "workOrdersCovered": "Órdenes de Trabajo Cubiertas",
+    "entriesRecorded": "Entradas",
     "unspecifiedMachine": "Máquina no especificada",
     "unspecifiedReason": "No especificado",
     "errors": {
