@@ -2,38 +2,33 @@
  * Composable for QualityEntryGrid script logic — reactive state,
  * column definitions, CRUD, paste handling, summary stats (FPY,
  * PPM), read-back confirmation.
+ *
+ * Backend alignment: payload matches backend/schemas/quality.py
+ * QualityInspectionCreate. client_id derived from authStore (operators)
+ * or kpiStore.selectedClient (admin). shift_date is the user-entered
+ * row date and also drives inspection_date by default.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
 import api from '@/services/api'
 import { format } from 'date-fns'
 
 export interface QualityRow {
-  inspection_id?: string | number
-  inspection_date?: string
+  quality_entry_id?: string | number
+  shift_date?: string
   work_order_id?: string | number
-  product_id?: string | number | null
-  inspected_quantity?: number
-  defect_quantity?: number
-  defect_type_id?: string | number | null
-  severity?: string
-  disposition?: string
-  inspector_id?: string | number
-  defect_description?: string
+  units_inspected?: number
+  units_passed?: number
+  units_defective?: number
+  total_defects_count?: number
+  inspection_stage?: string
+  units_scrapped?: number
+  units_reworked?: number
+  notes?: string
   _hasChanges?: boolean
   _isNew?: boolean
-  [key: string]: unknown
-}
-
-export interface ProductRef {
-  product_id?: string | number
-  product_name?: string
-  [key: string]: unknown
-}
-
-export interface DefectTypeRef {
-  defect_type_id?: string | number
-  defect_name?: string
   [key: string]: unknown
 }
 
@@ -72,11 +67,11 @@ export interface ConfirmationField {
 
 export default function useQualityGridData() {
   const { t } = useI18n()
+  const authStore = useAuthStore()
+  const kpiStore = useKPIStore()
 
   const gridRef = ref<AGGridRef | null>(null)
   const qualityData = ref<QualityRow[]>([])
-  const products = ref<ProductRef[]>([])
-  const defectTypes = ref<DefectTypeRef[]>([])
   const saving = ref(false)
   const snackbar = ref<SnackbarState>({ show: false, message: '', color: 'success' })
 
@@ -92,41 +87,33 @@ export default function useQualityGridData() {
 
   const pendingRowsCount = computed(() => pendingRows.value.length)
 
-  const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
-    const productName =
-      products.value.find((p) => p.product_id === pendingData.value.product_id)
-        ?.product_name || 'N/A'
-    const defectTypeName =
-      defectTypes.value.find((d) => d.defect_type_id === pendingData.value.defect_type_id)
-        ?.defect_name || 'N/A'
+  // Operators inherit client_id from auth; admin users fall back to KPI store selection.
+  const activeClientId = (): string | number | null => {
+    return authStore.user?.client_id_assigned ?? kpiStore.selectedClient ?? null
+  }
 
-    const inspected = pendingData.value.inspected_quantity || 0
-    const defects = pendingData.value.defect_quantity || 0
+  const computeUnitsPassed = (row: QualityRow): number => {
+    const inspected = row.units_inspected ?? 0
+    const defective = row.units_defective ?? 0
+    return Math.max(0, inspected - defective)
+  }
+
+  const confirmationFieldConfig = computed<ConfirmationField[]>(() => {
+    const inspected = pendingData.value.units_inspected || 0
+    const defects = pendingData.value.units_defective || 0
     const fpy = inspected > 0 ? ((1 - defects / inspected) * 100).toFixed(2) : '0.00'
     const ppm = inspected > 0 ? Math.round((defects / inspected) * 1000000) : 0
 
     return [
-      { key: 'inspection_date', label: 'Inspection Date', type: 'date' },
-      { key: 'work_order_id', label: 'Work Order', type: 'text' },
-      { key: 'product_id', label: 'Product', type: 'text', displayValue: productName },
-      { key: 'inspected_quantity', label: 'Inspected Quantity', type: 'number' },
-      { key: 'defect_quantity', label: 'Defect Quantity', type: 'number' },
-      { key: 'fpy_calculated', label: 'FPY %', type: 'percentage', displayValue: fpy },
-      {
-        key: 'ppm_calculated',
-        label: 'PPM',
-        type: 'number',
-        displayValue: ppm.toLocaleString(),
-      },
-      {
-        key: 'defect_type_id',
-        label: 'Defect Type',
-        type: 'text',
-        displayValue: defectTypeName,
-      },
-      { key: 'severity', label: 'Severity', type: 'text' },
-      { key: 'disposition', label: 'Disposition', type: 'text' },
-      { key: 'inspector_id', label: 'Inspector ID', type: 'text' },
+      { key: 'shift_date', label: t('grids.columns.shiftDate'), type: 'date' },
+      { key: 'work_order_id', label: t('grids.columns.workOrder'), type: 'text' },
+      { key: 'units_inspected', label: t('grids.columns.inspectedQty'), type: 'number' },
+      { key: 'units_defective', label: t('grids.columns.defectQty'), type: 'number' },
+      { key: 'total_defects_count', label: t('grids.columns.totalDefectsCount'), type: 'number' },
+      { key: 'fpy_calculated', label: t('grids.columns.fpyPercent'), type: 'percentage', displayValue: fpy },
+      { key: 'ppm_calculated', label: t('grids.columns.ppm'), type: 'number', displayValue: ppm.toLocaleString() },
+      { key: 'inspection_stage', label: t('grids.columns.inspectionStage'), type: 'text' },
+      { key: 'notes', label: t('grids.columns.notes'), type: 'text' },
     ]
   })
 
@@ -137,11 +124,11 @@ export default function useQualityGridData() {
   )
 
   const totalInspected = computed(() =>
-    qualityData.value.reduce((sum, row) => sum + (row.inspected_quantity || 0), 0),
+    qualityData.value.reduce((sum, row) => sum + (row.units_inspected || 0), 0),
   )
 
   const totalDefects = computed(() =>
-    qualityData.value.reduce((sum, row) => sum + (row.defect_quantity || 0), 0),
+    qualityData.value.reduce((sum, row) => sum + (row.units_defective || 0), 0),
   )
 
   const avgFPY = computed(() => {
@@ -170,8 +157,8 @@ export default function useQualityGridData() {
 
   const columnDefs = computed(() => [
     {
-      headerName: t('grids.columns.inspectionDate'),
-      field: 'inspection_date',
+      headerName: t('grids.columns.shiftDate'),
+      field: 'shift_date',
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params: { value?: string }) =>
@@ -185,37 +172,44 @@ export default function useQualityGridData() {
       width: 150,
     },
     {
-      headerName: t('grids.columns.product'),
-      field: 'product_id',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({ values: products.value.map((p) => p.product_id) }),
-      valueFormatter: (params: { value?: string | number }) => {
-        const product = products.value.find((p) => p.product_id === params.value)
-        return product?.product_name || (params.value as string) || 'N/A'
-      },
-      width: 200,
-    },
-    {
       headerName: t('grids.columns.inspectedQty'),
-      field: 'inspected_quantity',
+      field: 'units_inspected',
       editable: true,
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
-      cellEditorParams: { min: 0, precision: 0 },
+      cellEditorParams: { min: 1, precision: 0 },
       valueFormatter: (params: { value?: number }) =>
         params.value ? params.value.toLocaleString() : '0',
-      width: 140,
+      width: 130,
+    },
+    {
+      headerName: t('grids.columns.passedQty'),
+      field: 'units_passed',
+      editable: false,
+      type: 'numericColumn',
+      valueGetter: (params: { data: QualityRow }) => computeUnitsPassed(params.data),
+      valueFormatter: (params: { value?: number }) =>
+        params.value !== undefined ? params.value.toLocaleString() : '0',
+      width: 110,
     },
     {
       headerName: t('grids.columns.defectQty'),
-      field: 'defect_quantity',
+      field: 'units_defective',
       editable: true,
       type: 'numericColumn',
       cellEditor: 'agNumberCellEditor',
       cellEditorParams: { min: 0, precision: 0 },
       cellClass: (params: { value?: number }) =>
         (params.value ?? 0) > 0 ? 'ag-cell-error ag-cell-bold' : '',
+      width: 120,
+    },
+    {
+      headerName: t('grids.columns.totalDefectsCount'),
+      field: 'total_defects_count',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, precision: 0 },
       width: 130,
     },
     {
@@ -223,8 +217,8 @@ export default function useQualityGridData() {
       field: 'fpy',
       editable: false,
       valueGetter: (params: { data: QualityRow }) => {
-        const inspected = params.data.inspected_quantity || 0
-        const defects = params.data.defect_quantity || 0
+        const inspected = params.data.units_inspected || 0
+        const defects = params.data.units_defective || 0
         if (inspected === 0) return 0
         return ((1 - defects / inspected) * 100).toFixed(2)
       },
@@ -241,8 +235,8 @@ export default function useQualityGridData() {
       field: 'ppm',
       editable: false,
       valueGetter: (params: { data: QualityRow }) => {
-        const inspected = params.data.inspected_quantity || 0
-        const defects = params.data.defect_quantity || 0
+        const inspected = params.data.units_inspected || 0
+        const defects = params.data.units_defective || 0
         if (inspected === 0) return 0
         return Math.round((defects / inspected) * 1000000)
       },
@@ -257,66 +251,34 @@ export default function useQualityGridData() {
       width: 110,
     },
     {
-      headerName: t('grids.columns.defectType'),
-      field: 'defect_type_id',
+      headerName: t('grids.columns.inspectionStage'),
+      field: 'inspection_stage',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: () => ({
-        values: defectTypes.value.map((d) => d.defect_type_id),
-      }),
-      valueFormatter: (params: { value?: string | number }) => {
-        const defectType = defectTypes.value.find(
-          (d) => d.defect_type_id === params.value,
-        )
-        return defectType?.defect_name || (params.value as string) || 'N/A'
-      },
-      width: 150,
-    },
-    {
-      headerName: t('grids.columns.severity'),
-      field: 'severity',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: ['Critical', 'Major', 'Minor', 'Cosmetic'] },
-      cellClass: (params: { value?: string }) => {
-        const classes: Record<string, string> = {
-          Critical: 'ag-cell-error ag-cell-bold',
-          Major: 'ag-cell-warning ag-cell-bold',
-          Minor: 'ag-cell-warning-light',
-          Cosmetic: 'ag-cell-info',
-        }
-        return classes[params.value || ''] || ''
-      },
-      width: 120,
-    },
-    {
-      headerName: t('grids.columns.disposition'),
-      field: 'disposition',
-      editable: true,
-      cellEditor: 'agSelectCellEditor',
-      cellEditorParams: {
-        values: ['Accept', 'Reject', 'Rework', 'Use As Is', 'Return to Supplier', 'Scrap'],
-      },
-      cellClass: (params: { value?: string }) => {
-        const classes: Record<string, string> = {
-          Accept: 'ag-cell-success',
-          Reject: 'ag-cell-error',
-          Rework: 'ag-cell-warning',
-          Scrap: 'ag-cell-error',
-        }
-        return classes[params.value || ''] || ''
-      },
-      width: 150,
-    },
-    {
-      headerName: t('grids.columns.inspector'),
-      field: 'inspector_id',
-      editable: true,
+      cellEditorParams: { values: ['Incoming', 'In-Process', 'Final'] },
       width: 130,
     },
     {
+      headerName: t('grids.columns.scrapped'),
+      field: 'units_scrapped',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, precision: 0 },
+      width: 110,
+    },
+    {
+      headerName: t('grids.columns.reworked'),
+      field: 'units_reworked',
+      editable: true,
+      type: 'numericColumn',
+      cellEditor: 'agNumberCellEditor',
+      cellEditorParams: { min: 0, precision: 0 },
+      width: 110,
+    },
+    {
       headerName: t('grids.columns.notes'),
-      field: 'defect_description',
+      field: 'notes',
       editable: true,
       cellEditor: 'agLargeTextCellEditor',
       cellEditorPopup: true,
@@ -363,28 +325,36 @@ export default function useQualityGridData() {
   }): void => {
     event.data._hasChanges = true
 
-    if (event.column.colId === 'inspected_quantity' || event.column.colId === 'defect_quantity') {
+    if (event.column.colId === 'units_inspected' || event.column.colId === 'units_defective') {
       event.api.refreshCells({
         rowNodes: [event.node],
-        columns: ['fpy', 'ppm'],
+        columns: ['units_passed', 'fpy', 'ppm'],
         force: true,
       })
+      // Default total_defects_count to units_defective when defects entered for the first time.
+      if (event.column.colId === 'units_defective' && (event.data.total_defects_count ?? 0) === 0) {
+        event.data.total_defects_count = event.data.units_defective ?? 0
+        event.api.refreshCells({
+          rowNodes: [event.node],
+          columns: ['total_defects_count'],
+          force: true,
+        })
+      }
     }
   }
 
   const addRow = (): void => {
     const newRow: QualityRow = {
-      inspection_id: `temp_${Date.now()}`,
-      inspection_date: format(new Date(), 'yyyy-MM-dd'),
+      quality_entry_id: `temp_${Date.now()}`,
+      shift_date: format(new Date(), 'yyyy-MM-dd'),
       work_order_id: '',
-      product_id: products.value[0]?.product_id || null,
-      inspected_quantity: 0,
-      defect_quantity: 0,
-      defect_type_id: defectTypes.value[0]?.defect_type_id || null,
-      severity: 'Minor',
-      disposition: 'Accept',
-      inspector_id: '',
-      defect_description: '',
+      units_inspected: 0,
+      units_defective: 0,
+      total_defects_count: 0,
+      inspection_stage: 'Final',
+      units_scrapped: 0,
+      units_reworked: 0,
+      notes: '',
       _hasChanges: true,
       _isNew: true,
     }
@@ -396,6 +366,25 @@ export default function useQualityGridData() {
       setTimeout(() => {
         gridApi.startEditingCell({ rowIndex: 0, colKey: 'work_order_id' })
       }, 100)
+    }
+  }
+
+  const buildPayload = (row: QualityRow, clientId: string | number) => {
+    const unitsInspected = row.units_inspected ?? 0
+    const unitsDefective = row.units_defective ?? 0
+    return {
+      client_id: String(clientId),
+      work_order_id: String(row.work_order_id ?? ''),
+      shift_date: row.shift_date,
+      inspection_date: row.shift_date,
+      units_inspected: unitsInspected,
+      units_passed: computeUnitsPassed(row),
+      units_defective: unitsDefective,
+      total_defects_count: row.total_defects_count ?? unitsDefective,
+      inspection_stage: row.inspection_stage || undefined,
+      units_scrapped: row.units_scrapped ?? 0,
+      units_reworked: row.units_reworked ?? 0,
+      notes: row.notes || '',
     }
   }
 
@@ -413,6 +402,11 @@ export default function useQualityGridData() {
       return
     }
 
+    if (!activeClientId()) {
+      showSnackbar(t('grids.quality.errors.noClient'), 'error')
+      return
+    }
+
     pendingRows.value = changedRows
     pendingData.value = changedRows[0]
     showConfirmDialog.value = true
@@ -425,30 +419,26 @@ export default function useQualityGridData() {
     let successCount = 0
     let errorCount = 0
 
+    const clientId = activeClientId()
+    if (!clientId) {
+      saving.value = false
+      pendingRows.value = []
+      pendingData.value = {}
+      showSnackbar(t('grids.quality.errors.noClient'), 'error')
+      return
+    }
+
     try {
       for (const row of pendingRows.value) {
-        const data = {
-          inspection_date: row.inspection_date,
-          work_order_id: row.work_order_id,
-          product_id: row.product_id,
-          inspected_quantity: row.inspected_quantity || 0,
-          defect_quantity: row.defect_quantity || 0,
-          defect_type_id: row.defect_type_id,
-          severity: row.severity,
-          disposition: row.disposition,
-          inspector_id: row.inspector_id,
-          defect_description: row.defect_description || '',
-        }
-
+        const data = buildPayload(row, clientId)
         try {
           if (row._isNew) {
             await api.createQualityEntry(data)
             successCount++
-          } else if (row.inspection_id !== undefined) {
-            await api.updateQualityEntry(row.inspection_id, data)
+          } else if (row.quality_entry_id !== undefined) {
+            await api.updateQualityEntry(row.quality_entry_id, data)
             successCount++
           }
-
           row._hasChanges = false
           row._isNew = false
         } catch (err) {
@@ -502,17 +492,16 @@ export default function useQualityGridData() {
     if (!gridApi) return
 
     const preparedRows: QualityRow[] = rowsToAdd.map((row) => ({
-      inspection_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      inspection_date: row.inspection_date || format(new Date(), 'yyyy-MM-dd'),
+      quality_entry_id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      shift_date: row.shift_date || format(new Date(), 'yyyy-MM-dd'),
       work_order_id: row.work_order_id || '',
-      product_id: row.product_id || products.value[0]?.product_id || null,
-      inspected_quantity: row.inspected_quantity || 0,
-      defect_quantity: row.defect_quantity || 0,
-      defect_type_id: row.defect_type_id || defectTypes.value[0]?.defect_type_id || null,
-      severity: row.severity || 'Minor',
-      disposition: row.disposition || 'Accept',
-      inspector_id: row.inspector_id || '',
-      defect_description: row.defect_description || '',
+      units_inspected: row.units_inspected || 0,
+      units_defective: row.units_defective || 0,
+      total_defects_count: row.total_defects_count ?? row.units_defective ?? 0,
+      inspection_stage: row.inspection_stage || 'Final',
+      units_scrapped: row.units_scrapped || 0,
+      units_reworked: row.units_reworked || 0,
+      notes: row.notes || '',
       _hasChanges: true,
       _isNew: true,
     }))
@@ -532,24 +521,19 @@ export default function useQualityGridData() {
 
   onMounted(async () => {
     try {
-      const [productsRes, defectTypesRes] = await Promise.all([
-        api.getProducts(),
-        api.getDefectTypes(),
-      ])
-
-      products.value = productsRes.data
-      defectTypes.value = defectTypesRes.data
-
       const qualityRes = await api.getQualityEntries()
       qualityData.value = (qualityRes.data as QualityRow[]).map((entry) => ({
         ...entry,
+        // Backend serialises shift_date as ISO datetime; normalise to YYYY-MM-DD for the date editor.
+        shift_date:
+          typeof entry.shift_date === 'string' ? entry.shift_date.slice(0, 10) : entry.shift_date,
         _hasChanges: false,
         _isNew: false,
       }))
     } catch (error) {
       // eslint-disable-next-line no-console
-      console.error('Error loading reference data:', error)
-      showSnackbar('Error loading data', 'error')
+      console.error('Error loading quality data:', error)
+      showSnackbar(t('grids.quality.errors.loadData'), 'error')
     }
   })
 

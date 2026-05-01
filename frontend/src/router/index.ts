@@ -98,7 +98,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/data-entry/quality',
     name: 'quality-entry',
-    component: () => import('@/components/entries/QualityEntry.vue'),
+    component: () => import('@/views/QualityEntry.vue'),
     meta: { requiresAuth: true },
   },
   {

@@ -100,6 +100,7 @@
     "dashboard": "Dashboard",
     "production": "Production",
     "productionEntry": "Production Entry",
+    "qualityEntry": "Quality Entry",
     "quality": "Quality",
     "attendance": "Attendance",
     "downtime": "Downtime",
@@ -1060,7 +1061,13 @@
       "wipImpactHrs": "WIP Impact (hrs)",
       "wipImpact": "WIP Impact",
       "resolutionNotes": "Resolution Notes",
-      "resolved": "Resolved"
+      "resolved": "Resolved",
+      "shiftDate": "Shift Date",
+      "passedQty": "Passed Qty",
+      "totalDefectsCount": "Total Defects",
+      "inspectionStage": "Inspection Stage",
+      "scrapped": "Scrapped",
+      "reworked": "Reworked"
     },
     "production": {
       "title": "Production Entry",
@@ -1104,7 +1111,11 @@
       "confirmTitle": "Confirm Quality Inspection - Read Back",
       "confirmSubtitle": "Please verify the following quality inspection data before saving:",
       "confirmWarning": "This will save {count} quality inspections.",
-      "deleteConfirm": "Are you sure you want to delete this inspection?"
+      "deleteConfirm": "Are you sure you want to delete this inspection?",
+      "errors": {
+        "noClient": "Cannot save: no client is selected. Choose a client before saving.",
+        "loadData": "Failed to load quality entries"
+      }
     },
     "holds": {
       "title": "Hold/Resume Entry - Excel-like Grid",

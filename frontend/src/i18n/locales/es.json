@@ -100,6 +100,7 @@
     "dashboard": "Tablero",
     "production": "Producción",
     "productionEntry": "Captura de Producción",
+    "qualityEntry": "Captura de Calidad",
     "quality": "Calidad",
     "attendance": "Asistencia",
     "downtime": "Tiempo Muerto",
@@ -1060,7 +1061,13 @@
       "wipImpactHrs": "Impacto WIP (hrs)",
       "wipImpact": "Impacto WIP",
       "resolutionNotes": "Notas de Resolución",
-      "resolved": "Resuelto"
+      "resolved": "Resuelto",
+      "shiftDate": "Fecha de Turno",
+      "passedQty": "Cantidad Aprobada",
+      "totalDefectsCount": "Total de Defectos",
+      "inspectionStage": "Etapa de Inspección",
+      "scrapped": "Desechadas",
+      "reworked": "Retrabajadas"
     },
     "production": {
       "title": "Entrada de Producción",
@@ -1104,7 +1111,11 @@
       "confirmTitle": "Confirmar Inspección de Calidad - Verificación",
       "confirmSubtitle": "Por favor verifique los siguientes datos de inspección antes de guardar:",
       "confirmWarning": "Esto guardará {count} inspecciones de calidad.",
-      "deleteConfirm": "¿Estás seguro de que deseas eliminar esta inspección?"
+      "deleteConfirm": "¿Estás seguro de que deseas eliminar esta inspección?",
+      "errors": {
+        "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar.",
+        "loadData": "Error al cargar las inspecciones de calidad"
+      }
     },
     "holds": {
       "title": "Entrada de Retención/Reanudación - Grid tipo Excel",
