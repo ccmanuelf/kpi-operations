@@ -104,7 +104,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/data-entry/hold-resume',
     name: 'hold-resume-entry',
-    component: () => import('@/components/entries/HoldResumeEntry.vue'),
+    component: () => import('@/views/HoldResumeEntry.vue'),
     meta: { requiresAuth: true },
   },
   {

@@ -1067,7 +1067,12 @@
       "totalDefectsCount": "Total Defects",
       "inspectionStage": "Inspection Stage",
       "scrapped": "Scrapped",
-      "reworked": "Reworked"
+      "reworked": "Reworked",
+      "holdReasonDescription": "Hold Description",
+      "expectedResolution": "Expected Resolution",
+      "resumeDate": "Resume Date",
+      "holdInitiatedBy": "Initiated By",
+      "holdApprovedBy": "Approved By"
     },
     "production": {
       "title": "Production Entry",
@@ -1160,7 +1165,10 @@
       "confirmTitle": "Confirm Hold Entry - Read Back",
       "confirmSubtitle": "Please verify the following hold/resume data before saving:",
       "confirmWarning": "This will save {count} hold entries.",
-      "deleteConfirm": "Are you sure you want to delete this hold entry?"
+      "deleteConfirm": "Are you sure you want to delete this hold entry?",
+      "errors": {
+        "noClient": "Cannot save: no client is selected. Choose a client before saving."
+      }
     },
     "downtime": {
       "title": "Downtime Entry - Excel-like Grid",

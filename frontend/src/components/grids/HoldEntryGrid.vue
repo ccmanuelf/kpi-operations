@@ -174,50 +174,6 @@
       </v-row>
     </v-card-text>
 
-    <!-- Resume Hold Dialog -->
-    <v-dialog v-model="resumeDialog.show" max-width="600">
-      <v-card>
-        <v-card-title class="bg-primary">
-          {{ $t('grids.holds.resumeDialog.title') }} - {{ resumeDialog.hold?.work_order_number }}
-        </v-card-title>
-        <v-card-text class="pt-4">
-          <v-row>
-            <v-col cols="12">
-              <v-text-field
-                v-model="resumeDialog.actual_resume_date"
-                type="datetime-local"
-                :label="$t('grids.holds.resumeDialog.resumeDateTime') + ' *'"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-text-field
-                v-model="resumeDialog.resumed_by_user_id"
-                :label="$t('grids.holds.resumeDialog.resumedByUserId') + ' *'"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12">
-              <v-text-field
-                v-model="resumeDialog.resume_approved_at"
-                type="datetime-local"
-                :label="$t('grids.holds.resumeDialog.resumeApprovedAt')"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-          </v-row>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="resumeDialog.show = false">{{ $t('common.cancel') }}</v-btn>
-          <v-btn color="success" @click="confirmResume">{{ $t('grids.holds.resumeDialog.confirm') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- Read-Back Confirmation Dialog -->
     <ReadBackConfirmation
       v-model="showConfirmDialog"
@@ -273,7 +229,6 @@ const {
   reasonFilter,
   holdReasons,
   holdStatusOptions,
-  entries,
   workOrders,
   filteredEntries,
   hasUnsavedChanges,
@@ -290,8 +245,6 @@ const {
 
 // --- Forms composable: CRUD, dialogs, approval workflow ---
 const {
-  resumeDialog,
-  confirmResume,
   showConfirmDialog,
   pendingData,
   pendingRowsCount,

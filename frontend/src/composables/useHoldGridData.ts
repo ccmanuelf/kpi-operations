@@ -1,6 +1,13 @@
 /**
  * Composable for Hold Entry Grid data, column definitions,
  * filters, and display helpers.
+ *
+ * Backend alignment: field names match backend/schemas/hold.py
+ * WIPHoldResponse / WIPHoldCreate. `hold_date` (not placed_on_hold_date),
+ * `expected_resolution_date` (not expected_resume_date), `resumed_by`
+ * (not resumed_by_user_id). Reasons use the canonical
+ * HOLD_REASON_CATALOG codes; legacy UI labels were removed in the
+ * 2026-05-01 entry-audit migration.
  */
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -16,15 +23,20 @@ export type HoldStatus =
 
 export interface HoldEntry {
   id?: string | number
+  hold_entry_id?: string | number
+  client_id?: string
   hold_status?: HoldStatus | string
   hold_reason?: string
+  hold_reason_category?: string
+  hold_reason_description?: string
   work_order_id?: string | number
-  placed_on_hold_date?: string
-  expected_resume_date?: string | null
-  actual_resume_date?: string | null
-  hold_approved_at?: string | null
-  resume_approved_at?: string | null
-  resumed_by_user_id?: string | number | null
+  hold_date?: string
+  resume_date?: string | null
+  expected_resolution_date?: string | null
+  hold_initiated_by?: string | null
+  hold_approved_by?: string | null
+  resumed_by?: string | null
+  notes?: string | null
   [key: string]: unknown
 }
 
@@ -60,15 +72,17 @@ interface ColumnDef {
   sort?: 'asc' | 'desc'
 }
 
-export const HOLD_REASONS: string[] = [
-  'Quality Issue',
-  'Material Defect',
-  'Process Non-Conformance',
-  'Customer Request',
-  'Engineering Change',
-  'Inspection Failure',
-  'Supplier Issue',
-  'Other',
+// Canonical HOLD_REASON_CATALOG codes (mirrors backend/schemas/hold.py:56-71).
+// The set is enforced server-side per-client via validate_hold_reason_for_client.
+export const HOLD_REASON_CODES: string[] = [
+  'QUALITY_ISSUE',
+  'MATERIAL_INSPECTION',
+  'ENGINEERING_REVIEW',
+  'CUSTOMER_REQUEST',
+  'MISSING_SPECIFICATION',
+  'EQUIPMENT_UNAVAILABLE',
+  'CAPACITY_CONSTRAINT',
+  'OTHER',
 ]
 
 export function useHoldGridData() {
@@ -105,13 +119,13 @@ export function useHoldGridData() {
   const activeCount = computed(
     () =>
       entries.value.filter(
-        (e) => e.hold_status === 'ON_HOLD' || (!e.actual_resume_date && !e.hold_status),
+        (e) => e.hold_status === 'ON_HOLD' || (!e.resume_date && !e.hold_status),
       ).length,
   )
 
   const resumedCount = computed(
     () =>
-      entries.value.filter((e) => e.hold_status === 'RESUMED' || e.actual_resume_date)
+      entries.value.filter((e) => e.hold_status === 'RESUMED' || e.resume_date)
         .length,
   )
 
@@ -131,9 +145,9 @@ export function useHoldGridData() {
     if (filteredEntries.value.length === 0) return 0
 
     const totalDays = filteredEntries.value.reduce((sum, e) => {
-      if (!e.placed_on_hold_date) return sum
-      const startDate = new Date(e.placed_on_hold_date)
-      const endDate = e.actual_resume_date ? new Date(e.actual_resume_date) : new Date()
+      if (!e.hold_date) return sum
+      const startDate = new Date(e.hold_date)
+      const endDate = e.resume_date ? new Date(e.resume_date) : new Date()
       return sum + differenceInDays(endDate, startDate)
     }, 0)
 
@@ -145,8 +159,8 @@ export function useHoldGridData() {
 
     if (dateFilter.value) {
       filtered = filtered.filter((e) => {
-        if (!e.placed_on_hold_date) return false
-        const entryDate = new Date(e.placed_on_hold_date).toISOString().split('T')[0]
+        if (!e.hold_date) return false
+        const entryDate = new Date(e.hold_date).toISOString().split('T')[0]
         return entryDate === dateFilter.value
       })
     }
@@ -157,9 +171,9 @@ export function useHoldGridData() {
           return e.hold_status === statusFilter.value
         }
         if (statusFilter.value === 'ON_HOLD') {
-          return !e.actual_resume_date
+          return !e.resume_date
         } else if (statusFilter.value === 'RESUMED') {
-          return !!e.actual_resume_date
+          return !!e.resume_date
         }
         return false
       })
@@ -179,7 +193,7 @@ export function useHoldGridData() {
   const columnDefs = computed<ColumnDef[]>(() => [
     {
       headerName: t('grids.columns.holdDate'),
-      field: 'placed_on_hold_date',
+      field: 'hold_date',
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params) =>
@@ -208,8 +222,16 @@ export function useHoldGridData() {
       field: 'hold_reason',
       editable: true,
       cellEditor: 'agSelectCellEditor',
-      cellEditorParams: { values: HOLD_REASONS },
+      cellEditorParams: { values: HOLD_REASON_CODES },
       width: 200,
+    },
+    {
+      headerName: t('grids.columns.holdReasonDescription'),
+      field: 'hold_reason_description',
+      editable: true,
+      cellEditor: 'agLargeTextCellEditor',
+      cellEditorPopup: true,
+      width: 220,
     },
     {
       headerName: t('grids.columns.status'),
@@ -218,7 +240,7 @@ export function useHoldGridData() {
       valueGetter: (params) => {
         const status =
           params.data.hold_status ||
-          (params.data.actual_resume_date ? 'RESUMED' : 'ON_HOLD')
+          (params.data.resume_date ? 'RESUMED' : 'ON_HOLD')
         const statusLabels: Record<string, string> = {
           PENDING_HOLD_APPROVAL: t('grids.holds.approvalWorkflow.pendingHold'),
           ON_HOLD: t('grids.holds.active'),
@@ -231,7 +253,7 @@ export function useHoldGridData() {
       cellClass: (params) => {
         const status =
           params.data.hold_status ||
-          (params.data.actual_resume_date ? 'RESUMED' : 'ON_HOLD')
+          (params.data.resume_date ? 'RESUMED' : 'ON_HOLD')
         const classes: Record<string, string> = {
           PENDING_HOLD_APPROVAL: 'ag-cell-warning ag-cell-bold',
           ON_HOLD: 'ag-cell-error ag-cell-bold',
@@ -244,8 +266,8 @@ export function useHoldGridData() {
       width: 160,
     },
     {
-      headerName: t('grids.columns.expectedResume'),
-      field: 'expected_resume_date',
+      headerName: t('grids.columns.expectedResolution'),
+      field: 'expected_resolution_date',
       editable: true,
       cellEditor: 'agDateStringCellEditor',
       valueFormatter: (params) =>
@@ -253,8 +275,8 @@ export function useHoldGridData() {
       width: 150,
     },
     {
-      headerName: t('grids.columns.actualResume'),
-      field: 'actual_resume_date',
+      headerName: t('grids.columns.resumeDate'),
+      field: 'resume_date',
       editable: false,
       valueFormatter: (params) =>
         params.value
@@ -268,10 +290,10 @@ export function useHoldGridData() {
       field: 'days_on_hold',
       editable: false,
       valueGetter: (params) => {
-        if (!params.data.placed_on_hold_date) return 0
-        const startDate = new Date(params.data.placed_on_hold_date)
-        const endDate = params.data.actual_resume_date
-          ? new Date(params.data.actual_resume_date)
+        if (!params.data.hold_date) return 0
+        const startDate = new Date(params.data.hold_date)
+        const endDate = params.data.resume_date
+          ? new Date(params.data.resume_date)
           : new Date()
         return differenceInDays(endDate, startDate)
       },
@@ -284,29 +306,30 @@ export function useHoldGridData() {
       width: 130,
     },
     {
+      headerName: t('grids.columns.holdInitiatedBy'),
+      field: 'hold_initiated_by',
+      editable: false,
+      width: 140,
+    },
+    {
+      headerName: t('grids.columns.holdApprovedBy'),
+      field: 'hold_approved_by',
+      editable: false,
+      width: 140,
+    },
+    {
       headerName: t('grids.columns.resumedBy'),
-      field: 'resumed_by_user_id',
+      field: 'resumed_by',
       editable: false,
       width: 130,
     },
     {
-      headerName: t('grids.columns.holdApproved'),
-      field: 'hold_approved_at',
+      headerName: t('grids.columns.notes'),
+      field: 'notes',
       editable: true,
-      cellEditor: 'agDateStringCellEditor',
-      valueFormatter: (params) =>
-        params.value
-          ? format(new Date(params.value as string), 'MMM dd HH:mm')
-          : t('grids.holds.pending'),
-      width: 150,
-    },
-    {
-      headerName: t('grids.columns.resumeApproved'),
-      field: 'resume_approved_at',
-      editable: false,
-      valueFormatter: (params) =>
-        params.value ? format(new Date(params.value as string), 'MMM dd HH:mm') : 'N/A',
-      width: 150,
+      cellEditor: 'agLargeTextCellEditor',
+      cellEditorPopup: true,
+      width: 200,
     },
   ])
 
@@ -321,7 +344,7 @@ export function useHoldGridData() {
     dateFilter,
     statusFilter,
     reasonFilter,
-    holdReasons: HOLD_REASONS,
+    holdReasons: HOLD_REASON_CODES,
     holdStatusOptions,
     entries,
     workOrders,

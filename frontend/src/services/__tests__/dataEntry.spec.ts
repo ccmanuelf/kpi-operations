@@ -182,17 +182,6 @@ describe('Data Entry API', () => {
       expect(api.delete).toHaveBeenCalledWith('/holds/1')
     })
 
-    it('resumeHold calls POST /holds/:id/resume', async () => {
-      const data = { resume_quantity: 25, notes: 'Partial resume' }
-      const mockResponse = { data: { hold_id: 1, status: 'resumed' } }
-      api.post.mockResolvedValue(mockResponse)
-
-      const result = await dataEntryApi.resumeHold(1, data)
-
-      expect(api.post).toHaveBeenCalledWith('/holds/1/resume', data)
-      expect(result).toEqual(mockResponse)
-    })
-
     it('getHoldEntries calls GET /holds with params', async () => {
       const params = { status: 'active' }
       const mockResponse = { data: [{ hold_id: 1 }] }

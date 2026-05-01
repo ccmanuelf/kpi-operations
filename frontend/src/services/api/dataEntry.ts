@@ -28,9 +28,10 @@ export const updateQualityEntry = (id: Id, data: Payload) => api.put(`/quality/$
 export const deleteQualityEntry = (id: Id) => api.delete(`/quality/${id}`)
 
 // Hold/Resume
+// Resume workflow uses approval endpoints (request-resume, approve-resume) called
+// directly from useHoldGridForms._approvalRequest, not a single /resume URL.
 export const createHoldEntry = (data: Payload) => api.post('/holds', data)
 export const updateHoldEntry = (id: Id, data: Payload) => api.put(`/holds/${id}`, data)
 export const deleteHoldEntry = (id: Id) => api.delete(`/holds/${id}`)
-export const resumeHold = (id: Id, data: Payload) => api.post(`/holds/${id}/resume`, data)
 export const getHoldEntries = (params?: Params) => api.get('/holds', { params })
 export const getActiveHolds = (params?: Params) => api.get('/holds/active', { params })

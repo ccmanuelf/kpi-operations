@@ -350,7 +350,10 @@ export const entrySchemas: Record<string, EntrySchema> = {
     required: ['hold_date', 'work_order_id'],
     fields: {
       hold_date: { type: 'date' },
-      quantity_held: { type: 'number', min: 0 },
+      hold_reason: { type: 'string' },
+      hold_reason_description: { type: 'string' },
+      expected_resolution_date: { type: 'date' },
+      notes: { type: 'string' },
     },
   },
 }

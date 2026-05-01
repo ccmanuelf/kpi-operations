@@ -1,12 +1,22 @@
 /**
  * Composable for Hold Entry Grid form handling and CRUD.
- * Resume dialog, confirmation dialog, paste preview, add/delete/
- * save entries, approval workflow actions, grid event handlers.
+ * Confirmation dialog, paste preview, add/delete/save entries,
+ * approval workflow actions, grid event handlers.
+ *
+ * Backend alignment: payload matches backend/schemas/hold.py
+ * WIPHoldCreate. client_id derived from authStore (operators) or
+ * kpiSelectionStore.selectedClient (admin). Server-controlled fields
+ * (resume_date, hold_initiated_by, hold_approved_by, resumed_by) are
+ * NOT sent on create — they are set by the approval workflow endpoints
+ * (approve-hold, request-resume, approve-resume).
  */
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
 import { format, differenceInDays } from 'date-fns'
 import type { HoldEntry, WorkOrderRef } from './useHoldGridData'
+import { HOLD_REASON_CODES } from './useHoldGridData'
 
 interface AGGridApi {
   sizeColumnsToFit: () => void
@@ -32,14 +42,6 @@ interface PasteData {
   validationResult: unknown
   columnMapping: unknown
   [key: string]: unknown
-}
-
-interface ResumeDialogState {
-  show: boolean
-  hold: HoldEntry | null
-  actual_resume_date: string | null
-  resumed_by_user_id: string
-  resume_approved_at: string | null
 }
 
 export interface ConfirmationField {
@@ -79,14 +81,13 @@ export function useHoldGridForms({
   showSnackbar,
 }: UseHoldGridFormsOptions) {
   const { t } = useI18n()
+  const authStore = useAuthStore()
+  const kpiSelectionStore = useKPIStore()
 
-  const resumeDialog = ref<ResumeDialogState>({
-    show: false,
-    hold: null,
-    actual_resume_date: null,
-    resumed_by_user_id: '',
-    resume_approved_at: null,
-  })
+  // Operators inherit client_id from auth; admin users fall back to KPI store selection.
+  const activeClientId = (): string | number | null => {
+    return authStore.user?.client_id_assigned ?? kpiSelectionStore.selectedClient ?? null
+  }
 
   const showConfirmDialog = ref(false)
   const pendingData = ref<HoldEntry & Record<string, unknown>>({} as HoldEntry)
@@ -106,40 +107,36 @@ export function useHoldGridForms({
       workOrders.value.find((w) => w.work_order_id === pendingData.value.work_order_id)
         ?.work_order_number || 'N/A'
 
-    const startDate = pendingData.value.placed_on_hold_date
-      ? new Date(pendingData.value.placed_on_hold_date)
+    const startDate = pendingData.value.hold_date
+      ? new Date(pendingData.value.hold_date)
       : null
-    const endDate = pendingData.value.actual_resume_date
-      ? new Date(pendingData.value.actual_resume_date)
+    const endDate = pendingData.value.resume_date
+      ? new Date(pendingData.value.resume_date)
       : new Date()
     const daysOnHold = startDate ? differenceInDays(endDate, startDate) : 0
 
     return [
-      { key: 'placed_on_hold_date', label: 'Hold Date', type: 'date' },
+      { key: 'hold_date', label: t('grids.columns.holdDate'), type: 'date' },
       {
         key: 'work_order_id',
-        label: 'Work Order',
+        label: t('grids.columns.workOrder'),
         type: 'text',
         displayValue: workOrderNumber,
       },
-      { key: 'hold_reason', label: 'Hold Reason', type: 'text' },
+      { key: 'hold_reason', label: t('grids.columns.holdReason'), type: 'text' },
       {
-        key: 'status_computed',
-        label: 'Status',
+        key: 'hold_reason_description',
+        label: t('grids.columns.holdReasonDescription'),
         type: 'text',
-        displayValue: pendingData.value.actual_resume_date ? 'RESUMED' : 'ACTIVE',
       },
-      { key: 'expected_resume_date', label: 'Expected Resume', type: 'date' },
-      { key: 'actual_resume_date', label: 'Actual Resume', type: 'datetime' },
+      { key: 'expected_resolution_date', label: t('grids.columns.expectedResolution'), type: 'date' },
       {
         key: 'days_on_hold_computed',
-        label: 'Days on Hold',
+        label: t('grids.columns.daysOnHold'),
         type: 'number',
         displayValue: daysOnHold,
       },
-      { key: 'resumed_by_user_id', label: 'Resumed By', type: 'text' },
-      { key: 'hold_approved_at', label: 'Hold Approved', type: 'datetime' },
-      { key: 'resume_approved_at', label: 'Resume Approved', type: 'datetime' },
+      { key: 'notes', label: t('grids.columns.notes'), type: 'text' },
     ]
   })
 
@@ -160,13 +157,11 @@ export function useHoldGridForms({
     const newHold: HoldEntry & { _isNew?: boolean; _hasChanges?: boolean } = {
       id: `temp_${Date.now()}`,
       work_order_id: workOrders.value[0]?.work_order_id || undefined,
-      placed_on_hold_date: format(new Date(), 'yyyy-MM-dd'),
-      hold_reason: 'Quality Issue',
-      expected_resume_date: null,
-      actual_resume_date: null,
-      resumed_by_user_id: null,
-      hold_approved_at: null,
-      resume_approved_at: null,
+      hold_date: format(new Date(), 'yyyy-MM-dd'),
+      hold_reason: HOLD_REASON_CODES[0],
+      hold_reason_description: '',
+      expected_resolution_date: null,
+      notes: '',
       _isNew: true,
       _hasChanges: true,
     }
@@ -213,6 +208,19 @@ export function useHoldGridForms({
     }
   }
 
+  const buildPayload = (
+    row: HoldEntry,
+    clientId: string | number,
+  ): Partial<HoldEntry> => ({
+    client_id: String(clientId),
+    work_order_id: row.work_order_id,
+    hold_date: row.hold_date,
+    hold_reason: row.hold_reason,
+    hold_reason_description: row.hold_reason_description || undefined,
+    expected_resolution_date: row.expected_resolution_date || undefined,
+    notes: row.notes || undefined,
+  })
+
   const saveChanges = async (): Promise<void> => {
     const gridApi = gridRef.value?.gridApi
     if (!gridApi) return
@@ -229,6 +237,11 @@ export function useHoldGridForms({
       return
     }
 
+    if (!activeClientId()) {
+      showSnackbar(t('grids.holds.errors.noClient'), 'error')
+      return
+    }
+
     pendingRows.value = rowsToSave
     pendingData.value = rowsToSave[0]
     showConfirmDialog.value = true
@@ -241,18 +254,18 @@ export function useHoldGridForms({
     let successCount = 0
     let errorCount = 0
 
+    const clientId = activeClientId()
+    if (!clientId) {
+      saving.value = false
+      pendingRows.value = []
+      pendingData.value = {} as HoldEntry
+      showSnackbar(t('grids.holds.errors.noClient'), 'error')
+      return
+    }
+
     try {
       for (const row of pendingRows.value) {
-        const data: Partial<HoldEntry> = {
-          work_order_id: row.work_order_id,
-          placed_on_hold_date: row.placed_on_hold_date,
-          hold_reason: row.hold_reason,
-          expected_resume_date: row.expected_resume_date,
-          actual_resume_date: row.actual_resume_date,
-          resumed_by_user_id: row.resumed_by_user_id,
-          hold_approved_at: row.hold_approved_at,
-          resume_approved_at: row.resume_approved_at,
-        }
+        const data = buildPayload(row, clientId)
 
         try {
           const r = row as HoldEntry & {
@@ -262,7 +275,7 @@ export function useHoldGridForms({
           if (r._isNew) {
             const result = await kpiStore.createHoldEntry(data)
             if (result.success && result.data) {
-              row.id = result.data.id
+              row.id = result.data.id ?? result.data.hold_entry_id
               r._isNew = false
               successCount++
             } else {
@@ -319,39 +332,6 @@ export function useHoldGridForms({
     pendingRows.value = []
     pendingData.value = {} as HoldEntry
     showSnackbar(t('grids.saveCancelled'), 'info')
-  }
-
-  const openResumeDialog = (hold: HoldEntry): void => {
-    resumeDialog.value = {
-      show: true,
-      hold,
-      actual_resume_date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      resumed_by_user_id: '',
-      resume_approved_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-    }
-  }
-
-  const confirmResume = (): void => {
-    const { hold, actual_resume_date, resumed_by_user_id, resume_approved_at } =
-      resumeDialog.value
-
-    if (!resumed_by_user_id || !hold) {
-      showSnackbar(t('grids.holds.resumeDialog.enterUserId'), 'warning')
-      return
-    }
-
-    hold.actual_resume_date = actual_resume_date
-    hold.resumed_by_user_id = resumed_by_user_id
-    hold.resume_approved_at = resume_approved_at
-    ;(hold as HoldEntry & { _hasChanges?: boolean })._hasChanges = true
-
-    if (hold.id !== undefined) unsavedChanges.value.add(hold.id)
-
-    const api = gridRef.value?.gridApi
-    api?.refreshCells({ force: true })
-
-    resumeDialog.value.show = false
-    showSnackbar(t('grids.holds.resumeDialog.markedForResume'), 'info')
   }
 
   const _approvalRequest = async (
@@ -435,13 +415,11 @@ export function useHoldGridForms({
     const preparedRows: HoldEntry[] = rowsToAdd.map((row) => ({
       id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       work_order_id: row.work_order_id || workOrders.value[0]?.work_order_id || undefined,
-      placed_on_hold_date: row.placed_on_hold_date || format(new Date(), 'yyyy-MM-dd'),
-      hold_reason: row.hold_reason || 'Quality Issue',
-      expected_resume_date: row.expected_resume_date || null,
-      actual_resume_date: row.actual_resume_date || null,
-      resumed_by_user_id: row.resumed_by_user_id || null,
-      hold_approved_at: row.hold_approved_at || null,
-      resume_approved_at: row.resume_approved_at || null,
+      hold_date: row.hold_date || format(new Date(), 'yyyy-MM-dd'),
+      hold_reason: row.hold_reason || HOLD_REASON_CODES[0],
+      hold_reason_description: row.hold_reason_description || '',
+      expected_resolution_date: row.expected_resolution_date || null,
+      notes: row.notes || '',
       _isNew: true,
       _hasChanges: true,
     }))
@@ -463,9 +441,6 @@ export function useHoldGridForms({
   }
 
   return {
-    resumeDialog,
-    openResumeDialog,
-    confirmResume,
     showConfirmDialog,
     pendingData,
     pendingRows,

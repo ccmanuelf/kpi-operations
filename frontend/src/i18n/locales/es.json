@@ -1067,7 +1067,12 @@
       "totalDefectsCount": "Total de Defectos",
       "inspectionStage": "Etapa de Inspección",
       "scrapped": "Desechadas",
-      "reworked": "Retrabajadas"
+      "reworked": "Retrabajadas",
+      "holdReasonDescription": "Descripción de Retención",
+      "expectedResolution": "Resolución Esperada",
+      "resumeDate": "Fecha de Reanudación",
+      "holdInitiatedBy": "Iniciado Por",
+      "holdApprovedBy": "Aprobado Por"
     },
     "production": {
       "title": "Entrada de Producción",
@@ -1160,7 +1165,10 @@
       "confirmTitle": "Confirmar Entrada de Retención - Verificación",
       "confirmSubtitle": "Por favor verifique los siguientes datos de retención/reanudación antes de guardar:",
       "confirmWarning": "Esto guardará {count} registros de retención.",
-      "deleteConfirm": "¿Estás seguro de que deseas eliminar este registro de retención?"
+      "deleteConfirm": "¿Estás seguro de que deseas eliminar este registro de retención?",
+      "errors": {
+        "noClient": "No se puede guardar: no hay cliente seleccionado. Elija un cliente antes de guardar."
+      }
     },
     "downtime": {
       "title": "Entrada de Tiempo Muerto - Grid tipo Excel",
