@@ -156,6 +156,16 @@ def aggregate_oee_inputs(
 ) -> OEERawInputs:
     """Aggregate OEE raw inputs from ProductionEntry + QualityEntry rows."""
 
+    # Units-weighted ideal cycle time: sum(cycle × units) / sum(units).
+    # A simple func.avg over rows would overweight low-volume products and
+    # produce Performance > 100% on heterogeneous-product aggregates (e.g.
+    # 49 t-shirts at 0.15h/unit alongside 14 jackets at 0.50h/unit aggregate
+    # correctly only when the cycle time is units-weighted).
+    weighted_cycle_numer = func.coalesce(
+        func.sum(ProductionEntry.ideal_cycle_time * ProductionEntry.units_produced),
+        0,
+    )
+    weighted_cycle_denom = func.coalesce(func.sum(ProductionEntry.units_produced), 0)
     prod_q = db.query(
         func.coalesce(func.sum(ProductionEntry.units_produced), 0).label("units_produced"),
         func.coalesce(func.sum(ProductionEntry.run_time_hours), 0).label("run_time_hours"),
@@ -164,7 +174,8 @@ def aggregate_oee_inputs(
         func.coalesce(func.sum(ProductionEntry.maintenance_hours), 0).label("maintenance_hours"),
         func.coalesce(func.sum(ProductionEntry.defect_count), 0).label("defect_count"),
         func.coalesce(func.sum(ProductionEntry.scrap_count), 0).label("scrap_count"),
-        func.avg(ProductionEntry.ideal_cycle_time).label("avg_cycle"),
+        weighted_cycle_numer.label("cycle_numer"),
+        weighted_cycle_denom.label("cycle_denom"),
     ).filter(
         and_(
             ProductionEntry.client_id == client_id,
@@ -187,8 +198,15 @@ def aggregate_oee_inputs(
     maintenance = Decimal(str(p.maintenance_hours or 0))
     scheduled = run_time + downtime + setup + maintenance
 
+    # Resolve the weighted average cycle time. cycle_denom is summed units;
+    # when zero (no rows or all units == 0) we hand off to the fallback
+    # which derives from observed rate (or the static default for empty
+    # periods).
+    weighted_cycle: Optional[Decimal] = None
+    if p.cycle_denom and p.cycle_denom > 0:
+        weighted_cycle = Decimal(str(p.cycle_numer)) / Decimal(str(p.cycle_denom))
     cycle_time = _resolve_ideal_cycle_time(
-        p.avg_cycle,
+        weighted_cycle,
         int(p.units_produced or 0),
         run_time,
     )

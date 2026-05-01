@@ -157,6 +157,37 @@ class TestAggregateOEE:
         )
         assert result.units_reworked == 12
 
+    def test_heterogeneous_products_use_units_weighted_cycle_time(self, transactional_db):
+        # Regression: with simple func.avg, heterogeneous products (cheap fast
+        # cycle + slow expensive cycle in the same period) made the aggregate
+        # cycle time too high, and Performance came back > 100% even when each
+        # individual entry was bounded. Units-weighted average is the correct
+        # aggregation: sum(cycle × units) / sum(units).
+        client, _ = _client_user(transactional_db)
+        # 49 fast units at 0.15 h/unit + 14 slow units at 0.50 h/unit, both
+        # produced in 8h. Per-entry Performance is exactly the target_perf
+        # the seeder picks (90% and 87.5% respectively).
+        _make_production_entry(
+            transactional_db, client_id=client.client_id,
+            units_produced=48, run_time_hours=Decimal("8.0"),
+            ideal_cycle_time=Decimal("0.15"),
+        )
+        _make_production_entry(
+            transactional_db, client_id=client.client_id,
+            units_produced=14, run_time_hours=Decimal("8.0"),
+            ideal_cycle_time=Decimal("0.50"),
+        )
+        result = aggregate_oee_inputs(
+            transactional_db, client.client_id, PERIOD_START, PERIOD_END
+        )
+        # Weighted cycle = (0.15*48 + 0.50*14) / 62 = 14.20 / 62 ≈ 0.229
+        weighted = (Decimal("0.15") * 48 + Decimal("0.50") * 14) / Decimal(62)
+        assert abs(result.ideal_cycle_time_hours - weighted) < Decimal("0.001")
+        # Sanity: with this weighted cycle, Performance ≤ 100% on the aggregate
+        # (0.229 * 62 / 16) * 100 ≈ 88.7% — physical and below the 150% cap.
+        perf_pct = result.ideal_cycle_time_hours * Decimal(result.units_produced) / result.run_time_hours * Decimal("100")
+        assert perf_pct <= Decimal("100")
+
     def test_missing_master_cycle_time_falls_back_to_observed_rate(self, transactional_db):
         # Regression: with the old hardcoded 0.25h fallback, demo data without
         # a master ideal_cycle_time produced Performance > 100% (and OEE > 100%).
