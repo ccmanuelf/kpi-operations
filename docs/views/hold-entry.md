@@ -82,7 +82,21 @@ The legacy resume dialog (which set `actual_resume_date`/`resumed_by_user_id` lo
 
 ## CSV format
 
-The legacy form referenced a `CSVUploadDialogHold` component that **does not exist** in the repo — CSV file import for Holds was non-functional. The grid retains Excel-style **clipboard paste** via `AGGridBase` + `useAGGridBase.handlePasteFromExcel`, with the parser schema at `frontend/src/utils/clipboardParser.ts` `hold:`:
+CSV import is wired into the wrapper view's header via `frontend/src/components/CSVUploadDialogHold.vue`. Required columns:
+
+```
+client_id,work_order_id,hold_date
+```
+
+Optional columns:
+
+```
+hold_reason,hold_reason_category,hold_reason_description,expected_resolution_date,notes
+```
+
+Backend endpoint: `POST /holds/upload/csv` (multipart/form-data).
+
+The grid also supports Excel-style **clipboard paste** via `AGGridBase` + `useAGGridBase.handlePasteFromExcel`, with the parser schema at `frontend/src/utils/clipboardParser.ts` `hold:`:
 
 ```
 hold_date (required, date)
@@ -93,7 +107,7 @@ expected_resolution_date (date)
 notes (string)
 ```
 
-A first-class CSV file upload dialog is a future enhancement and should mirror the `CSVUploadDialogQuality.vue` pattern.
+CSV export uses AG Grid's native `exportDataAsCsv` exposed by `AGGridBase.vue`.
 
 ---
 
