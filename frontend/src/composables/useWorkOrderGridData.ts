@@ -72,7 +72,17 @@ export const WORK_ORDER_STATUS_OPTIONS: string[] = [
 ]
 
 // Backend priority pattern (backend/schemas/work_order.py:68).
-export const WORK_ORDER_PRIORITY_OPTIONS: string[] = ['HIGH', 'MEDIUM', 'LOW']
+// Catalog mirrors `^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$`. The factory in
+// `backend/db/factories.py:281` defaults seed work orders to NORMAL,
+// so the dropdown must include it; HIGH/MEDIUM/LOW alone forced
+// operators to overwrite NORMAL on every edit.
+export const WORK_ORDER_PRIORITY_OPTIONS: string[] = [
+  'URGENT',
+  'HIGH',
+  'NORMAL',
+  'MEDIUM',
+  'LOW',
+]
 
 const STATUS_COLORS: Record<string, string> = {
   RECEIVED: '#1976d2',
@@ -89,7 +99,9 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
+  URGENT: '#7b1fa2',
   HIGH: '#c62828',
+  NORMAL: '#757575',
   MEDIUM: '#ed6c02',
   LOW: '#1976d2',
 }

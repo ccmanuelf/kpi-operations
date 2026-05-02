@@ -2,12 +2,22 @@
  * Composable for Work Order data fetching, filtering, and display
  * helpers (progress/status/priority colors, overdue check, headers).
  */
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { format, parseISO, isAfter, startOfDay } from 'date-fns'
 import api from '@/services/api'
+import { getClients } from '@/services/api/reference'
 import { useNotificationStore } from '@/stores/notificationStore'
+import { useKPIStore } from '@/stores/kpi'
+import { useAuthStore } from '@/stores/authStore'
 import type { WorkOrder } from './useWorkOrderForms'
+
+export interface ClientOption {
+  client_id: string
+  client_name?: string
+  name?: string
+  [key: string]: unknown
+}
 
 export interface WorkOrderFilters {
   search: string
@@ -50,14 +60,36 @@ const debounce = <TArgs extends unknown[]>(
 export function useWorkOrderData() {
   const { t } = useI18n()
   const notificationStore = useNotificationStore()
+  const kpiStore = useKPIStore()
+  const authStore = useAuthStore()
 
   const initialLoading = ref(true)
   const loading = ref(false)
 
   const workOrders = ref<WorkOrder[]>([])
+  const clients = ref<ClientOption[]>([])
 
   const selectedWorkOrder = ref<WorkOrder | null>(null)
   const detailDrawerOpen = ref(false)
+
+  // Active client for both filtering and addRow's payload. Operators
+  // pinned to a single tenant default to their own client_id_assigned;
+  // admins / power users with `client_id_assigned: null` follow the
+  // shared kpi store's selectedClient so a single picker drives both
+  // KPI dashboards and operational views (matches the Capacity
+  // Planning pattern).
+  const selectedClient = computed<string | null>({
+    get() {
+      return (
+        (authStore.user?.client_id_assigned as string | null | undefined)
+        ?? kpiStore.selectedClient
+        ?? null
+      )
+    },
+    set(value) {
+      kpiStore.setClient(value)
+    },
+  })
 
   const filters = ref<WorkOrderFilters>({
     search: '',
@@ -76,7 +108,9 @@ export function useWorkOrderData() {
   ]
 
   const priorityOptions: StatusOption[] = [
+    { title: 'Urgent', value: 'URGENT' },
     { title: 'High', value: 'HIGH' },
+    { title: 'Normal', value: 'NORMAL' },
     { title: 'Medium', value: 'MEDIUM' },
     { title: 'Low', value: 'LOW' },
   ]
@@ -92,6 +126,18 @@ export function useWorkOrderData() {
     { title: t('common.actions'), key: 'actions', sortable: false, width: '140px' },
   ])
 
+  // "Active" rolls up the running-state enum values (ACTIVE +
+  // IN_PROGRESS + RECEIVED + RELEASED) — backend WorkOrderStatusEnum
+  // distinguishes those, but operators reading the dashboard care
+  // about "is this WO in flight". Counting ACTIVE alone showed 0
+  // even on a populated grid because seed data lands in IN_PROGRESS.
+  const ACTIVE_STATUSES = new Set([
+    'ACTIVE',
+    'IN_PROGRESS',
+    'RECEIVED',
+    'RELEASED',
+  ])
+
   const summaryStats = computed<SummaryStats>(() => {
     const stats: SummaryStats = {
       total: workOrders.value.length,
@@ -100,12 +146,24 @@ export function useWorkOrderData() {
       completed: 0,
     }
     workOrders.value.forEach((wo) => {
-      if (wo.status === 'ACTIVE') stats.active++
+      if (ACTIVE_STATUSES.has(wo.status)) stats.active++
       else if (wo.status === 'ON_HOLD') stats.onHold++
-      else if (wo.status === 'COMPLETED') stats.completed++
+      else if (wo.status === 'COMPLETED' || wo.status === 'SHIPPED' || wo.status === 'CLOSED') {
+        stats.completed++
+      }
     })
     return stats
   })
+
+  const loadClients = async (): Promise<void> => {
+    try {
+      const response = await getClients()
+      clients.value = (response.data as ClientOption[]) || []
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Error loading clients:', error)
+    }
+  }
 
   const loadWorkOrders = async (): Promise<void> => {
     loading.value = true
@@ -113,6 +171,7 @@ export function useWorkOrderData() {
       const params: Record<string, unknown> = {}
       if (filters.value.status) params.status_filter = filters.value.status
       if (filters.value.search) params.style_model = filters.value.search
+      if (selectedClient.value) params.client_id = selectedClient.value
 
       const response = await api.getWorkOrders(params)
       workOrders.value = response.data || []
@@ -125,6 +184,13 @@ export function useWorkOrderData() {
       initialLoading.value = false
     }
   }
+
+  // Re-fetch work orders when the active client changes (e.g. via
+  // dropdown or via another view's client picker shared through the
+  // kpi store).
+  watch(selectedClient, () => {
+    loadWorkOrders()
+  })
 
   const debouncedSearch = debounce(() => {
     loadWorkOrders()
@@ -179,7 +245,9 @@ export function useWorkOrderData() {
   const getPriorityColor = (priority: string | null): string => {
     if (!priority) return 'grey'
     const colors: Record<string, string> = {
+      URGENT: 'purple',
       HIGH: 'error',
+      NORMAL: 'grey',
       MEDIUM: 'warning',
       LOW: 'success',
     }
@@ -217,6 +285,8 @@ export function useWorkOrderData() {
     initialLoading,
     loading,
     workOrders,
+    clients,
+    selectedClient,
     selectedWorkOrder,
     detailDrawerOpen,
     filters,
@@ -224,6 +294,7 @@ export function useWorkOrderData() {
     priorityOptions,
     headers,
     summaryStats,
+    loadClients,
     loadWorkOrders,
     debouncedSearch,
     resetFilters,

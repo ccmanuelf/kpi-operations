@@ -19,6 +19,8 @@
               color="primary"
               prepend-icon="mdi-plus"
               :aria-label="t('workOrders.ariaCreateNew')"
+              :disabled="!selectedClient"
+              :title="!selectedClient ? t('workOrders.errors.noClient') : ''"
               @click="addRow"
             >
               {{ t('common.add') }} {{ t('production.workOrder') }}
@@ -84,6 +86,17 @@
         <v-card-text>
           <v-row align="center">
             <v-col cols="12" md="3">
+              <v-select
+                v-model="selectedClient"
+                :items="clients"
+                item-title="client_name"
+                item-value="client_id"
+                :label="t('filters.client')"
+                variant="outlined" density="compact" hide-details clearable
+                prepend-inner-icon="mdi-domain"
+              />
+            </v-col>
+            <v-col cols="12" md="2">
               <v-text-field
                 v-model="filters.search"
                 prepend-inner-icon="mdi-magnify"
@@ -111,7 +124,7 @@
                 @update:model-value="loadWorkOrders"
               />
             </v-col>
-            <v-col cols="12" md="2">
+            <v-col cols="6" md="1">
               <v-text-field
                 v-model="filters.startDate"
                 type="date"
@@ -120,7 +133,7 @@
                 @update:model-value="loadWorkOrders"
               />
             </v-col>
-            <v-col cols="12" md="2">
+            <v-col cols="6" md="1">
               <v-text-field
                 v-model="filters.endDate"
                 type="date"
@@ -215,9 +228,10 @@ const { t } = useI18n()
 const notificationStore = useNotificationStore()
 
 const {
-  initialLoading, workOrders, selectedWorkOrder, detailDrawerOpen,
+  initialLoading, workOrders, clients, selectedClient,
+  selectedWorkOrder, detailDrawerOpen,
   filters, statusOptions, priorityOptions, summaryStats,
-  loadWorkOrders, debouncedSearch, resetFilters,
+  loadClients, loadWorkOrders, debouncedSearch, resetFilters,
   formatStatus, openDetailDrawer,
 } = useWorkOrderData()
 
@@ -242,6 +256,7 @@ const onDrawerEdit = () => {
 }
 
 onMounted(() => {
+  loadClients()
   loadWorkOrders()
 })
 </script>

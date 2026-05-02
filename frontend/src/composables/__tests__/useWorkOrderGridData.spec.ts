@@ -85,8 +85,14 @@ describe('catalogs', () => {
     expect(WORK_ORDER_STATUS_OPTIONS).toContain('CANCELLED')
   })
 
-  it('WORK_ORDER_PRIORITY_OPTIONS mirrors backend HIGH/MEDIUM/LOW', () => {
-    expect(WORK_ORDER_PRIORITY_OPTIONS).toEqual(['HIGH', 'MEDIUM', 'LOW'])
+  it('WORK_ORDER_PRIORITY_OPTIONS mirrors backend URGENT|HIGH|NORMAL|MEDIUM|LOW', () => {
+    expect(WORK_ORDER_PRIORITY_OPTIONS).toEqual([
+      'URGENT',
+      'HIGH',
+      'NORMAL',
+      'MEDIUM',
+      'LOW',
+    ])
   })
 })
 

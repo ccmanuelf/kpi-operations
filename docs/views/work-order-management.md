@@ -19,7 +19,7 @@ Migrated 2026-05-01 from a v-data-table list + 12-field create/edit dialog to in
 | Quantity Completed | `actual_quantity` | `agNumberCellEditor` | integer ≥ 0, default 0 |
 | Progress | (computed) | read-only progress bar renderer | `= min(100, round(actual / planned × 100))` |
 | Status | `status` | `agSelectCellEditor` | one of `WORK_ORDER_STATUS_OPTIONS` (RECEIVED, RELEASED, DEMOTED, ACTIVE, IN_PROGRESS, ON_HOLD, COMPLETED, SHIPPED, CLOSED, REJECTED, CANCELLED) |
-| Priority | `priority` | `agSelectCellEditor` | one of HIGH / MEDIUM / LOW (optional) |
+| Priority | `priority` | `agSelectCellEditor` | one of URGENT / HIGH / NORMAL / MEDIUM / LOW (optional) — mirrors `backend/schemas/work_order.py` pattern |
 | Planned Start | `planned_start_date` | `agDateStringCellEditor` | optional (YYYY-MM-DD) |
 | Planned End | `planned_ship_date` | `agDateStringCellEditor` | optional; cell turns red and prepends ⚠ when overdue |
 | Cycle Time | `ideal_cycle_time` | `agNumberCellEditor` | optional, ≥ 0, 4 decimals |

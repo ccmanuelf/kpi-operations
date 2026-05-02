@@ -65,7 +65,7 @@ class WorkOrderCreate(BaseModel):
     previous_status: Optional[str] = Field(
         None, pattern=VALID_STATUS_PATTERN, description="For ON_HOLD resume tracking"
     )
-    priority: Optional[str] = Field(None, pattern="^(HIGH|MEDIUM|LOW)$")
+    priority: Optional[str] = Field(None, pattern="^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(default=0, ge=0, le=1, description="Boolean: 0=not approved, 1=approved")
     qc_approved_by: Optional[int] = None
@@ -117,7 +117,7 @@ class WorkOrderUpdate(BaseModel):
     # Status with expanded options (Phase 10)
     status: Optional[str] = Field(None, pattern=VALID_STATUS_PATTERN)
     previous_status: Optional[str] = Field(None, pattern=VALID_STATUS_PATTERN)
-    priority: Optional[str] = Field(None, pattern="^(HIGH|MEDIUM|LOW)$")
+    priority: Optional[str] = Field(None, pattern="^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$")
 
     qc_approved: Optional[int] = Field(None, ge=0, le=1)
     qc_approved_by: Optional[int] = None
