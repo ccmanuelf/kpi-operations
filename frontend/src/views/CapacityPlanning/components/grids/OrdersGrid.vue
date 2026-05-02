@@ -14,103 +14,16 @@
       </v-btn>
     </v-card-title>
     <v-card-text>
-      <v-data-table
-        :headers="headers"
-        :items="orders"
-        :items-per-page="10"
-        :no-data-text="t('common.noData')"
-        class="elevation-1"
-        density="compact"
-      >
-        <template v-slot:item.order_number="{ item, index }">
-          <v-text-field
-            v-model="item.order_number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.customer_name="{ item, index }">
-          <v-text-field
-            v-model="item.customer_name"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.style_model="{ item, index }">
-          <v-text-field
-            v-model="item.style_model"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.order_quantity="{ item, index }">
-          <v-text-field
-            v-model.number="item.order_quantity"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.required_date="{ item, index }">
-          <v-text-field
-            v-model="item.required_date"
-            type="date"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.priority="{ item, index }">
-          <v-select
-            v-model="item.priority"
-            :items="priorityOptions"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status)"
-            size="small"
-            variant="tonal"
-          >
-            {{ item.status }}
-          </v-chip>
-        </template>
-
-        <template v-slot:item.actions="{ index }">
-          <v-btn
-            icon="mdi-content-copy"
-            size="x-small"
-            variant="text"
-            @click="duplicateRow(index)"
-          />
-          <v-btn
-            icon="mdi-delete"
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="removeRow(index)"
-          />
-        </template>
-      </v-data-table>
+      <AGGridBase
+        :columnDefs="columnDefs"
+        :rowData="orders"
+        height="500px"
+        :pagination="true"
+        :paginationPageSize="25"
+        :enableExcelPaste="false"
+        entry-type="production"
+        @cell-value-changed="onCellValueChanged"
+      />
 
       <div v-if="!orders.length" class="text-center pa-4 text-grey">
         {{ t('capacityPlanning.orders.noOrdersYet') }}
@@ -133,7 +46,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn @click="showImportDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn color="primary" @click="importCSV">{{ t('common.import') }}</v-btn>
+          <v-btn color="primary" @click="doImportCsv">{{ t('common.import') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -142,81 +55,36 @@
 
 <script setup>
 /**
- * OrdersGrid - Editable grid for customer orders in capacity planning.
+ * OrdersGrid - AG Grid surface for capacity planning customer orders.
  *
- * Allows CRUD operations on order records (order number, customer, style,
- * quantity, required date, priority). Supports CSV import, row duplication,
- * and inline editing. Status is displayed as a colored chip.
+ * Migrated 2026-05-01 from v-data-table + per-cell v-text-field/v-select
+ * slots to AGGridBase as part of Group D Surface #13 (final Group D
+ * surface) of the entry-interface audit.
  *
- * Store dependency: useCapacityPlanningStore (worksheets.orders)
- * No props or emits -- all state managed via store.
+ * Priority dropdown now uses the canonical OrderPriority enum
+ * (LOW/NORMAL/HIGH/URGENT). The legacy 'CRITICAL' value was a UI bug —
+ * the backend enum has no CRITICAL; URGENT is the equivalent.
  */
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
+import useOrdersGridData from '@/composables/useOrdersGridData'
 
 const { t } = useI18n()
-
-const store = useCapacityPlanningStore()
 
 const showImportDialog = ref(false)
 const csvData = ref('')
 
-const headers = computed(() => [
-  { title: t('capacityPlanning.orders.headers.orderNumber'), key: 'order_number', width: '120px' },
-  { title: t('capacityPlanning.orders.headers.customer'), key: 'customer_name', width: '150px' },
-  { title: t('capacityPlanning.orders.headers.style'), key: 'style_model', width: '100px' },
-  { title: t('capacityPlanning.orders.headers.quantity'), key: 'order_quantity', width: '100px' },
-  { title: t('capacityPlanning.orders.headers.requiredDate'), key: 'required_date', width: '140px' },
-  { title: t('capacityPlanning.orders.headers.priority'), key: 'priority', width: '120px' },
-  { title: t('capacityPlanning.orders.headers.status'), key: 'status', width: '100px' },
-  { title: t('capacityPlanning.orders.headers.actions'), key: 'actions', width: '100px', sortable: false }
-])
+const {
+  orders,
+  columnDefs,
+  addRow,
+  onCellValueChanged,
+  importCsv,
+} = useOrdersGridData()
 
-const priorityOptions = ['CRITICAL', 'HIGH', 'NORMAL', 'LOW']
-
-const orders = computed(() => store.worksheets.orders.data)
-
-const getStatusColor = (status) => {
-  const colors = {
-    DRAFT: 'grey',
-    CONFIRMED: 'blue',
-    IN_PROGRESS: 'orange',
-    COMPLETED: 'green',
-    CANCELLED: 'red'
-  }
-  return colors[status] || 'grey'
-}
-
-const addRow = () => store.addRow('orders')
-const removeRow = (index) => store.removeRow('orders', index)
-const duplicateRow = (index) => store.duplicateRow('orders', index)
-const markDirty = () => {
-  store.worksheets.orders.dirty = true
-}
-
-const importCSV = () => {
-  if (!csvData.value.trim()) return
-
-  const lines = csvData.value.trim().split('\n')
-  const headerLine = lines[0].split(',').map(h => h.trim())
-
-  const data = lines.slice(1).map(line => {
-    const values = line.split(',').map(v => v.trim())
-    const row = {}
-    headerLine.forEach((h, i) => {
-      row[h] = values[i] || ''
-    })
-    // Convert quantity to number
-    if (row.order_quantity) {
-      row.order_quantity = parseInt(row.order_quantity) || 0
-    }
-    row.status = 'DRAFT'
-    row.priority = row.priority || 'NORMAL'
-    return row
-  })
-
-  store.importData('orders', data)
+const doImportCsv = () => {
+  importCsv(csvData.value)
   showImportDialog.value = false
   csvData.value = ''
 }
