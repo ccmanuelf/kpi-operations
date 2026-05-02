@@ -46,6 +46,8 @@ CSV import / export use the AGGridBase toolbar. Header row:
 order_number,customer_name,style_model,quantity,priority,status,due_date,notes
 ```
 
+The legacy surface-level "Import CSV" button + textarea-paste dialog was removed 2026-05-02 as part of the post-Phase-3 toolbar consolidation. AGGridBase's Import-CSV (file picker, Papaparse-backed) emits `@rows-pasted` which the composable's `onRowsPasted` routes through `store.importData('orders', rows)` — same downstream path the legacy dialog used.
+
 ---
 
 ## Tests

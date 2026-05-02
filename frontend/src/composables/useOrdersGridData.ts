@@ -79,6 +79,7 @@ interface UseOrdersGridDataReturn {
   onCellValueChanged: () => void
   parseCsv: (csvText: string) => Partial<OrderRow>[]
   importCsv: (csvText: string) => void
+  onRowsPasted: (pasteData: { convertedRows?: Partial<OrderRow>[] }) => void
 }
 
 export default function useOrdersGridData(): UseOrdersGridDataReturn {
@@ -136,6 +137,16 @@ export default function useOrdersGridData(): UseOrdersGridDataReturn {
   const importCsv = (csvText: string): void => {
     if (!csvText.trim()) return
     const rows = parseCsv(csvText)
+    store.importData('orders', rows)
+  }
+
+  // AGGridBase emits `rows-pasted` with a Papaparse-validated payload
+  // when the operator clicks the toolbar Import-CSV button or pastes
+  // from Excel. Route the parsed rows through the same `store.importData`
+  // path that the legacy textarea-paste dialog used.
+  const onRowsPasted = (pasteData: { convertedRows?: Partial<OrderRow>[] }): void => {
+    const rows = pasteData?.convertedRows
+    if (!rows || rows.length === 0) return
     store.importData('orders', rows)
   }
 
@@ -214,6 +225,7 @@ export default function useOrdersGridData(): UseOrdersGridDataReturn {
     onCellValueChanged,
     parseCsv,
     importCsv,
+    onRowsPasted,
   }
 }
 

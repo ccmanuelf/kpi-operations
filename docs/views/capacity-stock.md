@@ -43,7 +43,7 @@ CSV import / export use the AGGridBase toolbar. Header row:
 item_code,item_description,on_hand_quantity,allocated_quantity,on_order_quantity,notes
 ```
 
-A legacy CSV-paste textarea dialog also accepts the same schema (Exception 4 — single-action data import).
+The legacy textarea-paste "Import Stock" dialog was removed 2026-05-02 as part of the post-Phase-3 toolbar consolidation. AGGridBase's Import-CSV (file picker, Papaparse-backed) emits `@rows-pasted`; the surface's `onRowsPasted` shapes the parsed rows (defaults `snapshot_date` to today, type-coerces numeric fields, recomputes `available_quantity = on_hand − allocated`) and passes them to `importData`.
 
 ---
 

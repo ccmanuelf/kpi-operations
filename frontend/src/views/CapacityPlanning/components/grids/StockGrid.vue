@@ -4,13 +4,9 @@
       <v-icon start>mdi-package-variant</v-icon>
       {{ t('capacityPlanning.stock.title') }}
       <v-spacer />
-      <v-btn color="primary" size="small" variant="tonal" class="mr-2" @click="addRow">
+      <v-btn color="primary" size="small" variant="tonal" @click="addRow">
         <v-icon start>mdi-plus</v-icon>
         {{ t('capacityPlanning.stock.addItem') }}
-      </v-btn>
-      <v-btn size="small" variant="outlined" @click="showImportDialog = true">
-        <v-icon start>mdi-upload</v-icon>
-        {{ t('capacityPlanning.stock.importStock') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
@@ -84,33 +80,13 @@
         :enableExcelPaste="false"
         entry-type="production"
         @cell-value-changed="onCellValueChanged"
+        @rows-pasted="onRowsPasted"
       />
 
       <div v-if="!stock.length" class="text-center pa-4 text-grey">
         {{ t('capacityPlanning.stock.noData') }}
       </div>
     </v-card-text>
-
-    <!-- Import Dialog -->
-    <v-dialog v-model="showImportDialog" max-width="600">
-      <v-card>
-        <v-card-title>{{ t('capacityPlanning.stock.importStockSnapshot') }}</v-card-title>
-        <v-card-text>
-          <v-textarea
-            v-model="csvData"
-            :label="t('capacityPlanning.orders.pasteCsvData')"
-            rows="10"
-            variant="outlined"
-            placeholder="item_code,item_description,on_hand_quantity,allocated_quantity,on_order_quantity"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="showImportDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn color="primary" @click="importCSV">{{ t('common.import') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-card>
 </template>
 
@@ -119,22 +95,21 @@
  * StockGrid - AG Grid surface for inventory stock snapshots.
  *
  * Migrated 2026-05-01 from v-data-table + v-text-field slots to AGGridBase
- * as part of Group D Surface #10 of the entry-interface audit. Per
- * spec-owner R1: forms-disguised-as-tables are not compliant.
+ * as part of Group D Surface #10 of the entry-interface audit.
  *
- * Preserves staleness warning, summary stats, search filter, and CSV import
- * via textarea paste. available_quantity auto-recomputed when on_hand or
- * allocated changes.
+ * 2026-05-02 — toolbar consolidation: dropped the surface's textarea-
+ * paste "Import Stock" dialog; AGGridBase's toolbar Import-CSV (Papa-
+ * parse-backed) covers the same flow. `@rows-pasted` shapes the parsed
+ * rows (snapshot_date today, type-coerce numeric fields, recompute
+ * available_quantity) and pushes them through `importData`.
+ *
+ * Preserves staleness warning, summary stats, and search filter.
  */
-import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AGGridBase from '@/components/grids/AGGridBase.vue'
 import useStockGridData from '@/composables/useStockGridData'
 
 const { t } = useI18n()
-
-const showImportDialog = ref(false)
-const csvData = ref('')
 
 const {
   stock,
@@ -150,29 +125,23 @@ const {
   importData,
 } = useStockGridData()
 
-const importCSV = () => {
-  if (!csvData.value.trim()) return
-
-  const lines = csvData.value.trim().split('\n')
-  const headerLine = lines[0].split(',').map((h) => h.trim())
-
+const onRowsPasted = (pasteData) => {
+  const rows = pasteData?.convertedRows
+  if (!rows || rows.length === 0) return
   const today = new Date().toISOString().slice(0, 10)
-
-  const data = lines.slice(1).map((line) => {
-    const values = line.split(',').map((v) => v.trim())
-    const row = { snapshot_date: today, unit_of_measure: 'EA' }
-    headerLine.forEach((h, i) => {
-      row[h] = values[i] || ''
-    })
-    row.on_hand_quantity = parseInt(row.on_hand_quantity) || 0
-    row.allocated_quantity = parseInt(row.allocated_quantity) || 0
-    row.on_order_quantity = parseInt(row.on_order_quantity) || 0
-    row.available_quantity = row.on_hand_quantity - row.allocated_quantity
-    return row
+  const shaped = rows.map((row) => {
+    const onHand = parseInt(row.on_hand_quantity, 10) || 0
+    const allocated = parseInt(row.allocated_quantity, 10) || 0
+    return {
+      snapshot_date: row.snapshot_date || today,
+      unit_of_measure: row.unit_of_measure || 'EA',
+      ...row,
+      on_hand_quantity: onHand,
+      allocated_quantity: allocated,
+      on_order_quantity: parseInt(row.on_order_quantity, 10) || 0,
+      available_quantity: onHand - allocated,
+    }
   })
-
-  importData(data)
-  showImportDialog.value = false
-  csvData.value = ''
+  importData(shaped)
 }
 </script>
