@@ -57,6 +57,31 @@ npm run dev
 - **CSS**: Tailwind CSS 4 utility classes; `@import "tailwindcss"` in CSS files
 - **Run lint**: `npm run lint` from `frontend/`
 
+### Entry-UI Standard (mutation surfaces)
+
+Any view or component whose primary job is to mutate backend records
+(POST / PUT / DELETE) MUST follow the Spreadsheet Standard described
+in [`docs/standards/entry-ui-standard.md`](standards/entry-ui-standard.md):
+
+- Build on `frontend/src/components/grids/AGGridBase.vue` — no new
+  `v-data-table` + per-cell form-field constructions, no new
+  `v-form`-wrapped entry dialogs.
+- Use the workbook-save pattern (Group D) or inline-edit autosave
+  pattern (Group E / H); see the standard for canonical reference
+  composables.
+- Keep payloads aligned with the backend Pydantic schema — every
+  payload-building helper needs a service-level test that asserts
+  the exact body shape.
+- Multi-tenant `client_id` resolves from `useAuthStore` →
+  `useKPIStore` (never hardcode).
+
+ESLint enforces a soft (warning) `vue/no-restricted-syntax` rule
+that flags `<v-form>` in `src/views/**` and
+`src/components/entries/**`. Files in the four permitted exception
+buckets (login / admin config / filter dialog / confirmation) are
+listed by path in `eslint.config.js`. To add a new exception,
+update that list with a one-line justification.
+
 ### General
 
 - See `.editorconfig` for editor-level settings

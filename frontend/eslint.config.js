@@ -51,6 +51,38 @@ export default [
       'vue/valid-v-slot': ['error', { allowModifiers: true }]
     }
   },
+  // Entry-UI Standard guardrail (Phase 3 of the entry-interface audit).
+  // See docs/standards/entry-ui-standard.md.
+  // Bans <v-form> in entry surfaces (views/ and components/entries/) so the
+  // Spreadsheet Standard (AGGridBase) is the default path. Exception files
+  // are excluded explicitly in the next config block.
+  {
+    files: ['src/views/**/*.vue', 'src/components/entries/**/*.vue'],
+    rules: {
+      'vue/no-restricted-syntax': ['warn', {
+        selector: "VElement[name='v-form']",
+        message: 'Entry surfaces must use AGGridBase, not <v-form>. See docs/standards/entry-ui-standard.md §1. If this is a permitted exception (Login / Admin <5 users / filter dialog / confirmation), add the file to the override block in eslint.config.js.'
+      }]
+    }
+  },
+  {
+    // Exception files — surfaces explicitly permitted to use <v-form> per
+    // docs/standards/entry-ui-standard.md §4. Each entry has a justification.
+    files: [
+      'src/views/LoginView.vue',                        // Exception 1: auth
+      'src/views/admin/AdminClients.vue',               // Exception 2: admin config (<5 clients)
+      'src/views/admin/AdminSettings.vue',              // Exception 2: admin config
+      'src/views/admin/AdminUsers.vue',                 // Exception 2: user provisioning
+      'src/views/admin/ClientConfigView.vue',           // Exception 2: per-client config
+      'src/views/admin/WorkflowConfigView.vue',         // Exception 2: workflow config
+      'src/views/SimulationView.vue',                   // Exception 3: simulation parameters
+      'src/views/KPIDashboard.vue',                     // Exception 2/3: email config + saved filters
+      'src/components/filters/SaveFilterDialog.vue'     // Exception 3: filter management
+    ],
+    rules: {
+      'vue/no-restricted-syntax': 'off'
+    }
+  },
   {
     files: ['**/*.ts'],
     languageOptions: {

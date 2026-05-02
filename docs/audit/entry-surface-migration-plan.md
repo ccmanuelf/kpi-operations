@@ -203,9 +203,14 @@ Each gets a UX sketch reviewed with spec owner before its Phase 2 starts. Sequen
 ### Group I — Verification & cleanup (continuous)
 Tasks:
 - I.1. ✅ **Done 2026-05-02 (Surface #22).** `frontend/src/components/DataEntryGrid.vue` (inv row 56) verified dead (zero imports in `src/` or `e2e/`, no tests) and deleted.
-- I.2. Coordinate with dual-view spec #1 owner when assumption-registry surface is designed; confirm it adopts AG Grid patterns from this plan.
-- I.3. After Group H completes, run a final grep for `v-text-field`/`v-textarea` in `views/` and `components/entries/` (excluding exception list) and confirm zero hits per source spec § "Definition of done".
-- I.4. Phase 3 work begins: extract `docs/standards/entry-ui-standard.md`, add ESLint local rule, update `CONTRIBUTING.md`.
+- I.2. Coordinate with dual-view spec #1 owner when assumption-registry surface is designed; confirm it adopts AG Grid patterns from this plan. **Deferred** — depends on the dual-view spec timeline; not in scope for this audit.
+- I.3. ✅ **Done 2026-05-02.** Final grep for `v-text-field`/`v-textarea`/`<v-form>` in `src/views/**` and `src/components/entries/**` ran clean: every remaining match is in one of the four permitted exception buckets (Login, Admin config <5 users, Filter / parameter dialogs, Confirmation / approval / CSV-paste dialogs). Per-file classification recorded in the inventory.
+- I.4. ✅ **Done 2026-05-02 — Phase 3 closed.**
+  - `docs/standards/entry-ui-standard.md` extracted as the normative reference.
+  - ESLint guardrail added in `frontend/eslint.config.js` — soft (warning-level) `vue/no-restricted-syntax` rule banning `<v-form>` in entry surfaces, with the 9 known exception files listed by path. Smoke-tested: rule fires on a fresh `<v-form>` in `src/views/`, stays silent across the existing tree.
+  - `docs/CONTRIBUTING.md` extended with an "Entry-UI Standard" subsection that links to the standard and summarises the rule.
+
+Phase 3 of the entry-interface audit is complete. No remaining open tasks in this audit cycle.
 
 ---
 
