@@ -1,8 +1,8 @@
 <template>
   <div class="ag-grid-wrapper">
-    <!-- Toolbar (paste-from-Excel + export) -->
+    <!-- Toolbar (paste-from-Excel + CSV import + export) -->
     <div
-      v-if="enableExcelPaste || enableExport"
+      v-if="enableExcelPaste || enableCsvImport || enableExport"
       class="paste-toolbar d-flex align-center ga-2 mb-2"
     >
       <v-btn
@@ -16,7 +16,26 @@
         <v-icon left>mdi-microsoft-excel</v-icon>
         {{ $t('paste.pasteFromExcel') }}
       </v-btn>
-      <v-chip v-if="enableExcelPaste && lastPasteCount > 0" size="small" color="success" variant="tonal">
+      <v-btn
+        v-if="enableCsvImport"
+        color="primary"
+        variant="outlined"
+        size="small"
+        :aria-label="$t('csv.importAria')"
+        :loading="pasteLoading"
+        @click="triggerCsvFilePicker"
+      >
+        <v-icon left>mdi-file-upload-outline</v-icon>
+        {{ $t('csv.importCsv') }}
+      </v-btn>
+      <input
+        ref="csvFileInput"
+        type="file"
+        accept=".csv,text/csv"
+        style="display: none"
+        @change="onCsvFileSelected"
+      />
+      <v-chip v-if="lastPasteCount > 0" size="small" color="success" variant="tonal">
         {{ $t('paste.lastPasted', { count: lastPasteCount }) }}
       </v-chip>
       <v-spacer />
@@ -74,6 +93,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { AgGridVue } from 'ag-grid-vue3'
 import { useAGGridBase } from '@/composables/useAGGridBase'
 
@@ -115,6 +135,16 @@ const props = defineProps({
     default: 50
   },
   enableExcelPaste: {
+    type: Boolean,
+    default: true
+  },
+  // Toolbar CSV-file import button. Default true so every migrated
+  // entry surface satisfies the Spreadsheet Standard's "Every entry
+  // surface supports CSV import" requirement (entry-ui-standard.md
+  // §1, §1.bulk). Pass `:enableCsvImport="false"` on surfaces where
+  // file import isn't applicable (read-only summaries, master-detail
+  // child grids that share a parent's import path).
+  enableCsvImport: {
     type: Boolean,
     default: true
   },
@@ -166,6 +196,7 @@ const {
   handlePasteStart,
   handlePasteEnd,
   handlePasteFromExcel,
+  handleCsvFileImport,
   exportToCsv,
   exportToExcel,
   clearSelection,
@@ -183,12 +214,26 @@ const exportCsvFromToolbar = () => {
   exportToCsv(filename)
 }
 
+// CSV file-picker plumbing for the toolbar Import-CSV button.
+const csvFileInput = ref(null)
+const triggerCsvFilePicker = () => {
+  csvFileInput.value?.click()
+}
+const onCsvFileSelected = (event) => {
+  const file = event.target?.files?.[0]
+  if (!file) return
+  handleCsvFileImport(file)
+  // Reset so re-importing the same file fires `change` again.
+  if (event.target) event.target.value = ''
+}
+
 // Expose grid API and helper methods for parent components
 defineExpose({
   gridApi,
   columnApi,
   exportToCsv,
   exportToExcel,
+  handleCsvFileImport,
   clearSelection,
   getSelectedRows,
   refreshCells,

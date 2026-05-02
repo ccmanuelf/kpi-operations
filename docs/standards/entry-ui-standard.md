@@ -32,6 +32,17 @@ Every entry surface MUST satisfy all of:
    summaries where export isn't appropriate. Override the filename
    with the `exportFilename` prop; the default is
    `<entryType>_export_<yyyy-mm-dd>.csv`.
+2.b **CSV import**: every entry surface exposes an "Import CSV" button.
+   AGGridBase ships this in its toolbar by default (`enableCsvImport:
+   true`). The handler uses Papaparse for RFC-4180-compliant parsing
+   (quoted fields, embedded commas/newlines), converts to a tab-
+   delimited string, and feeds the same downstream pipeline that
+   `handlePasteFromExcel` uses (column mapping →
+   `convertToGridRows` → `validateRows` → `rows-pasted` event). Per-
+   surface header naming therefore lives in `clipboardParser.entrySchemas`,
+   one source of truth for both paste and file-import. Set
+   `:enableCsvImport="false"` only on read-only summaries or
+   master-detail child grids that share a parent's import path.
 3. **Per-column validation**: schemas live in
    `frontend/src/utils/clipboardParser.ts` (`entrySchemas`) and the
    backend Pydantic models. The backend Pydantic schema is the

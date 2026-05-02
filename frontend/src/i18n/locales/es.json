@@ -1855,6 +1855,11 @@
     }
   },
   "csv": {
+    "importCsv": "Importar CSV",
+    "importAria": "Importar un archivo CSV en esta tabla",
+    "parseError": "Error al analizar CSV: {detail}",
+    "emptyFile": "El archivo CSV está vacío",
+    "importError": "La importación CSV falló",
     "title": "Carga Masiva vía CSV",
     "selectFile": "Seleccionar Archivo CSV",
     "dragDrop": "Arrastra y suelta un archivo CSV aquí",

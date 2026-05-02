@@ -4,6 +4,7 @@
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Papa from 'papaparse'
 import { useResponsive } from '@/composables/useResponsive'
 import {
   parseClipboardData,
@@ -216,6 +217,71 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     emit('paste-end', event)
   }
 
+  // Run the parse → map → validate → emit pipeline against a tab-
+  // delimited text input. Shared by `handlePasteFromExcel` (clipboard
+  // text) and `handleCsvFileImport` (file content converted to TSV).
+  const processBulkInputText = (rawText: string): void => {
+    const parsed = parseClipboardData(rawText)
+
+    if (parsed.error || parsed.rows.length === 0) {
+      snackbar.value = {
+        show: true,
+        text: t('paste.parseError'),
+        color: 'error',
+      }
+      return
+    }
+
+    parsedPasteData.value = parsed
+
+    let columnMapping: MapColumnsResult = {
+      mapping: {},
+      unmappedClipboard: [],
+      unmappedGrid: [],
+    }
+
+    if (parsed.hasHeaders && parsed.headers.length > 0) {
+      columnMapping = mapColumnsToGrid(parsed.headers, props.columnDefs)
+    } else {
+      const editableColumns = props.columnDefs.filter(
+        (c) => c.field && c.field !== 'actions',
+      )
+      editableColumns.forEach((col, idx) => {
+        if (idx < (parsed.totalColumns || 0)) {
+          if (col.field) columnMapping.mapping[idx] = col.field
+        }
+      })
+    }
+
+    pasteColumnMapping.value = columnMapping
+
+    const converted = convertToGridRows(
+      parsed.rows,
+      columnMapping.mapping,
+      props.columnDefs,
+    )
+    convertedPasteRows.value = converted
+
+    const schema =
+      entrySchemas[props.entryType ?? 'production'] || entrySchemas.production
+    const validation = validateRows(converted, schema)
+    pasteValidationResult.value = validation
+
+    emit('rows-pasted', {
+      parsedData: parsed,
+      convertedRows: converted,
+      validationResult: validation,
+      columnMapping,
+      gridColumns: props.columnDefs,
+    })
+
+    if (validation.isValid) {
+      lastPasteCount.value = converted.length
+    } else {
+      lastPasteCount.value = validation.totalValid
+    }
+  }
+
   const handlePasteFromExcel = async (): Promise<void> => {
     pasteLoading.value = true
 
@@ -231,71 +297,66 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
         return
       }
 
-      const parsed = parseClipboardData(clipboardText)
-
-      if (parsed.error || parsed.rows.length === 0) {
-        snackbar.value = {
-          show: true,
-          text: t('paste.parseError'),
-          color: 'error',
-        }
-        return
-      }
-
-      parsedPasteData.value = parsed
-
-      let columnMapping: MapColumnsResult = {
-        mapping: {},
-        unmappedClipboard: [],
-        unmappedGrid: [],
-      }
-
-      if (parsed.hasHeaders && parsed.headers.length > 0) {
-        columnMapping = mapColumnsToGrid(parsed.headers, props.columnDefs)
-      } else {
-        const editableColumns = props.columnDefs.filter(
-          (c) => c.field && c.field !== 'actions',
-        )
-        editableColumns.forEach((col, idx) => {
-          if (idx < (parsed.totalColumns || 0)) {
-            if (col.field) columnMapping.mapping[idx] = col.field
-          }
-        })
-      }
-
-      pasteColumnMapping.value = columnMapping
-
-      const converted = convertToGridRows(
-        parsed.rows,
-        columnMapping.mapping,
-        props.columnDefs,
-      )
-      convertedPasteRows.value = converted
-
-      const schema =
-        entrySchemas[props.entryType ?? 'production'] || entrySchemas.production
-      const validation = validateRows(converted, schema)
-      pasteValidationResult.value = validation
-
-      emit('rows-pasted', {
-        parsedData: parsed,
-        convertedRows: converted,
-        validationResult: validation,
-        columnMapping,
-        gridColumns: props.columnDefs,
-      })
-
-      if (validation.isValid) {
-        lastPasteCount.value = converted.length
-      } else {
-        lastPasteCount.value = validation.totalValid
-      }
+      processBulkInputText(clipboardText)
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Paste error:', error)
       snackbar.value = {
         show: true,
         text: t('paste.accessDenied'),
+        color: 'error',
+      }
+    } finally {
+      pasteLoading.value = false
+    }
+  }
+
+  // CSV file-upload path. Uses Papaparse for proper handling of
+  // quoted fields, embedded commas/newlines (RFC 4180 compliant),
+  // then converts the parsed rows to a tab-delimited string and
+  // feeds the same downstream pipeline `handlePasteFromExcel` uses.
+  // Closes the Spreadsheet Standard's "Every entry surface supports
+  // CSV import" requirement (entry-ui-standard.md §1) for every
+  // grid that mounts AGGridBase.
+  const handleCsvFileImport = async (file: File): Promise<void> => {
+    if (!file) return
+    pasteLoading.value = true
+
+    try {
+      const csvText = await file.text()
+      const result = Papa.parse<string[]>(csvText, {
+        skipEmptyLines: true,
+      })
+
+      if (result.errors && result.errors.length > 0) {
+        snackbar.value = {
+          show: true,
+          text: t('csv.parseError', { detail: result.errors[0].message }),
+          color: 'error',
+        }
+        return
+      }
+
+      const rows = (result.data || []) as string[][]
+      if (rows.length === 0) {
+        snackbar.value = {
+          show: true,
+          text: t('csv.emptyFile'),
+          color: 'warning',
+        }
+        return
+      }
+
+      // Convert Papa's row-of-cells output into the tab-delimited
+      // string `parseClipboardData` already understands.
+      const tsv = rows.map((row) => row.join('\t')).join('\n')
+      processBulkInputText(tsv)
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('CSV import error:', error)
+      snackbar.value = {
+        show: true,
+        text: t('csv.importError'),
         color: 'error',
       }
     } finally {
@@ -373,6 +434,7 @@ export function useAGGridBase(props: AGGridBaseProps, emit: EmitFn) {
     handlePasteStart,
     handlePasteEnd,
     handlePasteFromExcel,
+    handleCsvFileImport,
     exportToCsv,
     exportToExcel,
     clearSelection,

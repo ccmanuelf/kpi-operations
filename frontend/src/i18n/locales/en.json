@@ -1822,6 +1822,11 @@
     }
   },
   "csv": {
+    "importCsv": "Import CSV",
+    "importAria": "Import a CSV file into this grid",
+    "parseError": "CSV parse error: {detail}",
+    "emptyFile": "CSV file is empty",
+    "importError": "CSV import failed",
     "title": "Bulk Upload via CSV",
     "selectFile": "Select CSV File",
     "dragDrop": "Drag and drop a CSV file here",
