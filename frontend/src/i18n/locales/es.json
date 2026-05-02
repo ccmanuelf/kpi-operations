@@ -750,7 +750,14 @@
     "ariaMoreActions": "Más acciones para la orden de trabajo {id}",
     "ariaCloseDialog": "Cerrar diálogo",
     "ariaCancelDeletion": "Cancelar eliminación",
-    "ariaConfirmDelete": "Confirmar eliminación de orden de trabajo"
+    "ariaConfirmDelete": "Confirmar eliminación de orden de trabajo",
+    "progress": "Progreso",
+    "created": "Orden de trabajo creada",
+    "updated": "Orden de trabajo actualizada",
+    "errors": {
+      "noClient": "Sin cliente seleccionado — elige un cliente primero",
+      "fillRequired": "Completa los campos requeridos (id de orden, estilo, cantidad planeada)"
+    }
   },
   "reports": {
     "title": "Reportes",

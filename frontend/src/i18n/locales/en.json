@@ -750,7 +750,14 @@
     "ariaMoreActions": "More actions for work order {id}",
     "ariaCloseDialog": "Close dialog",
     "ariaCancelDeletion": "Cancel deletion",
-    "ariaConfirmDelete": "Confirm delete work order"
+    "ariaConfirmDelete": "Confirm delete work order",
+    "progress": "Progress",
+    "created": "Work order created",
+    "updated": "Work order updated",
+    "errors": {
+      "noClient": "No client selected — pick a client first",
+      "fillRequired": "Fill required fields (work order id, style, planned quantity)"
+    }
   },
   "reports": {
     "title": "Reports",

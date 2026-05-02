@@ -18,8 +18,8 @@
             <v-btn
               color="primary"
               prepend-icon="mdi-plus"
-              @click="openCreateDialog"
               :aria-label="t('workOrders.ariaCreateNew')"
+              @click="addRow"
             >
               {{ t('common.add') }} {{ t('production.workOrder') }}
             </v-btn>
@@ -89,8 +89,8 @@
                 prepend-inner-icon="mdi-magnify"
                 :label="t('common.search')"
                 variant="outlined" density="compact" hide-details clearable
-                @update:model-value="debouncedSearch"
                 :aria-label="t('workOrders.ariaSearchWo')"
+                @update:model-value="debouncedSearch"
               />
             </v-col>
             <v-col cols="12" md="2">
@@ -130,7 +130,7 @@
               />
             </v-col>
             <v-col cols="12" md="1">
-              <v-btn variant="text" color="primary" @click="resetFilters" :aria-label="t('workOrders.ariaResetFilters')">
+              <v-btn variant="text" color="primary" :aria-label="t('workOrders.ariaResetFilters')" @click="resetFilters">
                 {{ t('common.reset') }}
               </v-btn>
             </v-col>
@@ -138,196 +138,24 @@
         </v-card-text>
       </v-card>
       <v-card>
-        <v-data-table
-          :headers="headers"
-          :items="workOrders"
-          :loading="loading"
-          :items-per-page="25"
-          :sort-by="[{ key: 'planned_ship_date', order: 'asc' }]"
-          class="elevation-0"
-          hover
-          :no-data-text="t('common.noData')"
-          @click:row="onRowClick"
-        >
-          <template v-slot:item.work_order_id="{ item }">
-            <div class="font-weight-medium text-primary">{{ item.work_order_id }}</div>
-          </template>
-          <template v-slot:item.style_model="{ item }">
-            <div class="text-body-2">{{ item.style_model }}</div>
-          </template>
-          <template v-slot:item.progress="{ item }">
-            <div class="d-flex align-center" style="min-width: 150px;">
-              <v-progress-linear
-                :model-value="calculateProgress(item)"
-                :color="getProgressColor(item)"
-                height="8" rounded class="mr-2"
-              />
-              <span class="text-body-2 text-no-wrap">
-                {{ item.actual_quantity }} / {{ item.planned_quantity }}
-              </span>
-            </div>
-          </template>
-          <template v-slot:item.progress_pct="{ item }">
-            <span class="font-weight-medium">{{ calculateProgress(item).toFixed(1) }}%</span>
-          </template>
-          <template v-slot:item.status="{ item }">
-            <WorkOrderStatusChip
-              :work-order-id="item.work_order_id"
-              :status="item.status"
-              size="small"
-              :allow-transitions="true"
-              @transitioned="onStatusTransitioned"
-              @click.stop
-            />
-          </template>
-          <template v-slot:item.priority="{ item }">
-            <v-chip
-              v-if="item.priority"
-              :color="getPriorityColor(item.priority)"
-              size="small" variant="outlined"
-            >
-              {{ item.priority }}
-            </v-chip>
-            <span v-else class="text-medium-emphasis">-</span>
-          </template>
-          <template v-slot:item.planned_ship_date="{ item }">
-            <div v-if="item.planned_ship_date" class="d-flex align-center">
-              <v-icon v-if="isOverdue(item)" color="error" size="small" class="mr-1">
-                mdi-alert-circle
-              </v-icon>
-              <span :class="{ 'text-error': isOverdue(item) }">
-                {{ formatDate(item.planned_ship_date) }}
-              </span>
-            </div>
-            <span v-else class="text-medium-emphasis">{{ $t('common.notSet') }}</span>
-          </template>
-          <template v-slot:item.actions="{ item }">
-            <v-btn icon size="small" variant="text" @click.stop="openDetailDrawer(item)"
-              :aria-label="t('workOrders.ariaViewDetails', { id: item.work_order_id })">
-              <v-icon aria-hidden="true">mdi-eye</v-icon>
-              <v-tooltip activator="parent">{{ $t('workOrders.viewDetails') }}</v-tooltip>
-            </v-btn>
-            <v-btn icon size="small" variant="text" @click.stop="openEditDialog(item)"
-              :aria-label="t('workOrders.ariaEditWo', { id: item.work_order_id })">
-              <v-icon aria-hidden="true">mdi-pencil</v-icon>
-              <v-tooltip activator="parent">{{ $t('workOrders.edit') }}</v-tooltip>
-            </v-btn>
-            <v-menu>
-              <template v-slot:activator="{ props }">
-                <v-btn icon size="small" variant="text" v-bind="props" @click.stop
-                  :aria-label="t('workOrders.ariaMoreActions', { id: item.work_order_id })" aria-haspopup="menu">
-                  <v-icon aria-hidden="true">mdi-dots-vertical</v-icon>
-                </v-btn>
-              </template>
-              <v-list density="compact">
-                <v-list-item v-if="item.status === 'ACTIVE'" prepend-icon="mdi-pause" @click="updateStatus(item, 'ON_HOLD')">
-                  <v-list-item-title>{{ t('holds.onHold') }}</v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="item.status === 'ON_HOLD'" prepend-icon="mdi-play" @click="updateStatus(item, 'ACTIVE')">
-                  <v-list-item-title>{{ t('holds.resumed') }}</v-list-item-title>
-                </v-list-item>
-                <v-list-item v-if="item.status === 'ACTIVE'" prepend-icon="mdi-check" @click="updateStatus(item, 'COMPLETED')">
-                  <v-list-item-title>{{ t('workOrders.completed') }}</v-list-item-title>
-                </v-list-item>
-                <v-divider />
-                <v-list-item prepend-icon="mdi-delete" base-color="error" @click="confirmDelete(item)">
-                  <v-list-item-title>{{ t('common.delete') }}</v-list-item-title>
-                </v-list-item>
-              </v-list>
-            </v-menu>
-          </template>
-        </v-data-table>
+        <AGGridBase
+          :columnDefs="columnDefs"
+          :rowData="workOrders"
+          height="640px"
+          :pagination="true"
+          :paginationPageSize="25"
+          :enableExcelPaste="false"
+          entry-type="production"
+          @cell-value-changed="onCellValueChanged"
+        />
       </v-card>
     </template>
     <WorkOrderDetailDrawer
       v-model="detailDrawerOpen"
       :work-order="selectedWorkOrder"
       @update="loadWorkOrders"
-      @edit="openEditDialog"
+      @edit="onDrawerEdit"
     />
-    <v-dialog
-      v-model="formDialog" max-width="700" persistent
-      role="dialog" aria-modal="true"
-      :aria-labelledby="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'"
-    >
-      <v-card>
-        <v-card-title class="d-flex justify-space-between align-center">
-          <span :id="editingWorkOrder ? 'edit-wo-title' : 'create-wo-title'">
-            {{ editingWorkOrder ? t('common.edit') + ' ' + t('production.workOrder') : t('common.add') + ' ' + t('production.workOrder') }}
-          </span>
-          <v-btn icon variant="text" @click="formDialog = false" :aria-label="t('workOrders.ariaCloseDialog')">
-            <v-icon aria-hidden="true">mdi-close</v-icon>
-          </v-btn>
-        </v-card-title>
-        <v-card-text>
-          <v-form ref="formRef" v-model="formValid">
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field v-model="formData.work_order_id" :label="t('workOrders.workOrderId') + ' *'"
-                  variant="outlined" :rules="[rules.required]" :disabled="!!editingWorkOrder" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field v-model="formData.style_model" :label="t('production.style') + ' *'"
-                  variant="outlined" :rules="[rules.required]" />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field v-model.number="formData.planned_quantity" type="number"
-                  :label="t('workOrders.quantityOrdered') + ' *'" variant="outlined" :rules="[rules.required, rules.positive]" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field v-model.number="formData.actual_quantity" type="number"
-                  :label="t('workOrders.quantityCompleted')" variant="outlined" :rules="[rules.nonNegative]" />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-select v-model="formData.status" :items="statusOptions"
-                  :label="t('common.status') + ' *'" variant="outlined" :rules="[rules.required]" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-select v-model="formData.priority" :items="priorityOptions"
-                  :label="t('workOrders.priority')" variant="outlined" clearable />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field v-model="formData.planned_start_date" type="date"
-                  :label="t('workOrders.plannedStart')" variant="outlined" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field v-model="formData.planned_ship_date" type="date"
-                  :label="t('workOrders.plannedEnd')" variant="outlined" />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field v-model="formData.customer_po_number"
-                  :label="t('production.workOrder')" variant="outlined" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field v-model.number="formData.ideal_cycle_time" type="number" step="0.01"
-                  :label="t('production.cycleTime')" variant="outlined" />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12">
-                <v-textarea v-model="formData.notes" :label="t('production.notes')"
-                  variant="outlined" rows="3" />
-              </v-col>
-            </v-row>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="formDialog = false">{{ t('common.cancel') }}</v-btn>
-          <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="saveWorkOrder">
-            {{ editingWorkOrder ? t('common.update') : t('common.save') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
     <v-dialog
       v-model="deleteDialog" max-width="400"
       role="alertdialog" aria-modal="true"
@@ -341,8 +169,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false" :aria-label="t('workOrders.ariaCancelDeletion')">{{ t('common.cancel') }}</v-btn>
-          <v-btn color="error" :loading="deleting" @click="deleteWorkOrder" :aria-label="t('workOrders.ariaConfirmDelete')">
+          <v-btn variant="text" :aria-label="t('workOrders.ariaCancelDeletion')" @click="deleteDialog = false">{{ t('common.cancel') }}</v-btn>
+          <v-btn color="error" :loading="deleting" :aria-label="t('workOrders.ariaConfirmDelete')" @click="deleteWorkOrder">
             {{ t('common.delete') }}
           </v-btn>
         </v-card-actions>
@@ -352,30 +180,66 @@
 </template>
 
 <script setup>
+/**
+ * WorkOrderManagement — Group H Surface #19 of the entry-interface audit.
+ *
+ * Migrated 2026-05-01 from a v-data-table list + 12-field create/edit
+ * dialog form to an inline AG Grid surface. Per the spec's Spreadsheet
+ * Standard: operational data with thousands of rows and high churn must
+ * use the Excel-style inline-edit pattern, not modal dialogs.
+ *
+ * Pattern: existing rows autosave PUT on every cell-value change; new
+ * rows accumulate locally until the operator clicks the green Save
+ * button in the row's actions column, then POST. work_order_id is the
+ * natural key — editable only on new rows; locked after creation.
+ *
+ * Status transitions still flow through the row-action chip (legacy
+ * behaviour preserved); the more-actions menu's quick status updates
+ * (ON_HOLD / ACTIVE / COMPLETED) keep working through the existing
+ * useWorkOrderForms.updateStatus → workflow API path.
+ *
+ * The detail drawer + delete confirmation dialog remain as standalone
+ * dialogs — both qualify under the spec's permitted exceptions
+ * (read-only inspector + destructive confirmation).
+ */
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
 import WorkOrderDetailDrawer from '@/components/WorkOrderDetailDrawer.vue'
-import WorkOrderStatusChip from '@/components/workflow/WorkOrderStatusChip.vue'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { useWorkOrderData } from '@/composables/useWorkOrderData'
 import { useWorkOrderForms } from '@/composables/useWorkOrderForms'
+import useWorkOrderGridData from '@/composables/useWorkOrderGridData'
 
 const { t } = useI18n()
+const notificationStore = useNotificationStore()
 
 const {
-  initialLoading, loading, workOrders, selectedWorkOrder, detailDrawerOpen,
-  filters, statusOptions, priorityOptions, headers, summaryStats,
+  initialLoading, workOrders, selectedWorkOrder, detailDrawerOpen,
+  filters, statusOptions, priorityOptions, summaryStats,
   loadWorkOrders, debouncedSearch, resetFilters,
-  calculateProgress, getProgressColor, formatStatus,
-  getPriorityColor, formatDate, isOverdue,
-  onRowClick, openDetailDrawer
+  formatStatus, openDetailDrawer,
 } = useWorkOrderData()
 
 const {
-  formDialog, deleteDialog, editingWorkOrder, workOrderToDelete,
-  formRef, formValid, saving, deleting, formData, rules,
-  openCreateDialog, openEditDialog, saveWorkOrder,
-  updateStatus, onStatusTransitioned, confirmDelete, deleteWorkOrder
+  deleteDialog, workOrderToDelete, deleting,
+  confirmDelete, deleteWorkOrder,
 } = useWorkOrderForms(loadWorkOrders, formatStatus)
+
+const { columnDefs, addRow, onCellValueChanged } = useWorkOrderGridData({
+  workOrders,
+  loadWorkOrders,
+  notify: notificationStore,
+  onConfirmDelete: confirmDelete,
+  onOpenDetail: openDetailDrawer,
+})
+
+// Drawer's "Edit" button used to open the dialog form. Inline editing
+// replaces that flow — close the drawer and let the operator edit cells
+// directly in the grid.
+const onDrawerEdit = () => {
+  detailDrawerOpen.value = false
+}
 
 onMounted(() => {
   loadWorkOrders()
@@ -383,10 +247,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.v-data-table :deep(tbody tr) {
-  cursor: pointer;
-}
-.v-data-table :deep(tbody tr:hover) {
-  background-color: rgba(var(--v-theme-primary), 0.04) !important;
+.ga-2 {
+  gap: 8px;
 }
 </style>
