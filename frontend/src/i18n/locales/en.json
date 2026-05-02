@@ -2639,6 +2639,16 @@
         "overtimePercentMulti": "Overtime (%)",
         "setupReductionPercent": "Setup Reduction (%)",
         "absenteeismPercentMulti": "Absenteeism (%)"
+      },
+      "parametersHeader": "Parameters",
+      "deleteConfirmTitle": "Delete Scenario",
+      "deleteConfirmMessage": "Delete scenario",
+      "errors": {
+        "fillRequired": "Fill scenario name and type first",
+        "saveFirst": "Save the scenario before evaluating",
+        "createFailed": "Failed to create scenario",
+        "runFailed": "Failed to evaluate scenario",
+        "deleteFailed": "Failed to delete scenario"
       }
     },
     "analysis": {

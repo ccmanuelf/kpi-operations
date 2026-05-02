@@ -456,9 +456,13 @@ export const createScenario = async (
   parameters: Payload,
   baseScheduleId: Id | null = null,
 ) => {
+  // Backend ScenarioCreate expects `scenario_name` (not `name`) — see
+  // backend/routes/capacity/_models.py:474. Sending `name` 422'd silently
+  // because the legacy dialog was the only caller and never surfaced
+  // errors. Caught during the Surface #20 migration audit (2026-05-01).
   const response = await api.post(
     '/capacity/scenarios',
-    { name, scenario_type: type, parameters, base_schedule_id: baseScheduleId },
+    { scenario_name: name, scenario_type: type, parameters, base_schedule_id: baseScheduleId },
     { params: { client_id: clientId } },
   )
   return response.data

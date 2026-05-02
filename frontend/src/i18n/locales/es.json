@@ -2683,6 +2683,16 @@
         "overtimePercentMulti": "Tiempo Extra (%)",
         "setupReductionPercent": "Reducción de Preparación (%)",
         "absenteeismPercentMulti": "Ausentismo (%)"
+      },
+      "parametersHeader": "Parámetros",
+      "deleteConfirmTitle": "Eliminar Escenario",
+      "deleteConfirmMessage": "Eliminar escenario",
+      "errors": {
+        "fillRequired": "Completa el nombre y tipo del escenario primero",
+        "saveFirst": "Guarda el escenario antes de evaluarlo",
+        "createFailed": "No se pudo crear el escenario",
+        "runFailed": "No se pudo evaluar el escenario",
+        "deleteFailed": "No se pudo eliminar el escenario"
       }
     },
     "analysis": {

@@ -1000,7 +1000,7 @@ describe('Capacity Planning API Service', () => {
       expect(api.post).toHaveBeenCalledWith(
         '/capacity/scenarios',
         {
-          name: 'OT Scenario',
+          scenario_name: 'OT Scenario',
           scenario_type: 'OVERTIME',
           parameters: params,
           base_schedule_id: null,
@@ -1018,7 +1018,7 @@ describe('Capacity Planning API Service', () => {
       expect(api.post).toHaveBeenCalledWith(
         '/capacity/scenarios',
         {
-          name: 'Based',
+          scenario_name: 'Based',
           scenario_type: 'SUBCONTRACT',
           parameters: { vendor: 'X' },
           base_schedule_id: 10,
