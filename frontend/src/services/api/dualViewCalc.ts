@@ -45,7 +45,7 @@ export interface CalculateOEERequest {
 }
 
 export const calculateOEE = (body: CalculateOEERequest) =>
-  api.post<DualViewCalculateResponse>('/api/metrics/calculate/oee', body)
+  api.post<DualViewCalculateResponse>('/metrics/calculate/oee', body)
 
 // ---------------------------------------------------------------------- OTD
 
@@ -65,7 +65,7 @@ export interface CalculateOTDRequest {
 }
 
 export const calculateOTD = (body: CalculateOTDRequest) =>
-  api.post<DualViewCalculateResponse>('/api/metrics/calculate/otd', body)
+  api.post<DualViewCalculateResponse>('/metrics/calculate/otd', body)
 
 // ---------------------------------------------------------------------- FPY
 
@@ -83,7 +83,7 @@ export interface CalculateFPYRequest {
 }
 
 export const calculateFPY = (body: CalculateFPYRequest) =>
-  api.post<DualViewCalculateResponse>('/api/metrics/calculate/fpy', body)
+  api.post<DualViewCalculateResponse>('/metrics/calculate/fpy', body)
 
 // ----------------------------------------------- F.1 from-period variants
 
@@ -101,10 +101,10 @@ export interface CalculateFromPeriodRequest {
 }
 
 export const calculateOEEFromPeriod = (body: CalculateFromPeriodRequest) =>
-  api.post<DualViewCalculateResponse>('/api/metrics/calculate/from-period/oee', body)
+  api.post<DualViewCalculateResponse>('/metrics/calculate/from-period/oee', body)
 
 export const calculateOTDFromPeriod = (body: CalculateFromPeriodRequest) =>
-  api.post<DualViewCalculateResponse>('/api/metrics/calculate/from-period/otd', body)
+  api.post<DualViewCalculateResponse>('/metrics/calculate/from-period/otd', body)
 
 export const calculateFPYFromPeriod = (body: CalculateFromPeriodRequest) =>
-  api.post<DualViewCalculateResponse>('/api/metrics/calculate/from-period/fpy', body)
+  api.post<DualViewCalculateResponse>('/metrics/calculate/from-period/fpy', body)
