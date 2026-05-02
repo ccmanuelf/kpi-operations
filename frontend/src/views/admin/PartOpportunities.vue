@@ -42,7 +42,7 @@
         <v-btn
           color="primary"
           prepend-icon="mdi-plus"
-          @click="openCreateDialog"
+          @click="addRow"
         >
           {{ $t('admin.addPartOpportunity') }}
         </v-btn>
@@ -69,17 +69,6 @@
         >
           {{ $t('admin.floatingPool.howToUse') }}
         </v-btn>
-        <v-spacer />
-        <v-text-field
-          v-model="search"
-          prepend-inner-icon="mdi-magnify"
-          :label="$t('common.search')"
-          single-line
-          hide-details
-          density="compact"
-          variant="outlined"
-          style="max-width: 250px"
-        />
       </v-col>
     </v-row>
 
@@ -119,181 +108,23 @@
       </v-col>
     </v-row>
 
-    <!-- Part Opportunities Table -->
+    <!-- Part Opportunities Grid -->
     <v-row class="mt-4">
       <v-col cols="12">
         <v-card>
-          <v-data-table
-            :headers="headers"
-            :items="partOpportunities"
-            :search="search"
-            :loading="loading"
-            :items-per-page="15"
-            class="elevation-0"
-            :no-data-text="$t('common.noData')"
-          >
-            <template v-slot:item.part_number="{ item }">
-              <span class="font-weight-medium text-primary">{{ item.part_number }}</span>
-            </template>
-
-            <template v-slot:item.opportunities_per_unit="{ item }">
-              <v-chip
-                :color="getOpportunityColor(item.opportunities_per_unit)"
-                size="small"
-              >
-                {{ item.opportunities_per_unit }}
-              </v-chip>
-            </template>
-
-            <template v-slot:item.complexity="{ item }">
-              <v-chip
-                :color="getComplexityColor(item.complexity)"
-                size="small"
-                variant="tonal"
-              >
-                {{ item.complexity || $t('common.standard') }}
-              </v-chip>
-            </template>
-
-            <template v-slot:item.is_active="{ item }">
-              <v-icon :color="item.is_active !== false ? 'success' : 'grey'">
-                {{ item.is_active !== false ? 'mdi-check-circle' : 'mdi-close-circle' }}
-              </v-icon>
-            </template>
-
-            <template v-slot:item.actions="{ item }">
-              <v-btn
-                icon="mdi-pencil"
-                size="small"
-                variant="text"
-                color="primary"
-                @click="openEditDialog(item)"
-              />
-              <v-btn
-                icon="mdi-delete"
-                size="small"
-                variant="text"
-                color="error"
-                @click="confirmDelete(item)"
-              />
-            </template>
-
-            <template v-slot:no-data>
-              <div class="text-center pa-4">
-                <v-icon size="48" color="grey">mdi-chart-scatter-plot</v-icon>
-                <p class="mt-2 text-grey">{{ $t('admin.noPartOpportunities') }}</p>
-                <v-btn color="primary" class="mt-2" @click="openCreateDialog">
-                  {{ $t('admin.addPartOpportunity') }}
-                </v-btn>
-              </div>
-            </template>
-          </v-data-table>
+          <AGGridBase
+            :columnDefs="columnDefs"
+            :rowData="partOpportunities"
+            height="600px"
+            :pagination="true"
+            :paginationPageSize="25"
+            :enableExcelPaste="false"
+            entry-type="production"
+            @cell-value-changed="onCellValueChanged"
+          />
         </v-card>
       </v-col>
     </v-row>
-
-    <!-- Create/Edit Dialog -->
-    <v-dialog v-model="editDialog" max-width="600" persistent>
-      <v-card>
-        <v-card-title>
-          <v-icon class="mr-2">{{ isEditing ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          {{ isEditing ? $t('admin.editPartOpportunity') : $t('admin.addPartOpportunity') }}
-        </v-card-title>
-        <v-card-text>
-          <v-form ref="form" v-model="formValid">
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.part_number"
-                  :label="$t('jobs.partNumber') + ' *'"
-                  :rules="[rules.required, rules.maxLength50]"
-                  variant="outlined"
-                  density="comfortable"
-                  :disabled="isEditing"
-                  :hint="$t('admin.hintPartNumber')"
-                />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model.number="formData.opportunities_per_unit"
-                  :label="$t('admin.opportunitiesPerUnit') + ' *'"
-                  type="number"
-                  :rules="[rules.required, rules.positive]"
-                  variant="outlined"
-                  density="comfortable"
-                  :hint="$t('admin.opportunitiesHint')"
-                />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-text-field
-                  v-model="formData.part_description"
-                  :label="$t('admin.partDescription')"
-                  variant="outlined"
-                  density="comfortable"
-                />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="formData.complexity"
-                  :items="complexityOptions"
-                  :label="$t('admin.complexity')"
-                  variant="outlined"
-                  density="comfortable"
-                  clearable
-                />
-              </v-col>
-            </v-row>
-            <v-row>
-              <v-col cols="12" md="6">
-                <v-select
-                  v-model="formData.client_id"
-                  :items="clientOptions"
-                  item-title="client_name"
-                  item-value="client_id"
-                  :label="$t('filters.client')"
-                  variant="outlined"
-                  density="comfortable"
-                  :disabled="isEditing"
-                />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-textarea
-                  v-model="formData.notes"
-                  :label="$t('production.notes')"
-                  variant="outlined"
-                  density="comfortable"
-                  rows="2"
-                />
-              </v-col>
-            </v-row>
-            <v-row v-if="isEditing">
-              <v-col cols="12">
-                <v-switch
-                  v-model="formData.is_active"
-                  :label="$t('common.active')"
-                  color="success"
-                  hide-details
-                />
-              </v-col>
-            </v-row>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="closeEditDialog">{{ $t('common.cancel') }}</v-btn>
-          <v-btn
-            color="primary"
-            :loading="saving"
-            :disabled="!formValid"
-            @click="savePartOpportunity"
-          >
-            {{ isEditing ? $t('common.update') : $t('common.save') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
     <!-- Upload CSV Dialog -->
     <v-dialog v-model="uploadDialog" max-width="500" persistent>
@@ -371,61 +202,73 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+/**
+ * AdminPartOpportunities — Group E Surface #15 of the entry-interface
+ * audit (final Group E surface).
+ *
+ * Migrated 2026-05-01 from a v-data-table list + create/edit dialog
+ * form to an inline AG Grid surface using the same Excel-style
+ * autosave pattern established for the Defect Types catalog (Surface
+ * #14): existing rows PUT immediately on every cell-value change; new
+ * rows accumulate locally until the operator clicks the green Save
+ * button in the row's actions column, then POST.
+ *
+ * Required fields (part_number, client_id, opportunities_per_unit > 0)
+ * validated client-side before POST. part_number and client_id are
+ * read-only after creation (matches legacy "disabled when editing"
+ * semantics for these natural-key fields).
+ *
+ * The CSV upload, delete confirmation, and how-to guide dialogs
+ * remain as standalone dialogs (Exception 3 / Exception 4 surfaces).
+ */
+import { ref, onMounted } from 'vue'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
+import { useNotificationStore } from '@/stores/notificationStore'
 import { usePartOpportunitiesData } from '@/composables/usePartOpportunitiesData'
 import { usePartOpportunitiesForms } from '@/composables/usePartOpportunitiesForms'
+import usePartOpportunitiesGridData from '@/composables/usePartOpportunitiesGridData'
 import PartOpportunitiesGuide from './components/PartOpportunitiesGuide.vue'
 
-// Guide dialog
 const showGuide = ref(false)
+const notificationStore = useNotificationStore()
 
-// Data composable
 const {
-  loading,
   selectedClient,
   partOpportunities,
-  search,
   snackbar,
   clientOptions,
   averageOpportunities,
   minOpportunities,
   maxOpportunities,
-  headers,
-  getOpportunityColor,
-  getComplexityColor,
   loadClients,
   loadPartOpportunities,
-  showSnackbar
+  showSnackbar: _showSnackbar,
 } = usePartOpportunitiesData()
 
-// Forms composable
 const {
-  editDialog,
   uploadDialog,
   deleteDialog,
-  isEditing,
   deleteTarget,
-  saving,
   uploading,
   deleting,
-  form,
-  formValid,
-  formData,
   uploadFile,
   replaceExisting,
-  complexityOptions,
-  rules,
-  openCreateDialog,
-  openEditDialog,
-  closeEditDialog,
-  savePartOpportunity,
   confirmDelete,
   deletePartOpportunity,
   openUploadDialog,
   closeUploadDialog,
   uploadCSV,
-  downloadTemplate
-} = usePartOpportunitiesForms(selectedClient, loadPartOpportunities, showSnackbar)
+  downloadTemplate,
+} = usePartOpportunitiesForms(selectedClient, loadPartOpportunities, _showSnackbar)
+
+const { columnDefs, addRow, onCellValueChanged } = usePartOpportunitiesGridData({
+  selectedClient,
+  partOpportunities,
+  clientOptions,
+  loadPartOpportunities,
+  notify: notificationStore,
+  onConfirmDelete: confirmDelete,
+})
 
 onMounted(() => {
   loadClients()
