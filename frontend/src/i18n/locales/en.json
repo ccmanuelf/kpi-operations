@@ -1009,6 +1009,8 @@
     "noResults": "No shortcuts found matching \"{query}\""
   },
   "grids": {
+    "exportCsv": "Export CSV",
+    "exportCsvAria": "Export grid contents to a CSV file",
     "keyboardShortcuts": "Excel-like Shortcuts",
     "shortcutsList": "Tab (next cell) | Enter (move down) | Ctrl+C/V (copy/paste) | Delete (clear) | Ctrl+Z (undo) | Drag fill handle (copy values)",
     "bulkEntryTips": "Bulk Entry Tips",

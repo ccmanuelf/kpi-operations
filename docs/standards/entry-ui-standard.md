@@ -25,6 +25,13 @@ Every entry surface MUST satisfy all of:
    Implementation MAY use AG Grid's native `processDataFromClipboard`
    OR the project's `useAGGridBase.handlePasteFromExcel` pipeline
    (`frontend/src/composables/useAGGridBase.ts:219-304`).
+2.a **CSV export (round-trip safe)**: every entry surface exposes a
+   "Export CSV" button. AGGridBase ships this in its toolbar by
+   default (`enableExport: true`), backed by AG Grid's native
+   `exportDataAsCsv`. Set `:enableExport="false"` only on read-only
+   summaries where export isn't appropriate. Override the filename
+   with the `exportFilename` prop; the default is
+   `<entryType>_export_<yyyy-mm-dd>.csv`.
 3. **Per-column validation**: schemas live in
    `frontend/src/utils/clipboardParser.ts` (`entrySchemas`) and the
    backend Pydantic models. The backend Pydantic schema is the

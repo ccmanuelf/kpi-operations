@@ -1,22 +1,37 @@
 <template>
   <div class="ag-grid-wrapper">
-    <!-- Paste from Excel Toolbar -->
-    <div v-if="enableExcelPaste" class="paste-toolbar d-flex align-center ga-2 mb-2">
+    <!-- Toolbar (paste-from-Excel + export) -->
+    <div
+      v-if="enableExcelPaste || enableExport"
+      class="paste-toolbar d-flex align-center ga-2 mb-2"
+    >
       <v-btn
+        v-if="enableExcelPaste"
         color="primary"
         variant="outlined"
         size="small"
-        @click="handlePasteFromExcel"
         :loading="pasteLoading"
+        @click="handlePasteFromExcel"
       >
         <v-icon left>mdi-microsoft-excel</v-icon>
         {{ $t('paste.pasteFromExcel') }}
       </v-btn>
-      <v-chip v-if="lastPasteCount > 0" size="small" color="success" variant="tonal">
+      <v-chip v-if="enableExcelPaste && lastPasteCount > 0" size="small" color="success" variant="tonal">
         {{ $t('paste.lastPasted', { count: lastPasteCount }) }}
       </v-chip>
       <v-spacer />
-      <span class="text-caption text-grey">{{ $t('paste.shortcutHint') }}</span>
+      <v-btn
+        v-if="enableExport"
+        color="secondary"
+        variant="outlined"
+        size="small"
+        :aria-label="$t('grids.exportCsvAria')"
+        @click="exportCsvFromToolbar"
+      >
+        <v-icon left>mdi-file-delimited-outline</v-icon>
+        {{ $t('grids.exportCsv') }}
+      </v-btn>
+      <span v-if="enableExcelPaste" class="text-caption text-grey">{{ $t('paste.shortcutHint') }}</span>
     </div>
 
     <div :class="`ag-theme-material ${customClass}`" :style="gridStyle">
@@ -103,6 +118,18 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  // Toolbar Export-to-CSV button. Default true so every migrated entry
+  // surface satisfies the Spreadsheet Standard's "round-trip safe CSV
+  // export" requirement automatically. Pass `:enableExport="false"` for
+  // surfaces where export isn't appropriate (e.g. read-only summaries).
+  enableExport: {
+    type: Boolean,
+    default: true
+  },
+  exportFilename: {
+    type: String,
+    default: ''
+  },
   entryType: {
     type: String,
     default: 'production',
@@ -146,6 +173,15 @@ const {
   refreshCells,
   addRowsToGrid
 } = useAGGridBase(props, emit)
+
+// Toolbar export — uses AG Grid's native exportDataAsCsv via the
+// composable helper. Filename precedence: explicit `exportFilename`
+// prop → `<entryType>_export_<yyyy-mm-dd>.csv`.
+const exportCsvFromToolbar = () => {
+  const stamp = new Date().toISOString().slice(0, 10)
+  const filename = props.exportFilename || `${props.entryType}_export_${stamp}.csv`
+  exportToCsv(filename)
+}
 
 // Expose grid API and helper methods for parent components
 defineExpose({

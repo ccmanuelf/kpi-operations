@@ -1009,6 +1009,8 @@
     "noResults": "No se encontraron atajos para \"{query}\""
   },
   "grids": {
+    "exportCsv": "Exportar CSV",
+    "exportCsvAria": "Exportar el contenido de la tabla a un archivo CSV",
     "keyboardShortcuts": "Atajos tipo Excel",
     "shortcutsList": "Tab (siguiente celda) | Enter (mover abajo) | Ctrl+C/V (copiar/pegar) | Delete (limpiar) | Ctrl+Z (deshacer) | Arrastrar controlador de relleno (copiar valores)",
     "bulkEntryTips": "Consejos para Entrada Masiva",
