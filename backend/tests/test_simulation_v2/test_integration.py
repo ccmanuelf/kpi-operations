@@ -373,3 +373,79 @@ class TestSchemaEndpoint:
         assert "operations" in schema["properties"]
         assert "schedule" in schema["properties"]
         assert "demands" in schema["properties"]
+
+
+class TestRunMonteCarloEndpoint:
+    """Test the Monte Carlo simulation endpoint."""
+
+    def test_monte_carlo_requires_auth(self, client, valid_config_payload):
+        body = {**valid_config_payload, "n_replications": 3, "base_seed": 1}
+        response = client.post("/api/v2/simulation/run-monte-carlo", json=body)
+        assert response.status_code == 401
+
+    def test_monte_carlo_requires_sufficient_role(self, operator_client, valid_config_payload):
+        body = {**valid_config_payload, "n_replications": 3, "base_seed": 1}
+        response = operator_client.post("/api/v2/simulation/run-monte-carlo", json=body)
+        assert response.status_code == 403
+
+    def test_monte_carlo_rejects_n_below_two(self, admin_client, valid_config_payload):
+        body = {**valid_config_payload, "n_replications": 1, "base_seed": 1}
+        response = admin_client.post("/api/v2/simulation/run-monte-carlo", json=body)
+        # Pydantic catches `ge=2` constraint → 422.
+        assert response.status_code == 422
+
+    def test_monte_carlo_rejects_n_above_one_hundred(self, admin_client, valid_config_payload):
+        body = {**valid_config_payload, "n_replications": 101, "base_seed": 1}
+        response = admin_client.post("/api/v2/simulation/run-monte-carlo", json=body)
+        assert response.status_code == 422
+
+    def test_monte_carlo_valid_run_aggregates_blocks(self, admin_client, valid_config_payload):
+        """Happy path: 3 replications, deterministic seed, all blocks aggregated."""
+        body = {**valid_config_payload, "n_replications": 3, "base_seed": 7}
+        response = admin_client.post("/api/v2/simulation/run-monte-carlo", json=body)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["n_replications"] == 3
+        assert data["base_seed"] == 7
+        assert data["total_duration_seconds"] > 0
+        assert len(data["per_run_duration_seconds"]) == 3
+
+        # All six numeric blocks aggregated.
+        agg = data["aggregated_stats"]
+        for block in (
+            "daily_summary",
+            "free_capacity",
+            "weekly_demand_capacity",
+            "station_performance",
+            "bundle_metrics",
+            "per_product_summary",
+        ):
+            assert block in agg, f"missing aggregated block {block}"
+
+        # daily_summary is a singleton → flat dict; daily_throughput_pcs
+        # has stat shape.
+        ds = agg["daily_summary"]
+        assert "daily_throughput_pcs" in ds
+        stat = ds["daily_throughput_pcs"]
+        assert {"mean", "std", "ci_lo_95", "ci_hi_95", "n"}.issubset(stat.keys())
+        assert stat["n"] == 3
+        assert stat["ci_lo_95"] <= stat["mean"] <= stat["ci_hi_95"]
+
+        # sample_run carries non-numeric blocks for inspection.
+        assert data["sample_run"] is not None
+        assert "rebalancing_suggestions" in data["sample_run"]
+        assert "assumption_log" in data["sample_run"]
+
+    def test_monte_carlo_invalid_config_returns_validation_errors(
+        self, admin_client, invalid_config_payload
+    ):
+        body = {**invalid_config_payload, "n_replications": 3, "base_seed": 1}
+        response = admin_client.post("/api/v2/simulation/run-monte-carlo", json=body)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert data["sample_run"] is None
+        assert data["aggregated_stats"] == {}
+        assert len(data["validation_report"]["errors"]) > 0

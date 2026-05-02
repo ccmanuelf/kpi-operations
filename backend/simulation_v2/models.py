@@ -499,3 +499,64 @@ class SimulationResponse(BaseModel):
     results: Optional[SimulationResults] = None
     validation_report: ValidationReport
     message: str = ""
+
+
+# =============================================================================
+# MONTE CARLO REQUEST/RESPONSE MODELS
+# =============================================================================
+
+
+class MonteCarloRequest(BaseModel):
+    """API request for running N replications with mean ± CI aggregation."""
+
+    config: SimulationConfig
+    n_replications: int = Field(
+        ...,
+        ge=2,
+        le=100,
+        description="Number of replications to run (2-100). 10-50 typical.",
+    )
+    base_seed: Optional[int] = Field(
+        default=None,
+        description=(
+            "Anchor for the seed sequence; replication i uses "
+            "`base_seed + i`. If omitted, replications use independent RNG."
+        ),
+    )
+
+
+class MonteCarloStat(BaseModel):
+    """Aggregated statistics for a single numeric field across replications."""
+
+    mean: float
+    std: float
+    ci_lo_95: float
+    ci_hi_95: float
+    n: int
+
+
+class MonteCarloResponse(BaseModel):
+    """
+    API response for a Monte Carlo run.
+
+    `aggregated_stats` is a dict whose top-level keys are output-block
+    names (`daily_summary`, `free_capacity`, `weekly_demand_capacity`,
+    `station_performance`, `bundle_metrics`, `per_product_summary`).
+    For singleton blocks the value is a flat dict mapping each numeric
+    field to a `MonteCarloStat`-shaped dict; non-numeric fields carry
+    through unchanged. For list-of-rows blocks the value is a list of
+    such dicts, grouped by the block's natural key.
+
+    Non-numeric blocks (`rebalancing_suggestions`, `assumption_log`)
+    are not aggregated — read them off `sample_run` for inspection.
+    """
+
+    success: bool
+    n_replications: int
+    base_seed: Optional[int] = None
+    total_duration_seconds: float = 0.0
+    per_run_duration_seconds: List[float] = Field(default_factory=list)
+    aggregated_stats: Dict[str, Any] = Field(default_factory=dict)
+    sample_run: Optional[SimulationResults] = None
+    validation_report: ValidationReport
+    message: str = ""

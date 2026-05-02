@@ -39,11 +39,15 @@ from .models import (
     # API models
     SimulationRequest,
     SimulationResponse,
+    MonteCarloRequest,
+    MonteCarloResponse,
+    MonteCarloStat,
 )
 
 from .validation import validate_simulation_config
 from .engine import run_simulation, ProductionLineSimulator
 from .calculations import calculate_all_blocks
+from .monte_carlo import run_monte_carlo, aggregate_runs, compute_stat
 
 __version__ = "2.0.0"
 __all__ = [
@@ -76,8 +80,15 @@ __all__ = [
     # API
     "SimulationRequest",
     "SimulationResponse",
+    "MonteCarloRequest",
+    "MonteCarloResponse",
+    "MonteCarloStat",
     # Engine
     "run_simulation",
     "ProductionLineSimulator",
     "calculate_all_blocks",
+    # Monte Carlo
+    "run_monte_carlo",
+    "aggregate_runs",
+    "compute_stat",
 ]

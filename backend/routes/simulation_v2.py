@@ -18,10 +18,13 @@ from backend.simulation_v2.models import (
     SimulationRequest,
     SimulationResponse,
     ValidationReport,
+    MonteCarloRequest,
+    MonteCarloResponse,
 )
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.engine import run_simulation
 from backend.simulation_v2.calculations import calculate_all_blocks
+from backend.simulation_v2.monte_carlo import run_monte_carlo
 from backend.simulation_v2.constants import (
     MAX_PRODUCTS,
     MAX_OPERATIONS_PER_PRODUCT,
@@ -130,7 +133,6 @@ async def simulation_info() -> Any:
         "limitations": [
             "No persistent storage of scenarios (ephemeral only)",
             "No database integration",
-            "Single replication per run (no Monte Carlo)",
             "Equipment breakdown model is simplified",
         ],
         "constraints": {
@@ -263,6 +265,89 @@ async def run_simulation_endpoint(
     except Exception as e:
         logger.exception("Simulation failed: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Simulation failed")
+
+
+@router.post("/run-monte-carlo", response_model=MonteCarloResponse)
+async def run_monte_carlo_endpoint(
+    request: MonteCarloRequest, current_user: User = Depends(get_current_user)
+) -> MonteCarloResponse:
+    """
+    Run N replications of the simulation and return aggregated statistics.
+
+    This endpoint:
+    1. Validates inputs (returns errors if invalid).
+    2. Runs the SimPy engine `n_replications` times with seeded RNG so
+       each replication is reproducible (`seed = base_seed + i`).
+    3. Aggregates each numeric field of the eight output blocks into
+       mean, standard deviation, and 95% CI bounds.
+    4. Returns a `sample_run` (the first replication) for non-numeric
+       blocks and as a concrete reference shape.
+
+    Use the single-replication `/run` endpoint for fast feedback during
+    iteration; use this endpoint when committing to a plan and you want
+    uncertainty bounds on the projected metrics.
+    """
+    _check_simulation_permission(current_user)
+
+    config = request.config
+
+    logger.info(
+        f"User {current_user.username} running Monte Carlo: "
+        f"{request.n_replications} replications, base_seed={request.base_seed}, "
+        f"{len(config.operations)} ops, mode={config.mode.value}"
+    )
+
+    try:
+        result = run_monte_carlo(
+            config=config,
+            n_replications=request.n_replications,
+            base_seed=request.base_seed,
+        )
+
+        validation_report: ValidationReport = result["validation_report"]
+        if validation_report.has_errors:
+            logger.warning(
+                f"Monte Carlo blocked due to validation errors: "
+                f"{[e.message for e in validation_report.errors]}"
+            )
+            return MonteCarloResponse(
+                success=False,
+                n_replications=0,
+                base_seed=request.base_seed,
+                total_duration_seconds=0.0,
+                aggregated_stats={},
+                sample_run=None,
+                validation_report=validation_report,
+                message="Validation failed. Please correct errors and retry.",
+            )
+
+        logger.info(
+            f"Monte Carlo completed for user {current_user.username}: "
+            f"{result['n_replications']} replications, "
+            f"total_duration={result['total_duration_seconds']:.2f}s"
+        )
+
+        return MonteCarloResponse(
+            success=True,
+            n_replications=result["n_replications"],
+            base_seed=result["base_seed"],
+            total_duration_seconds=result["total_duration_seconds"],
+            per_run_duration_seconds=result["per_run_duration_seconds"],
+            aggregated_stats=result["aggregated_stats"],
+            sample_run=result["sample_run"],
+            validation_report=validation_report,
+            message=(
+                f"Monte Carlo completed: {result['n_replications']} replications "
+                f"in {result['total_duration_seconds']:.2f}s"
+            ),
+        )
+
+    except Exception as e:
+        logger.exception("Monte Carlo simulation failed: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Monte Carlo simulation failed",
+        )
 
 
 @router.get("/schema")

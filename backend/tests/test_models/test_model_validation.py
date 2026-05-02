@@ -728,7 +728,10 @@ class TestWorkOrderPydantic:
             )
 
     def test_valid_priority_values(self):
-        for p in ("HIGH", "MEDIUM", "LOW"):
+        # Catalog widened 2026-05-02 to mirror the seed factory's NORMAL
+        # default and accept URGENT for parity with the capacity-orders
+        # priority enum. Backend regex: ^(URGENT|HIGH|NORMAL|MEDIUM|LOW)$.
+        for p in ("URGENT", "HIGH", "NORMAL", "MEDIUM", "LOW"):
             wo = WorkOrderCreate(
                 work_order_id="WO-001",
                 client_id="C1",
@@ -745,7 +748,7 @@ class TestWorkOrderPydantic:
                 client_id="C1",
                 style_model="STYLE-A",
                 planned_quantity=100,
-                priority="URGENT",
+                priority="CRITICAL",  # not in the regex catalog
             )
 
 
