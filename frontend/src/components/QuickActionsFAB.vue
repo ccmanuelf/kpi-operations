@@ -279,12 +279,22 @@ onMounted(() => {
   transition: transform 0.3s ease;
 }
 
+/*
+ * Stacked above page content (z-index: 5) but BELOW the FAB
+ * (z-index: 1000) and BELOW Vuetify v-card chrome that uses an
+ * elevation-based stacking context. Previous z-index: 999 was
+ * intercepting clicks on AGGridBase toolbar buttons that ended up
+ * geometrically under the chip (e.g. Export-CSV on
+ * /admin/floating-pool). The chip is purely informational — losing
+ * its absolute on-top behavior is acceptable in exchange for not
+ * eating button clicks.
+ */
 .shift-indicator {
   position: fixed;
   bottom: 90px;
   right: 24px;
   cursor: pointer;
-  z-index: 999;
+  z-index: 5;
 }
 
 /* Mobile adjustments */

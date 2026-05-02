@@ -44,6 +44,7 @@ export interface ScenarioRow {
 
 interface ColumnDef {
   headerName?: string
+  headerTooltip?: string
   field?: string
   editable?: boolean | ((params: { data: ScenarioRow }) => boolean)
   cellEditor?: string
@@ -222,6 +223,7 @@ export default function useScenariosGridData(
     },
     {
       headerName: t('capacityPlanning.scenarios.scenarioName'),
+      headerTooltip: t('capacityPlanning.scenarios.scenarioName'),
       field: 'scenario_name',
       editable: (params) => Boolean(params.data._isNew),
       cellEditor: 'agTextCellEditor',
@@ -230,6 +232,7 @@ export default function useScenariosGridData(
     },
     {
       headerName: t('capacityPlanning.scenarios.scenarioType'),
+      headerTooltip: t('capacityPlanning.scenarios.scenarioType'),
       field: 'scenario_type',
       editable: (params) => Boolean(params.data._isNew),
       cellEditor: 'agSelectCellEditor',
@@ -251,6 +254,7 @@ export default function useScenariosGridData(
     },
     {
       headerName: t('capacityPlanning.scenarios.parametersHeader'),
+      headerTooltip: t('capacityPlanning.scenarios.parametersHeader'),
       field: 'parameters',
       editable: (params) => Boolean(params.data._isNew),
       cellEditor: 'agLargeTextCellEditor',
@@ -292,6 +296,7 @@ export default function useScenariosGridData(
     },
     {
       headerName: t('capacityPlanning.scenarios.totalOutput'),
+      headerTooltip: t('capacityPlanning.scenarios.totalOutput'),
       field: '_total_output',
       editable: false,
       sortable: true,
@@ -302,6 +307,7 @@ export default function useScenariosGridData(
     },
     {
       headerName: t('capacityPlanning.scenarios.utilization'),
+      headerTooltip: t('capacityPlanning.scenarios.utilization'),
       field: '_avg_utilization',
       editable: false,
       sortable: true,
@@ -312,6 +318,7 @@ export default function useScenariosGridData(
     },
     {
       headerName: t('capacityPlanning.scenarios.onTime'),
+      headerTooltip: t('capacityPlanning.scenarios.onTime'),
       field: '_on_time_rate',
       editable: false,
       sortable: true,
