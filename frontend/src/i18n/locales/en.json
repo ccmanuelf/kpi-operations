@@ -2929,6 +2929,12 @@
     "actions": {
       "validateConfiguration": "Validate Configuration",
       "runSimulation": "Run Simulation",
+      "runMonteCarlo": "Run Monte Carlo ({n})",
+      "monteCarlo": "Monte Carlo",
+      "monteCarloTooltip": "Run N replications and report mean ± 95% CI for each numeric metric",
+      "replications": "# Replications",
+      "baseSeed": "Base seed",
+      "baseSeedPlaceholder": "Random",
       "importConfig": "Import Config",
       "exportConfig": "Export Config",
       "reset": "Reset"

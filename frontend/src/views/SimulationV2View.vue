@@ -142,8 +142,52 @@
               :disabled="!canRunSimulation"
             >
               <v-icon start>mdi-play</v-icon>
-              {{ t('simulationV2.actions.runSimulation') }}
+              {{
+                store.monteCarloEnabled
+                  ? t('simulationV2.actions.runMonteCarlo', { n: store.monteCarloReplications })
+                  : t('simulationV2.actions.runSimulation')
+              }}
             </v-btn>
+
+            <v-tooltip :text="t('simulationV2.actions.monteCarloTooltip')" location="top">
+              <template #activator="{ props: tooltipProps }">
+                <v-switch
+                  v-bind="tooltipProps"
+                  v-model="store.monteCarloEnabled"
+                  :label="t('simulationV2.actions.monteCarlo')"
+                  color="primary"
+                  density="compact"
+                  hide-details
+                  inset
+                />
+              </template>
+            </v-tooltip>
+
+            <v-text-field
+              v-if="store.monteCarloEnabled"
+              v-model.number="store.monteCarloReplications"
+              type="number"
+              :min="2"
+              :max="100"
+              :label="t('simulationV2.actions.replications')"
+              variant="outlined"
+              density="compact"
+              hide-details
+              style="max-width: 130px"
+            />
+
+            <v-text-field
+              v-if="store.monteCarloEnabled"
+              v-model.number="store.monteCarloBaseSeed"
+              type="number"
+              :label="t('simulationV2.actions.baseSeed')"
+              :placeholder="t('simulationV2.actions.baseSeedPlaceholder')"
+              variant="outlined"
+              density="compact"
+              hide-details
+              style="max-width: 150px"
+              clearable
+            />
 
             <v-btn
               v-if="hasHistory"
@@ -607,10 +651,20 @@ async function handleRun() {
     if (!store.validationReport) {
       await store.validate()
     }
-    // Only run if valid
-    if (store.validationReport?.is_valid) {
+    if (!store.validationReport?.is_valid) return
+
+    if (store.monteCarloEnabled) {
+      // Monte Carlo path — N replications, mean ± 95% CI for every
+      // numeric leaf in the 8 output blocks. Falls back to the single-
+      // run path's success-shape so saveResult still captures a
+      // representative results snapshot.
+      const response = await store.runMonteCarloAction()
+      const r = response as { success?: boolean; sample_run?: unknown }
+      if (r?.success && r.sample_run) {
+        saveResult(r.sample_run as Record<string, unknown>)
+      }
+    } else {
       const response = await store.run()
-      // Retain result for comparison if run succeeded
       if (response?.success && response.results) {
         saveResult(response.results)
       }

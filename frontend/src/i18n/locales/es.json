@@ -2973,6 +2973,12 @@
     "actions": {
       "validateConfiguration": "Validar Configuración",
       "runSimulation": "Ejecutar Simulación",
+      "runMonteCarlo": "Monte Carlo ({n})",
+      "monteCarlo": "Monte Carlo",
+      "monteCarloTooltip": "Ejecuta N réplicas y reporta media ± IC 95% para cada métrica numérica",
+      "replications": "# Réplicas",
+      "baseSeed": "Semilla base",
+      "baseSeedPlaceholder": "Aleatoria",
       "importConfig": "Importar Config.",
       "exportConfig": "Exportar Config.",
       "reset": "Restablecer"

@@ -83,6 +83,52 @@ export const runSimulation = async (config: SimulationConfig) => {
   return response.data
 }
 
+// =============================================================================
+// Monte Carlo
+// =============================================================================
+
+export interface MonteCarloStat {
+  mean: number
+  std: number
+  ci_lo_95: number
+  ci_hi_95: number
+  n: number
+}
+
+export interface MonteCarloRunOptions {
+  config: SimulationConfig
+  n_replications: number
+  base_seed?: number | null
+}
+
+/**
+ * Run N replications of the simulation with mean ± 95% CI aggregation.
+ *
+ * Backend constrains `n_replications` to [2, 100]; 10–50 is the typical
+ * range. `base_seed` is optional — if supplied, replication i uses
+ * `base_seed + i`, making the entire run reproducible.
+ *
+ * Response shape: see backend `MonteCarloResponse`. The `aggregated_stats`
+ * payload has top-level keys per output block (`daily_summary`,
+ * `free_capacity`, `weekly_demand_capacity`, etc.). Numeric fields are
+ * `MonteCarloStat`-shaped dicts; non-numeric fields pass through.
+ * `sample_run` is a full `SimulationResults` from the first replication
+ * (use it for `rebalancing_suggestions` / `assumption_log`, which are
+ * not aggregated).
+ */
+export const runMonteCarlo = async ({
+  config,
+  n_replications,
+  base_seed = null,
+}: MonteCarloRunOptions) => {
+  const body: Record<string, unknown> = { config, n_replications }
+  if (base_seed !== null && base_seed !== undefined) {
+    body.base_seed = base_seed
+  }
+  const response = await api.post('/v2/simulation/run-monte-carlo', body)
+  return response.data
+}
+
 export const buildSimulationConfig = ({
   operations,
   schedule,
@@ -359,6 +405,7 @@ export default {
   getSimulationSchema,
   validateSimulationConfig,
   runSimulation,
+  runMonteCarlo,
   buildSimulationConfig,
   getDefaultOperation,
   getDefaultSchedule,

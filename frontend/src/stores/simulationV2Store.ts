@@ -4,6 +4,7 @@ import {
   getSimulationInfo,
   validateSimulationConfig,
   runSimulation,
+  runMonteCarlo,
   buildSimulationConfig,
   getDefaultOperation,
   getDefaultSchedule,
@@ -71,6 +72,12 @@ interface SimulationState {
   showValidationPanel: boolean
   showResultsDialog: boolean
   error: string | null
+  // Monte Carlo state — opt-in N-replication mode (Deliverable 1).
+  monteCarloEnabled: boolean
+  monteCarloReplications: number
+  monteCarloBaseSeed: number | null
+  monteCarloAggregatedStats: Record<string, unknown> | null
+  monteCarloDurationSeconds: number | null
 }
 
 const extractDetail = (e: unknown, fallback: string): string => {
@@ -97,6 +104,11 @@ export const useSimulationV2Store = defineStore('simulationV2', {
     showValidationPanel: false,
     showResultsDialog: false,
     error: null,
+    monteCarloEnabled: false,
+    monteCarloReplications: 10,
+    monteCarloBaseSeed: null,
+    monteCarloAggregatedStats: null,
+    monteCarloDurationSeconds: null,
   }),
 
   getters: {
@@ -314,6 +326,66 @@ export const useSimulationV2Store = defineStore('simulationV2', {
       }
     },
 
+    /**
+     * Run the simulation in Monte Carlo mode (N replications, mean ± CI).
+     * Uses `monteCarloReplications` and `monteCarloBaseSeed` from state.
+     * On success, populates `results` with the `sample_run` (so existing
+     * result-rendering keeps working) AND `monteCarloAggregatedStats`
+     * for any UI that wants to render CI bands.
+     */
+    async runMonteCarloAction(): Promise<unknown> {
+      this.isRunning = true
+      this.error = null
+      this.results = null
+      this.simulationMessage = ''
+      this.monteCarloAggregatedStats = null
+      this.monteCarloDurationSeconds = null
+
+      try {
+        const config = this.buildConfig()
+        const response = (await runMonteCarlo({
+          config,
+          n_replications: this.monteCarloReplications,
+          base_seed: this.monteCarloBaseSeed,
+        })) as {
+          success?: boolean
+          n_replications?: number
+          total_duration_seconds?: number
+          aggregated_stats?: Record<string, unknown>
+          sample_run?: SimulationResults
+          validation_report?: ValidationReport
+          message?: string
+        }
+
+        if (response.success) {
+          // Existing UI consumes `results` for rendering; expose the
+          // sample run there so we don't fork the rendering paths.
+          this.results = response.sample_run || null
+          this.monteCarloAggregatedStats = response.aggregated_stats || null
+          this.monteCarloDurationSeconds = response.total_duration_seconds ?? null
+          this.simulationMessage = response.message || ''
+          this.validationReport = response.validation_report || null
+          this.showResultsDialog = true
+        } else {
+          this.validationReport = response.validation_report || null
+          this.simulationMessage = response.message || ''
+          this.showValidationPanel = true
+        }
+
+        return response
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Monte Carlo simulation failed:', error)
+        this.error = extractDetail(error, 'Monte Carlo simulation failed')
+        useNotificationStore().showError(
+          this.error || 'Monte Carlo simulation failed. Please try again.',
+        )
+        throw error
+      } finally {
+        this.isRunning = false
+      }
+    },
+
     reset(): void {
       this.operations = []
       this.schedule = getDefaultSchedule()
@@ -326,6 +398,8 @@ export const useSimulationV2Store = defineStore('simulationV2', {
       this.results = null
       this.error = null
       this.simulationMessage = ''
+      this.monteCarloAggregatedStats = null
+      this.monteCarloDurationSeconds = null
     },
 
     loadConfiguration(config: {
