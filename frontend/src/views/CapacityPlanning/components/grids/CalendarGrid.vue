@@ -8,95 +8,22 @@
         <v-icon start>mdi-plus</v-icon>
         {{ t('capacityPlanning.calendar.addDate') }}
       </v-btn>
-      <v-btn size="small" variant="outlined" @click="generateMonth">
+      <v-btn size="small" variant="outlined" @click="showGenerateDialog = true">
         <v-icon start>mdi-calendar-month</v-icon>
         {{ t('capacityPlanning.calendar.generateMonth') }}
       </v-btn>
     </v-card-title>
     <v-card-text>
-      <v-data-table
-        :headers="headers"
-        :items="calendar"
-        :items-per-page="31"
-        :no-data-text="t('common.noData')"
-        class="elevation-1"
-        density="compact"
-      >
-        <template v-slot:item.calendar_date="{ item, index }">
-          <v-text-field
-            v-model="item.calendar_date"
-            type="date"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.is_working_day="{ item, index }">
-          <v-checkbox
-            v-model="item.is_working_day"
-            hide-details
-            density="compact"
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.shifts_available="{ item, index }">
-          <v-select
-            v-model.number="item.shifts_available"
-            :items="[1, 2, 3]"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.shift1_hours="{ item, index }">
-          <v-text-field
-            v-model.number="item.shift1_hours"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.shift2_hours="{ item, index }">
-          <v-text-field
-            v-model.number="item.shift2_hours"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            :disabled="item.shifts_available < 2"
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.holiday_name="{ item, index }">
-          <v-text-field
-            v-model="item.holiday_name"
-            density="compact"
-            variant="plain"
-            hide-details
-            placeholder="(optional)"
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.actions="{ index }">
-          <v-btn
-            icon="mdi-delete"
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="removeRow(index)"
-          />
-        </template>
-      </v-data-table>
+      <AGGridBase
+        :columnDefs="columnDefs"
+        :rowData="calendar"
+        height="600px"
+        :pagination="true"
+        :paginationPageSize="31"
+        :enableExcelPaste="false"
+        entry-type="production"
+        @cell-value-changed="onCellValueChanged"
+      />
 
       <div v-if="!calendar.length" class="text-center pa-4 text-grey">
         {{ t('capacityPlanning.calendar.noData') }}
@@ -136,36 +63,27 @@
 
 <script setup>
 /**
- * CalendarGrid - Editable grid for the master production calendar.
+ * CalendarGrid - AG Grid surface for the master production calendar.
  *
- * Manages working day entries with date, working day flag, shifts available,
- * shift hours, and holiday names. Includes a "Generate Month" dialog that
- * auto-creates calendar entries for a selected year/month, marking weekends
- * as non-working days.
+ * Migrated 2026-05-01 from v-data-table + per-cell v-text-field/v-select
+ * slots to AGGridBase as part of Group D Surface #12 of the
+ * entry-interface audit.
  *
- * Store dependency: useCapacityPlanningStore (worksheets.masterCalendar)
- * No props or emits -- all state managed via store.
+ * Preserves the "Generate Month" dialog UX (year + month picker auto-
+ * populates the worksheet with weekday/weekend defaults). shift2_hours
+ * column editable only when shifts_available >= 2 (matches legacy
+ * conditional :disabled binding).
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
+import useCalendarGridData from '@/composables/useCalendarGridData'
 
 const { t } = useI18n()
-const store = useCapacityPlanningStore()
 
 const showGenerateDialog = ref(false)
 const generateYear = ref(new Date().getFullYear())
 const generateMonthNum = ref(new Date().getMonth() + 1)
-
-const headers = computed(() => [
-  { title: t('capacityPlanning.calendar.headers.date'), key: 'calendar_date', width: '140px' },
-  { title: t('capacityPlanning.calendar.headers.workingDay'), key: 'is_working_day', width: '100px' },
-  { title: t('capacityPlanning.calendar.headers.shifts'), key: 'shifts_available', width: '80px' },
-  { title: t('capacityPlanning.calendar.headers.shift1Hours'), key: 'shift1_hours', width: '100px' },
-  { title: t('capacityPlanning.calendar.headers.shift2Hours'), key: 'shift2_hours', width: '100px' },
-  { title: t('capacityPlanning.calendar.headers.holiday'), key: 'holiday_name', width: '150px' },
-  { title: t('capacityPlanning.calendar.headers.actions'), key: 'actions', width: '80px', sortable: false }
-])
 
 const monthOptions = computed(() => [
   { text: t('capacityPlanning.calendar.months.january'), value: 1 },
@@ -179,45 +97,19 @@ const monthOptions = computed(() => [
   { text: t('capacityPlanning.calendar.months.september'), value: 9 },
   { text: t('capacityPlanning.calendar.months.october'), value: 10 },
   { text: t('capacityPlanning.calendar.months.november'), value: 11 },
-  { text: t('capacityPlanning.calendar.months.december'), value: 12 }
+  { text: t('capacityPlanning.calendar.months.december'), value: 12 },
 ])
 
-const calendar = computed(() => store.worksheets.masterCalendar.data)
-
-const addRow = () => store.addRow('masterCalendar')
-const removeRow = (index) => store.removeRow('masterCalendar', index)
-const markDirty = () => {
-  store.worksheets.masterCalendar.dirty = true
-}
-
-const generateMonth = () => {
-  showGenerateDialog.value = true
-}
+const {
+  calendar,
+  columnDefs,
+  addRow,
+  onCellValueChanged,
+  importGeneratedMonth,
+} = useCalendarGridData()
 
 const doGenerateMonth = () => {
-  const year = generateYear.value
-  const month = generateMonthNum.value
-  const daysInMonth = new Date(year, month, 0).getDate()
-
-  const entries = []
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month - 1, day)
-    const dayOfWeek = date.getDay()
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-    entries.push({
-      calendar_date: date.toISOString().slice(0, 10),
-      is_working_day: !isWeekend,
-      shifts_available: 1,
-      shift1_hours: isWeekend ? 0 : 8.0,
-      shift2_hours: 0,
-      shift3_hours: 0,
-      holiday_name: null,
-      notes: null
-    })
-  }
-
-  store.importData('masterCalendar', entries)
+  importGeneratedMonth(Number(generateYear.value), Number(generateMonthNum.value))
   showGenerateDialog.value = false
 }
 </script>
