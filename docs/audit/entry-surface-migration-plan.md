@@ -202,7 +202,7 @@ Each gets a UX sketch reviewed with spec owner before its Phase 2 starts. Sequen
 
 ### Group I — Verification & cleanup (continuous)
 Tasks:
-- I.1. Verify `frontend/src/components/DataEntryGrid.vue` (inv row 56) alive/dead. If dead → delete. If alive → classify and add to plan.
+- I.1. ✅ **Done 2026-05-02 (Surface #22).** `frontend/src/components/DataEntryGrid.vue` (inv row 56) verified dead (zero imports in `src/` or `e2e/`, no tests) and deleted.
 - I.2. Coordinate with dual-view spec #1 owner when assumption-registry surface is designed; confirm it adopts AG Grid patterns from this plan.
 - I.3. After Group H completes, run a final grep for `v-text-field`/`v-textarea` in `views/` and `components/entries/` (excluding exception list) and confirm zero hits per source spec § "Definition of done".
 - I.4. Phase 3 work begins: extract `docs/standards/entry-ui-standard.md`, add ESLint local rule, update `CONTRIBUTING.md`.

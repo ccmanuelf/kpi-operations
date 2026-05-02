@@ -22,7 +22,7 @@ Both flags are AG Grid Enterprise features. Project remains on Community. Resolu
 **R3. Custom clipboard paste is canonical; native `processDataFromClipboard` is NOT required.**
 The existing `handlePasteFromExcel()` pipeline in `useAGGridBase.ts:219-304` is in production behind 8 grids, has clipboard parsing schemas in `utils/clipboardParser.ts`, and is actively maintained. Working feature wins. The Standard text becomes: "Excel paste-in MUST be supported. Implementation MAY use AG Grid's native `processDataFromClipboard` OR an equivalent `navigator.clipboard` pipeline (the project's `useAGGridBase.handlePasteFromExcel`). Whatever path is chosen, paste MUST round-trip with Excel and validate per-column."
 
-**Open question carried into Phase 1:** row 56 (`DataEntryGrid.vue`) — alive or dead code? Verification is the first task of Group I (cleanup) in the migration plan.
+**Open question carried into Phase 1:** row 56 (`DataEntryGrid.vue`) — alive or dead code? **Resolved 2026-05-02 (Group I.1 / Surface #22):** dead. Zero imports in `frontend/src/**` and `frontend/e2e/**`; no co-located tests. The 342-line v-data-table-with-cell-editors implementation matched the audit's "form disguised as a table" non-compliance pattern but had nothing wired to it — a stranded prototype. **Deleted.**
 
 ---
 
@@ -150,7 +150,7 @@ The five techniques specified in the audit prompt were applied in full.
 | 53 | Email Reports Dialog | `frontend/src/components/dialogs/EmailReportsDialog.vue` | global FAB / report screen | Email-report config (recipients, schedule) | `POST /email-config`, `PUT /email-config`, `POST /email-config/test`, `POST /email-config/send-manual` | Form | **Exception** | Spec Exception 2 (admin config — email recipients per tenant). 7 `v-text-field`/`v-select`s at lines 9-104. |
 | 54 | Save Filter Dialog | `frontend/src/components/filters/SaveFilterDialog.vue` (used by `FilterBar.vue` / `FilterManager.vue`) | KPI screens | Saved filter definition | `POST /filters`, `PUT /filters/{id}`, `POST /filters/{id}/duplicate`, `POST /filters/{id}/set-default`, `POST /filters/{id}/unset-default` | Form (small) | **Exception** | Spec Exception 3 (filter parameter dialog). 1 `v-text-field` + 1 `v-select` at lines 16, 33. Saving a filter is a filter operation, not a data entry. |
 | 55 | Filter Bar / Filter Manager | `frontend/src/components/filters/FilterBar.vue`, `FilterManager.vue` | KPI screens | Active filter state | `POST /filters/{id}/apply`, `POST /filters/history` | Form (filter inputs) | **Exception** | Spec Exception 3. |
-| 56 | DataEntryGrid (legacy) | `frontend/src/components/DataEntryGrid.vue` | (no route) | (legacy) | unknown | Mixed | **Needs review** | Component file exists with form-style inputs. Grep matched it. **Spec-owner question:** is this dead code or in use? Confirm before classifying. |
+| 56 | ~~DataEntryGrid (legacy)~~ | ~~`frontend/src/components/DataEntryGrid.vue`~~ | — | — | — | — | **Deleted** (2026-05-02, Group I.1 / Surface #22) | 342-line v-data-table form-disguised-as-table prototype. Zero imports in `src/` or `e2e/`; no tests. Confirmed dead and removed. Stale doc references in `docs/architecture/*.md`, `docs/AGGRID_USAGE_EXAMPLES.md`, `frontend/docs/keyboard-shortcuts-examples.md` and `docs/ACCESSIBILITY_AUDIT_REPORT.md` were left in place — they describe the legacy state of the codebase as of their write-up dates and are not authoritative for current architecture. |
 | 57 | LineSelector | `frontend/src/components/common/LineSelector.vue` | global header / shift wizard | Production line selection | (no mutation — selector only) | Other | **Exception** | Spec Exception 3 (selector). |
 | 58 | QR Code Scanner | `frontend/src/components/QRCodeScanner.vue` | wired into MyShift / production entry | Scan-to-enter for work-order ID etc. | `POST /qr/...` (2 endpoints in `qr.py:370, 456`) | Other (input device) | **Exception** | Spec Exception 4 (scan = single-action confirmation). |
 
@@ -231,7 +231,9 @@ Corrected:
 
 **Group H surface #21 (Floating Pool, row 37) — ✅ Migrated.** v-data-table + 5-field assign/edit dialog replaced with `AGGridBase` + `useFloatingPoolGridData`. Inline-edit policy routes cell-value changes to `/floating-pool/assign` (set client, change dates/notes while assigned) or `/floating-pool/unassign` (clear client, Unassign button). No Add Row — pool membership is owned by the employee admin surface. Dead `useFloatingPoolForms.ts` removed. Tests: `useFloatingPoolGridData.spec.ts` (21 tests, all passing).
 
-**Group H complete (3/3 surfaces).** All originally-targeted Spreadsheet-Standard surfaces are now AG-Grid-based. Remaining work in Phase 2: **#22 — DataEntryGrid alive/dead check** (Group I cleanup; not a migration — verify whether the legacy generic component is still imported anywhere, prune if dead).
+**Group H complete (3/3 surfaces).** All originally-targeted Spreadsheet-Standard surfaces are now AG-Grid-based.
+
+**Group I complete (1/1 cleanup task — Surface #22 / row 56).** `DataEntryGrid.vue` confirmed dead (zero imports anywhere in `src/` or `e2e/`, no tests) and deleted. Phase 2 of the entry-interface audit is now finished — every surface in the inventory is either compliant, a permitted exception, or removed.
 
 ---
 
