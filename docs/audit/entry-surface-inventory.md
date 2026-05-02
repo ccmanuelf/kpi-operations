@@ -113,7 +113,7 @@ The five techniques specified in the audit prompt were applied in full.
 | 16 | Simulation V2 — Breakdowns | `frontend/src/components/simulation/BreakdownsGrid.vue` | `/simulation` | Equipment breakdown profiles | `POST /simulation-v2/run` (client-side store) | Grid | **Compliant** | Typed editors at `BreakdownsGrid.vue:151-159`. Same caveats as #14. |
 | 17 | Simulation V2 — Schedule | `frontend/src/components/simulation/ScheduleForm.vue` | `/simulation` | Simulation schedule parameters (horizon, working hours, break time, target eff) | `POST /simulation-v2/validate`, `POST /simulation-v2/run` | Form | **Exception** | Spec Exception 3 (parameter dialog). 6 numeric `v-text-field`s at lines 34, 47, 60, 109, 122, 134 — these are simulation run parameters, not data entries. |
 | 18 | Capacity Planning Workbook | `frontend/src/views/CapacityPlanning/CapacityPlanningView.vue` | `/capacity-planning` | Container for 13-tab workbook | (delegates to child grids/panels) | Other (container) | **N/A** | Tab orchestration only; no direct mutation. See rows 19-29. |
-| 19 | Capacity — Production Lines (worksheet grid) | `frontend/src/views/CapacityPlanning/components/grids/ProductionLinesGrid.vue` | tab inside `/capacity-planning` | Production line definitions (worksheet) | Persisted via `useCapacityPlanningStore` save (`PUT capacity/.../{id}`) and direct CRUD `POST /capacity/lines`, `PUT /capacity/lines/{id}` (`backend/routes/capacity/lines.py:49,92`) | Grid (v-data-table) | **Non-compliant** (per R1) | `v-data-table` + per-cell `v-text-field` (lines 22-92). Per spec-owner R1: forms-disguised-as-tables are not compliant. Migrate to AG Grid using `AGGridBase` pattern. **Missing:** all Spreadsheet Standard items. |
+| 19 | Capacity — Production Lines (worksheet grid) | `frontend/src/views/CapacityPlanning/components/grids/ProductionLinesGrid.vue` | tab inside `/capacity-planning` | Production line definitions | `POST /capacity/lines`, `PUT /capacity/lines/{id}` (persistence centralised via `useCapacityPlanningStore.saveWorksheet('productionLines')`) | Grid (AG Grid Community) | **Compliant** (migrated 2026-05-01) | Rebuilt on `AGGridBase` with composable `useProductionLinesGridData.ts`. Native AG Grid editors per backend `ProductionLineCreate` schema: `agTextCellEditor` for line_code/line_name/department; `agNumberCellEditor` (min:0, precision:2) for standard_capacity_units_per_hour and efficiency_factor (max:1); `agNumberCellEditor` (min:0, precision:0) for max_operators; `agCheckboxCellEditor` for is_active. Excel keyboard nav inherited from AGGridBase. Add/duplicate/delete via row actions column. Persistence remains workbook-level (parent's "Save Workbook" button calls `saveWorksheet('productionLines')`). Tests in `useProductionLinesGridData.spec.ts` (16 tests). First Group D migration; establishes the pattern for Orders/Standards/Calendar/Stock. |
 | 20 | Capacity — Orders (worksheet grid) | `frontend/src/views/CapacityPlanning/components/grids/OrdersGrid.vue` | tab inside `/capacity-planning` | Customer orders for capacity scheduling | `POST /capacity/orders`, `PUT /capacity/orders/{id}`, `PATCH /capacity/orders/{id}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern as row 19. CSV import is a `v-textarea` paste in a dialog (line 121-139) — replace with AG Grid native paste. |
 | 21 | Capacity — Standards (worksheet grid) | `frontend/src/views/CapacityPlanning/components/grids/StandardsGrid.vue` | tab inside `/capacity-planning` | Production standards | `POST /capacity/standards`, `PUT /capacity/standards/{id}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern as row 19. Migrate to AG Grid. |
 | 22 | Capacity — Calendar grid | `frontend/src/views/CapacityPlanning/components/grids/CalendarGrid.vue` | tab inside `/capacity-planning` | Calendar / shift availability per date | `POST /capacity/calendar`, `PUT /capacity/calendar/{id}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern as row 19. Migrate to AG Grid; consider date-pinned column structure. |
@@ -208,7 +208,18 @@ Corrected:
 
 **Group C complete (1/1 surface, option a).** MyShift quick-action dialogs reconciled — submit handlers send Pydantic-aligned payloads via Group A reconciliation pattern; product_id and shift_id resolved client-side via `/products` and `/shifts` reference data; UI downtime reasons mapped to `DOWNTIME_REASON_CODES` enum. **12 surfaces remaining out of 20 total. Group A + B + C = 8/20 complete.**
 
-Next per the Phase 1 plan §5 sequencing: **Group D — Capacity worksheet AG Grid rebuilds** (5 surfaces, 1–2 weeks). The 5 capacity v-data-table worksheets at `views/CapacityPlanning/components/grids/{Production Lines,Orders,Standards,Calendar,Stock}Grid.vue` need to be rebuilt on `AGGridBase` using the patterns established in Groups A + B + C. (BOM master-detail is Group F.)
+**Group D in progress (1/5 surfaces).** Production Lines worksheet rebuilt on AGGridBase (Surface #9). Pattern established for the remaining 4 capacity worksheets.
+
+| Group D surface | Status | Composable |
+|---|---|---|
+| Production Lines (row 19) | ✅ Migrated | `useProductionLinesGridData.ts` |
+| Orders (row 20) | Pending | tbd |
+| Standards (row 21) | Pending | tbd |
+| Calendar (row 22) | Pending | tbd |
+| Stock (row 24) | Pending | tbd |
+| BOM (row 23) | Deferred → Group F (master-detail) | — |
+
+**11 surfaces remaining out of 20 total. Group A + B + C + D-1 = 9/20 complete.**
 
 ---
 
