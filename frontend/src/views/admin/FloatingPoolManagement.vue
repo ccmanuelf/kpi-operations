@@ -13,15 +13,10 @@
                 <v-icon left>mdi-help-circle</v-icon>
                 {{ $t('admin.floatingPool.howToUse') }}
               </v-btn>
-              <v-btn color="white" variant="outlined" @click="openAssignDialog">
-                <v-icon left>mdi-plus</v-icon>
-                {{ $t('admin.floatingPool.assignEmployee') }}
-              </v-btn>
             </div>
           </v-card-title>
 
           <v-card-text>
-            <!-- Summary Cards -->
             <v-row class="mb-4">
               <v-col cols="12" md="3">
                 <v-card variant="outlined" color="primary">
@@ -57,7 +52,6 @@
               </v-col>
             </v-row>
 
-            <!-- Simulation Insights Panel -->
             <v-expansion-panels v-model="insightsPanel" class="mb-4">
               <v-expansion-panel value="insights">
                 <v-expansion-panel-title>
@@ -78,7 +72,6 @@
                   </v-row>
 
                   <template v-else>
-                    <!-- Staffing Scenarios -->
                     <div v-if="insights.staffing_scenarios?.length" class="mb-4">
                       <div class="text-subtitle-2 mb-2">
                         <v-icon size="small" class="mr-1">mdi-account-group</v-icon>
@@ -111,7 +104,6 @@
                       </v-table>
                     </div>
 
-                    <!-- Recommendations -->
                     <div v-if="insights.recommendations?.length">
                       <div class="text-subtitle-2 mb-2">
                         <v-icon size="small" class="mr-1">mdi-lightbulb-outline</v-icon>
@@ -143,8 +135,8 @@
                         size="small"
                         variant="tonal"
                         color="primary"
-                        @click="fetchInsights"
                         :loading="loadingInsights"
+                        @click="fetchInsights"
                       >
                         <v-icon left size="small">mdi-refresh</v-icon>
                         {{ $t('common.refresh') }}
@@ -155,7 +147,6 @@
               </v-expansion-panel>
             </v-expansion-panels>
 
-            <!-- Filter Controls -->
             <v-row class="mb-3">
               <v-col cols="12" md="4">
                 <v-select
@@ -182,223 +173,87 @@
                 />
               </v-col>
               <v-col cols="12" md="4">
-                <v-btn color="primary" @click="fetchData" :loading="loading">
+                <v-btn color="primary" :loading="loading" @click="fetchData">
                   <v-icon left>mdi-refresh</v-icon>
                   {{ $t('common.refresh') }}
                 </v-btn>
               </v-col>
             </v-row>
 
-            <!-- Floating Pool Table -->
-            <v-data-table
-              :headers="tableHeaders"
-              :items="filteredEntries"
-              :loading="loading"
-              :items-per-page="10"
-              class="elevation-1"
-              :no-data-text="$t('common.noData')"
-            >
-              <template v-slot:item.status="{ item }">
-                <v-chip
-                  :color="item.current_assignment ? 'warning' : 'success'"
-                  size="small"
-                  variant="flat"
-                >
-                  {{ item.current_assignment ? $t('admin.floatingPool.assigned') : $t('admin.floatingPool.available') }}
-                </v-chip>
-              </template>
-
-              <template v-slot:item.current_assignment="{ item }">
-                <span v-if="item.current_assignment">
-                  {{ getClientName(item.current_assignment) }}
-                </span>
-                <span v-else class="text-grey">{{ $t('admin.floatingPool.notAssigned') }}</span>
-              </template>
-
-              <template v-slot:item.available_from="{ item }">
-                {{ formatDate(item.available_from) }}
-              </template>
-
-              <template v-slot:item.available_to="{ item }">
-                {{ formatDate(item.available_to) }}
-              </template>
-
-              <template v-slot:item.actions="{ item }">
-                <div class="d-flex gap-1">
-                  <v-btn
-                    v-if="!item.current_assignment"
-                    size="small"
-                    color="primary"
-                    variant="tonal"
-                    @click="openAssignDialog(item)"
-                  >
-                    <v-icon size="small">mdi-account-arrow-right</v-icon>
-                    {{ $t('admin.floatingPool.assign') }}
-                  </v-btn>
-                  <v-btn
-                    v-else
-                    size="small"
-                    color="warning"
-                    variant="tonal"
-                    @click="unassignEmployee(item)"
-                    :loading="unassigning === item.pool_id"
-                  >
-                    <v-icon size="small">mdi-account-remove</v-icon>
-                    {{ $t('admin.floatingPool.unassign') }}
-                  </v-btn>
-                  <v-btn
-                    size="small"
-                    color="info"
-                    variant="tonal"
-                    @click="openEditDialog(item)"
-                  >
-                    <v-icon size="small">mdi-pencil</v-icon>
-                  </v-btn>
-                </div>
-              </template>
-            </v-data-table>
+            <AGGridBase
+              :columnDefs="columnDefs"
+              :rowData="filteredEntries"
+              height="560px"
+              :pagination="true"
+              :paginationPageSize="25"
+              :enableExcelPaste="false"
+              entry-type="production"
+              @cell-value-changed="onCellValueChanged"
+            />
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
-    <!-- How-to Guide Dialog (extracted sub-component) -->
     <FloatingPoolGuideDialog v-model="showGuide" />
-
-    <!-- Assignment Dialog -->
-    <v-dialog v-model="assignDialog.show" max-width="500">
-      <v-card>
-        <v-card-title class="bg-primary">
-          <v-icon class="mr-2">mdi-account-arrow-right</v-icon>
-          {{ $t('admin.floatingPool.assignEmployee') }}
-        </v-card-title>
-        <v-card-text class="pt-4">
-          <v-alert
-            v-if="assignDialog.error"
-            type="error"
-            variant="tonal"
-            class="mb-4"
-            closable
-            @click:close="assignDialog.error = null"
-          >
-            {{ assignDialog.error }}
-          </v-alert>
-
-          <v-select
-            v-model="assignDialog.employee_id"
-            :items="availableEmployees"
-            :label="$t('admin.floatingPool.selectEmployee')"
-            item-title="employee_name"
-            item-value="employee_id"
-            variant="outlined"
-            :disabled="!!assignDialog.pool_id"
-            class="mb-3"
-          />
-
-          <v-select
-            v-model="assignDialog.client_id"
-            :items="clientOptions"
-            :label="$t('admin.floatingPool.selectClient')"
-            item-title="name"
-            item-value="client_id"
-            variant="outlined"
-            class="mb-3"
-            :rules="[v => !!v || $t('common.required')]"
-          />
-
-          <v-row>
-            <v-col cols="6">
-              <v-text-field
-                v-model="assignDialog.available_from"
-                :label="$t('admin.floatingPool.availableFrom')"
-                type="datetime-local"
-                variant="outlined"
-              />
-            </v-col>
-            <v-col cols="6">
-              <v-text-field
-                v-model="assignDialog.available_to"
-                :label="$t('admin.floatingPool.availableTo')"
-                type="datetime-local"
-                variant="outlined"
-              />
-            </v-col>
-          </v-row>
-
-          <v-textarea
-            v-model="assignDialog.notes"
-            :label="$t('common.notes')"
-            variant="outlined"
-            rows="2"
-          />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="assignDialog.show = false">
-            {{ $t('common.cancel') }}
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="flat"
-            @click="confirmAssignment"
-            :loading="assigning"
-            :disabled="!assignDialog.client_id"
-          >
-            {{ $t('admin.floatingPool.confirmAssignment') }}
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <!-- Snackbar for notifications -->
-    <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="3000">
-      {{ snackbar.message }}
-    </v-snackbar>
   </v-container>
 </template>
 
 <script setup>
+/**
+ * FloatingPoolManagement — Group H Surface #21 of the entry-interface audit.
+ *
+ * Migrated 2026-05-01 from a v-data-table list + 5-field assign /edit
+ * dialog to an inline AG Grid surface. Each row is a pool entry; pool
+ * membership is set elsewhere (employee admin), so this surface
+ * intentionally has no Add Row.
+ *
+ * Inline-edit policy (see useFloatingPoolGridData.ts):
+ *   - current_assignment (Client column): clear → POST /unassign;
+ *     set → POST /assign with the row's current dates + notes.
+ *   - available_from / available_to / notes on an assigned row: re-
+ *     fires /assign (legacy "edit" dialog also re-POSTed /assign).
+ *   - Same edits on an unassigned row: local-only.
+ *
+ * Action column: Unassign quick-action button when the row is
+ * assigned. Filters, summary cards, simulation insights expansion
+ * panel and How-to-Use guide dialog are preserved.
+ */
 import { onMounted } from 'vue'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
 import FloatingPoolGuideDialog from '@/components/admin/FloatingPoolGuideDialog.vue'
+import { useNotificationStore } from '@/stores/notificationStore'
+import { ref } from 'vue'
 import useFloatingPoolData from '@/composables/useFloatingPoolData'
-import useFloatingPoolForms from '@/composables/useFloatingPoolForms'
+import useFloatingPoolGridData from '@/composables/useFloatingPoolGridData'
 
-// Data composable: state, computed, fetch, helpers
+const notificationStore = useNotificationStore()
+const showGuide = ref(false)
+
 const {
   loading,
   loadingInsights,
+  entries,
   statusFilter,
   clientFilter,
-  snackbar,
   insightsPanel,
   insights,
   summary,
   utilizationPercent,
   statusOptions,
   clientOptions,
-  availableEmployees,
   filteredEntries,
-  tableHeaders,
-  showSnackbar,
-  getClientName,
-  formatDate,
   fetchData,
-  fetchInsights
+  fetchInsights,
 } = useFloatingPoolData()
 
-// Forms composable: dialogs, assign/unassign CRUD
-const {
-  assigning,
-  unassigning,
-  showGuide,
-  assignDialog,
-  openAssignDialog,
-  openEditDialog,
-  confirmAssignment,
-  unassignEmployee
-} = useFloatingPoolForms({ fetchData, showSnackbar })
+const { columnDefs, onCellValueChanged } = useFloatingPoolGridData({
+  entries,
+  clientOptions,
+  fetchData,
+  notify: notificationStore,
+})
 
-// Lifecycle
 onMounted(() => {
   fetchData()
   fetchInsights()
@@ -408,5 +263,8 @@ onMounted(() => {
 <style scoped>
 .gap-1 {
   gap: 4px;
+}
+.gap-2 {
+  gap: 8px;
 }
 </style>

@@ -1785,7 +1785,15 @@
       "guideOverview": "Resumen",
       "guideHowTo": "Cómo Usar",
       "guideWorkflows": "Flujos de Trabajo",
-      "guideInsights": "Análisis de Simulación"
+      "guideInsights": "Análisis de Simulación",
+      "actions": "Acciones",
+      "notes": "Notas",
+      "errors": {
+        "assignFailed": "No se pudo asignar al empleado",
+        "unassignFailed": "No se pudo desasignar al empleado",
+        "updateFailed": "No se pudo actualizar la asignación",
+        "noPoolId": "No se puede editar una fila sin entrada de pool"
+      }
     },
     "workflowConfig": {
       "title": "Configuración de Flujo de Trabajo",

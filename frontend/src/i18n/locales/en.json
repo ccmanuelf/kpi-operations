@@ -1752,7 +1752,15 @@
       "guideOverview": "Overview",
       "guideHowTo": "How To Use",
       "guideWorkflows": "Workflows",
-      "guideInsights": "Simulation Insights"
+      "guideInsights": "Simulation Insights",
+      "actions": "Actions",
+      "notes": "Notes",
+      "errors": {
+        "assignFailed": "Failed to assign employee",
+        "unassignFailed": "Failed to unassign employee",
+        "updateFailed": "Failed to update assignment",
+        "noPoolId": "Cannot edit a row without a pool entry"
+      }
     },
     "workflowConfig": {
       "title": "Workflow Configuration",
