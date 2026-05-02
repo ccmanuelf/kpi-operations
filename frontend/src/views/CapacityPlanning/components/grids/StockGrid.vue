@@ -63,119 +63,28 @@
         </v-col>
       </v-row>
 
-      <v-data-table
-        :headers="headers"
-        :items="stock"
-        :items-per-page="15"
-        :search="searchTerm"
-        :no-data-text="t('common.noData')"
-        class="elevation-1"
+      <!-- Search filter -->
+      <v-text-field
+        v-model="searchTerm"
+        prepend-inner-icon="mdi-magnify"
+        :label="t('capacityPlanning.stock.searchItems')"
+        variant="outlined"
         density="compact"
-      >
-        <template v-slot:top>
-          <v-text-field
-            v-model="searchTerm"
-            prepend-inner-icon="mdi-magnify"
-            :label="t('capacityPlanning.stock.searchItems')"
-            variant="outlined"
-            density="compact"
-            class="ma-2"
-            style="max-width: 300px"
-            clearable
-          />
-        </template>
+        class="mb-3"
+        style="max-width: 320px"
+        clearable
+      />
 
-        <template v-slot:item.snapshot_date="{ item, index }">
-          <v-text-field
-            v-model="item.snapshot_date"
-            type="date"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.item_code="{ item, index }">
-          <v-text-field
-            v-model="item.item_code"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.item_description="{ item, index }">
-          <v-text-field
-            v-model="item.item_description"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.on_hand_quantity="{ item, index }">
-          <v-text-field
-            v-model.number="item.on_hand_quantity"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="updateAvailable(item, index)"
-          />
-        </template>
-
-        <template v-slot:item.allocated_quantity="{ item, index }">
-          <v-text-field
-            v-model.number="item.allocated_quantity"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="updateAvailable(item, index)"
-          />
-        </template>
-
-        <template v-slot:item.on_order_quantity="{ item, index }">
-          <v-text-field
-            v-model.number="item.on_order_quantity"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.available_quantity="{ item }">
-          <span :class="item.available_quantity < 0 ? 'text-error' : 'text-success'">
-            {{ item.available_quantity }}
-          </span>
-        </template>
-
-        <template v-slot:item.unit_of_measure="{ item, index }">
-          <v-select
-            v-model="item.unit_of_measure"
-            :items="uomOptions"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.actions="{ index }">
-          <v-btn
-            icon="mdi-delete"
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="removeRow(index)"
-          />
-        </template>
-      </v-data-table>
+      <AGGridBase
+        :columnDefs="columnDefs"
+        :rowData="filteredStock"
+        height="500px"
+        :pagination="true"
+        :paginationPageSize="25"
+        :enableExcelPaste="false"
+        entry-type="production"
+        @cell-value-changed="onCellValueChanged"
+      />
 
       <div v-if="!stock.length" class="text-center pa-4 text-grey">
         {{ t('capacityPlanning.stock.noData') }}
@@ -207,100 +116,54 @@
 
 <script setup>
 /**
- * StockGrid - Editable grid for inventory stock snapshots.
+ * StockGrid - AG Grid surface for inventory stock snapshots.
  *
- * Manages stock item records (snapshot date, item code, description, on-hand,
- * allocated, on-order, available quantities, UOM). Features a staleness warning
- * when snapshot data exceeds the configured alert threshold, summary stat cards,
- * search filtering, and CSV import. Available quantity auto-calculates as
- * on_hand - allocated.
+ * Migrated 2026-05-01 from v-data-table + v-text-field slots to AGGridBase
+ * as part of Group D Surface #10 of the entry-interface audit. Per
+ * spec-owner R1: forms-disguised-as-tables are not compliant.
  *
- * Store dependency: useCapacityPlanningStore (worksheets.stockSnapshot, worksheets.dashboardInputs)
- * No props or emits -- all state managed via store.
+ * Preserves staleness warning, summary stats, search filter, and CSV import
+ * via textarea paste. available_quantity auto-recomputed when on_hand or
+ * allocated changes.
  */
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
+import useStockGridData from '@/composables/useStockGridData'
 
 const { t } = useI18n()
-const store = useCapacityPlanningStore()
 
 const showImportDialog = ref(false)
 const csvData = ref('')
-const searchTerm = ref('')
 
-const headers = computed(() => [
-  { title: t('capacityPlanning.stock.headers.date'), key: 'snapshot_date', width: '120px' },
-  { title: t('capacityPlanning.stock.headers.itemCode'), key: 'item_code', width: '120px' },
-  { title: t('capacityPlanning.stock.headers.description'), key: 'item_description', width: '200px' },
-  { title: t('capacityPlanning.stock.headers.onHand'), key: 'on_hand_quantity', width: '100px' },
-  { title: t('capacityPlanning.stock.headers.allocated'), key: 'allocated_quantity', width: '100px' },
-  { title: t('capacityPlanning.stock.headers.onOrder'), key: 'on_order_quantity', width: '100px' },
-  { title: t('capacityPlanning.stock.headers.available'), key: 'available_quantity', width: '100px' },
-  { title: t('capacityPlanning.stock.headers.uom'), key: 'unit_of_measure', width: '80px' },
-  { title: t('capacityPlanning.stock.headers.actions'), key: 'actions', width: '80px', sortable: false }
-])
-
-const uomOptions = ['EA', 'M', 'YD', 'KG', 'LB', 'PC', 'SET']
-
-const stock = computed(() => store.worksheets.stockSnapshot.data)
-
-const stalenessWarning = computed(() => {
-  if (!stock.value.length) return null
-  const alertDays = store.worksheets.dashboardInputs.data.shortage_alert_days || 7
-  const now = new Date()
-  const dates = stock.value
-    .map(s => s.snapshot_date)
-    .filter(Boolean)
-    .map(d => new Date(d))
-  if (!dates.length) return null
-  const mostRecent = new Date(Math.max(...dates))
-  const daysSince = Math.floor((now - mostRecent) / (1000 * 60 * 60 * 24))
-  if (daysSince > alertDays) {
-    return t('capacityPlanning.stock.stalenessWarning', { days: daysSince, date: mostRecent.toISOString().slice(0, 10) })
-  }
-  return null
-})
-
-const totalOnHand = computed(() =>
-  stock.value.reduce((sum, s) => sum + (parseInt(s.on_hand_quantity) || 0), 0)
-)
-
-const totalAllocated = computed(() =>
-  stock.value.reduce((sum, s) => sum + (parseInt(s.allocated_quantity) || 0), 0)
-)
-
-const totalAvailable = computed(() =>
-  stock.value.reduce((sum, s) => sum + (parseInt(s.available_quantity) || 0), 0)
-)
-
-const addRow = () => store.addRow('stockSnapshot')
-const removeRow = (index) => store.removeRow('stockSnapshot', index)
-
-const updateAvailable = (item, index) => {
-  item.available_quantity = (item.on_hand_quantity || 0) - (item.allocated_quantity || 0)
-  markDirty(index)
-}
-
-const markDirty = () => {
-  store.worksheets.stockSnapshot.dirty = true
-}
+const {
+  stock,
+  filteredStock,
+  searchTerm,
+  totalOnHand,
+  totalAllocated,
+  totalAvailable,
+  stalenessWarning,
+  columnDefs,
+  addRow,
+  onCellValueChanged,
+  importData,
+} = useStockGridData()
 
 const importCSV = () => {
   if (!csvData.value.trim()) return
 
   const lines = csvData.value.trim().split('\n')
-  const headerLine = lines[0].split(',').map(h => h.trim())
+  const headerLine = lines[0].split(',').map((h) => h.trim())
 
   const today = new Date().toISOString().slice(0, 10)
 
-  const data = lines.slice(1).map(line => {
-    const values = line.split(',').map(v => v.trim())
+  const data = lines.slice(1).map((line) => {
+    const values = line.split(',').map((v) => v.trim())
     const row = { snapshot_date: today, unit_of_measure: 'EA' }
     headerLine.forEach((h, i) => {
       row[h] = values[i] || ''
     })
-    // Convert quantities to numbers
     row.on_hand_quantity = parseInt(row.on_hand_quantity) || 0
     row.allocated_quantity = parseInt(row.allocated_quantity) || 0
     row.on_order_quantity = parseInt(row.on_order_quantity) || 0
@@ -308,7 +171,7 @@ const importCSV = () => {
     return row
   })
 
-  store.importData('stockSnapshot', data)
+  importData(data)
   showImportDialog.value = false
   csvData.value = ''
 }

@@ -118,7 +118,7 @@ The five techniques specified in the audit prompt were applied in full.
 | 21 | Capacity — Standards (worksheet grid) | `frontend/src/views/CapacityPlanning/components/grids/StandardsGrid.vue` | tab inside `/capacity-planning` | Production standards | `POST /capacity/standards`, `PUT /capacity/standards/{id}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern as row 19. Migrate to AG Grid. |
 | 22 | Capacity — Calendar grid | `frontend/src/views/CapacityPlanning/components/grids/CalendarGrid.vue` | tab inside `/capacity-planning` | Calendar / shift availability per date | `POST /capacity/calendar`, `PUT /capacity/calendar/{id}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern as row 19. Migrate to AG Grid; consider date-pinned column structure. |
 | 23 | Capacity — BOM grid | `frontend/src/views/CapacityPlanning/components/grids/BOMGrid.vue` | tab inside `/capacity-planning` | Bill of materials | `POST /capacity/bom`, `PUT /capacity/bom/{id}`, `POST /capacity/bom/{id}/components`, `PUT /capacity/bom/{id}/components/{cid}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern. Migrate to AG Grid. Component-level mutations (orphaned endpoints, see 6.7) should be folded into a master-detail grid in this migration. |
-| 24 | Capacity — Stock grid | `frontend/src/views/CapacityPlanning/components/grids/StockGrid.vue` | tab inside `/capacity-planning` | Component stock snapshots | `POST /capacity/stock`, `PUT /capacity/stock/{id}` | Grid (v-data-table) | **Non-compliant** (per R1) | Same pattern as row 19. Migrate to AG Grid. |
+| 24 | Capacity — Stock grid | `frontend/src/views/CapacityPlanning/components/grids/StockGrid.vue` | tab inside `/capacity-planning` | Component stock snapshots | `POST /capacity/stock`, `PUT /capacity/stock/{id}` (persistence centralised via `useCapacityPlanningStore.saveWorksheet('stockSnapshot')`) | Grid (AG Grid Community) | **Compliant** (migrated 2026-05-01) | Rebuilt on `AGGridBase` with composable `useStockGridData.ts`. Native AG Grid editors per backend `StockSnapshotCreate` schema: `agDateStringCellEditor` for snapshot_date; `agTextCellEditor` for item_code/item_description; `agNumberCellEditor` (min:0, precision:2) for on_hand_quantity, allocated_quantity, on_order_quantity; `agSelectCellEditor` with `STOCK_UOM_OPTIONS` for unit_of_measure; available_quantity is read-only and auto-recomputed via `onCellValueChanged` when on_hand or allocated changes. Preserves staleness warning, summary stats cards, search filter, and CSV-paste import dialog. Tests in `useStockGridData.spec.ts` (24 tests). |
 | 25 | Capacity — Dashboard Inputs panel | `frontend/src/views/CapacityPlanning/components/panels/DashboardInputsPanel.vue` | tab inside `/capacity-planning` | Workbook-level config (planning horizon, alert thresholds, default eff) | `useCapacityPlanningStore` save (eventually persists to `/capacity/...`) | Form | **Exception** | Spec Exception 2 (admin config, scoped to a single workbook owner). 4 `v-text-field`/slider inputs (lines 21-60). |
 | 26 | Capacity — Schedule panel | `frontend/src/views/CapacityPlanning/components/panels/SchedulePanel.vue` | tab inside `/capacity-planning` | Schedule date-range filter + commit dialog | `POST /capacity/schedules`, `POST /capacity/scenarios`, `POST /capacity/scenarios/{id}/...` | Mixed | **Exception** | Spec Exception 3 (filter/parameter inputs at lines 148-164) + Exception 4 (commit confirmation in `ScheduleCommitDialog.vue`). Schedule commit is an action with notes; not free-form data entry. |
 | 27 | Capacity — Capacity Analysis panel | `frontend/src/views/CapacityPlanning/components/panels/CapacityAnalysisPanel.vue` | tab inside `/capacity-planning` | Analysis filter inputs + run analysis | `POST /capacity/analysis/...` | Form (parameters) | **Exception** | Spec Exception 3. Inputs at lines 147, 155 are analysis parameters. |
@@ -208,18 +208,18 @@ Corrected:
 
 **Group C complete (1/1 surface, option a).** MyShift quick-action dialogs reconciled — submit handlers send Pydantic-aligned payloads via Group A reconciliation pattern; product_id and shift_id resolved client-side via `/products` and `/shifts` reference data; UI downtime reasons mapped to `DOWNTIME_REASON_CODES` enum. **12 surfaces remaining out of 20 total. Group A + B + C = 8/20 complete.**
 
-**Group D in progress (1/5 surfaces).** Production Lines worksheet rebuilt on AGGridBase (Surface #9). Pattern established for the remaining 4 capacity worksheets.
+**Group D in progress (2/5 surfaces).** Production Lines + Stock rebuilt on AGGridBase. Pattern established for the remaining 3 capacity worksheets.
 
 | Group D surface | Status | Composable |
 |---|---|---|
 | Production Lines (row 19) | ✅ Migrated | `useProductionLinesGridData.ts` |
-| Orders (row 20) | Pending | tbd |
+| Stock (row 24) | ✅ Migrated | `useStockGridData.ts` |
 | Standards (row 21) | Pending | tbd |
 | Calendar (row 22) | Pending | tbd |
-| Stock (row 24) | Pending | tbd |
+| Orders (row 20) | Pending | tbd |
 | BOM (row 23) | Deferred → Group F (master-detail) | — |
 
-**11 surfaces remaining out of 20 total. Group A + B + C + D-1 = 9/20 complete.**
+**10 surfaces remaining out of 20 total. Group A + B + C + D-2 = 10/20 complete (50%).**
 
 ---
 
