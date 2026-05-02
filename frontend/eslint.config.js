@@ -87,6 +87,13 @@ export default [
     files: ['**/*.ts'],
     languageOptions: {
       parser: tsParser
+    },
+    rules: {
+      // ESLint's no-undef doesn't understand TypeScript types and
+      // false-positives on type-only references (e.g. `as BlobPart`).
+      // TypeScript itself catches undefined identifiers; per the
+      // @typescript-eslint docs this rule is redundant for .ts files.
+      'no-undef': 'off'
     }
   },
   {
