@@ -4,12 +4,7 @@
       <v-icon start>mdi-target</v-icon>
       {{ t('capacityPlanning.kpiTracking.title') }}
       <v-spacer />
-      <v-btn
-        color="primary"
-        size="small"
-        variant="tonal"
-        @click="addKPI"
-      >
+      <v-btn color="primary" size="small" variant="tonal" @click="addRow">
         <v-icon start>mdi-plus</v-icon>
         {{ t('capacityPlanning.kpiTracking.addKpi') }}
       </v-btn>
@@ -61,83 +56,18 @@
         </v-col>
       </v-row>
 
-      <!-- KPI Table -->
-      <v-data-table
+      <!-- KPI Grid -->
+      <AGGridBase
         v-if="kpiData.length"
-        :headers="headers"
-        :items="kpiData"
-        :items-per-page="10"
-        :no-data-text="t('common.noData')"
-        class="elevation-1"
-        density="compact"
-      >
-        <template v-slot:item.kpi_name="{ item, index }">
-          <v-text-field
-            v-model="item.kpi_name"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.target_value="{ item, index }">
-          <v-text-field
-            v-model.number="item.target_value"
-            type="number"
-            density="compact"
-            variant="plain"
-            hide-details
-            @update:modelValue="markDirty(index)"
-          />
-        </template>
-
-        <template v-slot:item.actual_value="{ item }">
-          <span v-if="item.actual_value !== null">
-            {{ item.actual_value }}
-          </span>
-          <span v-else class="text-grey">--</span>
-        </template>
-
-        <template v-slot:item.variance_percent="{ item }">
-          <v-chip
-            v-if="item.variance_percent !== null"
-            :color="getVarianceColor(item.variance_percent)"
-            size="small"
-            variant="tonal"
-          >
-            {{ item.variance_percent > 0 ? '+' : '' }}{{ item.variance_percent }}%
-          </v-chip>
-          <span v-else class="text-grey">--</span>
-        </template>
-
-        <template v-slot:item.status="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status)"
-            size="small"
-            variant="tonal"
-          >
-            {{ item.status }}
-          </v-chip>
-        </template>
-
-        <template v-slot:item.period="{ item }">
-          <span v-if="item.period_start && item.period_end">
-            {{ formatDate(item.period_start) }} - {{ formatDate(item.period_end) }}
-          </span>
-          <span v-else class="text-grey">--</span>
-        </template>
-
-        <template v-slot:item.actions="{ index }">
-          <v-btn
-            icon="mdi-delete"
-            size="x-small"
-            variant="text"
-            color="error"
-            @click="removeRow(index)"
-          />
-        </template>
-      </v-data-table>
+        :columnDefs="columnDefs"
+        :rowData="kpiData"
+        height="500px"
+        :pagination="true"
+        :paginationPageSize="20"
+        :enableExcelPaste="false"
+        entry-type="production"
+        @cell-value-changed="onCellValueChanged"
+      />
 
       <!-- Empty State -->
       <div v-else class="text-center pa-8 text-grey">
@@ -146,18 +76,13 @@
         <div class="text-body-2 mt-2">
           {{ t('capacityPlanning.kpiTracking.noCommitmentsDescription') }}
         </div>
-        <v-btn
-          color="primary"
-          variant="tonal"
-          class="mt-4"
-          @click="addKPI"
-        >
+        <v-btn color="primary" variant="tonal" class="mt-4" @click="addRow">
           {{ t('capacityPlanning.kpiTracking.addKpi') }}
         </v-btn>
       </div>
     </v-card-text>
 
-    <!-- Load Actuals Dialog -->
+    <!-- Load Actuals Dialog (Exception 3 — parameter dialog) -->
     <v-dialog v-model="showLoadActualsDialog" max-width="400">
       <v-card>
         <v-card-title>{{ t('capacityPlanning.kpiTracking.loadKpiActuals') }}</v-card-title>
@@ -181,19 +106,27 @@
 
 <script setup>
 /**
- * KPITrackingPanel - Tracks KPI commitments with target vs actual comparison.
+ * KPITrackingPanel - AG Grid surface for KPI commitment tracking
+ * (target vs actual + variance + status).
  *
- * Displays KPI metrics in an editable table with target values, loaded actuals,
- * variance percentages, and status chips. Summary cards show counts of on-target,
- * off-target, and critical KPIs. Supports manual KPI creation and period-based
- * actuals loading (current/last week/month).
+ * Migrated 2026-05-01 from v-data-table + v-text-field slots to
+ * AGGridBase as part of Group G Surface #18 (final Group G surface)
+ * of the entry-interface audit.
  *
- * Store dependency: useCapacityPlanningStore (worksheets.kpiTracking)
- * No props or emits -- all state managed via store.
+ * Editable fields: kpi_name (text), target_value (numeric).
+ * Read-only display fields with chip renderers: actual_value,
+ * variance_percent, status, period (formatted date range).
+ * actual_value/variance_percent/status are populated by the store's
+ * loadKPIActuals() action against backend KPI actuals data.
+ *
+ * The "Load Actuals" period-picker dialog remains as a parameter
+ * dialog (Exception 3).
  */
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import AGGridBase from '@/components/grids/AGGridBase.vue'
 import { useCapacityPlanningStore } from '@/stores/capacityPlanningStore'
+import useKPITrackingGridData from '@/composables/useKPITrackingGridData'
 
 const { t } = useI18n()
 const store = useCapacityPlanningStore()
@@ -201,65 +134,22 @@ const store = useCapacityPlanningStore()
 const showLoadActualsDialog = ref(false)
 const selectedPeriod = ref('current_week')
 
-const headers = computed(() => [
-  { title: t('capacityPlanning.kpiTracking.headers.kpiName'), key: 'kpi_name', width: '200px' },
-  { title: t('capacityPlanning.kpiTracking.headers.target'), key: 'target_value', width: '100px' },
-  { title: t('capacityPlanning.kpiTracking.headers.actual'), key: 'actual_value', width: '100px' },
-  { title: t('capacityPlanning.kpiTracking.headers.variance'), key: 'variance_percent', width: '100px' },
-  { title: t('capacityPlanning.kpiTracking.headers.status'), key: 'status', width: '100px' },
-  { title: t('capacityPlanning.kpiTracking.headers.period'), key: 'period', width: '180px' },
-  { title: t('capacityPlanning.kpiTracking.headers.actions'), key: 'actions', width: '80px', sortable: false }
-])
-
 const periodOptions = computed(() => [
   { title: t('capacityPlanning.kpiTracking.periods.currentWeek'), value: 'current_week' },
   { title: t('capacityPlanning.kpiTracking.periods.lastWeek'), value: 'last_week' },
   { title: t('capacityPlanning.kpiTracking.periods.currentMonth'), value: 'current_month' },
-  { title: t('capacityPlanning.kpiTracking.periods.lastMonth'), value: 'last_month' }
+  { title: t('capacityPlanning.kpiTracking.periods.lastMonth'), value: 'last_month' },
 ])
 
-const kpiData = computed(() => store.worksheets.kpiTracking.data)
-
-const onTargetCount = computed(() =>
-  kpiData.value.filter(k => Math.abs(k.variance_percent || 0) <= 5).length
-)
-
-const offTargetCount = computed(() =>
-  kpiData.value.filter(k => Math.abs(k.variance_percent || 0) > 5 && Math.abs(k.variance_percent || 0) <= 10).length
-)
-
-const criticalCount = computed(() =>
-  kpiData.value.filter(k => Math.abs(k.variance_percent || 0) > 10).length
-)
-
-const getVarianceColor = (variance) => {
-  const abs = Math.abs(variance)
-  if (abs <= 5) return 'success'
-  if (abs <= 10) return 'warning'
-  return 'error'
-}
-
-const getStatusColor = (status) => {
-  const colors = {
-    PENDING: 'grey',
-    ON_TRACK: 'success',
-    AT_RISK: 'warning',
-    OFF_TARGET: 'error',
-    ACHIEVED: 'success'
-  }
-  return colors[status] || 'grey'
-}
-
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString()
-}
-
-const addKPI = () => store.addRow('kpiTracking')
-const removeRow = (index) => store.removeRow('kpiTracking', index)
-const markDirty = () => {
-  store.worksheets.kpiTracking.dirty = true
-}
+const {
+  kpiData,
+  onTargetCount,
+  offTargetCount,
+  criticalCount,
+  columnDefs,
+  addRow,
+  onCellValueChanged,
+} = useKPITrackingGridData()
 
 const loadActuals = () => {
   showLoadActualsDialog.value = true
@@ -270,6 +160,7 @@ const doLoadActuals = async () => {
   try {
     await store.loadKPIActuals(selectedPeriod.value)
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Failed to load actuals:', error)
   }
 }
