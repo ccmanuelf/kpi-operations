@@ -2239,8 +2239,12 @@
     "errors": {
       "loadDowntime": "Failed to load downtime data",
       "loadProduction": "Failed to load production data",
-      "loadRoster": "Failed to load shift roster"
+      "loadRoster": "Failed to load shift roster",
+      "loadWorkOrders": "Failed to load work orders for the shift"
     },
+    "openWorkOrders": "Open Work Orders",
+    "noWorkOrdersForShift": "No active work orders for this client.",
+    "overdue": "Overdue",
     "resolveDowntime": "Resolve Downtime",
     "endTime": "End Time",
     "rootCause": "Root Cause",

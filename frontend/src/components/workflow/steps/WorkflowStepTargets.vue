@@ -22,52 +22,57 @@
           </v-col>
           <v-col cols="6" md="3">
             <div class="text-center">
-              <div class="text-h4 text-warning">{{ highPriorityCount }}</div>
-              <div class="text-caption text-grey">{{ $t('workflow.highPriority') }}</div>
+              <div class="text-h4 text-success">{{ avgProgress }}%</div>
+              <div class="text-caption text-grey">{{ $t('workflow.progress') }}</div>
             </div>
           </v-col>
           <v-col cols="6" md="3">
             <div class="text-center">
-              <div class="text-h4 text-success">{{ targetEfficiency }}%</div>
-              <div class="text-caption text-grey">{{ $t('workflow.targetEfficiencyPercent') }}</div>
+              <div class="text-h4 text-warning">{{ overdueCount }}</div>
+              <div class="text-caption text-grey">{{ $t('workflow.overdue') }}</div>
             </div>
           </v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
-    <!-- Work Orders Table -->
+    <!-- Work Orders Table (read-only review) -->
     <v-card variant="outlined" class="mb-4">
       <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
         <v-icon class="mr-2" size="20">mdi-clipboard-list</v-icon>
         {{ $t('workflow.workOrdersForShift') }}
         <v-spacer />
-        <v-chip size="small" variant="tonal" color="primary">
-          {{ $t('workflow.orders', { count: workOrders.length }) }}
-        </v-chip>
+        <v-btn
+          size="small"
+          color="primary"
+          variant="elevated"
+          :to="{ path: '/work-orders' }"
+          target="_blank"
+        >
+          <v-icon start size="16">mdi-open-in-new</v-icon>
+          {{ $t('workflow.openWorkOrders') }}
+        </v-btn>
       </v-card-title>
 
       <v-card-text class="pa-0">
         <v-skeleton-loader v-if="loading" type="table-tbody" />
+        <v-alert
+          v-else-if="workOrders.length === 0"
+          type="info"
+          variant="tonal"
+          class="ma-3"
+        >
+          {{ $t('workflow.noWorkOrdersForShift') }}
+        </v-alert>
         <v-data-table
           v-else
           :headers="headers"
           :items="workOrders"
-          :items-per-page="5"
+          :items-per-page="-1"
           :no-data-text="$t('common.noData')"
           density="compact"
           class="work-orders-table"
         >
-          <template v-slot:item.priority="{ item }">
-            <v-chip
-              :color="getPriorityColor(item.priority)"
-              size="x-small"
-              variant="flat"
-            >
-              {{ item.priority }}
-            </v-chip>
-          </template>
-
           <template v-slot:item.dueDate="{ item }">
             <span :class="{ 'text-error': isOverdue(item.dueDate) }">
               {{ formatDate(item.dueDate) }}
@@ -87,53 +92,7 @@
               <span class="text-caption">{{ item.progress }}%</span>
             </div>
           </template>
-
-          <template v-slot:item.actions="{ item }">
-            <v-btn
-              icon
-              size="x-small"
-              variant="text"
-              @click="viewWorkOrder(item)"
-            >
-              <v-icon size="16">mdi-eye</v-icon>
-            </v-btn>
-          </template>
         </v-data-table>
-      </v-card-text>
-    </v-card>
-
-    <!-- Material Availability -->
-    <v-card variant="outlined" class="mb-4">
-      <v-card-title class="d-flex align-center bg-grey-lighten-4 py-2">
-        <v-icon class="mr-2" size="20">mdi-package-variant</v-icon>
-        {{ $t('workflow.materialAvailability') }}
-      </v-card-title>
-      <v-card-text>
-        <v-alert
-          v-if="materialShortages.length === 0"
-          type="success"
-          variant="tonal"
-          density="compact"
-        >
-          <v-icon>mdi-check-circle</v-icon>
-          {{ $t('workflow.allMaterialsAvailable') }}
-        </v-alert>
-
-        <v-list v-else density="compact">
-          <v-list-item
-            v-for="shortage in materialShortages"
-            :key="shortage.id"
-            class="bg-red-lighten-5 mb-2 rounded"
-          >
-            <template v-slot:prepend>
-              <v-icon color="error">mdi-alert</v-icon>
-            </template>
-            <v-list-item-title>{{ shortage.material }}</v-list-item-title>
-            <v-list-item-subtitle>
-              WO: {{ shortage.workOrder }} - Need {{ shortage.needed }}, Have {{ shortage.available }}
-            </v-list-item-subtitle>
-          </v-list-item>
-        </v-list>
       </v-card-text>
     </v-card>
 
@@ -145,7 +104,7 @@
       variant="outlined"
       rows="3"
       class="mb-4"
-      @update:model-value="handleNotesUpdate"
+      @update:model-value="emitUpdate"
     />
 
     <!-- Confirmation -->
@@ -155,107 +114,69 @@
       color="primary"
       @update:model-value="handleConfirm"
     />
-
-    <!-- Work Order Detail Dialog -->
-    <v-dialog v-model="showDetailDialog" max-width="600">
-      <v-card v-if="selectedWorkOrder">
-        <v-card-title class="d-flex align-center">
-          <v-icon class="mr-2">mdi-clipboard-text</v-icon>
-          {{ $t('workflow.workOrder') }}: {{ selectedWorkOrder.id }}
-        </v-card-title>
-        <v-card-text>
-          <v-simple-table density="compact">
-            <tbody>
-              <tr>
-                <td class="text-grey">{{ $t('workflow.product') }}</td>
-                <td>{{ selectedWorkOrder.product }}</td>
-              </tr>
-              <tr>
-                <td class="text-grey">{{ $t('workflow.customer') }}</td>
-                <td>{{ selectedWorkOrder.customer }}</td>
-              </tr>
-              <tr>
-                <td class="text-grey">{{ $t('workflow.targetQuantity') }}</td>
-                <td>{{ selectedWorkOrder.targetQuantity }}</td>
-              </tr>
-              <tr>
-                <td class="text-grey">{{ $t('workflow.completed') }}</td>
-                <td>{{ selectedWorkOrder.completedQuantity }}</td>
-              </tr>
-              <tr>
-                <td class="text-grey">{{ $t('workflow.dueDate') }}</td>
-                <td>{{ formatDate(selectedWorkOrder.dueDate) }}</td>
-              </tr>
-              <tr>
-                <td class="text-grey">{{ $t('workflow.priority') }}</td>
-                <td>
-                  <v-chip :color="getPriorityColor(selectedWorkOrder.priority)" size="small">
-                    {{ selectedWorkOrder.priority }}
-                  </v-chip>
-                </td>
-              </tr>
-            </tbody>
-          </v-simple-table>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn variant="text" @click="showDetailDialog = false">{{ $t('common.close') }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
 <script setup>
+/**
+ * WorkflowStepTargets — shift-start review checkpoint.
+ *
+ * Migrated 2026-05-01 from broken-endpoint mock-fallback pattern to a
+ * canonical read-only checkpoint as part of Group G Surface #17 of the
+ * entry-interface audit. The previous step targeted nonexistent
+ * /work-orders/shift-queue and /materials/availability endpoints and
+ * silently substituted hard-coded mock data. Same anti-pattern as the
+ * Group B wizard steps; same option (c) treatment applied here.
+ *
+ * Now fetches the canonical GET /work-orders filtered by client and
+ * (optionally) status, maps WorkOrderResponse fields to display
+ * shape, and surfaces fetch errors via useNotificationStore. Materials
+ * section removed (no backend representation today).
+ */
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/authStore'
+import { useKPIStore } from '@/stores/kpi'
+import { useNotificationStore } from '@/stores/notificationStore'
 
 const { t } = useI18n()
-
 const emit = defineEmits(['complete', 'update'])
 
-// State
+const authStore = useAuthStore()
+const kpiStore = useKPIStore()
+const notificationStore = useNotificationStore()
+
 const loading = ref(true)
 const confirmed = ref(false)
 const notes = ref('')
 const workOrders = ref([])
-const materialShortages = ref([])
-const showDetailDialog = ref(false)
-const selectedWorkOrder = ref(null)
 
-// Table headers
 const headers = computed(() => [
-  { title: t('workflow.workOrder'), key: 'id', width: '120px' },
+  { title: t('workflow.workOrder'), key: 'id', width: '140px' },
   { title: t('workflow.product'), key: 'product' },
-  { title: t('workflow.priority'), key: 'priority', width: '100px' },
-  { title: t('common.target'), key: 'targetQuantity', width: '80px' },
-  { title: t('workflow.dueDate'), key: 'dueDate', width: '100px' },
-  { title: t('workflow.progress'), key: 'progress', width: '140px' },
-  { title: '', key: 'actions', width: '50px', sortable: false }
+  { title: t('common.target'), key: 'targetQuantity', width: '100px' },
+  { title: t('workflow.completed'), key: 'completedQuantity', width: '110px' },
+  { title: t('workflow.dueDate'), key: 'dueDate', width: '110px' },
+  { title: t('workflow.progress'), key: 'progress', width: '160px' },
 ])
 
-// Computed
-const totalUnits = computed(() => {
-  return workOrders.value.reduce((sum, wo) => sum + (wo.targetQuantity - wo.completedQuantity), 0)
+const totalUnits = computed(() =>
+  workOrders.value.reduce(
+    (sum, wo) => sum + Math.max(0, (wo.targetQuantity || 0) - (wo.completedQuantity || 0)),
+    0,
+  ),
+)
+
+const avgProgress = computed(() => {
+  if (workOrders.value.length === 0) return 0
+  const sum = workOrders.value.reduce((s, wo) => s + (wo.progress || 0), 0)
+  return Math.round(sum / workOrders.value.length)
 })
 
-const highPriorityCount = computed(() => {
-  return workOrders.value.filter(wo => wo.priority === 'High' || wo.priority === 'Critical').length
-})
-
-const targetEfficiency = computed(() => 85) // This would come from configuration
-
-// Methods
-const getPriorityColor = (priority) => {
-  const colors = {
-    Critical: 'error',
-    High: 'warning',
-    Medium: 'info',
-    Low: 'grey'
-  }
-  return colors[priority] || 'grey'
-}
+const overdueCount = computed(
+  () => workOrders.value.filter((wo) => isOverdue(wo.dueDate)).length,
+)
 
 const getProgressColor = (progress) => {
   if (progress >= 80) return 'success'
@@ -276,13 +197,14 @@ const isOverdue = (dateString) => {
   return date < new Date()
 }
 
-const viewWorkOrder = (workOrder) => {
-  selectedWorkOrder.value = workOrder
-  showDetailDialog.value = true
-}
-
-const handleNotesUpdate = () => {
-  emit('update', { notes: notes.value, isValid: confirmed.value })
+const emitUpdate = () => {
+  emit('update', {
+    workOrders: workOrders.value,
+    totalUnits: totalUnits.value,
+    avgProgress: avgProgress.value,
+    notes: notes.value,
+    isValid: confirmed.value,
+  })
 }
 
 const handleConfirm = (value) => {
@@ -290,32 +212,44 @@ const handleConfirm = (value) => {
     emit('complete', {
       workOrders: workOrders.value,
       totalUnits: totalUnits.value,
-      notes: notes.value
+      notes: notes.value,
     })
   }
-  emit('update', { isValid: value })
+  emitUpdate()
+}
+
+const mapWorkOrder = (wo) => {
+  const target = Number(wo.planned_quantity) || 0
+  const completed = Number(wo.actual_quantity) || 0
+  const progress = target > 0 ? Math.round((completed / target) * 100) : 0
+  return {
+    id: wo.work_order_id,
+    product: wo.style_model || '',
+    targetQuantity: target,
+    completedQuantity: completed,
+    dueDate: wo.planned_ship_date || wo.expected_date || wo.required_date || null,
+    progress,
+  }
 }
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const [workOrdersRes, materialsRes] = await Promise.all([
-      api.get('/work-orders/shift-queue'),
-      api.get('/materials/availability')
-    ])
-    workOrders.value = workOrdersRes.data
-    materialShortages.value = materialsRes.data.shortages || []
+    const params = {}
+    const clientId = authStore.user?.client_id_assigned ?? kpiStore.selectedClient
+    if (clientId) params.client_id = clientId
+    const response = await api.get('/work-orders', { params })
+    workOrders.value = (response.data || []).map(mapWorkOrder)
+    emitUpdate()
   } catch (error) {
-    console.error('Failed to fetch targets data:', error)
-    // Mock data for demonstration
-    workOrders.value = [
-      { id: 'WO-2024-001', product: 'Widget A', customer: 'ACME Corp', priority: 'High', targetQuantity: 500, completedQuantity: 0, dueDate: '2024-01-26', progress: 0 },
-      { id: 'WO-2024-002', product: 'Widget B', customer: 'Tech Industries', priority: 'Critical', targetQuantity: 1000, completedQuantity: 250, dueDate: '2024-01-25', progress: 25 },
-      { id: 'WO-2024-003', product: 'Gadget X', customer: 'Global Mfg', priority: 'Medium', targetQuantity: 300, completedQuantity: 150, dueDate: '2024-01-27', progress: 50 },
-      { id: 'WO-2024-004', product: 'Component C', customer: 'ACME Corp', priority: 'Low', targetQuantity: 200, completedQuantity: 180, dueDate: '2024-01-28', progress: 90 },
-      { id: 'WO-2024-005', product: 'Assembly D', customer: 'Quick Ship', priority: 'High', targetQuantity: 750, completedQuantity: 0, dueDate: '2024-01-26', progress: 0 }
-    ]
-    materialShortages.value = []
+    // eslint-disable-next-line no-console
+    console.error('Failed to fetch work-orders for shift:', error)
+    notificationStore.show({
+      type: 'error',
+      message: t('workflow.errors.loadWorkOrders'),
+    })
+    workOrders.value = []
+    emitUpdate()
   } finally {
     loading.value = false
   }

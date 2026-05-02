@@ -2283,8 +2283,12 @@
     "errors": {
       "loadDowntime": "Error al cargar datos de tiempo muerto",
       "loadProduction": "Error al cargar datos de producción",
-      "loadRoster": "Error al cargar lista de empleados"
+      "loadRoster": "Error al cargar lista de empleados",
+      "loadWorkOrders": "Error al cargar órdenes de trabajo del turno"
     },
+    "openWorkOrders": "Abrir Órdenes de Trabajo",
+    "noWorkOrdersForShift": "No hay órdenes de trabajo activas para este cliente.",
+    "overdue": "Vencidas",
     "resolveDowntime": "Resolver Tiempo Muerto",
     "endTime": "Hora de Fin",
     "rootCause": "Causa Raiz",
