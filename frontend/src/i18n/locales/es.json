@@ -2982,6 +2982,7 @@
       "optimizeOperators": "Optimizar Operadores",
       "rebalanceBottlenecks": "Rebalancear Cuello de Botella",
       "sequenceProducts": "Secuenciar Productos",
+      "planHorizon": "Planear Horizonte",
       "importConfig": "Importar Config.",
       "exportConfig": "Exportar Config.",
       "reset": "Restablecer"
@@ -3023,6 +3024,25 @@
         "predicted": "Predicho (pcs/día)",
         "demand": "Demanda (pcs/día)",
         "slack": "Holgura (pcs/día)"
+      }
+    },
+    "plan": {
+      "setupDialogTitle": "Planear Horizonte — Cronograma Multi-Día",
+      "setupIntro": "Distribuye la demanda semanal a lo largo del horizonte de planeación para minimizar la MÁXIMA utilización diaria (carga más uniforme). Lee weekly_demand de cada producto (o daily_demand × días laborales si no hay semanal).",
+      "horizonDays": "Horizonte (días laborales)",
+      "horizonHint": "1–31 días. Predeterminado: 5 (semana típica).",
+      "runOptimization": "Encontrar Plan Óptimo",
+      "dialogTitle": "Plan de Horizonte — Cronograma Diario Optimizado",
+      "success": "Plan encontrado: carga máxima diaria {maxLoad}% en {days} día(s)",
+      "failed": "La planeación falló",
+      "unsatisfied": "La demanda semanal excede la capacidad del horizonte. El cronograma siguiente es un mejor esfuerzo; considera un horizonte más largo, más operadores o dividir la demanda.",
+      "totals": "Plan de {days} días • Carga máx. diaria {maxLoad}% • Capacidad diaria {capacity} min",
+      "col": {
+        "day": "Día",
+        "total": "Total (pzs)",
+        "minutes": "Minutos Usados",
+        "load": "Carga %",
+        "weekly": "Total semanal"
       }
     },
     "sequence": {

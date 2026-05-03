@@ -25,6 +25,7 @@ import {
   optimizeOperatorAllocation,
   rebalanceBottlenecks,
   sequenceProducts,
+  planHorizon,
 } from '../api/simulationV2'
 
 const mockApi = api as unknown as {
@@ -277,6 +278,55 @@ describe('sequenceProducts (Pattern 3)', () => {
     mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
     await expect(
       sequenceProducts({ config: validConfig }),
+    ).rejects.toThrow('503 Service Unavailable')
+  })
+})
+
+describe('planHorizon (Pattern 4)', () => {
+  it('POSTs to /v2/simulation/plan-horizon with defaults', async () => {
+    await planHorizon({ config: validConfig })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/plan-horizon', {
+      config: validConfig,
+      horizon_days: 5,
+      timeout_seconds: 30,
+    })
+  })
+
+  it('forwards explicit horizon_days', async () => {
+    await planHorizon({ config: validConfig, horizon_days: 10, timeout_seconds: 60 })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/plan-horizon', {
+      config: validConfig,
+      horizon_days: 10,
+      timeout_seconds: 60,
+    })
+  })
+
+  it('returns the response data verbatim', async () => {
+    const expected = {
+      success: true,
+      is_optimal: true,
+      is_satisfied: true,
+      status: 'satisfied',
+      horizon_days: 5,
+      products: ['A', 'B'],
+      weekly_demand: { A: 500, B: 300 },
+      daily_minutes_capacity: 480,
+      max_load_pct: 67,
+      daily_plans: [
+        { day: 1, pieces_by_product: { A: 100, B: 60 }, total_pieces: 160, minutes_used: 320, daily_minutes_capacity: 480, load_pct: 66.67 },
+      ],
+      fulfillment_by_product: { A: 500, B: 300 },
+      solver_message: 'Optimal plan found.',
+    }
+    mockApi.post.mockResolvedValueOnce({ data: expected })
+    const result = await planHorizon({ config: validConfig })
+    expect(result).toEqual(expected)
+  })
+
+  it('forwards backend rejections', async () => {
+    mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
+    await expect(
+      planHorizon({ config: validConfig }),
     ).rejects.toThrow('503 Service Unavailable')
   })
 })

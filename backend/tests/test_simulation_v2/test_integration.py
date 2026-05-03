@@ -800,3 +800,142 @@ class TestSequenceProductsEndpoint:
         # Should not raise; the stale entry is just ignored.
         assert response.status_code == 200
         assert response.json()["success"] is True
+
+
+@pytest.fixture
+def weekly_demand_config_payload():
+    """Two-product config with weekly_demand for the Pattern-4 endpoint."""
+    return {
+        "config": {
+            "operations": [
+                {"product": "PROD_A", "step": 1, "operation": "Cut",
+                 "machine_tool": "M1", "sam_min": 2.0, "operators": 1,
+                 "grade_pct": 90},
+                {"product": "PROD_A", "step": 2, "operation": "Sew",
+                 "machine_tool": "M2", "sam_min": 2.0, "operators": 1,
+                 "grade_pct": 90},
+                {"product": "PROD_B", "step": 1, "operation": "Cut",
+                 "machine_tool": "M1", "sam_min": 1.5, "operators": 1,
+                 "grade_pct": 90},
+                {"product": "PROD_B", "step": 2, "operation": "Sew",
+                 "machine_tool": "M2", "sam_min": 1.5, "operators": 1,
+                 "grade_pct": 90},
+            ],
+            "schedule": {
+                "shifts_enabled": 1, "shift1_hours": 8.0, "work_days": 5,
+                "ot_enabled": False,
+            },
+            "demands": [
+                {"product": "PROD_A", "bundle_size": 10, "weekly_demand": 500},
+                {"product": "PROD_B", "bundle_size": 10, "weekly_demand": 300},
+            ],
+            "mode": "demand-driven",
+            "horizon_days": 1,
+        }
+    }
+
+
+class TestPlanHorizonEndpoint:
+    """Test the Pattern-4 planning-horizon endpoint."""
+
+    def test_plan_requires_auth(self, client, weekly_demand_config_payload):
+        body = {**weekly_demand_config_payload, "horizon_days": 5}
+        response = client.post("/api/v2/simulation/plan-horizon", json=body)
+        assert response.status_code == 401
+
+    def test_plan_requires_sufficient_role(
+        self, operator_client, weekly_demand_config_payload
+    ):
+        body = {**weekly_demand_config_payload, "horizon_days": 5}
+        response = operator_client.post(
+            "/api/v2/simulation/plan-horizon", json=body
+        )
+        assert response.status_code == 403
+
+    def test_plan_rejects_horizon_below_one(
+        self, admin_client, weekly_demand_config_payload
+    ):
+        body = {**weekly_demand_config_payload, "horizon_days": 0}
+        response = admin_client.post(
+            "/api/v2/simulation/plan-horizon", json=body
+        )
+        assert response.status_code == 422
+
+    def test_plan_rejects_horizon_above_thirty_one(
+        self, admin_client, weekly_demand_config_payload
+    ):
+        body = {**weekly_demand_config_payload, "horizon_days": 32}
+        response = admin_client.post(
+            "/api/v2/simulation/plan-horizon", json=body
+        )
+        assert response.status_code == 422
+
+    def test_plan_invalid_config_returns_validation_failure(
+        self, admin_client, invalid_config_payload
+    ):
+        body = {**invalid_config_payload, "horizon_days": 5}
+        response = admin_client.post(
+            "/api/v2/simulation/plan-horizon", json=body
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert data["status"] == "validation-failed"
+
+    def test_plan_single_product_short_circuit(
+        self, admin_client, valid_config_payload
+    ):
+        """Single-product config returns the trivial even-split plan
+        WITHOUT calling MZ. Capacity is comfortable here (~54% load)."""
+        body = {**valid_config_payload, "horizon_days": 5}
+        response = admin_client.post(
+            "/api/v2/simulation/plan-horizon", json=body
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["status"] == "trivial"
+        assert len(data["daily_plans"]) == 5
+        # 1000 weekly demand / 5 days = 200/day.
+        assert data["daily_plans"][0]["pieces_by_product"]["T_SHIRT_A"] == 200
+        # Bottleneck SAM 3.5 / 3 ops / 0.90 grade = ~1.30 min/piece;
+        # 200 × 1.30 = 260 min/day = ~54% load; well under 100%.
+        assert data["max_load_pct"] < 100
+
+    def test_plan_happy_path(
+        self, admin_client, weekly_demand_config_payload
+    ):
+        from backend.simulation_v2.optimization import is_minizinc_available
+        if not is_minizinc_available():
+            pytest.skip("MiniZinc CLI not available")
+
+        body = {**weekly_demand_config_payload, "horizon_days": 5}
+        response = admin_client.post(
+            "/api/v2/simulation/plan-horizon", json=body
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["horizon_days"] == 5
+        assert len(data["daily_plans"]) == 5
+        # Weekly fulfillment matches demand.
+        assert data["fulfillment_by_product"]["PROD_A"] >= 500
+        assert data["fulfillment_by_product"]["PROD_B"] >= 300
+        # Load smoothing: max-min spread within 2 percentage points.
+        loads = [p["load_pct"] for p in data["daily_plans"]]
+        assert max(loads) - min(loads) <= 2.0
+
+    def test_plan_default_horizon_is_five(
+        self, admin_client, weekly_demand_config_payload
+    ):
+        from backend.simulation_v2.optimization import is_minizinc_available
+        if not is_minizinc_available():
+            pytest.skip("MiniZinc CLI not available")
+
+        # Omit horizon_days → default 5.
+        response = admin_client.post(
+            "/api/v2/simulation/plan-horizon", json=weekly_demand_config_payload
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["horizon_days"] == 5

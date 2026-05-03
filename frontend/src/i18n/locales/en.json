@@ -2938,6 +2938,7 @@
       "optimizeOperators": "Optimize Operators",
       "rebalanceBottlenecks": "Rebalance Bottleneck",
       "sequenceProducts": "Sequence Products",
+      "planHorizon": "Plan Horizon",
       "importConfig": "Import Config",
       "exportConfig": "Export Config",
       "reset": "Reset"
@@ -2979,6 +2980,25 @@
         "predicted": "Predicted (pcs/day)",
         "demand": "Demand (pcs/day)",
         "slack": "Slack (pcs/day)"
+      }
+    },
+    "plan": {
+      "setupDialogTitle": "Plan Horizon — Multi-Day Schedule",
+      "setupIntro": "Distribute weekly demand across the planning horizon to minimize the MAX daily utilization (smoothest workload). Reads weekly_demand from each product (or daily_demand × work_days if weekly is absent).",
+      "horizonDays": "Horizon (work days)",
+      "horizonHint": "1–31 days. Default is 5 (typical work week).",
+      "runOptimization": "Find Optimal Plan",
+      "dialogTitle": "Plan Horizon — Optimized Daily Schedule",
+      "success": "Plan found: max daily load {maxLoad}% across {days} day(s)",
+      "failed": "Planning failed",
+      "unsatisfied": "Weekly demand exceeds horizon capacity. The schedule below is a best-effort fill; consider a longer horizon, more operators, or splitting demand.",
+      "totals": "{days}-day plan • Max daily load {maxLoad}% • Daily capacity {capacity} min",
+      "col": {
+        "day": "Day",
+        "total": "Total (pcs)",
+        "minutes": "Minutes Used",
+        "load": "Load %",
+        "weekly": "Weekly total"
       }
     },
     "sequence": {

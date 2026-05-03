@@ -38,6 +38,11 @@ from .product_sequencing import (
     estimate_production_time_minutes,
     sequence_products,
 )
+from .planning_horizon import (
+    DailyPlan,
+    PlanningResult,
+    plan_horizon,
+)
 
 __all__ = [
     "MiniZincNotAvailableError",
@@ -57,4 +62,7 @@ __all__ = [
     "SequencingResult",
     "estimate_production_time_minutes",
     "sequence_products",
+    "DailyPlan",
+    "PlanningResult",
+    "plan_horizon",
 ]

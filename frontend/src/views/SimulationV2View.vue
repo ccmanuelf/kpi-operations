@@ -232,6 +232,17 @@
               {{ t('simulationV2.actions.sequenceProducts') }}
             </v-btn>
 
+            <v-btn
+              color="indigo"
+              variant="outlined"
+              :loading="isPlanning"
+              :disabled="!canRunSimulation"
+              @click="openPlanHorizonDialog"
+            >
+              <v-icon start>mdi-calendar-week</v-icon>
+              {{ t('simulationV2.actions.planHorizon') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -849,6 +860,118 @@
       </v-card>
     </v-dialog>
 
+    <!-- Plan Horizon Setup Dialog (Pattern 4) -->
+    <v-dialog v-model="showPlanSetupDialog" max-width="500">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="indigo">mdi-calendar-week</v-icon>
+          {{ t('simulationV2.plan.setupDialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <div class="text-body-2 mb-4">{{ t('simulationV2.plan.setupIntro') }}</div>
+          <v-text-field
+            v-model.number="planHorizonDays"
+            type="number"
+            min="1"
+            max="31"
+            density="comfortable"
+            variant="outlined"
+            :label="t('simulationV2.plan.horizonDays')"
+            :hint="t('simulationV2.plan.horizonHint')"
+            persistent-hint
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showPlanSetupDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="isPlanning"
+            @click="handlePlanHorizon"
+          >
+            <v-icon start>mdi-play</v-icon>
+            {{ t('simulationV2.plan.runOptimization') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Plan Horizon Result Dialog (Pattern 4) -->
+    <v-dialog v-model="showPlanResultDialog" max-width="900">
+      <v-card v-if="planningResult">
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="indigo">mdi-calendar-week</v-icon>
+          {{ t('simulationV2.plan.dialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <div class="mb-3">
+            <strong>{{ planningResult.solver_message }}</strong>
+          </div>
+          <v-alert
+            v-if="!planningResult.success"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.plan.unsatisfied') }}
+          </v-alert>
+          <div class="mb-3 text-caption text-medium-emphasis">
+            {{ t('simulationV2.plan.totals', {
+              days: planningResult.horizon_days,
+              maxLoad: planningResult.max_load_pct,
+              capacity: planningResult.daily_minutes_capacity,
+            }) }}
+          </div>
+          <v-table v-if="planningResult.daily_plans?.length" density="compact">
+            <thead>
+              <tr>
+                <th>{{ t('simulationV2.plan.col.day') }}</th>
+                <th v-for="prod in planningResult.products" :key="prod">{{ prod }}</th>
+                <th>{{ t('simulationV2.plan.col.total') }}</th>
+                <th>{{ t('simulationV2.plan.col.minutes') }}</th>
+                <th>{{ t('simulationV2.plan.col.load') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="plan in planningResult.daily_plans" :key="plan.day">
+                <td><strong>{{ plan.day }}</strong></td>
+                <td v-for="prod in planningResult.products" :key="prod">
+                  {{ plan.pieces_by_product?.[prod] ?? 0 }}
+                </td>
+                <td>{{ plan.total_pieces }}</td>
+                <td>{{ plan.minutes_used }}</td>
+                <td :class="plan.load_pct > 90 ? 'text-error' : (plan.load_pct > 75 ? 'text-warning' : 'text-success')">
+                  {{ plan.load_pct.toFixed(1) }}%
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td><strong>{{ t('simulationV2.plan.col.weekly') }}</strong></td>
+                <td v-for="prod in planningResult.products" :key="prod">
+                  <strong>{{ planningResult.fulfillment_by_product?.[prod] ?? 0 }}</strong>
+                  <span v-if="planningResult.weekly_demand?.[prod] != null" class="text-caption text-medium-emphasis">
+                    {{ ' / ' + planningResult.weekly_demand[prod] }}
+                  </span>
+                </td>
+                <td colspan="3"></td>
+              </tr>
+            </tfoot>
+          </v-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showPlanResultDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="450">
       <v-card>
@@ -912,7 +1035,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 import { useNotificationStore } from '@/stores/notificationStore'
-import { optimizeOperatorAllocation, rebalanceBottlenecks, sequenceProducts } from '@/services/api/simulationV2'
+import { optimizeOperatorAllocation, rebalanceBottlenecks, sequenceProducts, planHorizon } from '@/services/api/simulationV2'
 import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
 import ScheduleForm from '@/components/simulation/ScheduleForm.vue'
@@ -964,6 +1087,13 @@ const hasMultipleProducts = computed(() => {
   const products = (store.demands || []).map((d) => d.product).filter(Boolean)
   return new Set(products).size >= 2
 })
+
+// Pattern 4 (MiniZinc plans the week → SimPy executes each day) state.
+const isPlanning = ref(false)
+const planningResult = ref(null)
+const showPlanSetupDialog = ref(false)
+const showPlanResultDialog = ref(false)
+const planHorizonDays = ref(5)
 
 // Computed
 const canRunSimulation = computed(() => {
@@ -1164,6 +1294,49 @@ async function handleSequenceProducts() {
     notify.showError(detail || t('simulationV2.sequence.failed'))
   } finally {
     isSequencing.value = false
+  }
+}
+
+/**
+ * Pattern 4 (MiniZinc plans the week → SimPy executes each day) — open
+ * the horizon-days input dialog. Pre-populates with the current value
+ * (default 5) so re-opening preserves the planner's choice.
+ */
+function openPlanHorizonDialog() {
+  showPlanSetupDialog.value = true
+}
+
+/**
+ * Run the planning model with the chosen horizon. Coerces the days
+ * value to a positive integer (Pydantic also rejects out-of-range so
+ * this is just defensive).
+ */
+async function handlePlanHorizon() {
+  isPlanning.value = true
+  planningResult.value = null
+  try {
+    const config = store.buildConfig()
+    const days = Math.max(1, Math.min(31, parseInt(planHorizonDays.value ?? 5, 10) || 5))
+    const response = await planHorizon({ config, horizon_days: days })
+    planningResult.value = response
+    showPlanSetupDialog.value = false
+    showPlanResultDialog.value = true
+    if (response?.success) {
+      notify.showSuccess(
+        t('simulationV2.plan.success', {
+          days: response.horizon_days,
+          maxLoad: response.max_load_pct,
+        }),
+      )
+    } else {
+      notify.showError(response?.solver_message || t('simulationV2.plan.failed'))
+    }
+  } catch (error) {
+    console.error('Planning error:', error)
+    const detail = error?.response?.data?.detail || error?.message || ''
+    notify.showError(detail || t('simulationV2.plan.failed'))
+  } finally {
+    isPlanning.value = false
   }
 }
 

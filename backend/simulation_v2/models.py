@@ -745,6 +745,55 @@ class ProductSequencingResponse(BaseModel):
     solver_message: str = ""
 
 
+class PlanningHorizonRequest(BaseModel):
+    """API request for Pattern-4 planning-horizon optimization."""
+
+    config: SimulationConfig
+    horizon_days: int = Field(
+        default=5,
+        ge=1,
+        le=31,
+        description=(
+            "Planning horizon in working days (1..31). Defaults to 5 "
+            "(typical work week)."
+        ),
+    )
+    timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=120,
+        description="MiniZinc solver wallclock timeout.",
+    )
+
+
+class DailyPlanModel(BaseModel):
+    """One day's portion of the multi-day plan."""
+
+    day: int
+    pieces_by_product: Dict[str, int]
+    total_pieces: int
+    minutes_used: int
+    daily_minutes_capacity: int
+    load_pct: float
+
+
+class PlanningHorizonResponse(BaseModel):
+    """API response for the Pattern-4 endpoint."""
+
+    success: bool
+    is_optimal: bool
+    is_satisfied: bool
+    status: str
+    horizon_days: int
+    products: List[str] = Field(default_factory=list)
+    weekly_demand: Dict[str, int] = Field(default_factory=dict)
+    daily_minutes_capacity: int = 0
+    max_load_pct: int = 0
+    daily_plans: List[DailyPlanModel] = Field(default_factory=list)
+    fulfillment_by_product: Dict[str, int] = Field(default_factory=dict)
+    solver_message: str = ""
+
+
 class MonteCarloResponse(BaseModel):
     """
     API response for a Monte Carlo run.

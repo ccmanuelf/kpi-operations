@@ -52,6 +52,9 @@ from .models import (
     ProductSequencingRequest,
     ProductSequencingResponse,
     SequencedProductModel,
+    PlanningHorizonRequest,
+    PlanningHorizonResponse,
+    DailyPlanModel,
 )
 
 from .validation import validate_simulation_config
@@ -75,6 +78,11 @@ from .optimization.product_sequencing import (
     estimate_production_time_minutes,
     SequencingResult,
     SequencedProduct,
+)
+from .optimization.planning_horizon import (
+    plan_horizon,
+    PlanningResult,
+    DailyPlan,
 )
 from .optimization.minizinc_runner import (
     is_minizinc_available,
@@ -126,6 +134,9 @@ __all__ = [
     "ProductSequencingRequest",
     "ProductSequencingResponse",
     "SequencedProductModel",
+    "PlanningHorizonRequest",
+    "PlanningHorizonResponse",
+    "DailyPlanModel",
     # Engine
     "run_simulation",
     "ProductionLineSimulator",
@@ -147,6 +158,9 @@ __all__ = [
     "estimate_production_time_minutes",
     "SequencingResult",
     "SequencedProduct",
+    "plan_horizon",
+    "PlanningResult",
+    "DailyPlan",
     "is_minizinc_available",
     "MiniZincNotAvailableError",
     "MiniZincSolveError",

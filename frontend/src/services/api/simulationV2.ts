@@ -102,6 +102,49 @@ export interface MonteCarloRunOptions {
 }
 
 // =============================================================================
+// Pattern 4 — Planning horizon
+// =============================================================================
+
+export interface DailyPlan {
+  day: number
+  pieces_by_product: Record<string, number>
+  total_pieces: number
+  minutes_used: number
+  daily_minutes_capacity: number
+  load_pct: number
+}
+
+export interface PlanningHorizonOptions {
+  config: SimulationConfig
+  horizon_days?: number
+  timeout_seconds?: number
+}
+
+/**
+ * Pattern 4 (MiniZinc plans the week → SimPy executes each day): given
+ * a config with weekly demand per product, distribute work across the
+ * planning horizon to minimize the MAX daily utilization (smoothest
+ * workload). Returns a per-day production schedule the planner can
+ * hand to SimPy for stochastic execution-side validation.
+ *
+ * Best-effort behavior: when weekly demand exceeds horizon capacity,
+ * `is_satisfied=false` plus a per-product shortfall message; the
+ * `daily_plans` array still carries a capacity-bounded fallback.
+ *
+ * Backend: `POST /v2/simulation/plan-horizon`. Returns 503 if the
+ * MiniZinc CLI is missing on the server.
+ */
+export const planHorizon = async ({
+  config,
+  horizon_days = 5,
+  timeout_seconds = 30,
+}: PlanningHorizonOptions) => {
+  const body: Record<string, unknown> = { config, horizon_days, timeout_seconds }
+  const response = await api.post('/v2/simulation/plan-horizon', body)
+  return response.data
+}
+
+// =============================================================================
 // Pattern 1 — Operator allocation optimization
 // =============================================================================
 
@@ -576,6 +619,7 @@ export default {
   optimizeOperatorAllocation,
   rebalanceBottlenecks,
   sequenceProducts,
+  planHorizon,
   buildSimulationConfig,
   getDefaultOperation,
   getDefaultSchedule,

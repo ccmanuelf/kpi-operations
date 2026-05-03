@@ -26,6 +26,8 @@ from backend.simulation_v2.models import (
     RebalancingResponse,
     ProductSequencingRequest,
     ProductSequencingResponse,
+    PlanningHorizonRequest,
+    PlanningHorizonResponse,
 )
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.engine import run_simulation
@@ -46,6 +48,9 @@ from backend.simulation_v2.optimization.bottleneck_rebalancing import (
 )
 from backend.simulation_v2.optimization.product_sequencing import (
     sequence_products,
+)
+from backend.simulation_v2.optimization.planning_horizon import (
+    plan_horizon,
 )
 from backend.simulation_v2.constants import (
     MAX_PRODUCTS,
@@ -741,6 +746,122 @@ async def sequence_products_endpoint(
             }
             for s in result.sequence
         ],
+        solver_message=result.solver_message,
+    )
+
+
+@router.post("/plan-horizon", response_model=PlanningHorizonResponse)
+async def plan_horizon_endpoint(
+    request: PlanningHorizonRequest, current_user: User = Depends(get_current_user)
+) -> PlanningHorizonResponse:
+    """
+    Pattern 4 — planning vs. execution horizon (MiniZinc plans the
+    week, SimPy executes each day).
+
+    Given a SimulationConfig with weekly demand per product, distribute
+    the work across `horizon_days` to minimize the MAX daily
+    utilization. The result is a per-day production schedule the
+    capacity planner can hand to SimPy for stochastic execution-side
+    validation.
+
+    The deterministic plan is best-effort under tight capacity: when
+    weekly demand exceeds horizon capacity the response carries
+    `is_satisfied=false`, a per-product shortfall in the message, and a
+    capacity-bounded plan in `daily_plans` so the operator still has a
+    starting point.
+
+    Returns 503 with a clear message if the MiniZinc CLI is not
+    installed on the host.
+    """
+    _check_simulation_permission(current_user)
+
+    if not is_minizinc_available():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Planning horizon requires MiniZinc; the binary is not "
+                "installed on this server."
+            ),
+        )
+
+    config = request.config
+
+    logger.info(
+        "User %s planning horizon: %d ops, %d demands, horizon=%d days",
+        current_user.username,
+        len(config.operations),
+        len(config.demands),
+        request.horizon_days,
+    )
+
+    validation_report = validate_simulation_config(config)
+    if validation_report.has_errors:
+        return PlanningHorizonResponse(
+            success=False,
+            is_optimal=False,
+            is_satisfied=False,
+            status="validation-failed",
+            horizon_days=request.horizon_days,
+            products=[d.product for d in config.demands],
+            weekly_demand={},
+            daily_minutes_capacity=0,
+            max_load_pct=0,
+            daily_plans=[],
+            fulfillment_by_product={},
+            solver_message=(
+                "Configuration validation failed: "
+                + "; ".join(e.message for e in validation_report.errors)
+            ),
+        )
+
+    try:
+        result = plan_horizon(
+            config,
+            horizon_days=request.horizon_days,
+            timeout_seconds=request.timeout_seconds,
+        )
+    except MiniZincSolveError as e:
+        logger.exception("MiniZinc solver error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Solver error: {e}",
+        )
+    except MiniZincNotAvailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MiniZinc CLI became unavailable mid-request.",
+        )
+
+    logger.info(
+        "Planning done for user=%s: optimal=%s, max_load=%d%%, days=%d",
+        current_user.username,
+        result.is_optimal,
+        result.max_load_pct,
+        result.horizon_days,
+    )
+
+    return PlanningHorizonResponse(
+        success=result.is_satisfied,
+        is_optimal=result.is_optimal,
+        is_satisfied=result.is_satisfied,
+        status=result.status,
+        horizon_days=result.horizon_days,
+        products=result.products,
+        weekly_demand=result.weekly_demand,
+        daily_minutes_capacity=result.daily_minutes_capacity,
+        max_load_pct=result.max_load_pct,
+        daily_plans=[
+            {
+                "day": p.day,
+                "pieces_by_product": p.pieces_by_product,
+                "total_pieces": p.total_pieces,
+                "minutes_used": p.minutes_used,
+                "daily_minutes_capacity": p.daily_minutes_capacity,
+                "load_pct": p.load_pct,
+            }
+            for p in result.daily_plans
+        ],
+        fulfillment_by_product=result.fulfillment_by_product,
         solver_message=result.solver_message,
     )
 
