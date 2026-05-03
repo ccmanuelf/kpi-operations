@@ -210,6 +210,17 @@
               {{ t('simulationV2.actions.optimizeOperators') }}
             </v-btn>
 
+            <v-btn
+              color="orange"
+              variant="outlined"
+              :loading="isRebalancing"
+              :disabled="!canRunSimulation"
+              @click="handleRebalanceBottlenecks"
+            >
+              <v-icon start>mdi-scale-balance</v-icon>
+              {{ t('simulationV2.actions.rebalanceBottlenecks') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -611,6 +622,94 @@
       </v-card>
     </v-dialog>
 
+    <!-- Bottleneck Rebalancing Result Dialog (Pattern 2) -->
+    <v-dialog v-model="showRebalancingDialog" max-width="900">
+      <v-card v-if="rebalancingResult">
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="orange">mdi-scale-balance</v-icon>
+          {{ t('simulationV2.rebalance.dialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <div class="mb-3">
+            <strong>{{ rebalancingResult.solver_message }}</strong>
+          </div>
+          <v-alert
+            v-if="rebalancingResult.success && rebalancingResult.min_slack_pcs < 0"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.rebalance.shortfall', { gap: -rebalancingResult.min_slack_pcs }) }}
+          </v-alert>
+          <v-alert
+            v-if="!rebalancingResult.success"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.rebalance.unsatisfied') }}
+          </v-alert>
+          <div class="mb-3 text-caption text-medium-emphasis">
+            {{ t('simulationV2.rebalance.totals', {
+              before: rebalancingResult.total_operators_before,
+              after: rebalancingResult.total_operators_after,
+              delta: rebalancingResult.total_delta,
+              minSlack: rebalancingResult.min_slack_pcs,
+            }) }}
+          </div>
+          <v-table v-if="rebalancingResult.proposals?.length" density="compact">
+            <thead>
+              <tr>
+                <th>{{ t('simulationV2.rebalance.col.product') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.step') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.operation') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.before') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.delta') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.after') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.predicted') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.demand') }}</th>
+                <th>{{ t('simulationV2.rebalance.col.slack') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="prop in rebalancingResult.proposals" :key="`${prop.product}-${prop.step}`">
+                <td>{{ prop.product }}</td>
+                <td>{{ prop.step }}</td>
+                <td>{{ prop.operation }}</td>
+                <td>{{ prop.operators_before }}</td>
+                <td :class="prop.delta > 0 ? 'text-success' : (prop.delta < 0 ? 'text-error' : '')">
+                  {{ prop.delta > 0 ? '+' : '' }}{{ prop.delta }}
+                </td>
+                <td><strong>{{ prop.operators_after }}</strong></td>
+                <td>{{ prop.predicted_pcs_per_day }}</td>
+                <td>{{ prop.demand_pcs_per_day }}</td>
+                <td :class="prop.slack_pcs < 0 ? 'text-error' : 'text-success'">
+                  {{ prop.slack_pcs > 0 ? '+' : '' }}{{ prop.slack_pcs }}
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showRebalancingDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+          <v-btn
+            v-if="rebalancingResult.success"
+            color="primary"
+            variant="elevated"
+            @click="applyRebalancing"
+          >
+            <v-icon start>mdi-check</v-icon>
+            {{ t('simulationV2.rebalance.apply') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="450">
       <v-card>
@@ -674,7 +773,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 import { useNotificationStore } from '@/stores/notificationStore'
-import { optimizeOperatorAllocation } from '@/services/api/simulationV2'
+import { optimizeOperatorAllocation, rebalanceBottlenecks } from '@/services/api/simulationV2'
 import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
 import ScheduleForm from '@/components/simulation/ScheduleForm.vue'
@@ -709,6 +808,11 @@ const isOptimizing = ref(false)
 const optimizationResult = ref(null)
 const showOptimizationDialog = ref(false)
 const notify = useNotificationStore()
+
+// Pattern 2 (SimPy detects → MiniZinc rebalances) state.
+const isRebalancing = ref(false)
+const rebalancingResult = ref(null)
+const showRebalancingDialog = ref(false)
 
 // Computed
 const canRunSimulation = computed(() => {
@@ -804,6 +908,56 @@ function applyOptimization() {
   })
   showOptimizationDialog.value = false
   notify.showSuccess(t('simulationV2.optimize.applied'))
+}
+
+/**
+ * Pattern 2 (SimPy detects → MiniZinc rebalances) — call the rebalancer
+ * with the current SimulationConfig under strict-swap mode (default
+ * total_delta_max=0). Surfaces the resulting deltas in a dialog.
+ */
+async function handleRebalanceBottlenecks() {
+  isRebalancing.value = true
+  rebalancingResult.value = null
+  try {
+    const config = store.buildConfig()
+    const response = await rebalanceBottlenecks({
+      config,
+      total_delta_max: 0,
+      validate_with_simulation: false,
+    })
+    rebalancingResult.value = response
+    showRebalancingDialog.value = true
+    if (response?.success) {
+      const movedCount = (response.proposals || []).filter((p) => p.delta !== 0).length
+      if (movedCount === 0) {
+        notify.showSuccess(t('simulationV2.rebalance.alreadyBalanced'))
+      } else {
+        notify.showSuccess(
+          t('simulationV2.rebalance.success', { count: movedCount }),
+        )
+      }
+    } else {
+      notify.showError(response?.solver_message || t('simulationV2.rebalance.failed'))
+    }
+  } catch (error) {
+    console.error('Rebalancing error:', error)
+    const detail = error?.response?.data?.detail || error?.message || ''
+    notify.showError(detail || t('simulationV2.rebalance.failed'))
+  } finally {
+    isRebalancing.value = false
+  }
+}
+
+/** Apply the rebalancer's proposed counts back to the store. */
+function applyRebalancing() {
+  const result = rebalancingResult.value
+  if (!result || !result.success || !Array.isArray(result.proposals)) return
+  result.proposals.forEach((prop, idx) => {
+    const op = store.operations[idx]
+    if (op) op.operators = prop.operators_after
+  })
+  showRebalancingDialog.value = false
+  notify.showSuccess(t('simulationV2.rebalance.applied'))
 }
 
 /** Comparison metric definitions used by the side-by-side panel. */

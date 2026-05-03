@@ -605,6 +605,93 @@ class OperatorAllocationResponse(BaseModel):
     )
 
 
+class RebalancingProposalModel(BaseModel):
+    """One station's delta + after-rebalance prediction."""
+
+    product: str
+    step: int
+    operation: str
+    machine_tool: str
+    sam_min: float
+    grade_pct: float
+    operators_before: int
+    operators_after: int
+    delta: int
+    demand_pcs_per_day: int
+    predicted_pcs_per_day: int
+    slack_pcs: int
+
+
+class RebalancingRequest(BaseModel):
+    """API request for Pattern-2 bottleneck rebalancing."""
+
+    config: SimulationConfig
+    min_operators_per_op: int = Field(
+        default=1,
+        ge=0,
+        le=10,
+        description="Per-station floor; 1 keeps every station staffed.",
+    )
+    max_operators_per_op: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Per-station ceiling on the rebalanced count.",
+    )
+    total_delta_max: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description=(
+            "Max net operators added by the rebalance (0 = strict swap)."
+        ),
+    )
+    total_delta_min: int = Field(
+        default=-50,
+        le=0,
+        ge=-100,
+        description=(
+            "Max net operators removed (negative; -50 = up to 50 fewer)."
+        ),
+    )
+    timeout_seconds: int = Field(
+        default=15,
+        ge=1,
+        le=120,
+        description="MiniZinc solver wallclock timeout.",
+    )
+    validate_with_simulation: bool = Field(
+        default=False,
+        description=(
+            "If true, run a single SimPy replication with the rebalanced "
+            "allocation and include the resulting daily summary so callers "
+            "can compare deterministic vs stochastic predictions."
+        ),
+    )
+
+
+class RebalancingResponse(BaseModel):
+    """API response for the Pattern-2 endpoint."""
+
+    success: bool
+    is_optimal: bool
+    is_satisfied: bool
+    status: str
+    total_operators_before: int
+    total_operators_after: int
+    total_delta: int
+    min_slack_pcs: int
+    proposals: List[RebalancingProposalModel] = Field(default_factory=list)
+    solver_message: str = ""
+    validation_run: Optional[SimulationResults] = Field(
+        default=None,
+        description=(
+            "Populated when validate_with_simulation=true: a single SimPy "
+            "run using the rebalanced allocation."
+        ),
+    )
+
+
 class MonteCarloResponse(BaseModel):
     """
     API response for a Monte Carlo run.

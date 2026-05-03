@@ -2980,6 +2980,7 @@
       "baseSeed": "Semilla base",
       "baseSeedPlaceholder": "Aleatoria",
       "optimizeOperators": "Optimizar Operadores",
+      "rebalanceBottlenecks": "Rebalancear Cuello de Botella",
       "importConfig": "Importar Config.",
       "exportConfig": "Exportar Config.",
       "reset": "Restablecer"
@@ -2999,6 +3000,28 @@
         "after": "Después",
         "predicted": "Predicho (pcs/día)",
         "demand": "Demanda (pcs/día)"
+      }
+    },
+    "rebalance": {
+      "dialogTitle": "Rebalanceo de Cuello de Botella — Resultado",
+      "success": "Rebalanceo completo: {count} estaciones ajustadas (sin cambio en plantilla total)",
+      "alreadyBalanced": "La asignación ya está balanceada — no se movieron operadores",
+      "failed": "El rebalanceo falló",
+      "unsatisfied": "Rebalanceo no factible con los límites configurados. Amplía max_operators_per_op o relaja total_delta_min/max.",
+      "shortfall": "La demanda no puede satisfacerse totalmente — la peor estación queda corta por {gap} pcs/día. Considera permitir crecimiento (aumenta total_delta_max) o el techo por estación (max_operators_per_op).",
+      "totals": "Operadores totales: {before} → {after} (Δ {delta}); holgura mínima {minSlack} pcs/día",
+      "applied": "Asignación rebalanceada aplicada a las operaciones",
+      "apply": "Aplicar a las operaciones",
+      "col": {
+        "product": "Producto",
+        "step": "Paso",
+        "operation": "Operación",
+        "before": "Antes",
+        "delta": "Δ",
+        "after": "Después",
+        "predicted": "Predicho (pcs/día)",
+        "demand": "Demanda (pcs/día)",
+        "slack": "Holgura (pcs/día)"
       }
     },
     "guide": {

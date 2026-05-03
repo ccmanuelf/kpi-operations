@@ -22,6 +22,8 @@ from backend.simulation_v2.models import (
     MonteCarloResponse,
     OperatorAllocationRequest,
     OperatorAllocationResponse,
+    RebalancingRequest,
+    RebalancingResponse,
 )
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.engine import run_simulation
@@ -35,6 +37,10 @@ from backend.simulation_v2.optimization import (
 from backend.simulation_v2.optimization.operator_allocation import (
     apply_allocation_to_config,
     optimize_operator_allocation,
+)
+from backend.simulation_v2.optimization.bottleneck_rebalancing import (
+    apply_rebalancing_to_config,
+    rebalance_bottleneck,
 )
 from backend.simulation_v2.constants import (
     MAX_PRODUCTS,
@@ -481,6 +487,142 @@ async def optimize_operators_endpoint(
                 "operators_after": p.operators_after,
                 "demand_pcs_per_day": p.demand_pcs_per_day,
                 "predicted_pcs_per_day": p.predicted_pcs_per_day,
+            }
+            for p in result.proposals
+        ],
+        solver_message=result.solver_message,
+        validation_run=validation_run,
+    )
+
+
+@router.post("/rebalance-bottlenecks", response_model=RebalancingResponse)
+async def rebalance_bottlenecks_endpoint(
+    request: RebalancingRequest, current_user: User = Depends(get_current_user)
+) -> RebalancingResponse:
+    """
+    Pattern 2 — bottleneck rebalancing (SimPy detects → MiniZinc solves).
+
+    Take an existing operator allocation (typically one where SimPy
+    Block 7 already flagged a bottleneck) and reshuffle operators
+    across stations to lift the bottleneck without (by default) growing
+    the total head-count.
+
+    `total_delta_max=0` (default) means strict swap. Set higher to
+    permit growth. `min_slack_pcs` in the response tells you how much
+    headroom the worst station has after rebalancing — negative means
+    the demand still can't be met under the given bounds.
+
+    Returns 503 with a clear message if the MiniZinc CLI is not
+    installed on the host.
+    """
+    _check_simulation_permission(current_user)
+
+    if not is_minizinc_available():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Bottleneck rebalancing requires MiniZinc; the binary is "
+                "not installed on this server."
+            ),
+        )
+
+    config = request.config
+
+    logger.info(
+        "User %s rebalancing bottleneck: %d ops, delta=[%d..%d], max_per_op=%d",
+        current_user.username,
+        len(config.operations),
+        request.total_delta_min,
+        request.total_delta_max,
+        request.max_operators_per_op,
+    )
+
+    validation_report = validate_simulation_config(config)
+    if validation_report.has_errors:
+        return RebalancingResponse(
+            success=False,
+            is_optimal=False,
+            is_satisfied=False,
+            status="validation-failed",
+            total_operators_before=sum(int(op.operators or 0) for op in config.operations),
+            total_operators_after=0,
+            total_delta=0,
+            min_slack_pcs=0,
+            proposals=[],
+            solver_message=(
+                "Configuration validation failed: "
+                + "; ".join(e.message for e in validation_report.errors)
+            ),
+        )
+
+    try:
+        result = rebalance_bottleneck(
+            config,
+            min_operators_per_op=request.min_operators_per_op,
+            max_operators_per_op=request.max_operators_per_op,
+            total_delta_max=request.total_delta_max,
+            total_delta_min=request.total_delta_min,
+            timeout_seconds=request.timeout_seconds,
+        )
+    except MiniZincSolveError as e:
+        logger.exception("MiniZinc solver error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Solver error: {e}",
+        )
+    except MiniZincNotAvailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MiniZinc CLI became unavailable mid-request.",
+        )
+
+    validation_run = None
+    if request.validate_with_simulation and result.is_satisfied:
+        applied = apply_rebalancing_to_config(config, result)
+        try:
+            metrics, duration = run_simulation(applied)
+            validation_run = calculate_all_blocks(
+                config=applied,
+                metrics=metrics,
+                validation_report=validation_report,
+                duration_seconds=duration,
+                defaults_applied=[],
+            )
+        except Exception:
+            logger.exception("SimPy validation pass failed for rebalanced allocation")
+            validation_run = None
+
+    logger.info(
+        "Rebalancing done for user=%s: optimal=%s, total_delta=%d, min_slack=%d",
+        current_user.username,
+        result.is_optimal,
+        result.total_delta,
+        result.min_slack_pcs,
+    )
+
+    return RebalancingResponse(
+        success=result.is_satisfied,
+        is_optimal=result.is_optimal,
+        is_satisfied=result.is_satisfied,
+        status=result.status,
+        total_operators_before=result.total_operators_before,
+        total_operators_after=result.total_operators_after,
+        total_delta=result.total_delta,
+        min_slack_pcs=result.min_slack_pcs,
+        proposals=[
+            {
+                "product": p.product,
+                "step": p.step,
+                "operation": p.operation,
+                "machine_tool": p.machine_tool,
+                "sam_min": p.sam_min,
+                "grade_pct": p.grade_pct,
+                "operators_before": p.operators_before,
+                "operators_after": p.operators_after,
+                "delta": p.delta,
+                "demand_pcs_per_day": p.demand_pcs_per_day,
+                "predicted_pcs_per_day": p.predicted_pcs_per_day,
+                "slack_pcs": p.slack_pcs,
             }
             for p in result.proposals
         ],

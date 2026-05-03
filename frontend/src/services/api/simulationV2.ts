@@ -126,6 +126,66 @@ export interface OperatorAllocationOptions {
   validate_with_simulation?: boolean
 }
 
+// =============================================================================
+// Pattern 2 — Bottleneck rebalancing
+// =============================================================================
+
+export interface RebalancingProposal {
+  product: string
+  step: number
+  operation: string
+  machine_tool: string
+  sam_min: number
+  grade_pct: number
+  operators_before: number
+  operators_after: number
+  delta: number
+  demand_pcs_per_day: number
+  predicted_pcs_per_day: number
+  slack_pcs: number
+}
+
+export interface RebalancingOptions {
+  config: SimulationConfig
+  min_operators_per_op?: number
+  max_operators_per_op?: number
+  total_delta_max?: number
+  total_delta_min?: number
+  timeout_seconds?: number
+  validate_with_simulation?: boolean
+}
+
+/**
+ * Pattern 2 (SimPy detects → MiniZinc solves): take an existing
+ * operator allocation and reshuffle operators across stations to lift
+ * the bottleneck. `total_delta_max=0` (default) preserves total head-
+ * count; positive values permit growth.
+ *
+ * Backend: `POST /v2/simulation/rebalance-bottlenecks`. Returns 503 if
+ * the MiniZinc CLI is missing on the server.
+ */
+export const rebalanceBottlenecks = async ({
+  config,
+  min_operators_per_op = 1,
+  max_operators_per_op = 10,
+  total_delta_max = 0,
+  total_delta_min = -50,
+  timeout_seconds = 15,
+  validate_with_simulation = false,
+}: RebalancingOptions) => {
+  const body: Record<string, unknown> = {
+    config,
+    min_operators_per_op,
+    max_operators_per_op,
+    total_delta_max,
+    total_delta_min,
+    timeout_seconds,
+    validate_with_simulation,
+  }
+  const response = await api.post('/v2/simulation/rebalance-bottlenecks', body)
+  return response.data
+}
+
 /**
  * Pattern 1 (MiniZinc → SimPy validate): minimum-operator allocation
  * that meets each station's daily demand.
@@ -460,6 +520,7 @@ export default {
   runSimulation,
   runMonteCarlo,
   optimizeOperatorAllocation,
+  rebalanceBottlenecks,
   buildSimulationConfig,
   getDefaultOperation,
   getDefaultSchedule,

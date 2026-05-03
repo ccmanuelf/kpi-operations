@@ -45,6 +45,9 @@ from .models import (
     OperatorAllocationRequest,
     OperatorAllocationResponse,
     OperatorAllocationProposalModel,
+    RebalancingRequest,
+    RebalancingResponse,
+    RebalancingProposalModel,
 )
 
 from .validation import validate_simulation_config
@@ -56,6 +59,12 @@ from .optimization.operator_allocation import (
     apply_allocation_to_config,
     OperatorAllocationResult,
     OperatorAllocationProposal,
+)
+from .optimization.bottleneck_rebalancing import (
+    rebalance_bottleneck,
+    apply_rebalancing_to_config,
+    RebalancingResult,
+    RebalancingProposal,
 )
 from .optimization.minizinc_runner import (
     is_minizinc_available,
@@ -100,6 +109,9 @@ __all__ = [
     "OperatorAllocationRequest",
     "OperatorAllocationResponse",
     "OperatorAllocationProposalModel",
+    "RebalancingRequest",
+    "RebalancingResponse",
+    "RebalancingProposalModel",
     # Engine
     "run_simulation",
     "ProductionLineSimulator",
@@ -113,6 +125,10 @@ __all__ = [
     "apply_allocation_to_config",
     "OperatorAllocationResult",
     "OperatorAllocationProposal",
+    "rebalance_bottleneck",
+    "apply_rebalancing_to_config",
+    "RebalancingResult",
+    "RebalancingProposal",
     "is_minizinc_available",
     "MiniZincNotAvailableError",
     "MiniZincSolveError",

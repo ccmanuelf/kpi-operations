@@ -20,6 +20,18 @@ from .minizinc_runner import (
     is_minizinc_available,
     run_minizinc,
 )
+from .operator_allocation import (
+    OperatorAllocationResult,
+    OperatorAllocationProposal,
+    optimize_operator_allocation,
+    apply_allocation_to_config,
+)
+from .bottleneck_rebalancing import (
+    RebalancingResult,
+    RebalancingProposal,
+    rebalance_bottleneck,
+    apply_rebalancing_to_config,
+)
 
 __all__ = [
     "MiniZincNotAvailableError",
@@ -27,4 +39,12 @@ __all__ = [
     "MiniZincResult",
     "is_minizinc_available",
     "run_minizinc",
+    "OperatorAllocationResult",
+    "OperatorAllocationProposal",
+    "optimize_operator_allocation",
+    "apply_allocation_to_config",
+    "RebalancingResult",
+    "RebalancingProposal",
+    "rebalance_bottleneck",
+    "apply_rebalancing_to_config",
 ]

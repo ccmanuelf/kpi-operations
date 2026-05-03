@@ -20,7 +20,11 @@ vi.mock('../api/client', () => ({
 }))
 
 import api from '../api/client'
-import { runMonteCarlo, optimizeOperatorAllocation } from '../api/simulationV2'
+import {
+  runMonteCarlo,
+  optimizeOperatorAllocation,
+  rebalanceBottlenecks,
+} from '../api/simulationV2'
 
 const mockApi = api as unknown as {
   post: ReturnType<typeof vi.fn>
@@ -152,6 +156,65 @@ describe('optimizeOperatorAllocation (Pattern 1)', () => {
     mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
     await expect(
       optimizeOperatorAllocation({ config: validConfig }),
+    ).rejects.toThrow('503 Service Unavailable')
+  })
+})
+
+describe('rebalanceBottlenecks (Pattern 2)', () => {
+  it('POSTs to /v2/simulation/rebalance-bottlenecks with defaults', async () => {
+    await rebalanceBottlenecks({ config: validConfig })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/rebalance-bottlenecks', {
+      config: validConfig,
+      min_operators_per_op: 1,
+      max_operators_per_op: 10,
+      total_delta_max: 0,
+      total_delta_min: -50,
+      timeout_seconds: 15,
+      validate_with_simulation: false,
+    })
+  })
+
+  it('forwards explicit options including growth budget', async () => {
+    await rebalanceBottlenecks({
+      config: validConfig,
+      min_operators_per_op: 2,
+      max_operators_per_op: 8,
+      total_delta_max: 3,
+      total_delta_min: -10,
+      timeout_seconds: 30,
+      validate_with_simulation: true,
+    })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/rebalance-bottlenecks', {
+      config: validConfig,
+      min_operators_per_op: 2,
+      max_operators_per_op: 8,
+      total_delta_max: 3,
+      total_delta_min: -10,
+      timeout_seconds: 30,
+      validate_with_simulation: true,
+    })
+  })
+
+  it('returns the response data verbatim', async () => {
+    const expected = {
+      success: true,
+      is_optimal: true,
+      total_operators_before: 6,
+      total_operators_after: 6,
+      total_delta: 0,
+      min_slack_pcs: 149,
+      proposals: [],
+      solver_message: 'Rebalanced 2 stations.',
+    }
+    mockApi.post.mockResolvedValueOnce({ data: expected })
+    const result = await rebalanceBottlenecks({ config: validConfig })
+    expect(result).toEqual(expected)
+  })
+
+  it('forwards backend rejections', async () => {
+    mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
+    await expect(
+      rebalanceBottlenecks({ config: validConfig }),
     ).rejects.toThrow('503 Service Unavailable')
   })
 })

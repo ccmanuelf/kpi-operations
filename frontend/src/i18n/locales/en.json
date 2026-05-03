@@ -2936,6 +2936,7 @@
       "baseSeed": "Base seed",
       "baseSeedPlaceholder": "Random",
       "optimizeOperators": "Optimize Operators",
+      "rebalanceBottlenecks": "Rebalance Bottleneck",
       "importConfig": "Import Config",
       "exportConfig": "Export Config",
       "reset": "Reset"
@@ -2955,6 +2956,28 @@
         "after": "After",
         "predicted": "Predicted (pcs/day)",
         "demand": "Demand (pcs/day)"
+      }
+    },
+    "rebalance": {
+      "dialogTitle": "Bottleneck Rebalancing — Result",
+      "success": "Rebalancing complete: {count} stations adjusted (head-count preserved)",
+      "alreadyBalanced": "Allocation is already balanced — no operators moved",
+      "failed": "Rebalancing failed",
+      "unsatisfied": "Rebalancing infeasible under the given bounds. Try widening max_operators_per_op or relaxing total_delta_min/max.",
+      "shortfall": "Demand cannot be met fully — worst station still short by {gap} pcs/day. Consider permitting growth (raise total_delta_max) or per-station ceiling (max_operators_per_op).",
+      "totals": "Total operators: {before} → {after} (Δ {delta}); minimum slack {minSlack} pcs/day",
+      "applied": "Rebalanced allocation applied to operations",
+      "apply": "Apply to operations",
+      "col": {
+        "product": "Product",
+        "step": "Step",
+        "operation": "Operation",
+        "before": "Before",
+        "delta": "Δ",
+        "after": "After",
+        "predicted": "Predicted (pcs/day)",
+        "demand": "Demand (pcs/day)",
+        "slack": "Slack (pcs/day)"
       }
     },
     "guide": {
