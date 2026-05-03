@@ -199,6 +199,17 @@
               {{ t('simulation.compare') }}
             </v-btn>
 
+            <v-btn
+              color="purple"
+              variant="outlined"
+              :loading="isOptimizing"
+              :disabled="!canRunSimulation"
+              @click="handleOptimizeOperators"
+            >
+              <v-icon start>mdi-tune-vertical</v-icon>
+              {{ t('simulationV2.actions.optimizeOperators') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -537,6 +548,69 @@
       </v-card>
     </v-dialog>
 
+    <!-- Operator-Allocation Optimization Result Dialog (Pattern 1) -->
+    <v-dialog v-model="showOptimizationDialog" max-width="780">
+      <v-card v-if="optimizationResult">
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="purple">mdi-tune-vertical</v-icon>
+          {{ t('simulationV2.optimize.dialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <div class="mb-3">
+            <strong>{{ optimizationResult.solver_message }}</strong>
+          </div>
+          <v-alert
+            v-if="!optimizationResult.success"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.optimize.unsatisfied') }}
+          </v-alert>
+          <v-table v-if="optimizationResult.proposals?.length" density="compact">
+            <thead>
+              <tr>
+                <th>{{ t('simulationV2.optimize.col.product') }}</th>
+                <th>{{ t('simulationV2.optimize.col.step') }}</th>
+                <th>{{ t('simulationV2.optimize.col.operation') }}</th>
+                <th>{{ t('simulationV2.optimize.col.before') }}</th>
+                <th>{{ t('simulationV2.optimize.col.after') }}</th>
+                <th>{{ t('simulationV2.optimize.col.predicted') }}</th>
+                <th>{{ t('simulationV2.optimize.col.demand') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="prop in optimizationResult.proposals" :key="`${prop.product}-${prop.step}`">
+                <td>{{ prop.product }}</td>
+                <td>{{ prop.step }}</td>
+                <td>{{ prop.operation }}</td>
+                <td>{{ prop.operators_before }}</td>
+                <td><strong>{{ prop.operators_after }}</strong></td>
+                <td>{{ prop.predicted_pcs_per_day.toFixed(1) }}</td>
+                <td>{{ prop.demand_pcs_per_day }}</td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showOptimizationDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+          <v-btn
+            v-if="optimizationResult.success"
+            color="primary"
+            variant="elevated"
+            @click="applyOptimization"
+          >
+            <v-icon start>mdi-check</v-icon>
+            {{ t('simulationV2.optimize.apply') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="450">
       <v-card>
@@ -599,6 +673,8 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
+import { useNotificationStore } from '@/stores/notificationStore'
+import { optimizeOperatorAllocation } from '@/services/api/simulationV2'
 import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
 import ScheduleForm from '@/components/simulation/ScheduleForm.vue'
@@ -627,6 +703,12 @@ const showResetDialog = ref(false)
 const importJson = ref('')
 const showWelcomeMessage = ref(false)
 const showComparison = ref(false)
+
+// Pattern 1 (MiniZinc → SimPy validate) state.
+const isOptimizing = ref(false)
+const optimizationResult = ref(null)
+const showOptimizationDialog = ref(false)
+const notify = useNotificationStore()
 
 // Computed
 const canRunSimulation = computed(() => {
@@ -671,6 +753,57 @@ async function handleRun() {
   } catch (error) {
     console.error('Simulation error:', error)
   }
+}
+
+/**
+ * Pattern 1 (MiniZinc → SimPy validate) — call the optimizer with the
+ * current SimulationConfig, then surface the proposal dialog. Notifies
+ * the operator with a success/error snackbar.
+ */
+async function handleOptimizeOperators() {
+  isOptimizing.value = true
+  optimizationResult.value = null
+  try {
+    const config = store.buildConfig()
+    const response = await optimizeOperatorAllocation({
+      config,
+      max_operators_per_op: 10,
+      validate_with_simulation: false,
+    })
+    optimizationResult.value = response
+    showOptimizationDialog.value = true
+    if (response?.success) {
+      notify.showSuccess(
+        t('simulationV2.optimize.success', {
+          before: response.total_operators_before,
+          after: response.total_operators_after,
+        }),
+      )
+    } else {
+      notify.showError(response?.solver_message || t('simulationV2.optimize.failed'))
+    }
+  } catch (error) {
+    console.error('Optimization error:', error)
+    const detail = error?.response?.data?.detail || error?.message || ''
+    notify.showError(detail || t('simulationV2.optimize.failed'))
+  } finally {
+    isOptimizing.value = false
+  }
+}
+
+/**
+ * Apply the optimizer's per-station operator counts back to the store
+ * so the operator sees the adjusted operations grid. Closes the dialog.
+ */
+function applyOptimization() {
+  const result = optimizationResult.value
+  if (!result || !result.success || !Array.isArray(result.proposals)) return
+  result.proposals.forEach((prop, idx) => {
+    const op = store.operations[idx]
+    if (op) op.operators = prop.operators_after
+  })
+  showOptimizationDialog.value = false
+  notify.showSuccess(t('simulationV2.optimize.applied'))
 }
 
 /** Comparison metric definitions used by the side-by-side panel. */

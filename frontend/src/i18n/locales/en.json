@@ -2935,9 +2935,27 @@
       "replications": "# Replications",
       "baseSeed": "Base seed",
       "baseSeedPlaceholder": "Random",
+      "optimizeOperators": "Optimize Operators",
       "importConfig": "Import Config",
       "exportConfig": "Export Config",
       "reset": "Reset"
+    },
+    "optimize": {
+      "dialogTitle": "Operator Allocation — Optimization Result",
+      "success": "Optimization complete: {before} → {after} operators",
+      "failed": "Optimization failed",
+      "unsatisfied": "The current demand cannot be met within the configured budget. Try raising max_operators_per_op or removing the budget cap.",
+      "applied": "Allocation applied to operations",
+      "apply": "Apply to operations",
+      "col": {
+        "product": "Product",
+        "step": "Step",
+        "operation": "Operation",
+        "before": "Before",
+        "after": "After",
+        "predicted": "Predicted (pcs/day)",
+        "demand": "Demand (pcs/day)"
+      }
     },
     "guide": {
       "title": "Production Line Simulation v2.0 Guide",

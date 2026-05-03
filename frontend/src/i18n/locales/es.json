@@ -2979,9 +2979,27 @@
       "replications": "# Réplicas",
       "baseSeed": "Semilla base",
       "baseSeedPlaceholder": "Aleatoria",
+      "optimizeOperators": "Optimizar Operadores",
       "importConfig": "Importar Config.",
       "exportConfig": "Exportar Config.",
       "reset": "Restablecer"
+    },
+    "optimize": {
+      "dialogTitle": "Asignación de Operadores — Resultado de Optimización",
+      "success": "Optimización completa: {before} → {after} operadores",
+      "failed": "La optimización falló",
+      "unsatisfied": "La demanda actual no puede satisfacerse con el presupuesto configurado. Aumenta max_operators_per_op o quita el límite del presupuesto.",
+      "applied": "Asignación aplicada a las operaciones",
+      "apply": "Aplicar a las operaciones",
+      "col": {
+        "product": "Producto",
+        "step": "Paso",
+        "operation": "Operación",
+        "before": "Antes",
+        "after": "Después",
+        "predicted": "Predicho (pcs/día)",
+        "demand": "Demanda (pcs/día)"
+      }
     },
     "guide": {
       "title": "Guía de Simulación de Línea de Producción v2.0",
