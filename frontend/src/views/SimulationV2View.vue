@@ -659,9 +659,8 @@ async function handleRun() {
       // run path's success-shape so saveResult still captures a
       // representative results snapshot.
       const response = await store.runMonteCarloAction()
-      const r = response as { success?: boolean; sample_run?: unknown }
-      if (r?.success && r.sample_run) {
-        saveResult(r.sample_run as Record<string, unknown>)
+      if (response?.success && response.sample_run) {
+        saveResult(response.sample_run)
       }
     } else {
       const response = await store.run()
