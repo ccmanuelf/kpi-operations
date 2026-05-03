@@ -27,7 +27,11 @@
 %   JSON line: { "operators":[...], "total_operators": K,
 %                "predicted_pcs_per_day_per_op":[...], "objective": K }
 
-include "globals.mzn";
+% (No `include "globals.mzn"` — this model uses only core builtins
+% (forall, sum, int2float, show, show_float, concat). Including
+% globals.mzn triggers a stdlib type-error on the apt-shipped
+% MiniZinc 2.7 in the Render Docker image even when no global
+% constraint is referenced.)
 
 % --- inputs --------------------------------------------------------------
 
