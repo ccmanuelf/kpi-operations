@@ -619,3 +619,184 @@ class TestRunMonteCarloEndpoint:
         assert data["sample_run"] is None
         assert data["aggregated_stats"] == {}
         assert len(data["validation_report"]["errors"]) > 0
+
+
+@pytest.fixture
+def multi_product_config_payload():
+    """Two-product config used by the Pattern-3 sequencing endpoint."""
+    return {
+        "config": {
+            "operations": [
+                {
+                    "product": "PROD_A",
+                    "step": 1,
+                    "operation": "Cut A",
+                    "machine_tool": "M1",
+                    "sam_min": 2.0,
+                    "operators": 1,
+                    "grade_pct": 90,
+                },
+                {
+                    "product": "PROD_A",
+                    "step": 2,
+                    "operation": "Sew A",
+                    "machine_tool": "M2",
+                    "sam_min": 3.0,
+                    "operators": 1,
+                    "grade_pct": 85,
+                },
+                {
+                    "product": "PROD_B",
+                    "step": 1,
+                    "operation": "Cut B",
+                    "machine_tool": "M1",
+                    "sam_min": 1.5,
+                    "operators": 1,
+                    "grade_pct": 90,
+                },
+                {
+                    "product": "PROD_B",
+                    "step": 2,
+                    "operation": "Sew B",
+                    "machine_tool": "M2",
+                    "sam_min": 2.5,
+                    "operators": 1,
+                    "grade_pct": 85,
+                },
+            ],
+            "schedule": {
+                "shifts_enabled": 1,
+                "shift1_hours": 8.0,
+                "work_days": 5,
+                "ot_enabled": False,
+            },
+            "demands": [
+                {"product": "PROD_A", "bundle_size": 10, "daily_demand": 100},
+                {"product": "PROD_B", "bundle_size": 10, "daily_demand": 80},
+            ],
+            "mode": "demand-driven",
+            "horizon_days": 1,
+        }
+    }
+
+
+class TestSequenceProductsEndpoint:
+    """Test the Pattern-3 product-sequencing endpoint."""
+
+    def test_sequence_requires_auth(self, client, multi_product_config_payload):
+        body = {**multi_product_config_payload, "setup_times_minutes": []}
+        response = client.post("/api/v2/simulation/sequence-products", json=body)
+        assert response.status_code == 401
+
+    def test_sequence_requires_sufficient_role(
+        self, operator_client, multi_product_config_payload
+    ):
+        body = {**multi_product_config_payload, "setup_times_minutes": []}
+        response = operator_client.post(
+            "/api/v2/simulation/sequence-products", json=body
+        )
+        assert response.status_code == 403
+
+    def test_sequence_rejects_negative_setup_minutes(
+        self, admin_client, multi_product_config_payload
+    ):
+        body = {
+            **multi_product_config_payload,
+            "setup_times_minutes": [
+                {"from_product": "PROD_A", "to_product": "PROD_B", "setup_minutes": -1}
+            ],
+        }
+        response = admin_client.post(
+            "/api/v2/simulation/sequence-products", json=body
+        )
+        assert response.status_code == 422
+
+    def test_sequence_invalid_config_returns_validation_failure(
+        self, admin_client, invalid_config_payload
+    ):
+        body = {**invalid_config_payload, "setup_times_minutes": []}
+        response = admin_client.post(
+            "/api/v2/simulation/sequence-products", json=body
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert data["status"] == "validation-failed"
+
+    def test_sequence_single_product_short_circuit(
+        self, admin_client, valid_config_payload
+    ):
+        """Single-product config returns trivial schedule WITHOUT requiring MZ."""
+        body = {**valid_config_payload, "setup_times_minutes": []}
+        response = admin_client.post(
+            "/api/v2/simulation/sequence-products", json=body
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["is_optimal"] is True
+        assert data["status"] == "single-product"
+        assert len(data["sequence"]) == 1
+        assert data["sequence"][0]["position"] == 1
+        assert data["sequence"][0]["setup_from_previous_minutes"] == 0
+        assert data["total_setup_minutes"] == 0
+
+    def test_sequence_happy_path(self, admin_client, multi_product_config_payload):
+        from backend.simulation_v2.optimization import is_minizinc_available
+        if not is_minizinc_available():
+            pytest.skip("MiniZinc CLI not available")
+
+        body = {
+            **multi_product_config_payload,
+            "setup_times_minutes": [
+                {"from_product": "PROD_A", "to_product": "PROD_B", "setup_minutes": 30},
+                {"from_product": "PROD_B", "to_product": "PROD_A", "setup_minutes": 60},
+            ],
+        }
+        response = admin_client.post(
+            "/api/v2/simulation/sequence-products", json=body
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["is_optimal"] is True
+        assert len(data["sequence"]) == 2
+        # Cheaper to go A→B (30) than B→A (60).
+        names = [s["product"] for s in data["sequence"]]
+        assert names == ["PROD_A", "PROD_B"]
+        assert data["total_setup_minutes"] == 30
+        # Schedule arithmetic.
+        assert data["sequence"][0]["start_time_minutes"] == 0
+        assert (
+            data["sequence"][0]["end_time_minutes"]
+            == data["sequence"][0]["start_time_minutes"]
+            + data["sequence"][0]["production_time_minutes"]
+        )
+        assert (
+            data["sequence"][1]["start_time_minutes"]
+            == data["sequence"][0]["end_time_minutes"]
+            + data["sequence"][1]["setup_from_previous_minutes"]
+        )
+        assert data["makespan_minutes"] == data["sequence"][-1]["end_time_minutes"]
+
+    def test_sequence_tolerates_stale_entries(
+        self, admin_client, multi_product_config_payload
+    ):
+        from backend.simulation_v2.optimization import is_minizinc_available
+        if not is_minizinc_available():
+            pytest.skip("MiniZinc CLI not available")
+
+        body = {
+            **multi_product_config_payload,
+            "setup_times_minutes": [
+                {"from_product": "PROD_A", "to_product": "PROD_B", "setup_minutes": 5},
+                # Stale — products not in config:
+                {"from_product": "STALE_X", "to_product": "STALE_Y", "setup_minutes": 999},
+            ],
+        }
+        response = admin_client.post(
+            "/api/v2/simulation/sequence-products", json=body
+        )
+        # Should not raise; the stale entry is just ignored.
+        assert response.status_code == 200
+        assert response.json()["success"] is True

@@ -692,6 +692,59 @@ class RebalancingResponse(BaseModel):
     )
 
 
+class SetupTimeEntry(BaseModel):
+    """One pairwise changeover entry for Pattern-3 sequencing."""
+
+    from_product: str = Field(..., min_length=1, max_length=100)
+    to_product: str = Field(..., min_length=1, max_length=100)
+    setup_minutes: int = Field(..., ge=0, le=10_000)
+
+
+class ProductSequencingRequest(BaseModel):
+    """API request for Pattern-3 product-sequencing optimization."""
+
+    config: SimulationConfig
+    setup_times_minutes: List[SetupTimeEntry] = Field(
+        default_factory=list,
+        description=(
+            "Pairwise changeover times. Missing pairs default to 0; "
+            "self-loops are ignored. Tolerated: entries for products "
+            "not in the config (logged + ignored)."
+        ),
+    )
+    timeout_seconds: int = Field(
+        default=30,
+        ge=1,
+        le=120,
+        description="MiniZinc solver wallclock timeout.",
+    )
+
+
+class SequencedProductModel(BaseModel):
+    """One product's place in the optimized sequence."""
+
+    position: int
+    product: str
+    production_time_minutes: int
+    start_time_minutes: int
+    end_time_minutes: int
+    setup_from_previous_minutes: int
+
+
+class ProductSequencingResponse(BaseModel):
+    """API response for the Pattern-3 endpoint."""
+
+    success: bool
+    is_optimal: bool
+    is_satisfied: bool
+    status: str
+    makespan_minutes: int
+    total_setup_minutes: int
+    total_production_minutes: int
+    sequence: List[SequencedProductModel] = Field(default_factory=list)
+    solver_message: str = ""
+
+
 class MonteCarloResponse(BaseModel):
     """
     API response for a Monte Carlo run.

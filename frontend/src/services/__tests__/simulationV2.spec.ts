@@ -24,6 +24,7 @@ import {
   runMonteCarlo,
   optimizeOperatorAllocation,
   rebalanceBottlenecks,
+  sequenceProducts,
 } from '../api/simulationV2'
 
 const mockApi = api as unknown as {
@@ -215,6 +216,67 @@ describe('rebalanceBottlenecks (Pattern 2)', () => {
     mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
     await expect(
       rebalanceBottlenecks({ config: validConfig }),
+    ).rejects.toThrow('503 Service Unavailable')
+  })
+})
+
+describe('sequenceProducts (Pattern 3)', () => {
+  it('POSTs to /v2/simulation/sequence-products with defaults', async () => {
+    await sequenceProducts({ config: validConfig })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/sequence-products', {
+      config: validConfig,
+      setup_times_minutes: [],
+      timeout_seconds: 30,
+    })
+  })
+
+  it('forwards an explicit setup-time matrix', async () => {
+    const setup = [
+      { from_product: 'A', to_product: 'B', setup_minutes: 10 },
+      { from_product: 'B', to_product: 'A', setup_minutes: 60 },
+    ]
+    await sequenceProducts({
+      config: validConfig,
+      setup_times_minutes: setup,
+      timeout_seconds: 60,
+    })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/sequence-products', {
+      config: validConfig,
+      setup_times_minutes: setup,
+      timeout_seconds: 60,
+    })
+  })
+
+  it('returns the response data verbatim', async () => {
+    const expected = {
+      success: true,
+      is_optimal: true,
+      is_satisfied: true,
+      status: 'satisfied',
+      makespan_minutes: 295,
+      total_setup_minutes: 25,
+      total_production_minutes: 270,
+      sequence: [
+        {
+          position: 1,
+          product: 'A',
+          production_time_minutes: 120,
+          start_time_minutes: 0,
+          end_time_minutes: 120,
+          setup_from_previous_minutes: 0,
+        },
+      ],
+      solver_message: 'ok',
+    }
+    mockApi.post.mockResolvedValueOnce({ data: expected })
+    const result = await sequenceProducts({ config: validConfig })
+    expect(result).toEqual(expected)
+  })
+
+  it('forwards backend rejections', async () => {
+    mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
+    await expect(
+      sequenceProducts({ config: validConfig }),
     ).rejects.toThrow('503 Service Unavailable')
   })
 })

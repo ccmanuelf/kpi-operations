@@ -48,6 +48,10 @@ from .models import (
     RebalancingRequest,
     RebalancingResponse,
     RebalancingProposalModel,
+    SetupTimeEntry,
+    ProductSequencingRequest,
+    ProductSequencingResponse,
+    SequencedProductModel,
 )
 
 from .validation import validate_simulation_config
@@ -65,6 +69,12 @@ from .optimization.bottleneck_rebalancing import (
     apply_rebalancing_to_config,
     RebalancingResult,
     RebalancingProposal,
+)
+from .optimization.product_sequencing import (
+    sequence_products,
+    estimate_production_time_minutes,
+    SequencingResult,
+    SequencedProduct,
 )
 from .optimization.minizinc_runner import (
     is_minizinc_available,
@@ -112,6 +122,10 @@ __all__ = [
     "RebalancingRequest",
     "RebalancingResponse",
     "RebalancingProposalModel",
+    "SetupTimeEntry",
+    "ProductSequencingRequest",
+    "ProductSequencingResponse",
+    "SequencedProductModel",
     # Engine
     "run_simulation",
     "ProductionLineSimulator",
@@ -129,6 +143,10 @@ __all__ = [
     "apply_rebalancing_to_config",
     "RebalancingResult",
     "RebalancingProposal",
+    "sequence_products",
+    "estimate_production_time_minutes",
+    "SequencingResult",
+    "SequencedProduct",
     "is_minizinc_available",
     "MiniZincNotAvailableError",
     "MiniZincSolveError",

@@ -186,6 +186,60 @@ export const rebalanceBottlenecks = async ({
   return response.data
 }
 
+// =============================================================================
+// Pattern 3 — Product sequencing
+// =============================================================================
+
+export interface SetupTimeEntry {
+  from_product: string
+  to_product: string
+  setup_minutes: number
+}
+
+export interface SequencedProduct {
+  position: number
+  product: string
+  production_time_minutes: number
+  start_time_minutes: number
+  end_time_minutes: number
+  setup_from_previous_minutes: number
+}
+
+export interface ProductSequencingOptions {
+  config: SimulationConfig
+  setup_times_minutes?: SetupTimeEntry[]
+  timeout_seconds?: number
+}
+
+/**
+ * Pattern 3 (MiniZinc orders → SimPy simulates): given a multi-product
+ * config and a pairwise setup-time matrix, find the production order
+ * that minimizes total wallclock makespan. Useful for campaign-mode
+ * lines that produce one product at a time and pay a changeover cost
+ * when switching between products.
+ *
+ * `setup_times_minutes` is a list of `{from_product, to_product,
+ * setup_minutes}` triples. Missing pairs default to 0; entries
+ * referencing products not in the config are tolerated (logged + ignored
+ * server-side). Self-loops are also ignored.
+ *
+ * Backend: `POST /v2/simulation/sequence-products`. Returns 503 if the
+ * MiniZinc CLI is missing on the server.
+ */
+export const sequenceProducts = async ({
+  config,
+  setup_times_minutes = [],
+  timeout_seconds = 30,
+}: ProductSequencingOptions) => {
+  const body: Record<string, unknown> = {
+    config,
+    setup_times_minutes,
+    timeout_seconds,
+  }
+  const response = await api.post('/v2/simulation/sequence-products', body)
+  return response.data
+}
+
 /**
  * Pattern 1 (MiniZinc → SimPy validate): minimum-operator allocation
  * that meets each station's daily demand.
@@ -521,6 +575,7 @@ export default {
   runMonteCarlo,
   optimizeOperatorAllocation,
   rebalanceBottlenecks,
+  sequenceProducts,
   buildSimulationConfig,
   getDefaultOperation,
   getDefaultSchedule,

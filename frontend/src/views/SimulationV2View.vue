@@ -221,6 +221,17 @@
               {{ t('simulationV2.actions.rebalanceBottlenecks') }}
             </v-btn>
 
+            <v-btn
+              color="teal"
+              variant="outlined"
+              :loading="isSequencing"
+              :disabled="!canRunSimulation"
+              @click="openSequenceSetupDialog"
+            >
+              <v-icon start>mdi-sort-numeric-ascending</v-icon>
+              {{ t('simulationV2.actions.sequenceProducts') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -710,6 +721,134 @@
       </v-card>
     </v-dialog>
 
+    <!-- Sequence Products Setup Dialog (Pattern 3) -->
+    <v-dialog v-model="showSequenceSetupDialog" max-width="700">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="teal">mdi-sort-numeric-ascending</v-icon>
+          {{ t('simulationV2.sequence.setupDialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <v-alert
+            v-if="!hasMultipleProducts"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.sequence.needTwoProducts') }}
+          </v-alert>
+          <div v-else>
+            <div class="text-body-2 mb-3">
+              {{ t('simulationV2.sequence.setupIntro') }}
+            </div>
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th>{{ t('simulationV2.sequence.from') }}</th>
+                  <th>{{ t('simulationV2.sequence.to') }}</th>
+                  <th style="width: 140px;">{{ t('simulationV2.sequence.minutes') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(entry, idx) in setupEntries" :key="`${entry.from_product}-${entry.to_product}`">
+                  <td>{{ entry.from_product }}</td>
+                  <td>{{ entry.to_product }}</td>
+                  <td>
+                    <v-text-field
+                      v-model.number="setupEntries[idx].setup_minutes"
+                      type="number"
+                      min="0"
+                      density="compact"
+                      hide-details
+                      variant="outlined"
+                    />
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showSequenceSetupDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+          <v-btn
+            v-if="hasMultipleProducts"
+            color="primary"
+            variant="elevated"
+            :loading="isSequencing"
+            @click="handleSequenceProducts"
+          >
+            <v-icon start>mdi-play</v-icon>
+            {{ t('simulationV2.sequence.runOptimization') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Sequence Products Result Dialog (Pattern 3) -->
+    <v-dialog v-model="showSequencingDialog" max-width="900">
+      <v-card v-if="sequencingResult">
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="teal">mdi-sort-numeric-ascending</v-icon>
+          {{ t('simulationV2.sequence.dialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <div class="mb-3">
+            <strong>{{ sequencingResult.solver_message }}</strong>
+          </div>
+          <v-alert
+            v-if="!sequencingResult.success"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.sequence.unsatisfied') }}
+          </v-alert>
+          <div class="mb-3 text-caption text-medium-emphasis">
+            {{ t('simulationV2.sequence.totals', {
+              makespan: sequencingResult.makespan_minutes,
+              production: sequencingResult.total_production_minutes,
+              setup: sequencingResult.total_setup_minutes,
+            }) }}
+          </div>
+          <v-table v-if="sequencingResult.sequence?.length" density="compact">
+            <thead>
+              <tr>
+                <th>{{ t('simulationV2.sequence.col.position') }}</th>
+                <th>{{ t('simulationV2.sequence.col.product') }}</th>
+                <th>{{ t('simulationV2.sequence.col.start') }}</th>
+                <th>{{ t('simulationV2.sequence.col.production') }}</th>
+                <th>{{ t('simulationV2.sequence.col.setupFrom') }}</th>
+                <th>{{ t('simulationV2.sequence.col.end') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="step in sequencingResult.sequence" :key="step.position">
+                <td><strong>{{ step.position }}</strong></td>
+                <td>{{ step.product }}</td>
+                <td>{{ step.start_time_minutes }}</td>
+                <td>{{ step.production_time_minutes }}</td>
+                <td :class="step.setup_from_previous_minutes > 0 ? 'text-warning' : ''">
+                  {{ step.setup_from_previous_minutes }}
+                </td>
+                <td><strong>{{ step.end_time_minutes }}</strong></td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showSequencingDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="450">
       <v-card>
@@ -773,7 +912,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 import { useNotificationStore } from '@/stores/notificationStore'
-import { optimizeOperatorAllocation, rebalanceBottlenecks } from '@/services/api/simulationV2'
+import { optimizeOperatorAllocation, rebalanceBottlenecks, sequenceProducts } from '@/services/api/simulationV2'
 import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
 import ScheduleForm from '@/components/simulation/ScheduleForm.vue'
@@ -813,6 +952,18 @@ const notify = useNotificationStore()
 const isRebalancing = ref(false)
 const rebalancingResult = ref(null)
 const showRebalancingDialog = ref(false)
+
+// Pattern 3 (MiniZinc orders → SimPy simulates) state.
+const isSequencing = ref(false)
+const sequencingResult = ref(null)
+const showSequencingDialog = ref(false)
+const showSequenceSetupDialog = ref(false)
+const setupEntries = ref([])
+
+const hasMultipleProducts = computed(() => {
+  const products = (store.demands || []).map((d) => d.product).filter(Boolean)
+  return new Set(products).size >= 2
+})
 
 // Computed
 const canRunSimulation = computed(() => {
@@ -945,6 +1096,74 @@ async function handleRebalanceBottlenecks() {
     notify.showError(detail || t('simulationV2.rebalance.failed'))
   } finally {
     isRebalancing.value = false
+  }
+}
+
+/**
+ * Pattern 3 (MiniZinc orders → SimPy simulates) — open the setup-times
+ * editor. Pre-populates a row per ordered pair of products in the demand
+ * list (asymmetric: A→B and B→A both appear); preserves any values the
+ * user already entered when re-opening.
+ */
+function openSequenceSetupDialog() {
+  const products = Array.from(new Set((store.demands || []).map((d) => d.product).filter(Boolean)))
+  const existing = new Map(
+    (setupEntries.value || []).map((e) => [`${e.from_product}|${e.to_product}`, e.setup_minutes]),
+  )
+  const fresh = []
+  for (const a of products) {
+    for (const b of products) {
+      if (a === b) continue
+      fresh.push({
+        from_product: a,
+        to_product: b,
+        setup_minutes: existing.get(`${a}|${b}`) ?? 0,
+      })
+    }
+  }
+  setupEntries.value = fresh
+  showSequenceSetupDialog.value = true
+}
+
+/**
+ * Run the sequencer with the user-edited setup-time matrix. Coerces the
+ * setup_minutes values to non-negative integers (the backend rejects
+ * negatives via Pydantic; this gives a friendlier UI failure mode).
+ */
+async function handleSequenceProducts() {
+  isSequencing.value = true
+  sequencingResult.value = null
+  try {
+    const config = store.buildConfig()
+    const cleaned = (setupEntries.value || []).map((e) => ({
+      from_product: e.from_product,
+      to_product: e.to_product,
+      setup_minutes: Math.max(0, parseInt(e.setup_minutes ?? 0, 10) || 0),
+    }))
+    const response = await sequenceProducts({
+      config,
+      setup_times_minutes: cleaned,
+    })
+    sequencingResult.value = response
+    showSequenceSetupDialog.value = false
+    showSequencingDialog.value = true
+    if (response?.success) {
+      notify.showSuccess(
+        t('simulationV2.sequence.success', {
+          makespan: response.makespan_minutes,
+          setup: response.total_setup_minutes,
+          production: response.total_production_minutes,
+        }),
+      )
+    } else {
+      notify.showError(response?.solver_message || t('simulationV2.sequence.failed'))
+    }
+  } catch (error) {
+    console.error('Sequencing error:', error)
+    const detail = error?.response?.data?.detail || error?.message || ''
+    notify.showError(detail || t('simulationV2.sequence.failed'))
+  } finally {
+    isSequencing.value = false
   }
 }
 

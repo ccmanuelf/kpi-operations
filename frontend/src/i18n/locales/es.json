@@ -2981,6 +2981,7 @@
       "baseSeedPlaceholder": "Aleatoria",
       "optimizeOperators": "Optimizar Operadores",
       "rebalanceBottlenecks": "Rebalancear Cuello de Botella",
+      "sequenceProducts": "Secuenciar Productos",
       "importConfig": "Importar Config.",
       "exportConfig": "Exportar Config.",
       "reset": "Restablecer"
@@ -3022,6 +3023,28 @@
         "predicted": "Predicho (pcs/día)",
         "demand": "Demanda (pcs/día)",
         "slack": "Holgura (pcs/día)"
+      }
+    },
+    "sequence": {
+      "setupDialogTitle": "Secuenciar Productos — Tiempos de Cambio",
+      "setupIntro": "Ingresa el tiempo de cambio (setup) en minutos para cada transición entre productos. Deja en 0 si no hay penalización al cambiar. El orden es asimétrico: A→B puede ser distinto de B→A.",
+      "from": "De",
+      "to": "A",
+      "minutes": "Minutos",
+      "runOptimization": "Encontrar Secuencia Óptima",
+      "needTwoProducts": "La secuenciación requiere al menos 2 productos con demanda. Agrega otro producto para usar esta función.",
+      "dialogTitle": "Secuenciación de Productos — Orden Optimizado",
+      "success": "Secuencia óptima encontrada: makespan {makespan} min ({setup} min setup + {production} min producción)",
+      "failed": "La secuenciación falló",
+      "unsatisfied": "El secuenciador no encontró una permutación factible. Verifica el límite de tiempo y los tiempos de setup por valores negativos o extremos.",
+      "totals": "Tiempo total: {makespan} min  •  Producción: {production} min  •  Setup: {setup} min",
+      "col": {
+        "position": "#",
+        "product": "Producto",
+        "production": "Producción (min)",
+        "setupFrom": "Setup desde Anterior (min)",
+        "start": "Inicio (min)",
+        "end": "Fin (min)"
       }
     },
     "guide": {

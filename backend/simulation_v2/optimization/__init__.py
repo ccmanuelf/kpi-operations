@@ -32,6 +32,12 @@ from .bottleneck_rebalancing import (
     rebalance_bottleneck,
     apply_rebalancing_to_config,
 )
+from .product_sequencing import (
+    SequencedProduct,
+    SequencingResult,
+    estimate_production_time_minutes,
+    sequence_products,
+)
 
 __all__ = [
     "MiniZincNotAvailableError",
@@ -47,4 +53,8 @@ __all__ = [
     "RebalancingProposal",
     "rebalance_bottleneck",
     "apply_rebalancing_to_config",
+    "SequencedProduct",
+    "SequencingResult",
+    "estimate_production_time_minutes",
+    "sequence_products",
 ]

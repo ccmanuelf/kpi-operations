@@ -24,6 +24,8 @@ from backend.simulation_v2.models import (
     OperatorAllocationResponse,
     RebalancingRequest,
     RebalancingResponse,
+    ProductSequencingRequest,
+    ProductSequencingResponse,
 )
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.engine import run_simulation
@@ -41,6 +43,9 @@ from backend.simulation_v2.optimization.operator_allocation import (
 from backend.simulation_v2.optimization.bottleneck_rebalancing import (
     apply_rebalancing_to_config,
     rebalance_bottleneck,
+)
+from backend.simulation_v2.optimization.product_sequencing import (
+    sequence_products,
 )
 from backend.simulation_v2.constants import (
     MAX_PRODUCTS,
@@ -628,6 +633,115 @@ async def rebalance_bottlenecks_endpoint(
         ],
         solver_message=result.solver_message,
         validation_run=validation_run,
+    )
+
+
+@router.post("/sequence-products", response_model=ProductSequencingResponse)
+async def sequence_products_endpoint(
+    request: ProductSequencingRequest, current_user: User = Depends(get_current_user)
+) -> ProductSequencingResponse:
+    """
+    Pattern 3 — product sequencing (MiniZinc orders → SimPy simulates).
+
+    Given a SimulationConfig with multiple products and a pairwise
+    setup-time matrix, find the production order that minimizes total
+    wallclock makespan. Useful for campaign-mode lines that produce one
+    product at a time and pay a changeover cost when switching products.
+
+    `setup_times_minutes` is a list of `{from_product, to_product,
+    setup_minutes}` triples. Missing pairs default to 0; entries
+    referencing products not in the config are logged + ignored
+    (stale-matrix tolerance).
+
+    Returns 503 with a clear message if the MiniZinc CLI is not
+    installed on the host.
+    """
+    _check_simulation_permission(current_user)
+
+    if not is_minizinc_available():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Product sequencing requires MiniZinc; the binary is "
+                "not installed on this server."
+            ),
+        )
+
+    config = request.config
+
+    logger.info(
+        "User %s sequencing products: %d demands, %d setup entries",
+        current_user.username,
+        len(config.demands),
+        len(request.setup_times_minutes),
+    )
+
+    validation_report = validate_simulation_config(config)
+    if validation_report.has_errors:
+        return ProductSequencingResponse(
+            success=False,
+            is_optimal=False,
+            is_satisfied=False,
+            status="validation-failed",
+            makespan_minutes=0,
+            total_setup_minutes=0,
+            total_production_minutes=0,
+            sequence=[],
+            solver_message=(
+                "Configuration validation failed: "
+                + "; ".join(e.message for e in validation_report.errors)
+            ),
+        )
+
+    setup_entries = [e.model_dump() for e in request.setup_times_minutes]
+
+    try:
+        result = sequence_products(
+            config,
+            setup_entries=setup_entries,
+            timeout_seconds=request.timeout_seconds,
+        )
+    except MiniZincSolveError as e:
+        logger.exception("MiniZinc solver error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Solver error: {e}",
+        )
+    except MiniZincNotAvailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MiniZinc CLI became unavailable mid-request.",
+        )
+
+    logger.info(
+        "Product sequencing done for user=%s: optimal=%s, makespan=%d, "
+        "n_products=%d",
+        current_user.username,
+        result.is_optimal,
+        result.makespan_minutes,
+        len(result.sequence),
+    )
+
+    return ProductSequencingResponse(
+        success=result.is_satisfied,
+        is_optimal=result.is_optimal,
+        is_satisfied=result.is_satisfied,
+        status=result.status,
+        makespan_minutes=result.makespan_minutes,
+        total_setup_minutes=result.total_setup_minutes,
+        total_production_minutes=result.total_production_minutes,
+        sequence=[
+            {
+                "position": s.position,
+                "product": s.product,
+                "production_time_minutes": s.production_time_minutes,
+                "start_time_minutes": s.start_time_minutes,
+                "end_time_minutes": s.end_time_minutes,
+                "setup_from_previous_minutes": s.setup_from_previous_minutes,
+            }
+            for s in result.sequence
+        ],
+        solver_message=result.solver_message,
     )
 
 

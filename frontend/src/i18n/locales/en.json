@@ -2937,6 +2937,7 @@
       "baseSeedPlaceholder": "Random",
       "optimizeOperators": "Optimize Operators",
       "rebalanceBottlenecks": "Rebalance Bottleneck",
+      "sequenceProducts": "Sequence Products",
       "importConfig": "Import Config",
       "exportConfig": "Export Config",
       "reset": "Reset"
@@ -2978,6 +2979,28 @@
         "predicted": "Predicted (pcs/day)",
         "demand": "Demand (pcs/day)",
         "slack": "Slack (pcs/day)"
+      }
+    },
+    "sequence": {
+      "setupDialogTitle": "Sequence Products — Setup Times",
+      "setupIntro": "Enter the changeover (setup) time in minutes for each product transition. Leave at 0 if there is no penalty for switching. Order is asymmetric: A→B may differ from B→A.",
+      "from": "From",
+      "to": "To",
+      "minutes": "Minutes",
+      "runOptimization": "Find Optimal Sequence",
+      "needTwoProducts": "Sequencing requires at least 2 products with demand. Add another product to use this feature.",
+      "dialogTitle": "Product Sequencing — Optimized Order",
+      "success": "Optimal sequence found: makespan {makespan} min ({setup} min setup + {production} min production)",
+      "failed": "Sequencing failed",
+      "unsatisfied": "Sequencer could not find a feasible permutation. Check the time-limit and the setup times for negative or extreme values.",
+      "totals": "Total wallclock: {makespan} min  •  Production: {production} min  •  Setup: {setup} min",
+      "col": {
+        "position": "#",
+        "product": "Product",
+        "production": "Production (min)",
+        "setupFrom": "Setup From Prev (min)",
+        "start": "Start (min)",
+        "end": "End (min)"
       }
     },
     "guide": {
