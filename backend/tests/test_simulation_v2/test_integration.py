@@ -375,6 +375,87 @@ class TestSchemaEndpoint:
         assert "demands" in schema["properties"]
 
 
+class TestOptimizeOperatorsEndpoint:
+    """Test the Pattern-1 operator-allocation endpoint."""
+
+    def test_optimize_requires_auth(self, client, valid_config_payload):
+        body = {**valid_config_payload, "max_operators_per_op": 10}
+        response = client.post("/api/v2/simulation/optimize-operators", json=body)
+        assert response.status_code == 401
+
+    def test_optimize_requires_sufficient_role(self, operator_client, valid_config_payload):
+        body = {**valid_config_payload, "max_operators_per_op": 10}
+        response = operator_client.post("/api/v2/simulation/optimize-operators", json=body)
+        assert response.status_code == 403
+
+    def test_optimize_rejects_max_operators_below_one(self, admin_client, valid_config_payload):
+        body = {**valid_config_payload, "max_operators_per_op": 0}
+        response = admin_client.post("/api/v2/simulation/optimize-operators", json=body)
+        assert response.status_code == 422
+
+    def test_optimize_rejects_negative_budget(self, admin_client, valid_config_payload):
+        body = {**valid_config_payload, "total_operators_budget": -1}
+        response = admin_client.post("/api/v2/simulation/optimize-operators", json=body)
+        assert response.status_code == 422
+
+    def test_optimize_invalid_config_returns_validation_failure(
+        self, admin_client, invalid_config_payload
+    ):
+        response = admin_client.post(
+            "/api/v2/simulation/optimize-operators",
+            json={**invalid_config_payload, "max_operators_per_op": 10},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is False
+        assert data["status"] == "validation-failed"
+
+    def test_optimize_happy_path(self, admin_client, valid_config_payload):
+        """Happy path: valid config solves and returns proposals."""
+        from backend.simulation_v2.optimization import is_minizinc_available
+        if not is_minizinc_available():
+            import pytest
+            pytest.skip("MiniZinc CLI not available")
+
+        body = {**valid_config_payload, "max_operators_per_op": 10}
+        response = admin_client.post("/api/v2/simulation/optimize-operators", json=body)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["is_optimal"] is True
+        assert data["total_operators_after"] >= 1
+        assert data["total_operators_after"] <= data["total_operators_before"]
+
+        # Each proposal echoes the source operation and includes a prediction.
+        assert len(data["proposals"]) == 3
+        for prop in data["proposals"]:
+            assert prop["product"] == "T_SHIRT_A"
+            assert prop["operators_after"] >= 1
+            assert prop["predicted_pcs_per_day"] >= prop["demand_pcs_per_day"]
+
+    def test_optimize_with_validation_run(self, admin_client, valid_config_payload):
+        """When validate_with_simulation=true, endpoint returns a SimPy run."""
+        from backend.simulation_v2.optimization import is_minizinc_available
+        if not is_minizinc_available():
+            import pytest
+            pytest.skip("MiniZinc CLI not available")
+
+        body = {
+            **valid_config_payload,
+            "max_operators_per_op": 10,
+            "validate_with_simulation": True,
+        }
+        response = admin_client.post("/api/v2/simulation/optimize-operators", json=body)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["validation_run"] is not None
+        # validation_run is a full SimulationResults shape.
+        assert "daily_summary" in data["validation_run"]
+        assert "weekly_demand_capacity" in data["validation_run"]
+
+
 class TestRunMonteCarloEndpoint:
     """Test the Monte Carlo simulation endpoint."""
 

@@ -28,9 +28,12 @@ LABEL description="KPI Operations Platform - FastAPI Backend"
 
 WORKDIR /app
 
-# Install runtime dependencies (curl for healthcheck)
+# Install runtime dependencies (curl for healthcheck, minizinc for the
+# SimPy V2 optimization layer — Pattern 1+ uses MZ models executed via
+# subprocess from `backend/simulation_v2/optimization/`).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    minizinc \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security

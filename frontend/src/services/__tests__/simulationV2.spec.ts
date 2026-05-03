@@ -20,7 +20,7 @@ vi.mock('../api/client', () => ({
 }))
 
 import api from '../api/client'
-import { runMonteCarlo } from '../api/simulationV2'
+import { runMonteCarlo, optimizeOperatorAllocation } from '../api/simulationV2'
 
 const mockApi = api as unknown as {
   post: ReturnType<typeof vi.fn>
@@ -94,5 +94,64 @@ describe('runMonteCarlo', () => {
     await expect(
       runMonteCarlo({ config: validConfig, n_replications: 2, base_seed: 0 }),
     ).rejects.toThrow('422 Validation failed')
+  })
+})
+
+describe('optimizeOperatorAllocation (Pattern 1)', () => {
+  it('POSTs to /v2/simulation/optimize-operators with defaults', async () => {
+    await optimizeOperatorAllocation({ config: validConfig })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/optimize-operators', {
+      config: validConfig,
+      max_operators_per_op: 10,
+      timeout_seconds: 15,
+      validate_with_simulation: false,
+    })
+  })
+
+  it('forwards explicit options', async () => {
+    await optimizeOperatorAllocation({
+      config: validConfig,
+      max_operators_per_op: 5,
+      total_operators_budget: 8,
+      timeout_seconds: 30,
+      validate_with_simulation: true,
+    })
+    expect(mockApi.post).toHaveBeenCalledWith('/v2/simulation/optimize-operators', {
+      config: validConfig,
+      max_operators_per_op: 5,
+      total_operators_budget: 8,
+      timeout_seconds: 30,
+      validate_with_simulation: true,
+    })
+  })
+
+  it('omits total_operators_budget when null', async () => {
+    await optimizeOperatorAllocation({
+      config: validConfig,
+      total_operators_budget: null,
+    })
+    const body = mockApi.post.mock.calls[0][1] as Record<string, unknown>
+    expect(body).not.toHaveProperty('total_operators_budget')
+  })
+
+  it('returns the response data verbatim', async () => {
+    const expected = {
+      success: true,
+      is_optimal: true,
+      total_operators_before: 6,
+      total_operators_after: 4,
+      proposals: [],
+      solver_message: 'ok',
+    }
+    mockApi.post.mockResolvedValueOnce({ data: expected })
+    const result = await optimizeOperatorAllocation({ config: validConfig })
+    expect(result).toEqual(expected)
+  })
+
+  it('forwards backend rejections', async () => {
+    mockApi.post.mockRejectedValueOnce(new Error('503 Service Unavailable'))
+    await expect(
+      optimizeOperatorAllocation({ config: validConfig }),
+    ).rejects.toThrow('503 Service Unavailable')
   })
 })

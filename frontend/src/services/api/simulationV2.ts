@@ -101,6 +101,59 @@ export interface MonteCarloRunOptions {
   base_seed?: number | null
 }
 
+// =============================================================================
+// Pattern 1 — Operator allocation optimization
+// =============================================================================
+
+export interface OperatorAllocationProposal {
+  product: string
+  step: number
+  operation: string
+  machine_tool: string
+  sam_min: number
+  grade_pct: number
+  operators_before: number
+  operators_after: number
+  demand_pcs_per_day: number
+  predicted_pcs_per_day: number
+}
+
+export interface OperatorAllocationOptions {
+  config: SimulationConfig
+  max_operators_per_op?: number
+  total_operators_budget?: number | null
+  timeout_seconds?: number
+  validate_with_simulation?: boolean
+}
+
+/**
+ * Pattern 1 (MiniZinc → SimPy validate): minimum-operator allocation
+ * that meets each station's daily demand.
+ *
+ * Backend: `POST /v2/simulation/optimize-operators`. Returns 503 if the
+ * MiniZinc CLI is missing on the server (development envs without it
+ * stay functional for the rest of the simulation API).
+ */
+export const optimizeOperatorAllocation = async ({
+  config,
+  max_operators_per_op = 10,
+  total_operators_budget = null,
+  timeout_seconds = 15,
+  validate_with_simulation = false,
+}: OperatorAllocationOptions) => {
+  const body: Record<string, unknown> = {
+    config,
+    max_operators_per_op,
+    timeout_seconds,
+    validate_with_simulation,
+  }
+  if (total_operators_budget !== null && total_operators_budget !== undefined) {
+    body.total_operators_budget = total_operators_budget
+  }
+  const response = await api.post('/v2/simulation/optimize-operators', body)
+  return response.data
+}
+
 /**
  * Run N replications of the simulation with mean ± 95% CI aggregation.
  *
@@ -406,6 +459,7 @@ export default {
   validateSimulationConfig,
   runSimulation,
   runMonteCarlo,
+  optimizeOperatorAllocation,
   buildSimulationConfig,
   getDefaultOperation,
   getDefaultSchedule,

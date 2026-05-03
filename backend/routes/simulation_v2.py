@@ -20,11 +20,22 @@ from backend.simulation_v2.models import (
     ValidationReport,
     MonteCarloRequest,
     MonteCarloResponse,
+    OperatorAllocationRequest,
+    OperatorAllocationResponse,
 )
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.engine import run_simulation
 from backend.simulation_v2.calculations import calculate_all_blocks
 from backend.simulation_v2.monte_carlo import run_monte_carlo
+from backend.simulation_v2.optimization import (
+    MiniZincNotAvailableError,
+    MiniZincSolveError,
+    is_minizinc_available,
+)
+from backend.simulation_v2.optimization.operator_allocation import (
+    apply_allocation_to_config,
+    optimize_operator_allocation,
+)
 from backend.simulation_v2.constants import (
     MAX_PRODUCTS,
     MAX_OPERATIONS_PER_PRODUCT,
@@ -348,6 +359,134 @@ async def run_monte_carlo_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Monte Carlo simulation failed",
         )
+
+
+@router.post("/optimize-operators", response_model=OperatorAllocationResponse)
+async def optimize_operators_endpoint(
+    request: OperatorAllocationRequest, current_user: User = Depends(get_current_user)
+) -> OperatorAllocationResponse:
+    """
+    Pattern 1 — operator allocation optimization (MiniZinc → SimPy validate).
+
+    Given a SimulationConfig, find the minimum operator count per
+    station that meets each station's daily demand under deterministic
+    capacity assumptions. When `validate_with_simulation=true`, run a
+    single SimPy replication with the optimized allocation so callers
+    can compare deterministic prediction vs stochastic engine output.
+
+    Returns 503 with a clear message if the MiniZinc CLI is not
+    installed on the host (development environments without it stay
+    functional for the rest of the simulation API).
+    """
+    _check_simulation_permission(current_user)
+
+    if not is_minizinc_available():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Operator-allocation optimization requires MiniZinc; "
+                "the binary is not installed on this server."
+            ),
+        )
+
+    config = request.config
+
+    logger.info(
+        f"User {current_user.username} optimizing operator allocation: "
+        f"{len(config.operations)} ops, max_per_op={request.max_operators_per_op}, "
+        f"budget={request.total_operators_budget}, "
+        f"validate={request.validate_with_simulation}"
+    )
+
+    # Validate the SimulationConfig itself before optimizing — surfaces
+    # demand/operations mismatches with the same shape the /run path uses.
+    validation_report = validate_simulation_config(config)
+    if validation_report.has_errors:
+        return OperatorAllocationResponse(
+            success=False,
+            is_optimal=False,
+            is_satisfied=False,
+            status="validation-failed",
+            total_operators_before=sum(int(op.operators or 0) for op in config.operations),
+            total_operators_after=0,
+            proposals=[],
+            solver_message=(
+                "Configuration validation failed: "
+                + "; ".join(e.message for e in validation_report.errors)
+            ),
+        )
+
+    try:
+        result = optimize_operator_allocation(
+            config,
+            max_operators_per_op=request.max_operators_per_op,
+            total_operators_budget=request.total_operators_budget,
+            timeout_seconds=request.timeout_seconds,
+        )
+    except MiniZincSolveError as e:
+        logger.exception("MiniZinc solver error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Solver error: {e}",
+        )
+    except MiniZincNotAvailableError:
+        # Race: the binary check passed but the runner failed. Treat as 503.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="MiniZinc CLI became unavailable mid-request.",
+        )
+
+    validation_run = None
+    if request.validate_with_simulation and result.is_satisfied:
+        applied = apply_allocation_to_config(config, result)
+        try:
+            metrics, duration = run_simulation(applied)
+            validation_run = calculate_all_blocks(
+                config=applied,
+                metrics=metrics,
+                validation_report=validation_report,
+                duration_seconds=duration,
+                defaults_applied=[],
+            )
+        except Exception:
+            # Validation is best-effort; failures don't void the optimization result.
+            logger.exception("SimPy validation pass failed for optimized allocation")
+            validation_run = None
+
+    logger.info(
+        "Operator-allocation optimization done for user=%s: optimal=%s, "
+        "before=%d, after=%d",
+        current_user.username,
+        result.is_optimal,
+        result.total_operators_before,
+        result.total_operators_after,
+    )
+
+    return OperatorAllocationResponse(
+        success=result.is_satisfied,
+        is_optimal=result.is_optimal,
+        is_satisfied=result.is_satisfied,
+        status=result.status,
+        total_operators_before=result.total_operators_before,
+        total_operators_after=result.total_operators_after,
+        proposals=[
+            {
+                "product": p.product,
+                "step": p.step,
+                "operation": p.operation,
+                "machine_tool": p.machine_tool,
+                "sam_min": p.sam_min,
+                "grade_pct": p.grade_pct,
+                "operators_before": p.operators_before,
+                "operators_after": p.operators_after,
+                "demand_pcs_per_day": p.demand_pcs_per_day,
+                "predicted_pcs_per_day": p.predicted_pcs_per_day,
+            }
+            for p in result.proposals
+        ],
+        solver_message=result.solver_message,
+        validation_run=validation_run,
+    )
 
 
 @router.get("/schema")

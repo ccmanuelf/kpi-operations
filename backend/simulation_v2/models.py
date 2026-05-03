@@ -535,6 +535,76 @@ class MonteCarloStat(BaseModel):
     n: int
 
 
+class OperatorAllocationProposalModel(BaseModel):
+    """One station's optimized operator count + the model's prediction."""
+
+    product: str
+    step: int
+    operation: str
+    machine_tool: str
+    sam_min: float
+    grade_pct: float
+    operators_before: int
+    operators_after: int
+    demand_pcs_per_day: int
+    predicted_pcs_per_day: float
+
+
+class OperatorAllocationRequest(BaseModel):
+    """API request for Pattern-1 operator-allocation optimization."""
+
+    config: SimulationConfig
+    max_operators_per_op: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="Per-station upper bound on operator count.",
+    )
+    total_operators_budget: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Optional cap on total operators across all stations. "
+            "When set and infeasible, the model returns is_satisfied=false."
+        ),
+    )
+    timeout_seconds: int = Field(
+        default=15,
+        ge=1,
+        le=120,
+        description="MiniZinc solver wallclock timeout.",
+    )
+    validate_with_simulation: bool = Field(
+        default=False,
+        description=(
+            "If true, run a single SimPy replication with the optimized "
+            "allocation and include the resulting daily summary so callers "
+            "can compare deterministic vs stochastic predictions."
+        ),
+    )
+
+
+class OperatorAllocationResponse(BaseModel):
+    """API response for the Pattern-1 endpoint."""
+
+    success: bool
+    is_optimal: bool
+    is_satisfied: bool
+    status: str
+    total_operators_before: int
+    total_operators_after: int
+    proposals: List[OperatorAllocationProposalModel] = Field(default_factory=list)
+    solver_message: str = ""
+    validation_run: Optional[SimulationResults] = Field(
+        default=None,
+        description=(
+            "Populated when validate_with_simulation=true: a single SimPy "
+            "run using the optimized allocation, for deterministic-vs-"
+            "stochastic comparison."
+        ),
+    )
+
+
 class MonteCarloResponse(BaseModel):
     """
     API response for a Monte Carlo run.
