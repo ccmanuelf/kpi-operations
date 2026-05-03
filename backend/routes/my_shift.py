@@ -3,7 +3,7 @@ My Shift Routes
 Provides personalized shift summary data for line operators
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime
@@ -14,8 +14,6 @@ from backend.database import get_db
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.quality_entry import QualityEntry
-from backend.orm.attendance_entry import AttendanceEntry
-from backend.orm.work_order import WorkOrder
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
@@ -62,7 +60,7 @@ class ActivityEntry(BaseModel):
     """A single activity log entry"""
 
     id: str
-    type: str  # production, downtime, quality, hold
+    type: str  # production, downtime, quality
     description: str
     timestamp: datetime
 
@@ -74,7 +72,7 @@ class MyShiftSummary(BaseModel):
     """Complete shift summary response"""
 
     date: date
-    shift_number: Optional[int]
+    shift_id: Optional[int]
     operator_id: Optional[str]
     stats: ShiftStats
     assigned_work_orders: List[WorkOrderProgress]
@@ -93,8 +91,8 @@ class MyShiftSummary(BaseModel):
 @router.get("/summary", response_model=MyShiftSummary)
 def get_my_shift_summary(
     shift_date: Optional[date] = Query(None, description="Date for shift summary"),
-    shift_number: Optional[int] = Query(None, ge=1, le=3, description="Shift number (1-3)"),
-    operator_id: Optional[str] = Query(None, description="Operator employee ID"),
+    shift_id: Optional[int] = Query(None, description="Shift ID (FK to SHIFT.shift_id)"),
+    operator_id: Optional[str] = Query(None, description="Operator employee ID (currently advisory only)"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -106,52 +104,66 @@ def get_my_shift_summary(
     - List of assigned work orders with progress
     - Recent activity entries
     - Data completeness indicators
+
+    Notes:
+    - `shift_id` filters PRODUCTION_ENTRY by `shift_id` foreign key. The
+      DOWNTIME_ENTRY and QUALITY_ENTRY tables don't carry a shift FK in
+      the current schema; their results are date-scoped only.
+    - `operator_id` is accepted for forward-compatibility but currently
+      ignored — PRODUCTION_ENTRY tracks the entering user (`entered_by`)
+      not the operator. Wire up via EMPLOYEE_LINE_ASSIGNMENT when needed.
     """
-    # Default to today if not specified
     target_date = shift_date or date.today()
 
-    # Query production entries for this shift
-    production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.date) == target_date)
+    # Production entries — scoped by shift_date and (optionally) shift_id.
+    production_query = db.query(ProductionEntry).filter(
+        func.date(ProductionEntry.shift_date) == target_date
+    )
     # Multi-tenant isolation: non-admin users see only their assigned client's data
     if current_user.role != "admin" and current_user.client_id_assigned:
         production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        production_query = production_query.filter(ProductionEntry.shift == shift_number)
-    if operator_id:
-        production_query = production_query.filter(ProductionEntry.operator_id == operator_id)
+    if shift_id is not None:
+        production_query = production_query.filter(ProductionEntry.shift_id == shift_id)
 
     productions = production_query.all()
 
-    # Calculate production stats
+    # Calculate production stats. Target falls back to actual when not
+    # tracked; ideal_cycle_time × run_time would give a more accurate
+    # target but the current schema doesn't carry a hard target field.
     total_units = sum(p.units_produced or 0 for p in productions)
-    total_target = sum(p.target_production or p.units_produced or 0 for p in productions)
-    efficiency = (total_units / total_target * 100) if total_target > 0 else 0
+    total_target = total_units or 1  # avoid div-by-zero in efficiency
+    cached_efficiency = [
+        float(p.efficiency_percentage)
+        for p in productions
+        if p.efficiency_percentage is not None
+    ]
+    if cached_efficiency:
+        efficiency = sum(cached_efficiency) / len(cached_efficiency)
+    else:
+        efficiency = (total_units / total_target * 100) if total_target > 0 else 0
 
-    # Query downtime entries
-    downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    # Downtime entries — scoped by shift_date.
+    downtime_query = db.query(DowntimeEntry).filter(
+        func.date(DowntimeEntry.shift_date) == target_date
+    )
     if current_user.role != "admin" and current_user.client_id_assigned:
         downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
     downtimes = downtime_query.all()
     downtime_incidents = len(downtimes)
-    downtime_minutes = sum(d.downtime_minutes or 0 for d in downtimes)
+    downtime_minutes = sum(d.downtime_duration_minutes or 0 for d in downtimes)
 
-    # Query quality entries
-    quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    # Quality entries — scoped by shift_date.
+    quality_query = db.query(QualityEntry).filter(
+        func.date(QualityEntry.shift_date) == target_date
+    )
     if current_user.role != "admin" and current_user.client_id_assigned:
         quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
     qualities = quality_query.all()
     quality_checks = len(qualities)
-    defect_count = sum(q.defect_quantity or 0 for q in qualities)
+    defect_count = sum(q.units_defective or 0 for q in qualities)
 
-    # Build stats
     stats = ShiftStats(
         units_produced=total_units,
         efficiency=round(efficiency, 1),
@@ -161,20 +173,28 @@ def get_my_shift_summary(
         defect_count=defect_count,
     )
 
-    # Get work orders with progress
-    # Group production entries by work order
+    # Group production entries by work_order_id for the progress widget.
     work_order_stats: Dict[str, Dict[str, Any]] = {}
     for p in productions:
         wo_id = p.work_order_id
         if not wo_id:
-            continue  # Skip production entries with no associated work order
+            continue
         if wo_id not in work_order_stats:
-            work_order_stats[wo_id] = {"produced": 0, "target": 0, "product_name": p.product_name or "Unknown"}
+            product_name = "Unknown"
+            if getattr(p, "product", None) is not None:
+                product_name = getattr(p.product, "product_name", None) or "Unknown"
+            work_order_stats[wo_id] = {
+                "produced": 0,
+                "target": 0,
+                "product_name": product_name,
+            }
         work_order_stats[wo_id]["produced"] += p.units_produced or 0
-        work_order_stats[wo_id]["target"] += p.target_production or p.units_produced or 0
+        # No hard target field on PRODUCTION_ENTRY — use units_produced
+        # as the running tally so progress reads sanely until the order
+        # has its planned_quantity injected here.
+        work_order_stats[wo_id]["target"] += p.units_produced or 0
 
-    # Build work order progress list
-    assigned_work_orders = []
+    assigned_work_orders: List[WorkOrderProgress] = []
     for i, (wo_id, wo_data) in enumerate(work_order_stats.items(), 1):
         target_qty = wo_data["target"] or 1
         progress = (wo_data["produced"] / target_qty * 100) if target_qty > 0 else 0
@@ -189,56 +209,54 @@ def get_my_shift_summary(
             )
         )
 
-    # Build recent activity (last 10 entries)
-    activities = []
+    # Recent activity (top 5, mixed types).
+    activities: List[ActivityEntry] = []
 
-    # Add production activities
     for p in productions[:5]:
         activities.append(
             ActivityEntry(
-                id=f"prod-{p.id}",
+                id=f"prod-{p.production_entry_id}",
                 type="production",
-                description=f"Logged {p.units_produced} units for {p.work_order_id}",
-                timestamp=p.created_at or datetime.combine(p.date, datetime.min.time()),
+                description=f"Logged {p.units_produced} units for {p.work_order_id or '—'}",
+                timestamp=p.created_at or p.shift_date,
             )
         )
 
-    # Add downtime activities
     for d in downtimes[:3]:
         activities.append(
             ActivityEntry(
-                id=f"down-{d.id}",
+                id=f"down-{d.downtime_entry_id}",
                 type="downtime",
-                description=f"{d.reason}: {d.downtime_minutes} min downtime",
-                timestamp=d.created_at or datetime.combine(d.date, datetime.min.time()),
+                description=f"{d.downtime_reason}: {d.downtime_duration_minutes} min downtime",
+                timestamp=d.created_at or d.shift_date,
             )
         )
 
-    # Add quality activities
     for q in qualities[:2]:
         activities.append(
             ActivityEntry(
-                id=f"qual-{q.id}",
+                id=f"qual-{q.quality_entry_id}",
                 type="quality",
-                description=f"Quality check: {q.inspected_quantity} inspected, {q.defect_quantity} defects",
-                timestamp=q.created_at or datetime.combine(q.date, datetime.min.time()),
+                description=f"Quality check: {q.units_inspected} inspected, {q.units_defective} defects",
+                timestamp=q.created_at or q.shift_date,
             )
         )
 
-    # Sort by timestamp descending
     activities.sort(key=lambda x: x.timestamp, reverse=True)
-    activities = activities[:5]  # Take top 5
+    activities = activities[:5]
 
-    # Calculate data completeness
-    # Simple heuristic: check if entries exist for each category
-    expected_production = 8  # Hourly entries for 8-hour shift
-    expected_quality = 2  # At least 2 quality checks per shift
+    # Data completeness — light heuristic for the widget.
+    expected_production = 8
+    expected_quality = 2
+    prod_pct = min(round(len(productions) / expected_production * 100), 100)
+    qual_pct = min(round(quality_checks / expected_quality * 100), 100)
+    overall_pct = round((prod_pct + 100 + qual_pct) / 3)
 
     data_completeness: Dict[str, Dict[str, Any]] = {
         "production": {
             "entered": len(productions),
             "expected": expected_production,
-            "percentage": min(round(len(productions) / expected_production * 100), 100),
+            "percentage": prod_pct,
             "status": (
                 "complete"
                 if len(productions) >= expected_production
@@ -247,44 +265,27 @@ def get_my_shift_summary(
         },
         "downtime": {
             "entered": downtime_incidents,
-            "expected": downtime_incidents,  # Downtime is recorded as-needed
+            "expected": downtime_incidents,
             "percentage": 100,
             "status": "complete",
         },
         "quality": {
             "entered": quality_checks,
             "expected": expected_quality,
-            "percentage": min(round(quality_checks / expected_quality * 100), 100),
+            "percentage": qual_pct,
             "status": (
                 "complete" if quality_checks >= expected_quality else "warning" if quality_checks >= 1 else "incomplete"
             ),
         },
-    }
-    # "overall" is computed after the dict is built so the references to the
-    # other categories actually resolve. The previous version referenced
-    # data_completeness inside its own literal definition — at runtime that
-    # would have raised NameError; in practice the request was failing.
-    data_completeness["overall"] = {
-        "percentage": round(
-            (data_completeness["production"]["percentage"] + 100 + data_completeness["quality"]["percentage"]) / 3
-        ),
-        "status": (
-            "complete" if len(productions) >= expected_production and quality_checks >= expected_quality else "warning"
-        ),
-    }
-
-    # Recalculate overall
-    prod_pct = min(round(len(productions) / expected_production * 100), 100)
-    qual_pct = min(round(quality_checks / expected_quality * 100), 100)
-    overall_pct = round((prod_pct + 100 + qual_pct) / 3)
-    data_completeness["overall"] = {
-        "percentage": overall_pct,
-        "status": "complete" if overall_pct >= 90 else "warning" if overall_pct >= 60 else "incomplete",
+        "overall": {
+            "percentage": overall_pct,
+            "status": "complete" if overall_pct >= 90 else "warning" if overall_pct >= 60 else "incomplete",
+        },
     }
 
     return MyShiftSummary(
         date=target_date,
-        shift_number=shift_number,
+        shift_id=shift_id,
         operator_id=operator_id,
         stats=stats,
         assigned_work_orders=assigned_work_orders,
@@ -296,8 +297,8 @@ def get_my_shift_summary(
 @router.get("/stats")
 def get_my_shift_stats(
     shift_date: Optional[date] = Query(None),
-    shift_number: Optional[int] = Query(None, ge=1, le=3),
-    operator_id: Optional[str] = Query(None),
+    shift_id: Optional[int] = Query(None, description="SHIFT.shift_id FK"),
+    operator_id: Optional[str] = Query(None),  # advisory; see /summary docstring
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -307,67 +308,55 @@ def get_my_shift_stats(
     """
     target_date = shift_date or date.today()
 
-    # Query production
     production_query = db.query(
         func.sum(ProductionEntry.units_produced).label("total_units"),
-        func.sum(ProductionEntry.target_production).label("total_target"),
-        func.count(ProductionEntry.id).label("entry_count"),
-    ).filter(func.date(ProductionEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+        func.count(ProductionEntry.production_entry_id).label("entry_count"),
+    ).filter(func.date(ProductionEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        production_query = production_query.filter(ProductionEntry.shift == shift_number)
-    if operator_id:
-        production_query = production_query.filter(ProductionEntry.operator_id == operator_id)
+    if shift_id is not None:
+        production_query = production_query.filter(ProductionEntry.shift_id == shift_id)
 
     prod_result = production_query.first()
 
-    # Query downtime
     downtime_query = db.query(
-        func.count(DowntimeEntry.id).label("incidents"), func.sum(DowntimeEntry.downtime_minutes).label("total_minutes")
-    ).filter(func.date(DowntimeEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+        func.count(DowntimeEntry.downtime_entry_id).label("incidents"),
+        func.sum(DowntimeEntry.downtime_duration_minutes).label("total_minutes"),
+    ).filter(func.date(DowntimeEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
     down_result = downtime_query.first()
 
-    # Query quality
     quality_query = db.query(
-        func.count(QualityEntry.id).label("checks"), func.sum(QualityEntry.defect_quantity).label("defects")
-    ).filter(func.date(QualityEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+        func.count(QualityEntry.quality_entry_id).label("checks"),
+        func.sum(QualityEntry.units_defective).label("defects"),
+    ).filter(func.date(QualityEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
     qual_result = quality_query.first()
 
-    # Calculate efficiency
-    total_units = prod_result.total_units or 0
-    total_target = prod_result.total_target or total_units or 1
+    total_units = (prod_result.total_units or 0) if prod_result else 0
+    total_target = total_units or 1
     efficiency = (total_units / total_target * 100) if total_target > 0 else 0
 
     return {
         "date": target_date.isoformat(),
-        "shift_number": shift_number,
+        "shift_id": shift_id,
         "units_produced": total_units,
         "efficiency": round(efficiency, 1),
-        "downtime_incidents": down_result.incidents or 0,
-        "downtime_minutes": down_result.total_minutes or 0,
-        "quality_checks": qual_result.checks or 0,
-        "defect_count": qual_result.defects or 0,
+        "downtime_incidents": (down_result.incidents or 0) if down_result else 0,
+        "downtime_minutes": (down_result.total_minutes or 0) if down_result else 0,
+        "quality_checks": (qual_result.checks or 0) if qual_result else 0,
+        "defect_count": (qual_result.defects or 0) if qual_result else 0,
     }
 
 
 @router.get("/activity")
 def get_my_recent_activity(
     shift_date: Optional[date] = Query(None),
-    shift_number: Optional[int] = Query(None, ge=1, le=3),
+    shift_id: Optional[int] = Query(None),
     limit: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -377,72 +366,67 @@ def get_my_recent_activity(
     Returns production, downtime, and quality entries combined.
     """
     target_date = shift_date or date.today()
+    activities: List[Dict[str, Any]] = []
 
-    activities = []
-
-    # Query production entries
-    production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    production_query = db.query(ProductionEntry).filter(
+        func.date(ProductionEntry.shift_date) == target_date
+    )
     if current_user.role != "admin" and current_user.client_id_assigned:
         production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        production_query = production_query.filter(ProductionEntry.shift == shift_number)
+    if shift_id is not None:
+        production_query = production_query.filter(ProductionEntry.shift_id == shift_id)
 
     for p in production_query.order_by(ProductionEntry.created_at.desc()).limit(limit):
+        ts = (p.created_at or p.shift_date).isoformat()
         activities.append(
             {
-                "id": f"prod-{p.id}",
+                "id": f"prod-{p.production_entry_id}",
                 "type": "production",
-                "description": f"Logged {p.units_produced} units for {p.work_order_id}",
-                "timestamp": (p.created_at or datetime.combine(p.date, datetime.min.time())).isoformat(),
+                "description": f"Logged {p.units_produced} units for {p.work_order_id or '—'}",
+                "timestamp": ts,
                 "work_order_id": p.work_order_id,
                 "value": p.units_produced,
             }
         )
 
-    # Query downtime entries
-    downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    downtime_query = db.query(DowntimeEntry).filter(
+        func.date(DowntimeEntry.shift_date) == target_date
+    )
     if current_user.role != "admin" and current_user.client_id_assigned:
         downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        downtime_query = downtime_query.filter(DowntimeEntry.shift == shift_number)
 
     for d in downtime_query.order_by(DowntimeEntry.created_at.desc()).limit(limit):
+        ts = (d.created_at or d.shift_date).isoformat()
         activities.append(
             {
-                "id": f"down-{d.id}",
+                "id": f"down-{d.downtime_entry_id}",
                 "type": "downtime",
-                "description": f"{d.reason}: {d.downtime_minutes} min downtime",
-                "timestamp": (d.created_at or datetime.combine(d.date, datetime.min.time())).isoformat(),
+                "description": f"{d.downtime_reason}: {d.downtime_duration_minutes} min downtime",
+                "timestamp": ts,
                 "work_order_id": d.work_order_id,
-                "value": d.downtime_minutes,
+                "value": d.downtime_duration_minutes,
             }
         )
 
-    # Query quality entries
-    quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.date) == target_date)
-    # Multi-tenant isolation: non-admin users see only their assigned client's data
+    quality_query = db.query(QualityEntry).filter(
+        func.date(QualityEntry.shift_date) == target_date
+    )
     if current_user.role != "admin" and current_user.client_id_assigned:
         quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
-    if shift_number:
-        quality_query = quality_query.filter(QualityEntry.shift == shift_number)
 
     for q in quality_query.order_by(QualityEntry.created_at.desc()).limit(limit):
+        ts = (q.created_at or q.shift_date).isoformat()
         activities.append(
             {
-                "id": f"qual-{q.id}",
+                "id": f"qual-{q.quality_entry_id}",
                 "type": "quality",
-                "description": f"Quality check: {q.inspected_quantity} inspected, {q.defect_quantity} defects",
-                "timestamp": (q.created_at or datetime.combine(q.date, datetime.min.time())).isoformat(),
+                "description": f"Quality check: {q.units_inspected} inspected, {q.units_defective} defects",
+                "timestamp": ts,
                 "work_order_id": q.work_order_id,
-                "value": q.inspected_quantity,
+                "value": q.units_inspected,
             }
         )
 
-    # Sort all activities by timestamp descending. timestamp is always set
-    # to an ISO datetime string when each activity is appended, so use a
-    # fallback empty string only to satisfy the static type check.
     activities.sort(key=lambda x: str(x.get("timestamp") or ""), reverse=True)
 
-    return {"date": target_date.isoformat(), "shift_number": shift_number, "activity": activities[:limit]}
+    return {"date": target_date.isoformat(), "shift_id": shift_id, "activity": activities[:limit]}

@@ -75,7 +75,6 @@ export default [
       'src/views/admin/AdminUsers.vue',                 // Exception 2: user provisioning
       'src/views/admin/ClientConfigView.vue',           // Exception 2: per-client config
       'src/views/admin/WorkflowConfigView.vue',         // Exception 2: workflow config
-      'src/views/SimulationView.vue',                   // Exception 3: simulation parameters
       'src/views/KPIDashboard.vue',                     // Exception 2/3: email config + saved filters
       'src/components/filters/SaveFilterDialog.vue'     // Exception 3: filter management
     ],

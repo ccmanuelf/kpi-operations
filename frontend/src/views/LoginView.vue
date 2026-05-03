@@ -271,7 +271,17 @@ const handleLogin = async () => {
   loading.value = false
 
   if (result.success) {
-    router.push('/')
+    // Role-based landing — keep this in sync with the same map in
+    // router/index.ts (the /login → role redirect for already-authed
+    // users). Defaults to '/' when the role isn't in the map.
+    const role = authStore.currentUser?.role
+    const landing = {
+      operator: '/my-shift',
+      leader: '/',
+      poweruser: '/capacity-planning',
+      admin: '/kpi-dashboard',
+    }
+    router.push((role && landing[role]) || '/')
   } else {
     errorMessage.value = result.error
   }

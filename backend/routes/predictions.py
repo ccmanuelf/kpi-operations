@@ -239,6 +239,24 @@ def build_comprehensive_prediction(
 
 
 @router.get(
+    "/benchmarks",
+    summary="Get KPI Benchmarks",
+    description="Get industry benchmark values for all 10 KPIs",
+    responses={200: {"description": "Benchmarks retrieved successfully"}},
+)
+async def get_benchmarks(current_user: User = Depends(get_current_user)) -> Any:
+    """
+    GET /api/predictions/benchmarks - Industry benchmark values
+
+    Note: this route MUST be defined before `GET /{kpi_type}` in this
+    file — FastAPI matches routes in registration order, and a literal
+    path takes precedence only when registered first against a
+    parameterized sibling at the same depth.
+    """
+    return get_kpi_benchmarks()
+
+
+@router.get(
     "/{kpi_type}",
     response_model=ComprehensivePredictionResponse,
     summary="Get KPI Prediction with Full Analytics",
@@ -463,19 +481,6 @@ async def get_all_kpi_predictions(
         kpis_stable=stable,
         priority_actions=priority_actions[:10],  # Limit to top 10 actions
     )
-
-
-@router.get(
-    "/benchmarks",
-    summary="Get KPI Benchmarks",
-    description="Get industry benchmark values for all 10 KPIs",
-    responses={200: {"description": "Benchmarks retrieved successfully"}},
-)
-async def get_benchmarks(current_user: User = Depends(get_current_user)) -> Any:
-    """
-    GET /api/predictions/benchmarks - Industry benchmark values
-    """
-    return get_kpi_benchmarks()
 
 
 @router.post(

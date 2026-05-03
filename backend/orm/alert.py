@@ -27,9 +27,11 @@ class AlertCategory(str, Enum):
     OTD = "otd"  # On-Time Delivery alerts
     DELIVERY = "delivery"  # Delivery-related alerts
     QUALITY = "quality"  # FPY, RTY, DPMO alerts
+    QUALITY_PPM = "quality_ppm"  # Defect rate (PPM/DPMO) threshold alerts
     EFFICIENCY = "efficiency"  # Production efficiency alerts
     CAPACITY = "capacity"  # Load%, bottleneck alerts
     ATTENDANCE = "attendance"  # Absenteeism, coverage alerts
+    ABSENTEEISM = "absenteeism"  # Specific absenteeism-rate alerts
     DOWNTIME = "downtime"  # Equipment/unplanned downtime
     MAINTENANCE = "maintenance"  # Equipment maintenance alerts
     AVAILABILITY = "availability"  # Resource availability alerts

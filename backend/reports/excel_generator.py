@@ -454,8 +454,8 @@ class ExcelReportGenerator:
     ) -> List[Dict[str, Any]]:
         """Fetch KPI summary data from database"""
         from backend.orm.production_entry import ProductionEntry
-        from backend.orm.quality import QualityInspection
-        from backend.orm.attendance import AttendanceRecord
+        from backend.orm.quality_entry import QualityEntry
+        from backend.orm.attendance_entry import AttendanceEntry
         from backend.orm.product import Product
 
         kpi_data = []
@@ -500,18 +500,18 @@ class ExcelReportGenerator:
             )
 
         # Quality KPIs
-        quality_query = self.db.query(QualityInspection).filter(
-            QualityInspection.inspection_date.between(start_date, end_date)
+        quality_query = self.db.query(QualityEntry).filter(
+            QualityEntry.shift_date.between(start_date, end_date)
         )
 
         if client_id:
-            quality_query = quality_query.join(Product).filter(Product.client_id == client_id)
+            quality_query = quality_query.filter(QualityEntry.client_id == client_id)
 
         quality_entries = quality_query.all()
 
         if quality_entries:
             total_inspected = sum(e.units_inspected for e in quality_entries)
-            total_defects = sum(e.defects_found for e in quality_entries)
+            total_defects = sum(e.units_defective for e in quality_entries)
 
             # FPY
             fpy = ((total_inspected - total_defects) / total_inspected * 100) if total_inspected > 0 else 0
@@ -540,15 +540,17 @@ class ExcelReportGenerator:
             )
 
         # Attendance KPIs
-        attendance_query = self.db.query(AttendanceRecord).filter(
-            AttendanceRecord.attendance_date.between(start_date, end_date)
+        attendance_query = self.db.query(AttendanceEntry).filter(
+            AttendanceEntry.shift_date.between(start_date, end_date)
         )
+        if client_id:
+            attendance_query = attendance_query.filter(AttendanceEntry.client_id == client_id)
 
         attendance_entries = attendance_query.all()
 
         if attendance_entries:
             total_scheduled = sum(float(e.scheduled_hours or 0) for e in attendance_entries)
-            total_absent = sum(float(e.scheduled_hours or 0) for e in attendance_entries if e.status == "Absent")
+            total_absent = sum(float(e.scheduled_hours or 0) for e in attendance_entries if e.is_absent == 1)
             absenteeism = (total_absent / total_scheduled * 100) if total_scheduled > 0 else 0
 
             kpi_data.append(
@@ -607,26 +609,25 @@ class ExcelReportGenerator:
 
     def _fetch_quality_data(self, client_id: Optional[str], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch quality data from database"""
-        from backend.orm.quality import QualityInspection
-        from backend.orm.product import Product
+        from backend.orm.quality_entry import QualityEntry
 
-        query = (
-            self.db.query(QualityInspection)
-            .join(Product)
-            .filter(QualityInspection.inspection_date.between(start_date, end_date))
+        # QualityEntry is keyed by shift_date and carries client_id directly
+        # (no Product join needed). `inspection_date` is optional metadata.
+        query = self.db.query(QualityEntry).filter(
+            QualityEntry.shift_date.between(start_date, end_date)
         )
 
         if client_id:
-            query = query.filter(Product.client_id == client_id)
+            query = query.filter(QualityEntry.client_id == client_id)
 
-        results = query.order_by(QualityInspection.inspection_date).all()
+        results = query.order_by(QualityEntry.shift_date).all()
 
         return [
             {
-                "date": r.inspection_date,
-                "product": r.product.product_name if hasattr(r, "product") else "Unknown",
+                "date": r.inspection_date or r.shift_date,
+                "product": "—",  # QualityEntry tracks WO not product directly
                 "inspected": r.units_inspected,
-                "passed": r.units_inspected - r.defects_found,
+                "passed": (r.units_inspected or 0) - (r.units_defective or 0),
                 "dpmo": float(r.dpmo or 0),
             }
             for r in results
@@ -634,26 +635,23 @@ class ExcelReportGenerator:
 
     def _fetch_downtime_data(self, client_id: Optional[str], start_date: date, end_date: date) -> List[Dict[str, Any]]:
         """Fetch downtime data from database"""
-        from backend.orm.downtime import DowntimeEvent
-        from backend.orm.product import Product
+        from backend.orm.downtime_entry import DowntimeEntry
 
-        query = (
-            self.db.query(DowntimeEvent)
-            .join(Product)
-            .filter(DowntimeEvent.production_date.between(start_date, end_date))
+        query = self.db.query(DowntimeEntry).filter(
+            DowntimeEntry.shift_date.between(start_date, end_date)
         )
 
         if client_id:
-            query = query.filter(Product.client_id == client_id)
+            query = query.filter(DowntimeEntry.client_id == client_id)
 
-        results = query.order_by(DowntimeEvent.production_date).all()
+        results = query.order_by(DowntimeEntry.shift_date).all()
 
         return [
             {
-                "date": r.production_date,
+                "date": r.shift_date,
                 "machine": r.machine_id or "N/A",
-                "category": r.downtime_category,
-                "duration": float(r.duration_hours),
+                "category": r.root_cause_category or "—",
+                "duration": float((r.downtime_duration_minutes or 0) / 60),  # hours
                 "impact": 0.0,  # Calculate based on scheduled time
                 "root_cause": r.downtime_reason,
             }
@@ -664,20 +662,21 @@ class ExcelReportGenerator:
         self, client_id: Optional[str], start_date: date, end_date: date
     ) -> List[Dict[str, Any]]:
         """Fetch attendance data from database"""
-        from backend.orm.attendance import AttendanceRecord
+        from backend.orm.attendance_entry import AttendanceEntry
         from sqlalchemy import func, case
 
         query = (
             self.db.query(
-                AttendanceRecord.attendance_date,
-                func.count(AttendanceRecord.attendance_id).label("scheduled"),
-                func.sum(case((AttendanceRecord.status == "Absent", 1), else_=0)).label("absent"),
+                AttendanceEntry.shift_date,
+                func.count(AttendanceEntry.attendance_entry_id).label("scheduled"),
+                func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label("absent"),
             )
-            .filter(AttendanceRecord.attendance_date.between(start_date, end_date))
-            .group_by(AttendanceRecord.attendance_date)
-            .order_by(AttendanceRecord.attendance_date)
+            .filter(AttendanceEntry.shift_date.between(start_date, end_date))
         )
+        if client_id:
+            query = query.filter(AttendanceEntry.client_id == client_id)
+        query = query.group_by(AttendanceEntry.shift_date).order_by(AttendanceEntry.shift_date)
 
         results = query.all()
 
-        return [{"date": r.attendance_date, "scheduled": r.scheduled or 0, "absent": r.absent or 0} for r in results]
+        return [{"date": r.shift_date, "scheduled": r.scheduled or 0, "absent": r.absent or 0} for r in results]
