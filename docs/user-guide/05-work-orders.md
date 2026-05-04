@@ -62,13 +62,17 @@ Editable fields (admin / poweruser / leader / supervisor):
 
 ### Status transitions
 
-The platform enforces per-client workflow rules. The default workflow:
+The platform enforces per-client workflow rules. The full `WorkOrderStatus` enum (11 states):
 
 ```
-PLANNED ──> IN_PROGRESS ──> SHIPPED
-   │             │
-   └─> CANCELLED  └─> ON_HOLD ──> IN_PROGRESS
+RECEIVED → RELEASED → IN_PROGRESS → COMPLETED → SHIPPED → CLOSED
+                          ↓             │
+                       ON_HOLD          └─> REJECTED
+                          ↓
+                      DEMOTED  /  CANCELLED  /  ACTIVE (legacy alias)
 ```
+
+Demo data exercises: SHIPPED (on-time + late), IN_PROGRESS, RECEIVED, ON_HOLD.
 
 The `Workflow Designer` (Admin → Workflow Designer) lets admins define custom workflows per client — additional states, custom transitions.
 

@@ -32,7 +32,8 @@
 |--------|:-----:|:---------:|:------:|:----------:|:--------:|
 | Production entry | ✓ | ✓ | ✓ | ✓ | ✓ (own line) |
 | Downtime / Attendance / Quality / Hold entry | ✓ | ✓ | ✓ | ✓ | ✓ (own line) |
-| Edit work orders | ✓ | ✓ | ✓ | ✓ | — |
+| Create / edit / patch-status work orders | ✓ | ✓ | ✓ | ✓ | — (Run-6 audit added explicit gate) |
+| Delete work orders | ✓ | — | — | ✓ | — |
 | Edit capacity workbook | ✓ | ✓ | — | — | — |
 | Save scenarios | ✓ | ✓ | — | — | — |
 | Run simulation (V2) | ✓ | ✓ | ✓ | ✓ | — |

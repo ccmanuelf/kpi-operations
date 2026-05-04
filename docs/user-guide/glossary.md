@@ -129,19 +129,29 @@ The line's throughput is the bottleneck's throughput, plus any rework loss downs
 
 ## Work order lifecycle
 
-### Status flow
+### Status flow (full enum)
+
+The actual `WorkOrderStatus` enum:
 
 ```
-PLANNED → IN_PROGRESS → SHIPPED
-              ↓
-            ON_HOLD → IN_PROGRESS (when resumed)
+RECEIVED → RELEASED → IN_PROGRESS → COMPLETED → SHIPPED → CLOSED
+                          ↓
+                       ON_HOLD → IN_PROGRESS (when resumed)
+                          ↓
+                       CANCELLED  /  REJECTED  /  DEMOTED
 ```
 
-Allowed transitions are configured per-client in the Workflow Designer.
+Allowed transitions are configured per-client in the Workflow Designer. Default workflows ship with three templates (Standard / Simple / Express).
+
+Demo data exercises 4 of the 11 states: SHIPPED (on-time + late), IN_PROGRESS, RECEIVED, ON_HOLD.
 
 ### Priority
 
-Enum: `LOW, MEDIUM, HIGH, URGENT`. (Note: `CRITICAL` was renamed to `URGENT` during the entry-interface audit; old data may still show CRITICAL — the validator now rejects it.)
+WO `priority` is a free-form `String(20)` column (no enum constraint at the schema level). Customary values: `LOW, MEDIUM, HIGH, URGENT`.
+
+For Capacity Orders (separate enum): `LOW, NORMAL, HIGH, URGENT` — note that CPO uses `NORMAL` where WO uses `MEDIUM`.
+
+A previous audit migrated WO data from `CRITICAL` to `URGENT`; old data may still surface `CRITICAL` in stale exports.
 
 ### Hold
 
