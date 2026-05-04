@@ -1499,7 +1499,7 @@
       "fairComparison": "Comparación Justa",
       "fairComparisonDesc": "Comparar calidad entre productos con diferentes niveles de complejidad",
       "sigmaLevel": "Nivel Sigma",
-      "sigmaLevelDesc": "Calcular el nivel sigma del proceso (1\u03c3 a 6\u03c3)",
+      "sigmaLevelDesc": "Calcular el nivel sigma del proceso (1σ a 6σ)",
       "summaryCardsExplained": "Tarjetas Resumen Explicadas",
       "totalPartsDesc": "Número de definiciones de parte",
       "avgOpportunitiesDesc": "Promedio de puntos de defecto por unidad",
@@ -1674,11 +1674,8 @@
       "systemDefaults": "Valores Predeterminados del Sistema",
       "selectClient": "Seleccionar Cliente",
       "selectClientPrompt": "Seleccione un cliente para ver o editar su configuración de KPI.",
-      "selectClientHint": "Elija un cliente para ver y editar su configuración",
       "createConfig": "Crear Configuración",
       "editConfig": "Editar Configuración",
-      "noClientSelected": "Seleccione un cliente para gestionar su configuración",
-      "editConfiguration": "Editar Configuración",
       "resetToDefaults": "Restablecer a Valores Predeterminados",
       "confirmReset": "Confirmar Restablecimiento",
       "confirmResetMessage": "Esto restablecerá todos los parámetros de cálculo de KPI para {client} a los valores globales. Esta acción no se puede deshacer.",
@@ -1686,8 +1683,6 @@
       "usingDefaults": "Usando Valores Predeterminados",
       "customConfig": "Configuración Personalizada",
       "configFor": "Configuración para",
-      "resetConfirmTitle": "Confirmar Restablecimiento",
-      "resetConfirmMessage": "¿Está seguro de que desea restablecer la configuración de {client} a los valores predeterminados? Esta acción no se puede deshacer.",
       "sections": {
         "otd": "Configuración de Entrega a Tiempo (OTD)",
         "efficiency": "Configuración de Eficiencia",
@@ -1707,49 +1702,21 @@
         "oeeTarget": "Meta de OEE",
         "absenteeismTarget": "Meta de Ausentismo",
         "wipAgingThreshold": "Umbral de Antigüedad WIP",
-        "wipCriticalThreshold": "Umbral Crítico WIP",
-        "otdModeStandard": "Estándar (todas las órdenes)",
-        "otdModeTrue": "Verdadero (solo órdenes completas)",
-        "otdModeBoth": "Ambos (mostrar las dos métricas)",
-        "defaultCycleTimeHours": "Tiempo de Ciclo Predeterminado (horas)",
-        "efficiencyTargetPercent": "Meta de Eficiencia (%)",
-        "dpmoOpportunitiesDefault": "Oportunidades DPMO Predeterminadas",
-        "fpyTargetPercent": "Meta de FPY (%)",
-        "rtyTargetPercent": "Meta de RTY (%)",
-        "oeeTargetPercent": "Meta de OEE (%)",
-        "availabilityTargetPercent": "Meta de Disponibilidad (%)",
-        "performanceTargetPercent": "Meta de Rendimiento (%)",
-        "wipAgingThresholdDays": "Umbral de Antigüedad WIP (días)",
-        "wipCriticalThresholdDays": "Umbral Crítico WIP (días)"
+        "wipCriticalThreshold": "Umbral Crítico WIP"
       },
       "hints": {
-        "otdMode": "Determina cómo se calcula la Entrega a Tiempo para este cliente",
-        "defaultCycleTimeHours": "Tiempo de ciclo predeterminado cuando no hay datos disponibles a nivel de estilo",
-        "efficiencyTargetPercent": "Meta de eficiencia de producción para tableros y alertas",
-        "qualityTargetPpm": "Defectos máximos aceptables por millón de unidades",
-        "dpmoOpportunitiesDefault": "Oportunidades de defecto por unidad cuando no se especifica a nivel de parte",
-        "fpyTargetPercent": "Meta de Rendimiento de Primera Pasada",
-        "rtyTargetPercent": "Meta de Rendimiento Acumulado",
-        "oeeTargetPercent": "Meta de Efectividad General del Equipo",
-        "availabilityTargetPercent": "Meta de disponibilidad del equipo",
-        "performanceTargetPercent": "Meta de velocidad de producción vs teórica",
-        "wipAgingThresholdDays": "Días después de los cuales el WIP se considera antiguo",
-        "wipCriticalThresholdDays": "Días después de los cuales el WIP es crítico"
+        "otdMode": "Determina cómo se calcula la Entrega a Tiempo para este cliente"
       },
       "success": {
         "created": "Configuración creada exitosamente",
         "updated": "Configuración actualizada exitosamente",
-        "saved": "Configuración de cliente guardada exitosamente",
         "reset": "Configuración restablecida a valores predeterminados"
       },
       "errors": {
         "loadClients": "Error al cargar clientes",
         "loadConfig": "Error al cargar configuración del cliente",
         "save": "Error al guardar configuración",
-        "reset": "Error al restablecer configuración",
-        "loadFailed": "Error al cargar la configuración del cliente",
-        "saveFailed": "Error al guardar la configuración del cliente",
-        "resetFailed": "Error al restablecer la configuración del cliente"
+        "reset": "Error al restablecer configuración"
       }
     },
     "floatingPool": {
@@ -1859,7 +1826,7 @@
     "importAria": "Importar un archivo CSV en esta tabla",
     "parseError": "Error al analizar CSV: {detail}",
     "emptyFile": "El archivo CSV está vacío",
-    "importError": "La importación CSV falló",
+    "importError": "Error de importación: {error}",
     "title": "Carga Masiva vía CSV",
     "selectFile": "Seleccionar Archivo CSV",
     "dragDrop": "Arrastra y suelta un archivo CSV aquí",
@@ -1879,7 +1846,6 @@
     "partOpportunitiesInfo": "Sube un archivo CSV con columnas part_number y opportunities_per_unit para configurar oportunidades de parte en lote.",
     "replaceExisting": "Reemplazar registros existentes",
     "replaceExistingHint": "Si está marcado, los registros existentes para números de parte coincidentes serán actualizados",
-    "importCsv": "Importar CSV",
     "importTitle": "Importación CSV - {type}",
     "importTitleAttendance": "Importación CSV - Registros de Asistencia",
     "importTitleDowntime": "Importación CSV - Eventos de Tiempo Muerto",
@@ -1919,7 +1885,6 @@
     "uploadingData": "Subiendo datos...",
     "importComplete": "¡Importación completa!",
     "importCompletedSuccessfully": "¡Importación completada exitosamente!",
-    "importError": "Error de importación: {error}",
     "csvParsingError": "Error al analizar CSV: {error}",
     "fileReadError": "Error al leer archivo: {error}",
     "stepUpload": "Subir",
@@ -1980,29 +1945,18 @@
     "schedule": {
       "title": "Configuración de Horario",
       "shifts": "Turnos",
-      "shiftsEnabled": "Turnos Habilitados",
-      "shift1Hours": "Horas Turno 1",
-      "shift2Hours": "Horas Turno 2",
-      "shift3Hours": "Horas Turno 3",
       "workDays": "Días de Trabajo",
       "overtime": "Tiempo Extra"
     },
     "demand": {
       "title": "Configuración de Demanda",
       "mode": "Modo de Demanda",
-      "horizon": "Días de Horizonte",
-      "addDemand": "Agregar Demanda",
-      "product": "Producto",
-      "bundleSize": "Tamaño de Lote",
-      "dailyDemand": "Demanda Diaria"
+      "horizon": "Días de Horizonte"
     },
     "breakdowns": {
       "title": "Averías de Equipo",
       "optional": "Opcional",
-      "emptyState": "No hay reglas de avería configuradas. Se asume confiabilidad perfecta.",
-      "addBreakdown": "Agregar Avería",
-      "machine": "Máquina",
-      "breakdownPct": "% de Avería"
+      "emptyState": "No hay reglas de avería configuradas. Se asume confiabilidad perfecta."
     },
     "sampleData": {
       "welcomeTitle": "¡Bienvenido!",
@@ -2209,7 +2163,7 @@
     "transitionError": "Error al cambiar estado",
     "noTransitions": "Sin cambios de estado registrados",
     "elapsedTime": "Tiempo Transcurrido",
-    "overdue": "Atrasado",
+    "overdue": "Vencidas",
     "totalTime": "Tiempo Total",
     "stageBreakdown": "Desglose por Etapa",
     "leadTime": "Tiempo de Espera",
@@ -2310,7 +2264,6 @@
     },
     "openWorkOrders": "Abrir Órdenes de Trabajo",
     "noWorkOrdersForShift": "No hay órdenes de trabajo activas para este cliente.",
-    "overdue": "Vencidas",
     "resolveDowntime": "Resolver Tiempo Muerto",
     "endTime": "Hora de Fin",
     "rootCause": "Causa Raiz",
