@@ -10,13 +10,33 @@ Alerts have:
 
 | Field | Meaning |
 |-------|---------|
-| category | What kind: otd, delivery, quality, efficiency, capacity, attendance, downtime, maintenance, availability, hold, trend, quality_ppm, absenteeism |
+| category | One of 13 values (full enum below) |
 | severity | LOW / MEDIUM / HIGH / CRITICAL |
 | title | One-line summary |
 | message | Detail body |
 | recommendation | Suggested action |
 | status | ACTIVE / ACKNOWLEDGED / RESOLVED / DISMISSED |
 | created_at, acknowledged_at, resolved_at | Lifecycle timestamps |
+
+## The 13 alert categories
+
+| Category | Triggers when… |
+|----------|----------------|
+| `otd` | On-Time Delivery KPI drops below threshold |
+| `delivery` | A specific delivery is at risk of missing its required date |
+| `quality` | FPY / RTY / DPMO / quality trend breaks |
+| `quality_ppm` | Defect rate (Parts Per Million) crosses a threshold (specific to PPM) |
+| `efficiency` | Production efficiency below target |
+| `capacity` | Line load or bottleneck above threshold |
+| `attendance` | Absenteeism / coverage anomaly |
+| `absenteeism` | Specific absenteeism-rate threshold (sub-category of attendance) |
+| `downtime` | Equipment / unplanned downtime spikes |
+| `maintenance` | Scheduled maintenance overdue |
+| `availability` | Resource availability dips |
+| `hold` | A hold is pending approval beyond N days |
+| `trend` | A KPI trending in the wrong direction (general) |
+
+Per-client alert config can target any of these (see "Alert Configuration" below).
 
 ## Path
 

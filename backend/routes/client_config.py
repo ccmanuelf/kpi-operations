@@ -29,6 +29,26 @@ router = APIRouter(
 )
 
 
+_CONFIG_WRITE_ROLES = {"admin", "ADMIN", "poweruser"}
+
+
+def _check_config_write_permission(user: User) -> None:
+    """Reject non-admin/poweruser roles from mutating client configuration.
+
+    Run-6 audit (R6-FU-002) found operator could PUT client-config which
+    changes per-client KPI thresholds — affects every dashboard and alert
+    rule for that client. Restricted to admin + poweruser (planners may
+    legitimately tune thresholds during scenario work).
+    """
+    role = user.role or ""
+    if role not in _CONFIG_WRITE_ROLES:
+        from fastapi import status as http_status
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Client configuration mutations require admin or poweruser role",
+        )
+
+
 @router.post("/", response_model=ClientConfigResponse, status_code=201)
 def create_client_config(
     config: ClientConfigCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
@@ -38,7 +58,9 @@ def create_client_config(
 
     Only users with access to the client can create its configuration.
     Configuration cannot be created if one already exists for the client.
+    Requires admin or poweruser role.
     """
+    _check_config_write_permission(current_user)
     return crud.create_client_config(db=db, config_data=config.model_dump(), current_user=current_user)
 
 
@@ -111,7 +133,9 @@ def update_client_config(
 
     Only provided fields will be updated.
     Configuration must already exist (use POST to create).
+    Requires admin or poweruser role.
     """
+    _check_config_write_permission(current_user)
     return crud.update_client_config(
         db=db, client_id=client_id, config_update=config_update.model_dump(exclude_none=True), current_user=current_user
     )
@@ -127,6 +151,7 @@ def delete_client_config(
     This resets the client to use global defaults.
     Only admins can delete configurations.
     """
+    _check_config_write_permission(current_user)
     crud.delete_client_config(db=db, client_id=client_id, current_user=current_user)
     return None
 
@@ -154,6 +179,8 @@ def reset_to_defaults(
 
     This updates all fields to their default values without deleting the config.
     Useful for preserving the config record while resetting all values.
+    Requires admin or poweruser role.
     """
+    _check_config_write_permission(current_user)
     defaults = crud.get_global_defaults()
     return crud.update_client_config(db=db, client_id=client_id, config_update=defaults, current_user=current_user)

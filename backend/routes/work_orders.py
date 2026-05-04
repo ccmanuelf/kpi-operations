@@ -117,6 +117,9 @@ def get_work_orders_by_date_range_endpoint(
     Get work orders within date range
     SECURITY: Returns only work orders for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    validate_date_range(start_date.date(), end_date.date())
     return get_work_orders_by_date_range(db, start_date, end_date, current_user, skip, limit)
 
 

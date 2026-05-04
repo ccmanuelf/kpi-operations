@@ -53,6 +53,11 @@ def get_aggregated_dashboard(
     from backend.calculations.ppm import calculate_ppm
     from backend.calculations.dpmo import calculate_dpmo
     from backend.calculations.fpy_rty import calculate_fpy
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting,
+    # so a swapped pair is reported immediately.
+    validate_date_range(start_date, end_date)
 
     # Default dates
     if end_date is None:
@@ -133,23 +138,87 @@ def get_aggregated_dashboard(
         result["efficiency"] = {"current": 0, "target": 85.0, "error": "Calculation error"}
         result["performance"] = {"current": 0, "target": 90.0, "error": "Calculation error"}
 
-    # ---- QUALITY (FPY, RTY, PPM, DPMO) ----
-    # TODO: Quality KPIs need a per-client aggregation function. The previous
-    # implementation here called a non-existent `calculate_fpy_rty()` and used
-    # the wrong signatures for calculate_ppm()/calculate_dpmo() (which take
-    # work_order_id, not client_id, and return tuples not dicts). The whole
-    # block was always falling into the except path. Returning placeholders
-    # until the aggregate quality query is implemented properly — see also
-    # routes/quality/* for per-resource quality endpoints.
-    result["quality"] = {
-        "fpy": 0,
-        "rty": 0,
-        "ppm": 0,
-        "dpmo": 0,
-        "total_inspected": 0,
-        "total_defective": 0,
-        "error": "Aggregate quality KPI not yet implemented",
-    }
+    # ---- QUALITY (FPY, PPM, DPMO) ----
+    # Aggregate quality across the date range. The per-WO calculators in
+    # backend/calculations/* operate on a single work order and return
+    # tuples; we replicate the same formulas at the aggregate level here
+    # so a planner can see line-level quality alongside efficiency/OEE.
+    #
+    # Formulas (matching the per-WO definitions):
+    #   FPY  = passed / inspected × 100      (first-pass yield, %)
+    #   PPM  = defective / inspected × 1e6   (parts per million)
+    #   DPMO = defects / (inspected × opps) × 1e6
+    #
+    # RTY (rolled throughput yield) is intrinsically a per-WO calculation
+    # because it's the product of per-station FPYs along the WO's route.
+    # An "aggregate RTY" doesn't have a unique definition; we omit it from
+    # the dashboard rollup and refer callers to /api/work-orders/{id}/rty
+    # for that view.
+    try:
+        # Quality aggregate uses CLIENT_CONFIG.dpmo_opportunities_default
+        # when a per-entry value isn't present. We resolve a fallback via
+        # the most recent client config; absent that, use 1 (so DPMO ≡ PPM).
+        opps_per_unit = 1
+        if effective_client_id:
+            from backend.orm.client_config import ClientConfig
+
+            cc = (
+                db.query(ClientConfig)
+                .filter(ClientConfig.client_id == effective_client_id)
+                .first()
+            )
+            if cc and getattr(cc, "dpmo_opportunities_default", None):
+                opps_per_unit = max(1, int(cc.dpmo_opportunities_default))
+
+        q_query = db.query(
+            func.coalesce(func.sum(QualityEntry.units_inspected), 0).label("inspected"),
+            func.coalesce(func.sum(QualityEntry.units_passed), 0).label("passed"),
+            func.coalesce(func.sum(QualityEntry.units_defective), 0).label("defective"),
+            func.coalesce(func.sum(QualityEntry.total_defects_count), 0).label("defects"),
+        ).filter(
+            QualityEntry.shift_date >= start_dt,
+            QualityEntry.shift_date <= end_dt,
+        )
+        if effective_client_id:
+            q_query = q_query.filter(QualityEntry.client_id == effective_client_id)
+        q_result = q_query.first()
+
+        inspected = int(q_result.inspected or 0) if q_result else 0
+        passed = int(q_result.passed or 0) if q_result else 0
+        defective = int(q_result.defective or 0) if q_result else 0
+        defects = int(q_result.defects or 0) if q_result else 0
+
+        fpy = round(passed / inspected * 100, 2) if inspected > 0 else 0.0
+        ppm = round(defective / inspected * 1_000_000, 0) if inspected > 0 else 0.0
+        dpmo = (
+            round(defects / (inspected * opps_per_unit) * 1_000_000, 0)
+            if inspected > 0 and opps_per_unit > 0
+            else 0.0
+        )
+
+        result["quality"] = {
+            "fpy": fpy,
+            "fpy_target": 95.0,
+            "ppm": ppm,
+            "dpmo": dpmo,
+            "total_inspected": inspected,
+            "total_passed": passed,
+            "total_defective": defective,
+            "total_defects": defects,
+            "opportunities_per_unit": opps_per_unit,
+        }
+    except SQLAlchemyError:
+        logger.exception("Database error fetching quality metrics")
+        result["quality"] = {
+            "fpy": 0, "ppm": 0, "dpmo": 0, "total_inspected": 0,
+            "error": "Database error",
+        }
+    except Exception:
+        logger.exception("Unexpected error fetching quality metrics")
+        result["quality"] = {
+            "fpy": 0, "ppm": 0, "dpmo": 0, "total_inspected": 0,
+            "error": "Calculation error",
+        }
 
     # ---- AVAILABILITY ----
     try:
