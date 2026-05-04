@@ -1129,40 +1129,82 @@ def init_database() -> None:
         # ==============================================================
         print("\n[6/10] Creating work orders, jobs, and part opportunities...")
 
-        base_date = date.today() - timedelta(days=30)
+        # Anchor every demo timeline to today so dashboards (which default
+        # to "Last 30 Days") always show recent activity. Dates in the
+        # past 30 days; future dates capped at +30 for required/ship.
+        today_d = date.today()
         all_work_orders = {}
+
+        # Single source of truth for the WO seed shape, per client. The
+        # status spectrum exercises the full lifecycle (RECEIVED → IN_PROGRESS
+        # → SHIPPED) and includes an ON_HOLD case so the holds dashboard
+        # has data. Quantities here also drive CapacityOrder.completed_quantity
+        # downstream (we re-sum after production seeding).
+        #
+        # Per-WO tuple semantics:
+        #   (idx, planned, status, days_received_offset, days_required_offset,
+        #    days_delivered_offset_or_None, completion_pct, scenario_label)
+        #
+        # idx           — index into MASTER_PRODUCTS (and matched CapacityOrder)
+        # days_*_offset — relative to today (negative = past, positive = future)
+        # delivered     — only set when status is SHIPPED; otherwise None
+        # completion_pct — 1.0 for SHIPPED (production sums to planned),
+        #                  0.5 for IN_PROGRESS (half-built),
+        #                  0.0 for RECEIVED (not started),
+        #                  ~0.3 for ON_HOLD (paused mid-production)
+        WO_PLAN = [
+            # On-time delivery: shipped a week ago, ahead of required by 2 days
+            (0, 1000, WorkOrderStatus.SHIPPED,     -28, -10, -12, 1.00, "shipped_on_time"),
+            # Late delivery: shipped 5 days late
+            (1, 2000, WorkOrderStatus.SHIPPED,     -27,  -8,  -3, 1.00, "shipped_late"),
+            # Mid-production, on track (used for daily MyShift visibility)
+            (2,  500, WorkOrderStatus.IN_PROGRESS, -10, +14, None, 0.50, "in_progress"),
+            # Just received, not started
+            (3, 1500, WorkOrderStatus.RECEIVED,     -2, +21, None, 0.00, "received"),
+            # On hold (material shortage scenario)
+            (4,  800, WorkOrderStatus.ON_HOLD,     -15, +18, None, 0.30, "on_hold"),
+        ]
+
+        # Track per-WO "expected total production units" so the production
+        # seeder can stay consistent without requiring a second pass.
+        wo_expected_production: Dict[str, int] = {}
 
         for client_id, client in clients.items():
             client_work_orders = []
-            # 3 work orders per client (first 3 MASTER_PRODUCTS)
-            for i in range(3):
-                mp = MASTER_PRODUCTS[i]
+            for idx, planned, status, recv_off, req_off, ship_off, completion_pct, scenario in WO_PLAN:
+                mp = MASTER_PRODUCTS[idx]
                 wo = TestDataFactory.create_work_order(
                     db,
                     client_id=client_id,
-                    work_order_id=f"WO-{client_id[:4]}-{i+1:03d}",
+                    work_order_id=f"WO-{client_id[:4]}-{idx+1:03d}",
                     style_model=mp["code"],
-                    status=WorkOrderStatus.IN_PROGRESS if i < 2 else WorkOrderStatus.RECEIVED,
-                    planned_quantity=1000 * (i + 1),
-                    received_date=datetime.combine(base_date + timedelta(days=i * 5), datetime.min.time()),
-                    planned_ship_date=datetime.combine(base_date + timedelta(days=30 + i * 5), datetime.min.time()),
+                    status=status,
+                    planned_quantity=planned,
+                    received_date=datetime.combine(today_d + timedelta(days=recv_off), datetime.min.time()),
+                    planned_ship_date=datetime.combine(today_d + timedelta(days=req_off), datetime.min.time()),
                 )
-                # Set required_date and actual_delivery_date for OTD calculation
-                # Dates must fall within "Last 30 Days" dashboard filter
-                if i == 0:
-                    # On time: required Feb 7, delivered Feb 6
-                    wo.required_date = datetime.combine(base_date + timedelta(days=25), datetime.min.time())
-                    wo.actual_delivery_date = datetime.combine(base_date + timedelta(days=24), datetime.min.time())
-                    wo.actual_quantity = wo.planned_quantity
-                elif i == 1:
-                    # Late: required Feb 2, delivered Feb 10 (8 days late)
-                    wo.required_date = datetime.combine(base_date + timedelta(days=20), datetime.min.time())
-                    wo.actual_delivery_date = datetime.combine(base_date + timedelta(days=28), datetime.min.time())
-                    wo.actual_quantity = wo.planned_quantity
+                wo.required_date = datetime.combine(today_d + timedelta(days=req_off), datetime.min.time())
+                wo.priority = "URGENT" if scenario == "shipped_late" else ("HIGH" if idx <= 1 else "MEDIUM")
+
+                expected_units = int(planned * completion_pct)
+                wo_expected_production[wo.work_order_id] = expected_units
+
+                if ship_off is not None:
+                    # Shipped: we know the exact actual; production seeder will
+                    # still distribute units across days but cumulatively land
+                    # on planned_quantity.
+                    wo.actual_delivery_date = datetime.combine(
+                        today_d + timedelta(days=ship_off), datetime.min.time()
+                    )
+                    wo.actual_quantity = planned
                 else:
-                    # Still in progress: due in 10 days, no delivery yet
-                    wo.required_date = datetime.combine(date.today() + timedelta(days=10), datetime.min.time())
-                # Link to corresponding capacity order (WO→CP bridge)
+                    # Not yet shipped: actual reflects in-progress completion
+                    # (re-derived after production seeding for accuracy).
+                    wo.actual_quantity = expected_units
+
+                # Link to the corresponding capacity order (CPO ↔ WO bridge).
+                # Match by style_model so quantities and statuses can be
+                # reconciled later in the seeder.
                 cap_orders_for_client = all_cap_orders.get(client_id, [])
                 matching_cap = next(
                     (co for co in cap_orders_for_client if co.style_model == mp["code"]),
@@ -1171,6 +1213,16 @@ def init_database() -> None:
                 if matching_cap:
                     wo.capacity_order_id = matching_cap.id
                     wo.origin = "CAPACITY_PLAN"
+                    # Re-align CPO planned to match WO planned. The CPO seeder
+                    # earlier used a different array; this single-source-of-
+                    # truth alignment fixes the drift Phase A flagged.
+                    matching_cap.order_quantity = planned
+                    matching_cap.completed_quantity = expected_units
+                    matching_cap.status = (
+                        OrderStatus.COMPLETED if status == WorkOrderStatus.SHIPPED
+                        else OrderStatus.IN_PROGRESS if status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD)
+                        else OrderStatus.CONFIRMED
+                    )
 
                 client_work_orders.append(wo)
 
@@ -1180,16 +1232,13 @@ def init_database() -> None:
                         db,
                         work_order_id=wo.work_order_id,
                         client_id=client_id,
-                        job_id=f"JOB-{client_id[:4]}-{i+1:03d}-{j+1}",
-                        part_number=f"PART-{client_id[:4]}-{i+1:03d}-{j+1}",
-                        quantity_required=wo.planned_quantity // 2 if wo.planned_quantity else 500,
+                        job_id=f"JOB-{client_id[:4]}-{idx+1:03d}-{j+1}",
+                        part_number=f"PART-{client_id[:4]}-{idx+1:03d}-{j+1}",
+                        quantity_required=max(1, planned // 2),
                     )
-                    # job.part_number is Mapped[Optional[str]]; the
-                    # factory needs str. Fall back to the deterministic
-                    # PART-... we just constructed when None.
                     TestDataFactory.create_part_opportunities(
                         db,
-                        part_number=job.part_number or f"PART-{client_id[:4]}-{i+1:03d}-{j+1}",
+                        part_number=job.part_number or f"PART-{client_id[:4]}-{idx+1:03d}-{j+1}",
                         client_id=client_id,
                         opportunities_per_unit=10,
                     )
@@ -1216,55 +1265,108 @@ def init_database() -> None:
             if not supervisor_user:
                 supervisor_user = users["admin"]
 
-            # Production entries (10 per client) with realistic KPI values
+            # Production entries — split per WO so cumulative units match
+            # what each WO's status implies (SHIPPED = full planned,
+            # IN_PROGRESS = ~50%, ON_HOLD = ~30%, RECEIVED = none).
+            #
+            # Date range: ends today, spans 30 days back. Each WO's
+            # entries land within its own active window (received_date
+            # to today, or to actual_delivery_date if shipped).
             client_products = all_products[client_id]
             client_shifts = all_shifts[client_id]
-            wo_ids = [wo.work_order_id for wo in client_work_orders]
             random.seed(hash(client_id))  # Deterministic per client
-            base_date = date.today() - timedelta(days=10)
-            for i in range(10):
-                prod_idx = i % len(client_products)
-                product = client_products[prod_idx]
-                run_time = Decimal("8.0")
-                ideal_ct = product.ideal_cycle_time or Decimal("0.15")
-                # Derive units from the master cycle time so Performance lands
-                # in a realistic 82-98% range. The previous hardcoded
-                # `units = 1000 + i*50` ignored cycle_time entirely and made
-                # Performance saturate at 150% (and OEE come back > 100%).
-                target_perf = Decimal(str(round(random.uniform(0.82, 0.98), 2)))
-                units = max(1, int((run_time / ideal_ct) * target_perf))
-                defects = max(1, int(units * random.uniform(0.003, 0.012)))
-                scrap = max(0, defects // 3)
-                rework = defects - scrap
-                efficiency = Decimal(str(round(random.uniform(78, 95), 2)))
-                performance = (target_perf * Decimal("100")).quantize(Decimal("0.01"))
-                quality = Decimal(str(round(100 - (defects + scrap) / units * 100, 2)))
-                actual_ct = run_time / units
 
-                work_order_id = wo_ids[i % len(wo_ids)] if wo_ids else None
-                entry = ProductionEntry(
-                    production_entry_id=f"PE-{client_id[:4]}-{i+1:03d}",
-                    client_id=client_id,
-                    product_id=product.product_id,
-                    shift_id=client_shifts[0].shift_id,
-                    entered_by=supervisor_user.user_id,
-                    production_date=datetime.combine(base_date + timedelta(days=i), datetime.min.time()),
-                    shift_date=datetime.combine(base_date + timedelta(days=i), datetime.min.time()),
-                    units_produced=units,
-                    employees_assigned=5,
-                    employees_present=random.choice([4, 5, 5, 5]),
-                    run_time_hours=run_time,
-                    defect_count=defects,
-                    scrap_count=scrap,
-                    rework_count=rework,
-                    ideal_cycle_time=ideal_ct,
-                    actual_cycle_time=actual_ct,
-                    efficiency_percentage=efficiency,
-                    performance_percentage=performance,
-                    quality_rate=quality,
-                    work_order_id=work_order_id,
+            entry_seq = 1
+            for wo in client_work_orders:
+                target_total = wo_expected_production.get(wo.work_order_id, 0)
+                if target_total <= 0:
+                    continue  # RECEIVED has no production
+
+                # Find the WO's product (match by style_model where possible)
+                product = next(
+                    (p for p in client_products if (p.product_code or "").startswith(wo.style_model or "")),
+                    client_products[0],
                 )
-                db.add(entry)
+                ideal_ct = product.ideal_cycle_time or Decimal("0.15")
+                run_time = Decimal("8.0")
+
+                # Active window: from received_date to delivery (if shipped)
+                # or today (otherwise). Capped at last 30 days for dashboard
+                # visibility.
+                start = max(
+                    wo.received_date.date() if wo.received_date else today_d - timedelta(days=30),
+                    today_d - timedelta(days=30),
+                )
+                end_excl = (
+                    wo.actual_delivery_date.date() if wo.actual_delivery_date else today_d
+                )
+                # Clip to today max so we never seed future production
+                if end_excl > today_d:
+                    end_excl = today_d
+                window_days = max(1, (end_excl - start).days)
+                # 4 production entries per WO (realistic for a mostly-active
+                # campaign), with the LAST entry pinned to `end_excl` so a
+                # user opening MyShift today sees today's (or the latest)
+                # shift on an active WO. Earlier entries are spaced evenly
+                # backwards from there.
+                num_entries = 4 if target_total >= 200 else 2
+                step = max(1, window_days // max(1, num_entries - 1)) if num_entries > 1 else 1
+
+                # Distribute target_total across num_entries with light noise
+                # but the LAST entry trues up so the sum equals target.
+                base_per_entry = target_total // num_entries
+                running = 0
+                for k in range(num_entries):
+                    is_last = (k == num_entries - 1)
+                    if is_last:
+                        entry_date = end_excl
+                    else:
+                        entry_date = start + timedelta(days=k * step)
+                        if entry_date >= end_excl:
+                            entry_date = end_excl - timedelta(days=1)
+
+                    if is_last:
+                        units = max(1, target_total - running)
+                    else:
+                        # ±10% noise so daily numbers look real.
+                        noise = random.uniform(0.9, 1.1)
+                        units = max(1, min(int(base_per_entry * noise), target_total - running - (num_entries - k - 1)))
+                    running += units
+
+                    # Realistic per-entry KPIs
+                    target_perf = Decimal(str(round(random.uniform(0.82, 0.98), 2)))
+                    defects = max(1, int(units * random.uniform(0.003, 0.012)))
+                    scrap = max(0, defects // 3)
+                    rework = defects - scrap
+                    efficiency = Decimal(str(round(random.uniform(78, 95), 2)))
+                    performance = (target_perf * Decimal("100")).quantize(Decimal("0.01"))
+                    quality = Decimal(str(round(100 - (defects + scrap) / units * 100, 2)))
+                    actual_ct = run_time / Decimal(str(units))
+
+                    entry = ProductionEntry(
+                        production_entry_id=f"PE-{client_id[:4]}-{entry_seq:03d}",
+                        client_id=client_id,
+                        product_id=product.product_id,
+                        shift_id=client_shifts[0].shift_id,
+                        entered_by=supervisor_user.user_id,
+                        production_date=datetime.combine(entry_date, datetime.min.time()),
+                        shift_date=datetime.combine(entry_date, datetime.min.time()),
+                        units_produced=units,
+                        employees_assigned=5,
+                        employees_present=random.choice([4, 5, 5, 5]),
+                        run_time_hours=run_time,
+                        defect_count=defects,
+                        scrap_count=scrap,
+                        rework_count=rework,
+                        ideal_cycle_time=ideal_ct,
+                        actual_cycle_time=actual_ct,
+                        efficiency_percentage=efficiency,
+                        performance_percentage=performance,
+                        quality_rate=quality,
+                        work_order_id=wo.work_order_id,
+                    )
+                    db.add(entry)
+                    entry_seq += 1
 
             # Quality entries
             if client_work_orders:
@@ -1288,40 +1390,73 @@ def init_database() -> None:
                     attendance_rate=0.92,
                 )
 
-            # Downtime entries
-            if client_work_orders:
-                operator_user = None
-                for u in users.values():
-                    if u.role == "operator" and u.client_id_assigned and client_id in u.client_id_assigned:
-                        operator_user = u
-                        break
-                if not operator_user:
-                    operator_user = supervisor_user
+            # Downtime entries — varied durations across production days,
+            # attributed to actively-running work orders (IN_PROGRESS or
+            # ON_HOLD), not SHIPPED ones (those are already complete).
+            operator_user = None
+            for u in users.values():
+                if u.role == "operator" and u.client_id_assigned and client_id in u.client_id_assigned:
+                    operator_user = u
+                    break
+            if not operator_user:
+                operator_user = supervisor_user
 
-                for i, reason in enumerate(["EQUIPMENT_FAILURE", "MATERIAL_SHORTAGE", "SETUP_CHANGEOVER"]):
+            active_wos = [w for w in client_work_orders if w.status in (
+                WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD
+            )]
+            if active_wos:
+                # 6 downtime events per client across the last 14 days,
+                # mixed reasons and durations to surface realistic Pareto.
+                reasons_durations = [
+                    ("EQUIPMENT_FAILURE", 45),
+                    ("MATERIAL_SHORTAGE", 120),
+                    ("SETUP_CHANGEOVER", 30),
+                    ("EQUIPMENT_FAILURE", 90),
+                    ("OPERATOR_ABSENT", 60),
+                    ("QUALITY_ISSUE", 75),
+                ]
+                for i, (reason, duration) in enumerate(reasons_durations):
+                    wo = active_wos[i % len(active_wos)]
+                    days_ago = (i * 2 + 1) % 14  # spread: 1, 3, 5, 7, 9, 11
+                    shift_d = today_d - timedelta(days=days_ago)
                     TestDataFactory.create_downtime_entry(
                         db,
                         client_id=client_id,
-                        work_order_id=client_work_orders[0].work_order_id,
+                        work_order_id=wo.work_order_id,
                         reported_by=operator_user.user_id,
                         downtime_reason=reason,
+                        duration_minutes=duration,
+                        shift_date=datetime.combine(shift_d, datetime.min.time()),
                     )
 
-            # Hold entries (varied ages for realistic WIP aging)
-            if client_work_orders:
-                hold_ages = [3, 8, 15]  # days ago: within target, borderline, overdue
-                hold_reasons = ["QUALITY_ISSUE", "MATERIAL_SHORTAGE", "CUSTOMER_REQUEST"]
-                for h_idx, (age, reason) in enumerate(zip(hold_ages, hold_reasons)):
-                    hold_wo = client_work_orders[h_idx % len(client_work_orders)]
-                    TestDataFactory.create_hold_entry(
-                        db,
-                        work_order_id=hold_wo.work_order_id,
-                        client_id=client_id,
-                        created_by=supervisor_user.user_id,
-                        hold_reason=reason,
-                        hold_status=HoldStatus.ON_HOLD,
-                        hold_date=datetime.now(tz=timezone.utc) - timedelta(days=age),
-                    )
+            # Hold entries — anchor to the ON_HOLD work order(s) for
+            # tenant realism. Plus 2 historical (resolved) holds on
+            # completed orders to populate the chronic-holds dashboard
+            # with a mix of active + closed.
+            on_hold_wos = [w for w in client_work_orders if w.status == WorkOrderStatus.ON_HOLD]
+            shipped_wos = [w for w in client_work_orders if w.status == WorkOrderStatus.SHIPPED]
+            # Active hold on the ON_HOLD WO
+            for wo in on_hold_wos:
+                TestDataFactory.create_hold_entry(
+                    db,
+                    work_order_id=wo.work_order_id,
+                    client_id=client_id,
+                    created_by=supervisor_user.user_id,
+                    hold_reason="MATERIAL_SHORTAGE",
+                    hold_status=HoldStatus.ON_HOLD,
+                    hold_date=datetime.now(tz=timezone.utc) - timedelta(days=8),
+                )
+            # Resolved historical holds on shipped WOs
+            for h_idx, wo in enumerate(shipped_wos[:2]):
+                TestDataFactory.create_hold_entry(
+                    db,
+                    work_order_id=wo.work_order_id,
+                    client_id=client_id,
+                    created_by=supervisor_user.user_id,
+                    hold_reason="QUALITY_ISSUE" if h_idx == 0 else "CUSTOMER_REQUEST",
+                    hold_status=HoldStatus.RESUMED,
+                    hold_date=datetime.now(tz=timezone.utc) - timedelta(days=20 + h_idx * 5),
+                )
 
         print(f"  Created execution data for {len(clients)} clients")
         db.commit()

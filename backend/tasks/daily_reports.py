@@ -137,18 +137,26 @@ class DailyReportScheduler:
             return {"success": False, "error": "Report generation failed"}
 
     def _get_client_admin_emails(self, db: Session, client_id: str) -> List[str]:
-        """Get list of admin email addresses for a client"""
-        # This should query the User table for admins of this client
-        # For now, return a placeholder
+        """Get list of admin email addresses for a client.
 
+        The User table stores client assignment as a comma-separated
+        string in `client_id_assigned` (e.g. "ACME-MFG,TEXTILE-PRO" for
+        multi-client leaders) or NULL for global admin/poweruser. To
+        match a specific client we LIKE-match the substring; admins
+        with NULL assignment are global so they always qualify.
+        """
         from backend.orm.user import User
+        from sqlalchemy import or_
 
         admins = (
             db.query(User)
             .filter(
-                User.client_id == client_id,
-                User.role.in_(["admin", "super_admin"]),
-                User.is_active == True,
+                or_(
+                    User.client_id_assigned.is_(None),  # global admin/poweruser
+                    User.client_id_assigned.like(f"%{client_id}%"),
+                ),
+                User.role.in_(["admin", "ADMIN"]),
+                User.is_active.is_(True),
                 User.email.isnot(None),
             )
             .all()

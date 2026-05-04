@@ -26,6 +26,25 @@ from backend.services.work_order_service import (
     list_orders_by_date_range as get_work_orders_by_date_range,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
+from backend.orm.user import User as _User_for_perm
+
+_WRITE_ALLOWED_ROLES = {"admin", "ADMIN", "poweruser", "leader", "supervisor"}
+
+
+def _check_wo_write_permission(user: "_User_for_perm") -> None:
+    """Reject operator/viewer roles from mutating work orders.
+
+    Operators are data collectors — they enter production/downtime/quality
+    against an EXISTING work order but should not create, edit, or delete
+    the work order itself. Audit Run-6 surfaced an operator successfully
+    POSTing a new WO; this guard closes that gap centrally.
+    """
+    role = user.role or ""
+    if role not in _WRITE_ALLOWED_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Work order mutations require leader, supervisor, poweruser, or admin role",
+        )
 from backend.orm.user import User
 from backend.orm.work_order import WorkOrder
 from backend.orm.production_entry import ProductionEntry
@@ -44,8 +63,9 @@ def create_work_order_endpoint(
 ) -> Any:
     """
     Create new work order
-    SECURITY: Enforces client filtering
+    SECURITY: Enforces client filtering AND write-role gate (operators denied).
     """
+    _check_wo_write_permission(current_user)
     work_order_data = work_order.model_dump()
     result = create_work_order(db, work_order_data, current_user)
     db.commit()
@@ -414,8 +434,9 @@ def update_work_order_endpoint(
 ) -> Any:
     """
     Update work order
-    SECURITY: Verifies user has access to work order's client
+    SECURITY: Verifies user has access to work order's client AND write-role.
     """
+    _check_wo_write_permission(current_user)
     work_order_data = work_order_update.model_dump(exclude_unset=True)
     updated = update_work_order(db, work_order_id, work_order_data, current_user)
     if not updated:
@@ -434,8 +455,9 @@ def update_work_order_status(
     """
     Update only the status of a work order.
     Accepts: { "status": "ACTIVE" | "ON_HOLD" | "COMPLETED" | "REJECTED" | "CANCELLED" }
-    SECURITY: Verifies user has access to work order's client
+    SECURITY: Verifies user has access to work order's client AND write-role.
     """
+    _check_wo_write_permission(current_user)
     if "status" not in status_update:
         raise HTTPException(status_code=400, detail="Status field is required")
 
