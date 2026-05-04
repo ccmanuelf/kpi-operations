@@ -3875,6 +3875,19 @@
     "scheduleMeetings": "Programar Reuniones",
     "escalateHr": "Escalar a RRHH"
   },
+  "help": {
+    "openHelpCenter": "Abrir Centro de Ayuda",
+    "title": "Centro de Ayuda",
+    "contents": "Contenido",
+    "tableOfContents": "Tabla de contenido",
+    "searchPlaceholder": "Buscar en la guía de usuario…",
+    "noResults": "Sin coincidencias",
+    "selectDoc": "Selecciona una sección de la izquierda para comenzar.",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "Enlace copiado al portapapeles",
+    "linkCopyFailed": "No se pudo copiar el enlace",
+    "sourceLocation": "Origen: docs/user-guide/"
+  },
   "onboarding": {
     "title": "Primeros Pasos",
     "subtitle": "Completa estos pasos para configurar tus operaciones",

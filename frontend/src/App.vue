@@ -24,6 +24,14 @@
       <v-btn icon @click="onboardingState.openOnboarding()" :aria-label="$t('onboarding.title')">
         <v-icon aria-hidden="true">mdi-rocket-launch-outline</v-icon>
       </v-btn>
+      <v-btn
+        icon
+        :to="{ name: 'help' }"
+        :aria-label="$t('help.openHelpCenter')"
+        :title="$t('help.openHelpCenter')"
+      >
+        <v-icon aria-hidden="true">mdi-help-circle-outline</v-icon>
+      </v-btn>
       <v-btn icon @click="toggleShortcutsHelp" :aria-label="$t('common.view') + ' ' + $t('navigation.settings')">
         <v-icon aria-hidden="true">mdi-keyboard</v-icon>
       </v-btn>

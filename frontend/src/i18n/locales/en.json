@@ -3878,6 +3878,19 @@
     "scheduleMeetings": "Schedule Meetings",
     "escalateHr": "Escalate to HR"
   },
+  "help": {
+    "openHelpCenter": "Open Help Center",
+    "title": "Help Center",
+    "contents": "Contents",
+    "tableOfContents": "Table of contents",
+    "searchPlaceholder": "Search the user guide…",
+    "noResults": "No matches found",
+    "selectDoc": "Select a section from the left to begin.",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied to clipboard",
+    "linkCopyFailed": "Couldn't copy link",
+    "sourceLocation": "Source: docs/user-guide/"
+  },
   "onboarding": {
     "title": "Getting Started",
     "subtitle": "Complete these steps to set up your operations",

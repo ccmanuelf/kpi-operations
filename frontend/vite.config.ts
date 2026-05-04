@@ -20,6 +20,11 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
+    fs: {
+      // Allow Vite to read project-root files like ../docs/user-guide/*.md
+      // for the in-app Help Center (`?raw` imports).
+      allow: ['..']
+    },
     proxy: {
       // Proxy API requests to the FastAPI backend during development
       '/api': {

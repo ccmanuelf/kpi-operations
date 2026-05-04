@@ -213,6 +213,12 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/admin/AssumptionVarianceReport.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
   },
+  {
+    path: '/help/:id?',
+    name: 'help',
+    component: () => import('@/views/HelpCenter.vue'),
+    meta: { requiresAuth: true },
+  },
 ]
 
 const router = createRouter({
