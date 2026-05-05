@@ -8,8 +8,6 @@ Target: Increase coverage of routes/analytics.py to 90%+
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
 
 
 class TestTrendsEndpoint:

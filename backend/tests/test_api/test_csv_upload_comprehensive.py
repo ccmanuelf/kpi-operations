@@ -6,8 +6,8 @@ Uses mock-based testing pattern consistent with other tests
 import pytest
 import io
 import csv
-from unittest.mock import MagicMock, patch
-from datetime import datetime, date
+from unittest.mock import MagicMock
+from datetime import datetime
 
 
 class TestCSVUploadEndpoints:

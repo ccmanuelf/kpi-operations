@@ -13,7 +13,7 @@ Tests cover:
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 import json
 
 

@@ -9,7 +9,6 @@ CRITICAL: These tests ensure data security in the multi-tenant system.
 """
 
 import pytest
-from fastapi import HTTPException
 
 from backend.middleware.client_auth import (
     get_user_client_filter,

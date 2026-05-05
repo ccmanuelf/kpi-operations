@@ -26,7 +26,6 @@ from backend.services.workflow_service import (
     execute_transition,
     calculate_elapsed_hours,
     get_transition_history,
-    bulk_transition,
     apply_workflow_template,
 )
 from backend.tests.fixtures.factories import TestDataFactory

@@ -35,13 +35,12 @@ import logging
 import math
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from ..models import OperationInput, SimulationConfig
+from ..models import SimulationConfig
 from .minizinc_runner import (
     MiniZincNotAvailableError,
     MiniZincResult,
-    MiniZincSolveError,
     is_minizinc_available,
     run_minizinc,
 )

@@ -20,8 +20,6 @@ Tests requiring the MiniZinc binary are decorated with `@needs_minizinc`
 so CI without MZ skips cleanly.
 """
 
-from typing import List
-
 import pytest
 
 from backend.simulation_v2.models import (

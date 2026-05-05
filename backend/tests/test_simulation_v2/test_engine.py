@@ -6,7 +6,6 @@ and metric collection.
 """
 
 import pytest
-from typing import List
 
 from backend.simulation_v2.engine import (
     ProductionLineSimulator,
@@ -22,7 +21,6 @@ from backend.simulation_v2.models import (
     VariabilityType,
 )
 from backend.simulation_v2.constants import (
-    SMALL_BUNDLE_THRESHOLD,
     MIN_PROCESS_TIME_MINUTES,
 )
 

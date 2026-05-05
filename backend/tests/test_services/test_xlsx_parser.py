@@ -7,7 +7,7 @@ All tests create workbooks in-memory using openpyxl (no disk I/O).
 """
 
 import pytest
-from datetime import datetime, date
+from datetime import datetime
 from io import BytesIO
 
 import openpyxl

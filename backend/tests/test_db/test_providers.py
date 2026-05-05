@@ -5,11 +5,9 @@ Tests for SQLiteProvider, MariaDBProvider, MySQLProvider, and DatabaseProviderFa
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from sqlalchemy import Engine
+from unittest.mock import patch, MagicMock
 from sqlalchemy.pool import NullPool, QueuePool
 
-from backend.db.providers.base import DatabaseProvider
 from backend.db.providers.sqlite import SQLiteProvider
 from backend.db.providers.mariadb import MariaDBProvider
 from backend.db.providers.mysql import MySQLProvider

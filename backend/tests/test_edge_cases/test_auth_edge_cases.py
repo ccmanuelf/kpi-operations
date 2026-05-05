@@ -10,12 +10,10 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-from fastapi import FastAPI, HTTPException
+from fastapi import HTTPException
 
-from backend.database import Base, get_db
+from backend.database import Base
 from backend.orm import ClientType
-from backend.orm.user import User
 from backend.tests.fixtures.factories import TestDataFactory
 
 

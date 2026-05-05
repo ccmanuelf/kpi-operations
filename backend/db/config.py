@@ -5,7 +5,7 @@ Centralized configuration for database providers with environment-aware defaults
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import os
 
 

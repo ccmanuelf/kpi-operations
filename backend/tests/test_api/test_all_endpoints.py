@@ -11,9 +11,6 @@ return 403. This is correct behavior — we test that the endpoint
 exists and enforces auth, not that it returns data.
 """
 
-import pytest
-from datetime import date, timedelta
-
 
 class TestHealthEndpoints:
     """Test health check endpoints (some require auth)."""

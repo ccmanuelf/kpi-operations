@@ -5,7 +5,6 @@ Manages database provider state and migration locking with file-based
 persistence for cross-process coordination.
 """
 
-import os
 import json
 import fcntl
 from datetime import datetime, timezone

@@ -16,7 +16,6 @@ Documentation requirements (from LAUNCH_GUIDE_FINAL.md and QUICKSTART.md):
 import sys
 import os
 import uuid
-import json
 import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
@@ -83,7 +82,7 @@ from backend.orm import (
 )
 
 # Alert models live outside backend/orm/ (in backend/schemas/alert.py)
-from backend.schemas.alert import Alert, AlertConfig, AlertHistory
+from backend.schemas.alert import Alert, AlertConfig
 
 # ============================================================================
 # MASTER PRODUCT CATALOG

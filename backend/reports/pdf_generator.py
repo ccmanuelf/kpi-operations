@@ -7,31 +7,17 @@ Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 
 from datetime import datetime, date, timezone
-from decimal import Decimal
 from typing import List, Optional, Dict, Any
 from pathlib import Path
-import base64
 from io import BytesIO
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak, Image, KeepTogether
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
-from reportlab.graphics.shapes import Drawing
-from reportlab.graphics.charts.linecharts import HorizontalLineChart
-from reportlab.graphics.charts.barcharts import VerticalBarChart
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.enums import TA_CENTER
 from sqlalchemy.orm import Session
-
-from backend.calculations.efficiency import calculate_efficiency
-from backend.calculations.availability import calculate_availability
-from backend.calculations.performance import calculate_performance
-from backend.calculations.fpy_rty import calculate_fpy, calculate_rty
-from backend.calculations.ppm import calculate_ppm
-from backend.calculations.dpmo import calculate_dpmo
-from backend.calculations.absenteeism import calculate_absenteeism
-from backend.calculations.otd import calculate_otd
 
 
 class PDFReportGenerator:
@@ -342,7 +328,6 @@ class PDFReportGenerator:
         from backend.orm.production_entry import ProductionEntry
         from backend.orm.quality_entry import QualityEntry
         from backend.orm.attendance_entry import AttendanceEntry
-        from backend.orm.product import Product
 
         kpi_data = []
 
@@ -456,7 +441,6 @@ class PDFReportGenerator:
         from backend.orm.production_entry import ProductionEntry
         from backend.orm.quality_entry import QualityEntry
         from backend.orm.attendance_entry import AttendanceEntry
-        from backend.orm.product import Product
 
         details = {}
 

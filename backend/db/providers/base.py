@@ -6,7 +6,7 @@ This enables runtime selection of SQLite, MariaDB/MySQL, or PostgreSQL.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, List, TYPE_CHECKING
+from typing import Dict, Any, List, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine

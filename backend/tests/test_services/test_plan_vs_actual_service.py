@@ -17,8 +17,8 @@ from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriorit
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.production_line import ProductionLine
-from backend.orm.user import User, UserRole
-from backend.orm.client import Client, ClientType
+from backend.orm.user import User
+from backend.orm.client import Client
 from backend.orm.product import Product
 from backend.orm.shift import Shift
 from backend.tests.fixtures.factories import TestDataFactory

@@ -28,7 +28,6 @@ from .engine import run_simulation
 from .models import (
     SimulationConfig,
     SimulationResults,
-    ValidationReport,
 )
 from .validation import validate_simulation_config
 

@@ -14,7 +14,6 @@ from backend.events.domain_events import (
     HoldApprovalRequired,
     KPIThresholdViolated,
 )
-from typing import Any
 
 
 logger = logging.getLogger(__name__)

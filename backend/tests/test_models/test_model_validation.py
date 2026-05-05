@@ -12,7 +12,7 @@ Covers:
 """
 
 import pytest
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pydantic import ValidationError
 
@@ -38,34 +38,21 @@ from backend.schemas.hold import (
     HoldStatusEnum,
     HoldReasonEnum,
     WIPHoldCreate,
-    WIPHoldUpdate,
     WIPHoldResponse,
-    WIPAgingResponse,
 )
 from backend.schemas.quality import (
     QualityInspectionCreate,
-    QualityInspectionUpdate,
-    QualityInspectionResponse,
-    InferenceMetadata as QualityInferenceMetadata,
 )
 from backend.schemas.downtime import (
     DowntimeReasonEnum,
     DowntimeEventCreate,
-    DowntimeEventUpdate,
-    DowntimeEventResponse,
-    AvailabilityCalculationResponse,
 )
 from backend.schemas.attendance import (
     AbsenceTypeEnum,
     AttendanceRecordCreate,
-    AttendanceRecordUpdate,
-    AttendanceRecordResponse,
 )
 from backend.schemas.work_order import (
-    WorkOrderStatusEnum,
     WorkOrderCreate,
-    WorkOrderUpdate,
-    WorkOrderResponse,
 )
 from backend.schemas.workflow import (
     WorkflowStatusEnum,

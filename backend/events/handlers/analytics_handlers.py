@@ -15,7 +15,6 @@ from backend.events.domain_events import (
     QualityInspectionRecorded,
     QualityDefectReported,
 )
-from typing import Any
 
 
 logger = logging.getLogger(__name__)

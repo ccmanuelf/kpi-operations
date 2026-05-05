@@ -9,8 +9,7 @@ Tests for:
 
 import pytest
 from datetime import date, datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch, PropertyMock
-from fastapi.testclient import TestClient
+from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
 

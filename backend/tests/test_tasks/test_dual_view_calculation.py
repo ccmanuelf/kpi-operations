@@ -8,8 +8,7 @@ third-party concern); we call the public entrypoints directly.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from backend.orm.metric_calculation_result import MetricCalculationResult

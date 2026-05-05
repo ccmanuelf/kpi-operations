@@ -10,14 +10,6 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.auth.jwt import get_current_user
-from backend.simulation_v2.models import (
-    SimulationConfig,
-    SimulationRequest,
-    ScheduleConfig,
-    OperationInput,
-    DemandInput,
-    DemandMode,
-)
 
 
 def get_mock_admin_user():

@@ -4,9 +4,6 @@ Unit tests for Production Line Simulation v2.0 Validation Module
 Tests domain validation rules, error detection, and warning generation.
 """
 
-import pytest
-from typing import List
-
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.models import (
     OperationInput,
@@ -15,7 +12,6 @@ from backend.simulation_v2.models import (
     BreakdownInput,
     SimulationConfig,
     DemandMode,
-    ValidationSeverity,
 )
 
 

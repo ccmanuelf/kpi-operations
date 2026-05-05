@@ -5,7 +5,7 @@ Target: 90% coverage for auth/ module
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from jose import jwt
 import sys
 import os

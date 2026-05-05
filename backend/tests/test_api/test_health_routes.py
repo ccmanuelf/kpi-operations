@@ -17,11 +17,7 @@ Tests cover:
 
 import pytest
 from datetime import datetime
-from unittest.mock import patch, MagicMock, PropertyMock
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from unittest.mock import patch, MagicMock
 import sys
 import os
 

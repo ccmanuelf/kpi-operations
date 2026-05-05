@@ -6,11 +6,11 @@ Supports different test scenarios: minimal, comprehensive, multi-tenant.
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Tuple
 from sqlalchemy.orm import Session
 
 from .factories import TestDataFactory
-from backend.orm import ClientType, WorkOrderStatus, HoldStatus, AbsenceType
+from backend.orm import ClientType, WorkOrderStatus, HoldStatus
 
 
 def seed_minimal_data(db: Session) -> Dict[str, Any]:

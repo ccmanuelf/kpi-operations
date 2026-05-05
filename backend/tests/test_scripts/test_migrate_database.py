@@ -8,7 +8,7 @@ migration logic without requiring external database servers.
 from typing import Optional
 
 import pytest
-from sqlalchemy import Column, Integer, String, DateTime, MetaData, Table, create_engine, inspect, text
+from sqlalchemy import MetaData, create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 

@@ -38,7 +38,6 @@ from ..models import OperationInput, SimulationConfig
 from .minizinc_runner import (
     MiniZincNotAvailableError,
     MiniZincResult,
-    MiniZincSolveError,
     is_minizinc_available,
     run_minizinc,
 )

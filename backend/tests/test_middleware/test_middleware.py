@@ -12,18 +12,14 @@ Client auth tests exercise pure Python functions with real DB (transactional_db)
 """
 
 import pytest
-from datetime import datetime
-from decimal import Decimal
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.middleware.rate_limit import (
     RateLimitMiddleware,
     RateLimitConfig,
-    limiter,
     get_rate_limit_key,
     configure_rate_limiting,
 )
@@ -36,7 +32,6 @@ from backend.middleware.client_auth import (
 )
 from backend.orm.user import User, UserRole
 from backend.orm.work_order import WorkOrder
-from backend.tests.fixtures.factories import TestDataFactory
 
 
 # ============================================================================

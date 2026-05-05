@@ -5,9 +5,7 @@ Tests all prediction endpoints including efficiency, quality, downtime, and tren
 Target: Increase coverage of routes/predictions.py to 90%+
 """
 
-import pytest
 from datetime import date, timedelta
-from decimal import Decimal
 
 
 class TestEfficiencyPredictions:

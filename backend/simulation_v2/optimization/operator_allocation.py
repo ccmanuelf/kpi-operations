@@ -15,23 +15,19 @@ the deterministic prediction holds within reasonable CI bounds.
 from __future__ import annotations
 
 import logging
-import math
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..models import (
-    DemandInput,
     DemandMode,
     OperationInput,
     SimulationConfig,
-    SimulationResults,
 )
 from .minizinc_runner import (
     MiniZincNotAvailableError,
     MiniZincResult,
-    MiniZincSolveError,
     is_minizinc_available,
     run_minizinc,
 )

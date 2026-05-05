@@ -7,7 +7,6 @@ Handles provider detection and engine lifecycle management.
 
 from typing import Optional, Dict, Type, Any
 import logging
-import re
 
 from sqlalchemy import Engine
 

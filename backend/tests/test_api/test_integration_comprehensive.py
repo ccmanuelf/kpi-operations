@@ -7,7 +7,6 @@ Target: Increase overall backend test coverage to 90%+
 
 import pytest
 from datetime import date, timedelta, datetime, timezone
-from decimal import Decimal
 
 
 class TestAttendanceRoutesComprehensive:

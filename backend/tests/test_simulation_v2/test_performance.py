@@ -8,7 +8,6 @@ Tests simulation performance with large configurations:
 - Execution time benchmarks
 """
 
-import pytest
 import time
 from typing import List
 
@@ -21,7 +20,7 @@ from backend.simulation_v2.models import (
     DemandMode,
     VariabilityType,
 )
-from backend.simulation_v2.engine import ProductionLineSimulator, run_simulation
+from backend.simulation_v2.engine import run_simulation
 from backend.simulation_v2.validation import validate_simulation_config
 from backend.simulation_v2.calculations import calculate_all_blocks
 

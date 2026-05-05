@@ -16,7 +16,6 @@ import pytest
 from backend.orm.calculation_assumption import (
     AssumptionChange,
     AssumptionStatus,
-    CalculationAssumption,
     MetricAssumptionDependency,
 )
 from backend.services.assumption_service import AssumptionService

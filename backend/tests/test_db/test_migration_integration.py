@@ -5,11 +5,8 @@ Tests for SchemaInitializer, DemoDataSeeder, and MigrationState.
 """
 
 import pytest
-from datetime import datetime, date
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 
-from sqlalchemy import create_engine, text, inspect, Column, Integer, String
+from sqlalchemy import create_engine, inspect, Column, Integer, String
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.pool import NullPool
 

@@ -9,10 +9,7 @@ Tests verify:
 4. Rate limits reset after time window
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock
-import time
+from unittest.mock import MagicMock
 
 
 class TestRateLimitMiddleware:

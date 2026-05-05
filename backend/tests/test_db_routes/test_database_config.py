@@ -6,8 +6,7 @@ All endpoints require supervisor or admin authentication.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from fastapi.testclient import TestClient
+from unittest.mock import patch, MagicMock
 
 from backend.database import get_db
 from backend.orm.user import User

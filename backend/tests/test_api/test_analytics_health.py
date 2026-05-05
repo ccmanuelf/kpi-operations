@@ -4,7 +4,7 @@ Uses mock-based testing pattern consistent with other tests
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from datetime import datetime, timedelta, timezone
 
 

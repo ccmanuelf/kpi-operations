@@ -4,16 +4,13 @@ Task #42: Comprehensive testing of boundary conditions and error scenarios
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
 
-from backend.database import Base, get_db
+from backend.database import Base
 from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 
@@ -654,7 +651,6 @@ class TestUniqueConstraints:
         """Test creating duplicate production entry ID."""
         from backend.orm.production_entry import ProductionEntry
         from sqlalchemy.exc import IntegrityError
-        import warnings
 
         db = edge_setup["db"]
         client = edge_setup["client"]

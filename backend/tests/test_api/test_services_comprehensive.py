@@ -7,8 +7,7 @@ import smtplib
 
 import pytest
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch, PropertyMock
-from io import BytesIO
+from unittest.mock import MagicMock, patch
 
 
 # =============================================================================

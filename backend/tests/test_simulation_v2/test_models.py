@@ -11,7 +11,6 @@ from backend.simulation_v2.models import (
     OperationInput,
     ScheduleConfig,
     DemandInput,
-    BreakdownInput,
     SimulationConfig,
     ValidationIssue,
     ValidationReport,

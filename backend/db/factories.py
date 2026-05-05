@@ -4,7 +4,6 @@ Provides factory functions for creating test data with proper FK relationships.
 Uses real database transactions instead of mocks.
 """
 
-import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
@@ -15,7 +14,6 @@ from backend.orm import (
     Client,
     ClientType,
     User,
-    UserRole,
     Employee,
     FloatingPool,
     WorkOrder,
@@ -36,7 +34,6 @@ from backend.orm import (
     DefectType,
     DefectTypeCatalog,
     SavedFilter,
-    FilterHistory,
     WorkflowTransitionLog,
 )
 from backend.orm.coverage import ShiftCoverage
@@ -711,7 +708,7 @@ class TestDataFactory:
         Creates required dependencies (product, shift, user) automatically.
         """
         # Ensure we have a client
-        from backend.orm import Client, ClientType
+        from backend.orm import Client
 
         client = db.query(Client).filter(Client.client_id == client_id).first()
         if not client:
@@ -797,7 +794,7 @@ class TestDataFactory:
         Uses EXACT defect rate (no variation) for test predictability.
         """
         # Ensure we have a client
-        from backend.orm import Client, ClientType
+        from backend.orm import Client
 
         client = db.query(Client).filter(Client.client_id == client_id).first()
         if not client:

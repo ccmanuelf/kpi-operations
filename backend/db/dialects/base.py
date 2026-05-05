@@ -5,7 +5,7 @@ Defines the interface for handling SQL dialect differences between databases.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Optional
+from typing import List, Optional
 
 
 class DialectAdapter(ABC):

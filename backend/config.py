@@ -10,10 +10,9 @@ Enhanced with:
 
 from pydantic_settings import BaseSettings
 from pydantic import Field, field_validator
-from typing import List, Optional
+from typing import List
 from dataclasses import dataclass, field
 import os
-import sys
 import logging
 import secrets
 

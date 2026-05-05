@@ -7,15 +7,12 @@ Reference: https://carbondesignsystem.com/guidelines/color/tokens
 """
 
 from datetime import date, datetime, timezone
-from decimal import Decimal
 from typing import Optional, List, Dict, Any
 from io import BytesIO
 from pathlib import Path
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.chart import LineChart, BarChart, Reference
-from openpyxl.utils import get_column_letter
 from sqlalchemy.orm import Session
 
 

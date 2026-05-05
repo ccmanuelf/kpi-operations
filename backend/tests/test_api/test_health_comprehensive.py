@@ -5,10 +5,6 @@ Tests all health check endpoints including liveness, readiness, and detailed che
 Target: Increase coverage of routes/health.py to 90%+
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
-
 
 class TestBasicHealthEndpoints:
     """Tests for basic health check endpoints"""

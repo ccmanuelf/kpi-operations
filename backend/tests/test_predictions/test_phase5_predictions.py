@@ -11,9 +11,8 @@ Tests cover:
 """
 
 import pytest
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
-import math
 
 from backend.generators.sample_data_phase5 import (
     generate_kpi_history,

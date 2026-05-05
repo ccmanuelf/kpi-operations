@@ -19,7 +19,6 @@ Tests cover:
 
 import pytest
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
 import uuid
 import sys
 import os

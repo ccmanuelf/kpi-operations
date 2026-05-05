@@ -6,7 +6,6 @@ Tests for SQLiteDialect, MariaDBDialect, and MySQLDialect.
 
 import pytest
 
-from backend.db.dialects.base import DialectAdapter
 from backend.db.dialects.sqlite import SQLiteDialect
 from backend.db.dialects.mariadb import MariaDBDialect
 from backend.db.dialects.mysql import MySQLDialect

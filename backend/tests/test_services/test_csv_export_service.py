@@ -9,7 +9,7 @@ Uses real in-memory SQLite database -- NO mocks for DB layer.
 
 import csv
 import io
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time
 from decimal import Decimal
 
 import pytest
@@ -18,12 +18,9 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
-from backend.orm.client import Client, ClientType
 from backend.orm.production_entry import ProductionEntry
-from backend.orm.product import Product
-from backend.orm.shift import Shift
-from backend.orm.work_order import WorkOrder, WorkOrderStatus
-from backend.orm.user import User, UserRole
+from backend.orm.work_order import WorkOrderStatus
+from backend.orm.user import UserRole
 from backend.services.csv_export_service import (
     _format_value,
     sanitize_csv_value,

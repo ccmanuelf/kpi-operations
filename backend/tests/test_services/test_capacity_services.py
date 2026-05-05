@@ -13,7 +13,7 @@ Services tested:
 """
 
 import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -50,7 +50,6 @@ from backend.services.capacity.mrp_service import MRPService, MRPRunResult
 from backend.services.capacity.analysis_service import (
     CapacityAnalysisService,
     CapacityAnalysisResult,
-    LineCapacityResult,
 )
 from backend.services.capacity.scheduling_service import (
     SchedulingService,
@@ -62,12 +61,9 @@ from backend.services.capacity.scenario_service import (
     ScenarioType,
     ScenarioResult,
     ScenarioComparison,
-    SCENARIO_DEFAULTS,
 )
 from backend.services.capacity.kpi_integration_service import (
     KPIIntegrationService,
-    KPIActual,
-    KPIVariance,
     STANDARD_KPIS,
 )
 from backend.services.capacity.capacity_service import CapacityPlanningService

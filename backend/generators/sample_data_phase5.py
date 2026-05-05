@@ -21,9 +21,8 @@ KPI Types Supported:
 10. OTD - On-Time Delivery percentage
 """
 
-from typing import Any, List, Dict, Optional, Tuple
+from typing import Any, List, Dict, Optional
 from datetime import date, timedelta
-from decimal import Decimal
 import random
 import math
 from dataclasses import dataclass

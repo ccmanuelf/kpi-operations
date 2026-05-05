@@ -5,7 +5,6 @@ Tests the 8 output block calculations and data transformations.
 """
 
 import pytest
-from collections import defaultdict
 
 from backend.simulation_v2.calculations import (
     calculate_all_blocks,
@@ -23,7 +22,6 @@ from backend.simulation_v2.models import (
     SimulationConfig,
     ValidationReport,
     CoverageStatus,
-    RebalanceRole,
 )
 
 

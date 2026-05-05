@@ -7,7 +7,7 @@ ProductionEntry / QualityEntry / WorkOrder rows.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from backend.orm.production_entry import ProductionEntry

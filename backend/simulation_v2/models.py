@@ -8,20 +8,18 @@ for the 8 result blocks specified in the technical specification.
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Dict, Optional, Any, Literal, Union
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import List, Dict, Optional, Any
+from pydantic import BaseModel, Field, model_validator
 
 from .constants import (
     DEFAULT_SEQUENCE,
     DEFAULT_GROUPING,
     DEFAULT_OPERATORS,
-    DEFAULT_VARIABILITY,
     DEFAULT_REWORK_PCT,
     DEFAULT_GRADE_PCT,
     DEFAULT_FPD_PCT,
     DEFAULT_BUNDLE_SIZE,
     DEFAULT_HORIZON_DAYS,
-    MAX_PRODUCTS,
     MAX_OPERATORS_PER_STATION,
     MAX_BUNDLE_SIZE,
     MAX_HORIZON_DAYS,
