@@ -224,7 +224,8 @@ class EmailService:
     <div class="content">
         <p>Dear Team,</p>
 
-        <p>Please find attached your daily KPI performance report for <strong>{report_date.strftime('%B %d, %Y')}</strong>.</p>
+        <p>Please find attached your daily KPI performance report for
+           <strong>{report_date.strftime('%B %d, %Y')}</strong>.</p>
 
         {f'<div class="info-box"><p>{additional_message}</p></div>' if additional_message else ''}
 

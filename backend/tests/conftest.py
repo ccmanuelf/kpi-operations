@@ -6,13 +6,11 @@ Shared test fixtures for all test modules
 pyproject.toml's [tool.pytest.ini_options], so this file only needs imports.
 """
 
-from typing import Optional
-
 import pytest
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 
 from backend.database import Base, get_db
