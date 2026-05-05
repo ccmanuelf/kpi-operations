@@ -5,7 +5,7 @@ What-if scenario CRUD, run/evaluate, compare, and delete operations.
 """
 
 from typing import Any, List, Optional
-from datetime import date
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -157,12 +157,8 @@ def run_scenario(
                     period_end = period_end or base_schedule.period_end
 
             if not period_start:
-                from datetime import timedelta
-
                 period_start = date.today()
             if not period_end:
-                from datetime import timedelta
-
                 period_end = period_start + timedelta(days=30)
 
         result = service.apply_scenario_parameters(client_id, scenario_id, period_start, period_end)

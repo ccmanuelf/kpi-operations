@@ -21,7 +21,6 @@ import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
-import random
 
 # Ensure backend module is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -898,7 +897,7 @@ def init_database() -> None:
                         seq += 1
 
             # 5d. Scenarios (8 per client, matching reference A-H)
-            sew_line_codes = [l.line_code for l in cap_lines if l.department == "SEWING"]
+            sew_line_codes = [line.line_code for line in cap_lines if line.department == "SEWING"]
             scenarios_data = [
                 {
                     "name": "A - Overtime 20% on Sewing",

@@ -5,7 +5,7 @@ Uses mock-based testing pattern consistent with other tests
 
 import pytest
 from unittest.mock import MagicMock, patch
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 
 
 class TestPerformanceCalculations:
@@ -331,7 +331,6 @@ class TestPerformanceIntegration:
 # REAL DATABASE INTEGRATION TESTS
 # =============================================================================
 from decimal import Decimal
-from datetime import date, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

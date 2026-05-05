@@ -194,7 +194,6 @@ class TestUserStateEdgeCases:
         token = create_access_token(data={"sub": inactive.username, "role": inactive.role})
 
         # Should raise 403 for inactive user
-        from unittest.mock import MagicMock
         from starlette.requests import Request
 
         mock_request = MagicMock(spec=Request)

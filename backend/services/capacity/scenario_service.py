@@ -418,15 +418,15 @@ class ScenarioService:
             "bottleneck_count": original_analysis.bottleneck_count,
             "lines": [
                 {
-                    "line_id": l.line_id,
-                    "line_code": l.line_code,
-                    "department": l.department,
-                    "capacity_hours": float(l.capacity_hours),
-                    "demand_hours": float(l.demand_hours),
-                    "utilization_percent": float(l.utilization_percent),
-                    "is_bottleneck": l.is_bottleneck,
+                    "line_id": line.line_id,
+                    "line_code": line.line_code,
+                    "department": line.department,
+                    "capacity_hours": float(line.capacity_hours),
+                    "demand_hours": float(line.demand_hours),
+                    "utilization_percent": float(line.utilization_percent),
+                    "is_bottleneck": line.is_bottleneck,
                 }
-                for l in original_analysis.lines
+                for line in original_analysis.lines
             ],
         }
 
@@ -483,10 +483,10 @@ class ScenarioService:
 
         # Extract bottleneck line codes
         original_bottlenecks = [
-            l["line_code"] for l in result.original_metrics.get("lines", []) if l.get("is_bottleneck")
+            line["line_code"] for line in result.original_metrics.get("lines", []) if line.get("is_bottleneck")
         ]
         adjusted_bottlenecks = [
-            l["line_code"] for l in result.modified_metrics.get("lines", []) if l.get("is_bottleneck")
+            line["line_code"] for line in result.modified_metrics.get("lines", []) if line.get("is_bottleneck")
         ]
 
         # Calculate ROI if cost impact is available
@@ -655,7 +655,7 @@ class ScenarioService:
         scenario_type = scenario.scenario_type
 
         modified = dict(original_metrics)
-        modified_lines = [dict(l) for l in original_metrics.get("lines", [])]
+        modified_lines = [dict(line) for line in original_metrics.get("lines", [])]
         affected_lines_list = []
         warnings = []
         days_in_period = (period_end - period_start).days + 1
@@ -678,7 +678,7 @@ class ScenarioService:
                     line["capacity_hours"] = float(Decimal(str(original_capacity)) * (1 + overtime_percent / 100))
                     affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
             modified["cost_estimate"] = float(
                 Decimal(str(modified["total_capacity_hours"] - original_metrics["total_capacity_hours"]))
                 * Decimal(str(params.get("cost_per_hour", 15)))
@@ -700,7 +700,7 @@ class ScenarioService:
                 line["capacity_hours"] += capacity_gain
                 affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
             modified["cost_estimate"] = float(params.get("investment_required", 5000))
 
         # =====================================================================
@@ -765,7 +765,7 @@ class ScenarioService:
             modified_lines.append(new_line)
             affected_lines_list.append(new_line_code)
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
             modified["cost_estimate"] = float(params.get("investment_cost", 50000))
 
             # Add ramp-up warning
@@ -792,7 +792,7 @@ class ScenarioService:
                     line["capacity_hours"] += additional_capacity
                     affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
             modified["cost_estimate"] = float(
                 Decimal(str(params.get("additional_supervision_cost", 2000))) * days_in_period / 30
             )
@@ -811,7 +811,7 @@ class ScenarioService:
                 line["demand_hours"] = float(Decimal(str(line.get("demand_hours", 0))) * demand_pile_factor)
                 affected_lines_list.append(line["line_code"])
 
-            modified["total_demand_hours"] = sum(l.get("demand_hours", 0) for l in modified_lines)
+            modified["total_demand_hours"] = sum(line.get("demand_hours", 0) for line in modified_lines)
 
             # Calculate expediting cost
             expedite_cost = Decimal(str(params.get("expedite_cost_per_day", 500))) * delay_days
@@ -839,7 +839,7 @@ class ScenarioService:
                     line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * reduction_factor)
                     affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
 
             # Calculate temp labor cost if compensating
             if params.get("overtime_to_compensate", True):
@@ -876,7 +876,7 @@ class ScenarioService:
                 line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * net_factor)
                 affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
 
             # Combined cost estimate
             modified["cost_estimate"] = 0  # Complex to calculate, would need more info
@@ -894,7 +894,7 @@ class ScenarioService:
                     line["capacity_hours"] += additional_hours
                     affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
 
         elif scenario_type == ScenarioType.EFFICIENCY_IMPROVEMENT.value:
             target_efficiency = Decimal(str(params.get("target_efficiency", 90))) / 100
@@ -906,7 +906,7 @@ class ScenarioService:
                 line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * efficiency_multiplier)
                 affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
 
         elif scenario_type == ScenarioType.LABOR_ADD.value:
             additional_operators = params.get("operators", 5)
@@ -919,7 +919,7 @@ class ScenarioService:
                     line["capacity_hours"] = float(Decimal(str(line["capacity_hours"])) * Decimal(str(increase_factor)))
                     affected_lines_list.append(line["line_code"])
 
-            modified["total_capacity_hours"] = sum(l["capacity_hours"] for l in modified_lines)
+            modified["total_capacity_hours"] = sum(line["capacity_hours"] for line in modified_lines)
 
         # =====================================================================
         # Recalculate Derived Metrics
@@ -944,7 +944,7 @@ class ScenarioService:
 
             line["is_bottleneck"] = line["utilization_percent"] >= 95
 
-        modified["bottleneck_count"] = sum(1 for l in modified_lines if l["is_bottleneck"])
+        modified["bottleneck_count"] = sum(1 for line in modified_lines if line["is_bottleneck"])
         modified["lines"] = modified_lines
         modified["affected_lines"] = list(set(affected_lines_list))
         modified["warnings"] = warnings

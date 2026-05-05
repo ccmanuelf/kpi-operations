@@ -190,8 +190,6 @@ def complete_job(
     Returns:
         Updated job if successful, None if not found or no access
     """
-    from datetime import datetime
-
     job = get_job(db, job_id, current_user)
     if not job:
         return None

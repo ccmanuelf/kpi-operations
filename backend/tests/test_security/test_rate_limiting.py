@@ -121,7 +121,6 @@ class TestRateLimitKeyFunction:
     def test_get_rate_limit_key_ip_only(self):
         """Test rate limit key generation with IP only"""
         from backend.middleware.rate_limit import get_rate_limit_key
-        from unittest.mock import MagicMock
 
         # Create mock request with no proxy headers (forces fallback to client.host).
         # get_real_client_ip checks X-Forwarded-For/X-Real-IP first; without explicit
@@ -142,7 +141,6 @@ class TestRateLimitKeyFunction:
     def test_get_rate_limit_key_with_user(self):
         """Test rate limit key generation with authenticated user"""
         from backend.middleware.rate_limit import get_rate_limit_key
-        from unittest.mock import MagicMock
 
         # Create mock request with authenticated user, no proxy headers.
         mock_request = MagicMock()

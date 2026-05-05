@@ -209,8 +209,6 @@ class TestCSVUploadEndpoints:
 
         # Validate date field
         try:
-            from datetime import datetime
-
             date_value = datetime.strptime(rows[0]["entry_date"], "%Y-%m-%d")
             is_valid = True
         except ValueError:

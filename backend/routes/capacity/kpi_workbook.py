@@ -197,18 +197,18 @@ def load_workbook(client_id: str, db: Session = Depends(get_db), current_user: U
         # --- Sheet 2: Production Lines ---
         "production_lines": [
             {
-                "id": l.id,
-                "line_code": l.line_code,
-                "line_name": l.line_name,
-                "department": l.department,
-                "standard_capacity_units_per_hour": float(l.standard_capacity_units_per_hour or 0),
-                "max_operators": l.max_operators,
-                "efficiency_factor": float(l.efficiency_factor or 0),
-                "absenteeism_factor": float(l.absenteeism_factor or 0),
-                "is_active": l.is_active,
-                "notes": l.notes,
+                "id": line.id,
+                "line_code": line.line_code,
+                "line_name": line.line_name,
+                "department": line.department,
+                "standard_capacity_units_per_hour": float(line.standard_capacity_units_per_hour or 0),
+                "max_operators": line.max_operators,
+                "efficiency_factor": float(line.efficiency_factor or 0),
+                "absenteeism_factor": float(line.absenteeism_factor or 0),
+                "is_active": line.is_active,
+                "notes": line.notes,
             }
-            for l in lines_data
+            for line in lines_data
         ],
         # --- Sheet 3: Orders ---
         "orders": [

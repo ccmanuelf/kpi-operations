@@ -130,7 +130,7 @@ def get_component_shortages(
     """Get component shortages from the most recent check run."""
     verify_client_access(current_user, client_id, db)
 
-    from backend.orm.capacity.component_check import CapacityComponentCheck, ComponentStatus
+    from backend.orm.capacity.component_check import CapacityComponentCheck
 
     query = db.query(CapacityComponentCheck).filter(
         CapacityComponentCheck.client_id == client_id, CapacityComponentCheck.status != ComponentStatus.OK

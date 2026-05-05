@@ -397,7 +397,7 @@ class TestDeleteEndpoint:
 
         list_response = client.get("/api/production-lines/", params={"client_id": CLIENT_ID})
         assert list_response.status_code == 200
-        codes = [l["line_code"] for l in list_response.json()]
+        codes = [item["line_code"] for item in list_response.json()]
         assert "VANISH-01" not in codes
 
     def test_delete_nonexistent(self, supervisor_client):

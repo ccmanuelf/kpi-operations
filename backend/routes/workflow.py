@@ -303,7 +303,7 @@ def get_work_order_transition_times(
 @router.get("/analytics/{client_id}/average-times", response_model=Dict)
 def get_client_average_elapsed_times(
     client_id: str,
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
     start_date: Optional[datetime] = Query(None, description="Start date filter"),
     end_date: Optional[datetime] = Query(None, description="End date filter"),
     db: Session = Depends(get_db),
@@ -321,7 +321,7 @@ def get_client_average_elapsed_times(
     verify_client_access(current_user, client_id)
 
     return calculate_client_average_times(
-        db=db, client_id=client_id, status=status, start_date=start_date, end_date=end_date
+        db=db, client_id=client_id, status=status_filter, start_date=start_date, end_date=end_date
     )
 
 
