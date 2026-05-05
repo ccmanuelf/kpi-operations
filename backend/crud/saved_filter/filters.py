@@ -64,7 +64,10 @@ def create_saved_filter(db: Session, user_id: str, filter_data: SavedFilterCreat
     if existing:
         raise HTTPException(
             status_code=400,
-            detail=f"Filter with name '{filter_data.filter_name}' already exists for type '{filter_data.filter_type.value}'",
+            detail=(
+                f"Filter with name '{filter_data.filter_name}' already exists "
+                f"for type '{filter_data.filter_type.value}'"
+            ),
         )
 
     # If setting as default, clear existing default for this type

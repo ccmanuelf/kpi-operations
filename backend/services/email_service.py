@@ -242,7 +242,9 @@ class EmailService:
             </ul>
         </div>
 
-        <p>The detailed PDF report is attached to this email. If you have any questions or need additional information, please don't hesitate to reach out.</p>
+        <p>The detailed PDF report is attached to this email.
+        If you have any questions or need additional information,
+        please don't hesitate to reach out.</p>
 
         <p><strong>Key Highlights:</strong></p>
         <ul>

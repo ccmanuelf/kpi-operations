@@ -108,7 +108,10 @@ WIP_SAMPLE_INTERVAL_MINUTES = 5.0  # How often to sample WIP during simulation
 
 FORMULA_DESCRIPTIONS = {
     "processing_time": "SAM × (1 + Variability + FPD_pct/100 + (100-Grade_pct)/100)",
-    "bundle_transition": f"{SMALL_BUNDLE_TRANSITION_SECONDS}s if bundle_size ≤ {SMALL_BUNDLE_THRESHOLD}, else {LARGE_BUNDLE_TRANSITION_SECONDS}s",
+    "bundle_transition": (
+        f"{SMALL_BUNDLE_TRANSITION_SECONDS}s if bundle_size ≤ {SMALL_BUNDLE_THRESHOLD}, "
+        f"else {LARGE_BUNDLE_TRANSITION_SECONDS}s"
+    ),
     "utilization": "(Busy_Time / Available_Time) × 100",
     "bottleneck_detection": f"Utilization >= {BOTTLENECK_UTILIZATION_THRESHOLD}%",
     "donor_detection": f"Utilization <= {DONOR_UTILIZATION_THRESHOLD}% AND operators > 1",

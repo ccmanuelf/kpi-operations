@@ -266,7 +266,10 @@ async def start_migration(
     logger.info(f"Migration started: SQLite → {request.target_provider} ({', '.join(migration_type)})")
     return MigrationStartResponse(
         status="started",
-        message=f"Migration to {request.target_provider} started with {', '.join(migration_type)}. Monitor progress at /migration/status",
+        message=(
+            f"Migration to {request.target_provider} started with "
+            f"{', '.join(migration_type)}. Monitor progress at /migration/status"
+        ),
     )
 
 

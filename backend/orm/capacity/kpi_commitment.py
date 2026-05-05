@@ -120,4 +120,7 @@ class CapacityKPICommitment(Base):
         return float(self.variance) < 0
 
     def __repr__(self) -> str:
-        return f"<CapacityKPICommitment(schedule_id={self.schedule_id}, kpi={self.kpi_key}, committed={self.committed_value}, actual={self.actual_value})>"
+        return (
+            f"<CapacityKPICommitment(schedule_id={self.schedule_id}, kpi={self.kpi_key}, "
+            f"committed={self.committed_value}, actual={self.actual_value})>"
+        )

@@ -302,7 +302,10 @@ def get_floating_pool_simulation_insights(
             {
                 "priority": "high",
                 "type": "capacity",
-                "message": "Floating pool utilization is very high (>90%). Consider expanding pool size to maintain flexibility.",
+                "message": (
+                    "Floating pool utilization is very high (>90%). "
+                    "Consider expanding pool size to maintain flexibility."
+                ),
                 "action": "Consider hiring 2-3 additional floating pool employees",
             }
         )

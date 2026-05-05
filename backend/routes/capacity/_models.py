@@ -475,7 +475,10 @@ class ScenarioCreate(BaseModel):
     scenario_name: str = Field(description="Descriptive name for the what-if scenario")
     scenario_type: Optional[str] = Field(
         default=None,
-        description="Scenario type (OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT)",
+        description=(
+            "Scenario type (OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, "
+            "THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT)"
+        ),
     )
     base_schedule_id: Optional[int] = Field(default=None, description="Schedule ID used as the baseline for comparison")
     parameters: Optional[Dict[str, Any]] = Field(default=None, description="Scenario-specific parameter dictionary")

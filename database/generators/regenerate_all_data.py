@@ -391,7 +391,10 @@ class ComprehensiveDataRegenerator:
         for i, prod_data in enumerate(PRODUCT_DATA, 1):
             self.cursor.execute(
                 """
-                INSERT INTO PRODUCT (product_code, product_name, ideal_cycle_time, unit_of_measure, is_active, created_at, updated_at)
+                INSERT INTO PRODUCT (
+                    product_code, product_name, ideal_cycle_time, unit_of_measure,
+                    is_active, created_at, updated_at
+                )
                 VALUES (?, ?, ?, 'units', 1, datetime('now'), datetime('now'))
             """,
                 (prod_data["product_code"], prod_data["product_name"], prod_data["ideal_cycle_time"]),
@@ -420,7 +423,10 @@ class ComprehensiveDataRegenerator:
 
                 self.cursor.execute(
                     """
-                    INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
+                    INSERT INTO EMPLOYEE (
+                        employee_code, employee_name, client_id_assigned,
+                        is_floating_pool, is_active, created_at, updated_at
+                    )
                     VALUES (?, ?, ?, 0, 1, datetime('now'), datetime('now'))
                 """,
                     (emp_code, emp_name, client_id),
@@ -442,7 +448,10 @@ class ComprehensiveDataRegenerator:
 
             self.cursor.execute(
                 """
-                INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
+                INSERT INTO EMPLOYEE (
+                    employee_code, employee_name, client_id_assigned,
+                    is_floating_pool, is_active, created_at, updated_at
+                )
                 VALUES (?, ?, NULL, 1, 1, datetime('now'), datetime('now'))
             """,
                 (emp_code, emp_name),
@@ -736,7 +745,10 @@ class ComprehensiveDataRegenerator:
                             setup_time_hours, downtime_hours, ideal_cycle_time, actual_cycle_time,
                             efficiency_percentage, performance_percentage, quality_rate,
                             notes, entered_by, entry_method, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            datetime('now'), datetime('now')
+                        )
                     """,
                         (
                             entry_id,

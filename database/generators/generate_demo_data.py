@@ -377,7 +377,10 @@ class DemoDataGenerator:
             try:
                 self.cursor.execute(
                     """
-                    INSERT INTO PRODUCT (product_code, product_name, ideal_cycle_time, unit_of_measure, is_active, created_at, updated_at)
+                    INSERT INTO PRODUCT (
+                        product_code, product_name, ideal_cycle_time, unit_of_measure,
+                        is_active, created_at, updated_at
+                    )
                     VALUES (?, ?, ?, 'pieces', 1, datetime('now'), datetime('now'))
                 """,
                     (product["product_code"], product["product_name"], product["ideal_cycle_time"]),
@@ -440,7 +443,10 @@ class DemoDataGenerator:
                 try:
                     self.cursor.execute(
                         """
-                        INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
+                        INSERT INTO EMPLOYEE (
+                            employee_code, employee_name, client_id_assigned,
+                            is_floating_pool, is_active, created_at, updated_at
+                        )
                         VALUES (?, ?, ?, 0, 1, datetime('now'), datetime('now'))
                     """,
                         (emp_code, emp_name, client_id),
@@ -465,7 +471,10 @@ class DemoDataGenerator:
             try:
                 self.cursor.execute(
                     """
-                    INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
+                    INSERT INTO EMPLOYEE (
+                        employee_code, employee_name, client_id_assigned,
+                        is_floating_pool, is_active, created_at, updated_at
+                    )
                     VALUES (?, ?, NULL, 1, 1, datetime('now'), datetime('now'))
                 """,
                     (emp_code, emp_name),
@@ -482,7 +491,8 @@ class DemoDataGenerator:
 
         self.conn.commit()
         print(
-            f"   ✓ Created {emp_count} employees ({len(self.employee_map)} regular + {len(self.floating_pool_map)} floating pool)"
+            f"   ✓ Created {emp_count} employees "
+            f"({len(self.employee_map)} regular + {len(self.floating_pool_map)} floating pool)"
         )
 
     def generate_work_orders(self):
@@ -793,7 +803,10 @@ class DemoDataGenerator:
                             defect_count, scrap_count, ideal_cycle_time, actual_cycle_time,
                             efficiency_percentage, performance_percentage, quality_rate,
                             entered_by, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                        ) VALUES (
+                            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                            datetime('now'), datetime('now')
+                        )
                     """,
                         (
                             prod_id,
@@ -1098,7 +1111,8 @@ class DemoDataGenerator:
                 "CREATE INDEX IF NOT EXISTS ix_transition_workorder ON WORKFLOW_TRANSITION_LOG(work_order_id)"
             )
             self.cursor.execute(
-                "CREATE INDEX IF NOT EXISTS ix_transition_client_date ON WORKFLOW_TRANSITION_LOG(client_id, transitioned_at)"
+                "CREATE INDEX IF NOT EXISTS ix_transition_client_date "
+                "ON WORKFLOW_TRANSITION_LOG(client_id, transitioned_at)"
             )
             self.conn.commit()
 
@@ -1503,7 +1517,10 @@ class DemoDataGenerator:
                         "otd",
                         severity,
                         f"OTD Risk: {wo['id']} Due in {days_until_due} Days",
-                        f"Work order {wo['id']} is at {completion_pct}% completion with only {days_until_due} days until ship date.",
+                        (
+                            f"Work order {wo['id']} is at {completion_pct}% completion "
+                            f"with only {days_until_due} days until ship date."
+                        ),
                         "Prioritize this order. Consider overtime or resource reallocation.",
                         wo["client_id"],
                         "otd",

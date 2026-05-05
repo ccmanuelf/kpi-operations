@@ -400,7 +400,9 @@ def seed_demo_predictions(db: Any, client_ids: Optional[List[str]] = None, days:
                             "record_date": record["date"],
                             "value": record["value"],
                             "is_anomaly": 1 if record["is_anomaly"] else 0,
-                            "metadata": f'{{"day_of_week": "{record["day_of_week"]}", "week": {record["week_number"]}}}',
+                            "metadata": (
+                                f'{{"day_of_week": "{record["day_of_week"]}", ' f'"week": {record["week_number"]}}}'
+                            ),
                         },
                     )
                     total_records += 1

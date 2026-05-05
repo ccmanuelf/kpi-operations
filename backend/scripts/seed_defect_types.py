@@ -626,7 +626,8 @@ def seed_defect_types() -> None:
         print(f"Successfully seeded {total_inserted} defect types:")
         print(f"  - {len(GLOBAL_DEFECT_TYPES['defects'])} GLOBAL types (available to all clients)")
         print(
-            f"  - {total_inserted - len(GLOBAL_DEFECT_TYPES['defects'])} client-specific types across {len(DEFECT_TYPES_BY_INDUSTRY)} clients"
+            f"  - {total_inserted - len(GLOBAL_DEFECT_TYPES['defects'])} "
+            f"client-specific types across {len(DEFECT_TYPES_BY_INDUSTRY)} clients"
         )
         print(f"{'='*50}")
 

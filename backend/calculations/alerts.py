@@ -5,7 +5,7 @@ Generates intelligent alerts based on predictions, thresholds, and patterns
 
 from typing import List, Optional, Dict, Any
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from dataclasses import dataclass
 import logging
 import uuid
@@ -119,7 +119,10 @@ def generate_efficiency_alert(
                     should_alert=True,
                     severity=severity,
                     title="Efficiency Declining Trend",
-                    message=f"Efficiency has declined for 5 consecutive periods. Current: {current_efficiency}%, Target: {target}%",
+                    message=(
+                        f"Efficiency has declined for 5 consecutive periods. "
+                        f"Current: {current_efficiency}%, Target: {target}%"
+                    ),
                     recommendation="Investigate production bottlenecks and operator performance",
                     current_value=current_efficiency,
                     threshold_value=target,
@@ -308,7 +311,8 @@ def generate_quality_alert(
 
     if severity == "urgent":
         title = f"URGENT: {kpi_name} Critical{context}"
-        message = f"{kpi_name} at {current_value}{unit} is severely {'below' if higher_is_better else 'above'} target of {target}{unit}"
+        direction = "below" if higher_is_better else "above"
+        message = f"{kpi_name} at {current_value}{unit} is severely " f"{direction} target of {target}{unit}"
         recommendation = "Stop production for quality review. Investigate root cause immediately."
     elif severity == "critical":
         title = f"Critical: {kpi_name} Below Acceptable Level{context}"
@@ -522,7 +526,10 @@ def generate_prediction_based_alert(
             f"Target: {target}\n"
             f"Confidence: {confidence}%"
         ),
-        recommendation=f"Take preventive action now to avoid {kpi_display} {'dropping below' if higher_is_better else 'exceeding'} acceptable levels.",
+        recommendation=(
+            f"Take preventive action now to avoid {kpi_display} "
+            f"{'dropping below' if higher_is_better else 'exceeding'} acceptable levels."
+        ),
         current_value=historical_values[-1],
         threshold_value=target,
         predicted_value=worst_prediction,

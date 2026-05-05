@@ -130,7 +130,11 @@ class InferenceMetadata(BaseModel):
     )
     inference_source: Optional[str] = Field(
         default=None,
-        description="Source level: client_style_standard, shift_line_standard, industry_default, historical_30day_avg, global_product_avg, system_fallback",
+        description=(
+            "Source level: client_style_standard, shift_line_standard, "
+            "industry_default, historical_30day_avg, global_product_avg, "
+            "system_fallback"
+        ),
     )
     inference_warning: Optional[str] = Field(default=None, description="Warning message for low confidence estimates")
 

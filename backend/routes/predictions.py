@@ -445,7 +445,8 @@ async def get_all_kpi_predictions(
                     # Add to priority actions if health is low
                     if prediction.health_assessment.health_score < 70:
                         priority_actions.append(
-                            f"Review {prediction.kpi_display_name}: declining trend, score {prediction.health_assessment.health_score:.1f}"
+                            f"Review {prediction.kpi_display_name}: declining trend, "
+                            f"score {prediction.health_assessment.health_score:.1f}"
                         )
                 else:
                     stable += 1

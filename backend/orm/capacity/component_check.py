@@ -101,4 +101,7 @@ class CapacityComponentCheck(Base):
         return min(100.0, float(self.available_quantity or 0) / float(self.required_quantity) * 100)
 
     def __repr__(self) -> str:
-        return f"<CapacityComponentCheck(order={self.order_number}, component={self.component_item_code}, status={self.status})>"
+        return (
+            f"<CapacityComponentCheck(order={self.order_number}, "
+            f"component={self.component_item_code}, status={self.status})>"
+        )

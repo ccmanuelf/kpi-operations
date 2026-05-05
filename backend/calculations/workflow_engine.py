@@ -164,7 +164,10 @@ class WorkflowStateMachine:
 
         return (
             False,
-            f"Transition from {from_status} to {to_status} is not allowed. Allowed targets: {self.get_allowed_transitions(from_status)}",
+            (
+                f"Transition from {from_status} to {to_status} is not allowed. "
+                f"Allowed targets: {self.get_allowed_transitions(from_status)}"
+            ),
         )
 
     def validate_transition(self, work_order: WorkOrder, to_status: str) -> Tuple[bool, Optional[str]]:

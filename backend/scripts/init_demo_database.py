@@ -482,7 +482,9 @@ def init_database() -> None:
         total_products = sum(len(v) for v in all_products.values())
         total_shifts = sum(len(v) for v in all_shifts.values())
         print(
-            f"  Created {total_products} products and {total_shifts} shifts ({len(clients)} clients x {len(MASTER_PRODUCTS)} products, {len(shifts_data)} shifts each)"
+            f"  Created {total_products} products and {total_shifts} shifts "
+            f"({len(clients)} clients x {len(MASTER_PRODUCTS)} products, "
+            f"{len(shifts_data)} shifts each)"
         )
 
         # ==============================================================
@@ -721,7 +723,8 @@ def init_database() -> None:
         # Step 5: Capacity Planning - Computed Tables (6 previously empty)
         # ==============================================================
         print(
-            "\n[5/10] Creating Capacity Planning computed data (component check, analysis, schedule, scenarios, KPI commitments)..."
+            "\n[5/10] Creating Capacity Planning computed data "
+            "(component check, analysis, schedule, scenarios, KPI commitments)..."
         )
 
         computed_counts = {

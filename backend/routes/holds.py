@@ -178,7 +178,9 @@ def approve_hold(
     if db_hold.hold_status != HoldStatus.PENDING_HOLD_APPROVAL:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot approve hold with status {db_hold.hold_status}. Only PENDING_HOLD_APPROVAL can be approved.",
+            detail=(
+                f"Cannot approve hold with status {db_hold.hold_status}. " "Only PENDING_HOLD_APPROVAL can be approved."
+            ),
         )
 
     # Approve the hold
@@ -254,7 +256,10 @@ def approve_resume(
     if db_hold.hold_status != HoldStatus.PENDING_RESUME_APPROVAL:
         raise HTTPException(
             status_code=400,
-            detail=f"Cannot approve resume for hold with status {db_hold.hold_status}. Only PENDING_RESUME_APPROVAL can be approved.",
+            detail=(
+                f"Cannot approve resume for hold with status {db_hold.hold_status}. "
+                "Only PENDING_RESUME_APPROVAL can be approved."
+            ),
         )
 
     # Approve the resume

@@ -86,4 +86,7 @@ class CapacityStockSnapshot(Base):
         return max(0, shortage)
 
     def __repr__(self) -> str:
-        return f"<CapacityStockSnapshot(item={self.item_code}, date={self.snapshot_date}, avail={self.available_quantity})>"
+        return (
+            f"<CapacityStockSnapshot(item={self.item_code}, "
+            f"date={self.snapshot_date}, avail={self.available_quantity})>"
+        )

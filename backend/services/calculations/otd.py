@@ -24,7 +24,11 @@ class OTDInputs(BaseModel):
 
 
 class DeliveryVarianceInputs(BaseModel):
-    """Per-order delivery variance counts. Sum of three buckets need not equal total_orders if some have no actual_delivery_date."""
+    """Per-order delivery variance counts.
+
+    Sum of the three buckets need not equal total_orders if some
+    orders have no actual_delivery_date yet.
+    """
 
     early_orders: int = Field(ge=0)
     on_time_orders: int = Field(ge=0)

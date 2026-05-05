@@ -1,4 +1,5 @@
-"""Phase 1 dual-view orchestrators: FPY, RTY, Job Yield, Recovery, Scrap, Defect Escape, Quality Score, Rework/Repair Impact."""
+"""Phase 1 dual-view orchestrators: FPY, RTY, Job Yield, Recovery,
+Scrap, Defect Escape, Quality Score, Rework/Repair Impact."""
 
 from decimal import Decimal
 
