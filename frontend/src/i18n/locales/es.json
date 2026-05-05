@@ -3023,6 +3023,28 @@
         "delete": "Eliminar (lógico)"
       }
     },
+    "calibration": {
+      "button": "Pre-llenar desde historial",
+      "dialogTitle": "Calibrar desde Datos Históricos",
+      "dialogSubtitle": "Pre-llena el formulario de simulación con datos reales de producción, calidad y paros. Útil como línea base antes de ajustar para planeación what-if.",
+      "fieldClient": "Cliente",
+      "fieldClientHint": "La calibración usa los datos de este cliente. Los usuarios no-admin están limitados a su asignación.",
+      "fieldStart": "Inicio del periodo",
+      "fieldEnd": "Fin del periodo",
+      "preview": "Vista previa",
+      "apply": "Aplicar al área de trabajo",
+      "previewTitle": "Resultado de calibración: {ops} operaciones, {demands} productos • {start} a {end}",
+      "sourcesIntro": "Cada campo calibrado muestra de dónde viene su valor. La confianza refleja cuánto historial lo respalda (alta ≥14 entradas, media 5–13, baja 1–4).",
+      "howItWorks": "Haz clic en \"Vista previa\" para calcular la configuración a partir del historial. Puedes revisar la fuente y el tamaño de muestra de cada campo antes de aplicarlo al área de trabajo.",
+      "fetchFailed": "No se pudo calibrar desde el historial. Verifica el periodo e inténtalo de nuevo.",
+      "appliedSuccess": "Calibración aplicada: {ops} operaciones cargadas. Revisa los valores y ajústalos antes de ejecutar.",
+      "col": {
+        "field": "Campo",
+        "source": "Fuente",
+        "samples": "Muestras",
+        "confidence": "Confianza"
+      }
+    },
     "plan": {
       "setupDialogTitle": "Planear Horizonte — Cronograma Multi-Día",
       "setupIntro": "Distribuye la demanda semanal a lo largo del horizonte de planeación para minimizar la MÁXIMA utilización diaria (carga más uniforme). Lee weekly_demand de cada producto (o daily_demand × días laborales si no hay semanal).",

@@ -3026,6 +3026,28 @@
         "delete": "Delete (soft)"
       }
     },
+    "calibration": {
+      "button": "Pre-fill from history",
+      "dialogTitle": "Calibrate from Historical Data",
+      "dialogSubtitle": "Pre-fill the simulation form from real production, quality, and downtime history. Useful as a baseline before adjusting for what-if planning.",
+      "fieldClient": "Client",
+      "fieldClientHint": "Calibration runs against this client's data. Non-admins are limited to their assignment.",
+      "fieldStart": "Period start",
+      "fieldEnd": "Period end",
+      "preview": "Preview calibration",
+      "apply": "Apply to workbench",
+      "previewTitle": "Calibration result: {ops} operations, {demands} products • {start} to {end}",
+      "sourcesIntro": "Each calibrated field shows where its value came from. Confidence reflects how much history backed it (high ≥14 entries, medium 5–13, low 1–4).",
+      "howItWorks": "Click \"Preview calibration\" to compute the configuration from historical data. You can review the source/sample size for each field before applying it to the workbench.",
+      "fetchFailed": "Could not calibrate from history. Check the period and try again.",
+      "appliedSuccess": "Applied calibration: {ops} operations populated. Review the values and adjust before running.",
+      "col": {
+        "field": "Field",
+        "source": "Source",
+        "samples": "Samples",
+        "confidence": "Confidence"
+      }
+    },
     "plan": {
       "setupDialogTitle": "Plan Horizon — Multi-Day Schedule",
       "setupIntro": "Distribute weekly demand across the planning horizon to minimize the MAX daily utilization (smoothest workload). Reads weekly_demand from each product (or daily_demand × work_days if weekly is absent).",

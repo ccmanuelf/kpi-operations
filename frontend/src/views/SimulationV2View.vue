@@ -264,6 +264,15 @@
               {{ t('simulationV2.scenarios.load') }}
             </v-btn>
 
+            <v-btn
+              color="info"
+              variant="outlined"
+              @click="openCalibrationDialog"
+            >
+              <v-icon start>mdi-history</v-icon>
+              {{ t('simulationV2.calibration.button') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -1137,6 +1146,137 @@
       </v-card>
     </v-dialog>
 
+    <!-- Calibration Dialog (D4) -->
+    <v-dialog v-model="showCalibrationDialog" max-width="780" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="info">mdi-history</v-icon>
+          {{ t('simulationV2.calibration.dialogTitle') }}
+        </v-card-title>
+        <v-card-subtitle class="pb-3">
+          {{ t('simulationV2.calibration.dialogSubtitle') }}
+        </v-card-subtitle>
+        <v-card-text>
+          <v-row dense>
+            <v-col cols="12" md="6">
+              <v-text-field
+                v-model="calibrationClientId"
+                :label="t('simulationV2.calibration.fieldClient')"
+                :hint="t('simulationV2.calibration.fieldClientHint')"
+                variant="outlined"
+                density="comfortable"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model="calibrationPeriodStart"
+                type="date"
+                :label="t('simulationV2.calibration.fieldStart')"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model="calibrationPeriodEnd"
+                type="date"
+                :label="t('simulationV2.calibration.fieldEnd')"
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+          </v-row>
+
+          <v-alert
+            v-if="calibrationPreview && calibrationPreview.warnings && calibrationPreview.warnings.length"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            <ul class="pl-4 mb-0">
+              <li v-for="(w, i) in calibrationPreview.warnings" :key="i">{{ w }}</li>
+            </ul>
+          </v-alert>
+
+          <v-card v-if="calibrationPreview" variant="tonal" color="surface" class="pa-3 mb-3">
+            <div class="text-subtitle-2 mb-2">
+              {{ t('simulationV2.calibration.previewTitle', {
+                ops: calibrationPreview.config.operations.length,
+                demands: calibrationPreview.config.demands.length,
+                start: calibrationPreview.period.start,
+                end: calibrationPreview.period.end,
+              }) }}
+            </div>
+            <div class="text-caption mb-2">
+              {{ t('simulationV2.calibration.sourcesIntro') }}
+            </div>
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th>{{ t('simulationV2.calibration.col.field') }}</th>
+                  <th>{{ t('simulationV2.calibration.col.source') }}</th>
+                  <th>{{ t('simulationV2.calibration.col.samples') }}</th>
+                  <th>{{ t('simulationV2.calibration.col.confidence') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(src, key) in calibrationPreview.sources" :key="key">
+                  <td>{{ key }}</td>
+                  <td>{{ src.source }}</td>
+                  <td class="text-right">{{ src.sample_size }}</td>
+                  <td>
+                    <v-chip
+                      :color="confidenceColor(src.confidence)"
+                      size="x-small"
+                      variant="flat"
+                    >
+                      {{ src.confidence }}
+                    </v-chip>
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card>
+
+          <v-alert
+            v-if="!calibrationPreview"
+            type="info"
+            variant="tonal"
+            density="compact"
+          >
+            {{ t('simulationV2.calibration.howItWorks') }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showCalibrationDialog = false">
+            {{ t('common.cancel') }}
+          </v-btn>
+          <v-btn
+            color="info"
+            variant="outlined"
+            :loading="isCalibrating"
+            :disabled="!calibrationClientId.trim()"
+            @click="handleFetchCalibration"
+          >
+            <v-icon start>mdi-refresh</v-icon>
+            {{ t('simulationV2.calibration.preview') }}
+          </v-btn>
+          <v-btn
+            color="success"
+            variant="elevated"
+            :disabled="!calibrationPreview || !calibrationPreview.config.operations.length"
+            @click="handleApplyCalibration"
+          >
+            <v-icon start>mdi-check</v-icon>
+            {{ t('simulationV2.calibration.apply') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="450">
       <v-card>
@@ -1209,6 +1349,7 @@ import {
   duplicateScenario,
   runScenario,
 } from '@/services/api/simulationScenarios'
+import { calibrateFromHistory } from '@/services/api/simulationCalibration'
 import { useAuthStore } from '@/stores/authStore'
 import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
@@ -1281,6 +1422,14 @@ const saveScenarioName = ref('')
 const saveScenarioDescription = ref('')
 const saveScenarioTags = ref([])
 const saveScenarioClientId = ref('')
+
+// D4 — Historical calibration state.
+const showCalibrationDialog = ref(false)
+const isCalibrating = ref(false)
+const calibrationClientId = ref('')
+const calibrationPeriodStart = ref('')
+const calibrationPeriodEnd = ref('')
+const calibrationPreview = ref(null)
 
 const canSetClient = computed(() => {
   const role = (authStore.currentUser?.role || '').toLowerCase()
@@ -1784,6 +1933,76 @@ function exportConfig() {
   link.download = `simulation-config-${new Date().toISOString().slice(0, 10)}.json`
   link.click()
   URL.revokeObjectURL(url)
+}
+
+// =============================================================================
+// D4 — Historical calibration handlers
+// =============================================================================
+
+function confidenceColor(level) {
+  switch ((level || '').toLowerCase()) {
+    case 'high': return 'success'
+    case 'medium': return 'info'
+    case 'low': return 'warning'
+    default: return 'grey'
+  }
+}
+
+/**
+ * Open the calibration dialog. Defaults the client to the user's
+ * primary assignment and the period to the last 30 days. Admin /
+ * poweruser can override the client; non-admins are clamped server-
+ * side anyway.
+ */
+function openCalibrationDialog() {
+  const assigned = (authStore.currentUser?.client_id_assigned || '').split(',')[0]?.trim() || ''
+  calibrationClientId.value = assigned
+  const today = new Date()
+  const thirtyDaysAgo = new Date(today)
+  thirtyDaysAgo.setDate(today.getDate() - 30)
+  calibrationPeriodEnd.value = today.toISOString().slice(0, 10)
+  calibrationPeriodStart.value = thirtyDaysAgo.toISOString().slice(0, 10)
+  calibrationPreview.value = null
+  showCalibrationDialog.value = true
+}
+
+async function handleFetchCalibration() {
+  const clientId = calibrationClientId.value.trim()
+  if (!clientId) return
+  isCalibrating.value = true
+  try {
+    const result = await calibrateFromHistory({
+      client_id: clientId,
+      period_start: calibrationPeriodStart.value || undefined,
+      period_end: calibrationPeriodEnd.value || undefined,
+    })
+    calibrationPreview.value = result
+  } catch (error) {
+    console.error('Calibration error:', error)
+    notify.showError(
+      error?.response?.data?.detail
+        || error?.message
+        || t('simulationV2.calibration.fetchFailed'),
+    )
+  } finally {
+    isCalibrating.value = false
+  }
+}
+
+/**
+ * Apply the calibration result to the workbench. Mirrors the
+ * scenario-load path so the operations / schedule / demands /
+ * breakdowns grids all repopulate from the same store hook.
+ */
+function handleApplyCalibration() {
+  if (!calibrationPreview.value) return
+  store.loadConfiguration(calibrationPreview.value.config)
+  notify.showSuccess(
+    t('simulationV2.calibration.appliedSuccess', {
+      ops: calibrationPreview.value.config.operations.length,
+    }),
+  )
+  showCalibrationDialog.value = false
 }
 
 // Lifecycle

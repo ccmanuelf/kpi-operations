@@ -602,6 +602,7 @@ from backend.routes import (
     simulation_router,
     simulation_v2_router,
     simulation_scenarios_router,
+    simulation_calibration_router,
     # Database configuration router (Phase 12)
     database_config_router,
     # Cache management router (Phase A.1)
@@ -778,6 +779,7 @@ app.include_router(simulation_router)
 # ============================================================================
 app.include_router(simulation_v2_router)
 app.include_router(simulation_scenarios_router)
+app.include_router(simulation_calibration_router)
 
 # ============================================================================
 # Register CSV upload routes for all resources

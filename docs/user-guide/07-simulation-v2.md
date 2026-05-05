@@ -154,6 +154,27 @@ Permissions:
 
 The scenario stores the SimulationConfig as a JSON blob, so engine upgrades preserve old saves. If a stored config becomes incompatible with the current engine schema (e.g. a field was renamed), the **Run** button surfaces a 422 with a helpful message; re-save from the UI to migrate it.
 
+## Pre-fill from history (D4 — calibration)
+
+The toolbar's **Pre-fill from history** button (next to **Scenarios**) skips the blank-form problem: instead of typing SAM, grade %, rework %, demand, and shift hours by hand, the platform reads its own production / quality / downtime / shift records and proposes a SimulationConfig you can adjust.
+
+How to use it:
+1. Click **Pre-fill from history**. The dialog defaults the client to your assignment and the period to the last 30 days. Admins can target any client.
+2. Adjust the period (longer windows give more confidence; the demo shipping with 16 entries per client maps to a "low" confidence chip).
+3. Click **Preview calibration** — the dialog shows how many operations and demands were derived plus a per-field source table.
+4. Confidence chips colour-code each field: green (high, ≥14 entries), blue (medium, 5–13), amber (low, 1–4), grey (none — falls back to engine defaults).
+5. Click **Apply to workbench** to load the calibration into the simulation form. From there, tweak any value (FPD% in particular has no historical source) and run normally.
+
+What gets calibrated:
+- **Operations** — sourced from `capacity_production_standards` per product. Per-product KPI averages (efficiency → grade %, rework_count / units → rework %) are applied uniformly to every operation of that product. FPD% defaults to 15.0 % because the platform doesn't yet track it as a historical metric.
+- **Demands** — `daily_demand` from average units per production day; `weekly_demand` derived as `daily_demand × work_days_per_week` so the two stay internally consistent.
+- **Schedule** — `shifts_enabled`, `shiftN_hours` from the SHIFT table; `work_days` from distinct production days in the window divided by weeks (clamped 1–7).
+- **Breakdowns** — per machine_tool, computed as `(downtime_minutes / period_minutes) × 100`, clamped 0–10 %. Engineering teams should tune by hand.
+
+Permissions match scenarios: leader / supervisor / poweruser / admin can calibrate; operators cannot. Tenant fence is identical to the rest of `/api/v2/simulation/*` — non-admin users can only calibrate clients in their `client_id_assigned`.
+
+The endpoint is read-only; calibration never writes. To persist a calibrated config, apply it to the workbench then **Save Scenario** through the standard D3 flow.
+
 ## Output blocks
 
 After **Run Simulation** completes, you get 8 result blocks:
