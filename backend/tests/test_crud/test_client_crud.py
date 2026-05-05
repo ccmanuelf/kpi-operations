@@ -5,18 +5,14 @@ No mocks for database operations.
 """
 
 import pytest
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import datetime
 
 from backend.orm import (
     Client,
     ClientType,
-    User,
-    UserRole,
     Employee,
     WorkOrder,
     WorkOrderStatus,
-    Product,
 )
 from backend.tests.fixtures.factories import TestDataFactory
 

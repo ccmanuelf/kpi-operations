@@ -7,8 +7,7 @@ Uses real in-memory SQLite database with TestDataFactory.
 """
 
 import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

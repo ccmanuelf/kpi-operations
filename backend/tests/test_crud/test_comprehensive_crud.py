@@ -4,7 +4,7 @@ Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory
@@ -20,7 +20,7 @@ class TestDowntimeCRUD:
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTC-CL")
         transactional_db.flush()
 
-        from backend.crud.downtime import create_downtime_event, get_downtime_events
+        from backend.crud.downtime import get_downtime_events
 
         entry = TestDataFactory.create_downtime_entry(
             transactional_db,

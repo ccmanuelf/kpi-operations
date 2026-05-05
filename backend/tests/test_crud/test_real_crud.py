@@ -5,8 +5,6 @@ Target: Cover crud/ directory to reach 85% overall coverage.
 """
 
 import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory

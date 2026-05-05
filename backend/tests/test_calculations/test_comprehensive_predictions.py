@@ -3,12 +3,6 @@ Comprehensive Tests - Predictions and Trend Analysis
 Target: 90% coverage for calculations/predictions.py and calculations/trend_analysis.py
 """
 
-import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from unittest.mock import MagicMock
-import math
-
 import sys
 import os
 

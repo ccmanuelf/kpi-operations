@@ -6,7 +6,6 @@ Target: Increase crud/work_order.py coverage from 39% to 85%+
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

@@ -4,8 +4,7 @@ Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, datetime
 
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.crud.downtime import get_downtime_events, get_downtime_event
@@ -223,8 +222,6 @@ class TestDowntimeNullableWorkOrderId:
 
     def test_update_downtime_to_remove_work_order_id(self, transactional_db):
         """Updating a downtime entry to set work_order_id to None works"""
-        from backend.orm.downtime_entry import DowntimeEntry
-
         client = TestDataFactory.create_client(transactional_db, client_id="DT-RWO-1")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-RWO-1")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-RWO-1")

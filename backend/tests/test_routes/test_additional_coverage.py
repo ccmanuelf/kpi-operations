@@ -4,7 +4,6 @@ Target: Increase coverage for data_completeness (16%), attendance (26%),
         simulation (30%), users (34%), holds (36%), floating_pool (38%)
 """
 
-import pytest
 from datetime import date, datetime, timedelta, timezone
 
 

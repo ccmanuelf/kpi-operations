@@ -10,7 +10,6 @@ Real DB tests for soft delete *behavior* in CRUD operations are covered in the
 individual CRUD test files (e.g., test_crud_integration.py delete tests).
 """
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session

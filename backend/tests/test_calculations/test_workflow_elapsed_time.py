@@ -11,10 +11,8 @@ Tests cover:
 - calculate_stage_duration_summary function
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 
 
 class TestElapsedHoursCalculation:

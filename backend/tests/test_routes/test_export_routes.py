@@ -8,7 +8,7 @@ Follows the pattern from test_plan_vs_actual_routes.py (isolated FastAPI app).
 
 import csv
 import io
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -19,15 +19,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from backend.database import Base, get_db
-from backend.orm.client import Client, ClientType
 from backend.orm.production_entry import ProductionEntry
-from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.attendance_entry import AttendanceEntry
-from backend.orm.employee import Employee
-from backend.orm.product import Product
-from backend.orm.shift import Shift
 from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.user import User, UserRole
 from backend.auth.jwt import get_current_user

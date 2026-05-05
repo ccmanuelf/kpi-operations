@@ -4,7 +4,6 @@ Uses real in-memory SQLite database -- NO mocks for DB layer.
 """
 
 import pytest
-from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

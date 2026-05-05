@@ -3,11 +3,6 @@ Comprehensive Calculation Tests - Efficiency Module
 Target: 90% coverage for calculations/efficiency.py
 """
 
-import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
-
 import sys
 import os
 

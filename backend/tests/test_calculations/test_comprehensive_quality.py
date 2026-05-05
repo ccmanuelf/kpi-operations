@@ -3,11 +3,6 @@ Comprehensive Calculation Tests - PPM and DPMO
 Target: 90% coverage for calculations/ppm.py and calculations/dpmo.py
 """
 
-import pytest
-from decimal import Decimal
-from datetime import date, timedelta
-from unittest.mock import MagicMock
-
 import sys
 import os
 

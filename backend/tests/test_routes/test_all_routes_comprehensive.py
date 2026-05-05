@@ -3,9 +3,7 @@ Comprehensive Tests for All Routes
 Target: Increase overall route coverage to 85%+
 """
 
-import pytest
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
 
 
 # =============================================================================

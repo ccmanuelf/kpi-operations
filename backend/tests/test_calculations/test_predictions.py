@@ -12,7 +12,6 @@ Coverage:
 
 import pytest
 from decimal import Decimal
-from datetime import date, timedelta
 
 # Import from actual module to get coverage
 from backend.calculations.predictions import (

@@ -5,15 +5,11 @@ No mocks for database operations.
 """
 
 import pytest
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime
 from decimal import Decimal
 from sqlalchemy import func
 
-from backend.orm import (
-    AttendanceEntry,
-    User,
-    UserRole,
-)
+from backend.orm import AttendanceEntry
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.crud.attendance import bulk_create_attendance_records, mark_all_present
 from backend.schemas.attendance import AttendanceRecordCreate

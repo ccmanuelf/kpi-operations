@@ -20,8 +20,6 @@ class TestAllKPIFormulas:
     def test_kpi_1_wip_aging(self):
         """Test WIP Aging calculation"""
         # Given: WIP held for 15 days
-        from datetime import timedelta
-
         hold_date = date(2024, 1, 1)
         as_of_date = date(2024, 1, 16)
         aging_days = (as_of_date - hold_date).days

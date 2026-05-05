@@ -5,8 +5,7 @@ Follows the pattern from test_shift_routes.py.
 """
 
 import pytest
-from datetime import date, timedelta
-from decimal import Decimal
+from datetime import date
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -15,10 +14,8 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.orm.user import User, UserRole
-from backend.orm.employee import Employee
+from backend.orm.user import User
 from backend.orm.production_line import ProductionLine
-from backend.orm.employee_line_assignment import EmployeeLineAssignment
 from backend.routes.employee_line_assignments import router as ela_router
 from backend.tests.fixtures.factories import TestDataFactory
 

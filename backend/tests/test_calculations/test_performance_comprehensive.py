@@ -4,8 +4,8 @@ Uses mock-based testing pattern consistent with other tests
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
-from datetime import datetime, date, timedelta
+from unittest.mock import MagicMock
+from datetime import date
 
 
 class TestPerformanceCalculations:

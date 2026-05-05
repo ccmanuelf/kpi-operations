@@ -5,8 +5,6 @@ scenario comparison, and work station modeling.
 """
 
 import pytest
-from datetime import datetime
-from decimal import Decimal
 
 from backend.calculations.production_line_simulation import (
     # Enums

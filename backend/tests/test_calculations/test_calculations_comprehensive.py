@@ -3,10 +3,7 @@ Comprehensive Tests for Calculation Modules
 Target: Increase calculation module coverage to 85%+
 """
 
-import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from datetime import date, timedelta
 
 
 # =============================================================================

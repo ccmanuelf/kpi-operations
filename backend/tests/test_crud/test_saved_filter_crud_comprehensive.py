@@ -5,8 +5,6 @@ Target: Increase crud/saved_filter.py coverage from 20% to 85%+
 """
 
 import pytest
-import json
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

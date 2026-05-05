@@ -6,7 +6,6 @@ Uses real database sessions -- no mocks for DB layer.
 import pytest
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.orm.production_line import ProductionLine
 from backend.orm.capacity.production_lines import CapacityProductionLine
 from backend.orm.work_order import WorkOrder
 from backend.crud.production_line import (

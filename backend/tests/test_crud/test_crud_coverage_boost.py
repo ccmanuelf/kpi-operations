@@ -4,8 +4,7 @@ Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
+from datetime import date, timedelta
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory

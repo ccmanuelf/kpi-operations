@@ -6,7 +6,7 @@ Target: Increase otd.py coverage to 85%+
 import pytest
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -361,9 +361,6 @@ def otd_real_db():
 @pytest.fixture
 def otd_setup(otd_real_db):
     """Create standard test data for OTD tests."""
-    from backend.orm.production_entry import ProductionEntry
-    from backend.orm.work_order import WorkOrder
-
     db = otd_real_db
 
     # Create client

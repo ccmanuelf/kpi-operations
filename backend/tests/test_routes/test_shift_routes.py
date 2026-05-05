@@ -5,7 +5,6 @@ Follows the pattern from test_capacity_routes_crud.py.
 """
 
 import pytest
-from datetime import time
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -14,7 +13,7 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.orm.user import User, UserRole
+from backend.orm.user import User
 from backend.routes.shifts import router as shifts_router
 from backend.tests.fixtures.factories import TestDataFactory
 

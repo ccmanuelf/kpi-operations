@@ -14,14 +14,10 @@ Coverage targets:
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
-from fastapi.testclient import TestClient
-from fastapi import HTTPException
+from unittest.mock import patch
 
 # Import helper functions for direct testing
 from backend.routes.analytics import parse_time_range, get_performance_rating, get_heatmap_color_code
-from backend.orm.user import User, UserRole
-from backend.middleware.client_auth import ClientAccessError
 
 
 # =============================================================================

@@ -3,11 +3,8 @@ Integration Tests for Calculation Modules
 These tests exercise actual code paths for increased coverage
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
-from sqlalchemy.orm import Session
 
 
 # =============================================================================

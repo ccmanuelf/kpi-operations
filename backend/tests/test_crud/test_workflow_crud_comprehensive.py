@@ -5,7 +5,6 @@ Target: Increase workflow.py coverage from 24% to 85%+
 """
 
 import pytest
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -13,8 +12,7 @@ from fastapi import HTTPException
 
 from backend.database import Base
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.orm import Client, ClientType, User, WorkOrder, WorkOrderStatus, WorkflowTransitionLog
-from backend.orm.client_config import ClientConfig
+from backend.orm import WorkOrderStatus
 
 
 @pytest.fixture(scope="function")
@@ -765,7 +763,7 @@ class TestEdgeCases:
 
     def test_update_workflow_configuration_creates_if_not_exists(self, workflow_setup):
         """Test that update_workflow_configuration creates config if it doesn't exist"""
-        from backend.crud.workflow import update_workflow_configuration, get_workflow_configuration
+        from backend.crud.workflow import update_workflow_configuration
 
         setup = workflow_setup
         db = setup["db"]

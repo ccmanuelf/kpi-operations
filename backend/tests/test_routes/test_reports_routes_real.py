@@ -5,7 +5,7 @@ Target: Increase routes/reports.py coverage to 75%+
 
 import pytest
 from io import BytesIO
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from sqlalchemy import create_engine

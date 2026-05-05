@@ -4,7 +4,7 @@ Uses real database sessions -- no mocks for DB layer.
 """
 
 import pytest
-from datetime import date, datetime, timezone
+from datetime import date
 
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.orm.work_order import WorkOrder

@@ -6,9 +6,8 @@ Target: Increase routes/production.py coverage from 27% to 80%+
 
 import pytest
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import patch, MagicMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool

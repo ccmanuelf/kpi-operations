@@ -13,7 +13,7 @@ from fastapi import FastAPI
 
 from backend.database import Base, get_db
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.orm.user import User, UserRole
+from backend.orm.user import User
 from backend.orm.production_line import ProductionLine
 from backend.orm.capacity.production_lines import CapacityProductionLine
 from backend.routes.production_lines import router as production_lines_router

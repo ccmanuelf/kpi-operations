@@ -3,10 +3,9 @@ Comprehensive Tests for FPY (First Pass Yield) and RTY (Rolled Throughput Yield)
 Target: Increase fpy_rty.py coverage from 29% to 60%+
 """
 
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 class TestFPYBasic:

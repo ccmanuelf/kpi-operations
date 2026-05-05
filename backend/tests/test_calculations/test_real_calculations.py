@@ -6,7 +6,7 @@ Target: Cover calculations/ directory to reach 85% overall coverage.
 import pytest
 from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 
 

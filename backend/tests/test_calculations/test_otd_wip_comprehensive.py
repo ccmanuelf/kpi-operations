@@ -4,7 +4,6 @@ Comprehensive tests for OTD (On Time Delivery) calculations
 
 import pytest
 from datetime import datetime, date, timedelta, timezone
-from unittest.mock import MagicMock
 
 
 class TestOTDCalculations:

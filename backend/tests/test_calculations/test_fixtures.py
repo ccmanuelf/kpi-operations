@@ -4,7 +4,7 @@ Shared fixtures for all test modules
 """
 
 import pytest
-from datetime import date, timedelta
+from datetime import date
 
 
 @pytest.fixture

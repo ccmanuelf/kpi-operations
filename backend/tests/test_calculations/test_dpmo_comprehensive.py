@@ -3,7 +3,6 @@ Comprehensive Tests for DPMO (Defects Per Million Opportunities) Calculations
 Target: Increase dpmo.py coverage from 36% to 60%+
 """
 
-import pytest
 from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch

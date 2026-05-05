@@ -3,8 +3,6 @@ Comprehensive QR Routes Tests
 Target: Increase QR routes coverage from 15% to 60%+
 """
 
-import pytest
-from datetime import date
 import json
 from urllib.parse import quote
 

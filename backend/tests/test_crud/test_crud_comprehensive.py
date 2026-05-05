@@ -5,8 +5,7 @@ Target: Increase CRUD module coverage to 85%+
 
 import pytest
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 
 

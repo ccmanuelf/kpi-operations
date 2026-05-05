@@ -8,7 +8,6 @@ Follows the pattern from test_capacity_routes_crud.py (isolated FastAPI app).
 
 import pytest
 from datetime import date, timedelta, datetime, timezone
-from decimal import Decimal
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -16,13 +15,10 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.orm.client import Client, ClientType
+from backend.orm.client import ClientType
 from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
-from backend.orm.production_entry import ProductionEntry
 from backend.orm.user import User, UserRole
-from backend.orm.product import Product
-from backend.orm.shift import Shift
 from backend.auth.jwt import get_current_user
 from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 from backend.tests.fixtures.factories import TestDataFactory

@@ -6,7 +6,6 @@ Target: Increase wip_aging.py coverage from 36% to 60%+
 import pytest
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
 
 
 class TestWIPAgingBasic:
@@ -279,7 +278,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend.database import Base
 from backend.orm import ClientType
-from backend.orm.hold_entry import HoldEntry, HoldStatus, HoldReason
+from backend.orm.hold_entry import HoldEntry, HoldStatus
 from backend.orm.work_order import WorkOrder
 from backend.tests.fixtures.factories import TestDataFactory
 

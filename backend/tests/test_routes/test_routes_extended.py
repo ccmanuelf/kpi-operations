@@ -3,8 +3,7 @@ Extended Route Tests for Low Coverage Areas
 Target: Increase routes coverage to 85%+
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 
 # =============================================================================

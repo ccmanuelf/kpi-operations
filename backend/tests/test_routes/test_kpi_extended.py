@@ -3,8 +3,7 @@ Extended KPI Routes Tests
 Target: Increase KPI routes coverage from 22% to 60%+
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 
 # =============================================================================

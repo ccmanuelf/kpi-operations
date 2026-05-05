@@ -3,10 +3,8 @@ Coverage Boost Tests for Low-Coverage Calculation Modules
 Target: Push overall coverage from 80% to 85%+
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
 
 
 # =============================================================================

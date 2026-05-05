@@ -4,7 +4,6 @@ Tests all alert generation functions with various scenarios.
 Target: Increase calculations/alerts.py coverage from 11% to 85%+
 """
 
-import pytest
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch, MagicMock

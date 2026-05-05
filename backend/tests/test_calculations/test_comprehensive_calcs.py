@@ -3,8 +3,7 @@ Comprehensive Calculation Tests for 90% Coverage
 Tests all KPI calculation functions with edge cases
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 import sys
 import os

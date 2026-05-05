@@ -3,7 +3,6 @@ Tests for Alert Calculations and Schemas
 Phase 10.3: Intelligent Alerting System
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 

@@ -4,18 +4,11 @@ Uses transactional_db fixture (in-memory SQLite with automatic rollback).
 No mocks for database operations.
 """
 
-import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from sqlalchemy import func
 
 from backend.orm import (
-    Client,
-    ClientType,
-    User,
-    UserRole,
-    Employee,
-    Shift,
     AttendanceEntry,
     AbsenceType,
 )

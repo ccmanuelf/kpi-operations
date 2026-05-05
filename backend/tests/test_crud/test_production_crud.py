@@ -4,23 +4,10 @@ Uses transactional_db fixture (in-memory SQLite with automatic rollback).
 No mocks for database operations.
 """
 
-import pytest
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import patch
-from fastapi import HTTPException
 
-from backend.orm import (
-    Client,
-    ClientType,
-    User,
-    UserRole,
-    Product,
-    Shift,
-    ProductionEntry,
-    WorkOrder,
-    WorkOrderStatus,
-)
+from backend.orm import ProductionEntry
 from backend.tests.fixtures.factories import TestDataFactory
 
 

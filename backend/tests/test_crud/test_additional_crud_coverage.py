@@ -6,13 +6,9 @@ Covers: workflow, saved_filter, client_config, part_opportunities,
 """
 
 import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.tests.fixtures.factories import TestDataFactory
-from backend.orm.client import Client, ClientType
-from backend.orm.user import User, UserRole
 
 
 # =============================================================================

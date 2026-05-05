@@ -15,12 +15,11 @@ Covers:
 import pytest
 from decimal import Decimal
 from datetime import time
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 
 from backend.calculations.efficiency import (
     calculate_efficiency,
     calculate_shift_hours,
-    update_efficiency_for_entry,
     DEFAULT_CYCLE_TIME,
     DEFAULT_SHIFT_HOURS,
 )
@@ -353,7 +352,6 @@ class TestEfficiencyDatabaseIntegration:
         """Test calculate_efficiency function with mock database"""
         from backend.orm.client import Client, ClientType
         from backend.orm.product import Product
-        from backend.orm.production_entry import ProductionEntry
         from backend.orm.shift import Shift
 
         # Create client first (required FK for product and shift)

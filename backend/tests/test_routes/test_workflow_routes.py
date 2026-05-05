@@ -13,9 +13,7 @@ Tests cover:
 
 import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, MagicMock, patch
-from fastapi.testclient import TestClient
-import json
+from unittest.mock import Mock, patch
 
 
 # Mock user for authentication
@@ -46,7 +44,7 @@ class TestTransitionWorkOrder:
     def test_transition_work_order_success(self):
         """Test successful work order transition"""
         from backend.routes.workflow import transition_work_order_status
-        from backend.schemas.workflow import WorkflowTransitionCreate, WorkflowStatusEnum
+        from backend.schemas.workflow import WorkflowStatusEnum
 
         mock_db = Mock()
         mock_user = create_mock_user()
@@ -158,7 +156,7 @@ class TestBulkTransition:
     def test_bulk_transition_success(self):
         """Test bulk transition endpoint"""
         from backend.routes.workflow import bulk_transition_work_orders_endpoint
-        from backend.schemas.workflow import BulkTransitionRequest, WorkflowStatusEnum
+        from backend.schemas.workflow import WorkflowStatusEnum
 
         mock_db = Mock()
         mock_user = create_mock_supervisor_user()

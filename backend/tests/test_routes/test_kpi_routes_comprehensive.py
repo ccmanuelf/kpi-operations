@@ -3,10 +3,7 @@ Comprehensive Tests for KPI Routes
 Target: Increase routes/kpi.py coverage to 80%+
 """
 
-import pytest
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from datetime import date, timedelta
 
 
 class TestKPIDashboardRoutes:

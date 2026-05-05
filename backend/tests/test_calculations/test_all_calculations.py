@@ -4,10 +4,9 @@ Tests all calculation functions with mocked database
 Targets 90% code coverage
 """
 
-import pytest
 from decimal import Decimal
-from datetime import date, time, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from datetime import date, time, timedelta
+from unittest.mock import MagicMock
 
 
 # =============================================================================

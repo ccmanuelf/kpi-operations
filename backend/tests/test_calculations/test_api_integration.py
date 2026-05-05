@@ -6,7 +6,6 @@ Note: These tests verify endpoint existence and require authentication.
 For comprehensive API testing with authentication, see test_reports.py pattern.
 """
 
-import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
 

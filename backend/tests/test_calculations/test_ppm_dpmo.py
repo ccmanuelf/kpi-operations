@@ -13,10 +13,8 @@ Covers:
 
 import pytest
 from decimal import Decimal
-from datetime import date
 
-from backend.calculations.ppm import calculate_ppm
-from backend.calculations.dpmo import calculate_dpmo, calculate_sigma_level
+from backend.calculations.dpmo import calculate_sigma_level
 
 
 class TestPPMCalculation:

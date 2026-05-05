@@ -4,7 +4,6 @@ Migrated to use real database (transactional_db) instead of mocks.
 """
 
 import pytest
-from datetime import datetime, date, timedelta
 
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.crud.quality import get_quality_inspections, get_quality_inspection

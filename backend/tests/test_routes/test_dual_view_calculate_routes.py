@@ -7,8 +7,6 @@ get_db + get_current_user, real in-memory SQLite via transactional_db.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient

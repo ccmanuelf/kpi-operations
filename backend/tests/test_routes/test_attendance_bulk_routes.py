@@ -5,16 +5,15 @@ Uses real database with TestDataFactory and real JWT tokens.
 """
 
 import pytest
-from datetime import date, datetime, time
-from decimal import Decimal
-from sqlalchemy import create_engine, func
+from datetime import date
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from fastapi import FastAPI
 
 from backend.database import Base, get_db
-from backend.orm import ClientType, AttendanceEntry
+from backend.orm import ClientType
 from backend.routes.attendance import router as attendance_router
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.tests.fixtures.auth_fixtures import create_test_token

@@ -3,8 +3,7 @@ Final Coverage Tests for Remaining Low Coverage Routes
 Target: Push coverage from 81% to 85%+
 """
 
-import pytest
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 
 # =============================================================================
