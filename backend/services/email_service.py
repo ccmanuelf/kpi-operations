@@ -11,8 +11,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-logger = logging.getLogger(__name__)
-
 try:
     from sendgrid import SendGridAPIClient
     from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
@@ -22,6 +20,8 @@ except ImportError:
     SENDGRID_AVAILABLE = False
 
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:

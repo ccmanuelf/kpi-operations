@@ -1,14 +1,12 @@
 """
 Pytest Configuration and Fixtures
 Shared test fixtures for all test modules
+
+`pythonpath` and `filterwarnings` are configured declaratively in
+pyproject.toml's [tool.pytest.ini_options], so this file only needs imports.
 """
 
-import warnings
 from typing import Optional
-
-# python-multipart 0.0.22 warns about `import multipart` (used by starlette),
-# but starlette hasn't migrated yet. Suppress to avoid pytest -W error breakage.
-warnings.filterwarnings("ignore", message="Please use `import python_multipart`", category=PendingDeprecationWarning)
 
 import pytest
 from sqlalchemy import create_engine
@@ -16,11 +14,6 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-import sys
-import os
-
-# Add project root to path (parent of backend)
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from backend.database import Base, get_db
 
@@ -76,6 +69,27 @@ from backend.orm.capacity.orders import CapacityOrder  # noqa: F401
 
 # Alert ORM model (in models/, not schemas/) — needed for Base.metadata.create_all()
 from backend.schemas.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
+
+# Test fixtures (factories, auth fixtures, seed data) — moved up from below the
+# alias block to keep all imports at module top.
+from backend.tests.fixtures.factories import TestDataFactory
+from backend.tests.fixtures.auth_fixtures import (
+    create_test_user,
+    create_test_token,
+    AuthenticatedClient as AuthClientWrapper,
+    get_admin_client,
+    get_supervisor_client,
+    get_operator_client,
+    get_viewer_client,
+    get_leader_client,
+    get_multi_tenant_client,
+)
+from backend.tests.fixtures.seed_data import (
+    seed_minimal_data,
+    seed_comprehensive_data,
+    seed_multi_tenant_data,
+    cleanup_test_data,
+)
 
 # Backward compatibility aliases - use the correct _entry schemas
 QualityInspection = QualityEntry
@@ -538,26 +552,6 @@ def authenticated_client(test_client, auth_headers):
 # ============================================================================
 # Enhanced Fixtures with Real Database Transactions
 # ============================================================================
-
-# Import fixtures package (factories, auth fixtures, seed data)
-from backend.tests.fixtures.factories import TestDataFactory
-from backend.tests.fixtures.auth_fixtures import (
-    create_test_user,
-    create_test_token,
-    AuthenticatedClient as AuthClientWrapper,
-    get_admin_client,
-    get_supervisor_client,
-    get_operator_client,
-    get_viewer_client,
-    get_leader_client,
-    get_multi_tenant_client,
-)
-from backend.tests.fixtures.seed_data import (
-    seed_minimal_data,
-    seed_comprehensive_data,
-    seed_multi_tenant_data,
-    cleanup_test_data,
-)
 
 
 @pytest.fixture(scope="function")

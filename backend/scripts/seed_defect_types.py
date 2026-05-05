@@ -6,11 +6,13 @@ Populates industry-appropriate defect types for each client
 import sys
 import os
 
+# Standalone script: extend sys.path before importing project modules.
+# Per-line E402 below is unavoidable for this pattern.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import create_engine, text
-from typing import Any, Dict
-import uuid
+from sqlalchemy import create_engine, text  # noqa: E402
+from typing import Any, Dict  # noqa: E402
+import uuid  # noqa: E402
 
 # Database connection
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///database/kpi_platform.db")

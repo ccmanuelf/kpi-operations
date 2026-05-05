@@ -11,8 +11,6 @@ from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
 
-logger = logging.getLogger(__name__)
-
 from backend.orm.defect_type_catalog import DefectTypeCatalog
 from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCreate,
@@ -21,6 +19,8 @@ from backend.schemas.defect_type_catalog import (
 )
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
+
+logger = logging.getLogger(__name__)
 
 # Reserved client_id for global defect types available to all clients
 GLOBAL_CLIENT_ID = "GLOBAL"

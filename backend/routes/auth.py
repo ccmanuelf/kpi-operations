@@ -12,8 +12,6 @@ import uuid
 from backend.database import get_db
 from backend.config import settings
 from backend.utils.logging_utils import get_module_logger, log_security_event
-
-logger = get_module_logger(__name__)
 from backend.schemas.user import (
     UserCreate,
     UserLogin,
@@ -33,6 +31,8 @@ from backend.auth.jwt import (
     _token_blacklist,
 )
 from backend.orm.user import User
+
+logger = get_module_logger(__name__)
 
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])

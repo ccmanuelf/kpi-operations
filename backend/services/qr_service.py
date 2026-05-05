@@ -10,9 +10,9 @@ from io import BytesIO
 from typing import Dict, Any
 from pydantic import ValidationError
 
-logger = logging.getLogger(__name__)
-
 from backend.schemas.qr import QRCodeData, QREntityType
+
+logger = logging.getLogger(__name__)
 
 
 class QRServiceError(Exception):

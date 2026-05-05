@@ -68,3 +68,14 @@ exclude = [
 module = "backend.tests.*"
 check_untyped_defs = false
 disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+# Project root added to sys.path so `from backend.X import ...` resolves without
+# manual sys.path.insert in conftest.py.
+pythonpath = ["."]
+# python-multipart 0.0.22 warns when starlette imports `multipart` instead of
+# `python_multipart`. starlette hasn't migrated yet; suppress to keep `-W error`
+# usable in CI without spurious failures.
+filterwarnings = [
+    "ignore:Please use `import python_multipart`:PendingDeprecationWarning",
+]

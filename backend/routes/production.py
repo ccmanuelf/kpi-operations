@@ -15,8 +15,6 @@ import json
 
 from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
-
-logger = get_module_logger(__name__)
 from backend.schemas.production import (
     ProductionEntryCreate,
     ProductionEntryUpdate,
@@ -37,6 +35,8 @@ from backend.orm.production_entry import ProductionEntry
 from backend.orm.user import User
 from backend.orm.product import Product
 from backend.orm.shift import Shift
+
+logger = get_module_logger(__name__)
 
 
 router = APIRouter(prefix="/api/production", tags=["Production"])

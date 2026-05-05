@@ -255,11 +255,14 @@ class TestSingleProductHorizon:
 @needs_minizinc
 class TestPlanHorizon:
     def test_smoothes_max_daily_load(self, two_product_weekly_config):
-        result = plan_horizon(two_product_weekly_config, horizon_days=5)
+        # 60s gives MiniZinc enough headroom to find an optimal load-balanced
+        # plan even when the host is under CPU contention from parallel test
+        # runs. The default 30s timeout was at the edge — observed to fail
+        # under full-suite load while passing in isolation. The "load
+        # uniformity within 2%" assertion below depends on solver convergence,
+        # so the timeout drives the flake rate directly.
+        result = plan_horizon(two_product_weekly_config, horizon_days=5, timeout_seconds=60)
         assert result.is_satisfied
-        # Solver may not prove optimality within the test timeout for
-        # this many free variables, but the practical load uniformity
-        # is what matters for the planning use case.
         loads = [p.load_pct for p in result.daily_plans]
         assert max(loads) - min(loads) <= 2.0
         # Weekly fulfillment must meet/exceed each product's demand.

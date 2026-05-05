@@ -13,8 +13,6 @@ from datetime import date, datetime, timezone
 from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
 from backend.constants import DEFAULT_PAGE_SIZE, LOOKBACK_MONTHLY_DAYS
-
-logger = get_module_logger(__name__)
 from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
@@ -34,6 +32,8 @@ from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User
 from backend.middleware.client_auth import build_client_filter_clause, verify_client_access
+
+logger = get_module_logger(__name__)
 
 
 router = APIRouter(prefix="/api/attendance", tags=["Attendance Tracking"])

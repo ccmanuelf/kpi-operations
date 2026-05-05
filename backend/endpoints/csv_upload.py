@@ -14,8 +14,6 @@ from pydantic import ValidationError
 import io
 import csv
 
-logger = logging.getLogger(__name__)
-
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User, UserRole
@@ -47,6 +45,8 @@ from backend.schemas.job import JobCreate
 from backend.schemas.client import ClientCreate
 from backend.schemas.employee import EmployeeCreate
 from backend.schemas.floating_pool import FloatingPoolCreate
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()

@@ -11,9 +11,6 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException
-
-logger = logging.getLogger(__name__)
-
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.orm.work_order import WorkOrder
@@ -21,6 +18,8 @@ from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
 from backend.calculations.workflow_engine import WorkflowStateMachine, execute_transition
+
+logger = logging.getLogger(__name__)
 
 
 def create_work_order(db: Session, work_order_data: dict, current_user: User) -> WorkOrder:

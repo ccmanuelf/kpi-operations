@@ -32,12 +32,12 @@ from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.client_config import ClientConfig
 from backend.orm.workflow import WorkflowTransitionLog
 from backend.schemas.workflow import WORKFLOW_TEMPLATES
+
+logger = logging.getLogger(__name__)
 
 
 # Default workflow transitions (used when no client config exists)

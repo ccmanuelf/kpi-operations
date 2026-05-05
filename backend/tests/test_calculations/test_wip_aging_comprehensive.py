@@ -7,6 +7,16 @@ import pytest
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from backend.database import Base
+from backend.orm import ClientType
+from backend.orm.hold_entry import HoldEntry, HoldStatus
+from backend.orm.work_order import WorkOrder
+from backend.tests.fixtures.factories import TestDataFactory
+
 
 class TestWIPAgingBasic:
     """Basic tests for WIP aging calculations"""
@@ -272,15 +282,6 @@ class TestWIPAgingTrend:
 # =============================================================================
 # REAL DATABASE INTEGRATION TESTS
 # =============================================================================
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from backend.database import Base
-from backend.orm import ClientType
-from backend.orm.hold_entry import HoldEntry, HoldStatus
-from backend.orm.work_order import WorkOrder
-from backend.tests.fixtures.factories import TestDataFactory
 
 
 @pytest.fixture(scope="function")

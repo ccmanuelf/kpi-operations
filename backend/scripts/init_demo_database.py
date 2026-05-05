@@ -21,18 +21,20 @@ from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Tuple
 
-# Ensure backend module is importable
+# Ensure backend module is importable when running as a standalone script
+# (the package isn't pip-installed, so we extend sys.path before importing
+# from backend.*). E402 is intentional and unavoidable here.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from backend.database import engine, Base, SessionLocal
-from backend.db.factories import TestDataFactory
+from backend.database import engine, Base, SessionLocal  # noqa: E402
+from backend.db.factories import TestDataFactory  # noqa: E402
 
 # Import all ORM models via centralized registry (backend/orm/__init__.py).
 # This single import registers every model with Base.metadata so that
 # create_all() can never drift from the model registry. Only the names
 # actually referenced in seeder logic are listed explicitly.
-from backend.orm import (
+from backend.orm import (  # noqa: E402 — sys.path setup above is required for these imports
     # Enums used in seeder data
     ClientType,
     WorkOrderStatus,
@@ -82,7 +84,7 @@ from backend.orm import (
 )
 
 # Alert models live outside backend/orm/ (in backend/schemas/alert.py)
-from backend.schemas.alert import Alert, AlertConfig
+from backend.schemas.alert import Alert, AlertConfig  # noqa: E402
 
 # ============================================================================
 # MASTER PRODUCT CATALOG
