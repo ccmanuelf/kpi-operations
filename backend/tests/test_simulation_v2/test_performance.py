@@ -603,7 +603,7 @@ class TestBenchmarkSummary:
         avg_calculation = sum(calculation_times) / len(calculation_times)
 
         # Print benchmark results (visible in test output with -v)
-        print(f"\n=== Benchmark Results (5 iterations, 3 products, 15 operations) ===")
+        print("\n=== Benchmark Results (5 iterations, 3 products, 15 operations) ===")
         print(f"Average validation time: {avg_validation*1000:.2f}ms")
         print(f"Average simulation time: {avg_simulation*1000:.2f}ms")
         print(f"Average calculation time: {avg_calculation*1000:.2f}ms")

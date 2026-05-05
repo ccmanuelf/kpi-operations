@@ -62,7 +62,7 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
         log_security_event(
             logger,
             "REGISTER_DUPLICATE_EMAIL",
-            details=f"Attempted registration with existing email",
+            details="Attempted registration with existing email",
             ip_address=client_ip,
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")

@@ -526,7 +526,8 @@ class TestCreateSoftDeleteFunction:
         mock_user = MagicMock()
         mock_user.role = "admin"
 
-        permission_check = lambda user: user.role == "admin"
+        def permission_check(user):
+            return user.role == "admin"
 
         delete_fn = create_soft_delete_function(mock_model, "id", permission_check=permission_check)
         result = delete_fn(mock_db, 123, current_user=mock_user)
@@ -544,7 +545,8 @@ class TestCreateSoftDeleteFunction:
         mock_user = MagicMock()
         mock_user.role = "viewer"
 
-        permission_check = lambda user: user.role == "admin"
+        def permission_check(user):
+            return user.role == "admin"
 
         delete_fn = create_soft_delete_function(mock_model, "id", permission_check=permission_check)
         result = delete_fn(mock_db, 123, current_user=mock_user)

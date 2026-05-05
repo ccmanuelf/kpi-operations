@@ -62,7 +62,7 @@ async def clear_cache(current_user: User = Depends(get_current_admin)) -> Dict[s
 
     return {
         "status": "success",
-        "message": f"Cache cleared successfully",
+        "message": "Cache cleared successfully",
         "entries_cleared": cleared_count,
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }

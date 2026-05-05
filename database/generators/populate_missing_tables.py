@@ -68,9 +68,9 @@ try:
             try:
                 cursor.execute(
                     """
-                    INSERT INTO JOB (job_id, work_order_id, client_id, operation_name, operation_code, 
-                                    sequence_number, part_number, part_description, planned_quantity, 
-                                    completed_quantity, planned_hours, actual_hours, is_completed, 
+                    INSERT INTO JOB (job_id, work_order_id, client_id, operation_name, operation_code,
+                                    sequence_number, part_number, part_description, planned_quantity,
+                                    completed_quantity, planned_hours, actual_hours, is_completed,
                                     completed_date, notes, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
                 """,
@@ -170,7 +170,7 @@ try:
                     cursor.execute(
                         """
                         INSERT INTO SHIFT_COVERAGE (client_id, shift_id, coverage_date, employees_scheduled,
-                                                   employees_present, coverage_percentage, entered_by, 
+                                                   employees_present, coverage_percentage, entered_by,
                                                    notes, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, 'SYSTEM', ?, datetime('now'))
                     """,
@@ -218,7 +218,7 @@ try:
                     cursor.execute(
                         """
                         INSERT INTO DEFECT_DETAIL (defect_detail_id, quality_entry_id, client_id,
-                                                  defect_type, defect_category, defect_count, 
+                                                  defect_type, defect_category, defect_count,
                                                   severity, location, description, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
                     """,

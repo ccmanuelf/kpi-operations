@@ -119,8 +119,8 @@ for user in DEMO_USERS:
             # Update existing user
             cursor.execute(
                 """
-                UPDATE USER 
-                SET password_hash = ?, 
+                UPDATE USER
+                SET password_hash = ?,
                     email = ?,
                     full_name = ?,
                     role = ?,
@@ -145,7 +145,7 @@ for user in DEMO_USERS:
             cursor.execute(
                 """
                 INSERT INTO USER (
-                    user_id, username, email, password_hash, full_name, 
+                    user_id, username, email, password_hash, full_name,
                     role, client_id_assigned, is_active, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
             """,
@@ -171,7 +171,7 @@ conn.close()
 
 print()
 print("=" * 60)
-print(f"✅ Demo users setup complete!")
+print("✅ Demo users setup complete!")
 print(f"   Created: {created}")
 print(f"   Updated: {updated}")
 if errors:
