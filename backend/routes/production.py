@@ -358,7 +358,7 @@ def batch_import_production(
 
         db.commit()
 
-    except SQLAlchemyError as log_err:
+    except SQLAlchemyError:
         # Don't fail the entire import if logging fails
         logger.warning("Failed to create import log", exc_info=True)
         db.rollback()

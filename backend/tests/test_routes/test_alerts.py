@@ -647,7 +647,7 @@ class TestAlertDashboardEndpoint:
     def test_summary_calculation(self):
         """Test summary counts by severity and category"""
         by_severity = {"critical": 3, "warning": 5, "info": 2}
-        by_category = {"otd": 4, "quality": 6}
+        {"otd": 4, "quality": 6}
 
         total = sum(by_severity.values())
         assert total == 10

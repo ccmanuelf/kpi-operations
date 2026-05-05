@@ -204,7 +204,7 @@ class TestFPYTrend:
         this_week_fpy = Decimal("95.5")
 
         improvement = this_week_fpy - last_week_fpy
-        improvement_pct = (improvement / last_week_fpy) * 100
+        (improvement / last_week_fpy) * 100
 
         assert improvement > 0
         assert improvement == Decimal("2.5")

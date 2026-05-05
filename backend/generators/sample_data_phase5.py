@@ -211,7 +211,7 @@ class KPIHistoryGenerator:
             trend = config.trend_bias
 
         data = []
-        current_value = config.base_value
+        config.base_value
 
         for i in range(days):
             day_date = end_date - timedelta(days=days - 1 - i)
@@ -405,7 +405,7 @@ def seed_demo_predictions(db: Any, client_ids: Optional[List[str]] = None, days:
                         },
                     )
                     total_records += 1
-                except Exception as e:
+                except Exception:
                     # Skip duplicate records
                     pass
 

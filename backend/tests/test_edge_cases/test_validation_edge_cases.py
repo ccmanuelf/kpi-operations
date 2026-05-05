@@ -106,7 +106,6 @@ class TestNumericBoundaries:
         from backend.calculations.performance import calculate_quality_rate
         from backend.orm.production_entry import ProductionEntry
 
-        db = edge_setup["db"]
         client = edge_setup["client"]
         product = edge_setup["product"]
         shift = edge_setup["shift"]
@@ -192,7 +191,6 @@ class TestNumericBoundaries:
         from backend.calculations.performance import calculate_quality_rate
         from backend.orm.production_entry import ProductionEntry
 
-        db = edge_setup["db"]
         client = edge_setup["client"]
         product = edge_setup["product"]
         shift = edge_setup["shift"]

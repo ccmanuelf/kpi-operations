@@ -95,7 +95,7 @@ class TestDPMOCalculations:
     def test_six_sigma_dpmo(self):
         # Six Sigma = 3.4 DPMO
         dpmo = 3.4
-        sigma_level = 6  # Approximately
+        6  # Approximately
         assert dpmo < 10  # Well under typical threshold
 
 

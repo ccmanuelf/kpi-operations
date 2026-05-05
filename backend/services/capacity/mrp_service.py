@@ -129,7 +129,7 @@ class MRPService:
                 if order.style_model not in order_by_style:
                     order_by_style[order.style_model] = []
                 order_by_style[order.style_model].append(order.order_number)
-            except (SQLAlchemyError, ValueError, KeyError) as e:
+            except (SQLAlchemyError, ValueError, KeyError):
                 # Skip orders without valid BOMs
                 logger.exception("BOM explosion failed for order %s", order.order_number)
                 continue

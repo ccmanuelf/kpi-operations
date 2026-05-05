@@ -90,7 +90,7 @@ def create_event_persistence_handler(db_session_factory: Any) -> Any:
             event_record = EventStore.from_domain_event(event)
             session.add(event_record)
             session.commit()
-        except Exception as e:
+        except Exception:
             session.rollback()
             raise
         finally:

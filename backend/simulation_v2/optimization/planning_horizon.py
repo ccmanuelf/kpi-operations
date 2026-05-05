@@ -189,7 +189,7 @@ def plan_horizon(
         raise ValueError("horizon_days must be >= 1")
 
     products = [d.product for d in config.demands]
-    n_products = len(products)
+    len(products)
     daily_minutes = _daily_minutes(config)
 
     weekly_demand = {p: _resolve_weekly_demand(config, p) for p in products}

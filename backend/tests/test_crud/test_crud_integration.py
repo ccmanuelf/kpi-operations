@@ -27,8 +27,8 @@ class TestClientCRUDIntegration:
     def test_client_list_returns_created_clients(self, transactional_db):
         """Test client listing returns real clients from DB"""
         admin = TestDataFactory.create_user(transactional_db, role="admin")
-        c1 = TestDataFactory.create_client(transactional_db, client_id="INT-A", client_name="Alpha Client")
-        c2 = TestDataFactory.create_client(transactional_db, client_id="INT-B", client_name="Beta Client")
+        TestDataFactory.create_client(transactional_db, client_id="INT-A", client_name="Alpha Client")
+        TestDataFactory.create_client(transactional_db, client_id="INT-B", client_name="Beta Client")
         transactional_db.commit()
 
         result = get_clients(transactional_db, admin)
@@ -67,7 +67,7 @@ class TestClientCRUDIntegration:
 
     def test_client_create_by_non_admin_raises_403(self, transactional_db):
         """Test non-admin cannot create clients"""
-        client = TestDataFactory.create_client(transactional_db, client_id="OP-CL")
+        TestDataFactory.create_client(transactional_db, client_id="OP-CL")
         operator = TestDataFactory.create_user(transactional_db, role="operator", client_id="OP-CL")
         transactional_db.commit()
 
@@ -123,7 +123,7 @@ class TestAttendanceCRUDIntegration:
 
     def test_attendance_list_with_data(self, transactional_db):
         """Test getting attendance entries with seeded data"""
-        client = TestDataFactory.create_client(transactional_db, client_id="ATT-CL")
+        TestDataFactory.create_client(transactional_db, client_id="ATT-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="ATT-CL")
         employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-CL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-CL")
@@ -179,7 +179,7 @@ class TestProductionCRUDIntegration:
         """Test getting production entries with seeded data"""
         from backend.crud.production import get_production_entries
 
-        client = TestDataFactory.create_client(transactional_db, client_id="PROD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="PROD-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="PROD-CL")
         product = TestDataFactory.create_product(transactional_db, client_id="PROD-CL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="PROD-CL")
@@ -230,7 +230,7 @@ class TestQualityCRUDIntegration:
 
     def test_quality_list_with_data(self, transactional_db):
         """Test getting quality entries with seeded data"""
-        client = TestDataFactory.create_client(transactional_db, client_id="QUAL-CL")
+        TestDataFactory.create_client(transactional_db, client_id="QUAL-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="QUAL-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-CL")
         transactional_db.flush()
@@ -271,7 +271,7 @@ class TestDowntimeCRUDIntegration:
 
     def test_downtime_list_with_data(self, transactional_db):
         """Test getting downtime entries with seeded data"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DT-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-CL")
         transactional_db.flush()
@@ -308,7 +308,7 @@ class TestEmployeeCRUDIntegration:
         """Test getting employees with seeded data"""
         from backend.crud.employee import get_employees
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
+        TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMP-CL")
         TestDataFactory.create_employee(transactional_db, client_id="EMP-CL", employee_name="John Doe")
         transactional_db.commit()
@@ -338,7 +338,7 @@ class TestWorkOrderCRUDIntegration:
         """Test creating and retrieving a work order"""
         from backend.crud.work_order import get_work_orders, create_work_order
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WO-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WO-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WO-CL")
         transactional_db.commit()
 
@@ -372,7 +372,7 @@ class TestHoldCRUDIntegration:
         """Test creating and listing hold entries"""
         from backend.crud.hold import get_wip_holds
 
-        client = TestDataFactory.create_client(transactional_db, client_id="HOLD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="HOLD-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="HOLD-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-CL")
         transactional_db.flush()
@@ -436,7 +436,7 @@ class TestJobCRUDIntegration:
 
     def test_job_create_and_list(self, transactional_db):
         """Test creating and listing jobs"""
-        client = TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
+        TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="JOB-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="JOB-CL")
         transactional_db.flush()

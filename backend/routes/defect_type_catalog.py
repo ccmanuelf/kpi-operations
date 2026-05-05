@@ -164,7 +164,7 @@ async def upload_defect_types_csv(
                 dt = DefectTypeCatalogCSVRow.from_csv_dict(row)
                 if dt.defect_code and dt.defect_name:  # Skip empty rows
                     defect_types.append(dt)
-            except Exception as e:
+            except Exception:
                 continue  # Skip invalid rows, they'll be counted in errors
 
         if not defect_types:

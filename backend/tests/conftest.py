@@ -381,7 +381,7 @@ def test_client():
 
     # IMPORTANT: Create test engine and tables BEFORE importing app
     # This ensures the Base.metadata has all tables registered
-    engine = get_test_engine()
+    get_test_engine()
 
     # Now import app - this will use our overridden get_db
     from backend.main import app

@@ -25,7 +25,7 @@ class TestDowntimeCRUD:
 
     def test_create_and_list_downtime(self, transactional_db):
         """Test creating and listing downtime events"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DT-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-CL")
         transactional_db.flush()
@@ -46,7 +46,7 @@ class TestDowntimeCRUD:
 
     def test_get_downtime_by_id(self, transactional_db):
         """Test getting a specific downtime entry by ID"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DTID-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTID-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTID-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTID-CL")
         transactional_db.flush()
@@ -74,7 +74,7 @@ class TestDowntimeCRUD:
 
     def test_multiple_downtime_entries(self, transactional_db):
         """Test creating multiple downtime entries"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DTM-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTM-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTM-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTM-CL")
         transactional_db.flush()
@@ -95,8 +95,8 @@ class TestDowntimeCRUD:
 
     def test_downtime_filter_by_client(self, transactional_db):
         """Test filtering downtime by client_id"""
-        client_a = TestDataFactory.create_client(transactional_db, client_id="DT-A")
-        client_b = TestDataFactory.create_client(transactional_db, client_id="DT-B")
+        TestDataFactory.create_client(transactional_db, client_id="DT-A")
+        TestDataFactory.create_client(transactional_db, client_id="DT-B")
         admin = TestDataFactory.create_user(transactional_db, role="admin")
         wo_a = TestDataFactory.create_work_order(transactional_db, client_id="DT-A")
         wo_b = TestDataFactory.create_work_order(transactional_db, client_id="DT-B")
@@ -180,7 +180,7 @@ class TestDowntimeNullableWorkOrderId:
 
     def test_create_downtime_without_work_order_id(self, transactional_db):
         """Creating a downtime entry without work_order_id succeeds"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-NWO-1")
+        TestDataFactory.create_client(transactional_db, client_id="DT-NWO-1")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-NWO-1")
         transactional_db.flush()
 
@@ -202,7 +202,7 @@ class TestDowntimeNullableWorkOrderId:
 
     def test_create_downtime_with_work_order_id(self, transactional_db):
         """Creating a downtime entry with work_order_id still works"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-WWO-1")
+        TestDataFactory.create_client(transactional_db, client_id="DT-WWO-1")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-WWO-1")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-WWO-1")
         transactional_db.flush()
@@ -222,7 +222,7 @@ class TestDowntimeNullableWorkOrderId:
 
     def test_update_downtime_to_remove_work_order_id(self, transactional_db):
         """Updating a downtime entry to set work_order_id to None works"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-RWO-1")
+        TestDataFactory.create_client(transactional_db, client_id="DT-RWO-1")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-RWO-1")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-RWO-1")
         transactional_db.flush()
@@ -247,13 +247,13 @@ class TestDowntimeNullableWorkOrderId:
 
     def test_query_downtime_with_null_work_order_id(self, transactional_db):
         """Querying downtime entries with NULL work_order_id returns correct results"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-QNL-1")
+        TestDataFactory.create_client(transactional_db, client_id="DT-QNL-1")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-QNL-1")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-QNL-1")
         transactional_db.flush()
 
         # Create one entry WITH work order
-        entry_with_wo = TestDataFactory.create_downtime_entry(
+        TestDataFactory.create_downtime_entry(
             transactional_db,
             client_id="DT-QNL-1",
             work_order_id=wo.work_order_id,
@@ -261,7 +261,7 @@ class TestDowntimeNullableWorkOrderId:
             downtime_reason="EQUIPMENT_FAILURE",
         )
         # Create one entry WITHOUT work order
-        entry_without_wo = TestDataFactory.create_downtime_entry(
+        TestDataFactory.create_downtime_entry(
             transactional_db,
             client_id="DT-QNL-1",
             reported_by=admin.user_id,
@@ -282,7 +282,7 @@ class TestDowntimeNullableWorkOrderId:
         """Querying entries where work_order_id IS NULL via ORM works"""
         from backend.orm.downtime_entry import DowntimeEntry
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-QDR-1")
+        TestDataFactory.create_client(transactional_db, client_id="DT-QDR-1")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DT-QDR-1")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-QDR-1")
         transactional_db.flush()

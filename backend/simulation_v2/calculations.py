@@ -214,9 +214,6 @@ def _calculate_block3_station_performance(
     for op in config.operations:
         tool_operators[op.machine_tool] += op.operators
 
-    # Track which machine_tools we've already processed to avoid duplicate metrics
-    processed_tools: Dict[str, bool] = {}
-
     for op in config.operations:
         machine_tool = op.machine_tool
 

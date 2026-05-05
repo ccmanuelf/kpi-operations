@@ -468,7 +468,7 @@ class TestStatisticsEndpoints:
             mock_func.return_value = []
 
             pagination = PaginationParams(skip=10, limit=50)
-            result = get_client_all_transitions(
+            get_client_all_transitions(
                 client_id="CLIENT-001",
                 pagination=pagination,
                 from_status="RECEIVED",

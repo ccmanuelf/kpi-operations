@@ -17,7 +17,7 @@ class TestCreateFloatingPoolEntry:
         """Test create entry without supervisor/admin role"""
         from backend.crud.floating_pool import create_floating_pool_entry
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FP-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FP-CL")
         operator = TestDataFactory.create_user(transactional_db, role="operator", client_id="FP-CL")
         transactional_db.commit()
 
@@ -73,7 +73,7 @@ class TestGetFloatingPoolEntries:
         """Test get entries with seeded floating pool assignment"""
         from backend.crud.floating_pool import get_floating_pool_entries
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPE-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPE-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="FPE-CL")
         emp = TestDataFactory.create_employee(transactional_db, client_id="FPE-CL", is_floating_pool=True)
         transactional_db.flush()
@@ -96,7 +96,7 @@ class TestUpdateFloatingPoolEntry:
         """Test update entry without supervisor/admin role"""
         from backend.crud.floating_pool import update_floating_pool_entry
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPU-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPU-CL")
         operator = TestDataFactory.create_user(transactional_db, role="operator", client_id="FPU-CL")
         transactional_db.commit()
 
@@ -123,7 +123,7 @@ class TestDeleteFloatingPoolEntry:
         """Test delete entry without supervisor/admin role"""
         from backend.crud.floating_pool import delete_floating_pool_entry
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPD-CL")
         operator = TestDataFactory.create_user(transactional_db, role="operator", client_id="FPD-CL")
         transactional_db.commit()
 
@@ -150,7 +150,7 @@ class TestAssignFloatingPoolToClient:
         """Test assign without supervisor/admin role"""
         from backend.crud.floating_pool import assign_floating_pool_to_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPA-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPA-CL")
         operator = TestDataFactory.create_user(transactional_db, role="operator", client_id="FPA-CL")
         transactional_db.commit()
 
@@ -162,7 +162,7 @@ class TestAssignFloatingPoolToClient:
         """Test assign non-existent employee"""
         from backend.crud.floating_pool import assign_floating_pool_to_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPANF-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPANF-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="FPANF-CL")
         transactional_db.commit()
 
@@ -178,7 +178,7 @@ class TestUnassignFloatingPoolFromClient:
         """Test unassign without supervisor/admin role"""
         from backend.crud.floating_pool import unassign_floating_pool_from_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPUA-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPUA-CL")
         operator = TestDataFactory.create_user(transactional_db, role="operator", client_id="FPUA-CL")
         transactional_db.commit()
 
@@ -225,7 +225,7 @@ class TestIsEmployeeAvailableForAssignment:
         """Test availability check for assigned employee"""
         from backend.crud.floating_pool import is_employee_available_for_assignment
 
-        client = TestDataFactory.create_client(transactional_db, client_id="AVAIL-CL")
+        TestDataFactory.create_client(transactional_db, client_id="AVAIL-CL")
         emp = TestDataFactory.create_employee(transactional_db, client_id="AVAIL-CL", is_floating_pool=True)
         transactional_db.flush()
 
@@ -274,7 +274,7 @@ class TestGetFloatingPoolAssignmentsByClient:
         """Test get assignments for client"""
         from backend.crud.floating_pool import get_floating_pool_assignments_by_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="FPABC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="FPABC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="FPABC-CL")
         transactional_db.commit()
 

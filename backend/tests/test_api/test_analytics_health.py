@@ -33,8 +33,8 @@ class TestAnalyticsEndpoints:
 
     def test_get_production_analytics_with_date_range(self, mock_db):
         """Test production analytics with date range filter"""
-        start_date = datetime.now(tz=timezone.utc) - timedelta(days=30)
-        end_date = datetime.now(tz=timezone.utc)
+        datetime.now(tz=timezone.utc) - timedelta(days=30)
+        datetime.now(tz=timezone.utc)
 
         mock_db.query.return_value.filter.return_value.filter.return_value.all.return_value = []
 

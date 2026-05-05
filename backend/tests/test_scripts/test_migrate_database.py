@@ -228,7 +228,7 @@ class TestPreflightValidation:
 
     def test_invalid_source_url(self):
         """Invalid source URL is caught during validation."""
-        tool = _make_tool(
+        _make_tool(
             source_url="sqlite:///nonexistent_path_xyz_12345.db",
             target_url="sqlite:///:memory:",
             mode="schema-only",
@@ -312,7 +312,7 @@ class TestSchemaOnlyMode:
         tool.source_engine = source_engine
         tool.target_engine = target_engine
 
-        result = tool._migrate_schema()
+        tool._migrate_schema()
 
         inspector = inspect(target_engine)
         target_tables = inspector.get_table_names()
@@ -550,7 +550,7 @@ class TestUserOnlyMode:
         tool.source_engine = seeded_source
         tool.target_engine = target_engine
 
-        result = tool._migrate_user_only()
+        tool._migrate_user_only()
 
         # REAL-001 products should be copied
         with target_engine.connect() as conn:
@@ -571,7 +571,7 @@ class TestUserOnlyMode:
         tool.source_engine = seeded_source
         tool.target_engine = target_engine
 
-        result = tool._migrate_user_only()
+        tool._migrate_user_only()
 
         # TEST-001 client should be present (not excluded)
         with target_engine.connect() as conn:
@@ -595,7 +595,7 @@ class TestUserOnlyMode:
         tool.source_engine = seeded_source
         tool.target_engine = target_engine
 
-        result = tool._migrate_user_only()
+        tool._migrate_user_only()
 
         # USER table has client_id_assigned (not client_id), so users
         # should all be copied. Check source vs target counts match.

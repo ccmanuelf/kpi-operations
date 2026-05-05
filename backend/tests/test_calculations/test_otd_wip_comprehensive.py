@@ -249,7 +249,7 @@ class TestFPYRTYCalculations:
         """Test FPY excluding reworked units."""
         total_units = 100
         good_first_pass = 85
-        reworked = 10
+        10
         fpy = (good_first_pass / total_units) * 100
         assert fpy == 85.0
 

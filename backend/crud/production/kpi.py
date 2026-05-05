@@ -56,10 +56,8 @@ def get_production_entry_with_details(
     kpi_result = service.calculate_entry_kpis(entry, product, shift)
 
     # Extract values for response
-    efficiency = kpi_result.efficiency.efficiency_percentage
     ideal_time = kpi_result.efficiency.ideal_cycle_time_used
     inferred = kpi_result.efficiency.is_estimated
-    performance = kpi_result.performance.performance_percentage
     quality = kpi_result.quality.quality_rate
     oee = kpi_result.oee.oee
 

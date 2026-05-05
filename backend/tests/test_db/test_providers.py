@@ -122,7 +122,7 @@ class TestMariaDBProvider:
 
         provider = MariaDBProvider()
         url = "mysql+pymysql://user:pass@localhost/db"
-        engine = provider.create_engine(url, pool_size=30)
+        provider.create_engine(url, pool_size=30)
 
         mock_create_engine.assert_called_once()
         call_kwargs = mock_create_engine.call_args[1]
@@ -239,7 +239,7 @@ class TestDatabaseProviderFactory:
         db1 = tmp_path / "test1.db"
         db2 = tmp_path / "test2.db"
 
-        engine1 = factory.get_engine(f"sqlite:///{db1}")
+        factory.get_engine(f"sqlite:///{db1}")
         engine2 = factory.get_engine(f"sqlite:///{db2}")
 
         # Engine2 should replace engine1 (singleton pattern)

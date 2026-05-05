@@ -268,7 +268,7 @@ class TestGetProductionLineTree:
         db = transactional_db
         _seed_client(db, "PL-T2")
 
-        active = create_production_line(db, _make_create("PL-T2", "ACT-01", "Active Line"))
+        create_production_line(db, _make_create("PL-T2", "ACT-01", "Active Line"))
         inactive = create_production_line(db, _make_create("PL-T2", "INACT-01", "Inactive Line"))
         deactivate_production_line(db, inactive.line_id)
 

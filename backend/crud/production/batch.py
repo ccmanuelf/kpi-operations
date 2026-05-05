@@ -42,10 +42,10 @@ def batch_create_entries(
             # create_production_entry now handles authorization
             entry = create_production_entry(db, entry_data, current_user)
             created_entries.append(entry)
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error creating production entry in batch")
             continue
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             logger.exception("Validation error creating production entry in batch")
             continue
 

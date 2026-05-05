@@ -95,10 +95,10 @@ def get_kpi_variance_report(
         raise HTTPException(status_code=501, detail="KPI integration service not yet implemented")
     except HTTPException:
         raise
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.exception("Database error in KPI variance report for client_id=%s", client_id)
         raise HTTPException(status_code=503, detail="Database error generating KPI variance report")
-    except Exception as e:
+    except Exception:
         logger.exception("KPI variance report failed for client_id=%s", client_id)
         raise HTTPException(status_code=400, detail="KPI variance report failed")
 

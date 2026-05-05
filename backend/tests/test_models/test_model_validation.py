@@ -78,7 +78,7 @@ class TestHoldEntryORM:
 
     def test_create_hold_entry_with_required_fields(self, transactional_db):
         """HoldEntry persists with only required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="HOLD-C1")
+        TestDataFactory.create_client(transactional_db, client_id="HOLD-C1")
         user = TestDataFactory.create_user(transactional_db, client_id="HOLD-C1", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-C1")
         transactional_db.flush()
@@ -103,7 +103,7 @@ class TestHoldEntryORM:
 
     def test_hold_entry_default_duration_is_zero(self, transactional_db):
         """total_hold_duration_hours defaults to 0."""
-        client = TestDataFactory.create_client(transactional_db, client_id="HOLD-C2")
+        TestDataFactory.create_client(transactional_db, client_id="HOLD-C2")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-C2")
         transactional_db.flush()
 
@@ -149,7 +149,7 @@ class TestHoldEntryORM:
 
     def test_hold_entry_factory(self, transactional_db):
         """TestDataFactory.create_hold_entry produces valid records."""
-        client = TestDataFactory.create_client(transactional_db, client_id="HOLD-C3")
+        TestDataFactory.create_client(transactional_db, client_id="HOLD-C3")
         user = TestDataFactory.create_user(transactional_db, client_id="HOLD-C3", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="HOLD-C3")
         transactional_db.flush()
@@ -216,7 +216,7 @@ class TestQualityEntryORM:
 
     def test_create_quality_entry(self, transactional_db):
         """QualityEntry persists with all required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="QUAL-C1")
+        TestDataFactory.create_client(transactional_db, client_id="QUAL-C1")
         user = TestDataFactory.create_user(transactional_db, client_id="QUAL-C1", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-C1")
         transactional_db.flush()
@@ -244,7 +244,7 @@ class TestQualityEntryORM:
 
     def test_quality_entry_defaults(self, transactional_db):
         """Defaults for optional integer columns."""
-        client = TestDataFactory.create_client(transactional_db, client_id="QUAL-C2")
+        TestDataFactory.create_client(transactional_db, client_id="QUAL-C2")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-C2")
         transactional_db.flush()
 
@@ -268,7 +268,7 @@ class TestQualityEntryORM:
 
     def test_quality_entry_factory(self, transactional_db):
         """TestDataFactory.create_quality_entry produces valid records."""
-        client = TestDataFactory.create_client(transactional_db, client_id="QUAL-C3")
+        TestDataFactory.create_client(transactional_db, client_id="QUAL-C3")
         user = TestDataFactory.create_user(transactional_db, client_id="QUAL-C3", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QUAL-C3")
         transactional_db.flush()
@@ -346,8 +346,8 @@ class TestDowntimeEntryORM:
 
     def test_create_downtime_entry(self, transactional_db):
         """DowntimeEntry persists with required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-C1")
-        user = TestDataFactory.create_user(transactional_db, client_id="DT-C1", role="operator")
+        TestDataFactory.create_client(transactional_db, client_id="DT-C1")
+        TestDataFactory.create_user(transactional_db, client_id="DT-C1", role="operator")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-C1")
         transactional_db.flush()
 
@@ -371,7 +371,7 @@ class TestDowntimeEntryORM:
 
     def test_downtime_entry_factory(self, transactional_db):
         """TestDataFactory.create_downtime_entry produces valid records."""
-        client = TestDataFactory.create_client(transactional_db, client_id="DT-C2")
+        TestDataFactory.create_client(transactional_db, client_id="DT-C2")
         user = TestDataFactory.create_user(transactional_db, client_id="DT-C2", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DT-C2")
         transactional_db.flush()
@@ -461,7 +461,7 @@ class TestAttendanceEntryORM:
 
     def test_create_attendance_entry(self, transactional_db):
         """AttendanceEntry persists with required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="ATT-C1")
+        TestDataFactory.create_client(transactional_db, client_id="ATT-C1")
         employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-C1")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-C1")
         transactional_db.flush()
@@ -490,7 +490,7 @@ class TestAttendanceEntryORM:
 
     def test_attendance_absent_with_type(self, transactional_db):
         """Absent entry records absence_type correctly."""
-        client = TestDataFactory.create_client(transactional_db, client_id="ATT-C2")
+        TestDataFactory.create_client(transactional_db, client_id="ATT-C2")
         employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-C2")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-C2")
         transactional_db.flush()
@@ -531,7 +531,7 @@ class TestAttendanceEntryORM:
 
     def test_attendance_defaults(self, transactional_db):
         """Integer boolean defaults are 0 (present, not late)."""
-        client = TestDataFactory.create_client(transactional_db, client_id="ATT-C3")
+        TestDataFactory.create_client(transactional_db, client_id="ATT-C3")
         employee = TestDataFactory.create_employee(transactional_db, client_id="ATT-C3")
         shift = TestDataFactory.create_shift(transactional_db, client_id="ATT-C3")
         transactional_db.flush()
@@ -625,7 +625,7 @@ class TestWorkOrderORM:
 
     def test_create_work_order(self, transactional_db):
         """WorkOrder persists with required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="WO-C1")
+        TestDataFactory.create_client(transactional_db, client_id="WO-C1")
         transactional_db.flush()
 
         wo = WorkOrder(
@@ -665,7 +665,7 @@ class TestWorkOrderORM:
 
     def test_work_order_factory(self, transactional_db):
         """TestDataFactory.create_work_order produces valid records."""
-        client = TestDataFactory.create_client(transactional_db, client_id="WO-C2")
+        TestDataFactory.create_client(transactional_db, client_id="WO-C2")
         transactional_db.flush()
 
         wo = TestDataFactory.create_work_order(
@@ -749,8 +749,8 @@ class TestWorkflowTransitionLogORM:
 
     def test_create_transition_log(self, transactional_db):
         """WorkflowTransitionLog persists with required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="WF-C1")
-        user = TestDataFactory.create_user(transactional_db, client_id="WF-C1", role="supervisor")
+        TestDataFactory.create_client(transactional_db, client_id="WF-C1")
+        TestDataFactory.create_user(transactional_db, client_id="WF-C1", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="WF-C1")
         transactional_db.flush()
 
@@ -777,8 +777,8 @@ class TestWorkflowTransitionLogORM:
 
     def test_multiple_transitions_for_same_work_order(self, transactional_db):
         """Multiple transitions can be recorded for a single work order."""
-        client = TestDataFactory.create_client(transactional_db, client_id="WF-C2")
-        user = TestDataFactory.create_user(transactional_db, client_id="WF-C2", role="supervisor")
+        TestDataFactory.create_client(transactional_db, client_id="WF-C2")
+        TestDataFactory.create_user(transactional_db, client_id="WF-C2", role="supervisor")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="WF-C2")
         transactional_db.flush()
 
@@ -883,7 +883,7 @@ class TestAlertORM:
 
     def test_create_alert(self, transactional_db):
         """Alert persists with required fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="ALERT-C1")
+        TestDataFactory.create_client(transactional_db, client_id="ALERT-C1")
         transactional_db.flush()
 
         alert = Alert(
@@ -912,7 +912,7 @@ class TestAlertORM:
 
     def test_create_alert_config(self, transactional_db):
         """AlertConfig persists with settings."""
-        client = TestDataFactory.create_client(transactional_db, client_id="ALERT-C2")
+        TestDataFactory.create_client(transactional_db, client_id="ALERT-C2")
         transactional_db.flush()
 
         config = AlertConfig(
@@ -936,7 +936,7 @@ class TestAlertORM:
 
     def test_create_alert_history(self, transactional_db):
         """AlertHistory tracks prediction accuracy."""
-        client = TestDataFactory.create_client(transactional_db, client_id="ALERT-C3")
+        TestDataFactory.create_client(transactional_db, client_id="ALERT-C3")
         transactional_db.flush()
 
         alert = Alert(

@@ -242,14 +242,14 @@ def explode_bom(
         }
     except HTTPException:
         raise
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         db.rollback()
         logger.exception("Database error in BOM explosion for parent_item_code=%s", request.parent_item_code)
         raise HTTPException(status_code=503, detail="Database error during BOM explosion")
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError):
         logger.exception("Validation error in BOM explosion for parent_item_code=%s", request.parent_item_code)
         raise HTTPException(status_code=400, detail="Invalid BOM explosion parameters")
-    except Exception as e:
+    except Exception:
         db.rollback()
         logger.exception("BOM explosion failed for parent_item_code=%s", request.parent_item_code)
         raise HTTPException(status_code=400, detail="BOM explosion failed")

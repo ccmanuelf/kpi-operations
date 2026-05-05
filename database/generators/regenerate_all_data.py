@@ -471,7 +471,7 @@ class ComprehensiveDataRegenerator:
 
         work_order_count = 0
         priorities = ["HIGH", "MEDIUM", "LOW"]
-        statuses = ["ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"]
+        ["ACTIVE", "ON_HOLD", "COMPLETED", "CANCELLED"]
         styles = ["T-SHIRT", "POLO", "JACKET", "PANTS", "UNIFORM", "DRESS", "BLAZER", "VEST", "COVERALL", "APRON"]
 
         for client_id in self.client_ids:

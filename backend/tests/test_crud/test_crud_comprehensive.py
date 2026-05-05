@@ -61,8 +61,8 @@ class TestProductionCRUD:
         mock_query.filter.return_value = mock_query
         mock_query.all.return_value = []
 
-        start = date.today() - timedelta(days=7)
-        end = date.today()
+        date.today() - timedelta(days=7)
+        date.today()
 
         result = mock_db.query().filter().all()
         assert isinstance(result, list)

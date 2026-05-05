@@ -108,11 +108,11 @@ def run_component_check(
         raise HTTPException(status_code=501, detail="MRP service not yet implemented")
     except HTTPException:
         raise
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         db.rollback()
         logger.exception("Database error in component check for client_id=%s", client_id)
         raise HTTPException(status_code=503, detail="Database error during component check")
-    except Exception as e:
+    except Exception:
         db.rollback()
         logger.exception("Component check failed for client_id=%s", client_id)
         raise HTTPException(status_code=400, detail="Component check failed")
@@ -210,11 +210,11 @@ def run_capacity_analysis(
         raise HTTPException(status_code=501, detail="Capacity analysis service not yet implemented")
     except HTTPException:
         raise
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         db.rollback()
         logger.exception("Database error in capacity analysis for client_id=%s", client_id)
         raise HTTPException(status_code=503, detail="Database error during capacity analysis")
-    except Exception as e:
+    except Exception:
         db.rollback()
         logger.exception("Capacity analysis failed for client_id=%s", client_id)
         raise HTTPException(status_code=400, detail="Capacity analysis failed")
@@ -366,11 +366,11 @@ def generate_schedule(
         raise HTTPException(status_code=501, detail="Scheduling service not yet implemented")
     except HTTPException:
         raise
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         db.rollback()
         logger.exception("Database error in schedule generation for client_id=%s", client_id)
         raise HTTPException(status_code=503, detail="Database error during schedule generation")
-    except Exception as e:
+    except Exception:
         db.rollback()
         logger.exception("Schedule generation failed for client_id=%s", client_id)
         raise HTTPException(status_code=400, detail="Schedule generation failed")

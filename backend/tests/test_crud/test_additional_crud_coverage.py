@@ -21,7 +21,7 @@ class TestWorkflowCRUD:
         """Test getting transitions for a work order with no transitions"""
         from backend.crud.workflow import get_work_order_transitions
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WFEMPTY-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WFEMPTY-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFEMPTY-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="WFEMPTY-CL")
         transactional_db.commit()
@@ -33,7 +33,7 @@ class TestWorkflowCRUD:
         """Test getting transitions for client with no transitions"""
         from backend.crud.workflow import get_client_transitions
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WF-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WF-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WF-CL")
         transactional_db.commit()
 
@@ -44,7 +44,7 @@ class TestWorkflowCRUD:
         """Test creating a transition log and retrieving it"""
         from backend.crud.workflow import get_work_order_transitions
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WF2-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WF2-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WF2-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="WF2-CL")
         transactional_db.flush()
@@ -66,7 +66,7 @@ class TestWorkflowCRUD:
         """Test getting workflow configuration"""
         from backend.crud.workflow import get_workflow_configuration
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WFCFG-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WFCFG-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFCFG-CL")
         transactional_db.commit()
 
@@ -78,7 +78,7 @@ class TestWorkflowCRUD:
         """Test getting transition statistics"""
         from backend.crud.workflow import get_transition_statistics
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WFSTAT-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WFSTAT-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFSTAT-CL")
         transactional_db.commit()
 
@@ -89,7 +89,7 @@ class TestWorkflowCRUD:
         """Test getting status distribution"""
         from backend.crud.workflow import get_status_distribution
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WFDIST-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WFDIST-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFDIST-CL")
         transactional_db.commit()
 
@@ -100,7 +100,7 @@ class TestWorkflowCRUD:
         """Test bulk status transition"""
         from backend.crud.workflow import bulk_transition_work_orders
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WFBULK-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WFBULK-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFBULK-CL")
         transactional_db.commit()
 
@@ -117,7 +117,7 @@ class TestWorkflowCRUD:
         """Test applying workflow template"""
         from backend.crud.workflow import apply_workflow_template
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WFTMPL-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WFTMPL-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WFTMPL-CL")
         transactional_db.commit()
 
@@ -171,7 +171,7 @@ class TestClientConfigCRUD:
         """Test getting client config when not set"""
         from backend.crud.client_config import get_client_config
 
-        client = TestDataFactory.create_client(transactional_db, client_id="CFG-CL")
+        TestDataFactory.create_client(transactional_db, client_id="CFG-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="CFG-CL")
         transactional_db.commit()
 
@@ -182,8 +182,7 @@ class TestClientConfigCRUD:
         """Test getting client config or defaults"""
         from backend.crud.client_config import get_client_config_or_defaults
 
-        client = TestDataFactory.create_client(transactional_db, client_id="CFGD-CL")
-        admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="CFGD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="CFGD-CL")
         transactional_db.commit()
 
         result = get_client_config_or_defaults(db=transactional_db, client_id="CFGD-CL")
@@ -221,7 +220,7 @@ class TestPartOpportunitiesCRUD:
         """Test getting part opportunities with data"""
         from backend.crud.part_opportunities import get_part_opportunities
 
-        client = TestDataFactory.create_client(transactional_db, client_id="PO-CL")
+        TestDataFactory.create_client(transactional_db, client_id="PO-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="PO-CL")
         TestDataFactory.create_part_opportunities(transactional_db, part_number="PART-001", client_id="PO-CL")
         transactional_db.commit()
@@ -240,7 +239,7 @@ class TestDefectTypeCatalogCRUD:
         """Test getting defect types for a client with none set"""
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC-CL")
         transactional_db.commit()
 
@@ -251,7 +250,7 @@ class TestDefectTypeCatalogCRUD:
         """Test getting defect types with catalog entries"""
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DTC2-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTC2-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC2-CL")
         TestDataFactory.create_defect_type_catalog(transactional_db, client_id="DTC2-CL")
         transactional_db.commit()
@@ -280,7 +279,7 @@ class TestEmployeeCRUD:
         """Test getting employees with seeded data"""
         from backend.crud.employee import get_employees
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
+        TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMP-CL")
         TestDataFactory.create_employee(transactional_db, client_id="EMP-CL")
         TestDataFactory.create_employee(transactional_db, client_id="EMP-CL")
@@ -293,7 +292,7 @@ class TestEmployeeCRUD:
         """Test getting employee by ID"""
         from backend.crud.employee import get_employee
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EMPID-CL")
+        TestDataFactory.create_client(transactional_db, client_id="EMPID-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMPID-CL")
         emp = TestDataFactory.create_employee(transactional_db, client_id="EMPID-CL", employee_name="Jane Smith")
         transactional_db.commit()
@@ -335,7 +334,7 @@ class TestWorkOrderCRUD:
         """Test getting work orders with seeded data"""
         from backend.crud.work_order import get_work_orders
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WO-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WO-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WO-CL")
         TestDataFactory.create_work_order(transactional_db, client_id="WO-CL")
         transactional_db.commit()
@@ -347,7 +346,7 @@ class TestWorkOrderCRUD:
         """Test creating work order"""
         from backend.crud.work_order import create_work_order
 
-        client = TestDataFactory.create_client(transactional_db, client_id="WOCR-CL")
+        TestDataFactory.create_client(transactional_db, client_id="WOCR-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="WOCR-CL")
         transactional_db.commit()
 
@@ -381,7 +380,7 @@ class TestJobCRUD:
         """Test getting jobs with seeded data"""
         from backend.crud.job import get_jobs
 
-        client = TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
+        TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="JOB-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="JOB-CL")
         transactional_db.flush()
@@ -413,7 +412,7 @@ class TestDefectDetailCRUD:
         """Test getting defect details with seeded data"""
         from backend.crud.defect_detail import get_defect_details
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DD-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DD-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DD-CL")
         transactional_db.flush()
@@ -461,7 +460,7 @@ class TestShiftCoverageCRUD:
         """Test getting shift coverage with seeded data"""
         from backend.crud.coverage import get_shift_coverages
 
-        client = TestDataFactory.create_client(transactional_db, client_id="SC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="SC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="SC-CL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="SC-CL")
         transactional_db.flush()

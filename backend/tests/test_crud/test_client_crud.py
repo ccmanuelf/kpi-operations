@@ -39,7 +39,7 @@ class TestClientCRUD:
         """Test client creation persists to DB."""
         db = transactional_db
 
-        client = TestDataFactory.create_client(
+        TestDataFactory.create_client(
             db,
             client_id="CLIENT-001",
             client_name="Test Manufacturing Co",
@@ -202,7 +202,7 @@ class TestClientEmployee:
         client = TestDataFactory.create_client(db, client_id="CLIENT-001")
         db.flush()
 
-        employee = TestDataFactory.create_employee(
+        TestDataFactory.create_employee(
             db,
             client_id=client.client_id,
             employee_name="John Doe",
@@ -257,8 +257,8 @@ class TestClientEmployee:
         client = TestDataFactory.create_client(db, client_id="CLIENT-001")
         db.flush()
 
-        active_emp = TestDataFactory.create_employee(db, client_id=client.client_id, is_active=True)
-        inactive_emp = TestDataFactory.create_employee(db, client_id=client.client_id, is_active=False)
+        TestDataFactory.create_employee(db, client_id=client.client_id, is_active=True)
+        TestDataFactory.create_employee(db, client_id=client.client_id, is_active=False)
         db.flush()
 
         active_only = (
@@ -299,7 +299,7 @@ class TestWorkOrderCRUD:
         client = TestDataFactory.create_client(db, client_id="CLIENT-001")
         db.flush()
 
-        wo = TestDataFactory.create_work_order(
+        TestDataFactory.create_work_order(
             db,
             client_id=client.client_id,
             work_order_id="WO-001",

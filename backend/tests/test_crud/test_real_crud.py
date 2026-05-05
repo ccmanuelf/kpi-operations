@@ -286,7 +286,7 @@ class TestCRUDBasicExecution:
         """Test getting defect types by client"""
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EXEC-DTC")
+        TestDataFactory.create_client(transactional_db, client_id="EXEC-DTC")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EXEC-DTC")
         transactional_db.commit()
 

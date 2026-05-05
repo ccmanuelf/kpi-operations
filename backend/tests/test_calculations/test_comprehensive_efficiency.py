@@ -132,7 +132,7 @@ class TestEfficiencyCalculations:
         """Test labor efficiency calculation"""
         standard_hours = 100
         actual_hours = 95
-        units_produced = 500
+        500
 
         labor_efficiency = (standard_hours / actual_hours) * 100
         assert round(labor_efficiency, 2) == 105.26

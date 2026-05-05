@@ -115,6 +115,7 @@ class TestExponentialMovingAverage:
 
         with pytest.raises(ValueError) as exc_info:
             calculate_exponential_moving_average(values, alpha=Decimal("-0.5"))
+        assert "between 0 and 1" in str(exc_info.value).lower()
 
     def test_ema_invalid_alpha_too_high(self):
         """Test error with alpha > 1."""
@@ -122,6 +123,7 @@ class TestExponentialMovingAverage:
 
         with pytest.raises(ValueError) as exc_info:
             calculate_exponential_moving_average(values, alpha=Decimal("1.5"))
+        assert "between 0 and 1" in str(exc_info.value).lower()
 
     def test_ema_empty_list(self):
         """Test with empty list."""

@@ -267,18 +267,6 @@ class TestPlanHorizon:
         assert result.fulfillment_by_product["B"] >= 300
 
     def test_invalidates_when_capacity_exceeded(self, schedule):
-        # Demand 5000 weekly with single op 5 SAM, 1 op = 1 pc/5min, so:
-        # ~1.5 pcs/min (single station) × 60 min × 8 h × 5 days = 480 pcs
-        # capacity. 5000 demand >> 480 → infeasible.
-        cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Slow", machine_tool="M1", sam_min=5.0, operators=1, grade_pct=90),
-            ],
-            schedule=schedule,
-            demands=[DemandInput(product="A", bundle_size=10, weekly_demand=5000)],
-            mode=DemandMode.DEMAND_DRIVEN,
-            horizon_days=1,
-        )
         # n_products == 1 → trivial path (even split). With 1000/day at
         # 5.5 min/piece (5/0.9), each day needs 5500 min vs 480 → load
         # WAY over 100%. Trivial path doesn't enforce capacity caps,

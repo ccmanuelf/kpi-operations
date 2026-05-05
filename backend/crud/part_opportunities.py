@@ -217,11 +217,11 @@ def bulk_import_opportunities(db: Session, opportunities_list: List[dict], curre
                 db.add(db_part)
 
             success_count += 1
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error importing part opportunity at row %d", idx + 1)
             failure_count += 1
             errors.append(f"Row {idx + 1}: Database error importing part opportunity")
-        except (ValueError, TypeError, KeyError) as e:
+        except (ValueError, TypeError, KeyError):
             logger.exception("Validation error importing part opportunity at row %d", idx + 1)
             failure_count += 1
             errors.append(f"Row {idx + 1}: Validation error importing part opportunity")

@@ -195,7 +195,7 @@ def get_work_order_progress(
                     "product_name": row.product_name,
                 }
             )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch production entries for work order %s", work_order_id, exc_info=True)
 
     # Get quality inspections for this work order (from QUALITY_ENTRY table)
@@ -234,7 +234,7 @@ def get_work_order_progress(
                     "notes": row.notes,
                 }
             )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch quality inspections for work order %s", work_order_id, exc_info=True)
 
     # Get hold history (from HOLD_ENTRY table)
@@ -267,7 +267,7 @@ def get_work_order_progress(
                     "status": row.hold_status.value if hasattr(row.hold_status, "value") else row.hold_status,
                 }
             )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch hold history for work order %s", work_order_id, exc_info=True)
 
     return {
@@ -406,7 +406,7 @@ def get_work_order_timeline(
                         "color": "info",
                     }
                 )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch hold events for work order %s", work_order_id, exc_info=True)
 
     # Sort all events by timestamp
@@ -552,7 +552,7 @@ def approve_qc(
             trigger_source="qc_approval",
         )
         db.add(log_entry)
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         # Log but don't fail - audit log is secondary
         logger.warning("Could not create QC approval log for work order %s", work_order_id, exc_info=True)
 

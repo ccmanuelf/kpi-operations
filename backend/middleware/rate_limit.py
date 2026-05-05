@@ -89,7 +89,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """Process request and add rate limit headers to response"""
 
         # Get client identifier
-        client_ip = get_remote_address(request)
+        get_remote_address(request)
 
         # Calculate current window
         current_time = int(time.time())

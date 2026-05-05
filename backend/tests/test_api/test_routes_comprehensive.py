@@ -222,7 +222,7 @@ class TestHealthRoutes:
     def test_health_db_check(self, test_client, auth_headers):
         """Test database health check via readiness probe (requires auth)"""
         response = test_client.get("/health/ready", headers=auth_headers)
-        data = response.json()
+        response.json()
         assert response.status_code == 200
 
 
@@ -307,12 +307,12 @@ class TestMiddleware:
 
     def test_cors_headers(self, test_client):
         """Test CORS headers are present"""
-        response = test_client.options("/health/")
+        test_client.options("/health/")
         # CORS should be configured
 
     def test_request_timing(self, test_client):
         """Test request timing middleware"""
-        response = test_client.get("/health/")
+        test_client.get("/health/")
         # Should have timing info if configured
 
 

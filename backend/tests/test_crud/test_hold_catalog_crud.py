@@ -47,7 +47,7 @@ class TestSeedDefaults:
     def test_seed_defaults_creates_statuses_and_reasons(self, transactional_db):
         """seed_defaults creates all 7 statuses and 11 reasons for a new client."""
         db = transactional_db
-        client = _seed_client(db, "SEED-C1")
+        _seed_client(db, "SEED-C1")
 
         result = seed_defaults(db, "SEED-C1")
 

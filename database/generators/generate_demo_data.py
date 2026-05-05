@@ -299,7 +299,7 @@ class DemoDataGenerator:
 
         # Check actual USER table schema
         self.cursor.execute("PRAGMA table_info(USER)")
-        columns = {row[1]: row[2] for row in self.cursor.fetchall()}
+        {row[1]: row[2] for row in self.cursor.fetchall()}
 
         users = [
             ("SYSTEM", "system", "system@kpi.local", "System Administrator", "SYSTEM"),
@@ -1066,7 +1066,7 @@ class DemoDataGenerator:
                         ),
                     )
                     pool_count += 1
-                except sqlite3.IntegrityError as e:
+                except sqlite3.IntegrityError:
                     pass
 
         self.conn.commit()
@@ -1125,7 +1125,7 @@ class DemoDataGenerator:
         for wo in self.work_order_data:
             # Initial state: RECEIVED
             transition_time = wo["start_date"]
-            elapsed_from_received = 0
+            0
 
             try:
                 # First transition: NULL -> RECEIVED (creation)

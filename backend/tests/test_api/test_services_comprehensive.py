@@ -84,7 +84,7 @@ class TestSendKPIReport:
             service = EmailService()
             service._send_via_sendgrid = MagicMock(return_value={"success": True})
 
-            result = service.send_kpi_report(
+            service.send_kpi_report(
                 to_emails=["test@test.com"],
                 client_name="Test Client",
                 report_date=datetime.now(tz=timezone.utc),
@@ -109,7 +109,7 @@ class TestSendKPIReport:
             service = EmailService()
             service._send_via_smtp = MagicMock(return_value={"success": True})
 
-            result = service.send_kpi_report(
+            service.send_kpi_report(
                 to_emails=["test@test.com"],
                 client_name="Test Client",
                 report_date=datetime.now(tz=timezone.utc),
@@ -134,7 +134,7 @@ class TestSendKPIReport:
             service = EmailService()
             service._send_via_smtp = MagicMock(return_value={"success": True})
 
-            result = service.send_kpi_report(
+            service.send_kpi_report(
                 to_emails=["test@test.com"],
                 client_name="Test Client",
                 report_date=datetime.now(tz=timezone.utc),
@@ -220,7 +220,7 @@ class TestSendViaSMTP:
         with (
             patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
             patch("backend.services.email_service.settings") as mock_settings,
-            patch("backend.services.email_service.smtplib.SMTP") as mock_smtp,
+            patch("backend.services.email_service.smtplib.SMTP"),
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587
@@ -367,7 +367,7 @@ class TestSendTestEmail:
         with (
             patch("backend.services.email_service.SENDGRID_AVAILABLE", False),
             patch("backend.services.email_service.settings") as mock_settings,
-            patch("backend.services.email_service.smtplib.SMTP") as mock_smtp,
+            patch("backend.services.email_service.smtplib.SMTP"),
         ):
             mock_settings.SMTP_HOST = "smtp.test.com"
             mock_settings.SMTP_PORT = 587

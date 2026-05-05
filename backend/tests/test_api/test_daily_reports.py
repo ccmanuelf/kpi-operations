@@ -270,7 +270,7 @@ class TestGetClientAdminEmails:
 
     def test_get_client_admin_emails_processes_admins(self):
         """Test _get_client_admin_emails processes admin list correctly"""
-        sched = DailyReportScheduler()
+        DailyReportScheduler()
 
         # Test extraction logic
         mock_admin1 = MagicMock()

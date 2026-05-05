@@ -76,10 +76,10 @@ class QRService:
 
             return buffer.getvalue()
 
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             logger.exception("QR code generation failed due to invalid input")
             raise QRServiceError("Failed to generate QR code due to invalid input")
-        except (IOError, OSError) as e:
+        except (IOError, OSError):
             logger.exception("QR code image generation I/O error")
             raise QRServiceError("Failed to generate QR code image")
 
@@ -100,7 +100,7 @@ class QRService:
         """
         try:
             return QRCodeData(type=entity_type, id=str(entity_id), version=QRService.QR_VERSION)
-        except ValidationError as e:
+        except ValidationError:
             raise QRServiceError(f"Invalid entity type: {entity_type}")
 
     @staticmethod
@@ -128,7 +128,7 @@ class QRService:
             raise QRServiceError(f"Invalid QR code format: not valid JSON - {str(e)}")
         except ValidationError as e:
             raise QRServiceError(f"Invalid QR code data: {str(e)}")
-        except (TypeError, KeyError) as e:
+        except (TypeError, KeyError):
             logger.exception("QR string decoding failed due to unexpected data format")
             raise QRServiceError("Failed to decode QR string due to unexpected data format")
 

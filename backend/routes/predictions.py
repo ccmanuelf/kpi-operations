@@ -454,7 +454,7 @@ async def get_all_kpi_predictions(
                 if prediction.health_assessment.health_score < 60:
                     priority_actions.extend(prediction.health_assessment.recommendations[:2])
 
-        except Exception as e:
+        except Exception:
             # Skip KPIs that fail to generate
             continue
 

@@ -15,14 +15,14 @@ class TestDowntimeCRUD:
 
     def test_create_and_list_downtime(self, transactional_db):
         """Test creating and listing downtime events"""
-        client = TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTC-CL")
         transactional_db.flush()
 
         from backend.crud.downtime import get_downtime_events
 
-        entry = TestDataFactory.create_downtime_entry(
+        TestDataFactory.create_downtime_entry(
             transactional_db,
             client_id="DTC-CL",
             work_order_id=wo.work_order_id,
@@ -40,7 +40,7 @@ class TestDowntimeCRUD:
         """Test getting a specific downtime entry by ID"""
         from backend.crud.downtime import get_downtime_event
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DTBI-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTBI-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTBI-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTBI-CL")
         transactional_db.flush()
@@ -83,7 +83,7 @@ class TestDowntimeCRUD:
         """Test creating multiple downtime events with different reasons"""
         from backend.crud.downtime import get_downtime_events
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DTMR-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTMR-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTMR-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DTMR-CL")
         transactional_db.flush()
@@ -137,7 +137,7 @@ class TestDowntimeEdgeCases:
 
     def test_open_downtime_entry(self):
         """Test open downtime entry detection"""
-        start_time = datetime.now(tz=timezone.utc)
+        datetime.now(tz=timezone.utc)
         end_time = None
         is_open = end_time is None
         assert is_open is True
@@ -187,7 +187,7 @@ class TestHoldCRUD:
         """Test creating and listing hold entries"""
         from backend.crud.hold import get_wip_holds
 
-        client = TestDataFactory.create_client(transactional_db, client_id="HC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="HC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="HC-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="HC-CL")
         transactional_db.flush()
@@ -208,7 +208,7 @@ class TestHoldCRUD:
         """Test getting a hold entry by ID"""
         from backend.crud.hold import get_wip_hold
 
-        client = TestDataFactory.create_client(transactional_db, client_id="HBI-CL")
+        TestDataFactory.create_client(transactional_db, client_id="HBI-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="HBI-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="HBI-CL")
         transactional_db.flush()
@@ -271,7 +271,7 @@ class TestEmployeeCRUD:
         """Test creating and listing employees"""
         from backend.crud.employee import get_employees
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="EC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EC-CL")
         TestDataFactory.create_employee(transactional_db, client_id="EC-CL")
         TestDataFactory.create_employee(transactional_db, client_id="EC-CL")
@@ -284,7 +284,7 @@ class TestEmployeeCRUD:
         """Test getting employee by ID"""
         from backend.crud.employee import get_employee
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EBI-CL")
+        TestDataFactory.create_client(transactional_db, client_id="EBI-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EBI-CL")
         emp = TestDataFactory.create_employee(transactional_db, client_id="EBI-CL")
         transactional_db.commit()

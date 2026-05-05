@@ -296,7 +296,7 @@ class TestGetActiveQuery:
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
 
-        result = get_active_query(mock_db, mock_model)
+        get_active_query(mock_db, mock_model)
 
         mock_db.query.assert_called_once_with(mock_model)
         mock_query.filter.assert_called_once()
@@ -311,7 +311,7 @@ class TestGetActiveQuery:
         mock_query = MagicMock()
         mock_db.query.return_value = mock_query
 
-        result = get_active_query(mock_db, mock_model)
+        get_active_query(mock_db, mock_model)
 
         mock_db.query.assert_called_once_with(mock_model)
         mock_query.filter.assert_not_called()
@@ -328,7 +328,7 @@ class TestGetActiveQuery:
         mock_db.query.return_value = mock_query
         mock_query.filter.return_value = mock_query
 
-        result = get_active_query(mock_db, mock_model, is_active_field="active")
+        get_active_query(mock_db, mock_model, is_active_field="active")
 
         mock_db.query.assert_called_once_with(mock_model)
 
@@ -364,7 +364,7 @@ class TestFilterActive:
         mock_model = MagicMock()
         mock_model.is_active = MagicMock()
 
-        result = filter_active(mock_query, mock_model)
+        filter_active(mock_query, mock_model)
 
         mock_query.filter.assert_called_once()
 
@@ -389,7 +389,7 @@ class TestFilterActive:
         mock_model = MagicMock()
         mock_model.active = MagicMock()
 
-        result = filter_active(mock_query, mock_model, is_active_field="active")
+        filter_active(mock_query, mock_model, is_active_field="active")
 
         mock_query.filter.assert_called_once()
 

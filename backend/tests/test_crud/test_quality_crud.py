@@ -24,7 +24,7 @@ class TestQualityCRUD:
 
     def test_create_and_list_quality_entries(self, transactional_db):
         """Test creating and listing quality entries"""
-        client = TestDataFactory.create_client(transactional_db, client_id="Q-CL")
+        TestDataFactory.create_client(transactional_db, client_id="Q-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="Q-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="Q-CL")
         transactional_db.flush()
@@ -46,7 +46,7 @@ class TestQualityCRUD:
 
     def test_get_quality_entry_by_id(self, transactional_db):
         """Test getting a quality entry by ID"""
-        client = TestDataFactory.create_client(transactional_db, client_id="QID-CL")
+        TestDataFactory.create_client(transactional_db, client_id="QID-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="QID-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QID-CL")
         transactional_db.flush()
@@ -71,7 +71,7 @@ class TestQualityCRUD:
 
     def test_multiple_quality_entries(self, transactional_db):
         """Test creating multiple quality entries"""
-        client = TestDataFactory.create_client(transactional_db, client_id="QM-CL")
+        TestDataFactory.create_client(transactional_db, client_id="QM-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="QM-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QM-CL")
         transactional_db.flush()
@@ -94,7 +94,7 @@ class TestQualityCRUD:
         """Test quality entry with linked defect details"""
         from backend.crud.defect_detail import get_defect_details
 
-        client = TestDataFactory.create_client(transactional_db, client_id="QDD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="QDD-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="QDD-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="QDD-CL")
         transactional_db.flush()
