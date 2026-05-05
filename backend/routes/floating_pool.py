@@ -22,8 +22,6 @@ from backend.schemas.floating_pool import (
     FloatingPoolResponse,
     FloatingPoolAssignmentRequest,
     FloatingPoolUnassignmentRequest,
-    FloatingPoolAvailability,
-    FloatingPoolSummary,
 )
 from backend.services.floating_pool_service import (
     create_pool_entry as create_floating_pool_entry,

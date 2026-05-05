@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timezone
-import json
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -21,7 +20,6 @@ from backend.schemas.preferences import (
     RoleDefaultsResponse,
     ResetPreferencesRequest,
     ResetPreferencesResponse,
-    WidgetDefaultResponse,
 )
 from backend.services.preferences_service import (
     get_dashboard_preferences as get_user_dashboard_preferences,

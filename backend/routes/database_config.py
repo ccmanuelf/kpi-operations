@@ -12,13 +12,13 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 
-from backend.database import get_db, Base, engine as current_engine
+from backend.database import Base, engine as current_engine
 from backend.db.factory import DatabaseProviderFactory
 from backend.db.state import ProviderStateManager, MigrationState
 from backend.db.migrations.schema_initializer import SchemaInitializer
 from backend.db.migrations.demo_seeder import DemoDataSeeder
 from backend.db.migrations.data_migrator import DataMigrator, DataMigrationError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.auth.jwt import get_current_active_supervisor

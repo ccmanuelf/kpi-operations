@@ -6,7 +6,6 @@ Component check (MRP), capacity analysis, and production schedule operations.
 
 from typing import Any, List, Optional
 from datetime import date
-from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
@@ -27,7 +26,6 @@ from ._models import (
     ScheduleCreate,
     ScheduleResponse,
     ScheduleCommitRequest,
-    MessageResponse,
 )
 from backend.services.calculations.capacity import (
     ComponentCoverageInputs,

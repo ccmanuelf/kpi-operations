@@ -17,7 +17,6 @@ from backend.services.break_time_service import (
     create_break_time_record as create_break_time,
     list_break_times_for_shift as list_break_times,
     list_all_break_times_for_client as list_break_times_for_client,
-    get_total_break_minutes_for_shift as get_total_break_minutes,
     update_break_time_record as update_break_time,
     deactivate_break_time_record as deactivate_break_time,
 )

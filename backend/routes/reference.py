@@ -6,7 +6,7 @@ Products, shifts, and inference engine endpoints
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional
-from datetime import datetime, time, timezone
+from datetime import datetime, timezone
 
 from backend.database import get_db
 from backend.calculations.inference import InferenceEngine

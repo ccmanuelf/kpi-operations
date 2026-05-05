@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Any, Optional
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 from decimal import Decimal
 

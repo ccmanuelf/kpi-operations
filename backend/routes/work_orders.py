@@ -14,7 +14,7 @@ from backend.utils.logging_utils import get_module_logger
 logger = get_module_logger(__name__)
 
 from backend.database import get_db
-from backend.schemas.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse, WorkOrderWithMetrics
+from backend.schemas.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse
 from backend.services.work_order_service import (
     create_order as create_work_order,
     get_order as get_work_order,
@@ -48,7 +48,6 @@ def _check_wo_write_permission(user: "_User_for_perm") -> None:
 
 
 from backend.orm.user import User
-from backend.orm.work_order import WorkOrder
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.product import Product
 from backend.orm.shift import Shift

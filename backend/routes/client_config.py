@@ -6,7 +6,7 @@ Implements Phase 7.2: Client-Level Calculation Overrides
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Any, List, Optional
+from typing import Any, List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user

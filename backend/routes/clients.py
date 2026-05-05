@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from typing import Any, List, Optional
 
 from backend.database import get_db
-from backend.schemas.client import ClientCreate, ClientUpdate, ClientResponse, ClientSummary
+from backend.schemas.client import ClientCreate, ClientUpdate, ClientResponse
 from backend.services.client_service import (
     create_client_record as create_client,
     get_client_by_id as get_client,

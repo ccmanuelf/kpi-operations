@@ -16,7 +16,6 @@ from backend.schemas.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
     DowntimeEventResponse,
-    AvailabilityCalculationResponse,
 )
 from backend.services.downtime_service import (
     create_event as create_downtime_event,

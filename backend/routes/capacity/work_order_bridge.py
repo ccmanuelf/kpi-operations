@@ -1,6 +1,6 @@
 """Cross-reference endpoints: Capacity Orders -> Work Orders (Task 3.1)"""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import Any, List
 

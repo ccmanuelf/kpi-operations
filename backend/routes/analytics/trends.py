@@ -7,7 +7,7 @@ Covers: GET /api/analytics/trends with moving averages and anomaly detection.
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import Optional
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 import statistics
 

@@ -12,9 +12,7 @@ from backend.schemas.employee import (
     EmployeeCreate,
     EmployeeUpdate,
     EmployeeResponse,
-    EmployeeWithClients,
     EmployeeAssignmentRequest,
-    FloatingPoolAssignmentRequest as EmployeeFloatingPoolRequest,
 )
 from backend.services.employee_service import (
     create_employee_record as create_employee,

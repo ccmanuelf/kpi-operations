@@ -13,10 +13,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 import time
-import os
-import sys
 
 # System metrics - psutil is optional for lightweight deployments
 try:
@@ -27,7 +25,7 @@ except ImportError:
     PSUTIL_AVAILABLE = False
 
 from backend.database import get_db, get_pool_status
-from backend.config import settings, validate_production_config, ConfigValidationResult
+from backend.config import validate_production_config
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger

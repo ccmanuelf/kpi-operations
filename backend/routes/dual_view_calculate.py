@@ -33,7 +33,6 @@ from backend.services.dual_view.aggregators import (
 from backend.services.dual_view.fpy_service import FPYCalculationService, FPYRawInputs
 from backend.services.dual_view.oee_service import OEECalculationService, OEERawInputs
 from backend.services.dual_view.otd_service import (
-    OrderDelay,
     OTDCalculationService,
     OTDRawInputs,
 )

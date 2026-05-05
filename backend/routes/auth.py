@@ -11,7 +11,7 @@ import uuid
 
 from backend.database import get_db
 from backend.config import settings
-from backend.utils.logging_utils import get_module_logger, log_operation, log_security_event
+from backend.utils.logging_utils import get_module_logger, log_security_event
 
 logger = get_module_logger(__name__)
 from backend.schemas.user import (
@@ -31,7 +31,6 @@ from backend.auth.jwt import (
     get_current_user,
     oauth2_scheme,
     _token_blacklist,
-    is_token_blacklisted,
 )
 from backend.orm.user import User
 

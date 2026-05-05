@@ -44,7 +44,6 @@ def calculate_expected_entries(
     """
     from backend.orm.work_order import WorkOrder
     from backend.orm.employee import Employee
-    from backend.orm.shift import Shift
 
     # Get active work orders for the date
     work_order_query = db.query(func.count(WorkOrder.work_order_id)).filter(

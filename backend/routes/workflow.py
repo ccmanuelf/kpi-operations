@@ -10,7 +10,7 @@ Provides endpoints for:
 - Elapsed time analytics
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional, Dict
 from datetime import datetime
@@ -22,16 +22,8 @@ from backend.dependencies import PaginationParams
 from backend.schemas.workflow import (
     WorkflowTransitionCreate,
     WorkflowTransitionResponse,
-    WorkflowTransitionHistory,
-    WorkflowConfigCreate,
-    WorkflowConfigResponse,
     WorkflowConfigUpdate,
-    TransitionValidationRequest,
-    TransitionValidationResponse,
-    AllowedTransitionsResponse,
     BulkTransitionRequest,
-    BulkTransitionResponse,
-    WorkflowTemplate,
     WORKFLOW_TEMPLATES,
 )
 from backend.services.workflow_crud_service import (

@@ -18,7 +18,6 @@ from backend.services.hold_service import (
     list_holds as get_wip_holds,
     update_hold as update_wip_hold,
     delete_hold as delete_wip_hold,
-    validate_status_for_client as validate_hold_status_for_client,
     validate_reason_for_client as validate_hold_reason_for_client,
 )
 from backend.calculations.wip_aging import identify_chronic_holds
@@ -466,7 +465,7 @@ def get_wip_aging_trend(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
     """Get WIP aging trend data - for WIP Aging view chart"""
-    from backend.orm.hold_entry import HoldEntry, HoldStatus
+    from backend.orm.hold_entry import HoldEntry
 
     if not start_date:
         start_date = date.today() - timedelta(days=LOOKBACK_MONTHLY_DAYS)

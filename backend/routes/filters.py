@@ -4,10 +4,9 @@ User-specific filter configuration management
 SECURITY: All endpoints enforce user ownership - filters are not shared
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
-from typing import Any, Dict, List, Optional
-from datetime import datetime
+from typing import Any, List, Optional
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
@@ -24,7 +23,6 @@ from backend.schemas.filters import (
     FilterConfig,
     ApplyFilterResponse,
     SetDefaultResponse,
-    FilterType,
 )
 from backend.services.filter_service import (
     create_filter as create_saved_filter,

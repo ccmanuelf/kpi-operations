@@ -10,14 +10,14 @@ from backend.utils.logging_utils import get_module_logger
 logger = get_module_logger(__name__)
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
-from typing import Any, Optional
+from typing import Any
 from urllib.parse import unquote
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
-from backend.schemas.qr import QRCodeData, QREntityType, QRGenerateRequest, QRLookupResponse, QRCodeResponse
+from backend.schemas.qr import QREntityType, QRGenerateRequest, QRLookupResponse, QRCodeResponse
 from backend.services.qr_service import QRService, QRServiceError
 
 # Import ORM schemas for database queries

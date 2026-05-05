@@ -235,7 +235,6 @@ def get_job_efficiency(
     """
     from backend.services.production_kpi_service import ProductionKPIService
     from backend.orm.production_entry import ProductionEntry
-    from backend.orm.job import Job
     from decimal import Decimal
 
     # Verify user has access to this job
@@ -360,7 +359,6 @@ def get_job_ppm(
     """
     from backend.orm.quality_entry import QualityEntry
     from backend.calculations.ppm import calculate_ppm_pure
-    from decimal import Decimal
 
     # Verify user has access to this job
     job = get_job(db, job_id, current_user)

@@ -23,20 +23,15 @@ from backend.schemas.production import (
     ProductionEntryResponse,
     ProductionEntryWithKPIs,
     CSVUploadResponse,
-    KPICalculationResponse,
 )
 from backend.schemas.import_log import BatchImportRequest, BatchImportResponse
 from backend.services.production_crud_service import (
     create_entry as create_production_entry,
-    get_entry as get_production_entry,
     list_entries as get_production_entries,
     update_entry as update_production_entry,
     delete_entry as delete_production_entry,
     get_entry_with_details as get_production_entry_with_details,
-    get_daily_production_summary as get_daily_summary,
 )
-from backend.calculations.efficiency import calculate_efficiency
-from backend.calculations.performance import calculate_performance, calculate_quality_rate
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.user import User

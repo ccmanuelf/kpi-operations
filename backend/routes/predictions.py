@@ -42,7 +42,6 @@ from backend.calculations.predictions import (
     simple_exponential_smoothing,
     double_exponential_smoothing,
     linear_trend_extrapolation,
-    ForecastResult,
 )
 from backend.generators.sample_data_phase5 import (
     get_kpi_benchmarks,

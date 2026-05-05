@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from typing import Any, Optional
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db

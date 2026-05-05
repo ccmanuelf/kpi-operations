@@ -5,8 +5,7 @@ All part opportunities CRUD endpoints (KPI #5: DPMO Calculation)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import Any, List, Optional
-from datetime import date
+from typing import Any, List
 
 from backend.database import get_db
 from backend.schemas.part_opportunities import (

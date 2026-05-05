@@ -19,7 +19,6 @@ from backend.schemas.attendance import (
     AttendanceRecordCreate,
     AttendanceRecordUpdate,
     AttendanceRecordResponse,
-    AbsenteeismCalculationResponse,
 )
 from backend.services.attendance_service import (
     create_record as create_attendance_record,
@@ -30,7 +29,7 @@ from backend.services.attendance_service import (
     bulk_create_records as bulk_create_attendance_records,
     mark_all_employees_present as mark_all_present,
 )
-from backend.calculations.absenteeism import calculate_absenteeism, calculate_bradford_factor
+from backend.calculations.absenteeism import calculate_bradford_factor
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.user import User

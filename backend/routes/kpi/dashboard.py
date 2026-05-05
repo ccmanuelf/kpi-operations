@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Any, Dict, Optional
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
@@ -50,9 +50,6 @@ def get_aggregated_dashboard(
     from backend.orm.downtime_entry import DowntimeEntry
     from backend.orm.work_order import WorkOrder
     from backend.orm.hold_entry import HoldEntry
-    from backend.calculations.ppm import calculate_ppm
-    from backend.calculations.dpmo import calculate_dpmo
-    from backend.calculations.fpy_rty import calculate_fpy
     from backend.utils.date_range import validate_date_range
 
     # Reject reversed range (Run-6 audit R6-D-001) before defaulting,

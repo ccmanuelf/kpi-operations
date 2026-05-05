@@ -20,7 +20,6 @@ from backend.schemas.employee_line_assignment import (
 from backend.services.employee_line_assignment_service import (
     create_line_assignment as create_assignment,
     list_line_assignments as list_assignments,
-    get_line_assignment as get_assignment,
     get_lines_for_employee as get_employee_lines,
     get_employees_for_line as get_line_employees,
     update_line_assignment as update_assignment,

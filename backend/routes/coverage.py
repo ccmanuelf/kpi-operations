@@ -7,7 +7,7 @@ All endpoints enforce multi-tenant client filtering
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Any, List, Optional
-from datetime import date, datetime
+from datetime import date
 
 from backend.database import get_db
 from backend.schemas.coverage import ShiftCoverageCreate, ShiftCoverageUpdate, ShiftCoverageResponse

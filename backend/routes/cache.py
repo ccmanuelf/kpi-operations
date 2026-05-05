@@ -5,7 +5,7 @@ Phase A.1: Provides endpoints for cache monitoring and management.
 Supports the Capacity Planning Module caching infrastructure.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from typing import Dict, Any
 from datetime import datetime, timezone
 
