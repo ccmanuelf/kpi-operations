@@ -630,7 +630,7 @@ class ScenarioService:
         if base_schedule_id:
             query = query.filter(CapacityScenario.base_schedule_id == base_schedule_id)
         if active_only:
-            query = query.filter(CapacityScenario.is_active == True)
+            query = query.filter(CapacityScenario.is_active.is_(True))
 
         return query.order_by(CapacityScenario.created_at.desc()).all()
 

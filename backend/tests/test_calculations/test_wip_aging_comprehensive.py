@@ -258,7 +258,7 @@ class TestWIPAgingTrend:
 
         is_improving = all(weekly_avg[i] > weekly_avg[i + 1] for i in range(len(weekly_avg) - 1))
 
-        assert is_improving == True
+        assert is_improving
 
     def test_aging_trend_degradation(self):
         """Test detection of aging degradation trend"""
@@ -267,7 +267,7 @@ class TestWIPAgingTrend:
 
         is_degrading = all(weekly_avg[i] < weekly_avg[i + 1] for i in range(len(weekly_avg) - 1))
 
-        assert is_degrading == True
+        assert is_degrading
 
 
 # =============================================================================

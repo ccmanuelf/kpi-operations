@@ -32,7 +32,7 @@ class TestInferredDate:
         )
 
         assert inferred.date is not None
-        assert inferred.is_inferred == False
+        assert not inferred.is_inferred
         assert inferred.inference_source == "planned_ship_date"
         assert inferred.confidence_score == 1.0
 
@@ -47,7 +47,7 @@ class TestInferredDate:
             confidence_score=0.5,
         )
 
-        assert inferred.is_inferred == True
+        assert inferred.is_inferred
         assert inferred.confidence_score == 0.5
 
 
@@ -66,7 +66,7 @@ class TestInferPlannedDeliveryDate:
         result = infer_planned_delivery_date(mock_wo)
 
         assert result.date == mock_wo.planned_ship_date
-        assert result.is_inferred == False
+        assert not result.is_inferred
         assert result.inference_source == "planned_ship_date"
         assert result.confidence_score == 1.0
 
@@ -82,7 +82,7 @@ class TestInferPlannedDeliveryDate:
         result = infer_planned_delivery_date(mock_wo)
 
         assert result.date == mock_wo.required_date
-        assert result.is_inferred == True
+        assert result.is_inferred
         assert result.inference_source == "required_date"
         assert result.confidence_score == 0.8
 
@@ -101,7 +101,7 @@ class TestInferPlannedDeliveryDate:
         result = infer_planned_delivery_date(mock_wo)
 
         assert result.date is not None
-        assert result.is_inferred == True
+        assert result.is_inferred
         assert result.inference_source == "calculated"
         assert result.confidence_score == 0.5
 
@@ -120,7 +120,7 @@ class TestInferPlannedDeliveryDate:
         result = infer_planned_delivery_date(mock_wo)
 
         assert result.date is not None
-        assert result.is_inferred == True
+        assert result.is_inferred
         assert result.inference_source == "calculated"
 
     def test_infer_no_cycle_time_default_lead_time(self):
@@ -138,7 +138,7 @@ class TestInferPlannedDeliveryDate:
         result = infer_planned_delivery_date(mock_wo)
 
         assert result.date is not None
-        assert result.is_inferred == True
+        assert result.is_inferred
         assert result.confidence_score == 0.3
 
     def test_infer_no_date_available(self):
@@ -153,7 +153,7 @@ class TestInferPlannedDeliveryDate:
         result = infer_planned_delivery_date(mock_wo)
 
         assert result.date is None
-        assert result.is_inferred == False
+        assert not result.is_inferred
         assert result.inference_source == "none"
         assert result.confidence_score == 0.0
 

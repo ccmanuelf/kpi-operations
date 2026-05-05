@@ -65,7 +65,7 @@ class DailyReportScheduler:
 
         try:
             # Get all active clients
-            clients = db.query(Client).filter(Client.is_active == True).all()
+            clients = db.query(Client).filter(Client.is_active.is_(True)).all()
 
             logger.info(f"Found {len(clients)} active clients")
 

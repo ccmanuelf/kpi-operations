@@ -74,7 +74,7 @@ def get_user_dashboard_preferences(db: Session, user_id: str) -> tuple[Optional[
                 UserPreferences.user_id == user_id,
                 UserPreferences.preference_type == "dashboard",
                 UserPreferences.preference_key == "main",
-                UserPreferences.is_active == True,
+                UserPreferences.is_active.is_(True),
             )
         )
         .first()
@@ -116,7 +116,7 @@ def get_user_dashboard_preferences_full(
                 UserPreferences.user_id == user_id,
                 UserPreferences.preference_type == "dashboard",
                 UserPreferences.preference_key == "main",
-                UserPreferences.is_active == True,
+                UserPreferences.is_active.is_(True),
             )
         )
         .first()
@@ -322,7 +322,7 @@ def delete_user_preferences(db: Session, user_id: str, preference_type: Optional
         Number of preferences deactivated
     """
     query = db.query(UserPreferences).filter(
-        and_(UserPreferences.user_id == user_id, UserPreferences.is_active == True)
+        and_(UserPreferences.user_id == user_id, UserPreferences.is_active.is_(True))
     )
 
     if preference_type:

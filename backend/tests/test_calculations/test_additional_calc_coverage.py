@@ -490,7 +490,7 @@ class TestInference:
         try:
             result = InferenceEngine.flag_low_confidence(confidence=0.5, threshold=0.7)
             assert isinstance(result, dict)
-            assert result.get("needs_review") == True
+            assert result.get("needs_review")
             assert result.get("warning") is not None
         except Exception:
             pass
@@ -502,7 +502,7 @@ class TestInference:
         try:
             result = InferenceEngine.flag_low_confidence(confidence=0.85, threshold=0.7)
             assert isinstance(result, dict)
-            assert result.get("needs_review") == False
+            assert not result.get("needs_review")
             assert result.get("warning") is None
         except Exception:
             pass

@@ -256,11 +256,11 @@ class TestFPYValidation:
         def validate_fpy(fpy: Decimal) -> bool:
             return Decimal("0") <= fpy <= Decimal("100")
 
-        assert validate_fpy(Decimal("0")) == True
-        assert validate_fpy(Decimal("50")) == True
-        assert validate_fpy(Decimal("100")) == True
-        assert validate_fpy(Decimal("-5")) == False
-        assert validate_fpy(Decimal("105")) == False
+        assert validate_fpy(Decimal("0"))
+        assert validate_fpy(Decimal("50"))
+        assert validate_fpy(Decimal("100"))
+        assert not validate_fpy(Decimal("-5"))
+        assert not validate_fpy(Decimal("105"))
 
     def test_fpy_with_zero_units(self):
         """Test FPY handling with zero total units"""

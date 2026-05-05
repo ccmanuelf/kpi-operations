@@ -152,13 +152,13 @@ class TestOTDCalculations:
         due_date = date(2024, 1, 15)
         delivery_date = date(2024, 1, 14)
         is_on_time = delivery_date <= due_date
-        assert is_on_time == True
+        assert is_on_time
 
     def test_late_delivery(self):
         due_date = date(2024, 1, 15)
         delivery_date = date(2024, 1, 16)
         is_on_time = delivery_date <= due_date
-        assert is_on_time == False
+        assert not is_on_time
 
 
 class TestFPYCalculations:
@@ -283,7 +283,7 @@ class TestPerformanceCalculations:
         # World class OEE is typically 85%+
         oee = 0.85
         is_world_class = oee >= 0.85
-        assert is_world_class == True
+        assert is_world_class
 
     def test_performance_ratio(self):
         ideal_cycle_time = 1.0  # minute

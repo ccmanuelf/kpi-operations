@@ -68,7 +68,7 @@ class TestEfficiencyCalculations:
         cycle_time, was_inferred = infer_ideal_cycle_time(mock_db, product_id=1)
 
         assert cycle_time == Decimal("0.5")
-        assert was_inferred == False
+        assert not was_inferred
 
     def test_infer_ideal_cycle_time_default(self):
         """Test cycle time inference with no data falls back to default"""
@@ -82,7 +82,7 @@ class TestEfficiencyCalculations:
 
         assert cycle_time == DEFAULT_CYCLE_TIME
         # When using default value (not from real data), was_inferred should be True
-        assert was_inferred == True
+        assert was_inferred
 
 
 # =============================================================================
@@ -790,7 +790,7 @@ class TestInferenceEngine:
         assert value == Decimal("0.25")
         assert confidence == 1.0
         assert source == "client_style_standard"
-        assert is_estimated == False
+        assert not is_estimated
 
     def test_infer_ideal_cycle_time_fallback(self):
         """Test cycle time inference fallback"""
@@ -805,7 +805,7 @@ class TestInferenceEngine:
         assert value == Decimal("0.20")  # System fallback
         assert confidence == 0.3
         assert source == "system_fallback"
-        assert is_estimated == True
+        assert is_estimated
 
     def test_flag_low_confidence(self):
         """Test low confidence flagging"""
@@ -814,9 +814,9 @@ class TestInferenceEngine:
         # Low confidence
         result = InferenceEngine.flag_low_confidence(0.5, threshold=0.7)
         assert result["warning"] == "LOW_CONFIDENCE_ESTIMATE"
-        assert result["needs_review"] == True
+        assert result["needs_review"]
 
         # High confidence
         result = InferenceEngine.flag_low_confidence(0.9, threshold=0.7)
         assert result["warning"] is None
-        assert result["needs_review"] == False
+        assert not result["needs_review"]

@@ -89,7 +89,7 @@ def get_production_lines(
     query = db.query(CapacityProductionLine).filter(CapacityProductionLine.client_id == client_id)
 
     if not include_inactive:
-        query = query.filter(CapacityProductionLine.is_active == True)
+        query = query.filter(CapacityProductionLine.is_active.is_(True))
 
     return query.order_by(CapacityProductionLine.line_code).offset(skip).limit(limit).all()
 
@@ -207,7 +207,7 @@ def get_active_lines(db: Session, client_id: str) -> List[CapacityProductionLine
     ensure_client_id(client_id, "active lines query")
     return (
         db.query(CapacityProductionLine)
-        .filter(and_(CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True))
+        .filter(and_(CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active.is_(True)))
         .order_by(CapacityProductionLine.line_code)
         .all()
     )
@@ -233,7 +233,7 @@ def get_lines_by_department(
     filters = [CapacityProductionLine.client_id == client_id, CapacityProductionLine.department == department]
 
     if active_only:
-        filters.append(CapacityProductionLine.is_active == True)
+        filters.append(CapacityProductionLine.is_active.is_(True))
 
     return db.query(CapacityProductionLine).filter(and_(*filters)).order_by(CapacityProductionLine.line_code).all()
 
@@ -275,7 +275,7 @@ def bulk_update_efficiency_factors(
     """
     ensure_client_id(client_id, "bulk efficiency update")
 
-    filters = [CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True]
+    filters = [CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active.is_(True)]
 
     if department:
         filters.append(CapacityProductionLine.department == department)

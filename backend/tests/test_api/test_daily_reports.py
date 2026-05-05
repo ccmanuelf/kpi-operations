@@ -115,7 +115,7 @@ class TestSendDailyReportsWithDB:
     def test_send_daily_reports_no_clients(self, db_session):
         """Test send_daily_reports with no active clients in database"""
         # Ensure no active clients in test database
-        db_session.query(Client).filter(Client.is_active == True).delete()
+        db_session.query(Client).filter(Client.is_active.is_(True)).delete()
         db_session.commit()
 
         sched = DailyReportScheduler()

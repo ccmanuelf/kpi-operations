@@ -230,7 +230,7 @@ class CapacityAnalysisService:
             .filter(
                 CapacityProductionLine.client_id == client_id,
                 CapacityProductionLine.id == line_id,
-                CapacityProductionLine.is_active == True,
+                CapacityProductionLine.is_active.is_(True),
             )
             .first()
         )
@@ -306,7 +306,7 @@ class CapacityAnalysisService:
     ) -> List[CapacityProductionLine]:
         """Get production lines for analysis."""
         query = self.db.query(CapacityProductionLine).filter(
-            CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True
+            CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active.is_(True)
         )
 
         if line_ids:
@@ -327,7 +327,7 @@ class CapacityAnalysisService:
                 CapacityCalendar.client_id == client_id,
                 CapacityCalendar.calendar_date >= period_start,
                 CapacityCalendar.calendar_date <= period_end,
-                CapacityCalendar.is_working_day == True,
+                CapacityCalendar.is_working_day.is_(True),
             )
             .all()
         )

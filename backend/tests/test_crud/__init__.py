@@ -94,7 +94,7 @@ class TestClientCRUD:
         test_db.add_all([client1, client2])
         test_db.commit()
 
-        active = test_db.query(Client).filter(Client.is_active == True).all()
+        active = test_db.query(Client).filter(Client.is_active.is_(True)).all()
         assert len(active) >= 1
 
 
@@ -137,7 +137,7 @@ class TestUserCRUD:
         test_db.commit()
 
         result = test_db.query(User).filter(User.user_id == "USR-DEACT").first()
-        assert result.is_active == False
+        assert not result.is_active
 
     def test_find_user_by_email(self, test_db):
         user = User(user_id="USR-EMAIL", username="emailuser", email="find@example.com", is_active=True)

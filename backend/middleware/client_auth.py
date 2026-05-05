@@ -39,7 +39,7 @@ def _get_clients_from_junction_table(db: Session, user_id: str) -> Optional[List
 
         assignments = (
             db.query(UserClientAssignment.client_id)
-            .filter(UserClientAssignment.user_id == user_id, UserClientAssignment.is_active == True)
+            .filter(UserClientAssignment.user_id == user_id, UserClientAssignment.is_active.is_(True))
             .all()
         )
 

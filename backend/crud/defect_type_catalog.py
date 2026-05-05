@@ -123,7 +123,7 @@ def get_defect_types_by_client(
     query = db.query(DefectTypeCatalog).filter(client_filter)
 
     if not include_inactive:
-        query = query.filter(DefectTypeCatalog.is_active == True)
+        query = query.filter(DefectTypeCatalog.is_active.is_(True))
 
     return query.order_by(DefectTypeCatalog.sort_order, DefectTypeCatalog.defect_name).all()
 
@@ -133,7 +133,7 @@ def get_global_defect_types(db: Session, include_inactive: bool = False) -> List
     query = db.query(DefectTypeCatalog).filter(DefectTypeCatalog.client_id == GLOBAL_CLIENT_ID)
 
     if not include_inactive:
-        query = query.filter(DefectTypeCatalog.is_active == True)
+        query = query.filter(DefectTypeCatalog.is_active.is_(True))
 
     return query.order_by(DefectTypeCatalog.sort_order, DefectTypeCatalog.defect_name).all()
 
@@ -284,7 +284,7 @@ def validate_defect_type_for_client(db: Session, client_id: str, defect_type_nam
             and_(
                 DefectTypeCatalog.client_id == client_id,
                 DefectTypeCatalog.defect_name == defect_type_name,
-                DefectTypeCatalog.is_active == True,
+                DefectTypeCatalog.is_active.is_(True),
             )
         )
         .first()
@@ -300,7 +300,7 @@ def get_defect_type_by_name(db: Session, client_id: str, defect_type_name: str) 
             and_(
                 DefectTypeCatalog.client_id == client_id,
                 DefectTypeCatalog.defect_name == defect_type_name,
-                DefectTypeCatalog.is_active == True,
+                DefectTypeCatalog.is_active.is_(True),
             )
         )
         .first()

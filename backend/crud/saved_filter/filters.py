@@ -27,7 +27,7 @@ def _clear_default_filter(db: Session, user_id: str, filter_type: str) -> None:
         filter_type: Filter type to clear default for
     """
     db.query(SavedFilter).filter(
-        and_(SavedFilter.user_id == user_id, SavedFilter.filter_type == filter_type, SavedFilter.is_default == True)
+        and_(SavedFilter.user_id == user_id, SavedFilter.filter_type == filter_type, SavedFilter.is_default.is_(True))
     ).update({SavedFilter.is_default: False})
 
 
@@ -171,7 +171,7 @@ def get_default_filter(db: Session, user_id: str, filter_type: str) -> Optional[
     return (
         db.query(SavedFilter)
         .filter(
-            and_(SavedFilter.user_id == user_id, SavedFilter.filter_type == filter_type, SavedFilter.is_default == True)
+            and_(SavedFilter.user_id == user_id, SavedFilter.filter_type == filter_type, SavedFilter.is_default.is_(True))
         )
         .first()
     )

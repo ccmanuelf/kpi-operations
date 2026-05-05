@@ -85,7 +85,7 @@ class BOMService:
             .filter(
                 CapacityBOMHeader.client_id == client_id,
                 CapacityBOMHeader.parent_item_code == parent_item_code,
-                CapacityBOMHeader.is_active == True,
+                CapacityBOMHeader.is_active.is_(True),
             )
             .first()
         )
@@ -220,7 +220,7 @@ class BOMService:
             .filter(
                 CapacityBOMHeader.client_id == client_id,
                 CapacityBOMHeader.parent_item_code == parent_item_code,
-                CapacityBOMHeader.is_active == True,
+                CapacityBOMHeader.is_active.is_(True),
             )
             .first()
         )

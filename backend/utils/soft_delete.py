@@ -217,7 +217,7 @@ def get_active_query(db: Session, model: Type[T], is_active_field: str = "is_act
             query = query.filter(getattr(model, is_active_field) == 1)
         except Exception:
             # Fall back to boolean
-            query = query.filter(getattr(model, is_active_field) == True)
+            query = query.filter(getattr(model, is_active_field).is_(True))
 
     return query
 
@@ -260,7 +260,7 @@ def filter_active(query: Query, model: Type[T], is_active_field: str = "is_activ
         try:
             query = query.filter(getattr(model, is_active_field) == 1)
         except Exception:
-            query = query.filter(getattr(model, is_active_field) == True)
+            query = query.filter(getattr(model, is_active_field).is_(True))
 
     return query
 

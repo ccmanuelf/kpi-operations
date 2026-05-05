@@ -137,7 +137,7 @@ def get_floating_pool_summary(db: Session, current_user: User) -> dict:
         Dictionary with floating pool statistics
     """
     # Get all floating pool employees
-    floating_employees = db.query(Employee).filter(Employee.is_floating_pool == True).all()
+    floating_employees = db.query(Employee).filter(Employee.is_floating_pool.is_(True)).all()
 
     total_floating = len(floating_employees)
 

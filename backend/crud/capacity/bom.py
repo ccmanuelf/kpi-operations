@@ -85,7 +85,7 @@ def get_bom_headers(
     query = db.query(CapacityBOMHeader).filter(CapacityBOMHeader.client_id == client_id)
 
     if not include_inactive:
-        query = query.filter(CapacityBOMHeader.is_active == True)
+        query = query.filter(CapacityBOMHeader.is_active.is_(True))
 
     return query.order_by(CapacityBOMHeader.parent_item_code).offset(skip).limit(limit).all()
 
@@ -130,7 +130,7 @@ def get_bom_header_by_item(
     filters = [CapacityBOMHeader.client_id == client_id, CapacityBOMHeader.parent_item_code == parent_item_code]
 
     if active_only:
-        filters.append(CapacityBOMHeader.is_active == True)
+        filters.append(CapacityBOMHeader.is_active.is_(True))
 
     return db.query(CapacityBOMHeader).filter(and_(*filters)).first()
 
@@ -208,7 +208,7 @@ def get_bom_for_style(db: Session, client_id: str, style_model: str) -> Optional
             and_(
                 CapacityBOMHeader.client_id == client_id,
                 CapacityBOMHeader.style_model == style_model,
-                CapacityBOMHeader.is_active == True,
+                CapacityBOMHeader.is_active.is_(True),
             )
         )
         .first()

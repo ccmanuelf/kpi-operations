@@ -93,7 +93,7 @@ class TestProductionCRUD:
         mock_entry.is_deleted = True
         mock_db.commit()
 
-        assert mock_entry.is_deleted == True
+        assert mock_entry.is_deleted
 
 
 # =============================================================================
@@ -152,7 +152,7 @@ class TestClientCRUD:
         mock_db.commit = MagicMock()
         mock_db.commit()
 
-        assert mock_client.is_active == False
+        assert not mock_client.is_active
 
 
 # =============================================================================
@@ -347,7 +347,7 @@ class TestHoldCRUD:
         mock_db.commit = MagicMock()
         mock_db.commit()
 
-        assert mock_hold.is_released == True
+        assert mock_hold.is_released
         assert mock_hold.quantity_released == 100
 
     def test_get_unreleased_holds(self, mock_db):
@@ -545,7 +545,7 @@ class TestFloatingPoolCRUD:
         mock_db.commit = MagicMock()
         mock_db.commit()
 
-        assert mock_employee.is_floating_pool == True
+        assert mock_employee.is_floating_pool
 
     def test_get_available_pool_employees(self, mock_db):
         """Test getting available floating pool employees"""

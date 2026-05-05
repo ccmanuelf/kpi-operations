@@ -76,7 +76,7 @@ def get_user_assigned_clients(db: Any, user_id: str, active_only: bool = True) -
     query = db.query(UserClientAssignment.client_id).filter(UserClientAssignment.user_id == user_id)
 
     if active_only:
-        query = query.filter(UserClientAssignment.is_active == True)
+        query = query.filter(UserClientAssignment.is_active.is_(True))
 
     return [row.client_id for row in query.all()]
 

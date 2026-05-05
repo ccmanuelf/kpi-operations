@@ -235,7 +235,7 @@ def get_bottleneck_lines(
     from backend.orm.capacity.analysis import CapacityAnalysis
 
     query = db.query(CapacityAnalysis).filter(
-        CapacityAnalysis.client_id == client_id, CapacityAnalysis.is_bottleneck == True
+        CapacityAnalysis.client_id == client_id, CapacityAnalysis.is_bottleneck.is_(True)
     )
 
     if analysis_date:

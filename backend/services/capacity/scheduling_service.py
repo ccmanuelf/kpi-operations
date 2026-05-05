@@ -448,7 +448,7 @@ class SchedulingService:
     ) -> List[CapacityProductionLine]:
         """Get available production lines."""
         query = self.db.query(CapacityProductionLine).filter(
-            CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active == True
+            CapacityProductionLine.client_id == client_id, CapacityProductionLine.is_active.is_(True)
         )
 
         if line_ids:
@@ -484,7 +484,7 @@ class SchedulingService:
                 CapacityCalendar.client_id == client_id,
                 CapacityCalendar.calendar_date >= period_start,
                 CapacityCalendar.calendar_date <= period_end,
-                CapacityCalendar.is_working_day == True,
+                CapacityCalendar.is_working_day.is_(True),
             )
             .order_by(CapacityCalendar.calendar_date)
             .all()

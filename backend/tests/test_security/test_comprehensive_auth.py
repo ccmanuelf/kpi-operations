@@ -37,7 +37,7 @@ class TestPasswordHashing:
         password = "testpassword123"
         hashed = pwd_context.hash(password)
 
-        assert pwd_context.verify(password, hashed) == True
+        assert pwd_context.verify(password, hashed)
 
     def test_password_verification_incorrect(self):
         """Test incorrect password verification"""
@@ -49,7 +49,7 @@ class TestPasswordHashing:
         wrong_password = "wrongpassword"
         hashed = pwd_context.hash(password)
 
-        assert pwd_context.verify(wrong_password, hashed) == False
+        assert not pwd_context.verify(wrong_password, hashed)
 
     def test_password_hash_length(self):
         """Test password hash has correct length"""
@@ -148,28 +148,28 @@ class TestPasswordPolicy:
         min_length = 8
 
         is_valid = len(password) >= min_length
-        assert is_valid == False
+        assert not is_valid
 
     def test_password_requires_uppercase(self):
         """Test password requires uppercase letter"""
         password = "nouppercase123!"
 
         has_upper = any(c.isupper() for c in password)
-        assert has_upper == False
+        assert not has_upper
 
     def test_password_requires_lowercase(self):
         """Test password requires lowercase letter"""
         password = "NOLOWERCASE123!"
 
         has_lower = any(c.islower() for c in password)
-        assert has_lower == False
+        assert not has_lower
 
     def test_password_requires_digit(self):
         """Test password requires digit"""
         password = "NoDigitsHere!"
 
         has_digit = any(c.isdigit() for c in password)
-        assert has_digit == False
+        assert not has_digit
 
     def test_password_requires_special_char(self):
         """Test password requires special character"""
@@ -177,7 +177,7 @@ class TestPasswordPolicy:
         special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
 
         has_special = any(c in special_chars for c in password)
-        assert has_special == False
+        assert not has_special
 
     def test_valid_password_passes_all_checks(self):
         """Test valid password passes all checks"""
@@ -205,7 +205,7 @@ class TestUserAuthentication:
         mock_user.password_hash = "$2b$12$test"
 
         # Simulate successful auth
-        assert mock_user.is_active == True
+        assert mock_user.is_active
 
     def test_login_inactive_user(self):
         """Test login with inactive user"""
@@ -213,7 +213,7 @@ class TestUserAuthentication:
         mock_user.username = "inactiveuser"
         mock_user.is_active = False
 
-        assert mock_user.is_active == False
+        assert not mock_user.is_active
 
     def test_login_wrong_password(self):
         """Test login with wrong password"""
@@ -225,7 +225,7 @@ class TestUserAuthentication:
         wrong_password = "wrongpassword"
 
         is_valid = pwd_context.verify(wrong_password, correct_hash)
-        assert is_valid == False
+        assert not is_valid
 
     def test_login_nonexistent_user(self):
         """Test login with non-existent user"""
@@ -248,7 +248,7 @@ class TestRateLimiting:
         limit = 10
 
         is_allowed = request_count < limit
-        assert is_allowed == True
+        assert is_allowed
 
     def test_rate_limit_exceeded(self):
         """Test request blocked when over limit"""
@@ -256,7 +256,7 @@ class TestRateLimiting:
         limit = 10
 
         is_allowed = request_count < limit
-        assert is_allowed == False
+        assert not is_allowed
 
     def test_rate_limit_window_reset(self):
         """Test rate limit window resets after time"""
@@ -265,4 +265,4 @@ class TestRateLimiting:
         current_time = datetime.now(tz=timezone.utc)
 
         window_elapsed = (current_time - last_request_time).seconds > window_seconds
-        assert window_elapsed == True
+        assert window_elapsed

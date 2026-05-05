@@ -4,10 +4,25 @@ exclude =
     .git,
     __pycache__,
     venv,
+    .venv,
+    backend/.venv,
     _archive,
     migrations,
+    node_modules,
     *.egg-info
 per-file-ignores =
     __init__.py:F401
+    # conftest.py imports the full ORM registry by name to force every
+    # __tablename__ to register on Base.metadata before tests run. The
+    # imports are intentional even though they aren't directly referenced.
+    backend/tests/conftest.py:F401
 ignore =
-    W503
+    # W503 / W504: black doesn't enforce a binary-operator newline policy;
+    # both are "default-ignore" in PEP 8 since 2016.
+    W503,
+    W504,
+    # E203 / E226: black's whitespace-around-colons and arithmetic-operator
+    # rules disagree with flake8's. Official black recommendation is to
+    # ignore both. (https://black.readthedocs.io/en/stable/guides/using_black_with_other_tools.html)
+    E203,
+    E226

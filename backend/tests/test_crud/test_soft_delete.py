@@ -30,7 +30,7 @@ class TestSoftDelete:
         result = soft_delete(mock_db, mock_entity, commit=False)
 
         assert result is True
-        assert mock_entity.is_active == False
+        assert not mock_entity.is_active
 
     def test_soft_delete_with_integer_field(self):
         """Test soft delete with integer is_active field (SQLite style)"""
@@ -80,7 +80,7 @@ class TestSoftDelete:
         result = soft_delete(mock_db, mock_entity, is_active_field="active", commit=False)
 
         assert result is True
-        assert mock_entity.active == False
+        assert not mock_entity.active
 
     def test_soft_delete_explicit_inactive_value(self):
         """Test soft delete with explicit inactive_value=0"""
@@ -126,7 +126,7 @@ class TestSoftDeleteWithTimestamp:
         result = soft_delete_with_timestamp(mock_db, mock_entity, commit=False)
 
         assert result is True
-        assert mock_entity.is_active == False
+        assert not mock_entity.is_active
         assert mock_entity.deleted_at is not None
 
     def test_soft_delete_with_timestamp_and_user(self):
@@ -213,7 +213,7 @@ class TestRestoreSoftDeleted:
         result = restore_soft_deleted(mock_db, mock_entity, commit=False)
 
         assert result is True
-        assert mock_entity.is_active == True
+        assert mock_entity.is_active
         assert mock_entity.deleted_at is None
         assert mock_entity.deleted_by is None
 
@@ -496,7 +496,7 @@ class TestCreateSoftDeleteFunction:
         result = delete_fn(mock_db, 123)
 
         assert result is True
-        assert mock_entity.is_active == False
+        assert not mock_entity.is_active
 
     def test_create_soft_delete_function_entity_not_found(self):
         """Test created function returns False when entity not found"""
@@ -566,4 +566,4 @@ class TestCreateSoftDeleteFunction:
         result = delete_fn(mock_db, 123)
 
         assert result is True
-        assert mock_entity.active == False
+        assert not mock_entity.active

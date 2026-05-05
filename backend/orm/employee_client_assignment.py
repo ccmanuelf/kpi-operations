@@ -97,7 +97,7 @@ def get_employee_assigned_clients(db: Any, employee_id: int, active_only: bool =
     )
 
     if active_only:
-        query = query.filter(EmployeeClientAssignment.is_active == True)
+        query = query.filter(EmployeeClientAssignment.is_active.is_(True))
 
     return [(row.client_id, row.assignment_type) for row in query.all()]
 
@@ -128,7 +128,7 @@ def validate_employee_assignment(db: Any, employee_id: int, client_id: str) -> t
     # Get existing active assignments
     existing = (
         db.query(EmployeeClientAssignment)
-        .filter(EmployeeClientAssignment.employee_id == employee_id, EmployeeClientAssignment.is_active == True)
+        .filter(EmployeeClientAssignment.employee_id == employee_id, EmployeeClientAssignment.is_active.is_(True))
         .all()
     )
 

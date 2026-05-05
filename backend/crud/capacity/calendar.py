@@ -225,7 +225,7 @@ def get_working_days_in_period(db: Session, client_id: str, start_date: date, en
                 CapacityCalendar.client_id == client_id,
                 CapacityCalendar.calendar_date >= start_date,
                 CapacityCalendar.calendar_date <= end_date,
-                CapacityCalendar.is_working_day == True,
+                CapacityCalendar.is_working_day.is_(True),
             )
         )
         .order_by(CapacityCalendar.calendar_date)

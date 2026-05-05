@@ -154,7 +154,7 @@ class TestDPMOTrend:
         # Lower DPMO = better quality
         is_improving = all(weekly_dpmo[i] > weekly_dpmo[i + 1] for i in range(len(weekly_dpmo) - 1))
 
-        assert is_improving == True
+        assert is_improving
 
     def test_dpmo_percentage_reduction(self):
         """Test DPMO reduction percentage"""
@@ -215,9 +215,9 @@ class TestDPMOValidation:
         def validate_dpmo(dpmo: Decimal) -> bool:
             return dpmo >= 0
 
-        assert validate_dpmo(Decimal("0")) == True
-        assert validate_dpmo(Decimal("1000")) == True
-        assert validate_dpmo(Decimal("-100")) == False
+        assert validate_dpmo(Decimal("0"))
+        assert validate_dpmo(Decimal("1000"))
+        assert not validate_dpmo(Decimal("-100"))
 
     def test_dpmo_max_value(self):
         """Test DPMO maximum is 1,000,000"""
@@ -225,8 +225,8 @@ class TestDPMOValidation:
         def validate_dpmo(dpmo: Decimal) -> bool:
             return 0 <= dpmo <= 1000000
 
-        assert validate_dpmo(Decimal("1000000")) == True
-        assert validate_dpmo(Decimal("1000001")) == False
+        assert validate_dpmo(Decimal("1000000"))
+        assert not validate_dpmo(Decimal("1000001"))
 
     def test_dpmo_with_zero_opportunities(self):
         """Test DPMO handling with zero opportunities"""

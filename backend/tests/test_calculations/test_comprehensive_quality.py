@@ -83,7 +83,7 @@ class TestPPMCalculations:
         is_within_target = actual_ppm <= target_ppm
         improvement_needed = max(0, actual_ppm - target_ppm)
 
-        assert is_within_target == True
+        assert is_within_target
         assert improvement_needed == 0
 
 
