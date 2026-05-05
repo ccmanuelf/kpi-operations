@@ -16,7 +16,7 @@ Pattern matches `backend/tasks/daily_reports.py` (APScheduler + cron trigger).
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler

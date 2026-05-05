@@ -6,7 +6,7 @@ Used to determine available production hours per day.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column

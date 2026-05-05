@@ -5,7 +5,7 @@ Stores capacity analysis results following the 12-step calculation method.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column

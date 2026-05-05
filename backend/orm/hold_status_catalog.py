@@ -5,7 +5,7 @@ Replaces hardcoded HoldStatus enum with configurable per-client catalog.
 """
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column

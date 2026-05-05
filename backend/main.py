@@ -19,7 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime, timezone
 
 from backend.config import settings
-from backend.database import get_db, engine, Base
+from backend.database import engine, Base
 
 
 # =============================================================================
@@ -85,7 +85,7 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
 # Domain Events Infrastructure (Phase 3)
 from backend.events import register_all_handlers, get_event_bus
 from backend.orm.event_store import create_event_persistence_handler
-from backend.middleware.rate_limit import limiter, configure_rate_limiting, RateLimitConfig
+from backend.middleware.rate_limit import configure_rate_limiting
 from backend.middleware.security_headers import SecurityHeadersMiddleware
 from backend.middleware.audit_log import AuditLogMiddleware
 

@@ -6,7 +6,7 @@ Orders specifically for capacity planning, with their own lifecycle.
 import enum
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import Date, DateTime, Enum as SQLEnum, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column

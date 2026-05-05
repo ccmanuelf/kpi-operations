@@ -5,7 +5,7 @@ Links committed KPI targets to schedules for variance analysis.
 
 from datetime import date as date_type, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Optional
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
