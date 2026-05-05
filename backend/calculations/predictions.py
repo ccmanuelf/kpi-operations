@@ -3,9 +3,9 @@ Prediction and Forecasting Module
 Implements exponential smoothing, ARIMA forecasting, and trend extrapolation
 """
 
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Dict
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import date
 import statistics
 from dataclasses import dataclass
 

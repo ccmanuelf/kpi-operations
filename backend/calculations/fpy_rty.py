@@ -14,7 +14,6 @@ from sqlalchemy import and_
 from datetime import date
 from decimal import Decimal
 from typing import Optional, List
-import math
 
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.production_entry import ProductionEntry
@@ -725,7 +724,6 @@ def calculate_job_rty_summary(db: Session, start_date: date, end_date: date, cli
         Dictionary with aggregate job RTY metrics
     """
     from datetime import datetime
-    from sqlalchemy import func
 
     start_datetime = datetime.combine(start_date, datetime.min.time())
     end_datetime = datetime.combine(end_date, datetime.max.time())

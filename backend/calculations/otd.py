@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Optional, Dict, List, Tuple, NamedTuple
+from typing import Any, Optional, Dict, List
 from dataclasses import dataclass
 
 from backend.orm.production_entry import ProductionEntry
@@ -501,7 +501,6 @@ def calculate_otd_trend(
         Dict with trend data
     """
     from datetime import timedelta
-    from collections import defaultdict
 
     # Determine interval
     if interval == "daily":

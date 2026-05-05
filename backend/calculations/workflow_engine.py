@@ -37,8 +37,7 @@ logger = logging.getLogger(__name__)
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.client_config import ClientConfig
 from backend.orm.workflow import WorkflowTransitionLog
-from backend.orm.user import User
-from backend.schemas.workflow import WorkflowStatusEnum, ClosureTriggerEnum, TriggerSourceEnum, WORKFLOW_TEMPLATES
+from backend.schemas.workflow import WORKFLOW_TEMPLATES
 
 
 # Default workflow transitions (used when no client config exists)

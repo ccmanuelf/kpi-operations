@@ -3,9 +3,9 @@ Trend Analysis Calculations Module
 Provides moving averages, linear regression, seasonal decomposition, and anomaly detection
 """
 
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional, Dict
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import date
 import statistics
 from dataclasses import dataclass
 

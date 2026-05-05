@@ -13,7 +13,6 @@ Provides calculations for:
 
 from typing import Any, Optional, Dict, List, Tuple
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 

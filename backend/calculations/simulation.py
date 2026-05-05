@@ -12,10 +12,9 @@ Provides:
 
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Dict, Optional, Tuple, Any
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
 
 from backend.crud.client_config import get_client_config_or_defaults
 from backend.orm.simulation import SimulationScenarioType, OptimizationGoal  # canonical definitions

@@ -12,7 +12,6 @@ from decimal import Decimal
 from typing import Optional
 
 from backend.orm.downtime_entry import DowntimeEntry
-from backend.orm.shift import Shift
 
 
 def calculate_availability(

@@ -8,7 +8,7 @@ Tracks how long inventory sits in hold status
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import and_
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple

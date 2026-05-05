@@ -10,7 +10,6 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from backend.orm.product import Product
-from backend.orm.shift import Shift
 from backend.orm.production_entry import ProductionEntry
 
 

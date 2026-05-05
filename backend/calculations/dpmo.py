@@ -16,7 +16,6 @@ from sqlalchemy import and_
 from datetime import date
 from typing import Optional, Tuple
 import logging
-import math
 
 from backend.orm.quality_entry import QualityEntry
 
