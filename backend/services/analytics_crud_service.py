@@ -7,7 +7,7 @@ Note: The AnalyticsService class in backend.services.analytics_service provides
 higher-level trend analysis. This module handles CRUD query passthrough.
 """
 
-from typing import Any, List, Optional, Tuple
+from typing import Any
 from datetime import date
 from sqlalchemy.orm import Session
 

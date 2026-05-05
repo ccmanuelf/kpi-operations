@@ -14,15 +14,15 @@ Phase B.8 Enhancements:
 """
 
 from decimal import Decimal
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, case
+from sqlalchemy import func, case
 
 from backend.orm.capacity.kpi_commitment import CapacityKPICommitment
-from backend.orm.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
+from backend.orm.capacity.schedule import CapacitySchedule
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrder
 from backend.events.bus import event_bus

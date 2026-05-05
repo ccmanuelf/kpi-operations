@@ -4,7 +4,7 @@ Thin service layer wrapping Employee CRUD operations.
 Routes should import from this module instead of backend.crud.employee directly.
 """
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User

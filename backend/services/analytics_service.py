@@ -6,9 +6,8 @@ Phase 1.1: Service Orchestration Layer
 Decouples routes from analytics calculations.
 """
 
-from decimal import Decimal
 from typing import Optional, List, Dict, Any, cast
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_

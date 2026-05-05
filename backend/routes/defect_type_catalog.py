@@ -24,9 +24,8 @@ from backend.services.defect_type_catalog_service import (
     update_defect_type_record as update_defect_type,
     delete_defect_type_record as delete_defect_type,
     bulk_create_defect_type_records as bulk_create_defect_types,
-    GLOBAL_CLIENT_ID,
-    is_global_client,
 )
+from backend.crud.defect_type_catalog import GLOBAL_CLIENT_ID, is_global_client
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger

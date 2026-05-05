@@ -9,7 +9,7 @@ import csv
 import io
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Generator, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 

@@ -4,7 +4,7 @@ Thin service layer wrapping Break Time CRUD operations.
 Routes should import from this module instead of backend.crud.break_time directly.
 """
 
-from typing import Any, List, Optional
+from typing import Any
 from sqlalchemy.orm import Session
 
 from backend.crud.break_time import (

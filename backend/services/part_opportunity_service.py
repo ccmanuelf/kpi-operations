@@ -4,7 +4,7 @@ Thin service layer wrapping Part Opportunity CRUD operations.
 Routes should import from this module instead of backend.crud.part_opportunities directly.
 """
 
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User

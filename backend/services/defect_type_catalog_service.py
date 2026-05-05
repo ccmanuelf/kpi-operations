@@ -4,7 +4,7 @@ Thin service layer wrapping Defect Type Catalog CRUD operations.
 Routes should import from this module instead of backend.crud.defect_type_catalog directly.
 """
 
-from typing import Any, List, Optional
+from typing import Any
 from sqlalchemy.orm import Session
 
 from backend.orm.user import User
@@ -18,8 +18,6 @@ from backend.crud.defect_type_catalog import (
     bulk_create_defect_types,
     validate_defect_type_for_client,
     get_defect_type_by_name,
-    GLOBAL_CLIENT_ID,
-    is_global_client,
 )
 
 

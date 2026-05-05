@@ -28,20 +28,18 @@ Confidence reporting:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
-from decimal import Decimal
-from typing import Any, Dict, List, Optional, Set
+from datetime import date, datetime
+from typing import Any, Dict, List, Set
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.capacity.standards import CapacityProductionStandard
 from backend.orm.downtime_entry import DowntimeEntry
 from backend.orm.product import Product
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.shift import Shift
-from backend.simulation_v2.constants import DEFAULT_HORIZON_DAYS, MAX_HORIZON_DAYS
+from backend.simulation_v2.constants import MAX_HORIZON_DAYS
 
 
 # ---------------------------------------------------------------------------

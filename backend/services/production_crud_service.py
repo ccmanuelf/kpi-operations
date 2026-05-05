@@ -9,7 +9,7 @@ for routes that call CRUD functions directly.
 """
 
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy.orm import Session
 

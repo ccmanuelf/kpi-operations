@@ -5,7 +5,7 @@ Routes should import from this module instead of backend.crud.floating_pool dire
 """
 
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 

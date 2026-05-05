@@ -5,7 +5,6 @@ Routes should import from this module instead of backend.crud.employee_line_assi
 """
 
 from typing import List, Optional
-from datetime import date
 from sqlalchemy.orm import Session
 
 from backend.crud.employee_line_assignment import (

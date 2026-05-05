@@ -7,7 +7,7 @@ import json
 import logging
 import qrcode
 from io import BytesIO
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any
 from pydantic import ValidationError
 
 logger = logging.getLogger(__name__)

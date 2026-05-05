@@ -13,9 +13,9 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, cast
 
-from sqlalchemy import and_, func
+from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
@@ -523,7 +523,6 @@ class ProductionKPIService:
             infer_employees_count,
             infer_ideal_cycle_time,
             calculate_shift_hours,
-            DEFAULT_CYCLE_TIME,
             DEFAULT_SHIFT_HOURS,
         )
 

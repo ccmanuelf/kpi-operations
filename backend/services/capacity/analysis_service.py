@@ -18,18 +18,17 @@ Implements the 12-step capacity calculation methodology:
 """
 
 from decimal import Decimal
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func
 
 from backend.orm.capacity.analysis import CapacityAnalysis
 from backend.orm.capacity.calendar import CapacityCalendar
 from backend.orm.capacity.production_lines import CapacityProductionLine
 from backend.orm.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
 from backend.orm.capacity.standards import CapacityProductionStandard
-from backend.orm.capacity.orders import CapacityOrder
 from backend.events.bus import event_bus
 from backend.events.domain_events import CapacityOverloadDetected
 

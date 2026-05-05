@@ -8,7 +8,7 @@ This wraps the capacity calendar CRUD functions for use by operational routes
 """
 
 from datetime import date
-from typing import Any, List, Optional
+from typing import Any
 from sqlalchemy.orm import Session
 
 from backend.crud.capacity.calendar import (

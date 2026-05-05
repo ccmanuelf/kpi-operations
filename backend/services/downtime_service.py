@@ -4,7 +4,7 @@ Thin service layer wrapping Downtime CRUD operations.
 Routes should import from this module instead of backend.crud.downtime directly.
 """
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 from datetime import date
 from sqlalchemy.orm import Session
 

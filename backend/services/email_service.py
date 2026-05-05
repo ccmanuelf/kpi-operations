@@ -4,10 +4,8 @@ Handles email delivery using SendGrid or SMTP
 """
 
 import logging
-import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
-from pathlib import Path
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart

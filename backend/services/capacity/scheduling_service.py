@@ -11,14 +11,14 @@ from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
 from datetime import date, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func
 
 from backend.orm.capacity.schedule import CapacitySchedule, CapacityScheduleDetail, ScheduleStatus
 from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriority
 from backend.orm.capacity.production_lines import CapacityProductionLine
 from backend.orm.capacity.standards import CapacityProductionStandard
 from backend.orm.capacity.calendar import CapacityCalendar
-from backend.exceptions.domain_exceptions import SchedulingError, ValidationError
+from backend.exceptions.domain_exceptions import SchedulingError
 from backend.events.bus import event_bus
 from backend.events.domain_events import OrderScheduled, ScheduleCommitted
 

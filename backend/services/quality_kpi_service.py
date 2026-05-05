@@ -11,12 +11,10 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, cast, Date
+from sqlalchemy import func, and_
 
 from backend.orm.quality_entry import QualityEntry
 from backend.orm.job import Job
-from backend.orm.part_opportunities import PartOpportunities
-from backend.crud.client_config import get_client_config_or_defaults
 
 
 @dataclass

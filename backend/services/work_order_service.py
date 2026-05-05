@@ -4,7 +4,7 @@ Thin service layer wrapping Work Order CRUD operations.
 Routes should import from this module instead of backend.crud.work_order directly.
 """
 
-from typing import Any, List, Optional
+from typing import Any, Optional
 from datetime import date, datetime
 from sqlalchemy.orm import Session
 
