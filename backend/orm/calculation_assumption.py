@@ -66,9 +66,7 @@ class CalculationAssumption(Base):
 
     assumption_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    client_id: Mapped[str] = mapped_column(
-        String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True
-    )
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     # Catalog name (e.g. "ideal_cycle_time_source"). Bounded to 15 distinct
     # values in v1 — service layer rejects unknown names.
@@ -93,19 +91,11 @@ class CalculationAssumption(Base):
 
     # Approval triplet. proposed_by/at always populated; approved_by/at only
     # after status transitions to ACTIVE; retired_by/at only on RETIRED.
-    proposed_by: Mapped[str] = mapped_column(
-        String(50), ForeignKey("USER.user_id"), nullable=False
-    )
-    proposed_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.now()
-    )
-    approved_by: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey("USER.user_id"), nullable=True
-    )
+    proposed_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
+    proposed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+    approved_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=True)
     approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    retired_by: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey("USER.user_id"), nullable=True
-    )
+    retired_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=True)
     retired_at: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     # Soft-delete (project-wide convention). Hard delete is never allowed —
@@ -113,9 +103,7 @@ class CalculationAssumption(Base):
     is_active: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
-    updated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now()
-    )
+    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class AssumptionChange(Base):
@@ -144,12 +132,8 @@ class AssumptionChange(Base):
         index=True,
     )
 
-    changed_by: Mapped[str] = mapped_column(
-        String(50), ForeignKey("USER.user_id"), nullable=False
-    )
-    changed_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.now(), index=True
-    )
+    changed_by: Mapped[str] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=False)
+    changed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)
 
     # Previous and new value snapshots — both JSON-encoded. Either may be
     # NULL: previous_value_json on initial proposal, new_value_json if the

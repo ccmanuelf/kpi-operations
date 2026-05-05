@@ -60,9 +60,7 @@ def _confidence_for(sample_size: int) -> str:
     return "none"
 
 
-def _source(
-    *, table: str, sample_size: int, period_start: date, period_end: date
-) -> Dict[str, Any]:
+def _source(*, table: str, sample_size: int, period_start: date, period_end: date) -> Dict[str, Any]:
     """Standard provenance dict attached to each derived field."""
     return {
         "source": table,
@@ -87,10 +85,7 @@ def _calibrate_schedule(
     period. Fallbacks: 1 shift, 8 hours, 5 days/week — what a brand-new
     plant would assume."""
     shifts = (
-        db.query(Shift)
-        .filter(Shift.client_id == client_id, Shift.is_active.is_(True))
-        .order_by(Shift.shift_id)
-        .all()
+        db.query(Shift).filter(Shift.client_id == client_id, Shift.is_active.is_(True)).order_by(Shift.shift_id).all()
     )
 
     def _hours(s: Shift) -> float:
@@ -189,16 +184,8 @@ def _calibrate_per_product_metrics(
             "quality_rate": round(float(r.avg_qual or 100), 2),
             "operators": max(1, int(round(float(r.avg_emps or 1)))),
             "total_units": total_units,
-            "rework_pct": (
-                round((int(r.total_rework or 0) / total_units) * 100, 2)
-                if total_units > 0
-                else 0.0
-            ),
-            "scrap_pct": (
-                round((int(r.total_scrap or 0) / total_units) * 100, 2)
-                if total_units > 0
-                else 0.0
-            ),
+            "rework_pct": (round((int(r.total_rework or 0) / total_units) * 100, 2) if total_units > 0 else 0.0),
+            "scrap_pct": (round((int(r.total_scrap or 0) / total_units) * 100, 2) if total_units > 0 else 0.0),
         }
     return out
 
@@ -242,11 +229,13 @@ def _calibrate_breakdowns(
     for r in rows:
         total_min = int(r.total_min or 0)
         ratio = max(0.0, min(10.0, (total_min / period_minutes) * 100))
-        out.append({
-            "machine_tool": r.machine_id,
-            "breakdown_pct": round(ratio, 2),
-            "_event_count": int(r.n or 0),
-        })
+        out.append(
+            {
+                "machine_tool": r.machine_id,
+                "breakdown_pct": round(ratio, 2),
+                "_event_count": int(r.n or 0),
+            }
+        )
     return out
 
 
@@ -284,20 +273,22 @@ def _build_operations(
         product_label = prod.product_name or prod.product_code
         for step_idx, std in enumerate(standards, start=1):
             machine_tool = std.department or std.operation_code or "Generic"
-            out.append({
-                "product": product_label,
-                "step": step_idx,
-                "operation": std.operation_name or std.operation_code or f"Op {step_idx}",
-                "machine_tool": machine_tool,
-                "sam_min": float(std.sam_minutes or 1.0),
-                "operators": m.get("operators", 1),
-                "variability": "triangular",
-                "rework_pct": m.get("rework_pct", 0.0),
-                "grade_pct": m.get("grade_pct", 100.0),
-                "fpd_pct": 15.0,  # no historical source for FPD; SimPy default
-                "sequence": std.department or "Assembly",
-                "grouping": std.operation_code or "",
-            })
+            out.append(
+                {
+                    "product": product_label,
+                    "step": step_idx,
+                    "operation": std.operation_name or std.operation_code or f"Op {step_idx}",
+                    "machine_tool": machine_tool,
+                    "sam_min": float(std.sam_minutes or 1.0),
+                    "operators": m.get("operators", 1),
+                    "variability": "triangular",
+                    "rework_pct": m.get("rework_pct", 0.0),
+                    "grade_pct": m.get("grade_pct", 100.0),
+                    "fpd_pct": 15.0,  # no historical source for FPD; SimPy default
+                    "sequence": std.department or "Assembly",
+                    "grouping": std.operation_code or "",
+                }
+            )
     return out
 
 
@@ -337,12 +328,14 @@ def _build_demands(
         product_label = prod.product_name or prod.product_code
         daily = max(1, avg_per_day) if total_units else None
         weekly = (daily * max(1, work_days_per_week)) if daily else None
-        out.append({
-            "product": product_label,
-            "bundle_size": 10,
-            "daily_demand": daily,
-            "weekly_demand": weekly,
-        })
+        out.append(
+            {
+                "product": product_label,
+                "bundle_size": 10,
+                "daily_demand": daily,
+                "weekly_demand": weekly,
+            }
+        )
     return out
 
 
@@ -400,8 +393,12 @@ def calibrate_from_history(
     schedule = _calibrate_schedule(db, client_id, period_start, period_end)
     operations = _build_operations(db, client_id, products_with_data, per_product)
     demands = _build_demands(
-        db, client_id, products_with_data, per_product,
-        period_start, period_end,
+        db,
+        client_id,
+        products_with_data,
+        per_product,
+        period_start,
+        period_end,
         work_days_per_week=int(schedule.get("work_days", 5)),
     )
     breakdowns = _calibrate_breakdowns(db, client_id, period_start, period_end)
@@ -418,9 +415,15 @@ def calibrate_from_history(
             period_start=period_start,
             period_end=period_end,
         )
-    sources["schedule"] = schedule.pop("_source", _source(
-        table="SHIFT", sample_size=0, period_start=period_start, period_end=period_end,
-    ))
+    sources["schedule"] = schedule.pop(
+        "_source",
+        _source(
+            table="SHIFT",
+            sample_size=0,
+            period_start=period_start,
+            period_end=period_end,
+        ),
+    )
     if breakdowns:
         sources["breakdowns"] = _source(
             table="DOWNTIME_ENTRY",

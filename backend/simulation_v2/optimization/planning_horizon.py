@@ -124,9 +124,7 @@ def _resolve_weekly_demand(config: SimulationConfig, product: str) -> int:
     return 0
 
 
-def _bottleneck_minutes_per_piece_x100(
-    config: SimulationConfig, product: str
-) -> int:
+def _bottleneck_minutes_per_piece_x100(config: SimulationConfig, product: str) -> int:
     """
     Compute the bottleneck (slowest-station) minutes per piece for a
     product, encoded as integer × 100 to keep MiniZinc free of `var
@@ -186,9 +184,7 @@ def plan_horizon(
     execution-side validation.
     """
     if not is_minizinc_available():
-        raise MiniZincNotAvailableError(
-            "MiniZinc CLI is not installed; planning horizon is unavailable."
-        )
+        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; planning horizon is unavailable.")
 
     if horizon_days < 1:
         raise ValueError("horizon_days must be >= 1")
@@ -198,9 +194,7 @@ def plan_horizon(
     daily_minutes = _daily_minutes(config)
 
     weekly_demand = {p: _resolve_weekly_demand(config, p) for p in products}
-    minutes_per_piece_x100 = {
-        p: _bottleneck_minutes_per_piece_x100(config, p) for p in products
-    }
+    minutes_per_piece_x100 = {p: _bottleneck_minutes_per_piece_x100(config, p) for p in products}
 
     # If every product has zero weekly demand, bail without invoking MZ.
     total_weekly = sum(weekly_demand.values())
@@ -325,9 +319,7 @@ def plan_horizon(
             pieces_by_product[prod] = cell
             fulfillment[prod] += cell
             total += cell
-        minutes_used = (
-            daily_minutes_used[d] if d < len(daily_minutes_used) else 0
-        )
+        minutes_used = daily_minutes_used[d] if d < len(daily_minutes_used) else 0
         load_pct = (minutes_used / daily_minutes_capacity * 100.0) if daily_minutes_capacity else 0.0
         daily_plans.append(
             DailyPlan(
@@ -353,8 +345,7 @@ def plan_horizon(
         fulfillment_by_product=fulfillment,
         raw_solver_output=mz_result.raw_stdout,
         solver_message=(
-            f"Optimal plan found: max daily load {max_load_pct}% "
-            f"across {horizon_days} day(s)."
+            f"Optimal plan found: max daily load {max_load_pct}% " f"across {horizon_days} day(s)."
             if mz_result.is_optimal
             else "Plan found but not proven optimal within the timeout."
         ),
@@ -381,9 +372,7 @@ def _build_trivial_plan(
     (single product: floor + remainder on day 1; single day: everything
     on day 1).
     """
-    daily_pieces: List[Dict[str, int]] = [
-        {p: 0 for p in products} for _ in range(horizon_days)
-    ]
+    daily_pieces: List[Dict[str, int]] = [{p: 0 for p in products} for _ in range(horizon_days)]
 
     if horizon_days == 1:
         # Whole week lands on day 1.
@@ -400,15 +389,8 @@ def _build_trivial_plan(
     daily_plans: List[DailyPlan] = []
     max_load = 0
     for d in range(horizon_days):
-        minutes_used = sum(
-            daily_pieces[d][p] * minutes_per_piece_x100[p] // 100
-            for p in active_products
-        )
-        load_pct = (
-            minutes_used / daily_minutes_capacity * 100.0
-            if daily_minutes_capacity
-            else 0.0
-        )
+        minutes_used = sum(daily_pieces[d][p] * minutes_per_piece_x100[p] // 100 for p in active_products)
+        load_pct = minutes_used / daily_minutes_capacity * 100.0 if daily_minutes_capacity else 0.0
         max_load = max(max_load, int(load_pct))
         total = sum(daily_pieces[d][p] for p in products)
         daily_plans.append(
@@ -422,10 +404,7 @@ def _build_trivial_plan(
             )
         )
 
-    fulfillment = {
-        p: sum(daily_pieces[d][p] for d in range(horizon_days))
-        for p in products
-    }
+    fulfillment = {p: sum(daily_pieces[d][p] for d in range(horizon_days)) for p in products}
 
     # Trivial split is always feasible mathematically, but if it leaves
     # a day above 100% load it's not a usable schedule. Surface that as
@@ -461,10 +440,7 @@ def _build_trivial_plan(
         max_load_pct=max_load,
         daily_plans=daily_plans,
         fulfillment_by_product=fulfillment,
-        solver_message=(
-            "Single-product or single-day horizon — trivially smoothed "
-            "without invoking the solver."
-        ),
+        solver_message=("Single-product or single-day horizon — trivially smoothed " "without invoking the solver."),
     )
 
 
@@ -486,15 +462,11 @@ def _build_best_effort_plan(
     unmet residual is reported in the message.
     """
     daily_minutes_capacity = daily_minutes
-    daily_pieces: List[Dict[str, int]] = [
-        {p: 0 for p in products} for _ in range(horizon_days)
-    ]
+    daily_pieces: List[Dict[str, int]] = [{p: 0 for p in products} for _ in range(horizon_days)]
 
     # Proportional mix by weekly_demand × minutes_per_piece (so larger
     # weights get more capacity).
-    weights = {
-        p: weekly_demand[p] * minutes_per_piece_x100[p] for p in active_products
-    }
+    weights = {p: weekly_demand[p] * minutes_per_piece_x100[p] for p in active_products}
     weight_sum = sum(weights.values()) or 1
     daily_minutes_used: List[int] = [0] * horizon_days
 
@@ -514,21 +486,14 @@ def _build_best_effort_plan(
             remaining[p] -= cell
             daily_minutes_used[d] += cell * mppx
 
-    fulfillment = {
-        p: sum(daily_pieces[d][p] for d in range(horizon_days))
-        for p in products
-    }
+    fulfillment = {p: sum(daily_pieces[d][p] for d in range(horizon_days)) for p in products}
     shortfall = {p: weekly_demand[p] - fulfillment[p] for p in products}
 
     daily_plans: List[DailyPlan] = []
     max_load = 0
     for d in range(horizon_days):
         minutes_used = daily_minutes_used[d] // 100
-        load_pct = (
-            minutes_used / daily_minutes_capacity * 100.0
-            if daily_minutes_capacity
-            else 0.0
-        )
+        load_pct = minutes_used / daily_minutes_capacity * 100.0 if daily_minutes_capacity else 0.0
         max_load = max(max_load, int(load_pct))
         total = sum(daily_pieces[d][p] for p in products)
         daily_plans.append(
@@ -542,9 +507,7 @@ def _build_best_effort_plan(
             )
         )
 
-    short_str = ", ".join(
-        f"{p}: short {short}" for p, short in shortfall.items() if short > 0
-    )
+    short_str = ", ".join(f"{p}: short {short}" for p, short in shortfall.items() if short > 0)
     return PlanningResult(
         is_optimal=False,
         is_satisfied=False,
@@ -559,7 +522,8 @@ def _build_best_effort_plan(
         raw_solver_output=raw_stdout,
         solver_message=(
             "Weekly demand exceeds horizon capacity. Best-effort plan fills "
-            "each day to capacity; remaining shortfall: " + (short_str or "none")
+            "each day to capacity; remaining shortfall: "
+            + (short_str or "none")
             + ". Consider a longer horizon, more operators, or splitting demand."
         ),
     )

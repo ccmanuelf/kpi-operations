@@ -90,11 +90,7 @@ class OTDCalculationService:
         snapshot = _build_snapshot(active, only=("otd_carrier_buffer_pct",))
 
         delta = float(adjusted_value - standard_value)
-        delta_pct = (
-            float((adjusted_value - standard_value) / standard_value * 100)
-            if standard_value != 0
-            else None
-        )
+        delta_pct = float((adjusted_value - standard_value) / standard_value * 100) if standard_value != 0 else None
 
         result_id: Optional[int] = None
         if persist:
@@ -117,7 +113,11 @@ class OTDCalculationService:
             result_id = row.result_id
             logger.info(
                 "OTD calculated: client=%s period=[%s, %s] standard=%s adjusted=%s",
-                client_id, period_start, period_end, standard_value, adjusted_value,
+                client_id,
+                period_start,
+                period_end,
+                standard_value,
+                adjusted_value,
             )
 
         return DualViewResult(
@@ -146,15 +146,11 @@ class OTDCalculationService:
         threshold = buffer_pct / Decimal("100")
         on_time = sum(1 for o in raw.orders if o.delay_pct <= threshold)
 
-        result = calculate_otd(
-            OTDInputs(on_time_orders=on_time, total_orders=total), mode="standard"
-        )
+        result = calculate_otd(OTDInputs(on_time_orders=on_time, total_orders=total), mode="standard")
         return result.value
 
 
-def _build_snapshot(
-    active: dict[str, CalculationAssumption], only: tuple[str, ...]
-) -> dict[str, Any]:
+def _build_snapshot(active: dict[str, CalculationAssumption], only: tuple[str, ...]) -> dict[str, Any]:
     return {
         name: {
             "value": json.loads(rec.value_json),

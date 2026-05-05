@@ -86,6 +86,6 @@ class TestDependencySeeder:
         )
 
         for _, assumption_name, _ in CANONICAL_METRIC_DEPENDENCIES:
-            assert assumption_name in KNOWN_ASSUMPTION_NAMES, (
-                f"{assumption_name!r} appears in the dependency map but is not in V1_CATALOG"
-            )
+            assert (
+                assumption_name in KNOWN_ASSUMPTION_NAMES
+            ), f"{assumption_name!r} appears in the dependency map but is not in V1_CATALOG"

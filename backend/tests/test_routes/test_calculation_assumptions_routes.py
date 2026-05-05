@@ -237,11 +237,16 @@ class TestVarianceEndpoint:
         aclient = TestClient(_build_app(seeded["db"], seeded["admin"]))
 
         for value in ("exclude_from_availability", "count_as_downtime"):
-            resp = pclient.post("/api/assumptions", json={
-                "client_id": CLIENT_ID,
-                "assumption_name": "setup_treatment" if value == "exclude_from_availability" else "scrap_classification_rule",
-                "value": value if value == "exclude_from_availability" else "rework_counted_as_good",
-            })
+            resp = pclient.post(
+                "/api/assumptions",
+                json={
+                    "client_id": CLIENT_ID,
+                    "assumption_name": (
+                        "setup_treatment" if value == "exclude_from_availability" else "scrap_classification_rule"
+                    ),
+                    "value": value if value == "exclude_from_availability" else "rework_counted_as_good",
+                },
+            )
             assert resp.status_code == 201, resp.text
             aclient.post(f"/api/assumptions/{resp.json()['assumption_id']}/approve")
 
@@ -260,11 +265,14 @@ class TestVarianceEndpoint:
         pclient = TestClient(_build_app(seeded["db"], seeded["poweruser"]))
         aclient = TestClient(_build_app(seeded["db"], seeded["admin"]))
 
-        resp = pclient.post("/api/assumptions", json={
-            "client_id": CLIENT_ID,
-            "assumption_name": "setup_treatment",
-            "value": "exclude_from_availability",
-        })
+        resp = pclient.post(
+            "/api/assumptions",
+            json={
+                "client_id": CLIENT_ID,
+                "assumption_name": "setup_treatment",
+                "value": "exclude_from_availability",
+            },
+        )
         aclient.post(f"/api/assumptions/{resp.json()['assumption_id']}/approve")
 
         # With a 1-day threshold, a fresh approval is NOT stale

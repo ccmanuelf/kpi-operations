@@ -58,23 +58,17 @@ class TestDaysEarlyOrLate:
         # actual is 3 days after expected → -3
         expected = datetime(2026, 4, 1, tzinfo=timezone.utc)
         actual = datetime(2026, 4, 4, tzinfo=timezone.utc)
-        result = calculate_days_early_or_late(
-            DaysEarlyOrLateInputs(expected_date=expected, actual_date=actual)
-        )
+        result = calculate_days_early_or_late(DaysEarlyOrLateInputs(expected_date=expected, actual_date=actual))
         assert result.value == -3
 
     def test_early(self):
         # actual is 2 days before expected → +2
         expected = datetime(2026, 4, 5, tzinfo=timezone.utc)
         actual = datetime(2026, 4, 3, tzinfo=timezone.utc)
-        result = calculate_days_early_or_late(
-            DaysEarlyOrLateInputs(expected_date=expected, actual_date=actual)
-        )
+        result = calculate_days_early_or_late(DaysEarlyOrLateInputs(expected_date=expected, actual_date=actual))
         assert result.value == 2
 
     def test_on_time(self):
         d = datetime(2026, 4, 1, tzinfo=timezone.utc)
-        result = calculate_days_early_or_late(
-            DaysEarlyOrLateInputs(expected_date=d, actual_date=d)
-        )
+        result = calculate_days_early_or_late(DaysEarlyOrLateInputs(expected_date=d, actual_date=d))
         assert result.value == 0

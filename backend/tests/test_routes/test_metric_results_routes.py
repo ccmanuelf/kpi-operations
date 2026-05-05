@@ -126,9 +126,7 @@ class TestList:
         _seed_oee_with_assumption(seeded)
         # Other-client result that should NOT show up for the operator.
         other = TestDataFactory.create_client(seeded["db"], client_id="OTHER-CLIENT")
-        other_admin = TestDataFactory.create_user(
-            seeded["db"], role="admin", client_id=other.client_id
-        )
+        other_admin = TestDataFactory.create_user(seeded["db"], role="admin", client_id=other.client_id)
         seeded["db"].commit()
         FPYCalculationService(seeded["db"], other_admin).calculate(
             client_id=other.client_id,

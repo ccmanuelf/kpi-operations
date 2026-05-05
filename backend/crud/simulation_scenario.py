@@ -74,7 +74,12 @@ def list_scenarios(
         q = q.filter(SimulationScenario.is_active.is_(True))
     if client_id is not None:
         q = q.filter(SimulationScenario.client_id == client_id)
-    return q.order_by(SimulationScenario.updated_at.desc().nullslast(), SimulationScenario.id.desc()).offset(skip).limit(limit).all()
+    return (
+        q.order_by(SimulationScenario.updated_at.desc().nullslast(), SimulationScenario.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_scenario(db: Session, user: User, scenario_id: int) -> Optional[SimulationScenario]:
@@ -124,9 +129,7 @@ def create_scenario(db: Session, user: User, payload: Dict[str, Any]) -> Simulat
     return scenario
 
 
-def update_scenario(
-    db: Session, user: User, scenario_id: int, payload: Dict[str, Any]
-) -> Optional[SimulationScenario]:
+def update_scenario(db: Session, user: User, scenario_id: int, payload: Dict[str, Any]) -> Optional[SimulationScenario]:
     """Partial update. Returns None if not found / not allowed."""
     scenario = get_scenario(db, user, scenario_id)
     if scenario is None:

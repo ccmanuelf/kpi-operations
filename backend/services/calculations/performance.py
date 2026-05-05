@@ -120,9 +120,7 @@ def calculate_throughput(
     if inputs.run_time_hours == 0:
         value = Decimal("0")
     else:
-        value = (
-            Decimal(str(inputs.units_produced)) / inputs.run_time_hours
-        ).quantize(Decimal("0.01"))
+        value = (Decimal(str(inputs.units_produced)) / inputs.run_time_hours).quantize(Decimal("0.01"))
 
     return CalculationResult[Decimal](
         metric_name="throughput",
@@ -172,9 +170,7 @@ def calculate_expected_output(
 ) -> CalculationResult[int]:
     """Expected output = actual_output / (efficiency_pct / 100). Used in by-shift dashboards."""
 
-    value = int(
-        Decimal(str(inputs.actual_output)) / (inputs.efficiency_pct / Decimal("100"))
-    )
+    value = int(Decimal(str(inputs.actual_output)) / (inputs.efficiency_pct / Decimal("100")))
 
     return CalculationResult[int](
         metric_name="expected_output",

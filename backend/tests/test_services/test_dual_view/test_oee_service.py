@@ -56,9 +56,7 @@ def _baseline_inputs() -> OEERawInputs:
 
 
 def _approve(db, poweruser, admin, client_id, name, value):
-    record = AssumptionService(db, poweruser).propose(
-        client_id=client_id, assumption_name=name, value=value
-    )
+    record = AssumptionService(db, poweruser).propose(client_id=client_id, assumption_name=name, value=value)
     AssumptionService(db, admin).approve(record.assumption_id)
     return record
 
@@ -101,8 +99,7 @@ class TestSiteAdjustedEqualsStandardWhenNoAssumptions:
 class TestSiteAdjustedDivergesWithAssumptions:
     def test_setup_treatment_changes_availability(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "setup_treatment", "exclude_from_availability")
+        _approve(transactional_db, poweruser, admin, client.client_id, "setup_treatment", "exclude_from_availability")
 
         svc = OEECalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -120,8 +117,9 @@ class TestSiteAdjustedDivergesWithAssumptions:
 
     def test_scrap_rework_counted_as_good_raises_quality(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "scrap_classification_rule", "rework_counted_as_good")
+        _approve(
+            transactional_db, poweruser, admin, client.client_id, "scrap_classification_rule", "rework_counted_as_good"
+        )
 
         svc = OEECalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -138,8 +136,9 @@ class TestSiteAdjustedDivergesWithAssumptions:
 
     def test_ideal_cycle_time_source_rolling(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "ideal_cycle_time_source", "rolling_90_day_average")
+        _approve(
+            transactional_db, poweruser, admin, client.client_id, "ideal_cycle_time_source", "rolling_90_day_average"
+        )
 
         svc = OEECalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -156,8 +155,14 @@ class TestSiteAdjustedDivergesWithAssumptions:
 
     def test_planned_production_time_basis_excludes_maintenance(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "planned_production_time_basis", "exclude_scheduled_maintenance")
+        _approve(
+            transactional_db,
+            poweruser,
+            admin,
+            client.client_id,
+            "planned_production_time_basis",
+            "exclude_scheduled_maintenance",
+        )
 
         svc = OEECalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -176,8 +181,12 @@ class TestSnapshotPersistence:
     def test_snapshot_matches_active_assumptions(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
         approved = _approve(
-            transactional_db, poweruser, admin, client.client_id,
-            "scrap_classification_rule", "rework_counted_as_bad",
+            transactional_db,
+            poweruser,
+            admin,
+            client.client_id,
+            "scrap_classification_rule",
+            "rework_counted_as_bad",
         )
 
         svc = OEECalculationService(transactional_db, admin)
@@ -192,9 +201,11 @@ class TestSnapshotPersistence:
         assert result.result_id is not None
 
         # Re-fetch from DB and verify the persisted row matches.
-        row = transactional_db.query(MetricCalculationResult).filter(
-            MetricCalculationResult.result_id == result.result_id
-        ).first()
+        row = (
+            transactional_db.query(MetricCalculationResult)
+            .filter(MetricCalculationResult.result_id == result.result_id)
+            .first()
+        )
         assert row is not None
         assert row.metric_name == "oee"
         assert row.client_id == client.client_id
@@ -215,16 +226,19 @@ class TestSnapshotPersistence:
             raw_inputs=_baseline_inputs(),
             persist=True,
         )
-        row = transactional_db.query(MetricCalculationResult).filter(
-            MetricCalculationResult.result_id == result.result_id
-        ).first()
+        row = (
+            transactional_db.query(MetricCalculationResult)
+            .filter(MetricCalculationResult.result_id == result.result_id)
+            .first()
+        )
         assert json.loads(row.assumptions_snapshot) == {}
         assert json.loads(row.standard_value_json) == json.loads(row.site_adjusted_value_json)
 
     def test_delta_columns_populated(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "scrap_classification_rule", "rework_counted_as_good")
+        _approve(
+            transactional_db, poweruser, admin, client.client_id, "scrap_classification_rule", "rework_counted_as_good"
+        )
 
         svc = OEECalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -234,9 +248,11 @@ class TestSnapshotPersistence:
             raw_inputs=_baseline_inputs(),
             persist=True,
         )
-        row = transactional_db.query(MetricCalculationResult).filter(
-            MetricCalculationResult.result_id == result.result_id
-        ).first()
+        row = (
+            transactional_db.query(MetricCalculationResult)
+            .filter(MetricCalculationResult.result_id == result.result_id)
+            .first()
+        )
         assert row.delta is not None
         assert row.delta > 0  # site_adjusted > standard for this assumption
         assert row.delta_pct is not None

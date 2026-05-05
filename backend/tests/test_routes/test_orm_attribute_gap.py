@@ -54,15 +54,61 @@ _TRACKED_ORMS = {
 # legitimately appear as `Class.method` (e.g. `User.query.filter(...)`).
 # Excluding them avoids false positives.
 _SQL_KEYWORDS = {
-    "query", "metadata", "registry", "table", "c", "update", "insert",
-    "delete", "where", "order_by", "filter", "filter_by", "limit", "offset",
-    "select", "options", "group_by", "having", "distinct", "join", "outerjoin",
-    "from_self", "first", "one", "one_or_none", "all", "count", "exists",
-    "scalar", "scalars", "add", "add_all", "flush", "commit", "rollback",
-    "close", "expire", "refresh", "merge", "expunge", "expunge_all",
-    "no_autoflush", "autoflush", "with_polymorphic", "with_entities",
-    "load_only", "contains_eager", "joinedload", "selectinload",
-    "subqueryload", "lazyload", "noload", "raiseload", "defer", "undefer",
+    "query",
+    "metadata",
+    "registry",
+    "table",
+    "c",
+    "update",
+    "insert",
+    "delete",
+    "where",
+    "order_by",
+    "filter",
+    "filter_by",
+    "limit",
+    "offset",
+    "select",
+    "options",
+    "group_by",
+    "having",
+    "distinct",
+    "join",
+    "outerjoin",
+    "from_self",
+    "first",
+    "one",
+    "one_or_none",
+    "all",
+    "count",
+    "exists",
+    "scalar",
+    "scalars",
+    "add",
+    "add_all",
+    "flush",
+    "commit",
+    "rollback",
+    "close",
+    "expire",
+    "refresh",
+    "merge",
+    "expunge",
+    "expunge_all",
+    "no_autoflush",
+    "autoflush",
+    "with_polymorphic",
+    "with_entities",
+    "load_only",
+    "contains_eager",
+    "joinedload",
+    "selectinload",
+    "subqueryload",
+    "lazyload",
+    "noload",
+    "raiseload",
+    "defer",
+    "undefer",
 }
 
 # Project root — anchor for the scan path.
@@ -146,10 +192,7 @@ def test_no_orm_attribute_drift() -> None:
     # verify rather than just trust it.
     allowed_substrings: Set[str] = set()  # currently empty; populate as needed
 
-    real_findings = [
-        f for f in all_findings
-        if not any(skip in f for skip in allowed_substrings)
-    ]
+    real_findings = [f for f in all_findings if not any(skip in f for skip in allowed_substrings)]
 
     assert not real_findings, (
         f"{len(real_findings)} ORM attribute reference(s) point at columns "

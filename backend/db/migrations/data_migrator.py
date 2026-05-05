@@ -112,6 +112,9 @@ class DataMigrator:
 
         # Tier 13: Dual-View Architecture Phase 3 — Metric Calculation Results
         "METRIC_CALCULATION_RESULT",     # depends on CLIENT, USER
+
+        # Tier 14: Simulation V2 — Scenario persistence (D3)
+        "SIMULATION_SCENARIO",           # depends on CLIENT (nullable, NULL = global)
     ]
 
     def __init__(

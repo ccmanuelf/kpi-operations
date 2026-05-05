@@ -66,9 +66,7 @@ class TestRunForClient:
 class TestRunNightly:
     def test_iterates_active_clients_only(self, transactional_db):
         active = TestDataFactory.create_client(transactional_db, client_id="ACTIVE-1")
-        inactive = TestDataFactory.create_client(
-            transactional_db, client_id="INACTIVE-1", is_active=False
-        )
+        inactive = TestDataFactory.create_client(transactional_db, client_id="INACTIVE-1", is_active=False)
         TestDataFactory.create_user(transactional_db, role="admin", client_id=active.client_id)
         transactional_db.commit()
 
@@ -88,9 +86,7 @@ class TestRunNightly:
     def test_raises_when_no_admin_user(self, transactional_db):
         TestDataFactory.create_client(transactional_db, client_id="NO-ADMIN-CLIENT")
         # Deliberately no admin user — only a leader.
-        TestDataFactory.create_user(
-            transactional_db, role="leader", client_id="NO-ADMIN-CLIENT"
-        )
+        TestDataFactory.create_user(transactional_db, role="leader", client_id="NO-ADMIN-CLIENT")
         transactional_db.commit()
 
         with patch("backend.tasks.dual_view_calculation.SessionLocal") as mock_session_local:

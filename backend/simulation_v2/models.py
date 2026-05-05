@@ -642,17 +642,13 @@ class RebalancingRequest(BaseModel):
         default=0,
         ge=0,
         le=100,
-        description=(
-            "Max net operators added by the rebalance (0 = strict swap)."
-        ),
+        description=("Max net operators added by the rebalance (0 = strict swap)."),
     )
     total_delta_min: int = Field(
         default=-50,
         le=0,
         ge=-100,
-        description=(
-            "Max net operators removed (negative; -50 = up to 50 fewer)."
-        ),
+        description=("Max net operators removed (negative; -50 = up to 50 fewer)."),
     )
     timeout_seconds: int = Field(
         default=15,
@@ -686,8 +682,7 @@ class RebalancingResponse(BaseModel):
     validation_run: Optional[SimulationResults] = Field(
         default=None,
         description=(
-            "Populated when validate_with_simulation=true: a single SimPy "
-            "run using the rebalanced allocation."
+            "Populated when validate_with_simulation=true: a single SimPy " "run using the rebalanced allocation."
         ),
     )
 
@@ -753,10 +748,7 @@ class PlanningHorizonRequest(BaseModel):
         default=5,
         ge=1,
         le=31,
-        description=(
-            "Planning horizon in working days (1..31). Defaults to 5 "
-            "(typical work week)."
-        ),
+        description=("Planning horizon in working days (1..31). Defaults to 5 " "(typical work week)."),
     )
     timeout_seconds: int = Field(
         default=30,

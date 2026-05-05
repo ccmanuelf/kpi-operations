@@ -63,9 +63,7 @@ def _to_brief(row: MetricCalculationResult) -> MetricResultBrief:
     )
 
 
-def _expand_assumptions(
-    db: Session, snapshot: dict[str, dict[str, Any]]
-) -> list[AssumptionInLineage]:
+def _expand_assumptions(db: Session, snapshot: dict[str, dict[str, Any]]) -> list[AssumptionInLineage]:
     """Expand a per-name snapshot into full lineage entries.
 
     Looks up each `assumption_id` so the rationale/approved_by/approved_at
@@ -154,11 +152,7 @@ def get_lineage(
 ) -> MetricLineage:
     """Full lineage view — what the inspector panel renders for one calculation."""
 
-    row = (
-        db.query(MetricCalculationResult)
-        .filter(MetricCalculationResult.result_id == result_id)
-        .first()
-    )
+    row = db.query(MetricCalculationResult).filter(MetricCalculationResult.result_id == result_id).first()
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Result {result_id} not found")
 

@@ -9,7 +9,7 @@ import os
 import sqlite3
 
 # Database path
-DB_PATH = os.path.join(os.path.dirname(__file__), 'kpi_platform.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), "kpi_platform.db")
 
 print("🔧 Multi-Tenant KPI Platform - SQLite Schema Initialization")
 print("=" * 70)
@@ -36,7 +36,8 @@ print("📋 Creating tables with security fixes...")
 # ============================================================================
 
 # CLIENT table (Multi-tenant foundation)
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE CLIENT (
     client_id VARCHAR(50) PRIMARY KEY,
     client_name VARCHAR(255) NOT NULL,
@@ -46,11 +47,13 @@ CREATE TABLE CLIENT (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME
 )
-""")
+"""
+)
 print("   ✓ CLIENT")
 
 # USER table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE USER (
     user_id VARCHAR(50) PRIMARY KEY,
     username VARCHAR(100) UNIQUE NOT NULL,
@@ -64,11 +67,13 @@ CREATE TABLE USER (
     updated_at DATETIME,
     FOREIGN KEY (client_id_assigned) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ USER")
 
 # EMPLOYEE table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE EMPLOYEE (
     employee_id VARCHAR(50) PRIMARY KEY,
     employee_name VARCHAR(255) NOT NULL,
@@ -78,22 +83,26 @@ CREATE TABLE EMPLOYEE (
     updated_at DATETIME,
     FOREIGN KEY (client_id_assigned) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ EMPLOYEE")
 
 # PRODUCT table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE PRODUCT (
     product_id VARCHAR(50) PRIMARY KEY,
     product_name VARCHAR(255) NOT NULL,
     ideal_cycle_time DECIMAL(10, 4),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )
-""")
+"""
+)
 print("   ✓ PRODUCT")
 
 # SHIFT table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE SHIFT (
     shift_id INTEGER PRIMARY KEY,
     shift_name VARCHAR(100) NOT NULL,
@@ -101,11 +110,13 @@ CREATE TABLE SHIFT (
     end_time TIME NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )
-""")
+"""
+)
 print("   ✓ SHIFT")
 
 # WORK_ORDER table - Matches WorkOrder SQLAlchemy schema
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE WORK_ORDER (
     work_order_id VARCHAR(50) PRIMARY KEY,
     client_id VARCHAR(50) NOT NULL,
@@ -136,11 +147,13 @@ CREATE TABLE WORK_ORDER (
     updated_at DATETIME,
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ WORK_ORDER")
 
 # JOB table (SECURITY FIX - client_id added)
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE JOB (
     job_id VARCHAR(50) PRIMARY KEY,
     work_order_id VARCHAR(50) NOT NULL,
@@ -164,7 +177,8 @@ CREATE TABLE JOB (
     FOREIGN KEY (work_order_id) REFERENCES WORK_ORDER(work_order_id),
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ JOB (with client_id - CRITICAL SECURITY FIX)")
 
 # ============================================================================
@@ -172,7 +186,8 @@ print("   ✓ JOB (with client_id - CRITICAL SECURITY FIX)")
 # ============================================================================
 
 # PRODUCTION_ENTRY table - Matches ProductionEntry SQLAlchemy schema
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE PRODUCTION_ENTRY (
     production_entry_id VARCHAR(50) PRIMARY KEY,
     client_id VARCHAR(50) NOT NULL,
@@ -208,7 +223,8 @@ CREATE TABLE PRODUCTION_ENTRY (
     FOREIGN KEY (entered_by) REFERENCES USER(user_id),
     FOREIGN KEY (confirmed_by) REFERENCES USER(user_id)
 )
-""")
+"""
+)
 print("   ✓ PRODUCTION_ENTRY")
 
 # ============================================================================
@@ -216,7 +232,8 @@ print("   ✓ PRODUCTION_ENTRY")
 # ============================================================================
 
 # DOWNTIME_ENTRY table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE DOWNTIME_ENTRY (
     downtime_id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id VARCHAR(50) NOT NULL,
@@ -233,11 +250,13 @@ CREATE TABLE DOWNTIME_ENTRY (
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id),
     FOREIGN KEY (work_order_id) REFERENCES WORK_ORDER(work_order_id)
 )
-""")
+"""
+)
 print("   ✓ DOWNTIME_ENTRY")
 
 # HOLD_ENTRY table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE HOLD_ENTRY (
     hold_id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id VARCHAR(50) NOT NULL,
@@ -253,7 +272,8 @@ CREATE TABLE HOLD_ENTRY (
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id),
     FOREIGN KEY (work_order_id) REFERENCES WORK_ORDER(work_order_id)
 )
-""")
+"""
+)
 print("   ✓ HOLD_ENTRY")
 
 # ============================================================================
@@ -261,7 +281,8 @@ print("   ✓ HOLD_ENTRY")
 # ============================================================================
 
 # ATTENDANCE_ENTRY table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE ATTENDANCE_ENTRY (
     attendance_id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id VARCHAR(50) NOT NULL,
@@ -279,11 +300,13 @@ CREATE TABLE ATTENDANCE_ENTRY (
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id),
     FOREIGN KEY (employee_id) REFERENCES EMPLOYEE(employee_id)
 )
-""")
+"""
+)
 print("   ✓ ATTENDANCE_ENTRY")
 
 # SHIFT_COVERAGE table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE SHIFT_COVERAGE (
     coverage_id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id VARCHAR(50) NOT NULL,
@@ -298,7 +321,8 @@ CREATE TABLE SHIFT_COVERAGE (
     updated_at DATETIME,
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ SHIFT_COVERAGE")
 
 # ============================================================================
@@ -306,7 +330,8 @@ print("   ✓ SHIFT_COVERAGE")
 # ============================================================================
 
 # QUALITY_ENTRY table
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE QUALITY_ENTRY (
     quality_entry_id VARCHAR(50) PRIMARY KEY,
     client_id VARCHAR(50) NOT NULL,
@@ -323,11 +348,13 @@ CREATE TABLE QUALITY_ENTRY (
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id),
     FOREIGN KEY (work_order_id) REFERENCES WORK_ORDER(work_order_id)
 )
-""")
+"""
+)
 print("   ✓ QUALITY_ENTRY")
 
 # DEFECT_DETAIL table (SECURITY FIX - client_id added)
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE DEFECT_DETAIL (
     defect_detail_id VARCHAR(50) PRIMARY KEY,
     quality_entry_id VARCHAR(50) NOT NULL,
@@ -342,11 +369,13 @@ CREATE TABLE DEFECT_DETAIL (
     FOREIGN KEY (quality_entry_id) REFERENCES QUALITY_ENTRY(quality_entry_id),
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ DEFECT_DETAIL (with client_id - HIGH SECURITY FIX)")
 
 # PART_OPPORTUNITIES table (SECURITY FIX - client_id added)
-cursor.execute("""
+cursor.execute(
+    """
 CREATE TABLE PART_OPPORTUNITIES (
     part_number VARCHAR(100) PRIMARY KEY,
     client_id VARCHAR(50) NOT NULL,
@@ -356,7 +385,8 @@ CREATE TABLE PART_OPPORTUNITIES (
     notes TEXT,
     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
 )
-""")
+"""
+)
 print("   ✓ PART_OPPORTUNITIES (with client_id - MEDIUM SECURITY FIX)")
 
 conn.commit()

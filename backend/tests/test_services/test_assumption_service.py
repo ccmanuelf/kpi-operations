@@ -214,7 +214,9 @@ class TestRetire:
         )
         AssumptionService(transactional_db, admin).approve(record.assumption_id)
 
-        retired = AssumptionService(transactional_db, admin).retire(record.assumption_id, change_reason="vendor changed")
+        retired = AssumptionService(transactional_db, admin).retire(
+            record.assumption_id, change_reason="vendor changed"
+        )
 
         assert retired.status == AssumptionStatus.RETIRED
         assert retired.retired_by == admin.user_id
@@ -270,9 +272,7 @@ class TestUpdateProposal:
         )
         AssumptionService(transactional_db, admin).approve(record.assumption_id)
         with pytest.raises(Exception) as exc_info:
-            AssumptionService(transactional_db, admin).update_proposal(
-                record.assumption_id, rationale="too late"
-            )
+            AssumptionService(transactional_db, admin).update_proposal(record.assumption_id, rationale="too late")
         assert exc_info.value.status_code == 409
 
 
@@ -296,9 +296,7 @@ class TestEffectiveSet:
             value="theoretical",
         )
 
-        effective = AssumptionService(transactional_db, admin).get_effective_set(
-            client_id=client.client_id
-        )
+        effective = AssumptionService(transactional_db, admin).get_effective_set(client_id=client.client_id)
         assert "ideal_cycle_time_source" in effective
         assert "yield_baseline_source" not in effective
 
@@ -405,6 +403,7 @@ class TestVarianceReport:
 
     def test_stale_flag_triggers_after_threshold(self, transactional_db):
         from datetime import timedelta
+
         client, admin, poweruser, _ = _make_users(transactional_db)
         rec = AssumptionService(transactional_db, poweruser).propose(
             client_id=client.client_id,
@@ -461,12 +460,8 @@ class TestDependenciesQuery:
     def test_list_dependencies_filterable(self, transactional_db):
         client, admin, _, _ = _make_users(transactional_db)
         # Seed a couple of dependency rows
-        transactional_db.add(
-            MetricAssumptionDependency(metric_name="oee", assumption_name="setup_treatment")
-        )
-        transactional_db.add(
-            MetricAssumptionDependency(metric_name="otd", assumption_name="otd_carrier_buffer_pct")
-        )
+        transactional_db.add(MetricAssumptionDependency(metric_name="oee", assumption_name="setup_treatment"))
+        transactional_db.add(MetricAssumptionDependency(metric_name="otd", assumption_name="otd_carrier_buffer_pct"))
         transactional_db.commit()
 
         svc = AssumptionService(transactional_db, admin)

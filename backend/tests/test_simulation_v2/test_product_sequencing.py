@@ -59,18 +59,28 @@ def _op(
     grade_pct: int = 90,
 ) -> OperationInput:
     return OperationInput(
-        product=product, step=step, operation=operation, machine_tool=machine_tool,
-        sam_min=sam_min, operators=operators,
+        product=product,
+        step=step,
+        operation=operation,
+        machine_tool=machine_tool,
+        sam_min=sam_min,
+        operators=operators,
         variability=VariabilityType.TRIANGULAR,
-        rework_pct=0, grade_pct=grade_pct, fpd_pct=10,
+        rework_pct=0,
+        grade_pct=grade_pct,
+        fpd_pct=10,
     )
 
 
 @pytest.fixture
 def schedule() -> ScheduleConfig:
     return ScheduleConfig(
-        shifts_enabled=1, shift1_hours=8, shift2_hours=0, shift3_hours=0,
-        work_days=5, ot_enabled=False,
+        shifts_enabled=1,
+        shift1_hours=8,
+        shift2_hours=0,
+        shift3_hours=0,
+        work_days=5,
+        ot_enabled=False,
     )
 
 
@@ -78,10 +88,8 @@ def schedule() -> ScheduleConfig:
 def single_product_config(schedule) -> SimulationConfig:
     return SimulationConfig(
         operations=[
-            _op(product="A", step=1, operation="Cut", machine_tool="M1",
-                sam_min=2.0, operators=1, grade_pct=90),
-            _op(product="A", step=2, operation="Sew", machine_tool="M2",
-                sam_min=3.0, operators=1, grade_pct=85),
+            _op(product="A", step=1, operation="Cut", machine_tool="M1", sam_min=2.0, operators=1, grade_pct=90),
+            _op(product="A", step=2, operation="Sew", machine_tool="M2", sam_min=3.0, operators=1, grade_pct=85),
         ],
         schedule=schedule,
         demands=[DemandInput(product="A", bundle_size=10, daily_demand=100)],
@@ -96,12 +104,26 @@ def three_product_config(schedule) -> SimulationConfig:
     ops: List[OperationInput] = []
     for product, sam in [("A", 2.0), ("B", 1.5), ("C", 3.0)]:
         ops.append(
-            _op(product=product, step=1, operation=f"Cut-{product}",
-                machine_tool="M1", sam_min=sam, operators=1, grade_pct=90)
+            _op(
+                product=product,
+                step=1,
+                operation=f"Cut-{product}",
+                machine_tool="M1",
+                sam_min=sam,
+                operators=1,
+                grade_pct=90,
+            )
         )
         ops.append(
-            _op(product=product, step=2, operation=f"Sew-{product}",
-                machine_tool="M2", sam_min=sam * 1.5, operators=1, grade_pct=85)
+            _op(
+                product=product,
+                step=2,
+                operation=f"Sew-{product}",
+                machine_tool="M2",
+                sam_min=sam * 1.5,
+                operators=1,
+                grade_pct=85,
+            )
         )
     return SimulationConfig(
         operations=ops,
@@ -130,10 +152,7 @@ class TestEstimateProductionTimeMinutes:
 
     def test_returns_zero_for_zero_demand(self, schedule):
         config = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=1, daily_demand=0)],
             mode=DemandMode.DEMAND_DRIVEN,
@@ -246,9 +265,7 @@ class TestSequenceProducts:
         assert result.sequence[1].setup_from_previous_minutes == 5
         assert result.sequence[2].setup_from_previous_minutes == 5
 
-    def test_all_zero_setups_returns_some_valid_permutation(
-        self, three_product_config
-    ):
+    def test_all_zero_setups_returns_some_valid_permutation(self, three_product_config):
         result = sequence_products(three_product_config, setup_entries=[])
         assert result.is_satisfied
         assert result.is_optimal

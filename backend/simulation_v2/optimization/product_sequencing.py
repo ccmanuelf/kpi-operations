@@ -99,9 +99,7 @@ class SequencingResult:
 # =============================================================================
 
 
-def estimate_production_time_minutes(
-    config: SimulationConfig, product: str
-) -> int:
+def estimate_production_time_minutes(config: SimulationConfig, product: str) -> int:
     """
     Estimate the wallclock minutes the line spends producing this
     product's daily demand quota when the entire line is dedicated to
@@ -200,9 +198,7 @@ def sequence_products(
     start/end times and total makespan.
     """
     if not is_minizinc_available():
-        raise MiniZincNotAvailableError(
-            "MiniZinc CLI is not installed; product sequencing is unavailable."
-        )
+        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; product sequencing is unavailable.")
 
     # Use the products that have demand (sequencing is about demand quotas).
     products = [d.product for d in config.demands]
@@ -221,9 +217,7 @@ def sequence_products(
             solver_message="No products in configuration; nothing to sequence.",
         )
 
-    production_time_minutes = [
-        estimate_production_time_minutes(config, p) for p in products
-    ]
+    production_time_minutes = [estimate_production_time_minutes(config, p) for p in products]
 
     if n_products == 1:
         # Single product — no sequencing decision; report the trivial schedule.
@@ -246,8 +240,7 @@ def sequence_products(
                 ),
             ],
             solver_message=(
-                "Single-product configuration — sequencing is trivial. "
-                f"Total wallclock: {prod_min} minutes."
+                "Single-product configuration — sequencing is trivial. " f"Total wallclock: {prod_min} minutes."
             ),
         )
 

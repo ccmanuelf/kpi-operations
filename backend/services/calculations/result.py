@@ -36,6 +36,4 @@ class CalculationResult(BaseModel, Generic[T]):
     mode: CalculationMode
     inputs_consumed: dict[str, Any]
     assumptions_applied: list[AssumptionApplied] = Field(default_factory=list)
-    calculated_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    calculated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

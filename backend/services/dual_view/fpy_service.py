@@ -103,11 +103,7 @@ class FPYCalculationService:
         snapshot = _build_snapshot(active, only=("scrap_classification_rule",))
 
         delta = float(adjusted.value - standard.value)
-        delta_pct = (
-            float((adjusted.value - standard.value) / standard.value * 100)
-            if standard.value != 0
-            else None
-        )
+        delta_pct = float((adjusted.value - standard.value) / standard.value * 100) if standard.value != 0 else None
 
         result_id: Optional[int] = None
         if persist:
@@ -130,7 +126,11 @@ class FPYCalculationService:
             result_id = row.result_id
             logger.info(
                 "FPY calculated: client=%s period=[%s, %s] standard=%s adjusted=%s",
-                client_id, period_start, period_end, standard.value, adjusted.value,
+                client_id,
+                period_start,
+                period_end,
+                standard.value,
+                adjusted.value,
             )
 
         return DualViewResult(
@@ -149,9 +149,7 @@ class FPYCalculationService:
         )
 
 
-def _build_snapshot(
-    active: dict[str, CalculationAssumption], only: tuple[str, ...]
-) -> dict[str, Any]:
+def _build_snapshot(active: dict[str, CalculationAssumption], only: tuple[str, ...]) -> dict[str, Any]:
     return {
         name: {
             "value": json.loads(rec.value_json),

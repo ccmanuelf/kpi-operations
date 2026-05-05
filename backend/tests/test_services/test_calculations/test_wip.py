@@ -55,9 +55,7 @@ class TestWIPAgingAdjusted:
 class TestHoldResolutionRate:
     def test_standard_mode_textbook(self):
         # 8 / 10 = 80%
-        result = calculate_hold_resolution_rate(
-            HoldResolutionInputs(resolved_on_time=8, total_resolved=10)
-        )
+        result = calculate_hold_resolution_rate(HoldResolutionInputs(resolved_on_time=8, total_resolved=10))
         assert result.value == Decimal("80.00")
 
     def test_zero_resolved_yields_zero(self):
@@ -67,6 +65,4 @@ class TestHoldResolutionRate:
 
     def test_on_time_exceeds_total_raises(self):
         with pytest.raises(ValueError):
-            calculate_hold_resolution_rate(
-                HoldResolutionInputs(resolved_on_time=15, total_resolved=10)
-            )
+            calculate_hold_resolution_rate(HoldResolutionInputs(resolved_on_time=15, total_resolved=10))

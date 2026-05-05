@@ -71,9 +71,7 @@ def calculate_mtbf(
     if inputs.failure_count == 0:
         value: Optional[Decimal] = None
     else:
-        value = (
-            inputs.operating_hours / Decimal(str(inputs.failure_count))
-        ).quantize(Decimal("0.01"))
+        value = (inputs.operating_hours / Decimal(str(inputs.failure_count))).quantize(Decimal("0.01"))
 
     return CalculationResult[Optional[Decimal]](
         metric_name="mtbf",
@@ -93,9 +91,7 @@ def calculate_mttr(
     if inputs.repair_count == 0:
         value: Optional[Decimal] = None
     else:
-        value = (
-            inputs.total_repair_hours / Decimal(str(inputs.repair_count))
-        ).quantize(Decimal("0.01"))
+        value = (inputs.total_repair_hours / Decimal(str(inputs.repair_count))).quantize(Decimal("0.01"))
 
     return CalculationResult[Optional[Decimal]](
         metric_name="mttr",

@@ -141,9 +141,7 @@ def run_minizinc(
             pass
 
     if proc.returncode != 0:
-        raise MiniZincSolveError(
-            f"MiniZinc exited {proc.returncode}: stdout={proc.stdout!r} stderr={proc.stderr!r}"
-        )
+        raise MiniZincSolveError(f"MiniZinc exited {proc.returncode}: stdout={proc.stdout!r} stderr={proc.stderr!r}")
 
     return _parse_output(proc.stdout, proc.stderr)
 

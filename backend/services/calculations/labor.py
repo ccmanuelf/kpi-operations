@@ -47,11 +47,7 @@ def calculate_absenteeism_rate(
     else:
         if inputs.total_absent_hours > inputs.total_scheduled_hours:
             raise ValueError("total_absent_hours cannot exceed total_scheduled_hours")
-        value = (
-            inputs.total_absent_hours
-            / inputs.total_scheduled_hours
-            * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (inputs.total_absent_hours / inputs.total_scheduled_hours * Decimal("100")).quantize(Decimal("0.01"))
 
     return CalculationResult[Decimal](
         metric_name="absenteeism_rate",
@@ -74,9 +70,7 @@ def calculate_attendance_rate(
         if inputs.days_present > inputs.total_scheduled_days:
             raise ValueError("days_present cannot exceed total_scheduled_days")
         value = (
-            Decimal(str(inputs.days_present))
-            / Decimal(str(inputs.total_scheduled_days))
-            * Decimal("100")
+            Decimal(str(inputs.days_present)) / Decimal(str(inputs.total_scheduled_days)) * Decimal("100")
         ).quantize(Decimal("0.01"))
 
     return CalculationResult[Decimal](

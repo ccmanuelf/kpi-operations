@@ -50,11 +50,9 @@ def calculate_otd(
     else:
         if inputs.on_time_orders > inputs.total_orders:
             raise ValueError("on_time_orders cannot exceed total_orders")
-        value = (
-            Decimal(str(inputs.on_time_orders))
-            / Decimal(str(inputs.total_orders))
-            * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (Decimal(str(inputs.on_time_orders)) / Decimal(str(inputs.total_orders)) * Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     return CalculationResult[Decimal](
         metric_name="otd",
@@ -75,9 +73,7 @@ def calculate_delivery_variance(
 
     if total == 0:
         zero = Decimal("0")
-        value = DeliveryVarianceValue(
-            early_pct=zero, on_time_pct=zero, late_pct=zero, average_variance_days=zero
-        )
+        value = DeliveryVarianceValue(early_pct=zero, on_time_pct=zero, late_pct=zero, average_variance_days=zero)
     else:
         total_dec = Decimal(str(total))
         value = DeliveryVarianceValue(

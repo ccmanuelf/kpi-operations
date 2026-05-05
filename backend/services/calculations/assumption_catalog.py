@@ -179,20 +179,13 @@ def validate_value(assumption_name: str, value: Any) -> None:
     allowed = entry.get("allowed_values")
 
     if allowed is not None and value not in allowed:
-        raise ValueError(
-            f"Value {value!r} not allowed for {assumption_name!r}. "
-            f"Allowed: {allowed}"
-        )
+        raise ValueError(f"Value {value!r} not allowed for {assumption_name!r}. " f"Allowed: {allowed}")
 
     # Special-case numeric validation for otd_carrier_buffer_pct.
     if assumption_name == "otd_carrier_buffer_pct":
         try:
             numeric = float(value)
         except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"otd_carrier_buffer_pct must be numeric, got {value!r}"
-            ) from exc
+            raise ValueError(f"otd_carrier_buffer_pct must be numeric, got {value!r}") from exc
         if not (0.0 <= numeric <= 100.0):
-            raise ValueError(
-                f"otd_carrier_buffer_pct must be in [0, 100], got {numeric}"
-            )
+            raise ValueError(f"otd_carrier_buffer_pct must be in [0, 100], got {numeric}")

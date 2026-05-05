@@ -46,10 +46,7 @@ def _check_calibration_permission(user: User) -> None:
     if (user.role or "") not in _WRITE_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Calibration requires leader, supervisor, poweruser, or "
-                "admin role"
-            ),
+            detail=("Calibration requires leader, supervisor, poweruser, or " "admin role"),
         )
 
 
@@ -77,8 +74,7 @@ def calibrate_endpoint(
     period_start: Optional[date] = Query(
         None,
         description=(
-            "Inclusive start of the calibration window. Defaults to "
-            "30 days before period_end (or 30 days ago)."
+            "Inclusive start of the calibration window. Defaults to " "30 days before period_end (or 30 days ago)."
         ),
     ),
     period_end: Optional[date] = Query(
@@ -112,8 +108,10 @@ def calibrate_endpoint(
         period_start = period_end - timedelta(days=30)
 
     validate_date_range(
-        period_start, period_end,
-        start_field="period_start", end_field="period_end",
+        period_start,
+        period_end,
+        start_field="period_start",
+        end_field="period_end",
     )
 
     payload = calibrate_from_history(db, client_id, period_start, period_end)

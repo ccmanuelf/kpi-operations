@@ -50,22 +50,40 @@ needs_minizinc = pytest.mark.skipif(
 def three_step_ops() -> List[OperationInput]:
     return [
         OperationInput(
-            product="A", step=1, operation="Cut", machine_tool="M1",
-            sam_min=2.0, operators=2,
+            product="A",
+            step=1,
+            operation="Cut",
+            machine_tool="M1",
+            sam_min=2.0,
+            operators=2,
             variability=VariabilityType.TRIANGULAR,
-            rework_pct=0, grade_pct=90, fpd_pct=10,
+            rework_pct=0,
+            grade_pct=90,
+            fpd_pct=10,
         ),
         OperationInput(
-            product="A", step=2, operation="Sew", machine_tool="M2",
-            sam_min=3.5, operators=3,
+            product="A",
+            step=2,
+            operation="Sew",
+            machine_tool="M2",
+            sam_min=3.5,
+            operators=3,
             variability=VariabilityType.TRIANGULAR,
-            rework_pct=2, grade_pct=85, fpd_pct=15,
+            rework_pct=2,
+            grade_pct=85,
+            fpd_pct=15,
         ),
         OperationInput(
-            product="A", step=3, operation="Pack", machine_tool="M3",
-            sam_min=1.0, operators=1,
+            product="A",
+            step=3,
+            operation="Pack",
+            machine_tool="M3",
+            sam_min=1.0,
+            operators=1,
             variability=VariabilityType.DETERMINISTIC,
-            rework_pct=0, grade_pct=95, fpd_pct=5,
+            rework_pct=0,
+            grade_pct=95,
+            fpd_pct=5,
         ),
     ]
 
@@ -73,8 +91,12 @@ def three_step_ops() -> List[OperationInput]:
 @pytest.fixture
 def standard_schedule() -> ScheduleConfig:
     return ScheduleConfig(
-        shifts_enabled=1, shift1_hours=8, shift2_hours=0, shift3_hours=0,
-        work_days=5, ot_enabled=False,
+        shifts_enabled=1,
+        shift1_hours=8,
+        shift2_hours=0,
+        shift3_hours=0,
+        work_days=5,
+        ot_enabled=False,
     )
 
 
@@ -84,9 +106,7 @@ def daily_200_demand() -> List[DemandInput]:
 
 
 @pytest.fixture
-def base_config(
-    three_step_ops, standard_schedule, daily_200_demand
-) -> SimulationConfig:
+def base_config(three_step_ops, standard_schedule, daily_200_demand) -> SimulationConfig:
     return SimulationConfig(
         operations=three_step_ops,
         schedule=standard_schedule,
@@ -137,9 +157,7 @@ class TestResolveDailyDemand:
 
 class TestBuildMinizincData:
     def test_shape(self, base_config):
-        data, ops = _build_minizinc_data(
-            base_config, max_operators_per_op=10, total_operators_budget=None
-        )
+        data, ops = _build_minizinc_data(base_config, max_operators_per_op=10, total_operators_budget=None)
         assert data["n_ops"] == 3
         assert data["sam_min"] == [2.0, 3.5, 1.0]
         assert data["grade_pct"] == [90, 85, 95]
@@ -151,9 +169,7 @@ class TestBuildMinizincData:
         assert ops[0].operation == "Cut"
 
     def test_budget_passthrough(self, base_config):
-        data, _ = _build_minizinc_data(
-            base_config, max_operators_per_op=10, total_operators_budget=8
-        )
+        data, _ = _build_minizinc_data(base_config, max_operators_per_op=10, total_operators_budget=8)
         assert data["total_operators_budget"] == 8
 
 
@@ -179,16 +195,13 @@ class TestOptimizeOperatorAllocation:
         result = optimize_operator_allocation(base_config)
         for p in result.proposals:
             assert p.predicted_pcs_per_day >= p.demand_pcs_per_day, (
-                f"{p.operation} predicted {p.predicted_pcs_per_day} < "
-                f"demand {p.demand_pcs_per_day}"
+                f"{p.operation} predicted {p.predicted_pcs_per_day} < " f"demand {p.demand_pcs_per_day}"
             )
 
     def test_unsatisfiable_budget_returns_unsatisfied(self, base_config):
         # Total budget too low to meet 200 pcs/day on Sew alone (SAM 3.5
         # at grade 85%): minimum operators for Sew alone is 2.
-        result = optimize_operator_allocation(
-            base_config, total_operators_budget=2
-        )
+        result = optimize_operator_allocation(base_config, total_operators_budget=2)
         assert not result.is_satisfied
         assert "demand constraints" in result.solver_message.lower() or (
             "could not satisfy" in result.solver_message.lower()
@@ -224,9 +237,7 @@ class TestApplyAllocationToConfig:
 
     def test_returns_original_when_unsatisfied(self, base_config):
         # Forge an unsatisfied result by using infeasible budget.
-        bad = optimize_operator_allocation(
-            base_config, total_operators_budget=2
-        )
+        bad = optimize_operator_allocation(base_config, total_operators_budget=2)
         assert not bad.is_satisfied
         same = apply_allocation_to_config(base_config, bad)
         assert same is base_config

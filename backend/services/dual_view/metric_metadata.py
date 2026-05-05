@@ -22,8 +22,7 @@ METRIC_METADATA: dict[str, MetricMetadata] = {
         "name": "Overall Equipment Effectiveness",
         "formula": "OEE = (Availability% × Performance% × Quality%) / 10000",
         "description": (
-            "Composite measure of how effectively a production line is utilized "
-            "relative to its full potential."
+            "Composite measure of how effectively a production line is utilized " "relative to its full potential."
         ),
         "inputs_help": {
             "scheduled_hours": "Hours the line was scheduled to produce.",

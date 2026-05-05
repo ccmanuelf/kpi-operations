@@ -90,9 +90,7 @@ class AssumptionService:
         verify_client_access(self.user, record.client_id)
         return record
 
-    def get_effective_set(
-        self, client_id: str, as_of: Optional[datetime] = None
-    ) -> dict[str, CalculationAssumption]:
+    def get_effective_set(self, client_id: str, as_of: Optional[datetime] = None) -> dict[str, CalculationAssumption]:
         """
         Return the active assumption record per name for `client_id` at `as_of`.
 
@@ -160,9 +158,7 @@ class AssumptionService:
     def get_catalog() -> dict[str, dict[str, Any]]:
         return {name: dict(entry) for name, entry in V1_CATALOG.items()}
 
-    def get_variance_report(
-        self, stale_after_days: int = 365
-    ) -> list[dict[str, Any]]:
+    def get_variance_report(self, stale_after_days: int = 365) -> list[dict[str, Any]]:
         """
         Phase 5 — variance report rows for every currently ACTIVE assumption.
 
@@ -200,9 +196,7 @@ class AssumptionService:
             is_stale = False
             if approved_at is not None:
                 # Normalize naive datetimes (SQLite-stored) to UTC for diff.
-                anchor = (
-                    approved_at if approved_at.tzinfo else approved_at.replace(tzinfo=timezone.utc)
-                )
+                anchor = approved_at if approved_at.tzinfo else approved_at.replace(tzinfo=timezone.utc)
                 days_since = (now - anchor).days
                 is_stale = days_since > stale_after_days
 
@@ -270,7 +264,10 @@ class AssumptionService:
 
         logger.info(
             "Assumption proposed: id=%s client=%s name=%s by=%s",
-            record.assumption_id, client_id, assumption_name, self.user.user_id,
+            record.assumption_id,
+            client_id,
+            assumption_name,
+            self.user.user_id,
         )
         return record
 
@@ -366,7 +363,10 @@ class AssumptionService:
 
         logger.info(
             "Assumption approved: id=%s client=%s name=%s by=%s",
-            record.assumption_id, record.client_id, record.assumption_name, self.user.user_id,
+            record.assumption_id,
+            record.client_id,
+            record.assumption_name,
+            self.user.user_id,
         )
         return record
 
@@ -400,7 +400,10 @@ class AssumptionService:
 
         logger.info(
             "Assumption retired: id=%s client=%s name=%s by=%s",
-            record.assumption_id, record.client_id, record.assumption_name, self.user.user_id,
+            record.assumption_id,
+            record.client_id,
+            record.assumption_name,
+            self.user.user_id,
         )
         return record
 
@@ -424,9 +427,7 @@ class AssumptionService:
 
     def _fetch_or_404(self, assumption_id: int) -> CalculationAssumption:
         record = (
-            self.db.query(CalculationAssumption)
-            .filter(CalculationAssumption.assumption_id == assumption_id)
-            .first()
+            self.db.query(CalculationAssumption).filter(CalculationAssumption.assumption_id == assumption_id).first()
         )
         if record is None:
             raise HTTPException(
@@ -445,19 +446,11 @@ class AssumptionService:
         try:
             validate_value(assumption_name, value)
         except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-            ) from exc
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     @staticmethod
-    def _validate_window(
-        effective_date: Optional[datetime], expiration_date: Optional[datetime]
-    ) -> None:
-        if (
-            effective_date is not None
-            and expiration_date is not None
-            and effective_date > expiration_date
-        ):
+    def _validate_window(effective_date: Optional[datetime], expiration_date: Optional[datetime]) -> None:
+        if effective_date is not None and expiration_date is not None and effective_date > expiration_date:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="effective_date cannot be after expiration_date",

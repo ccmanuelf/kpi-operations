@@ -178,9 +178,7 @@ def rebalance_bottleneck(
         by Y pcs/day" warning.
     """
     if not is_minizinc_available():
-        raise MiniZincNotAvailableError(
-            "MiniZinc CLI is not installed; bottleneck rebalancing is unavailable."
-        )
+        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; bottleneck rebalancing is unavailable.")
 
     data, operations = _build_minizinc_data(
         config,
@@ -213,9 +211,7 @@ def rebalance_bottleneck(
         demand = data["demand_pcs_per_day"][0]
         cur = data["current_operators"][0]
         # Predict the existing throughput for transparency.
-        predicted = (
-            cur * data["daily_planned_minutes"] * data["grade_pct"][0]
-        ) // data["sam_min_x100"][0]
+        predicted = (cur * data["daily_planned_minutes"] * data["grade_pct"][0]) // data["sam_min_x100"][0]
         return RebalancingResult(
             is_optimal=True,
             is_satisfied=True,
@@ -328,9 +324,7 @@ def rebalance_bottleneck(
 # =============================================================================
 
 
-def apply_rebalancing_to_config(
-    config: SimulationConfig, result: RebalancingResult
-) -> SimulationConfig:
+def apply_rebalancing_to_config(config: SimulationConfig, result: RebalancingResult) -> SimulationConfig:
     """
     Return a copy of `config` whose operations carry the proposed
     operator counts. Used by the route to drive a SimPy validation

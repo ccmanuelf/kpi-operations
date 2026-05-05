@@ -45,6 +45,8 @@ def _check_wo_write_permission(user: "_User_for_perm") -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Work order mutations require leader, supervisor, poweruser, or admin role",
         )
+
+
 from backend.orm.user import User
 from backend.orm.work_order import WorkOrder
 from backend.orm.production_entry import ProductionEntry

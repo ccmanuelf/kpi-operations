@@ -70,9 +70,7 @@ async def run_comprehensive_simulation(
         if not client_id_assigned:
             raise HTTPException(status_code=400, detail="User has no client assignment")
 
-        result = SimulationService(db).run_capacity_simulation(
-            client_id=client_id_assigned, simulation_config=config
-        )
+        result = SimulationService(db).run_capacity_simulation(client_id=client_id_assigned, simulation_config=config)
 
         return result
 

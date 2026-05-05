@@ -33,8 +33,8 @@ from typing import List, Dict, Any, Tuple, Optional
 # Configuration
 # ============================================================================
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-DB_PATH = os.path.join(PROJECT_ROOT, 'database', 'kpi_platform.db')
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+DB_PATH = os.path.join(PROJECT_ROOT, "database", "kpi_platform.db")
 
 # Seed for reproducible data
 RANDOM_SEED = 2026
@@ -55,7 +55,7 @@ CLIENTS = [
         "timezone": "America/Mexico_City",
         "efficiency_target": 85.0,
         "otd_target": 95.0,
-        "fpy_target": 98.0
+        "fpy_target": 98.0,
     },
     {
         "client_id": "TEXTIL-NORTE",
@@ -64,7 +64,7 @@ CLIENTS = [
         "timezone": "America/Mexico_City",
         "efficiency_target": 82.0,
         "otd_target": 92.0,
-        "fpy_target": 96.0
+        "fpy_target": 96.0,
     },
     {
         "client_id": "CONFEC-DELTA",
@@ -73,7 +73,7 @@ CLIENTS = [
         "timezone": "America/Mexico_City",
         "efficiency_target": 80.0,
         "otd_target": 90.0,
-        "fpy_target": 95.0
+        "fpy_target": 95.0,
     },
     {
         "client_id": "MAQUILA-PRIME",
@@ -82,7 +82,7 @@ CLIENTS = [
         "timezone": "America/Mexico_City",
         "efficiency_target": 88.0,
         "otd_target": 98.0,
-        "fpy_target": 99.0
+        "fpy_target": 99.0,
     },
     {
         "client_id": "GARMENT-PLUS",
@@ -91,14 +91,14 @@ CLIENTS = [
         "timezone": "America/Chicago",
         "efficiency_target": 83.0,
         "otd_target": 94.0,
-        "fpy_target": 97.0
-    }
+        "fpy_target": 97.0,
+    },
 ]
 
 SHIFTS = [
     {"shift_id": 1, "shift_name": "1st Shift (Morning)", "start_time": "06:00:00", "end_time": "14:00:00"},
     {"shift_id": 2, "shift_name": "2nd Shift (Afternoon)", "start_time": "14:00:00", "end_time": "22:00:00"},
-    {"shift_id": 3, "shift_name": "3rd Shift (Night)", "start_time": "22:00:00", "end_time": "06:00:00"}
+    {"shift_id": 3, "shift_name": "3rd Shift (Night)", "start_time": "22:00:00", "end_time": "06:00:00"},
 ]
 
 PRODUCTS = [
@@ -111,18 +111,63 @@ PRODUCTS = [
     {"product_code": "JACKET-HV", "product_name": "Heavy Jacket", "ideal_cycle_time": 1.20},
     {"product_code": "DRESS-CAS", "product_name": "Casual Dress", "ideal_cycle_time": 0.55},
     {"product_code": "UNIFORM-IND", "product_name": "Industrial Uniform", "ideal_cycle_time": 0.40},
-    {"product_code": "SCRUBS-MED", "product_name": "Medical Scrubs Set", "ideal_cycle_time": 0.50}
+    {"product_code": "SCRUBS-MED", "product_name": "Medical Scrubs Set", "ideal_cycle_time": 0.50},
 ]
 
 EMPLOYEE_FIRST_NAMES = [
-    "Maria", "Jose", "Juan", "Ana", "Carlos", "Laura", "Miguel", "Rosa", "Luis", "Carmen",
-    "Pedro", "Sofia", "Diego", "Elena", "Fernando", "Patricia", "Roberto", "Guadalupe", "Ricardo", "Martha",
-    "Alejandro", "Veronica", "Francisco", "Adriana", "Jorge", "Monica", "Antonio", "Claudia", "Eduardo", "Sandra"
+    "Maria",
+    "Jose",
+    "Juan",
+    "Ana",
+    "Carlos",
+    "Laura",
+    "Miguel",
+    "Rosa",
+    "Luis",
+    "Carmen",
+    "Pedro",
+    "Sofia",
+    "Diego",
+    "Elena",
+    "Fernando",
+    "Patricia",
+    "Roberto",
+    "Guadalupe",
+    "Ricardo",
+    "Martha",
+    "Alejandro",
+    "Veronica",
+    "Francisco",
+    "Adriana",
+    "Jorge",
+    "Monica",
+    "Antonio",
+    "Claudia",
+    "Eduardo",
+    "Sandra",
 ]
 
 EMPLOYEE_LAST_NAMES = [
-    "Garcia", "Rodriguez", "Martinez", "Lopez", "Hernandez", "Gonzalez", "Perez", "Sanchez", "Ramirez", "Torres",
-    "Flores", "Rivera", "Gomez", "Diaz", "Reyes", "Cruz", "Morales", "Ortiz", "Gutierrez", "Chavez"
+    "Garcia",
+    "Rodriguez",
+    "Martinez",
+    "Lopez",
+    "Hernandez",
+    "Gonzalez",
+    "Perez",
+    "Sanchez",
+    "Ramirez",
+    "Torres",
+    "Flores",
+    "Rivera",
+    "Gomez",
+    "Diaz",
+    "Reyes",
+    "Cruz",
+    "Morales",
+    "Ortiz",
+    "Gutierrez",
+    "Chavez",
 ]
 
 HOLD_REASONS = [
@@ -131,7 +176,7 @@ HOLD_REASONS = [
     ("CUSTOMER_CHANGE", "Customer Design Change Request"),
     ("EQUIPMENT_DOWN", "Equipment Down for Maintenance"),
     ("SPEC_CLARIFICATION", "Specification Clarification Needed"),
-    ("CAPACITY_CONSTRAINT", "Capacity Constraint")
+    ("CAPACITY_CONSTRAINT", "Capacity Constraint"),
 ]
 
 DOWNTIME_CATEGORIES = [
@@ -141,7 +186,7 @@ DOWNTIME_CATEGORIES = [
     ("QUALITY_HOLD", "Quality Hold"),
     ("MAINTENANCE", "Preventive Maintenance"),
     ("POWER_OUTAGE", "Power Outage"),
-    ("OTHER", "Other")
+    ("OTHER", "Other"),
 ]
 
 DEFECT_TYPES = [
@@ -152,7 +197,7 @@ DEFECT_TYPES = [
     ("HOLE", "Hole/Tear", "Physical damage to material"),
     ("STAIN", "Stain/Mark", "Unwanted marks or stains"),
     ("ALIGN", "Misalignment", "Pattern or component misalignment"),
-    ("SEAM", "Seam Issue", "Seam puckering or opening")
+    ("SEAM", "Seam Issue", "Seam puckering or opening"),
 ]
 
 # Defect severities for DEFECT_DETAIL generation
@@ -160,9 +205,19 @@ DEFECT_SEVERITIES = ["CRITICAL", "MAJOR", "MINOR"]
 
 # Product locations for defects
 DEFECT_LOCATIONS = [
-    "Front panel", "Back panel", "Left sleeve", "Right sleeve",
-    "Collar", "Cuff", "Pocket", "Waistband", "Hem", "Zipper area",
-    "Button line", "Seam line", "Label area"
+    "Front panel",
+    "Back panel",
+    "Left sleeve",
+    "Right sleeve",
+    "Collar",
+    "Cuff",
+    "Pocket",
+    "Waistband",
+    "Hem",
+    "Zipper area",
+    "Button line",
+    "Seam line",
+    "Label area",
 ]
 
 # Work order status transitions for workflow log
@@ -208,14 +263,28 @@ class DemoDataGenerator:
         print("\n🗑️  Clearing existing data...")
 
         tables_to_clear = [
-            "ALERT_HISTORY", "ALERT_CONFIG", "ALERT",
+            "ALERT_HISTORY",
+            "ALERT_CONFIG",
+            "ALERT",
             "WORKFLOW_TRANSITION_LOG",
-            "DEFECT_DETAIL", "HOLD_ENTRY", "DOWNTIME_ENTRY",
-            "COVERAGE_ENTRY", "SHIFT_COVERAGE", "ATTENDANCE_ENTRY",
-            "QUALITY_ENTRY", "PRODUCTION_ENTRY", "JOB",
-            "PART_OPPORTUNITIES", "WORK_ORDER", "FLOATING_POOL",
-            "EMPLOYEE", "PRODUCT", "SHIFT", "CLIENT",
-            "KPI_THRESHOLD", "DEFECT_TYPE_CATALOG"
+            "DEFECT_DETAIL",
+            "HOLD_ENTRY",
+            "DOWNTIME_ENTRY",
+            "COVERAGE_ENTRY",
+            "SHIFT_COVERAGE",
+            "ATTENDANCE_ENTRY",
+            "QUALITY_ENTRY",
+            "PRODUCTION_ENTRY",
+            "JOB",
+            "PART_OPPORTUNITIES",
+            "WORK_ORDER",
+            "FLOATING_POOL",
+            "EMPLOYEE",
+            "PRODUCT",
+            "SHIFT",
+            "CLIENT",
+            "KPI_THRESHOLD",
+            "DEFECT_TYPE_CATALOG",
         ]
 
         for table in tables_to_clear:
@@ -242,15 +311,18 @@ class DemoDataGenerator:
             ("SUPER-002", "supervisor2", "supervisor2@novalink.mx", "Juan Rodriguez (Supervisor)", "SUPERVISOR"),
             ("LEADER-001", "leader1", "leader1@novalink.mx", "Carlos Martinez (Team Lead)", "LEADER"),
             ("LEADER-002", "leader2", "leader2@novalink.mx", "Ana Lopez (Team Lead)", "LEADER"),
-            ("OP-001", "operator1", "operator1@novalink.mx", "Pedro Hernandez (Operator)", "OPERATOR")
+            ("OP-001", "operator1", "operator1@novalink.mx", "Pedro Hernandez (Operator)", "OPERATOR"),
         ]
 
         for user_id, username, email, full_name, role in users:
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT OR REPLACE INTO USER (user_id, username, email, full_name, role, is_active, created_at)
                     VALUES (?, ?, ?, ?, ?, 1, datetime('now'))
-                """, (user_id, username, email, full_name, role))
+                """,
+                    (user_id, username, email, full_name, role),
+                )
                 self.user_map[user_id] = user_id
             except sqlite3.IntegrityError:
                 pass
@@ -264,10 +336,13 @@ class DemoDataGenerator:
 
         for client in CLIENTS:
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO CLIENT (client_id, client_name, client_type, timezone, is_active, created_at)
                     VALUES (?, ?, ?, ?, 1, datetime('now'))
-                """, (client["client_id"], client["client_name"], client["client_type"], client["timezone"]))
+                """,
+                    (client["client_id"], client["client_name"], client["client_type"], client["timezone"]),
+                )
                 self.client_ids.append(client["client_id"])
                 print(f"   ✓ {client['client_id']}: {client['client_name']}")
             except sqlite3.IntegrityError:
@@ -281,10 +356,13 @@ class DemoDataGenerator:
 
         for shift in SHIFTS:
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO SHIFT (shift_id, shift_name, start_time, end_time, is_active, created_at)
                     VALUES (?, ?, ?, ?, 1, datetime('now'))
-                """, (shift["shift_id"], shift["shift_name"], shift["start_time"], shift["end_time"]))
+                """,
+                    (shift["shift_id"], shift["shift_name"], shift["start_time"], shift["end_time"]),
+                )
                 print(f"   ✓ {shift['shift_name']}")
             except sqlite3.IntegrityError:
                 pass
@@ -297,10 +375,13 @@ class DemoDataGenerator:
 
         for product in PRODUCTS:
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO PRODUCT (product_code, product_name, ideal_cycle_time, unit_of_measure, is_active, created_at, updated_at)
                     VALUES (?, ?, ?, 'pieces', 1, datetime('now'), datetime('now'))
-                """, (product["product_code"], product["product_name"], product["ideal_cycle_time"]))
+                """,
+                    (product["product_code"], product["product_name"], product["ideal_cycle_time"]),
+                )
 
                 # Get the auto-generated product_id
                 self.cursor.execute("SELECT product_id FROM PRODUCT WHERE product_code = ?", (product["product_code"],))
@@ -326,12 +407,15 @@ class DemoDataGenerator:
             for defect_code, defect_name, description in DEFECT_TYPES:
                 defect_id = f"DEF-{client_id[:4]}-{defect_code}"
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO DEFECT_TYPE_CATALOG (
                             defect_type_id, client_id, defect_code, defect_name, description,
                             severity_default, is_active, created_at
                         ) VALUES (?, ?, ?, ?, ?, 'MINOR', 1, datetime('now'))
-                    """, (defect_id, client_id, defect_code, defect_name, description))
+                    """,
+                        (defect_id, client_id, defect_code, defect_name, description),
+                    )
                     count += 1
                 except sqlite3.IntegrityError:
                     pass
@@ -354,10 +438,13 @@ class DemoDataGenerator:
                 emp_name = f"{first_name} {last_name}"
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
                         VALUES (?, ?, ?, 0, 1, datetime('now'), datetime('now'))
-                    """, (emp_code, emp_name, client_id))
+                    """,
+                        (emp_code, emp_name, client_id),
+                    )
 
                     # Get the auto-generated employee_id
                     self.cursor.execute("SELECT employee_id FROM EMPLOYEE WHERE employee_code = ?", (emp_code,))
@@ -376,10 +463,13 @@ class DemoDataGenerator:
             emp_name = f"{first_name} {last_name}"
 
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
                     VALUES (?, ?, NULL, 1, 1, datetime('now'), datetime('now'))
-                """, (emp_code, emp_name))
+                """,
+                    (emp_code, emp_name),
+                )
 
                 # Get the auto-generated employee_id
                 self.cursor.execute("SELECT employee_id FROM EMPLOYEE WHERE employee_code = ?", (emp_code,))
@@ -391,19 +481,16 @@ class DemoDataGenerator:
                 pass
 
         self.conn.commit()
-        print(f"   ✓ Created {emp_count} employees ({len(self.employee_map)} regular + {len(self.floating_pool_map)} floating pool)")
+        print(
+            f"   ✓ Created {emp_count} employees ({len(self.employee_map)} regular + {len(self.floating_pool_map)} floating pool)"
+        )
 
     def generate_work_orders(self):
         """Generate work orders with various statuses for demo scenarios."""
         print("\n📋 Generating Work Orders...")
 
         wo_count = 0
-        statuses = {
-            "COMPLETED": 0.5,
-            "IN_PROGRESS": 0.25,
-            "AT_RISK": 0.15,
-            "ON_HOLD": 0.10
-        }
+        statuses = {"COMPLETED": 0.5, "IN_PROGRESS": 0.25, "AT_RISK": 0.15, "ON_HOLD": 0.10}
 
         for client_idx, client_id in enumerate(self.client_ids):
             for wo_idx in range(10):
@@ -430,7 +517,9 @@ class DemoDataGenerator:
                     actual_delivery = ship_date + timedelta(days=random.randint(-2, 2))
                 elif status in ["IN_PROGRESS", "AT_RISK"]:
                     start_date = DATA_END_DATE - timedelta(days=random.randint(7, 21))
-                    ship_date = DATA_END_DATE + timedelta(days=random.randint(1, 14) if status == "AT_RISK" else random.randint(7, 21))
+                    ship_date = DATA_END_DATE + timedelta(
+                        days=random.randint(1, 14) if status == "AT_RISK" else random.randint(7, 21)
+                    )
                     actual_delivery = None
                 else:  # ON_HOLD
                     start_date = DATA_END_DATE - timedelta(days=random.randint(10, 20))
@@ -450,29 +539,40 @@ class DemoDataGenerator:
                     actual_qty = int(planned_qty * random.uniform(0.5, 0.8))
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO WORK_ORDER (
                             work_order_id, client_id, style_model, planned_quantity, actual_quantity,
                             actual_start_date, planned_ship_date, actual_delivery_date,
                             ideal_cycle_time, status, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        wo_id, client_id, product["product_code"], planned_qty, actual_qty,
-                        start_date.strftime('%Y-%m-%d'), ship_date.strftime('%Y-%m-%d'),
-                        actual_delivery.strftime('%Y-%m-%d') if actual_delivery else None,
-                        product["ideal_cycle_time"], db_status
-                    ))
-                    self.work_order_data.append({
-                        "id": wo_id,
-                        "client_id": client_id,
-                        "product": product,
-                        "start_date": start_date,
-                        "ship_date": ship_date,
-                        "planned_qty": planned_qty,
-                        "actual_qty": actual_qty,
-                        "status": status,
-                        "db_status": db_status
-                    })
+                    """,
+                        (
+                            wo_id,
+                            client_id,
+                            product["product_code"],
+                            planned_qty,
+                            actual_qty,
+                            start_date.strftime("%Y-%m-%d"),
+                            ship_date.strftime("%Y-%m-%d"),
+                            actual_delivery.strftime("%Y-%m-%d") if actual_delivery else None,
+                            product["ideal_cycle_time"],
+                            db_status,
+                        ),
+                    )
+                    self.work_order_data.append(
+                        {
+                            "id": wo_id,
+                            "client_id": client_id,
+                            "product": product,
+                            "start_date": start_date,
+                            "ship_date": ship_date,
+                            "planned_qty": planned_qty,
+                            "actual_qty": actual_qty,
+                            "status": status,
+                            "db_status": db_status,
+                        }
+                    )
                     wo_count += 1
                 except sqlite3.IntegrityError as e:
                     print(f"   ⚠ Error creating {wo_id}: {e}")
@@ -501,7 +601,7 @@ class DemoDataGenerator:
             ("TRIM", "Trimming", 3),
             ("PRESS", "Pressing", 4),
             ("QC", "Quality Check", 5),
-            ("PACK", "Packing", 6)
+            ("PACK", "Packing", 6),
         ]
 
         for wo in self.work_order_data:
@@ -535,7 +635,8 @@ class DemoDataGenerator:
                 actual_hours = completed_qty * wo["product"]["ideal_cycle_time"] / 60 * random.uniform(0.9, 1.2)
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO JOB (
                             job_id, work_order_id, client_id_fk,
                             operation_name, operation_code, sequence_number,
@@ -544,14 +645,24 @@ class DemoDataGenerator:
                             planned_hours, actual_hours, is_completed,
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        job_id, wo["id"], wo["client_id"],
-                        op_name, op_code, seq,
-                        wo["product"]["product_code"],
-                        f"{op_name} operation for {wo['product']['product_name']}",
-                        planned_qty, completed_qty, qty_scrapped,
-                        round(planned_hours, 2), round(actual_hours, 2), is_completed
-                    ))
+                    """,
+                        (
+                            job_id,
+                            wo["id"],
+                            wo["client_id"],
+                            op_name,
+                            op_code,
+                            seq,
+                            wo["product"]["product_code"],
+                            f"{op_name} operation for {wo['product']['product_name']}",
+                            planned_qty,
+                            completed_qty,
+                            qty_scrapped,
+                            round(planned_hours, 2),
+                            round(actual_hours, 2),
+                            is_completed,
+                        ),
+                    )
                     job_count += 1
                 except sqlite3.IntegrityError as e:
                     print(f"      Warning: Could not insert job {job_id}: {e}")
@@ -577,7 +688,7 @@ class DemoDataGenerator:
             "JACKET-HV": (65, "Heavy jacket - complex construction, multiple layers"),
             "DRESS-CAS": (25, "Casual dress - moderate complexity"),
             "UNIFORM-IND": (30, "Industrial uniform - reinforced areas, pockets"),
-            "SCRUBS-MED": (18, "Medical scrubs - simple design, functional")
+            "SCRUBS-MED": (18, "Medical scrubs - simple design, functional"),
         }
 
         # Create opportunities for each client's products
@@ -588,19 +699,22 @@ class DemoDataGenerator:
                 adjusted_opportunities = int(opportunities * client_modifier)
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO PART_OPPORTUNITIES (
                             part_number, client_id_fk, opportunities_per_unit,
                             part_description, part_category, notes
                         ) VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        f"{product_code}-{client_id[:4]}",  # Unique per client
-                        client_id,
-                        adjusted_opportunities,
-                        description,
-                        "Garment" if "SHIRT" in product_code or "POLO" in product_code else "Apparel",
-                        f"Defect opportunities for {product_code} at {client_id}"
-                    ))
+                    """,
+                        (
+                            f"{product_code}-{client_id[:4]}",  # Unique per client
+                            client_id,
+                            adjusted_opportunities,
+                            description,
+                            "Garment" if "SHIRT" in product_code or "POLO" in product_code else "Apparel",
+                            f"Defect opportunities for {product_code} at {client_id}",
+                        ),
+                    )
                     part_count += 1
                 except sqlite3.IntegrityError as e:
                     print(f"      Warning: Could not insert part opportunity: {e}")
@@ -670,7 +784,8 @@ class DemoDataGenerator:
                 prod_id = f"PE-{wo['id']}-{day+1:03d}"
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO PRODUCTION_ENTRY (
                             production_entry_id, client_id, product_id, shift_id,
                             work_order_id, production_date, shift_date,
@@ -679,15 +794,28 @@ class DemoDataGenerator:
                             efficiency_percentage, performance_percentage, quality_rate,
                             entered_by, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        prod_id, wo["client_id"], product_id,
-                        random.randint(1, 3), wo["id"],
-                        prod_date.strftime('%Y-%m-%d'), prod_date.strftime('%Y-%m-%d'),
-                        daily_actual, run_time, employees,
-                        defects, scrap, ideal_cycle, actual_cycle,
-                        efficiency, performance, quality_rate,
-                        system_user_id
-                    ))
+                    """,
+                        (
+                            prod_id,
+                            wo["client_id"],
+                            product_id,
+                            random.randint(1, 3),
+                            wo["id"],
+                            prod_date.strftime("%Y-%m-%d"),
+                            prod_date.strftime("%Y-%m-%d"),
+                            daily_actual,
+                            run_time,
+                            employees,
+                            defects,
+                            scrap,
+                            ideal_cycle,
+                            actual_cycle,
+                            efficiency,
+                            performance,
+                            quality_rate,
+                            system_user_id,
+                        ),
+                    )
                     prod_count += 1
                 except sqlite3.IntegrityError:
                     pass
@@ -732,19 +860,30 @@ class DemoDataGenerator:
                 quality_id = f"QE-{wo['id']}-{q_idx+1:02d}"
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO QUALITY_ENTRY (
                             quality_entry_id, client_id, work_order_id,
                             shift_date, inspection_date, units_inspected, units_passed, units_defective,
                             total_defects_count, units_reworked, units_requiring_repair, units_scrapped,
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        quality_id, wo["client_id"], wo["id"],
-                        q_date.strftime('%Y-%m-%d'), q_date.strftime('%Y-%m-%d'),
-                        units_inspected, units_passed, units_defective,
-                        total_defects, units_reworked, units_requiring_repair, units_scrapped
-                    ))
+                    """,
+                        (
+                            quality_id,
+                            wo["client_id"],
+                            wo["id"],
+                            q_date.strftime("%Y-%m-%d"),
+                            q_date.strftime("%Y-%m-%d"),
+                            units_inspected,
+                            units_passed,
+                            units_defective,
+                            total_defects,
+                            units_reworked,
+                            units_requiring_repair,
+                            units_scrapped,
+                        ),
+                    )
                     quality_count += 1
                 except sqlite3.IntegrityError:
                     pass
@@ -760,11 +899,13 @@ class DemoDataGenerator:
         detail_num = 0
 
         # Get all quality entries with defects
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             SELECT quality_entry_id, client_id, total_defects_count
             FROM QUALITY_ENTRY
             WHERE total_defects_count > 0
-        """)
+        """
+        )
         quality_entries = self.cursor.fetchall()
 
         for qe_id, client_id, total_defects in quality_entries:
@@ -791,17 +932,26 @@ class DemoDataGenerator:
                 location = random.choice(DEFECT_LOCATIONS)
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO DEFECT_DETAIL (
                             defect_detail_id, quality_entry_id, client_id_fk,
                             defect_type, defect_category, defect_count,
                             severity, location, description, created_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                    """, (
-                        detail_id, qe_id, client_id,
-                        defect_name, defect_code, defect_qty,
-                        severity, location, description
-                    ))
+                    """,
+                        (
+                            detail_id,
+                            qe_id,
+                            client_id,
+                            defect_name,
+                            defect_code,
+                            defect_qty,
+                            severity,
+                            location,
+                            description,
+                        ),
+                    )
                     defect_count += 1
                 except sqlite3.IntegrityError as e:
                     print(f"      Warning: Could not insert defect detail {detail_id}: {e}")
@@ -838,19 +988,26 @@ class DemoDataGenerator:
 
                     try:
                         # Schema uses: employees_scheduled, employees_present, entered_by (VARCHAR)
-                        self.cursor.execute("""
+                        self.cursor.execute(
+                            """
                             INSERT INTO SHIFT_COVERAGE (
                                 client_id, shift_id, coverage_date,
                                 employees_scheduled, employees_present,
                                 coverage_percentage, notes, entered_by,
                                 created_at, updated_at
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                        """, (
-                            client_id, shift["shift_id"], coverage_date.strftime('%Y-%m-%d'),
-                            scheduled, present, coverage_pct,
-                            "Auto-generated shift coverage" if coverage_pct >= 90 else "Understaffed shift",
-                            "SYSTEM"  # entered_by is VARCHAR
-                        ))
+                        """,
+                            (
+                                client_id,
+                                shift["shift_id"],
+                                coverage_date.strftime("%Y-%m-%d"),
+                                scheduled,
+                                present,
+                                coverage_pct,
+                                "Auto-generated shift coverage" if coverage_pct >= 90 else "Understaffed shift",
+                                "SYSTEM",  # entered_by is VARCHAR
+                            ),
+                        )
                         coverage_count += 1
                     except sqlite3.IntegrityError:
                         pass  # Skip duplicates
@@ -882,19 +1039,22 @@ class DemoDataGenerator:
                     current_assignment = None
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO FLOATING_POOL (
                             client_id, employee_id, available_from, available_to,
                             current_assignment, notes, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        None,  # Floating pool not assigned to specific client
-                        emp_id,
-                        available_from.strftime('%Y-%m-%d %H:%M:%S'),
-                        available_to.strftime('%Y-%m-%d %H:%M:%S'),
-                        current_assignment,
-                        f"Availability window {w_idx + 1} for {emp_code}"
-                    ))
+                    """,
+                        (
+                            None,  # Floating pool not assigned to specific client
+                            emp_id,
+                            available_from.strftime("%Y-%m-%d %H:%M:%S"),
+                            available_to.strftime("%Y-%m-%d %H:%M:%S"),
+                            current_assignment,
+                            f"Availability window {w_idx + 1} for {emp_code}",
+                        ),
+                    )
                     pool_count += 1
                 except sqlite3.IntegrityError as e:
                     pass
@@ -907,13 +1067,16 @@ class DemoDataGenerator:
         print("\n🔄 Generating Workflow Transition Log...")
 
         # Check if table exists, create if not (Phase 10 migration may not have run)
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             SELECT name FROM sqlite_master
             WHERE type='table' AND name='WORKFLOW_TRANSITION_LOG'
-        """)
+        """
+        )
         if not self.cursor.fetchone():
             print("   Creating WORKFLOW_TRANSITION_LOG table...")
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 CREATE TABLE WORKFLOW_TRANSITION_LOG (
                     transition_id INTEGER PRIMARY KEY AUTOINCREMENT,
                     work_order_id VARCHAR(50) NOT NULL,
@@ -929,9 +1092,14 @@ class DemoDataGenerator:
                     FOREIGN KEY (work_order_id) REFERENCES WORK_ORDER(work_order_id),
                     FOREIGN KEY (client_id) REFERENCES CLIENT(client_id)
                 )
-            """)
-            self.cursor.execute("CREATE INDEX IF NOT EXISTS ix_transition_workorder ON WORKFLOW_TRANSITION_LOG(work_order_id)")
-            self.cursor.execute("CREATE INDEX IF NOT EXISTS ix_transition_client_date ON WORKFLOW_TRANSITION_LOG(client_id, transitioned_at)")
+            """
+            )
+            self.cursor.execute(
+                "CREATE INDEX IF NOT EXISTS ix_transition_workorder ON WORKFLOW_TRANSITION_LOG(work_order_id)"
+            )
+            self.cursor.execute(
+                "CREATE INDEX IF NOT EXISTS ix_transition_client_date ON WORKFLOW_TRANSITION_LOG(client_id, transitioned_at)"
+            )
             self.conn.commit()
 
         transition_count = 0
@@ -950,37 +1118,46 @@ class DemoDataGenerator:
 
             try:
                 # First transition: NULL -> RECEIVED (creation)
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO WORKFLOW_TRANSITION_LOG (
                         work_order_id, client_id, from_status, to_status,
                         transitioned_by, transitioned_at, notes, trigger_source,
                         elapsed_from_received_hours, elapsed_from_previous_hours
                     ) VALUES (?, ?, NULL, 'RECEIVED', ?, ?, ?, 'automatic', 0, 0)
-                """, (
-                    wo["id"], wo["client_id"],
-                    system_user_id,
-                    transition_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    "Work order created"
-                ))
+                """,
+                    (
+                        wo["id"],
+                        wo["client_id"],
+                        system_user_id,
+                        transition_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "Work order created",
+                    ),
+                )
                 transition_count += 1
 
                 # RECEIVED -> IN_PROGRESS
                 transition_time = transition_time + timedelta(hours=random.randint(2, 24))
                 hours_since_received = int((transition_time - wo["start_date"]).total_seconds() / 3600)
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO WORKFLOW_TRANSITION_LOG (
                         work_order_id, client_id, from_status, to_status,
                         transitioned_by, transitioned_at, notes, trigger_source,
                         elapsed_from_received_hours, elapsed_from_previous_hours
                     ) VALUES (?, ?, 'RECEIVED', 'IN_PROGRESS', ?, ?, ?, 'automatic', ?, ?)
-                """, (
-                    wo["id"], wo["client_id"],
-                    system_user_id,
-                    transition_time.strftime('%Y-%m-%d %H:%M:%S'),
-                    "Production started",
-                    hours_since_received, hours_since_received
-                ))
+                """,
+                    (
+                        wo["id"],
+                        wo["client_id"],
+                        system_user_id,
+                        transition_time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "Production started",
+                        hours_since_received,
+                        hours_since_received,
+                    ),
+                )
                 transition_count += 1
 
                 # If ON_HOLD status, add hold/resume transitions
@@ -988,20 +1165,24 @@ class DemoDataGenerator:
                     hold_time = transition_time + timedelta(days=random.randint(1, 5))
                     hours_since_received = int((hold_time - wo["start_date"]).total_seconds() / 3600)
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO WORKFLOW_TRANSITION_LOG (
                             work_order_id, client_id, from_status, to_status,
                             transitioned_by, transitioned_at, notes, trigger_source,
                             elapsed_from_received_hours, elapsed_from_previous_hours
                         ) VALUES (?, ?, 'IN_PROGRESS', 'ON_HOLD', ?, ?, ?, 'manual', ?, ?)
-                    """, (
-                        wo["id"], wo["client_id"],
-                        system_user_id,
-                        hold_time.strftime('%Y-%m-%d %H:%M:%S'),
-                        random.choice(["Quality issue detected", "Material shortage", "Customer request"]),
-                        hours_since_received,
-                        int((hold_time - transition_time).total_seconds() / 3600)
-                    ))
+                    """,
+                        (
+                            wo["id"],
+                            wo["client_id"],
+                            system_user_id,
+                            hold_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            random.choice(["Quality issue detected", "Material shortage", "Customer request"]),
+                            hours_since_received,
+                            int((hold_time - transition_time).total_seconds() / 3600),
+                        ),
+                    )
                     transition_count += 1
 
                 # If COMPLETED, add completion transition
@@ -1009,20 +1190,24 @@ class DemoDataGenerator:
                     complete_time = wo["ship_date"] - timedelta(days=random.randint(0, 2))
                     hours_since_received = int((complete_time - wo["start_date"]).total_seconds() / 3600)
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO WORKFLOW_TRANSITION_LOG (
                             work_order_id, client_id, from_status, to_status,
                             transitioned_by, transitioned_at, notes, trigger_source,
                             elapsed_from_received_hours, elapsed_from_previous_hours
                         ) VALUES (?, ?, 'IN_PROGRESS', 'COMPLETED', ?, ?, ?, 'automatic', ?, ?)
-                    """, (
-                        wo["id"], wo["client_id"],
-                        system_user_id,
-                        complete_time.strftime('%Y-%m-%d %H:%M:%S'),
-                        "Production completed successfully",
-                        hours_since_received,
-                        int((complete_time - transition_time).total_seconds() / 3600)
-                    ))
+                    """,
+                        (
+                            wo["id"],
+                            wo["client_id"],
+                            system_user_id,
+                            complete_time.strftime("%Y-%m-%d %H:%M:%S"),
+                            "Production completed successfully",
+                            hours_since_received,
+                            int((complete_time - transition_time).total_seconds() / 3600),
+                        ),
+                    )
                     transition_count += 1
 
             except sqlite3.IntegrityError as e:
@@ -1057,18 +1242,25 @@ class DemoDataGenerator:
                 att_id = f"ATT-{entry_num:08d}"
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO ATTENDANCE_ENTRY (
                             attendance_entry_id, employee_id, client_id, shift_id,
                             shift_date, scheduled_hours, actual_hours,
                             is_absent, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        att_id, emp_id, client_id, random.randint(1, 3),
-                        att_date.strftime('%Y-%m-%d'),
-                        scheduled_hours, actual_hours,
-                        1 if is_absent else 0
-                    ))
+                    """,
+                        (
+                            att_id,
+                            emp_id,
+                            client_id,
+                            random.randint(1, 3),
+                            att_date.strftime("%Y-%m-%d"),
+                            scheduled_hours,
+                            actual_hours,
+                            1 if is_absent else 0,
+                        ),
+                    )
                     attendance_count += 1
                 except sqlite3.IntegrityError:
                     pass
@@ -1107,18 +1299,25 @@ class DemoDataGenerator:
                 coverage_id = f"COV-{entry_num:08d}"
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO COVERAGE_ENTRY (
                             coverage_entry_id, client_id, floating_employee_id, covered_employee_id,
                             shift_date, shift_id, coverage_hours, coverage_reason,
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        coverage_id, client_id, float_emp_id, covered_emp_id,
-                        coverage_date.strftime('%Y-%m-%d'), random.randint(1, 2),
-                        random.uniform(4.0, 8.0),
-                        random.choice(["Absenteeism Coverage", "Production Surge", "Quality Support"])
-                    ))
+                    """,
+                        (
+                            coverage_id,
+                            client_id,
+                            float_emp_id,
+                            covered_emp_id,
+                            coverage_date.strftime("%Y-%m-%d"),
+                            random.randint(1, 2),
+                            random.uniform(4.0, 8.0),
+                            random.choice(["Absenteeism Coverage", "Production Surge", "Quality Support"]),
+                        ),
+                    )
                     coverage_count += 1
                 except sqlite3.IntegrityError:
                     pass
@@ -1138,7 +1337,7 @@ class DemoDataGenerator:
             "CHANGEOVER",
             "MAINTENANCE",
             "POWER_OUTAGE",
-            "OTHER"
+            "OTHER",
         ]
 
         downtime_count = 0
@@ -1159,7 +1358,8 @@ class DemoDataGenerator:
                 dt_entry_num += 1
 
                 try:
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO DOWNTIME_ENTRY (
                             downtime_entry_id, client_id, work_order_id,
                             shift_date, downtime_reason, downtime_duration_minutes,
@@ -1167,19 +1367,21 @@ class DemoDataGenerator:
                             corrective_action, notes,
                             created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        downtime_id,
-                        wo["client_id"],
-                        wo["id"],
-                        dt_date.strftime('%Y-%m-%d %H:%M:%S'),
-                        reason,
-                        duration_minutes,
-                        f"MACH-{random.randint(1, 20):03d}",
-                        f"EQ-{random.choice(['SEW', 'CUT', 'PRESS', 'PACK'])}-{random.randint(1, 10):02d}",
-                        reason.replace('_', ' ').title(),
-                        f"Resolved by maintenance team. Duration: {duration_minutes} min.",
-                        f"Downtime event during production of {wo['id']}"
-                    ))
+                    """,
+                        (
+                            downtime_id,
+                            wo["client_id"],
+                            wo["id"],
+                            dt_date.strftime("%Y-%m-%d %H:%M:%S"),
+                            reason,
+                            duration_minutes,
+                            f"MACH-{random.randint(1, 20):03d}",
+                            f"EQ-{random.choice(['SEW', 'CUT', 'PRESS', 'PACK'])}-{random.randint(1, 10):02d}",
+                            reason.replace("_", " ").title(),
+                            f"Resolved by maintenance team. Duration: {duration_minutes} min.",
+                            f"Downtime event during production of {wo['id']}",
+                        ),
+                    )
                     downtime_count += 1
                 except sqlite3.IntegrityError as e:
                     print(f"      Warning: Could not insert downtime {downtime_id}: {e}")
@@ -1199,7 +1401,7 @@ class DemoDataGenerator:
             ("CUSTOMER_REQUEST", "Customer Request"),
             ("ENGINEERING_CHANGE", "Engineering Change"),
             ("PENDING_APPROVAL", "Pending Approval"),
-            ("OTHER", "Other")
+            ("OTHER", "Other"),
         ]
 
         hold_count = 0
@@ -1229,7 +1431,8 @@ class DemoDataGenerator:
             hold_id = f"HLD-{wo['id']}-{hold_count+1:02d}"
 
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO HOLD_ENTRY (
                         hold_entry_id, client_id, work_order_id,
                         hold_status, hold_date, resume_date,
@@ -1238,20 +1441,26 @@ class DemoDataGenerator:
                         expected_resolution_date, notes,
                         created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                """, (
-                    hold_id,
-                    wo["client_id"],
-                    wo["id"],
-                    hold_status,
-                    hold_date.strftime('%Y-%m-%d %H:%M:%S'),
-                    resume_date.strftime('%Y-%m-%d %H:%M:%S') if resume_date else None,
-                    hold_duration,
-                    reason_desc,  # hold_reason_category
-                    reason_code,  # hold_reason (enum)
-                    f"Hold due to {reason_desc.lower()} on work order {wo['id']}",
-                    (hold_date + timedelta(days=random.randint(2, 7))).strftime('%Y-%m-%d') if hold_status == "ON_HOLD" else None,
-                    f"Hold entry for {wo['id']}: {reason_desc}"
-                ))
+                """,
+                    (
+                        hold_id,
+                        wo["client_id"],
+                        wo["id"],
+                        hold_status,
+                        hold_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        resume_date.strftime("%Y-%m-%d %H:%M:%S") if resume_date else None,
+                        hold_duration,
+                        reason_desc,  # hold_reason_category
+                        reason_code,  # hold_reason (enum)
+                        f"Hold due to {reason_desc.lower()} on work order {wo['id']}",
+                        (
+                            (hold_date + timedelta(days=random.randint(2, 7))).strftime("%Y-%m-%d")
+                            if hold_status == "ON_HOLD"
+                            else None
+                        ),
+                        f"Hold entry for {wo['id']}: {reason_desc}",
+                    ),
+                )
                 hold_count += 1
             except sqlite3.IntegrityError as e:
                 print(f"      Warning: Could not insert hold {hold_id}: {e}")
@@ -1281,34 +1490,44 @@ class DemoDataGenerator:
             completion_pct = round(wo["actual_qty"] / wo["planned_qty"] * 100, 1) if wo["planned_qty"] > 0 else 0
 
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO ALERT (
                         alert_id, category, severity, status, title, message, recommendation,
                         client_id, kpi_key, work_order_id, current_value, threshold_value,
                         alert_metadata, created_at
                     ) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                """, (
-                    alert_id, "otd", severity,
-                    f"OTD Risk: {wo['id']} Due in {days_until_due} Days",
-                    f"Work order {wo['id']} is at {completion_pct}% completion with only {days_until_due} days until ship date.",
-                    "Prioritize this order. Consider overtime or resource reallocation.",
-                    wo["client_id"], "otd", wo["id"],
-                    completion_pct, 95.0,
-                    json.dumps({"days_remaining": days_until_due, "risk_score": 100 - completion_pct})
-                ))
+                """,
+                    (
+                        alert_id,
+                        "otd",
+                        severity,
+                        f"OTD Risk: {wo['id']} Due in {days_until_due} Days",
+                        f"Work order {wo['id']} is at {completion_pct}% completion with only {days_until_due} days until ship date.",
+                        "Prioritize this order. Consider overtime or resource reallocation.",
+                        wo["client_id"],
+                        "otd",
+                        wo["id"],
+                        completion_pct,
+                        95.0,
+                        json.dumps({"days_remaining": days_until_due, "risk_score": 100 - completion_pct}),
+                    ),
+                )
                 alert_count += 1
             except sqlite3.IntegrityError:
                 pass
 
         # Quality Alerts
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             SELECT work_order_id, client_id,
                    CAST(SUM(units_passed) AS FLOAT) / NULLIF(SUM(units_inspected), 0) * 100 as fpy
             FROM QUALITY_ENTRY
             GROUP BY work_order_id, client_id
             HAVING fpy < 95
             LIMIT 5
-        """)
+        """
+        )
         low_fpy_orders = self.cursor.fetchall()
 
         for wo_id, client_id, fpy in low_fpy_orders:
@@ -1324,20 +1543,28 @@ class DemoDataGenerator:
                 severity = "info"
 
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO ALERT (
                         alert_id, category, severity, status, title, message, recommendation,
                         client_id, kpi_key, work_order_id, current_value, threshold_value,
                         created_at
                     ) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                """, (
-                    alert_id, "quality", severity,
-                    f"Low FPY Alert: {fpy:.1f}%",
-                    f"First Pass Yield for {wo_id} is {fpy:.1f}%, below 95% target.",
-                    "Review quality inspection results and identify root cause.",
-                    client_id, "fpy", wo_id,
-                    round(fpy, 2), 95.0
-                ))
+                """,
+                    (
+                        alert_id,
+                        "quality",
+                        severity,
+                        f"Low FPY Alert: {fpy:.1f}%",
+                        f"First Pass Yield for {wo_id} is {fpy:.1f}%, below 95% target.",
+                        "Review quality inspection results and identify root cause.",
+                        client_id,
+                        "fpy",
+                        wo_id,
+                        round(fpy, 2),
+                        95.0,
+                    ),
+                )
                 alert_count += 1
             except sqlite3.IntegrityError:
                 pass
@@ -1345,18 +1572,26 @@ class DemoDataGenerator:
         # Efficiency Alert
         alert_id = f"ALT-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
         try:
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT INTO ALERT (
                     alert_id, category, severity, status, title, message, recommendation,
                     client_id, kpi_key, current_value, threshold_value, created_at
                 ) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-            """, (
-                alert_id, "efficiency", "warning",
-                "Efficiency Declining Trend",
-                "Production efficiency has declined for 5 consecutive periods. Current: 78.5% vs target: 85%.",
-                "Investigate production bottlenecks and equipment performance.",
-                self.client_ids[0], "efficiency", 78.5, 85.0
-            ))
+            """,
+                (
+                    alert_id,
+                    "efficiency",
+                    "warning",
+                    "Efficiency Declining Trend",
+                    "Production efficiency has declined for 5 consecutive periods. Current: 78.5% vs target: 85%.",
+                    "Investigate production bottlenecks and equipment performance.",
+                    self.client_ids[0],
+                    "efficiency",
+                    78.5,
+                    85.0,
+                ),
+            )
             alert_count += 1
         except sqlite3.IntegrityError:
             pass
@@ -1364,19 +1599,27 @@ class DemoDataGenerator:
         # Capacity Alert
         alert_id = f"ALT-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
         try:
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT INTO ALERT (
                     alert_id, category, severity, status, title, message, recommendation,
                     client_id, kpi_key, current_value, threshold_value, alert_metadata, created_at
                 ) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-            """, (
-                alert_id, "capacity", "critical",
-                "Capacity Overload Warning",
-                "Current load at 112% of capacity. Cannot meet demand without overtime.",
-                "Authorize overtime or reallocate resources.",
-                self.client_ids[1], "load_percent", 112.0, 95.0,
-                json.dumps({"overtime_hours_needed": 24, "bottleneck": "Sewing Line 3"})
-            ))
+            """,
+                (
+                    alert_id,
+                    "capacity",
+                    "critical",
+                    "Capacity Overload Warning",
+                    "Current load at 112% of capacity. Cannot meet demand without overtime.",
+                    "Authorize overtime or reallocate resources.",
+                    self.client_ids[1],
+                    "load_percent",
+                    112.0,
+                    95.0,
+                    json.dumps({"overtime_hours_needed": 24, "bottleneck": "Sewing Line 3"}),
+                ),
+            )
             alert_count += 1
         except sqlite3.IntegrityError:
             pass
@@ -1388,19 +1631,24 @@ class DemoDataGenerator:
         if pending_holds > 0:
             alert_id = f"ALT-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO ALERT (
                         alert_id, category, severity, status, title, message, recommendation,
                         kpi_key, alert_metadata, created_at
                     ) VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?, datetime('now'))
-                """, (
-                    alert_id, "hold", "warning",
-                    f"{pending_holds} Holds Pending Approval",
-                    f"There are {pending_holds} hold entries awaiting review.",
-                    "Review and approve/reject pending holds.",
-                    "holds_pending",
-                    json.dumps({"pending_count": pending_holds})
-                ))
+                """,
+                    (
+                        alert_id,
+                        "hold",
+                        "warning",
+                        f"{pending_holds} Holds Pending Approval",
+                        f"There are {pending_holds} hold entries awaiting review.",
+                        "Review and approve/reject pending holds.",
+                        "holds_pending",
+                        json.dumps({"pending_count": pending_holds}),
+                    ),
+                )
                 alert_count += 1
             except sqlite3.IntegrityError:
                 pass
@@ -1425,18 +1673,21 @@ class DemoDataGenerator:
                 "efficiency": (80.0, 70.0),
                 "capacity": (100.0, 110.0),
                 "attendance": (8.0, 12.0),
-                "hold": (None, None)
+                "hold": (None, None),
             }
             warning, critical = thresholds.get(alert_type, (None, None))
 
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO ALERT_CONFIG (
                         config_id, client_id, alert_type, enabled,
                         warning_threshold, critical_threshold,
                         notification_email, check_frequency_minutes, created_at, updated_at
                     ) VALUES (?, NULL, ?, 1, ?, ?, 1, 60, datetime('now'), datetime('now'))
-                """, (config_id, alert_type, warning, critical))
+                """,
+                    (config_id, alert_type, warning, critical),
+                )
                 config_count += 1
             except sqlite3.IntegrityError:
                 pass
@@ -1458,20 +1709,23 @@ class DemoDataGenerator:
             ("rty", 95.0, 92.0, 88.0, "%", "Y"),
             ("dpmo", 1000.0, 2000.0, 3500.0, "PPM", "N"),
             ("absenteeism", 5.0, 8.0, 12.0, "%", "N"),
-            ("load_percent", 90.0, 100.0, 110.0, "%", "N")
+            ("load_percent", 90.0, 100.0, 110.0, "%", "N"),
         ]
 
         for kpi_key, target, warning, critical, unit, higher_better in kpi_configs:
             threshold_id = f"THR-{kpi_key.upper()}"
 
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO KPI_THRESHOLD (
                         threshold_id, client_id, kpi_key,
                         target_value, warning_threshold, critical_threshold,
                         unit, higher_is_better, created_at, updated_at
                     ) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                """, (threshold_id, kpi_key, target, warning, critical, unit, higher_better))
+                """,
+                    (threshold_id, kpi_key, target, warning, critical, unit, higher_better),
+                )
                 threshold_count += 1
             except sqlite3.IntegrityError:
                 pass
@@ -1486,12 +1740,27 @@ class DemoDataGenerator:
         print("=" * 70)
 
         tables = [
-            "CLIENT", "USER", "EMPLOYEE", "SHIFT", "PRODUCT",
-            "WORK_ORDER", "JOB", "PART_OPPORTUNITIES",
-            "PRODUCTION_ENTRY", "QUALITY_ENTRY", "DEFECT_DETAIL",
-            "ATTENDANCE_ENTRY", "COVERAGE_ENTRY", "SHIFT_COVERAGE",
-            "FLOATING_POOL", "DOWNTIME_ENTRY", "HOLD_ENTRY",
-            "WORKFLOW_TRANSITION_LOG", "ALERT", "ALERT_CONFIG", "KPI_THRESHOLD"
+            "CLIENT",
+            "USER",
+            "EMPLOYEE",
+            "SHIFT",
+            "PRODUCT",
+            "WORK_ORDER",
+            "JOB",
+            "PART_OPPORTUNITIES",
+            "PRODUCTION_ENTRY",
+            "QUALITY_ENTRY",
+            "DEFECT_DETAIL",
+            "ATTENDANCE_ENTRY",
+            "COVERAGE_ENTRY",
+            "SHIFT_COVERAGE",
+            "FLOATING_POOL",
+            "DOWNTIME_ENTRY",
+            "HOLD_ENTRY",
+            "WORKFLOW_TRANSITION_LOG",
+            "ALERT",
+            "ALERT_CONFIG",
+            "KPI_THRESHOLD",
         ]
 
         print("\nRecord Counts:")
@@ -1555,6 +1824,7 @@ class DemoDataGenerator:
         except Exception as e:
             print(f"\n❌ ERROR: {e}")
             import traceback
+
             traceback.print_exc()
             self.conn.rollback()
             raise

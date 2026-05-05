@@ -43,6 +43,7 @@ def _check_config_write_permission(user: User) -> None:
     role = user.role or ""
     if role not in _CONFIG_WRITE_ROLES:
         from fastapi import status as http_status
+
         raise HTTPException(
             status_code=http_status.HTTP_403_FORBIDDEN,
             detail="Client configuration mutations require admin or poweruser role",

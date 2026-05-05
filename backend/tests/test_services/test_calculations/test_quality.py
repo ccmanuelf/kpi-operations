@@ -78,9 +78,7 @@ class TestScrapRate:
 
 class TestDefectEscapeRate:
     def test_standard_mode_textbook(self):
-        result = calculate_defect_escape_rate(
-            DefectEscapeRateInputs(final_stage_defects=2, total_defects=10)
-        )
+        result = calculate_defect_escape_rate(DefectEscapeRateInputs(final_stage_defects=2, total_defects=10))
         assert result.value == Decimal("20.00")
 
     def test_zero_defects_yields_zero(self):

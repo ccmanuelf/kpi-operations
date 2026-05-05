@@ -63,18 +63,28 @@ def _op(
     grade_pct: int = 90,
 ) -> OperationInput:
     return OperationInput(
-        product=product, step=step, operation=operation, machine_tool=machine_tool,
-        sam_min=sam_min, operators=operators,
+        product=product,
+        step=step,
+        operation=operation,
+        machine_tool=machine_tool,
+        sam_min=sam_min,
+        operators=operators,
         variability=VariabilityType.TRIANGULAR,
-        rework_pct=0, grade_pct=grade_pct, fpd_pct=10,
+        rework_pct=0,
+        grade_pct=grade_pct,
+        fpd_pct=10,
     )
 
 
 @pytest.fixture
 def schedule() -> ScheduleConfig:
     return ScheduleConfig(
-        shifts_enabled=1, shift1_hours=8, shift2_hours=0, shift3_hours=0,
-        work_days=5, ot_enabled=False,
+        shifts_enabled=1,
+        shift1_hours=8,
+        shift2_hours=0,
+        shift3_hours=0,
+        work_days=5,
+        ot_enabled=False,
     )
 
 
@@ -82,14 +92,10 @@ def schedule() -> ScheduleConfig:
 def two_product_weekly_config(schedule) -> SimulationConfig:
     return SimulationConfig(
         operations=[
-            _op(product="A", step=1, operation="Cut-A", machine_tool="M1",
-                sam_min=2.0, operators=1, grade_pct=90),
-            _op(product="A", step=2, operation="Sew-A", machine_tool="M2",
-                sam_min=2.0, operators=1, grade_pct=90),
-            _op(product="B", step=1, operation="Cut-B", machine_tool="M1",
-                sam_min=1.5, operators=1, grade_pct=90),
-            _op(product="B", step=2, operation="Sew-B", machine_tool="M2",
-                sam_min=1.5, operators=1, grade_pct=90),
+            _op(product="A", step=1, operation="Cut-A", machine_tool="M1", sam_min=2.0, operators=1, grade_pct=90),
+            _op(product="A", step=2, operation="Sew-A", machine_tool="M2", sam_min=2.0, operators=1, grade_pct=90),
+            _op(product="B", step=1, operation="Cut-B", machine_tool="M1", sam_min=1.5, operators=1, grade_pct=90),
+            _op(product="B", step=2, operation="Sew-B", machine_tool="M2", sam_min=1.5, operators=1, grade_pct=90),
         ],
         schedule=schedule,
         demands=[
@@ -105,10 +111,8 @@ def two_product_weekly_config(schedule) -> SimulationConfig:
 def single_product_weekly_config(schedule) -> SimulationConfig:
     return SimulationConfig(
         operations=[
-            _op(product="A", step=1, operation="Cut", machine_tool="M1",
-                sam_min=2.0, operators=1, grade_pct=90),
-            _op(product="A", step=2, operation="Sew", machine_tool="M2",
-                sam_min=2.5, operators=1, grade_pct=90),
+            _op(product="A", step=1, operation="Cut", machine_tool="M1", sam_min=2.0, operators=1, grade_pct=90),
+            _op(product="A", step=2, operation="Sew", machine_tool="M2", sam_min=2.5, operators=1, grade_pct=90),
         ],
         schedule=schedule,
         demands=[DemandInput(product="A", bundle_size=10, weekly_demand=300)],
@@ -128,10 +132,7 @@ class TestResolveWeeklyDemand:
 
     def test_falls_back_to_daily_x_workdays(self, schedule):
         cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10, daily_demand=100)],
             mode=DemandMode.DEMAND_DRIVEN,
@@ -142,10 +143,7 @@ class TestResolveWeeklyDemand:
 
     def test_returns_zero_when_no_demand(self, schedule):
         cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10)],
             mode=DemandMode.DEMAND_DRIVEN,
@@ -166,10 +164,7 @@ class TestBottleneckMinutesPerPiece:
 class TestDailyMinutes:
     def test_one_shift_eight_hours(self, schedule):
         cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10, daily_demand=10)],
             mode=DemandMode.DEMAND_DRIVEN,
@@ -186,10 +181,7 @@ class TestDailyMinutes:
 class TestEmptyDemand:
     def test_returns_zero_plan_without_solver(self, schedule):
         cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10)],  # no demand
             mode=DemandMode.DEMAND_DRIVEN,
@@ -207,10 +199,7 @@ class TestSingleDayHorizon:
     def test_entire_week_on_day_one_when_feasible(self, schedule):
         # Tiny demand that fits comfortably in 1 day.
         cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10, weekly_demand=100)],
             mode=DemandMode.DEMAND_DRIVEN,
@@ -246,10 +235,7 @@ class TestSingleProductHorizon:
 
     def test_uneven_split_remainder_to_first_days(self, schedule):
         cfg = SimulationConfig(
-            operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0)
-            ],
+            operations=[_op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0)],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10, weekly_demand=502)],
             mode=DemandMode.DEMAND_DRIVEN,
@@ -288,8 +274,7 @@ class TestPlanHorizon:
         # capacity. 5000 demand >> 480 → infeasible.
         cfg = SimulationConfig(
             operations=[
-                _op(product="A", step=1, operation="Slow", machine_tool="M1",
-                    sam_min=5.0, operators=1, grade_pct=90),
+                _op(product="A", step=1, operation="Slow", machine_tool="M1", sam_min=5.0, operators=1, grade_pct=90),
             ],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10, weekly_demand=5000)],
@@ -303,10 +288,8 @@ class TestPlanHorizon:
         # >= 2 AND total demand > capacity.
         cfg2 = SimulationConfig(
             operations=[
-                _op(product="A", step=1, operation="A1", machine_tool="M1",
-                    sam_min=5.0, operators=1, grade_pct=90),
-                _op(product="B", step=1, operation="B1", machine_tool="M1",
-                    sam_min=5.0, operators=1, grade_pct=90),
+                _op(product="A", step=1, operation="A1", machine_tool="M1", sam_min=5.0, operators=1, grade_pct=90),
+                _op(product="B", step=1, operation="B1", machine_tool="M1", sam_min=5.0, operators=1, grade_pct=90),
             ],
             schedule=schedule,
             demands=[
@@ -326,12 +309,9 @@ class TestPlanHorizon:
     def test_skips_products_without_operations(self, schedule, caplog):
         cfg = SimulationConfig(
             operations=[
-                _op(product="A", step=1, operation="Op", machine_tool="M1",
-                    sam_min=1.0),
-                _op(product="A", step=2, operation="Op2", machine_tool="M2",
-                    sam_min=1.5),
-                _op(product="B", step=1, operation="OpB", machine_tool="M1",
-                    sam_min=1.0),
+                _op(product="A", step=1, operation="Op", machine_tool="M1", sam_min=1.0),
+                _op(product="A", step=2, operation="Op2", machine_tool="M2", sam_min=1.5),
+                _op(product="B", step=1, operation="OpB", machine_tool="M1", sam_min=1.0),
             ],
             schedule=schedule,
             demands=[

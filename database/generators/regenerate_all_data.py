@@ -33,8 +33,8 @@ from typing import List, Dict, Any, Tuple, Optional
 # Configuration
 # ============================================================================
 
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-DB_PATH = os.path.join(PROJECT_ROOT, 'database', 'kpi_platform.db')
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+DB_PATH = os.path.join(PROJECT_ROOT, "database", "kpi_platform.db")
 
 # Seed for reproducible data (change for different datasets)
 RANDOM_SEED = 2026
@@ -48,18 +48,12 @@ DATA_START_DATE = DATA_END_DATE - timedelta(days=90)
 # ============================================================================
 
 # Use existing clients from the database
-EXISTING_CLIENTS = [
-    "CONFEC-DELTA",
-    "GARMENT-PLUS",
-    "MAQUILA-PRIME",
-    "NOVALINK-MTY",
-    "TEXTIL-NORTE"
-]
+EXISTING_CLIENTS = ["CONFEC-DELTA", "GARMENT-PLUS", "MAQUILA-PRIME", "NOVALINK-MTY", "TEXTIL-NORTE"]
 
 SHIFT_DATA = [
     {"shift_id": 1, "shift_name": "Morning Shift", "start_time": "06:00:00", "end_time": "14:00:00"},
     {"shift_id": 2, "shift_name": "Afternoon Shift", "start_time": "14:00:00", "end_time": "22:00:00"},
-    {"shift_id": 3, "shift_name": "Night Shift", "start_time": "22:00:00", "end_time": "06:00:00"}
+    {"shift_id": 3, "shift_name": "Night Shift", "start_time": "22:00:00", "end_time": "06:00:00"},
 ]
 
 PRODUCT_DATA = [
@@ -72,30 +66,110 @@ PRODUCT_DATA = [
     {"product_code": "PROD-BLAZER-001", "product_name": "Business Blazer Line", "ideal_cycle_time": 0.80},
     {"product_code": "PROD-VEST-001", "product_name": "Safety Vest Assembly", "ideal_cycle_time": 0.20},
     {"product_code": "PROD-COVERALL-001", "product_name": "Industrial Coverall", "ideal_cycle_time": 0.55},
-    {"product_code": "PROD-APRON-001", "product_name": "Work Apron Production", "ideal_cycle_time": 0.18}
+    {"product_code": "PROD-APRON-001", "product_name": "Work Apron Production", "ideal_cycle_time": 0.18},
 ]
 
 EMPLOYEE_NAMES = [
-    "Maria Garcia", "Juan Rodriguez", "Carlos Martinez", "Ana Lopez", "Pedro Hernandez",
-    "Rosa Gonzalez", "Miguel Sanchez", "Elena Torres", "Luis Ramirez", "Carmen Flores",
-    "Fernando Diaz", "Patricia Moreno", "Roberto Castro", "Lucia Ortiz", "Andres Vargas",
-    "Sofia Romero", "Diego Mendoza", "Laura Reyes", "Oscar Guerrero", "Isabel Herrera",
-    "Alejandro Silva", "Veronica Ruiz", "Ricardo Jimenez", "Gabriela Molina", "Jorge Navarro",
-    "Andrea Ramos", "Eduardo Soto", "Monica Cruz", "Raul Delgado", "Teresa Medina",
-    "Victor Rojas", "Daniela Aguirre", "Alberto Campos", "Natalia Vega", "Pablo Rios",
-    "Valeria Gutierrez", "Sergio Perez", "Mariana Santos", "Hector Luna", "Adriana Pineda",
-    "Gustavo Dominguez", "Claudia Espinoza", "Armando Fuentes", "Yolanda Coronado", "Enrique Velazquez",
-    "Beatriz Pacheco", "Manuel Rangel", "Lorena Ibarra", "Francisco Acosta", "Gloria Salazar",
-    "Javier Trejo", "Marisol Valencia", "Ramon Ochoa", "Leticia Cardenas", "Felipe Estrada",
-    "Norma Paredes", "Arturo Cervantes", "Irene Sandoval", "Cesar Maldonado", "Silvia Cortez",
-    "Mauricio Zuniga", "Rocio Bautista", "Ernesto Lara", "Angelica Ponce", "Benjamin Villegas",
-    "Alicia Serrano", "Nicolas Cabrera", "Carolina Duran", "Julian Montes", "Fabiola Orozco",
-    "Ignacio Solis", "Jessica Gallegos", "Rodrigo Contreras", "Diana Lozano", "Adrian Padilla",
-    "Rebeca Miranda", "Gonzalo Olvera", "Miriam Tapia", "Tomas Villanueva", "Brenda Salas",
-    "Samuel Carrillo", "Cecilia Avila", "Ismael Nunez", "Pamela Arellano", "Leonel Escobar",
-    "Martha Cazares", "Hugo Barajas", "Araceli Tovar", "Rafael Quintero", "Perla Alvarado",
-    "Irving Huerta", "Viviana Meza", "Gerardo Cisneros", "Sandra Camacho", "Oswaldo Barrera",
-    "Nayeli Rivera", "Reynaldo Gil", "Karla Zamora", "Saul Figueroa", "Dulce Becerra"
+    "Maria Garcia",
+    "Juan Rodriguez",
+    "Carlos Martinez",
+    "Ana Lopez",
+    "Pedro Hernandez",
+    "Rosa Gonzalez",
+    "Miguel Sanchez",
+    "Elena Torres",
+    "Luis Ramirez",
+    "Carmen Flores",
+    "Fernando Diaz",
+    "Patricia Moreno",
+    "Roberto Castro",
+    "Lucia Ortiz",
+    "Andres Vargas",
+    "Sofia Romero",
+    "Diego Mendoza",
+    "Laura Reyes",
+    "Oscar Guerrero",
+    "Isabel Herrera",
+    "Alejandro Silva",
+    "Veronica Ruiz",
+    "Ricardo Jimenez",
+    "Gabriela Molina",
+    "Jorge Navarro",
+    "Andrea Ramos",
+    "Eduardo Soto",
+    "Monica Cruz",
+    "Raul Delgado",
+    "Teresa Medina",
+    "Victor Rojas",
+    "Daniela Aguirre",
+    "Alberto Campos",
+    "Natalia Vega",
+    "Pablo Rios",
+    "Valeria Gutierrez",
+    "Sergio Perez",
+    "Mariana Santos",
+    "Hector Luna",
+    "Adriana Pineda",
+    "Gustavo Dominguez",
+    "Claudia Espinoza",
+    "Armando Fuentes",
+    "Yolanda Coronado",
+    "Enrique Velazquez",
+    "Beatriz Pacheco",
+    "Manuel Rangel",
+    "Lorena Ibarra",
+    "Francisco Acosta",
+    "Gloria Salazar",
+    "Javier Trejo",
+    "Marisol Valencia",
+    "Ramon Ochoa",
+    "Leticia Cardenas",
+    "Felipe Estrada",
+    "Norma Paredes",
+    "Arturo Cervantes",
+    "Irene Sandoval",
+    "Cesar Maldonado",
+    "Silvia Cortez",
+    "Mauricio Zuniga",
+    "Rocio Bautista",
+    "Ernesto Lara",
+    "Angelica Ponce",
+    "Benjamin Villegas",
+    "Alicia Serrano",
+    "Nicolas Cabrera",
+    "Carolina Duran",
+    "Julian Montes",
+    "Fabiola Orozco",
+    "Ignacio Solis",
+    "Jessica Gallegos",
+    "Rodrigo Contreras",
+    "Diana Lozano",
+    "Adrian Padilla",
+    "Rebeca Miranda",
+    "Gonzalo Olvera",
+    "Miriam Tapia",
+    "Tomas Villanueva",
+    "Brenda Salas",
+    "Samuel Carrillo",
+    "Cecilia Avila",
+    "Ismael Nunez",
+    "Pamela Arellano",
+    "Leonel Escobar",
+    "Martha Cazares",
+    "Hugo Barajas",
+    "Araceli Tovar",
+    "Rafael Quintero",
+    "Perla Alvarado",
+    "Irving Huerta",
+    "Viviana Meza",
+    "Gerardo Cisneros",
+    "Sandra Camacho",
+    "Oswaldo Barrera",
+    "Nayeli Rivera",
+    "Reynaldo Gil",
+    "Karla Zamora",
+    "Saul Figueroa",
+    "Dulce Becerra",
 ]
 
 OPERATION_TEMPLATES = [
@@ -110,7 +184,7 @@ OPERATION_TEMPLATES = [
     {"code": "TRIM", "name": "Trimming", "description": "Trim excess materials"},
     {"code": "LABEL", "name": "Labeling", "description": "Apply labels and tags"},
     {"code": "BUTTON", "name": "Buttoning", "description": "Attach buttons and fasteners"},
-    {"code": "EMBROIDER", "name": "Embroidery", "description": "Embroidery operations"}
+    {"code": "EMBROIDER", "name": "Embroidery", "description": "Embroidery operations"},
 ]
 
 HOLD_REASONS = [
@@ -123,17 +197,10 @@ HOLD_REASONS = [
     "Supplier Delay",
     "Engineering Review",
     "Customer Approval Required",
-    "Inventory Discrepancy"
+    "Inventory Discrepancy",
 ]
 
-HOLD_REASON_CATEGORIES = [
-    "QUALITY",
-    "MATERIAL",
-    "CUSTOMER",
-    "ENGINEERING",
-    "PRODUCTION",
-    "OTHER"
-]
+HOLD_REASON_CATEGORIES = ["QUALITY", "MATERIAL", "CUSTOMER", "ENGINEERING", "PRODUCTION", "OTHER"]
 
 DOWNTIME_REASONS = [
     "EQUIPMENT_FAILURE",
@@ -141,19 +208,39 @@ DOWNTIME_REASONS = [
     "SETUP_CHANGEOVER",
     "QUALITY_HOLD",
     "MAINTENANCE",
-    "OTHER"
+    "OTHER",
 ]
 
 DOWNTIME_DESCRIPTIONS = {
-    "EQUIPMENT_FAILURE": ["Motor failure", "Sensor malfunction", "Belt replacement", "Needle break", "Thread tension issue"],
+    "EQUIPMENT_FAILURE": [
+        "Motor failure",
+        "Sensor malfunction",
+        "Belt replacement",
+        "Needle break",
+        "Thread tension issue",
+    ],
     "MATERIAL_SHORTAGE": ["Fabric delay", "Thread stockout", "Button shortage", "Zipper shortage", "Label stockout"],
     "SETUP_CHANGEOVER": ["Style changeover", "Color change", "Size change", "Product line switch", "Equipment setup"],
     "QUALITY_HOLD": ["Inspection required", "Rework pending", "Customer hold", "Defect investigation", "QC review"],
     "MAINTENANCE": ["Scheduled maintenance", "Lubrication", "Calibration", "Cleaning", "Preventive service"],
-    "OTHER": ["Power outage", "Training session", "Safety drill", "Team meeting", "Inventory count"]
+    "OTHER": ["Power outage", "Training session", "Safety drill", "Team meeting", "Inventory count"],
 }
 
-DEFECT_TYPES = ["Stitching", "Fabric", "Measurement", "Color", "Pilling", "Hole", "Stain", "Label", "Button", "Zipper", "Seam", "Thread", "Other"]
+DEFECT_TYPES = [
+    "Stitching",
+    "Fabric",
+    "Measurement",
+    "Color",
+    "Pilling",
+    "Hole",
+    "Stain",
+    "Label",
+    "Button",
+    "Zipper",
+    "Seam",
+    "Thread",
+    "Other",
+]
 DEFECT_SEVERITIES = ["CRITICAL", "MAJOR", "MINOR"]
 DEFECT_LOCATIONS = ["Front", "Back", "Sleeve", "Collar", "Hem", "Pocket", "Seam", "Edge", "Center", "Cuff"]
 
@@ -165,6 +252,7 @@ ALERT_STATUSES = ["active", "acknowledged", "resolved"]
 # ============================================================================
 # Generator Class
 # ============================================================================
+
 
 class ComprehensiveDataRegenerator:
     """Regenerates all data except USER table with proper FK relationships."""
@@ -275,15 +363,18 @@ class ComprehensiveDataRegenerator:
 
         for shift_data in SHIFT_DATA:
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO SHIFT (shift_id, shift_name, start_time, end_time, is_active, created_at)
                     VALUES (?, ?, ?, ?, 1, datetime('now'))
-                """, (
-                    shift_data["shift_id"],
-                    shift_data["shift_name"],
-                    shift_data["start_time"],
-                    shift_data["end_time"]
-                ))
+                """,
+                    (
+                        shift_data["shift_id"],
+                        shift_data["shift_name"],
+                        shift_data["start_time"],
+                        shift_data["end_time"],
+                    ),
+                )
                 self.shift_ids.append(shift_data["shift_id"])
             except sqlite3.IntegrityError:
                 self.shift_ids.append(shift_data["shift_id"])
@@ -298,14 +389,13 @@ class ComprehensiveDataRegenerator:
         print("\n[Step 2] Generating Products...")
 
         for i, prod_data in enumerate(PRODUCT_DATA, 1):
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT INTO PRODUCT (product_code, product_name, ideal_cycle_time, unit_of_measure, is_active, created_at, updated_at)
                 VALUES (?, ?, ?, 'units', 1, datetime('now'), datetime('now'))
-            """, (
-                prod_data["product_code"],
-                prod_data["product_name"],
-                prod_data["ideal_cycle_time"]
-            ))
+            """,
+                (prod_data["product_code"], prod_data["product_name"], prod_data["ideal_cycle_time"]),
+            )
             product_id = self.cursor.lastrowid
             self.product_ids.append(product_id)
 
@@ -328,10 +418,13 @@ class ComprehensiveDataRegenerator:
                 emp_code = f"EMP-{client_id[:4]}-{i+1:03d}"
                 emp_name = EMPLOYEE_NAMES[employee_count]
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
                     VALUES (?, ?, ?, 0, 1, datetime('now'), datetime('now'))
-                """, (emp_code, emp_name, client_id))
+                """,
+                    (emp_code, emp_name, client_id),
+                )
 
                 emp_id = self.cursor.lastrowid
                 self.employee_ids.append(emp_id)
@@ -347,10 +440,13 @@ class ComprehensiveDataRegenerator:
             emp_code = f"EMP-FLOAT-{i+1:03d}"
             emp_name = EMPLOYEE_NAMES[employee_count]
 
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT INTO EMPLOYEE (employee_code, employee_name, client_id_assigned, is_floating_pool, is_active, created_at, updated_at)
                 VALUES (?, ?, NULL, 1, 1, datetime('now'), datetime('now'))
-            """, (emp_code, emp_name))
+            """,
+                (emp_code, emp_name),
+            )
 
             emp_id = self.cursor.lastrowid
             self.employee_ids.append(emp_id)
@@ -419,27 +515,34 @@ class ComprehensiveDataRegenerator:
 
                 style = random.choice(styles) + f"-{random.randint(100, 999)}"
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO WORK_ORDER (
                         work_order_id, client_id, style_model, planned_quantity, actual_quantity,
                         planned_start_date, actual_start_date, planned_ship_date, required_date,
                         actual_delivery_date, ideal_cycle_time, status, priority, qc_approved,
                         notes, customer_po_number, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                """, (
-                    wo_id, client_id, style,
-                    planned_qty, actual_qty,
-                    planned_start.strftime('%Y-%m-%d %H:%M:%S'),
-                    actual_start.strftime('%Y-%m-%d %H:%M:%S'),
-                    planned_ship.strftime('%Y-%m-%d %H:%M:%S'),
-                    required_date.strftime('%Y-%m-%d %H:%M:%S'),
-                    actual_delivery.strftime('%Y-%m-%d %H:%M:%S') if actual_delivery else None,
-                    round(random.uniform(0.15, 0.80), 4),
-                    status, priority,
-                    1 if status == "COMPLETED" else 0,
-                    f"{'RUSH ORDER - ' if is_rush else ''}Work order for {client_id}",
-                    f"PO-{random.randint(100000, 999999)}"
-                ))
+                """,
+                    (
+                        wo_id,
+                        client_id,
+                        style,
+                        planned_qty,
+                        actual_qty,
+                        planned_start.strftime("%Y-%m-%d %H:%M:%S"),
+                        actual_start.strftime("%Y-%m-%d %H:%M:%S"),
+                        planned_ship.strftime("%Y-%m-%d %H:%M:%S"),
+                        required_date.strftime("%Y-%m-%d %H:%M:%S"),
+                        actual_delivery.strftime("%Y-%m-%d %H:%M:%S") if actual_delivery else None,
+                        round(random.uniform(0.15, 0.80), 4),
+                        status,
+                        priority,
+                        1 if status == "COMPLETED" else 0,
+                        f"{'RUSH ORDER - ' if is_rush else ''}Work order for {client_id}",
+                        f"PO-{random.randint(100000, 999999)}",
+                    ),
+                )
 
                 self.work_order_ids.append(wo_id)
                 self.work_order_to_client[wo_id] = client_id
@@ -460,11 +563,7 @@ class ComprehensiveDataRegenerator:
             client_id = self.work_order_to_client[wo_id]
 
             # Generate 2-8 jobs per work order
-            num_jobs = random.choices(
-                range(2, 9),
-                weights=[5, 15, 25, 25, 15, 10, 5],
-                k=1
-            )[0]
+            num_jobs = random.choices(range(2, 9), weights=[5, 15, 25, 25, 15, 10, 5], k=1)[0]
 
             # Select operations for this work order
             selected_ops = random.sample(OPERATION_TEMPLATES, min(num_jobs, len(OPERATION_TEMPLATES)))
@@ -484,22 +583,36 @@ class ComprehensiveDataRegenerator:
                 client_employees = [e for e, c in self.employee_to_client.items() if c == client_id]
                 assigned_employee = random.choice(client_employees) if client_employees else None
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO JOB (
                         job_id, work_order_id, client_id_fk, operation_name, operation_code,
                         sequence_number, part_number, part_description, planned_quantity,
                         completed_quantity, quantity_scrapped, planned_hours, actual_hours, is_completed,
                         completed_date, assigned_employee_id, assigned_shift_id, notes, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                """, (
-                    job_id, wo_id, client_id, op["name"], op["code"],
-                    seq, part_number, op["description"], planned_qty,
-                    completed_qty, random.randint(0, 10),
-                    planned_hours, actual_hours, is_completed,
-                    datetime.now().strftime('%Y-%m-%d %H:%M:%S') if is_completed else None,
-                    assigned_employee, random.choice(self.shift_ids),
-                    f"Job for {op['name']} operation"
-                ))
+                """,
+                    (
+                        job_id,
+                        wo_id,
+                        client_id,
+                        op["name"],
+                        op["code"],
+                        seq,
+                        part_number,
+                        op["description"],
+                        planned_qty,
+                        completed_qty,
+                        random.randint(0, 10),
+                        planned_hours,
+                        actual_hours,
+                        is_completed,
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S") if is_completed else None,
+                        assigned_employee,
+                        random.choice(self.shift_ids),
+                        f"Job for {op['name']} operation",
+                    ),
+                )
 
                 self.job_ids.append(job_id)
                 self.job_to_work_order[job_id] = wo_id
@@ -525,29 +638,29 @@ class ComprehensiveDataRegenerator:
         part_opp_count = 0
         for client_id, parts in client_parts.items():
             for part_number in parts:
-                opportunities = random.choices(
-                    [2, 3, 4, 5, 6, 8, 10, 12],
-                    weights=[5, 10, 20, 25, 20, 10, 7, 3],
-                    k=1
-                )[0]
+                opportunities = random.choices([2, 3, 4, 5, 6, 8, 10, 12], weights=[5, 10, 20, 25, 20, 10, 7, 3], k=1)[
+                    0
+                ]
 
                 part_code = part_number.split("-")[2] if len(part_number.split("-")) > 2 else "GEN"
-                part_category = next(
-                    (op["name"] for op in OPERATION_TEMPLATES if op["code"] == part_code),
-                    "General"
-                )
+                part_category = next((op["name"] for op in OPERATION_TEMPLATES if op["code"] == part_code), "General")
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO PART_OPPORTUNITIES (
                         part_number, client_id_fk, opportunities_per_unit,
                         part_description, part_category, notes
                     ) VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    part_number, client_id, opportunities,
-                    f"Part opportunities for {part_number}",
-                    part_category,
-                    f"DPMO calculation: {opportunities} opportunities per unit"
-                ))
+                """,
+                    (
+                        part_number,
+                        client_id,
+                        opportunities,
+                        f"Part opportunities for {part_number}",
+                        part_category,
+                        f"DPMO calculation: {opportunities} opportunities per unit",
+                    ),
+                )
                 part_opp_count += 1
 
         self.conn.commit()
@@ -586,7 +699,11 @@ class ComprehensiveDataRegenerator:
                         break
 
                     wo_id = random.choice(client_wos)
-                    job = random.choice([j for j, w in self.job_to_work_order.items() if w == wo_id]) if any(w == wo_id for w in self.job_to_work_order.values()) else None
+                    job = (
+                        random.choice([j for j, w in self.job_to_work_order.items() if w == wo_id])
+                        if any(w == wo_id for w in self.job_to_work_order.values())
+                        else None
+                    )
 
                     entry_id = f"PROD-{wo_id[-8:]}-{current_date.strftime('%Y%m%d')}-{prod_entry_count+1:05d}"
 
@@ -610,7 +727,8 @@ class ComprehensiveDataRegenerator:
                     ideal_cycle = round(random.uniform(0.15, 0.60), 4)
                     actual_cycle = round(run_time_hours / units_produced if units_produced > 0 else 0, 4)
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO PRODUCTION_ENTRY (
                             production_entry_id, client_id, product_id, shift_id, work_order_id, job_id,
                             production_date, shift_date, units_produced, run_time_hours,
@@ -619,20 +737,35 @@ class ComprehensiveDataRegenerator:
                             efficiency_percentage, performance_percentage, quality_rate,
                             notes, entered_by, entry_method, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        entry_id, client_id, random.choice(self.product_ids),
-                        random.choice(self.shift_ids), wo_id, job,
-                        current_date.strftime('%Y-%m-%d'), current_date.strftime('%Y-%m-%d'),
-                        units_produced, run_time_hours, employees_assigned, employees_present,
-                        defect_count, scrap_count, rework_count,
-                        round(random.uniform(0.25, 1.5), 2),
-                        round(random.uniform(0, 0.75), 2),
-                        ideal_cycle, actual_cycle,
-                        efficiency, performance, quality_rate,
-                        f"Production entry for {current_date.strftime('%Y-%m-%d')}",
-                        1,  # entered_by placeholder
-                        "MANUAL_ENTRY"
-                    ))
+                    """,
+                        (
+                            entry_id,
+                            client_id,
+                            random.choice(self.product_ids),
+                            random.choice(self.shift_ids),
+                            wo_id,
+                            job,
+                            current_date.strftime("%Y-%m-%d"),
+                            current_date.strftime("%Y-%m-%d"),
+                            units_produced,
+                            run_time_hours,
+                            employees_assigned,
+                            employees_present,
+                            defect_count,
+                            scrap_count,
+                            rework_count,
+                            round(random.uniform(0.25, 1.5), 2),
+                            round(random.uniform(0, 0.75), 2),
+                            ideal_cycle,
+                            actual_cycle,
+                            efficiency,
+                            performance,
+                            quality_rate,
+                            f"Production entry for {current_date.strftime('%Y-%m-%d')}",
+                            1,  # entered_by placeholder
+                            "MANUAL_ENTRY",
+                        ),
+                    )
 
                     self.production_entry_ids.append(entry_id)
                     prod_entry_count += 1
@@ -695,25 +828,33 @@ class ComprehensiveDataRegenerator:
 
                     inspection_stages = ["INCOMING", "IN_PROCESS", "FINAL", "AUDIT"]
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO QUALITY_ENTRY (
                             quality_entry_id, client_id, work_order_id, shift_date, inspection_date,
                             units_inspected, units_passed, units_defective, total_defects_count,
                             inspection_stage, is_first_pass, units_scrapped, units_reworked,
                             inspector_id, notes, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        entry_id, client_id, wo_id,
-                        current_date.strftime('%Y-%m-%d'),
-                        current_date.strftime('%Y-%m-%d'),
-                        units_inspected, units_passed, units_defective, total_defects,
-                        random.choice(inspection_stages),
-                        1 if random.random() > 0.15 else 0,
-                        units_scrapped,
-                        units_reworked,
-                        1,  # inspector_id placeholder
-                        f"Quality inspection for {current_date.strftime('%Y-%m-%d')}"
-                    ))
+                    """,
+                        (
+                            entry_id,
+                            client_id,
+                            wo_id,
+                            current_date.strftime("%Y-%m-%d"),
+                            current_date.strftime("%Y-%m-%d"),
+                            units_inspected,
+                            units_passed,
+                            units_defective,
+                            total_defects,
+                            random.choice(inspection_stages),
+                            1 if random.random() > 0.15 else 0,
+                            units_scrapped,
+                            units_reworked,
+                            1,  # inspector_id placeholder
+                            f"Quality inspection for {current_date.strftime('%Y-%m-%d')}",
+                        ),
+                    )
 
                     self.quality_entry_ids.append(entry_id)
                     self.quality_to_client[entry_id] = client_id
@@ -780,22 +921,30 @@ class ComprehensiveDataRegenerator:
 
                 att_entry_id = f"ATT-{emp_id}-{current_date.strftime('%Y%m%d')}"
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO ATTENDANCE_ENTRY (
                         attendance_entry_id, client_id, employee_id, shift_date, shift_id,
                         scheduled_hours, actual_hours, absence_hours, is_absent, absence_type, is_late,
                         entered_by, notes, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                """, (
-                    att_entry_id, client_id, emp_id,
-                    current_date.strftime('%Y-%m-%d'),
-                    random.choice(self.shift_ids),
-                    scheduled_hours, actual_hours,
-                    scheduled_hours - actual_hours if is_absent else 0,
-                    is_absent, absence_type, is_late,
-                    1,  # entered_by placeholder
-                    absence_type if is_absent else None
-                ))
+                """,
+                    (
+                        att_entry_id,
+                        client_id,
+                        emp_id,
+                        current_date.strftime("%Y-%m-%d"),
+                        random.choice(self.shift_ids),
+                        scheduled_hours,
+                        actual_hours,
+                        scheduled_hours - actual_hours if is_absent else 0,
+                        is_absent,
+                        absence_type,
+                        is_late,
+                        1,  # entered_by placeholder
+                        absence_type if is_absent else None,
+                    ),
+                )
 
                 attendance_count += 1
 
@@ -825,17 +974,24 @@ class ComprehensiveDataRegenerator:
                     actual = max(0, required - random.randint(0, 4))
                     coverage_pct = round((actual / required) * 100, 2) if required > 0 else 0
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO SHIFT_COVERAGE (
                             client_id, shift_id, coverage_date, required_employees,
                             actual_employees, coverage_percentage, entered_by, notes, created_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                    """, (
-                        client_id, shift_id, current_date.strftime('%Y-%m-%d'),
-                        required, actual, coverage_pct,
-                        1,  # entered_by placeholder
-                        f"Shift coverage for {current_date.strftime('%Y-%m-%d')}"
-                    ))
+                    """,
+                        (
+                            client_id,
+                            shift_id,
+                            current_date.strftime("%Y-%m-%d"),
+                            required,
+                            actual,
+                            coverage_pct,
+                            1,  # entered_by placeholder
+                            f"Shift coverage for {current_date.strftime('%Y-%m-%d')}",
+                        ),
+                    )
                     coverage_count += 1
 
             current_date += timedelta(days=1)
@@ -878,20 +1034,26 @@ class ComprehensiveDataRegenerator:
 
                     dt_entry_id = f"DT-{wo_id[-8:]}-{current_date.strftime('%Y%m%d')}-{downtime_count+1:04d}"
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO DOWNTIME_ENTRY (
                             downtime_entry_id, client_id, work_order_id, shift_date,
                             downtime_reason, downtime_duration_minutes,
                             root_cause_category, reported_by, notes, created_at, updated_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    """, (
-                        dt_entry_id, client_id, wo_id,
-                        current_date.strftime('%Y-%m-%d'),
-                        reason, duration,
-                        reason,
-                        1,  # reported_by placeholder
-                        description
-                    ))
+                    """,
+                        (
+                            dt_entry_id,
+                            client_id,
+                            wo_id,
+                            current_date.strftime("%Y-%m-%d"),
+                            reason,
+                            duration,
+                            reason,
+                            1,  # reported_by placeholder
+                            description,
+                        ),
+                    )
                     downtime_count += 1
 
             current_date += timedelta(days=1)
@@ -935,24 +1097,30 @@ class ComprehensiveDataRegenerator:
             hold_reason = random.choice(HOLD_REASONS)
             hold_category = random.choice(HOLD_REASON_CATEGORIES)
 
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 INSERT INTO HOLD_ENTRY (
                     hold_entry_id, client_id, work_order_id, hold_status,
                     hold_date, resume_date, total_hold_duration_hours,
                     hold_reason_category, hold_reason_description,
                     hold_initiated_by, resumed_by, notes, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-            """, (
-                hold_entry_id, client_id, wo_id, hold_status,
-                hold_date.strftime('%Y-%m-%d'),
-                resume_date.strftime('%Y-%m-%d') if resume_date else None,
-                round(hold_duration, 2) if hold_duration else None,
-                hold_category,
-                hold_reason,
-                1,  # hold_initiated_by placeholder
-                1 if is_released else None,  # resumed_by placeholder
-                f"Hold entry: {hold_reason}"
-            ))
+            """,
+                (
+                    hold_entry_id,
+                    client_id,
+                    wo_id,
+                    hold_status,
+                    hold_date.strftime("%Y-%m-%d"),
+                    resume_date.strftime("%Y-%m-%d") if resume_date else None,
+                    round(hold_duration, 2) if hold_duration else None,
+                    hold_category,
+                    hold_reason,
+                    1,  # hold_initiated_by placeholder
+                    1 if is_released else None,  # resumed_by placeholder
+                    f"Hold entry: {hold_reason}",
+                ),
+            )
             hold_count += 1
 
         self.conn.commit()
@@ -978,20 +1146,26 @@ class ComprehensiveDataRegenerator:
 
                     defect_type = random.choice(DEFECT_TYPES)
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO DEFECT_DETAIL (
                             defect_detail_id, quality_entry_id, client_id_fk,
                             defect_type, defect_category, defect_count,
                             severity, location, description, created_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                    """, (
-                        defect_id, qe_id, client_id,
-                        defect_type, defect_type,
-                        random.randint(1, 20),
-                        random.choice(DEFECT_SEVERITIES),
-                        random.choice(DEFECT_LOCATIONS),
-                        f"Found {defect_type.lower()} defect during inspection"
-                    ))
+                    """,
+                        (
+                            defect_id,
+                            qe_id,
+                            client_id,
+                            defect_type,
+                            defect_type,
+                            random.randint(1, 20),
+                            random.choice(DEFECT_SEVERITIES),
+                            random.choice(DEFECT_LOCATIONS),
+                            f"Found {defect_type.lower()} defect during inspection",
+                        ),
+                    )
                     defect_count += 1
 
         self.conn.commit()
@@ -1022,7 +1196,11 @@ class ComprehensiveDataRegenerator:
                 severity = random.choice(ALERT_SEVERITIES)
                 status = random.choices(ALERT_STATUSES, weights=[0.4, 0.3, 0.3])[0]
 
-                wo_id = random.choice([wo for wo, c in self.work_order_to_client.items() if c == client_id]) if random.random() > 0.3 else None
+                wo_id = (
+                    random.choice([wo for wo, c in self.work_order_to_client.items() if c == client_id])
+                    if random.random() > 0.3
+                    else None
+                )
 
                 alert_id = f"ALT-{client_id[:4]}-{alert_count+1:05d}"
 
@@ -1032,29 +1210,45 @@ class ComprehensiveDataRegenerator:
                 confidence = round(random.uniform(0.6, 0.95), 2) if predicted_value else None
 
                 created_at = DATA_START_DATE + timedelta(days=random.randint(0, 85))
-                acknowledged_at = created_at + timedelta(hours=random.randint(1, 24)) if status in ["acknowledged", "resolved"] else None
+                acknowledged_at = (
+                    created_at + timedelta(hours=random.randint(1, 24))
+                    if status in ["acknowledged", "resolved"]
+                    else None
+                )
                 resolved_at = acknowledged_at + timedelta(hours=random.randint(1, 48)) if status == "resolved" else None
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO ALERT (
                         alert_id, category, severity, status, title, message, recommendation,
                         client_id, kpi_key, work_order_id, current_value, threshold_value,
                         predicted_value, confidence, created_at, acknowledged_at, acknowledged_by,
                         resolved_at, resolved_by, resolution_notes
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    alert_id, category, severity, status, title,
-                    f"{base_message} for {client_id}",
-                    f"Review {category} metrics and take corrective action",
-                    client_id, f"{category}_rate", wo_id,
-                    current_value, threshold_value, predicted_value, confidence,
-                    created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    acknowledged_at.strftime('%Y-%m-%d %H:%M:%S') if acknowledged_at else None,
-                    self._get_random_user_id() if acknowledged_at else None,
-                    resolved_at.strftime('%Y-%m-%d %H:%M:%S') if resolved_at else None,
-                    self._get_random_user_id() if resolved_at else None,
-                    "Issue addressed and metrics normalized" if status == "resolved" else None
-                ))
+                """,
+                    (
+                        alert_id,
+                        category,
+                        severity,
+                        status,
+                        title,
+                        f"{base_message} for {client_id}",
+                        f"Review {category} metrics and take corrective action",
+                        client_id,
+                        f"{category}_rate",
+                        wo_id,
+                        current_value,
+                        threshold_value,
+                        predicted_value,
+                        confidence,
+                        created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                        acknowledged_at.strftime("%Y-%m-%d %H:%M:%S") if acknowledged_at else None,
+                        self._get_random_user_id() if acknowledged_at else None,
+                        resolved_at.strftime("%Y-%m-%d %H:%M:%S") if resolved_at else None,
+                        self._get_random_user_id() if resolved_at else None,
+                        "Issue addressed and metrics normalized" if status == "resolved" else None,
+                    ),
+                )
 
                 self.alert_ids.append(alert_id)
                 alert_count += 1
@@ -1079,7 +1273,9 @@ class ComprehensiveDataRegenerator:
                     history_id = f"AH-{alert_id[-10:]}-{i+1:02d}"
 
                     prediction_date = DATA_START_DATE + timedelta(days=random.randint(0, 80))
-                    actual_date = prediction_date + timedelta(days=random.randint(1, 7)) if random.random() > 0.2 else None
+                    actual_date = (
+                        prediction_date + timedelta(days=random.randint(1, 7)) if random.random() > 0.2 else None
+                    )
 
                     predicted_value = round(random.uniform(50, 95), 2)
                     actual_value = round(predicted_value * random.uniform(0.85, 1.15), 2) if actual_date else None
@@ -1090,17 +1286,24 @@ class ComprehensiveDataRegenerator:
                         error_percent = round(abs(predicted_value - actual_value) / predicted_value * 100, 2)
                         was_accurate = 1 if error_percent < 10 else 0
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO ALERT_HISTORY (
                             history_id, alert_id, predicted_value, actual_value,
                             prediction_date, actual_date, was_accurate, error_percent, created_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-                    """, (
-                        history_id, alert_id, predicted_value, actual_value,
-                        prediction_date.strftime('%Y-%m-%d %H:%M:%S'),
-                        actual_date.strftime('%Y-%m-%d %H:%M:%S') if actual_date else None,
-                        was_accurate, error_percent
-                    ))
+                    """,
+                        (
+                            history_id,
+                            alert_id,
+                            predicted_value,
+                            actual_value,
+                            prediction_date.strftime("%Y-%m-%d %H:%M:%S"),
+                            actual_date.strftime("%Y-%m-%d %H:%M:%S") if actual_date else None,
+                            was_accurate,
+                            error_percent,
+                        ),
+                    )
                     history_count += 1
 
         self.conn.commit()
@@ -1112,11 +1315,23 @@ class ComprehensiveDataRegenerator:
         print("\n[Step 16] Verifying Data...")
 
         tables = [
-            "USER", "CLIENT", "SHIFT", "PRODUCT", "EMPLOYEE",
-            "WORK_ORDER", "JOB", "PART_OPPORTUNITIES",
-            "PRODUCTION_ENTRY", "QUALITY_ENTRY", "ATTENDANCE_ENTRY",
-            "SHIFT_COVERAGE", "DOWNTIME_ENTRY", "HOLD_ENTRY",
-            "DEFECT_DETAIL", "ALERT", "ALERT_HISTORY"
+            "USER",
+            "CLIENT",
+            "SHIFT",
+            "PRODUCT",
+            "EMPLOYEE",
+            "WORK_ORDER",
+            "JOB",
+            "PART_OPPORTUNITIES",
+            "PRODUCTION_ENTRY",
+            "QUALITY_ENTRY",
+            "ATTENDANCE_ENTRY",
+            "SHIFT_COVERAGE",
+            "DOWNTIME_ENTRY",
+            "HOLD_ENTRY",
+            "DEFECT_DETAIL",
+            "ALERT",
+            "ALERT_HISTORY",
         ]
 
         counts = {}
@@ -1170,21 +1385,21 @@ class ComprehensiveDataRegenerator:
             self.clear_existing_data()
 
             # Generate in proper FK order
-            self.generate_shifts()              # Step 1
-            self.generate_products()            # Step 2
-            self.generate_employees()           # Step 3
-            self.generate_work_orders()         # Step 4
-            self.generate_jobs()                # Step 5
+            self.generate_shifts()  # Step 1
+            self.generate_products()  # Step 2
+            self.generate_employees()  # Step 3
+            self.generate_work_orders()  # Step 4
+            self.generate_jobs()  # Step 5
             self.generate_part_opportunities()  # Step 6
             self.generate_production_entries()  # Step 7
-            self.generate_quality_entries()     # Step 8
+            self.generate_quality_entries()  # Step 8
             self.generate_attendance_entries()  # Step 9
-            self.generate_shift_coverage()      # Step 10
-            self.generate_downtime_entries()    # Step 11
-            self.generate_hold_entries()        # Step 12
-            self.generate_defect_details()      # Step 13
-            self.generate_alerts()              # Step 14
-            self.generate_alert_history()       # Step 15
+            self.generate_shift_coverage()  # Step 10
+            self.generate_downtime_entries()  # Step 11
+            self.generate_hold_entries()  # Step 12
+            self.generate_defect_details()  # Step 13
+            self.generate_alerts()  # Step 14
+            self.generate_alert_history()  # Step 15
 
             # Verify and print summary
             counts = self.verify_data()
@@ -1197,6 +1412,7 @@ class ComprehensiveDataRegenerator:
             self.conn.rollback()
             print(f"\n ERROR: Data regeneration failed: {e}")
             import traceback
+
             traceback.print_exc()
             raise
         finally:
@@ -1208,6 +1424,7 @@ class ComprehensiveDataRegenerator:
 # Main Entry Point
 # ============================================================================
 
+
 def main():
     """Main entry point for the data regenerator."""
     import argparse
@@ -1216,17 +1433,9 @@ def main():
         description="Regenerate comprehensive sample data for KPI Operations Platform (preserves USER table)"
     )
     parser.add_argument(
-        "--seed",
-        type=int,
-        default=RANDOM_SEED,
-        help=f"Random seed for reproducible data (default: {RANDOM_SEED})"
+        "--seed", type=int, default=RANDOM_SEED, help=f"Random seed for reproducible data (default: {RANDOM_SEED})"
     )
-    parser.add_argument(
-        "--db",
-        type=str,
-        default=DB_PATH,
-        help=f"Database path (default: {DB_PATH})"
-    )
+    parser.add_argument("--db", type=str, default=DB_PATH, help=f"Database path (default: {DB_PATH})")
 
     args = parser.parse_args()
 

@@ -80,11 +80,14 @@ export function useWorkOrderData() {
   // Planning pattern).
   const selectedClient = computed<string | null>({
     get() {
-      return (
+      // The legacy kpi store types selectedClient as `string | number | null`
+      // (numeric IDs from the pre-string-PK era); we coerce to string at this
+      // boundary so downstream consumers see only string | null.
+      const raw =
         (authStore.user?.client_id_assigned as string | null | undefined)
         ?? kpiStore.selectedClient
         ?? null
-      )
+      return raw == null ? null : String(raw)
     },
     set(value) {
       kpiStore.setClient(value)

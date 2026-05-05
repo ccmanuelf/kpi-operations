@@ -39,11 +39,7 @@ def calculate_oee(
 ) -> CalculationResult[Decimal]:
     """Compute OEE in the requested mode and return the dual-view envelope."""
 
-    value = (
-        inputs.availability_pct
-        * inputs.performance_pct
-        * inputs.quality_pct
-    ) / Decimal("10000")
+    value = (inputs.availability_pct * inputs.performance_pct * inputs.quality_pct) / Decimal("10000")
 
     return CalculationResult[Decimal](
         metric_name=METRIC_NAME,

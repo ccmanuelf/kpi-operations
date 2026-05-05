@@ -152,11 +152,9 @@ def calculate_scrap_rate(
     if inputs.total_produced == 0:
         value = Decimal("0")
     else:
-        value = (
-            Decimal(str(inputs.units_scrapped))
-            / Decimal(str(inputs.total_produced))
-            * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (Decimal(str(inputs.units_scrapped)) / Decimal(str(inputs.total_produced)) * Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     return CalculationResult[Decimal](
         metric_name="scrap_rate",
@@ -177,9 +175,7 @@ def calculate_defect_escape_rate(
         value = Decimal("0")
     else:
         value = (
-            Decimal(str(inputs.final_stage_defects))
-            / Decimal(str(inputs.total_defects))
-            * Decimal("100")
+            Decimal(str(inputs.final_stage_defects)) / Decimal(str(inputs.total_defects)) * Decimal("100")
         ).quantize(Decimal("0.01"))
 
     return CalculationResult[Decimal](
@@ -200,11 +196,9 @@ def calculate_rework_impact(
     if inputs.total_inspected == 0:
         value = Decimal("0")
     else:
-        value = (
-            Decimal(str(inputs.affected_units))
-            / Decimal(str(inputs.total_inspected))
-            * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (Decimal(str(inputs.affected_units)) / Decimal(str(inputs.total_inspected)) * Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     return CalculationResult[Decimal](
         metric_name="rework_impact",
@@ -224,11 +218,9 @@ def calculate_repair_impact(
     if inputs.total_inspected == 0:
         value = Decimal("0")
     else:
-        value = (
-            Decimal(str(inputs.affected_units))
-            / Decimal(str(inputs.total_inspected))
-            * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (Decimal(str(inputs.affected_units)) / Decimal(str(inputs.total_inspected)) * Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     return CalculationResult[Decimal](
         metric_name="repair_impact",

@@ -85,11 +85,9 @@ def calculate_hold_resolution_rate(
     else:
         if inputs.resolved_on_time > inputs.total_resolved:
             raise ValueError("resolved_on_time cannot exceed total_resolved")
-        value = (
-            Decimal(str(inputs.resolved_on_time))
-            / Decimal(str(inputs.total_resolved))
-            * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (Decimal(str(inputs.resolved_on_time)) / Decimal(str(inputs.total_resolved)) * Decimal("100")).quantize(
+            Decimal("0.01")
+        )
 
     return CalculationResult[Decimal](
         metric_name="hold_resolution_rate",

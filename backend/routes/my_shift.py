@@ -116,9 +116,7 @@ def get_my_shift_summary(
     target_date = shift_date or date.today()
 
     # Production entries — scoped by shift_date and (optionally) shift_id.
-    production_query = db.query(ProductionEntry).filter(
-        func.date(ProductionEntry.shift_date) == target_date
-    )
+    production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.shift_date) == target_date)
     # Multi-tenant isolation: non-admin users see only their assigned client's data
     if current_user.role != "admin" and current_user.client_id_assigned:
         production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
@@ -132,20 +130,14 @@ def get_my_shift_summary(
     # target but the current schema doesn't carry a hard target field.
     total_units = sum(p.units_produced or 0 for p in productions)
     total_target = total_units or 1  # avoid div-by-zero in efficiency
-    cached_efficiency = [
-        float(p.efficiency_percentage)
-        for p in productions
-        if p.efficiency_percentage is not None
-    ]
+    cached_efficiency = [float(p.efficiency_percentage) for p in productions if p.efficiency_percentage is not None]
     if cached_efficiency:
         efficiency = sum(cached_efficiency) / len(cached_efficiency)
     else:
         efficiency = (total_units / total_target * 100) if total_target > 0 else 0
 
     # Downtime entries — scoped by shift_date.
-    downtime_query = db.query(DowntimeEntry).filter(
-        func.date(DowntimeEntry.shift_date) == target_date
-    )
+    downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
 
@@ -154,9 +146,7 @@ def get_my_shift_summary(
     downtime_minutes = sum(d.downtime_duration_minutes or 0 for d in downtimes)
 
     # Quality entries — scoped by shift_date.
-    quality_query = db.query(QualityEntry).filter(
-        func.date(QualityEntry.shift_date) == target_date
-    )
+    quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
 
@@ -368,9 +358,7 @@ def get_my_recent_activity(
     target_date = shift_date or date.today()
     activities: List[Dict[str, Any]] = []
 
-    production_query = db.query(ProductionEntry).filter(
-        func.date(ProductionEntry.shift_date) == target_date
-    )
+    production_query = db.query(ProductionEntry).filter(func.date(ProductionEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         production_query = production_query.filter(ProductionEntry.client_id == current_user.client_id_assigned)
     if shift_id is not None:
@@ -389,9 +377,7 @@ def get_my_recent_activity(
             }
         )
 
-    downtime_query = db.query(DowntimeEntry).filter(
-        func.date(DowntimeEntry.shift_date) == target_date
-    )
+    downtime_query = db.query(DowntimeEntry).filter(func.date(DowntimeEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         downtime_query = downtime_query.filter(DowntimeEntry.client_id == current_user.client_id_assigned)
 
@@ -408,9 +394,7 @@ def get_my_recent_activity(
             }
         )
 
-    quality_query = db.query(QualityEntry).filter(
-        func.date(QualityEntry.shift_date) == target_date
-    )
+    quality_query = db.query(QualityEntry).filter(func.date(QualityEntry.shift_date) == target_date)
     if current_user.role != "admin" and current_user.client_id_assigned:
         quality_query = quality_query.filter(QualityEntry.client_id == current_user.client_id_assigned)
 

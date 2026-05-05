@@ -33,16 +33,14 @@ def _baseline_inputs() -> OTDRawInputs:
     delays = (
         [Decimal("0.0")] * 5
         + [Decimal("-0.05")] * 2  # 5% early
-        + [Decimal("0.03")] * 2   # 3% late
-        + [Decimal("0.10")] * 1   # 10% late
+        + [Decimal("0.03")] * 2  # 3% late
+        + [Decimal("0.10")] * 1  # 10% late
     )
     return OTDRawInputs(orders=[OrderDelay(delay_pct=d) for d in delays])
 
 
 def _approve(db, poweruser, admin, client_id, name, value):
-    record = AssumptionService(db, poweruser).propose(
-        client_id=client_id, assumption_name=name, value=value
-    )
+    record = AssumptionService(db, poweruser).propose(client_id=client_id, assumption_name=name, value=value)
     AssumptionService(db, admin).approve(record.assumption_id)
     return record
 
@@ -81,8 +79,7 @@ class TestNoAssumptions:
 class TestBufferDiverges:
     def test_5pct_buffer_includes_3pct_late_orders(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "otd_carrier_buffer_pct", 5)
+        _approve(transactional_db, poweruser, admin, client.client_id, "otd_carrier_buffer_pct", 5)
 
         svc = OTDCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -99,8 +96,7 @@ class TestBufferDiverges:
 
     def test_15pct_buffer_includes_all_orders(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "otd_carrier_buffer_pct", 15)
+        _approve(transactional_db, poweruser, admin, client.client_id, "otd_carrier_buffer_pct", 15)
 
         svc = OTDCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -117,8 +113,7 @@ class TestBufferDiverges:
 class TestSnapshotPersistence:
     def test_persisted_row_has_buffer_snapshot(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        approved = _approve(transactional_db, poweruser, admin, client.client_id,
-                            "otd_carrier_buffer_pct", 5)
+        approved = _approve(transactional_db, poweruser, admin, client.client_id, "otd_carrier_buffer_pct", 5)
 
         svc = OTDCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -130,9 +125,11 @@ class TestSnapshotPersistence:
         )
 
         assert result.result_id is not None
-        row = transactional_db.query(MetricCalculationResult).filter(
-            MetricCalculationResult.result_id == result.result_id
-        ).first()
+        row = (
+            transactional_db.query(MetricCalculationResult)
+            .filter(MetricCalculationResult.result_id == result.result_id)
+            .first()
+        )
         assert row.metric_name == "otd"
         snapshot = json.loads(row.assumptions_snapshot)
         assert snapshot["otd_carrier_buffer_pct"]["value"] == 5

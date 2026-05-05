@@ -63,7 +63,7 @@ interface ColumnDef {
   pinned?: 'left' | 'right'
   sortable?: boolean
   filter?: boolean
-  checkboxSelection?: boolean
+  checkboxSelection?: boolean | ((params: { data: ScenarioRow }) => boolean)
   headerCheckboxSelection?: boolean
 }
 

@@ -61,10 +61,7 @@ def _check_write_permission(user: User) -> None:
     if (user.role or "") not in _WRITE_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Scenario mutations require leader, supervisor, "
-                "poweruser, or admin role"
-            ),
+            detail=("Scenario mutations require leader, supervisor, " "poweruser, or admin role"),
         )
 
 
@@ -143,9 +140,7 @@ def update_scenario_endpoint(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     _check_write_permission(current_user)
-    scenario = crud.update_scenario(
-        db, current_user, scenario_id, payload.model_dump(exclude_unset=True)
-    )
+    scenario = crud.update_scenario(db, current_user, scenario_id, payload.model_dump(exclude_unset=True))
     if scenario is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Scenario not found")
     db.commit()

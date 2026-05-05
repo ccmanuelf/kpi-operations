@@ -56,9 +56,7 @@ def _override_user(
     role: str,
     client_id_assigned: str | None = "ACME-MFG",
 ) -> TestClient:
-    app.dependency_overrides[get_current_user] = lambda: _user(
-        role, client_id_assigned=client_id_assigned
-    )
+    app.dependency_overrides[get_current_user] = lambda: _user(role, client_id_assigned=client_id_assigned)
     return client
 
 
@@ -118,9 +116,7 @@ def test_leader_blocked_on_other_tenant(shared_client: TestClient) -> None:
 
 def test_leader_with_multi_assignment(shared_client: TestClient) -> None:
     """Comma-separated client list is honoured."""
-    client = _override_user(
-        shared_client, "leader", client_id_assigned="ACME-MFG, FASHION-WORKS"
-    )
+    client = _override_user(shared_client, "leader", client_id_assigned="ACME-MFG, FASHION-WORKS")
     for cid in ("ACME-MFG", "FASHION-WORKS"):
         resp = client.get("/api/v2/simulation/calibration", params={"client_id": cid})
         assert resp.status_code == 200, f"{cid}: {resp.text}"
@@ -203,8 +199,17 @@ def test_response_shape_full(shared_client: TestClient) -> None:
 
     # Each operation carries the calibrated fields the engine needs
     op = cfg["operations"][0]
-    for required in ("product", "step", "operation", "machine_tool", "sam_min",
-                     "operators", "rework_pct", "grade_pct", "fpd_pct"):
+    for required in (
+        "product",
+        "step",
+        "operation",
+        "machine_tool",
+        "sam_min",
+        "operators",
+        "rework_pct",
+        "grade_pct",
+        "fpd_pct",
+    ):
         assert required in op, f"missing {required} on calibrated op"
 
     # Provenance: at least one per-product source + a schedule source

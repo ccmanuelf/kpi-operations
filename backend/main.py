@@ -265,9 +265,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             inserted = seed_metric_dependencies(dep_db)
             if inserted:
-                _logger.info(
-                    "Seeded %d metric→assumption dependency rows", inserted
-                )
+                _logger.info("Seeded %d metric→assumption dependency rows", inserted)
         finally:
             dep_db.close()
     except Exception as e:

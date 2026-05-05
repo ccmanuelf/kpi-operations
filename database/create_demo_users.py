@@ -9,7 +9,7 @@ import os
 import sys
 
 # Add backend to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
 try:
     from passlib.context import CryptContext
@@ -22,7 +22,7 @@ except ImportError:
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Database path
-DB_PATH = os.path.join(os.path.dirname(__file__), 'kpi_platform.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), "kpi_platform.db")
 
 print("🔐 Creating Demo Users for KPI Platform")
 print("=" * 60)
@@ -40,60 +40,60 @@ if not os.path.exists(DB_PATH):
 # See docs/SECURITY.md for production password policy.
 DEMO_USERS = [
     {
-        'user_id': 'USR-ADMIN-001',
-        'username': 'admin',
-        'email': 'admin@kpiplatform.local',
-        'password': 'admin123',
-        'full_name': 'System Administrator',
-        'role': 'ADMIN',
-        'client_id_assigned': None
+        "user_id": "USR-ADMIN-001",
+        "username": "admin",
+        "email": "admin@kpiplatform.local",
+        "password": "admin123",
+        "full_name": "System Administrator",
+        "role": "ADMIN",
+        "client_id_assigned": None,
     },
     {
-        'user_id': 'USR-POWER-001',
-        'username': 'poweruser',
-        'email': 'poweruser@kpiplatform.local',
-        'password': 'password123',
-        'full_name': 'Power User',
-        'role': 'POWERUSER',
-        'client_id_assigned': None
+        "user_id": "USR-POWER-001",
+        "username": "poweruser",
+        "email": "poweruser@kpiplatform.local",
+        "password": "password123",
+        "full_name": "Power User",
+        "role": "POWERUSER",
+        "client_id_assigned": None,
     },
     {
-        'user_id': 'USR-LEADER-001',
-        'username': 'leader',
-        'email': 'leader@kpiplatform.local',
-        'password': 'password123',
-        'full_name': 'Team Leader',
-        'role': 'LEADER',
-        'client_id_assigned': 'BOOT-LINE-A'
+        "user_id": "USR-LEADER-001",
+        "username": "leader",
+        "email": "leader@kpiplatform.local",
+        "password": "password123",
+        "full_name": "Team Leader",
+        "role": "LEADER",
+        "client_id_assigned": "BOOT-LINE-A",
     },
     {
-        'user_id': 'USR-OPER-001',
-        'username': 'operator',
-        'email': 'operator@kpiplatform.local',
-        'password': 'password123',
-        'full_name': 'Line Operator',
-        'role': 'OPERATOR',
-        'client_id_assigned': 'BOOT-LINE-A'
+        "user_id": "USR-OPER-001",
+        "username": "operator",
+        "email": "operator@kpiplatform.local",
+        "password": "password123",
+        "full_name": "Line Operator",
+        "role": "OPERATOR",
+        "client_id_assigned": "BOOT-LINE-A",
     },
     {
-        'user_id': 'USR-OPER-002',
-        'username': 'operator2',
-        'email': 'operator2@kpiplatform.local',
-        'password': 'password123',
-        'full_name': 'Second Operator',
-        'role': 'OPERATOR',
-        'client_id_assigned': 'APPAREL-B'
+        "user_id": "USR-OPER-002",
+        "username": "operator2",
+        "email": "operator2@kpiplatform.local",
+        "password": "password123",
+        "full_name": "Second Operator",
+        "role": "OPERATOR",
+        "client_id_assigned": "APPAREL-B",
     },
     # Supervisor role (maps to admin/supervisor in frontend)
     {
-        'user_id': 'USR-SUPER-001',
-        'username': 'supervisor',
-        'email': 'supervisor@kpiplatform.local',
-        'password': 'password123',
-        'full_name': 'Production Supervisor',
-        'role': 'LEADER',  # Using LEADER as supervisor equivalent
-        'client_id_assigned': 'BOOT-LINE-A,APPAREL-B'
-    }
+        "user_id": "USR-SUPER-001",
+        "username": "supervisor",
+        "email": "supervisor@kpiplatform.local",
+        "password": "password123",
+        "full_name": "Production Supervisor",
+        "role": "LEADER",  # Using LEADER as supervisor equivalent
+        "client_id_assigned": "BOOT-LINE-A,APPAREL-B",
+    },
 ]
 
 conn = sqlite3.connect(DB_PATH)
@@ -108,16 +108,17 @@ errors = []
 
 for user in DEMO_USERS:
     # Hash the password
-    password_hash = pwd_context.hash(user['password'])
-    
+    password_hash = pwd_context.hash(user["password"])
+
     try:
         # Check if user exists
-        cursor.execute("SELECT user_id FROM USER WHERE username = ?", (user['username'],))
+        cursor.execute("SELECT user_id FROM USER WHERE username = ?", (user["username"],))
         existing = cursor.fetchone()
-        
+
         if existing:
             # Update existing user
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE USER 
                 SET password_hash = ?, 
                     email = ?,
@@ -127,35 +128,40 @@ for user in DEMO_USERS:
                     is_active = 1,
                     updated_at = datetime('now')
                 WHERE username = ?
-            """, (
-                password_hash,
-                user['email'],
-                user['full_name'],
-                user['role'],
-                user['client_id_assigned'],
-                user['username']
-            ))
+            """,
+                (
+                    password_hash,
+                    user["email"],
+                    user["full_name"],
+                    user["role"],
+                    user["client_id_assigned"],
+                    user["username"],
+                ),
+            )
             updated += 1
             print(f"   ✓ Updated: {user['username']} (password: {user['password']})")
         else:
             # Insert new user
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO USER (
                     user_id, username, email, password_hash, full_name, 
                     role, client_id_assigned, is_active, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
-            """, (
-                user['user_id'],
-                user['username'],
-                user['email'],
-                password_hash,
-                user['full_name'],
-                user['role'],
-                user['client_id_assigned']
-            ))
+            """,
+                (
+                    user["user_id"],
+                    user["username"],
+                    user["email"],
+                    password_hash,
+                    user["full_name"],
+                    user["role"],
+                    user["client_id_assigned"],
+                ),
+            )
             created += 1
             print(f"   ✓ Created: {user['username']} (password: {user['password']})")
-            
+
     except Exception as e:
         errors.append(f"{user['username']}: {str(e)}")
         print(f"   ❌ Error with {user['username']}: {e}")

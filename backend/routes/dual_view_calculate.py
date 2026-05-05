@@ -206,9 +206,7 @@ def calculate_oee_from_period(
     verify_client_access(current_user, body.client_id)
     _validate_period(body.period_start, body.period_end)
 
-    raw_inputs = aggregate_oee_inputs(
-        db, body.client_id, body.period_start, body.period_end, **body.filter_kwargs()
-    )
+    raw_inputs = aggregate_oee_inputs(db, body.client_id, body.period_start, body.period_end, **body.filter_kwargs())
     result = OEECalculationService(db, current_user).calculate(
         client_id=body.client_id,
         period_start=body.period_start,
@@ -243,9 +241,7 @@ def calculate_otd_from_period(
     verify_client_access(current_user, body.client_id)
     _validate_period(body.period_start, body.period_end)
 
-    raw_inputs = aggregate_otd_inputs(
-        db, body.client_id, body.period_start, body.period_end, **body.filter_kwargs()
-    )
+    raw_inputs = aggregate_otd_inputs(db, body.client_id, body.period_start, body.period_end, **body.filter_kwargs())
     result = OTDCalculationService(db, current_user).calculate(
         client_id=body.client_id,
         period_start=body.period_start,
@@ -280,9 +276,7 @@ def calculate_fpy_from_period(
     verify_client_access(current_user, body.client_id)
     _validate_period(body.period_start, body.period_end)
 
-    raw_inputs = aggregate_fpy_inputs(
-        db, body.client_id, body.period_start, body.period_end, **body.filter_kwargs()
-    )
+    raw_inputs = aggregate_fpy_inputs(db, body.client_id, body.period_start, body.period_end, **body.filter_kwargs())
     result = FPYCalculationService(db, current_user).calculate(
         client_id=body.client_id,
         period_start=body.period_start,

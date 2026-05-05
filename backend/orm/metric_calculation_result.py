@@ -42,9 +42,7 @@ class MetricCalculationResult(Base):
 
     result_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
-    client_id: Mapped[str] = mapped_column(
-        String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True
-    )
+    client_id: Mapped[str] = mapped_column(String(50), ForeignKey("CLIENT.client_id"), nullable=False, index=True)
 
     metric_name: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
 
@@ -71,9 +69,5 @@ class MetricCalculationResult(Base):
     # is metric-specific (see each *CalculationService for shape).
     inputs_snapshot_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
 
-    calculated_by: Mapped[Optional[str]] = mapped_column(
-        String(50), ForeignKey("USER.user_id"), nullable=True
-    )
-    calculated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.now(), index=True
-    )
+    calculated_by: Mapped[Optional[str]] = mapped_column(String(50), ForeignKey("USER.user_id"), nullable=True)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now(), index=True)

@@ -120,8 +120,13 @@ export default function useOrdersGridData(): UseOrdersGridDataReturn {
       headerLine.forEach((h, i) => {
         ;(row as Record<string, unknown>)[h] = values[i] || ''
       })
-      if (row.order_quantity !== undefined && row.order_quantity !== '') {
-        row.order_quantity = parseInt(String(row.order_quantity)) || 0
+      // CSV import puts strings into the row; coerce order_quantity to
+      // a number when the cell isn't blank. The `as unknown` step is
+      // required because OrderRow types order_quantity as number?, but
+      // the raw CSV value is genuinely a string at this point.
+      const rawQty = (row as unknown as Record<string, unknown>).order_quantity
+      if (rawQty !== undefined && rawQty !== '') {
+        row.order_quantity = parseInt(String(rawQty)) || 0
       }
       // Default missing required-by-backend fields to canonical enum values.
       if (!row.priority || !ORDER_PRIORITY_OPTIONS.includes(row.priority)) {

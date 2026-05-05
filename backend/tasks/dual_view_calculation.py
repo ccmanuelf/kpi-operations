@@ -137,7 +137,9 @@ def run_nightly_dual_view_calculations() -> dict[str, dict[str, int | None]]:
         active_clients = db.query(Client).filter(Client.is_active == 1).all()
         logger.info(
             "Nightly dual-view: %d clients, period=[%s, %s]",
-            len(active_clients), period_start, period_end,
+            len(active_clients),
+            period_start,
+            period_end,
         )
 
         for client in active_clients:
@@ -180,7 +182,8 @@ class DualViewCalculationScheduler:
         self.scheduler.start()
         logger.info(
             "Dual-view scheduler started (cron: %02d:%02d UTC)",
-            self.cron_hour, self.cron_minute,
+            self.cron_hour,
+            self.cron_minute,
         )
 
     def stop(self) -> None:

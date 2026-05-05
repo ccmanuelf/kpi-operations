@@ -261,9 +261,7 @@ def test_duplicate_creates_new_record_with_optional_name(leader_client: TestClie
     assert dup["config_json"] == _sample_config()
 
     # Custom name
-    dup2_resp = leader_client.post(
-        f"/api/v2/simulation/scenarios/{src_id}/duplicate?new_name=My%20Variant"
-    )
+    dup2_resp = leader_client.post(f"/api/v2/simulation/scenarios/{src_id}/duplicate?new_name=My%20Variant")
     assert dup2_resp.status_code == 201
     assert dup2_resp.json()["name"] == "My Variant"
 
@@ -369,9 +367,7 @@ def test_global_scenario_visible_to_all(shared_client: TestClient) -> None:
     for client_id in ("ACME-MFG", "TEXTILE-PRO"):
         _override_user(shared_client, "leader", client_id_assigned=client_id)
         list_resp = shared_client.get("/api/v2/simulation/scenarios")
-        assert sid in [s["id"] for s in list_resp.json()], (
-            f"Global scenario should be visible to leader@{client_id}"
-        )
+        assert sid in [s["id"] for s in list_resp.json()], f"Global scenario should be visible to leader@{client_id}"
 
 
 # =============================================================================

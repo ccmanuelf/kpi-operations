@@ -55,7 +55,7 @@ def calculate_efficiency(
     ideal_cycle_time: float,
     employees_assigned: int,
     shift_hours: float,
-    as_percentage: bool = True
+    as_percentage: bool = True,
 ) -> Optional[float]:
     """
     Calculate workforce efficiency using SCHEDULED hours (not runtime).
@@ -130,18 +130,17 @@ def calculate_efficiency_from_db(db: Session, entry_id: int) -> Optional[float]:
         return None
 
     # Fetch production entry with related data
-    query = select(
-        ProductionEntry.units_produced,
-        ProductionEntry.employees_assigned,
-        Product.ideal_cycle_time,
-        Shift.start_time,
-        Shift.end_time
-    ).join(
-        Product, ProductionEntry.product_id == Product.product_id
-    ).join(
-        Shift, ProductionEntry.shift_id == Shift.shift_id
-    ).where(
-        ProductionEntry.entry_id == entry_id
+    query = (
+        select(
+            ProductionEntry.units_produced,
+            ProductionEntry.employees_assigned,
+            Product.ideal_cycle_time,
+            Shift.start_time,
+            Shift.end_time,
+        )
+        .join(Product, ProductionEntry.product_id == Product.product_id)
+        .join(Shift, ProductionEntry.shift_id == Shift.shift_id)
+        .where(ProductionEntry.entry_id == entry_id)
     )
 
     result = db.execute(query).first()
@@ -152,10 +151,7 @@ def calculate_efficiency_from_db(db: Session, entry_id: int) -> Optional[float]:
     units_produced, employees, ideal_cycle_time, shift_start, shift_end = result
 
     # Calculate scheduled shift hours
-    shift_hours = calculate_shift_hours(
-        str(shift_start),
-        str(shift_end)
-    )
+    shift_hours = calculate_shift_hours(str(shift_start), str(shift_end))
 
     # Calculate efficiency using SCHEDULED hours
     return calculate_efficiency(
@@ -163,7 +159,7 @@ def calculate_efficiency_from_db(db: Session, entry_id: int) -> Optional[float]:
         ideal_cycle_time=ideal_cycle_time,
         employees_assigned=employees,
         shift_hours=shift_hours,  # SCHEDULED, not runtime!
-        as_percentage=True
+        as_percentage=True,
     )
 
 
@@ -186,11 +182,9 @@ def update_efficiency_in_db(db: Session, entry_id: int) -> bool:
     try:
         from backend.models import ProductionEntry
 
-        db.query(ProductionEntry).filter(
-            ProductionEntry.entry_id == entry_id
-        ).update({
-            'efficiency_percentage': efficiency
-        })
+        db.query(ProductionEntry).filter(ProductionEntry.entry_id == entry_id).update(
+            {"efficiency_percentage": efficiency}
+        )
         db.commit()
         return True
     except Exception:

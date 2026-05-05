@@ -116,9 +116,7 @@ class OEECalculationService:
 
         # Site-adjusted mode — fetch active assumptions for this client at
         # period_end, transform inputs, recompute.
-        active_assumptions = self.assumption_svc.get_effective_set(
-            client_id=client_id, as_of=period_end
-        )
+        active_assumptions = self.assumption_svc.get_effective_set(client_id=client_id, as_of=period_end)
         adjusted_inputs, applied = self._apply_assumptions(raw_inputs, active_assumptions)
         adjusted = self._compute(adjusted_inputs, mode="site_adjusted", assumptions=active_assumptions)
         adjusted.assumptions_applied = applied  # populate envelope
@@ -299,7 +297,12 @@ class OEECalculationService:
         self.db.refresh(record)
         logger.info(
             "OEE calculated: client=%s period=[%s, %s] standard=%s adjusted=%s delta=%s",
-            client_id, period_start, period_end, standard_value, site_adjusted_value, delta,
+            client_id,
+            period_start,
+            period_end,
+            standard_value,
+            site_adjusted_value,
+            delta,
         )
         return record.result_id
 

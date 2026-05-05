@@ -50,9 +50,7 @@ def seeded(transactional_db):
 
 
 def _approve(db, poweruser, admin, name, value, client_id=CLIENT_ID):
-    record = AssumptionService(db, poweruser).propose(
-        client_id=client_id, assumption_name=name, value=value
-    )
+    record = AssumptionService(db, poweruser).propose(client_id=client_id, assumption_name=name, value=value)
     AssumptionService(db, admin).approve(record.assumption_id)
     return record
 
@@ -115,15 +113,19 @@ class TestOEEEndpoint:
         assert body["metric_name"] == "oee"
         assert body["result_id"] is not None
 
-        row = seeded["db"].query(MetricCalculationResult).filter(
-            MetricCalculationResult.result_id == body["result_id"]
-        ).first()
+        row = (
+            seeded["db"]
+            .query(MetricCalculationResult)
+            .filter(MetricCalculationResult.result_id == body["result_id"])
+            .first()
+        )
         assert row is not None
         assert row.client_id == CLIENT_ID
 
     def test_assumption_count_reflects_active_set(self, seeded):
-        _approve(seeded["db"], seeded["poweruser"], seeded["admin"],
-                 "scrap_classification_rule", "rework_counted_as_good")
+        _approve(
+            seeded["db"], seeded["poweruser"], seeded["admin"], "scrap_classification_rule", "rework_counted_as_good"
+        )
 
         client = TestClient(_build_app(seeded["db"], seeded["admin"]))
         body = client.post("/api/metrics/calculate/oee", json=_oee_body()).json()
@@ -140,8 +142,7 @@ class TestOEEEndpoint:
 
 class TestOTDEndpoint:
     def test_otd_with_buffer(self, seeded):
-        _approve(seeded["db"], seeded["poweruser"], seeded["admin"],
-                 "otd_carrier_buffer_pct", 5)
+        _approve(seeded["db"], seeded["poweruser"], seeded["admin"], "otd_carrier_buffer_pct", 5)
 
         client = TestClient(_build_app(seeded["db"], seeded["admin"]))
         resp = client.post("/api/metrics/calculate/otd", json=_otd_body())
@@ -162,8 +163,9 @@ class TestFPYEndpoint:
         assert body["standard_value"] == "80.00"
 
     def test_fpy_with_rule_diverges(self, seeded):
-        _approve(seeded["db"], seeded["poweruser"], seeded["admin"],
-                 "scrap_classification_rule", "rework_counted_as_good")
+        _approve(
+            seeded["db"], seeded["poweruser"], seeded["admin"], "scrap_classification_rule", "rework_counted_as_good"
+        )
 
         client = TestClient(_build_app(seeded["db"], seeded["admin"]))
         body = client.post("/api/metrics/calculate/fpy", json=_fpy_body()).json()
@@ -237,9 +239,7 @@ class TestManualTrigger:
         from unittest.mock import patch
 
         client = TestClient(_build_app(seeded["db"], seeded["admin"]))
-        with patch(
-            "backend.tasks.dual_view_calculation.run_nightly_dual_view_calculations"
-        ) as mock_run:
+        with patch("backend.tasks.dual_view_calculation.run_nightly_dual_view_calculations") as mock_run:
             mock_run.return_value = {"FAKE": {"oee": 1, "otd": 2, "fpy": 3}}
             resp = client.post("/api/metrics/calculate/run-nightly")
             assert resp.status_code == 202

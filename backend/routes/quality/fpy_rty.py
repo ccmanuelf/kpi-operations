@@ -82,9 +82,7 @@ def calculate_fpy_rty_kpi(
     # query.first() returns Optional[Row]; guard the empty-window case.
     total = (result.total or 0) if result is not None else 0
     good = (result.good or 0) if result is not None else 0
-    fpy = float(
-        calculate_fpy_orchestrator(FPYInputs(total_passed=good, total_inspected=total)).value
-    )
+    fpy = float(calculate_fpy_orchestrator(FPYInputs(total_passed=good, total_inspected=total)).value)
 
     # Total scrapped for Final Yield
     scrapped_query = db.query(func.sum(QualityEntry.units_scrapped).label("scrapped")).filter(
@@ -97,9 +95,7 @@ def calculate_fpy_rty_kpi(
     total_scrapped = (scrapped_result.scrapped or 0) if scrapped_result is not None else 0
 
     # Final Yield = 100% - scrap_rate (units that survived inspection vs total inspected).
-    scrap_pct = calculate_scrap_rate(
-        ScrapRateInputs(units_scrapped=total_scrapped, total_produced=total)
-    ).value
+    scrap_pct = calculate_scrap_rate(ScrapRateInputs(units_scrapped=total_scrapped, total_produced=total)).value
     final_yield = float(Decimal("100") - scrap_pct) if total > 0 else 0
 
     # RTY per inspection stage

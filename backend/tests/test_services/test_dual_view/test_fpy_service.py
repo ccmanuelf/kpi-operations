@@ -30,9 +30,7 @@ def _baseline_inputs() -> FPYRawInputs:
 
 
 def _approve(db, poweruser, admin, client_id, name, value):
-    record = AssumptionService(db, poweruser).propose(
-        client_id=client_id, assumption_name=name, value=value
-    )
+    record = AssumptionService(db, poweruser).propose(client_id=client_id, assumption_name=name, value=value)
     AssumptionService(db, admin).approve(record.assumption_id)
     return record
 
@@ -70,8 +68,9 @@ class TestNoAssumptions:
 class TestRuleDiverges:
     def test_rework_counted_as_good_raises_fpy(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "scrap_classification_rule", "rework_counted_as_good")
+        _approve(
+            transactional_db, poweruser, admin, client.client_id, "scrap_classification_rule", "rework_counted_as_good"
+        )
 
         svc = FPYCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -88,8 +87,14 @@ class TestRuleDiverges:
 
     def test_rework_counted_as_partial_half_credit(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "scrap_classification_rule", "rework_counted_as_partial")
+        _approve(
+            transactional_db,
+            poweruser,
+            admin,
+            client.client_id,
+            "scrap_classification_rule",
+            "rework_counted_as_partial",
+        )
 
         svc = FPYCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -104,8 +109,9 @@ class TestRuleDiverges:
 
     def test_rework_counted_as_bad_equals_standard(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        _approve(transactional_db, poweruser, admin, client.client_id,
-                 "scrap_classification_rule", "rework_counted_as_bad")
+        _approve(
+            transactional_db, poweruser, admin, client.client_id, "scrap_classification_rule", "rework_counted_as_bad"
+        )
 
         svc = FPYCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -121,8 +127,9 @@ class TestRuleDiverges:
 class TestSnapshotPersistence:
     def test_persisted_row_has_rule_snapshot(self, transactional_db):
         client, admin, poweruser = _make_users(transactional_db)
-        approved = _approve(transactional_db, poweruser, admin, client.client_id,
-                            "scrap_classification_rule", "rework_counted_as_good")
+        approved = _approve(
+            transactional_db, poweruser, admin, client.client_id, "scrap_classification_rule", "rework_counted_as_good"
+        )
 
         svc = FPYCalculationService(transactional_db, admin)
         result = svc.calculate(
@@ -134,9 +141,11 @@ class TestSnapshotPersistence:
         )
 
         assert result.result_id is not None
-        row = transactional_db.query(MetricCalculationResult).filter(
-            MetricCalculationResult.result_id == result.result_id
-        ).first()
+        row = (
+            transactional_db.query(MetricCalculationResult)
+            .filter(MetricCalculationResult.result_id == result.result_id)
+            .first()
+        )
         assert row.metric_name == "fpy"
         snapshot = json.loads(row.assumptions_snapshot)
         assert snapshot["scrap_classification_rule"]["value"] == "rework_counted_as_good"

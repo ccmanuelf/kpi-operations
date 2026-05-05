@@ -14,10 +14,7 @@ from sqlalchemy import select
 
 
 def calculate_performance(
-    units_produced: int,
-    ideal_cycle_time: float,
-    run_time_hours: float,
-    as_percentage: bool = True
+    units_produced: int, ideal_cycle_time: float, run_time_hours: float, as_percentage: bool = True
 ) -> Optional[float]:
     """
     Calculate production line performance based on actual runtime.
@@ -66,14 +63,10 @@ def calculate_performance_from_db(db: Session, entry_id: int) -> Optional[float]
     except ImportError:
         return None
 
-    query = select(
-        ProductionEntry.units_produced,
-        ProductionEntry.run_time_hours,
-        Product.ideal_cycle_time
-    ).join(
-        Product, ProductionEntry.product_id == Product.product_id
-    ).where(
-        ProductionEntry.entry_id == entry_id
+    query = (
+        select(ProductionEntry.units_produced, ProductionEntry.run_time_hours, Product.ideal_cycle_time)
+        .join(Product, ProductionEntry.product_id == Product.product_id)
+        .where(ProductionEntry.entry_id == entry_id)
     )
 
     result = db.execute(query).first()
@@ -87,5 +80,5 @@ def calculate_performance_from_db(db: Session, entry_id: int) -> Optional[float]
         units_produced=units_produced,
         ideal_cycle_time=ideal_cycle_time,
         run_time_hours=run_time_hours,
-        as_percentage=True
+        as_percentage=True,
     )

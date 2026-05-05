@@ -262,9 +262,7 @@ def approve_assumption(
 ) -> AssumptionResponse:
     """Transition PROPOSED → ACTIVE. Admin only. Auto-retires overlapping ACTIVE records."""
 
-    record = AssumptionService(db, current_user).approve(
-        assumption_id=assumption_id, change_reason=body.change_reason
-    )
+    record = AssumptionService(db, current_user).approve(assumption_id=assumption_id, change_reason=body.change_reason)
     return _to_response(record)
 
 
@@ -277,7 +275,5 @@ def retire_assumption(
 ) -> AssumptionResponse:
     """Transition ACTIVE → RETIRED. Admin only."""
 
-    record = AssumptionService(db, current_user).retire(
-        assumption_id=assumption_id, change_reason=body.change_reason
-    )
+    record = AssumptionService(db, current_user).retire(assumption_id=assumption_id, change_reason=body.change_reason)
     return _to_response(record)

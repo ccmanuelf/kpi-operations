@@ -99,9 +99,7 @@ def _make_quality_entry(db, *, client_id, work_order_id=None, **overrides):
 class TestAggregateOEE:
     def test_empty_period_yields_zero_aggregates(self, transactional_db):
         client, _ = _client_user(transactional_db)
-        result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.units_produced == 0
         assert result.run_time_hours == Decimal("0")
         assert result.scheduled_hours == Decimal("0")
@@ -111,21 +109,29 @@ class TestAggregateOEE:
     def test_two_entries_summed(self, transactional_db):
         client, _ = _client_user(transactional_db)
         _make_production_entry(
-            transactional_db, client_id=client.client_id,
-            units_produced=100, run_time_hours=Decimal("7.0"),
-            downtime_hours=Decimal("0.5"), setup_time_hours=Decimal("0.5"),
-            maintenance_hours=Decimal("0.0"), defect_count=2, scrap_count=1,
+            transactional_db,
+            client_id=client.client_id,
+            units_produced=100,
+            run_time_hours=Decimal("7.0"),
+            downtime_hours=Decimal("0.5"),
+            setup_time_hours=Decimal("0.5"),
+            maintenance_hours=Decimal("0.0"),
+            defect_count=2,
+            scrap_count=1,
         )
         _make_production_entry(
-            transactional_db, client_id=client.client_id,
-            units_produced=80, run_time_hours=Decimal("6.0"),
-            downtime_hours=Decimal("1.0"), setup_time_hours=Decimal("0.5"),
-            maintenance_hours=Decimal("0.5"), defect_count=3, scrap_count=2,
+            transactional_db,
+            client_id=client.client_id,
+            units_produced=80,
+            run_time_hours=Decimal("6.0"),
+            downtime_hours=Decimal("1.0"),
+            setup_time_hours=Decimal("0.5"),
+            maintenance_hours=Decimal("0.5"),
+            defect_count=3,
+            scrap_count=2,
         )
 
-        result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.units_produced == 180
         assert result.run_time_hours == Decimal("13.0")
         assert result.downtime_hours == Decimal("1.5")
@@ -142,9 +148,7 @@ class TestAggregateOEE:
         client_b, _ = _client_user(transactional_db, client_id="AGG-B")
         _make_production_entry(transactional_db, client_id=client_a.client_id, units_produced=999)
 
-        result = aggregate_oee_inputs(
-            transactional_db, client_b.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_oee_inputs(transactional_db, client_b.client_id, PERIOD_START, PERIOD_END)
         assert result.units_produced == 0
 
     def test_rework_pulled_from_quality_entries(self, transactional_db):
@@ -152,9 +156,7 @@ class TestAggregateOEE:
         _make_production_entry(transactional_db, client_id=client.client_id)
         _make_quality_entry(transactional_db, client_id=client.client_id, units_reworked=12)
 
-        result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.units_reworked == 12
 
     def test_heterogeneous_products_use_units_weighted_cycle_time(self, transactional_db):
@@ -168,24 +170,28 @@ class TestAggregateOEE:
         # produced in 8h. Per-entry Performance is exactly the target_perf
         # the seeder picks (90% and 87.5% respectively).
         _make_production_entry(
-            transactional_db, client_id=client.client_id,
-            units_produced=48, run_time_hours=Decimal("8.0"),
+            transactional_db,
+            client_id=client.client_id,
+            units_produced=48,
+            run_time_hours=Decimal("8.0"),
             ideal_cycle_time=Decimal("0.15"),
         )
         _make_production_entry(
-            transactional_db, client_id=client.client_id,
-            units_produced=14, run_time_hours=Decimal("8.0"),
+            transactional_db,
+            client_id=client.client_id,
+            units_produced=14,
+            run_time_hours=Decimal("8.0"),
             ideal_cycle_time=Decimal("0.50"),
         )
-        result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         # Weighted cycle = (0.15*48 + 0.50*14) / 62 = 14.20 / 62 ≈ 0.229
         weighted = (Decimal("0.15") * 48 + Decimal("0.50") * 14) / Decimal(62)
         assert abs(result.ideal_cycle_time_hours - weighted) < Decimal("0.001")
         # Sanity: with this weighted cycle, Performance ≤ 100% on the aggregate
         # (0.229 * 62 / 16) * 100 ≈ 88.7% — physical and below the 150% cap.
-        perf_pct = result.ideal_cycle_time_hours * Decimal(result.units_produced) / result.run_time_hours * Decimal("100")
+        perf_pct = (
+            result.ideal_cycle_time_hours * Decimal(result.units_produced) / result.run_time_hours * Decimal("100")
+        )
         assert perf_pct <= Decimal("100")
 
     def test_missing_master_cycle_time_falls_back_to_observed_rate(self, transactional_db):
@@ -196,13 +202,13 @@ class TestAggregateOEE:
         # interpretation when no published standard exists.
         client, _ = _client_user(transactional_db)
         _make_production_entry(
-            transactional_db, client_id=client.client_id,
-            units_produced=200, run_time_hours=Decimal("8.0"),
+            transactional_db,
+            client_id=client.client_id,
+            units_produced=200,
+            run_time_hours=Decimal("8.0"),
             ideal_cycle_time=None,
         )
-        result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_oee_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         # 8h / 200 units = 0.04 h/unit observed
         assert result.ideal_cycle_time_hours == Decimal("0.04")
 
@@ -210,9 +216,7 @@ class TestAggregateOEE:
 class TestAggregateOTD:
     def test_empty_period_yields_zero_orders(self, transactional_db):
         client, _ = _client_user(transactional_db)
-        result = aggregate_otd_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.orders == []
 
     def test_orders_with_delays_aggregated(self, transactional_db):
@@ -232,9 +236,7 @@ class TestAggregateOTD:
             transactional_db.add(wo)
         transactional_db.commit()
 
-        result = aggregate_otd_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         # 3 work orders → 3 delay entries
         assert len(result.orders) == 3
         # Lead time = 14 days; delays are 0/14, 3/14, 6/14
@@ -259,9 +261,7 @@ class TestAggregateOTD:
         transactional_db.add(wo)
         transactional_db.commit()
 
-        result = aggregate_otd_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_otd_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.orders == []
 
 
@@ -277,14 +277,23 @@ class TestAggregateOEEFilters:
         transactional_db.flush()
 
         _make_production_entry(
-            transactional_db, client_id=client.client_id, work_order_id="WO-F-1", units_produced=50,
+            transactional_db,
+            client_id=client.client_id,
+            work_order_id="WO-F-1",
+            units_produced=50,
         )
         _make_production_entry(
-            transactional_db, client_id=client.client_id, work_order_id="WO-F-2", units_produced=120,
+            transactional_db,
+            client_id=client.client_id,
+            work_order_id="WO-F-2",
+            units_produced=120,
         )
 
         result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END,
+            transactional_db,
+            client.client_id,
+            PERIOD_START,
+            PERIOD_END,
             work_order_id="WO-F-1",
         )
         assert result.units_produced == 50
@@ -300,14 +309,23 @@ class TestAggregateOEEFilters:
         transactional_db.flush()
 
         _make_production_entry(
-            transactional_db, client_id=client.client_id, work_order_id="WO-F-3", units_produced=50,
+            transactional_db,
+            client_id=client.client_id,
+            work_order_id="WO-F-3",
+            units_produced=50,
         )
         _make_production_entry(
-            transactional_db, client_id=client.client_id, work_order_id="WO-F-4", units_produced=120,
+            transactional_db,
+            client_id=client.client_id,
+            work_order_id="WO-F-4",
+            units_produced=120,
         )
 
         result = aggregate_oee_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END,
+            transactional_db,
+            client.client_id,
+            PERIOD_START,
+            PERIOD_END,
         )
         assert result.units_produced == 170
 
@@ -316,16 +334,25 @@ class TestAggregateFPYFilters:
     def test_work_order_id_filter(self, transactional_db):
         client, _ = _client_user(transactional_db)
         _make_quality_entry(
-            transactional_db, client_id=client.client_id,
-            work_order_id="WO-Q-A", units_inspected=50, units_passed=45,
+            transactional_db,
+            client_id=client.client_id,
+            work_order_id="WO-Q-A",
+            units_inspected=50,
+            units_passed=45,
         )
         _make_quality_entry(
-            transactional_db, client_id=client.client_id,
-            work_order_id="WO-Q-B", units_inspected=100, units_passed=80,
+            transactional_db,
+            client_id=client.client_id,
+            work_order_id="WO-Q-B",
+            units_inspected=100,
+            units_passed=80,
         )
 
         result = aggregate_fpy_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END,
+            transactional_db,
+            client.client_id,
+            PERIOD_START,
+            PERIOD_END,
             work_order_id="WO-Q-A",
         )
         assert result.total_inspected == 50
@@ -334,13 +361,20 @@ class TestAggregateFPYFilters:
     def test_inapplicable_filters_silently_ignored(self, transactional_db):
         client, _ = _client_user(transactional_db)
         _make_quality_entry(
-            transactional_db, client_id=client.client_id,
-            units_inspected=100, units_passed=80,
+            transactional_db,
+            client_id=client.client_id,
+            units_inspected=100,
+            units_passed=80,
         )
         # Passing line_id/shift_id/product_id is accepted but has no effect
         result = aggregate_fpy_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END,
-            line_id=999, shift_id=999, product_id=999,
+            transactional_db,
+            client.client_id,
+            PERIOD_START,
+            PERIOD_END,
+            line_id=999,
+            shift_id=999,
+            product_id=999,
         )
         assert result.total_inspected == 100
 
@@ -348,9 +382,7 @@ class TestAggregateFPYFilters:
 class TestAggregateFPY:
     def test_empty_period_yields_zero(self, transactional_db):
         client, _ = _client_user(transactional_db)
-        result = aggregate_fpy_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_fpy_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.total_inspected == 0
         assert result.units_passed_first_time == 0
         assert result.units_reworked == 0
@@ -358,17 +390,21 @@ class TestAggregateFPY:
     def test_summed_across_quality_entries(self, transactional_db):
         client, _ = _client_user(transactional_db)
         _make_quality_entry(
-            transactional_db, client_id=client.client_id,
-            units_inspected=100, units_passed=80, units_reworked=10,
+            transactional_db,
+            client_id=client.client_id,
+            units_inspected=100,
+            units_passed=80,
+            units_reworked=10,
         )
         _make_quality_entry(
-            transactional_db, client_id=client.client_id,
-            units_inspected=50, units_passed=45, units_reworked=3,
+            transactional_db,
+            client_id=client.client_id,
+            units_inspected=50,
+            units_passed=45,
+            units_reworked=3,
         )
 
-        result = aggregate_fpy_inputs(
-            transactional_db, client.client_id, PERIOD_START, PERIOD_END
-        )
+        result = aggregate_fpy_inputs(transactional_db, client.client_id, PERIOD_START, PERIOD_END)
         assert result.total_inspected == 150
         assert result.units_passed_first_time == 125
         assert result.units_reworked == 13

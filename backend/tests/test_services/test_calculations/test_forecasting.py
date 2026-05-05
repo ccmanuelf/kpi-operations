@@ -24,9 +24,7 @@ class TestForecast:
 
     def test_custom_alpha(self):
         history = [Decimal("100"), Decimal("105"), Decimal("110")]
-        result = calculate_forecast(
-            ForecastInputs(historical_values=history, alpha=Decimal("0.5"), forecast_periods=3)
-        )
+        result = calculate_forecast(ForecastInputs(historical_values=history, alpha=Decimal("0.5"), forecast_periods=3))
         assert result.inputs_consumed["alpha"] == "0.5"
 
     def test_alpha_out_of_range_rejected(self):

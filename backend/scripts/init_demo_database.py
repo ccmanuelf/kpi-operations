@@ -1154,15 +1154,15 @@ def init_database() -> None:
         #                  ~0.3 for ON_HOLD (paused mid-production)
         WO_PLAN = [
             # On-time delivery: shipped a week ago, ahead of required by 2 days
-            (0, 1000, WorkOrderStatus.SHIPPED,     -28, -10, -12, 1.00, "shipped_on_time"),
+            (0, 1000, WorkOrderStatus.SHIPPED, -28, -10, -12, 1.00, "shipped_on_time"),
             # Late delivery: shipped 5 days late
-            (1, 2000, WorkOrderStatus.SHIPPED,     -27,  -8,  -3, 1.00, "shipped_late"),
+            (1, 2000, WorkOrderStatus.SHIPPED, -27, -8, -3, 1.00, "shipped_late"),
             # Mid-production, on track (used for daily MyShift visibility)
-            (2,  500, WorkOrderStatus.IN_PROGRESS, -10, +14, None, 0.50, "in_progress"),
+            (2, 500, WorkOrderStatus.IN_PROGRESS, -10, +14, None, 0.50, "in_progress"),
             # Just received, not started
-            (3, 1500, WorkOrderStatus.RECEIVED,     -2, +21, None, 0.00, "received"),
+            (3, 1500, WorkOrderStatus.RECEIVED, -2, +21, None, 0.00, "received"),
             # On hold (material shortage scenario)
-            (4,  800, WorkOrderStatus.ON_HOLD,     -15, +18, None, 0.30, "on_hold"),
+            (4, 800, WorkOrderStatus.ON_HOLD, -15, +18, None, 0.30, "on_hold"),
         ]
 
         # Track per-WO "expected total production units" so the production
@@ -1193,9 +1193,7 @@ def init_database() -> None:
                     # Shipped: we know the exact actual; production seeder will
                     # still distribute units across days but cumulatively land
                     # on planned_quantity.
-                    wo.actual_delivery_date = datetime.combine(
-                        today_d + timedelta(days=ship_off), datetime.min.time()
-                    )
+                    wo.actual_delivery_date = datetime.combine(today_d + timedelta(days=ship_off), datetime.min.time())
                     wo.actual_quantity = planned
                 else:
                     # Not yet shipped: actual reflects in-progress completion
@@ -1219,9 +1217,13 @@ def init_database() -> None:
                     matching_cap.order_quantity = planned
                     matching_cap.completed_quantity = expected_units
                     matching_cap.status = (
-                        OrderStatus.COMPLETED if status == WorkOrderStatus.SHIPPED
-                        else OrderStatus.IN_PROGRESS if status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD)
-                        else OrderStatus.CONFIRMED
+                        OrderStatus.COMPLETED
+                        if status == WorkOrderStatus.SHIPPED
+                        else (
+                            OrderStatus.IN_PROGRESS
+                            if status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD)
+                            else OrderStatus.CONFIRMED
+                        )
                     )
 
                 client_work_orders.append(wo)
@@ -1297,9 +1299,7 @@ def init_database() -> None:
                     wo.received_date.date() if wo.received_date else today_d - timedelta(days=30),
                     today_d - timedelta(days=30),
                 )
-                end_excl = (
-                    wo.actual_delivery_date.date() if wo.actual_delivery_date else today_d
-                )
+                end_excl = wo.actual_delivery_date.date() if wo.actual_delivery_date else today_d
                 # Clip to today max so we never seed future production
                 if end_excl > today_d:
                     end_excl = today_d
@@ -1317,7 +1317,7 @@ def init_database() -> None:
                 base_per_entry = target_total // num_entries
                 running = 0
                 for k in range(num_entries):
-                    is_last = (k == num_entries - 1)
+                    is_last = k == num_entries - 1
                     if is_last:
                         entry_date = end_excl
                     else:
@@ -1401,9 +1401,9 @@ def init_database() -> None:
             if not operator_user:
                 operator_user = supervisor_user
 
-            active_wos = [w for w in client_work_orders if w.status in (
-                WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD
-            )]
+            active_wos = [
+                w for w in client_work_orders if w.status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD)
+            ]
             if active_wos:
                 # 6 downtime events per client across the last 14 days,
                 # mixed reasons and durations to surface realistic Pareto.

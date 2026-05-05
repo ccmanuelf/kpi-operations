@@ -398,9 +398,7 @@ class TestOptimizeOperatorsEndpoint:
         response = admin_client.post("/api/v2/simulation/optimize-operators", json=body)
         assert response.status_code == 422
 
-    def test_optimize_invalid_config_returns_validation_failure(
-        self, admin_client, invalid_config_payload
-    ):
+    def test_optimize_invalid_config_returns_validation_failure(self, admin_client, invalid_config_payload):
         response = admin_client.post(
             "/api/v2/simulation/optimize-operators",
             json={**invalid_config_payload, "max_operators_per_op": 10},
@@ -413,8 +411,10 @@ class TestOptimizeOperatorsEndpoint:
     def test_optimize_happy_path(self, admin_client, valid_config_payload):
         """Happy path: valid config solves and returns proposals."""
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             import pytest
+
             pytest.skip("MiniZinc CLI not available")
 
         body = {**valid_config_payload, "max_operators_per_op": 10}
@@ -437,8 +437,10 @@ class TestOptimizeOperatorsEndpoint:
     def test_optimize_with_validation_run(self, admin_client, valid_config_payload):
         """When validate_with_simulation=true, endpoint returns a SimPy run."""
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             import pytest
+
             pytest.skip("MiniZinc CLI not available")
 
         body = {
@@ -466,39 +468,27 @@ class TestRebalanceBottlenecksEndpoint:
 
     def test_rebalance_requires_sufficient_role(self, operator_client, valid_config_payload):
         body = {**valid_config_payload, "max_operators_per_op": 10}
-        response = operator_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = operator_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 403
 
     def test_rebalance_rejects_max_per_op_below_one(self, admin_client, valid_config_payload):
         body = {**valid_config_payload, "max_operators_per_op": 0}
-        response = admin_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 422
 
     def test_rebalance_rejects_total_delta_max_negative(self, admin_client, valid_config_payload):
         body = {**valid_config_payload, "total_delta_max": -1}
-        response = admin_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 422
 
     def test_rebalance_rejects_total_delta_min_positive(self, admin_client, valid_config_payload):
         body = {**valid_config_payload, "total_delta_min": 5}
-        response = admin_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 422
 
-    def test_rebalance_invalid_config_returns_validation_failure(
-        self, admin_client, invalid_config_payload
-    ):
+    def test_rebalance_invalid_config_returns_validation_failure(self, admin_client, invalid_config_payload):
         body = {**invalid_config_payload, "max_operators_per_op": 10}
-        response = admin_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
@@ -506,14 +496,14 @@ class TestRebalanceBottlenecksEndpoint:
 
     def test_rebalance_happy_path(self, admin_client, valid_config_payload):
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             import pytest
+
             pytest.skip("MiniZinc CLI not available")
 
         body = {**valid_config_payload, "max_operators_per_op": 10}
-        response = admin_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -526,8 +516,10 @@ class TestRebalanceBottlenecksEndpoint:
 
     def test_rebalance_with_validation_run(self, admin_client, valid_config_payload):
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             import pytest
+
             pytest.skip("MiniZinc CLI not available")
 
         body = {
@@ -535,9 +527,7 @@ class TestRebalanceBottlenecksEndpoint:
             "max_operators_per_op": 10,
             "validate_with_simulation": True,
         }
-        response = admin_client.post(
-            "/api/v2/simulation/rebalance-bottlenecks", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/rebalance-bottlenecks", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -608,9 +598,7 @@ class TestRunMonteCarloEndpoint:
         assert "rebalancing_suggestions" in data["sample_run"]
         assert "assumption_log" in data["sample_run"]
 
-    def test_monte_carlo_invalid_config_returns_validation_errors(
-        self, admin_client, invalid_config_payload
-    ):
+    def test_monte_carlo_invalid_config_returns_validation_errors(self, admin_client, invalid_config_payload):
         body = {**invalid_config_payload, "n_replications": 3, "base_seed": 1}
         response = admin_client.post("/api/v2/simulation/run-monte-carlo", json=body)
         assert response.status_code == 200
@@ -688,49 +676,31 @@ class TestSequenceProductsEndpoint:
         response = client.post("/api/v2/simulation/sequence-products", json=body)
         assert response.status_code == 401
 
-    def test_sequence_requires_sufficient_role(
-        self, operator_client, multi_product_config_payload
-    ):
+    def test_sequence_requires_sufficient_role(self, operator_client, multi_product_config_payload):
         body = {**multi_product_config_payload, "setup_times_minutes": []}
-        response = operator_client.post(
-            "/api/v2/simulation/sequence-products", json=body
-        )
+        response = operator_client.post("/api/v2/simulation/sequence-products", json=body)
         assert response.status_code == 403
 
-    def test_sequence_rejects_negative_setup_minutes(
-        self, admin_client, multi_product_config_payload
-    ):
+    def test_sequence_rejects_negative_setup_minutes(self, admin_client, multi_product_config_payload):
         body = {
             **multi_product_config_payload,
-            "setup_times_minutes": [
-                {"from_product": "PROD_A", "to_product": "PROD_B", "setup_minutes": -1}
-            ],
+            "setup_times_minutes": [{"from_product": "PROD_A", "to_product": "PROD_B", "setup_minutes": -1}],
         }
-        response = admin_client.post(
-            "/api/v2/simulation/sequence-products", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/sequence-products", json=body)
         assert response.status_code == 422
 
-    def test_sequence_invalid_config_returns_validation_failure(
-        self, admin_client, invalid_config_payload
-    ):
+    def test_sequence_invalid_config_returns_validation_failure(self, admin_client, invalid_config_payload):
         body = {**invalid_config_payload, "setup_times_minutes": []}
-        response = admin_client.post(
-            "/api/v2/simulation/sequence-products", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/sequence-products", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
         assert data["status"] == "validation-failed"
 
-    def test_sequence_single_product_short_circuit(
-        self, admin_client, valid_config_payload
-    ):
+    def test_sequence_single_product_short_circuit(self, admin_client, valid_config_payload):
         """Single-product config returns trivial schedule WITHOUT requiring MZ."""
         body = {**valid_config_payload, "setup_times_minutes": []}
-        response = admin_client.post(
-            "/api/v2/simulation/sequence-products", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/sequence-products", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -743,6 +713,7 @@ class TestSequenceProductsEndpoint:
 
     def test_sequence_happy_path(self, admin_client, multi_product_config_payload):
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             pytest.skip("MiniZinc CLI not available")
 
@@ -753,9 +724,7 @@ class TestSequenceProductsEndpoint:
                 {"from_product": "PROD_B", "to_product": "PROD_A", "setup_minutes": 60},
             ],
         }
-        response = admin_client.post(
-            "/api/v2/simulation/sequence-products", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/sequence-products", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -769,20 +738,17 @@ class TestSequenceProductsEndpoint:
         assert data["sequence"][0]["start_time_minutes"] == 0
         assert (
             data["sequence"][0]["end_time_minutes"]
-            == data["sequence"][0]["start_time_minutes"]
-            + data["sequence"][0]["production_time_minutes"]
+            == data["sequence"][0]["start_time_minutes"] + data["sequence"][0]["production_time_minutes"]
         )
         assert (
             data["sequence"][1]["start_time_minutes"]
-            == data["sequence"][0]["end_time_minutes"]
-            + data["sequence"][1]["setup_from_previous_minutes"]
+            == data["sequence"][0]["end_time_minutes"] + data["sequence"][1]["setup_from_previous_minutes"]
         )
         assert data["makespan_minutes"] == data["sequence"][-1]["end_time_minutes"]
 
-    def test_sequence_tolerates_stale_entries(
-        self, admin_client, multi_product_config_payload
-    ):
+    def test_sequence_tolerates_stale_entries(self, admin_client, multi_product_config_payload):
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             pytest.skip("MiniZinc CLI not available")
 
@@ -794,9 +760,7 @@ class TestSequenceProductsEndpoint:
                 {"from_product": "STALE_X", "to_product": "STALE_Y", "setup_minutes": 999},
             ],
         }
-        response = admin_client.post(
-            "/api/v2/simulation/sequence-products", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/sequence-products", json=body)
         # Should not raise; the stale entry is just ignored.
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -808,21 +772,47 @@ def weekly_demand_config_payload():
     return {
         "config": {
             "operations": [
-                {"product": "PROD_A", "step": 1, "operation": "Cut",
-                 "machine_tool": "M1", "sam_min": 2.0, "operators": 1,
-                 "grade_pct": 90},
-                {"product": "PROD_A", "step": 2, "operation": "Sew",
-                 "machine_tool": "M2", "sam_min": 2.0, "operators": 1,
-                 "grade_pct": 90},
-                {"product": "PROD_B", "step": 1, "operation": "Cut",
-                 "machine_tool": "M1", "sam_min": 1.5, "operators": 1,
-                 "grade_pct": 90},
-                {"product": "PROD_B", "step": 2, "operation": "Sew",
-                 "machine_tool": "M2", "sam_min": 1.5, "operators": 1,
-                 "grade_pct": 90},
+                {
+                    "product": "PROD_A",
+                    "step": 1,
+                    "operation": "Cut",
+                    "machine_tool": "M1",
+                    "sam_min": 2.0,
+                    "operators": 1,
+                    "grade_pct": 90,
+                },
+                {
+                    "product": "PROD_A",
+                    "step": 2,
+                    "operation": "Sew",
+                    "machine_tool": "M2",
+                    "sam_min": 2.0,
+                    "operators": 1,
+                    "grade_pct": 90,
+                },
+                {
+                    "product": "PROD_B",
+                    "step": 1,
+                    "operation": "Cut",
+                    "machine_tool": "M1",
+                    "sam_min": 1.5,
+                    "operators": 1,
+                    "grade_pct": 90,
+                },
+                {
+                    "product": "PROD_B",
+                    "step": 2,
+                    "operation": "Sew",
+                    "machine_tool": "M2",
+                    "sam_min": 1.5,
+                    "operators": 1,
+                    "grade_pct": 90,
+                },
             ],
             "schedule": {
-                "shifts_enabled": 1, "shift1_hours": 8.0, "work_days": 5,
+                "shifts_enabled": 1,
+                "shift1_hours": 8.0,
+                "work_days": 5,
                 "ot_enabled": False,
             },
             "demands": [
@@ -843,54 +833,34 @@ class TestPlanHorizonEndpoint:
         response = client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 401
 
-    def test_plan_requires_sufficient_role(
-        self, operator_client, weekly_demand_config_payload
-    ):
+    def test_plan_requires_sufficient_role(self, operator_client, weekly_demand_config_payload):
         body = {**weekly_demand_config_payload, "horizon_days": 5}
-        response = operator_client.post(
-            "/api/v2/simulation/plan-horizon", json=body
-        )
+        response = operator_client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 403
 
-    def test_plan_rejects_horizon_below_one(
-        self, admin_client, weekly_demand_config_payload
-    ):
+    def test_plan_rejects_horizon_below_one(self, admin_client, weekly_demand_config_payload):
         body = {**weekly_demand_config_payload, "horizon_days": 0}
-        response = admin_client.post(
-            "/api/v2/simulation/plan-horizon", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 422
 
-    def test_plan_rejects_horizon_above_thirty_one(
-        self, admin_client, weekly_demand_config_payload
-    ):
+    def test_plan_rejects_horizon_above_thirty_one(self, admin_client, weekly_demand_config_payload):
         body = {**weekly_demand_config_payload, "horizon_days": 32}
-        response = admin_client.post(
-            "/api/v2/simulation/plan-horizon", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 422
 
-    def test_plan_invalid_config_returns_validation_failure(
-        self, admin_client, invalid_config_payload
-    ):
+    def test_plan_invalid_config_returns_validation_failure(self, admin_client, invalid_config_payload):
         body = {**invalid_config_payload, "horizon_days": 5}
-        response = admin_client.post(
-            "/api/v2/simulation/plan-horizon", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
         assert data["status"] == "validation-failed"
 
-    def test_plan_single_product_short_circuit(
-        self, admin_client, valid_config_payload
-    ):
+    def test_plan_single_product_short_circuit(self, admin_client, valid_config_payload):
         """Single-product config returns the trivial even-split plan
         WITHOUT calling MZ. Capacity is comfortable here (~54% load)."""
         body = {**valid_config_payload, "horizon_days": 5}
-        response = admin_client.post(
-            "/api/v2/simulation/plan-horizon", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -902,17 +872,14 @@ class TestPlanHorizonEndpoint:
         # 200 × 1.30 = 260 min/day = ~54% load; well under 100%.
         assert data["max_load_pct"] < 100
 
-    def test_plan_happy_path(
-        self, admin_client, weekly_demand_config_payload
-    ):
+    def test_plan_happy_path(self, admin_client, weekly_demand_config_payload):
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             pytest.skip("MiniZinc CLI not available")
 
         body = {**weekly_demand_config_payload, "horizon_days": 5}
-        response = admin_client.post(
-            "/api/v2/simulation/plan-horizon", json=body
-        )
+        response = admin_client.post("/api/v2/simulation/plan-horizon", json=body)
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -925,17 +892,14 @@ class TestPlanHorizonEndpoint:
         loads = [p["load_pct"] for p in data["daily_plans"]]
         assert max(loads) - min(loads) <= 2.0
 
-    def test_plan_default_horizon_is_five(
-        self, admin_client, weekly_demand_config_payload
-    ):
+    def test_plan_default_horizon_is_five(self, admin_client, weekly_demand_config_payload):
         from backend.simulation_v2.optimization import is_minizinc_available
+
         if not is_minizinc_available():
             pytest.skip("MiniZinc CLI not available")
 
         # Omit horizon_days → default 5.
-        response = admin_client.post(
-            "/api/v2/simulation/plan-horizon", json=weekly_demand_config_payload
-        )
+        response = admin_client.post("/api/v2/simulation/plan-horizon", json=weekly_demand_config_payload)
         assert response.status_code == 200
         data = response.json()
         assert data["horizon_days"] == 5

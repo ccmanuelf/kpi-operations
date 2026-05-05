@@ -61,18 +61,28 @@ def _op(
     grade_pct: int = 90,
 ) -> OperationInput:
     return OperationInput(
-        product=product, step=step, operation=operation, machine_tool=machine_tool,
-        sam_min=sam_min, operators=operators,
+        product=product,
+        step=step,
+        operation=operation,
+        machine_tool=machine_tool,
+        sam_min=sam_min,
+        operators=operators,
         variability=VariabilityType.TRIANGULAR,
-        rework_pct=0, grade_pct=grade_pct, fpd_pct=10,
+        rework_pct=0,
+        grade_pct=grade_pct,
+        fpd_pct=10,
     )
 
 
 @pytest.fixture
 def schedule() -> ScheduleConfig:
     return ScheduleConfig(
-        shifts_enabled=1, shift1_hours=8, shift2_hours=0, shift3_hours=0,
-        work_days=5, ot_enabled=False,
+        shifts_enabled=1,
+        shift1_hours=8,
+        shift2_hours=0,
+        shift3_hours=0,
+        work_days=5,
+        ot_enabled=False,
     )
 
 
@@ -81,12 +91,9 @@ def bottlenecked_config(schedule) -> SimulationConfig:
     """Cut over-staffed (4), Sew bottlenecked (1, SAM 3.5), Pack OK (1)."""
     return SimulationConfig(
         operations=[
-            _op(product="A", step=1, operation="Cut", machine_tool="M1",
-                sam_min=2.0, operators=4, grade_pct=90),
-            _op(product="A", step=2, operation="Sew", machine_tool="M2",
-                sam_min=3.5, operators=1, grade_pct=85),
-            _op(product="A", step=3, operation="Pack", machine_tool="M3",
-                sam_min=1.0, operators=1, grade_pct=95),
+            _op(product="A", step=1, operation="Cut", machine_tool="M1", sam_min=2.0, operators=4, grade_pct=90),
+            _op(product="A", step=2, operation="Sew", machine_tool="M2", sam_min=3.5, operators=1, grade_pct=85),
+            _op(product="A", step=3, operation="Pack", machine_tool="M3", sam_min=1.0, operators=1, grade_pct=95),
         ],
         schedule=schedule,
         demands=[DemandInput(product="A", bundle_size=10, daily_demand=200)],
@@ -100,12 +107,9 @@ def balanced_config(schedule) -> SimulationConfig:
     """An allocation that's already adequate at low demand."""
     return SimulationConfig(
         operations=[
-            _op(product="A", step=1, operation="Cut", machine_tool="M1",
-                sam_min=2.0, operators=2, grade_pct=90),
-            _op(product="A", step=2, operation="Sew", machine_tool="M2",
-                sam_min=3.5, operators=2, grade_pct=85),
-            _op(product="A", step=3, operation="Pack", machine_tool="M3",
-                sam_min=1.0, operators=1, grade_pct=95),
+            _op(product="A", step=1, operation="Cut", machine_tool="M1", sam_min=2.0, operators=2, grade_pct=90),
+            _op(product="A", step=2, operation="Sew", machine_tool="M2", sam_min=3.5, operators=2, grade_pct=85),
+            _op(product="A", step=3, operation="Pack", machine_tool="M3", sam_min=1.0, operators=1, grade_pct=95),
         ],
         schedule=schedule,
         demands=[DemandInput(product="A", bundle_size=10, daily_demand=200)],
@@ -118,8 +122,7 @@ def balanced_config(schedule) -> SimulationConfig:
 def single_op_config(schedule) -> SimulationConfig:
     return SimulationConfig(
         operations=[
-            _op(product="A", step=1, operation="OnlyOp", machine_tool="M1",
-                sam_min=2.0, operators=2, grade_pct=90),
+            _op(product="A", step=1, operation="OnlyOp", machine_tool="M1", sam_min=2.0, operators=2, grade_pct=90),
         ],
         schedule=schedule,
         demands=[DemandInput(product="A", bundle_size=10, daily_demand=200)],
@@ -137,8 +140,10 @@ class TestBuildMinizincData:
     def test_sam_min_x100_rounding(self, bottlenecked_config):
         data, _ = _build_minizinc_data(
             bottlenecked_config,
-            min_operators_per_op=1, max_operators_per_op=10,
-            total_delta_max=0, total_delta_min=-50,
+            min_operators_per_op=1,
+            max_operators_per_op=10,
+            total_delta_max=0,
+            total_delta_min=-50,
         )
         # SAMs are 2.0 / 3.5 / 1.0 → 200 / 350 / 100.
         assert data["sam_min_x100"] == [200, 350, 100]
@@ -146,8 +151,10 @@ class TestBuildMinizincData:
     def test_current_operators_passed_through(self, bottlenecked_config):
         data, _ = _build_minizinc_data(
             bottlenecked_config,
-            min_operators_per_op=1, max_operators_per_op=10,
-            total_delta_max=0, total_delta_min=-50,
+            min_operators_per_op=1,
+            max_operators_per_op=10,
+            total_delta_max=0,
+            total_delta_min=-50,
         )
         assert data["current_operators"] == [4, 1, 1]
 
@@ -207,19 +214,17 @@ class TestRebalanceBottleneck:
         negative min_slack with a best-effort message."""
         cfg = SimulationConfig(
             operations=[
-                _op(product="A", step=1, operation="Slow", machine_tool="M1",
-                    sam_min=10.0, operators=2, grade_pct=85),
-                _op(product="A", step=2, operation="Slower", machine_tool="M2",
-                    sam_min=15.0, operators=1, grade_pct=85),
+                _op(product="A", step=1, operation="Slow", machine_tool="M1", sam_min=10.0, operators=2, grade_pct=85),
+                _op(
+                    product="A", step=2, operation="Slower", machine_tool="M2", sam_min=15.0, operators=1, grade_pct=85
+                ),
             ],
             schedule=schedule,
             demands=[DemandInput(product="A", bundle_size=10, daily_demand=500)],
             mode=DemandMode.DEMAND_DRIVEN,
             horizon_days=1,
         )
-        result = rebalance_bottleneck(
-            cfg, total_delta_max=0, total_delta_min=-3
-        )
+        result = rebalance_bottleneck(cfg, total_delta_max=0, total_delta_min=-3)
         # Strict swap can't meet 500 pcs/day on these slow stations.
         assert result.is_satisfied
         assert result.min_slack_pcs < 0

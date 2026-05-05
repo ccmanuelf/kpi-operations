@@ -92,9 +92,7 @@ class OperatorAllocationResult:
 # =============================================================================
 
 
-def _resolve_daily_demand(
-    config: SimulationConfig, product: str
-) -> int:
+def _resolve_daily_demand(config: SimulationConfig, product: str) -> int:
     """
     Translate a product's demand specification into a per-day integer.
 
@@ -115,11 +113,7 @@ def _resolve_daily_demand(
         return int(round(demand.daily_demand))
     if demand.weekly_demand is not None:
         return int(round(demand.weekly_demand / work_days))
-    if (
-        config.mode == DemandMode.MIX_DRIVEN
-        and config.total_demand is not None
-        and demand.mix_share_pct is not None
-    ):
+    if config.mode == DemandMode.MIX_DRIVEN and config.total_demand is not None and demand.mix_share_pct is not None:
         # total_demand is per day in mix-driven mode by project convention.
         return int(round(config.total_demand * demand.mix_share_pct / 100.0))
     return 0
@@ -154,9 +148,7 @@ def _build_minizinc_data(
         "demand_pcs_per_day": demand_pcs_per_day,
         "daily_planned_minutes": daily_planned_minutes,
         "max_operators_per_op": max_operators_per_op,
-        "total_operators_budget": (
-            total_operators_budget if total_operators_budget is not None else -1
-        ),
+        "total_operators_budget": (total_operators_budget if total_operators_budget is not None else -1),
     }
     return data, operations
 
@@ -273,9 +265,7 @@ def optimize_operator_allocation(
 # =============================================================================
 
 
-def apply_allocation_to_config(
-    config: SimulationConfig, result: OperatorAllocationResult
-) -> SimulationConfig:
+def apply_allocation_to_config(config: SimulationConfig, result: OperatorAllocationResult) -> SimulationConfig:
     """
     Return a copy of `config` whose operations carry the proposed
     operator counts. Used by the route to drive a SimPy validation

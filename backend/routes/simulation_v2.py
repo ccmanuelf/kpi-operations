@@ -334,8 +334,7 @@ async def run_monte_carlo_endpoint(
         validation_report: ValidationReport = result["validation_report"]
         if validation_report.has_errors:
             logger.warning(
-                f"Monte Carlo blocked due to validation errors: "
-                f"{[e.message for e in validation_report.errors]}"
+                f"Monte Carlo blocked due to validation errors: " f"{[e.message for e in validation_report.errors]}"
             )
             return MonteCarloResponse(
                 success=False,
@@ -400,8 +399,7 @@ async def optimize_operators_endpoint(
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "Operator-allocation optimization requires MiniZinc; "
-                "the binary is not installed on this server."
+                "Operator-allocation optimization requires MiniZinc; " "the binary is not installed on this server."
             ),
         )
 
@@ -427,8 +425,7 @@ async def optimize_operators_endpoint(
             total_operators_after=0,
             proposals=[],
             solver_message=(
-                "Configuration validation failed: "
-                + "; ".join(e.message for e in validation_report.errors)
+                "Configuration validation failed: " + "; ".join(e.message for e in validation_report.errors)
             ),
         )
 
@@ -470,8 +467,7 @@ async def optimize_operators_endpoint(
             validation_run = None
 
     logger.info(
-        "Operator-allocation optimization done for user=%s: optimal=%s, "
-        "before=%d, after=%d",
+        "Operator-allocation optimization done for user=%s: optimal=%s, " "before=%d, after=%d",
         current_user.username,
         result.is_optimal,
         result.total_operators_before,
@@ -530,10 +526,7 @@ async def rebalance_bottlenecks_endpoint(
     if not is_minizinc_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Bottleneck rebalancing requires MiniZinc; the binary is "
-                "not installed on this server."
-            ),
+            detail=("Bottleneck rebalancing requires MiniZinc; the binary is " "not installed on this server."),
         )
 
     config = request.config
@@ -560,8 +553,7 @@ async def rebalance_bottlenecks_endpoint(
             min_slack_pcs=0,
             proposals=[],
             solver_message=(
-                "Configuration validation failed: "
-                + "; ".join(e.message for e in validation_report.errors)
+                "Configuration validation failed: " + "; ".join(e.message for e in validation_report.errors)
             ),
         )
 
@@ -666,10 +658,7 @@ async def sequence_products_endpoint(
     if not is_minizinc_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Product sequencing requires MiniZinc; the binary is "
-                "not installed on this server."
-            ),
+            detail=("Product sequencing requires MiniZinc; the binary is " "not installed on this server."),
         )
 
     config = request.config
@@ -693,8 +682,7 @@ async def sequence_products_endpoint(
             total_production_minutes=0,
             sequence=[],
             solver_message=(
-                "Configuration validation failed: "
-                + "; ".join(e.message for e in validation_report.errors)
+                "Configuration validation failed: " + "; ".join(e.message for e in validation_report.errors)
             ),
         )
 
@@ -719,8 +707,7 @@ async def sequence_products_endpoint(
         )
 
     logger.info(
-        "Product sequencing done for user=%s: optimal=%s, makespan=%d, "
-        "n_products=%d",
+        "Product sequencing done for user=%s: optimal=%s, makespan=%d, " "n_products=%d",
         current_user.username,
         result.is_optimal,
         result.makespan_minutes,
@@ -778,10 +765,7 @@ async def plan_horizon_endpoint(
     if not is_minizinc_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Planning horizon requires MiniZinc; the binary is not "
-                "installed on this server."
-            ),
+            detail=("Planning horizon requires MiniZinc; the binary is not " "installed on this server."),
         )
 
     config = request.config
@@ -809,8 +793,7 @@ async def plan_horizon_endpoint(
             daily_plans=[],
             fulfillment_by_product={},
             solver_message=(
-                "Configuration validation failed: "
-                + "; ".join(e.message for e in validation_report.errors)
+                "Configuration validation failed: " + "; ".join(e.message for e in validation_report.errors)
             ),
         )
 

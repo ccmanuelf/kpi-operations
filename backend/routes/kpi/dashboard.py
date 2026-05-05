@@ -162,11 +162,7 @@ def get_aggregated_dashboard(
         if effective_client_id:
             from backend.orm.client_config import ClientConfig
 
-            cc = (
-                db.query(ClientConfig)
-                .filter(ClientConfig.client_id == effective_client_id)
-                .first()
-            )
+            cc = db.query(ClientConfig).filter(ClientConfig.client_id == effective_client_id).first()
             if cc and getattr(cc, "dpmo_opportunities_default", None):
                 opps_per_unit = max(1, int(cc.dpmo_opportunities_default))
 
@@ -191,9 +187,7 @@ def get_aggregated_dashboard(
         fpy = round(passed / inspected * 100, 2) if inspected > 0 else 0.0
         ppm = round(defective / inspected * 1_000_000, 0) if inspected > 0 else 0.0
         dpmo = (
-            round(defects / (inspected * opps_per_unit) * 1_000_000, 0)
-            if inspected > 0 and opps_per_unit > 0
-            else 0.0
+            round(defects / (inspected * opps_per_unit) * 1_000_000, 0) if inspected > 0 and opps_per_unit > 0 else 0.0
         )
 
         result["quality"] = {
@@ -210,13 +204,19 @@ def get_aggregated_dashboard(
     except SQLAlchemyError:
         logger.exception("Database error fetching quality metrics")
         result["quality"] = {
-            "fpy": 0, "ppm": 0, "dpmo": 0, "total_inspected": 0,
+            "fpy": 0,
+            "ppm": 0,
+            "dpmo": 0,
+            "total_inspected": 0,
             "error": "Database error",
         }
     except Exception:
         logger.exception("Unexpected error fetching quality metrics")
         result["quality"] = {
-            "fpy": 0, "ppm": 0, "dpmo": 0, "total_inspected": 0,
+            "fpy": 0,
+            "ppm": 0,
+            "dpmo": 0,
+            "total_inspected": 0,
             "error": "Calculation error",
         }
 

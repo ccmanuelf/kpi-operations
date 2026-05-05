@@ -44,9 +44,7 @@ class TestAttendance:
         assert result.value == Decimal("90.00")
 
     def test_zero_scheduled_yields_zero(self):
-        assert calculate_attendance_rate(
-            AttendanceInputs(days_present=0, total_scheduled_days=0)
-        ).value == Decimal("0")
+        assert calculate_attendance_rate(AttendanceInputs(days_present=0, total_scheduled_days=0)).value == Decimal("0")
 
 
 class TestBradfordFactor:

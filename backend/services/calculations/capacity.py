@@ -65,9 +65,7 @@ def calculate_capacity_requirements(
     required_employees = int(raw_employees.to_integral_value(rounding=ROUND_HALF_UP))
 
     buffer_rate = inputs.absenteeism_buffer_pct / Decimal("100")
-    buffer_employees = int(
-        (Decimal(required_employees) * buffer_rate).to_integral_value(rounding=ROUND_HALF_UP)
-    )
+    buffer_employees = int((Decimal(required_employees) * buffer_rate).to_integral_value(rounding=ROUND_HALF_UP))
     if required_employees > 0 and buffer_rate > 0 and buffer_employees == 0:
         buffer_employees = 1
 
@@ -94,9 +92,7 @@ def calculate_production_capacity(
     """Capacity (units) = (employees × shift_hours × efficiency_factor) / cycle_time."""
 
     efficiency_factor = inputs.efficiency_pct / Decimal("100")
-    capacity = (
-        Decimal(str(inputs.employees)) * inputs.shift_hours * efficiency_factor
-    ) / inputs.cycle_time_hours
+    capacity = (Decimal(str(inputs.employees)) * inputs.shift_hours * efficiency_factor) / inputs.cycle_time_hours
 
     return CalculationResult[Decimal](
         metric_name="production_capacity",
@@ -116,9 +112,7 @@ def calculate_component_coverage(
     if inputs.required_quantity == 0:
         value = Decimal("100.00")
     else:
-        value = (
-            inputs.available_quantity / inputs.required_quantity * Decimal("100")
-        ).quantize(Decimal("0.01"))
+        value = (inputs.available_quantity / inputs.required_quantity * Decimal("100")).quantize(Decimal("0.01"))
 
     return CalculationResult[Decimal](
         metric_name="component_coverage",

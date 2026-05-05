@@ -66,8 +66,8 @@ class TestComputeStat:
         assert s["mean"] == pytest.approx(5.5, abs=1e-6)
         # standard error = std / sqrt(10) ≈ 0.957
         # half-width = 1.96 * SE ≈ 1.876
-        assert s["ci_lo_95"] == pytest.approx(s["mean"] - 1.96 * (s["std"] / (10 ** 0.5)), abs=1e-6)
-        assert s["ci_hi_95"] == pytest.approx(s["mean"] + 1.96 * (s["std"] / (10 ** 0.5)), abs=1e-6)
+        assert s["ci_lo_95"] == pytest.approx(s["mean"] - 1.96 * (s["std"] / (10**0.5)), abs=1e-6)
+        assert s["ci_hi_95"] == pytest.approx(s["mean"] + 1.96 * (s["std"] / (10**0.5)), abs=1e-6)
         # CI must bracket the mean
         assert s["ci_lo_95"] < s["mean"] < s["ci_hi_95"]
 
@@ -281,8 +281,7 @@ class TestRunMonteCarlo:
         """Same base_seed produces identical sample_run between two MC calls."""
         a = run_monte_carlo(fast_config, n_replications=3, base_seed=42)
         b = run_monte_carlo(fast_config, n_replications=3, base_seed=42)
-        assert a["sample_run"].daily_summary.daily_throughput_pcs == \
-            b["sample_run"].daily_summary.daily_throughput_pcs
+        assert a["sample_run"].daily_summary.daily_throughput_pcs == b["sample_run"].daily_summary.daily_throughput_pcs
 
     def test_different_seeds_produce_variation(self, fast_config: SimulationConfig):
         """At least one stat has nonzero std across replications with different seeds."""
@@ -290,12 +289,9 @@ class TestRunMonteCarlo:
         ds = result["aggregated_stats"]["daily_summary"]
         # At least one of the numeric fields should have non-zero std across
         # 5 replications (the engine has stochastic variability + breakdowns).
-        nonzero_std = any(
-            isinstance(v, dict) and v.get("std", 0) > 0 for v in ds.values()
-        )
+        nonzero_std = any(isinstance(v, dict) and v.get("std", 0) > 0 for v in ds.values())
         assert nonzero_std, (
-            "Expected at least one numeric stat to vary across replications; "
-            f"got daily_summary={ds!r}"
+            "Expected at least one numeric stat to vary across replications; " f"got daily_summary={ds!r}"
         )
 
     def test_returns_validation_report(self, fast_config: SimulationConfig):
@@ -309,8 +305,12 @@ class TestRunMonteCarlo:
         bad = SimulationConfig(
             operations=simple_operations,
             schedule=ScheduleConfig(
-                shifts_enabled=1, shift1_hours=8.0, shift2_hours=0.0,
-                shift3_hours=0.0, work_days=5, ot_enabled=False,
+                shifts_enabled=1,
+                shift1_hours=8.0,
+                shift2_hours=0.0,
+                shift3_hours=0.0,
+                work_days=5,
+                ot_enabled=False,
             ),
             # PRODUCT_Z has no operations — product_consistency error.
             demands=[DemandInput(product="PRODUCT_Z", bundle_size=10, daily_demand=50)],

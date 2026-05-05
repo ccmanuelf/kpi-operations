@@ -10,7 +10,7 @@ import random
 import os
 
 # Configuration
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'kpi_platform.db')
+DB_PATH = os.path.join(os.path.dirname(__file__), "..", "kpi_platform.db")
 
 print("🚀 Starting Multi-Tenant Sample Data Generation...")
 print("=" * 70)
@@ -23,10 +23,12 @@ try:
     # 0. CREATE SYSTEM USER (for foreign key requirements)
     print("\n👤 Step 0: Creating System User...")
     try:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO USER (user_id, username, full_name, email, role, is_active, created_at)
             VALUES ('SYSTEM', 'system', 'System Administrator', 'system@kpi.local', 'SYSTEM', 1, datetime('now'))
-        """)
+        """
+        )
         print("   ✓ Created SYSTEM user")
     except sqlite3.IntegrityError:
         print("   ⚠  SYSTEM user already exists")
@@ -34,20 +36,23 @@ try:
     # 1. CREATE 5 CLIENTS
     print("\n📋 Step 1: Creating 5 Clients...")
     clients = [
-        ('BOOT-LINE-A', 'Boot Line A Manufacturing', 'Piece Rate'),
-        ('APPAREL-B', 'Apparel B Production', 'Hourly Rate'),
-        ('TEXTILE-C', 'Textile C Industries', 'Hybrid'),
-        ('FOOTWEAR-D', 'Footwear D Factory', 'Piece Rate'),
-        ('GARMENT-E', 'Garment E Suppliers', 'Hourly Rate')
+        ("BOOT-LINE-A", "Boot Line A Manufacturing", "Piece Rate"),
+        ("APPAREL-B", "Apparel B Production", "Hourly Rate"),
+        ("TEXTILE-C", "Textile C Industries", "Hybrid"),
+        ("FOOTWEAR-D", "Footwear D Factory", "Piece Rate"),
+        ("GARMENT-E", "Garment E Suppliers", "Hourly Rate"),
     ]
 
     client_count = 0
     for client_id, client_name, client_type in clients:
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO CLIENT (client_id, client_name, client_type, timezone, is_active, created_at)
                 VALUES (?, ?, ?, 'US/Eastern', 1, datetime('now'))
-            """, (client_id, client_name, client_type))
+            """,
+                (client_id, client_name, client_type),
+            )
             client_count += 1
             print(f"   ✓ {client_id}: {client_name}")
         except sqlite3.IntegrityError:
@@ -66,10 +71,13 @@ try:
             emp_id = f"EMP-{client_id}-{j+1:03d}"
             emp_name = f"Employee {client_id}-{j+1:03d}"
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO EMPLOYEE (employee_id, employee_name, client_id_assigned, is_floating_pool, created_at)
                     VALUES (?, ?, ?, 0, datetime('now'))
-                """, (emp_id, emp_name, client_id))
+                """,
+                    (emp_id, emp_name, client_id),
+                )
                 employee_count += 1
             except sqlite3.IntegrityError:
                 pass
@@ -79,10 +87,13 @@ try:
         emp_id = f"EMP-FLOAT-{k+1:03d}"
         emp_name = f"Floating Employee {k+1}"
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO EMPLOYEE (employee_id, employee_name, client_id_assigned, is_floating_pool, created_at)
                 VALUES (?, ?, NULL, 1, datetime('now'))
-            """, (emp_id, emp_name))
+            """,
+                (emp_id, emp_name),
+            )
             employee_count += 1
         except sqlite3.IntegrityError:
             pass
@@ -91,7 +102,7 @@ try:
 
     # 3. CREATE 25 WORK ORDERS (5 per client)
     print("\n📦 Step 3: Creating 25 Work Orders (5 per client)...")
-    styles = ['T-SHIRT', 'POLO', 'JACKET', 'PANTS', 'DRESS']
+    styles = ["T-SHIRT", "POLO", "JACKET", "PANTS", "DRESS"]
     base_date = datetime.now() - timedelta(days=90)
 
     work_order_count = 0
@@ -102,7 +113,7 @@ try:
             work_order_id = f"WO-{client_id}-{wo_idx+1:03d}"
             style = styles[wo_idx % len(styles)]
 
-            start_date = base_date + timedelta(days=wo_idx*15)
+            start_date = base_date + timedelta(days=wo_idx * 15)
             ship_date = start_date + timedelta(days=20)
             delivery_date = ship_date + timedelta(days=random.randint(-5, 5))
 
@@ -110,17 +121,24 @@ try:
             actual_qty = int(planned_qty * random.uniform(0.92, 0.98))
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO WORK_ORDER (
                         work_order_id, client_id, style_model, planned_quantity,
                         actual_start_date, planned_ship_date,
                         ideal_cycle_time, status, created_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'COMPLETED', datetime('now'))
-                """, (
-                    work_order_id, client_id, style, planned_qty,
-                    start_date.strftime('%Y-%m-%d'), ship_date.strftime('%Y-%m-%d'),
-                    0.25  # 15 minutes = 0.25 hours
-                ))
+                """,
+                    (
+                        work_order_id,
+                        client_id,
+                        style,
+                        planned_qty,
+                        start_date.strftime("%Y-%m-%d"),
+                        ship_date.strftime("%Y-%m-%d"),
+                        0.25,  # 15 minutes = 0.25 hours
+                    ),
+                )
                 work_orders_list.append((work_order_id, client_id, start_date, planned_qty))
                 work_order_count += 1
             except sqlite3.IntegrityError as e:
@@ -132,18 +150,21 @@ try:
     # 4. CREATE SHIFTS FIRST (required for foreign key)
     print("\n⏰ Step 4: Creating Shifts...")
     shifts = [
-        (1, '1st Shift', '06:00', '14:00'),
-        (2, '2nd Shift', '14:00', '22:00'),
-        (3, '3rd Shift', '22:00', '06:00')
+        (1, "1st Shift", "06:00", "14:00"),
+        (2, "2nd Shift", "14:00", "22:00"),
+        (3, "3rd Shift", "22:00", "06:00"),
     ]
 
     shift_count = 0
     for shift_id, shift_name, start_time, end_time in shifts:
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO SHIFT (shift_id, shift_name, start_time, end_time, created_at)
                 VALUES (?, ?, ?, ?, datetime('now'))
-            """, (shift_id, shift_name, start_time, end_time))
+            """,
+                (shift_id, shift_name, start_time, end_time),
+            )
             shift_count += 1
             print(f"   ✓ {shift_name}")
         except sqlite3.IntegrityError:
@@ -160,10 +181,13 @@ try:
         ideal_cycle_time = round(random.uniform(0.15, 0.35), 4)  # 9-21 minutes
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO PRODUCT (product_id, product_name, ideal_cycle_time, created_at)
                 VALUES (?, ?, ?, datetime('now'))
-            """, (product_id, product_name, ideal_cycle_time))
+            """,
+                (product_id, product_name, ideal_cycle_time),
+            )
             products_list.append((product_id, ideal_cycle_time))
             product_count += 1
         except sqlite3.IntegrityError:
@@ -179,7 +203,7 @@ try:
         remaining_qty = total_qty
         for prod_idx in range(3):
             prod_entry_id = f"PE-{work_order_id}-{prod_idx+1}"
-            prod_date = start_date + timedelta(days=prod_idx*5)
+            prod_date = start_date + timedelta(days=prod_idx * 5)
 
             # Distribute production across 3 entries
             if prod_idx == 2:  # Last entry gets remaining
@@ -202,7 +226,8 @@ try:
             quality_rate = round((units_produced - defects) / units_produced if units_produced > 0 else 0, 4)
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO PRODUCTION_ENTRY (
                         production_entry_id, client_id, product_id, shift_id,
                         work_order_id, production_date, shift_date,
@@ -211,13 +236,27 @@ try:
                         efficiency_percentage, performance_percentage, quality_rate,
                         entered_by, created_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'SYSTEM', datetime('now'))
-                """, (
-                    prod_entry_id, client_id, product_id, 1,
-                    work_order_id, prod_date.strftime('%Y-%m-%d'), prod_date.strftime('%Y-%m-%d'),
-                    units_produced, run_time, employees,
-                    defects, random.randint(0, int(defects * 0.3)), ideal_cycle, actual_cycle,
-                    efficiency, performance, quality_rate
-                ))
+                """,
+                    (
+                        prod_entry_id,
+                        client_id,
+                        product_id,
+                        1,
+                        work_order_id,
+                        prod_date.strftime("%Y-%m-%d"),
+                        prod_date.strftime("%Y-%m-%d"),
+                        units_produced,
+                        run_time,
+                        employees,
+                        defects,
+                        random.randint(0, int(defects * 0.3)),
+                        ideal_cycle,
+                        actual_cycle,
+                        efficiency,
+                        performance,
+                        quality_rate,
+                    ),
+                )
                 production_count += 1
             except sqlite3.IntegrityError as e:
                 print(f"   ⚠  Error inserting production entry: {e}")
@@ -237,16 +276,25 @@ try:
         total_defects = units_failed + random.randint(0, int(units_failed * 0.2))
 
         try:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO QUALITY_ENTRY (
                     quality_entry_id, client_id, work_order_id,
                     inspection_date, units_inspected, units_passed, units_failed,
                     total_defects_count, entered_by, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SYSTEM', datetime('now'))
-            """, (
-                quality_id, client_id, work_order_id, start_date.strftime('%Y-%m-%d'),
-                units_inspected, units_passed, units_failed, total_defects
-            ))
+            """,
+                (
+                    quality_id,
+                    client_id,
+                    work_order_id,
+                    start_date.strftime("%Y-%m-%d"),
+                    units_inspected,
+                    units_passed,
+                    units_failed,
+                    total_defects,
+                ),
+            )
             quality_count += 1
         except sqlite3.IntegrityError as e:
             print(f"   ⚠  Error inserting quality entry: {e}")
@@ -264,7 +312,7 @@ try:
         cursor.execute("SELECT employee_id FROM EMPLOYEE WHERE client_id_assigned = ?", (client_id,))
         employees = cursor.fetchall()
 
-        for employee_id, in employees:
+        for (employee_id,) in employees:
             for day in range(60):
                 attendance_date = attendance_base_date + timedelta(days=day)
 
@@ -274,17 +322,24 @@ try:
                 actual_hours = random.uniform(7.5, 8.5) if is_present else 0
 
                 try:
-                    cursor.execute("""
+                    cursor.execute(
+                        """
                         INSERT INTO ATTENDANCE_ENTRY (
                             employee_id, client_id, shift_id,
                             attendance_date, scheduled_hours, actual_hours,
                             is_absent, entered_by, created_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'SYSTEM', datetime('now'))
-                    """, (
-                        employee_id, client_id, 1,
-                        attendance_date.strftime('%Y-%m-%d'),
-                        scheduled, actual_hours, 0 if is_present else 1
-                    ))
+                    """,
+                        (
+                            employee_id,
+                            client_id,
+                            1,
+                            attendance_date.strftime("%Y-%m-%d"),
+                            scheduled,
+                            actual_hours,
+                            0 if is_present else 1,
+                        ),
+                    )
                     attendance_count += 1
                 except sqlite3.IntegrityError:
                     pass
@@ -295,8 +350,12 @@ try:
     print("\n⏸️  Step 9: Creating Downtime Entries (2-3 per work order)...")
     downtime_count = 0
     downtime_reasons = [
-        'EQUIPMENT_FAILURE', 'MATERIAL_SHORTAGE', 'CHANGEOVER_SETUP',
-        'MAINTENANCE_SCHEDULED', 'QC_HOLD', 'OTHER'
+        "EQUIPMENT_FAILURE",
+        "MATERIAL_SHORTAGE",
+        "CHANGEOVER_SETUP",
+        "MAINTENANCE_SCHEDULED",
+        "QC_HOLD",
+        "OTHER",
     ]
 
     for work_order_id, client_id, start_date, _ in work_orders_list:
@@ -307,17 +366,16 @@ try:
             reason = random.choice(downtime_reasons)
 
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO DOWNTIME_ENTRY (
                         client_id, work_order_id, shift_id,
                         downtime_date, downtime_reason, downtime_duration_minutes,
                         entered_by, created_at
                     ) VALUES (?, ?, ?, ?, ?, ?, 'SYSTEM', datetime('now'))
-                """, (
-                    client_id, work_order_id, 1,
-                    downtime_date.strftime('%Y-%m-%d'),
-                    reason, downtime_minutes
-                ))
+                """,
+                    (client_id, work_order_id, 1, downtime_date.strftime("%Y-%m-%d"), reason, downtime_minutes),
+                )
                 downtime_count += 1
             except sqlite3.IntegrityError:
                 pass
@@ -331,7 +389,8 @@ try:
     print("\n" + "=" * 70)
     print("✅ SAMPLE DATA GENERATION COMPLETED!")
     print("=" * 70)
-    print(f"""
+    print(
+        f"""
 SUMMARY:
    - 5 Clients: {', '.join([c[0] for c in clients])}
    - {employee_count} Employees (80 regular + 20 floating pool)
@@ -344,12 +403,14 @@ SUMMARY:
    - {downtime_count} Downtime Entries (2-3 per work order)
 
 Database: {DB_PATH}
-""")
+"""
+    )
     print("=" * 70)
 
 except Exception as e:
     print(f"\n❌ ERROR: {e}")
     import traceback
+
     traceback.print_exc()
     conn.rollback()
     raise

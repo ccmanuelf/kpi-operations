@@ -500,9 +500,7 @@ class ExcelReportGenerator:
             )
 
         # Quality KPIs
-        quality_query = self.db.query(QualityEntry).filter(
-            QualityEntry.shift_date.between(start_date, end_date)
-        )
+        quality_query = self.db.query(QualityEntry).filter(QualityEntry.shift_date.between(start_date, end_date))
 
         if client_id:
             quality_query = quality_query.filter(QualityEntry.client_id == client_id)
@@ -613,9 +611,7 @@ class ExcelReportGenerator:
 
         # QualityEntry is keyed by shift_date and carries client_id directly
         # (no Product join needed). `inspection_date` is optional metadata.
-        query = self.db.query(QualityEntry).filter(
-            QualityEntry.shift_date.between(start_date, end_date)
-        )
+        query = self.db.query(QualityEntry).filter(QualityEntry.shift_date.between(start_date, end_date))
 
         if client_id:
             query = query.filter(QualityEntry.client_id == client_id)
@@ -637,9 +633,7 @@ class ExcelReportGenerator:
         """Fetch downtime data from database"""
         from backend.orm.downtime_entry import DowntimeEntry
 
-        query = self.db.query(DowntimeEntry).filter(
-            DowntimeEntry.shift_date.between(start_date, end_date)
-        )
+        query = self.db.query(DowntimeEntry).filter(DowntimeEntry.shift_date.between(start_date, end_date))
 
         if client_id:
             query = query.filter(DowntimeEntry.client_id == client_id)
@@ -665,14 +659,11 @@ class ExcelReportGenerator:
         from backend.orm.attendance_entry import AttendanceEntry
         from sqlalchemy import func, case
 
-        query = (
-            self.db.query(
-                AttendanceEntry.shift_date,
-                func.count(AttendanceEntry.attendance_entry_id).label("scheduled"),
-                func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label("absent"),
-            )
-            .filter(AttendanceEntry.shift_date.between(start_date, end_date))
-        )
+        query = self.db.query(
+            AttendanceEntry.shift_date,
+            func.count(AttendanceEntry.attendance_entry_id).label("scheduled"),
+            func.sum(case((AttendanceEntry.is_absent == 1, 1), else_=0)).label("absent"),
+        ).filter(AttendanceEntry.shift_date.between(start_date, end_date))
         if client_id:
             query = query.filter(AttendanceEntry.client_id == client_id)
         query = query.group_by(AttendanceEntry.shift_date).order_by(AttendanceEntry.shift_date)

@@ -5,7 +5,7 @@ import sqlite3
 import random
 from datetime import datetime, timedelta
 
-DB_PATH = '/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/kpi_platform.db'
+DB_PATH = "/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/kpi_platform.db"
 
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()
@@ -29,7 +29,7 @@ DOWNTIME_REASONS = [
     "SETUP_CHANGEOVER",
     "QUALITY_HOLD",
     "MAINTENANCE",
-    "OTHER"
+    "OTHER",
 ]
 
 DOWNTIME_DESCRIPTIONS = {
@@ -38,7 +38,7 @@ DOWNTIME_DESCRIPTIONS = {
     "SETUP_CHANGEOVER": ["Style changeover", "Color change", "Size change"],
     "QUALITY_HOLD": ["Inspection required", "Rework pending", "Customer hold"],
     "MAINTENANCE": ["Scheduled maintenance", "Lubrication", "Calibration"],
-    "OTHER": ["Power outage", "Training session", "Safety drill"]
+    "OTHER": ["Power outage", "Training session", "Safety drill"],
 }
 
 DATA_START = datetime.now() - timedelta(days=90)
@@ -58,17 +58,16 @@ for i in range(to_add):
 
     dt_entry_id = f"DT-EXTRA-{current_count + i + 1:05d}"
 
-    cursor.execute("""
+    cursor.execute(
+        """
         INSERT INTO DOWNTIME_ENTRY (
             downtime_entry_id, client_id, work_order_id, shift_date,
             downtime_reason, downtime_duration_minutes,
             root_cause_category, reported_by, notes, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    """, (
-        dt_entry_id, client_id, wo_id,
-        shift_date.strftime('%Y-%m-%d'),
-        reason, duration, reason, 1, description
-    ))
+    """,
+        (dt_entry_id, client_id, wo_id, shift_date.strftime("%Y-%m-%d"), reason, duration, reason, 1, description),
+    )
     added += 1
 
 conn.commit()
