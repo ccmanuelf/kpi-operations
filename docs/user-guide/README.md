@@ -12,7 +12,7 @@ Welcome — this is the operator/planner/admin handbook for the Manufacturing KP
 | [04 — Capacity Planning](04-capacity-planning.md) | 13-tab workbook (orders, calendar, lines, BOM, stock, schedule, scenarios) | A planner / scheduler |
 | [05 — Work Orders](05-work-orders.md) | List, statuses, scenarios, capacity links | Tracking work-order progress |
 | [06 — Alerts](06-alerts.md) | Generation, acknowledge, dismiss, configuration | Triaging exceptions |
-| [07 — Simulation V2 + MiniZinc](07-simulation-v2.md) | Validate / Run / Monte Carlo / 4 prescriptive optimization patterns | Doing what-if analysis or planning a campaign |
+| [07 — Simulation V2 + MiniZinc](07-simulation-v2.md) | Validate / Run / Monte Carlo / 4 optimization patterns / save & load scenarios / pre-fill from history | Doing what-if analysis or planning a campaign |
 | [08 — Reports](08-reports.md) | Excel / PDF generation, scheduling, email | Building executive reports |
 | [09 — Admin](09-admin.md) | Users, clients, defect types, client config, floating pool, workflow designer, database | A system admin |
 | [10 — Roles & Permissions](10-roles-permissions.md) | Who can do what | Setting up access |
@@ -30,6 +30,17 @@ The platform now pairs SimPy stochastic simulation with MiniZinc deterministic o
 | 4 — Plan Horizon | I have a weekly demand target — **how do I split it across the week** for smooth load? | [Pattern 4](07-simulation-v2.md#pattern-4--plan-horizon) |
 
 All four are explained with worked examples in section 07.
+
+## Quick reference for scenarios + calibration (2026-05)
+
+Two new productivity surfaces sit on top of the simulation workbench:
+
+| Feature | What it solves | Section |
+|---------|----------------|---------|
+| Save Scenario / Scenarios | Stop losing your work between sessions; share named configs with your team; pin a "last run" summary so you don't have to re-run to remember the numbers | [Saved Scenarios](07-simulation-v2.md#saved-scenarios-d3--persistence) |
+| Pre-fill from history | Don't type SAM, grade %, rework %, demand, and shift hours from scratch — the platform reads its own production / quality / downtime / shift records and fills the form | [Pre-fill from history](07-simulation-v2.md#pre-fill-from-history-d4--calibration) |
+
+Both surfaces are gated to leader / supervisor / poweruser / admin (operators are data-entry, not planners) and tenant-fenced server-side.
 
 ## How to read each guide
 

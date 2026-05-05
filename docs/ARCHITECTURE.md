@@ -112,10 +112,11 @@ backend/
     analytics/             # 4 modules: _helpers, comparisons, predictions, trends
     quality/               # 4 modules: entries, fpy_rty, pareto, ppm_dpmo
     reports/               # 5 modules: _models, comprehensive_reports, email_config, kpi_reports, production_reports
-    [single-file routes]   # auth, attendance, work_orders, jobs, holds, downtime, shifts, employees, production, users, floating_pool, onboarding, etc.
+    [single-file routes]   # auth, attendance, work_orders, jobs, holds, downtime, shifts, employees, production, users, floating_pool, onboarding, simulation_v2, simulation_scenarios (D3), simulation_calibration (D4), etc.
   services/capacity/       # 7 capacity planning services (facade pattern)
+  services/                # simulation_calibration.py (D4) and other cross-cutting services
   events/                  # Domain event bus (collect/flush pattern)
-  simulation_v2/           # SimPy-based discrete-event simulation engine
+  simulation_v2/           # SimPy discrete-event engine + Monte Carlo + MiniZinc optimization/ (4 patterns)
   reports/                 # PDF/Excel generation
   db/migrations/           # Demo seeder (demo_seeder.py) + capacity table creation
   scripts/                 # init_demo_database.py, backup utilities
@@ -496,14 +497,20 @@ Two simulation implementations coexist in the codebase.
 
 ### V2 (Current) - `simulation_v2/`
 
-- **Route**: `/api/v2/simulation/*` (in `routes/simulation_v2.py`)
+- **Route surfaces**: three sibling modules under `/api/v2/simulation/*`:
+  - `routes/simulation_v2.py` — core engine + Monte Carlo + 4 MiniZinc patterns (stateless, no DB)
+  - `routes/simulation_scenarios.py` — D3 scenario persistence (CRUD + run + duplicate, backed by `SIMULATION_SCENARIO`)
+  - `routes/simulation_calibration.py` — D4 historical calibration (read-only, aggregates production / quality / downtime / shift history into a SimulationConfig dict)
 - **SimPy-based** discrete-event simulation engine.
-- Stateless / ephemeral: no database persistence, operates as a pure calculator.
 - Capabilities beyond V1:
   - Multi-product support (up to 5 products)
   - Configurable variability (triangular / deterministic distributions)
   - 8 output blocks with analytics
   - Rebalancing suggestions and bottleneck detection
+  - **Monte Carlo** wrapper — mean ± 95% CI per metric across N replications
+  - **MiniZinc pairing** (`simulation_v2/optimization/`) — 4 patterns: operator allocation, bottleneck rebalancing, product sequencing, planning horizon
+  - **Persistent scenarios** — save / load / duplicate / run, tenant-scoped via `client_id` (NULL = global template, admin/poweruser only)
+  - **Historical calibration** — pre-fill from production data with per-field provenance (source table, sample size, confidence bucket: high ≥14 / medium 5-13 / low 1-4 / none 0)
 
 ### V1 vs V2 Comparison
 
@@ -511,8 +518,10 @@ Two simulation implementations coexist in the codebase.
 |--------|----|----|
 | Engine | Pure math functions | SimPy discrete-event |
 | Products | Single | Up to 5 |
-| Persistence | None | None (ephemeral) |
+| Persistence | None | Optional (`SIMULATION_SCENARIO` for saved configs); core engine still ephemeral |
 | Floating pool | Yes (dependency) | No |
+| Optimization | None | MiniZinc — 4 patterns (operator/rebalance/sequence/plan) |
+| Calibration | None | From production / quality / downtime / shift history |
 | Status | Deprecated (sunset 2026-06-01) | Active |
 
 ---

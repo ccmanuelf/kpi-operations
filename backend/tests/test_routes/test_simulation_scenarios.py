@@ -7,6 +7,12 @@ Coverage:
   - Permission gate (operator denied on writes)
   - Validation: invalid stored config returns 422 on run
   - Roundtrip integrity (config_json preserved bit-exactly)
+
+Isolation: every test runs against an in-memory SQLite via the shared
+`transactional_db` fixture (conftest.py). The `get_db` dependency is
+overridden to yield that session, so writes never reach the demo DB
+and rollback at teardown leaves the live DB pristine. (Closes
+follow-up #130.)
 """
 
 from __future__ import annotations
@@ -18,6 +24,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.auth.jwt import get_current_user
+from backend.database import get_db
 from backend.main import app
 
 
@@ -36,7 +43,22 @@ def _user(role: str, *, client_id_assigned: str | None = "ACME-MFG", username: s
 
 
 @pytest.fixture
-def client():
+def isolated_db(transactional_db):
+    """Override `get_db` for the lifetime of one test so every CRUD
+    write lands in the function-scoped in-memory SQLite instead of the
+    live demo DB. The conftest fixture handles rollback + drop_all on
+    teardown.
+    """
+    app.dependency_overrides[get_db] = lambda: transactional_db
+    yield transactional_db
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def client(isolated_db):
+    """TestClient bound to the isolated DB. The `isolated_db` fixture
+    must come first so the dependency override is in place before the
+    TestClient hits the app."""
     return TestClient(app)
 
 
@@ -50,9 +72,11 @@ def _override_user(client: TestClient, role: str, client_id_assigned: str | None
 
 
 @pytest.fixture
-def shared_client():
+def shared_client(isolated_db):
     """One TestClient whose persona we switch within the test via
-    `_override_user(client, role)`. Cleans up the override afterwards."""
+    `_override_user(client, role)`. Cleans up the override afterwards.
+    The isolated_db fixture binds get_db to the in-memory session for
+    this test."""
     yield TestClient(app)
     app.dependency_overrides.pop(get_current_user, None)
 
@@ -144,10 +168,6 @@ def test_operator_cannot_run_scenario(shared_client: TestClient) -> None:
     run_resp = shared_client.post(f"/api/v2/simulation/scenarios/{scenario_id}/run")
     assert run_resp.status_code == 403
 
-    # Leader cleanup
-    _override_user(shared_client, "leader")
-    shared_client.delete(f"/api/v2/simulation/scenarios/{scenario_id}")
-
 
 # =============================================================================
 # CRUD happy path
@@ -188,9 +208,6 @@ def test_create_list_get_roundtrip(leader_client: TestClient) -> None:
     assert "config_json" not in matching[0]  # summary shape, not full
     assert matching[0]["name"] == "roundtrip"
 
-    # Cleanup
-    leader_client.delete(f"/api/v2/simulation/scenarios/{scenario_id}")
-
 
 def test_update_partial_fields(leader_client: TestClient) -> None:
     create = leader_client.post(
@@ -208,8 +225,6 @@ def test_update_partial_fields(leader_client: TestClient) -> None:
     assert update.json()["tags"] == ["renamed"]
     # Untouched fields remain
     assert update.json()["config_json"] == _sample_config()
-
-    leader_client.delete(f"/api/v2/simulation/scenarios/{sid}")
 
 
 def test_soft_delete_hides_from_default_list(leader_client: TestClient) -> None:
@@ -252,10 +267,6 @@ def test_duplicate_creates_new_record_with_optional_name(leader_client: TestClie
     assert dup2_resp.status_code == 201
     assert dup2_resp.json()["name"] == "My Variant"
 
-    # Cleanup
-    for sid in (src_id, dup["id"], dup2_resp.json()["id"]):
-        leader_client.delete(f"/api/v2/simulation/scenarios/{sid}")
-
 
 def test_run_persists_summary(leader_client: TestClient) -> None:
     create = leader_client.post(
@@ -279,8 +290,6 @@ def test_run_persists_summary(leader_client: TestClient) -> None:
     get_resp = leader_client.get(f"/api/v2/simulation/scenarios/{sid}")
     assert get_resp.json()["last_run_summary"]["daily_throughput_pcs"] == summary["daily_throughput_pcs"]
 
-    leader_client.delete(f"/api/v2/simulation/scenarios/{sid}")
-
 
 def test_run_invalid_config_returns_422(leader_client: TestClient) -> None:
     """Saving an invalid config is allowed (engine version drift); the
@@ -296,8 +305,6 @@ def test_run_invalid_config_returns_422(leader_client: TestClient) -> None:
     run = leader_client.post(f"/api/v2/simulation/scenarios/{sid}/run")
     assert run.status_code == 422
     assert "incompatible" in run.json()["detail"].lower() or "validation" in str(run.json()).lower()
-
-    leader_client.delete(f"/api/v2/simulation/scenarios/{sid}")
 
 
 # =============================================================================
@@ -320,9 +327,6 @@ def test_cross_tenant_leader_cannot_see_other_clients_scenarios(shared_client: T
     assert sid not in [s["id"] for s in list_resp.json()]
     get_resp = shared_client.get(f"/api/v2/simulation/scenarios/{sid}")
     assert get_resp.status_code == 404
-
-    _override_user(shared_client, "leader", client_id_assigned="ACME-MFG")
-    shared_client.delete(f"/api/v2/simulation/scenarios/{sid}")
 
 
 def test_non_admin_cannot_create_global_scenario(leader_client: TestClient) -> None:
@@ -350,8 +354,6 @@ def test_admin_can_create_global(admin_client: TestClient) -> None:
     )
     assert create.status_code == 201
     assert create.json()["client_id"] is None
-    sid = create.json()["id"]
-    admin_client.delete(f"/api/v2/simulation/scenarios/{sid}")
 
 
 def test_global_scenario_visible_to_all(shared_client: TestClient) -> None:
@@ -370,9 +372,6 @@ def test_global_scenario_visible_to_all(shared_client: TestClient) -> None:
         assert sid in [s["id"] for s in list_resp.json()], (
             f"Global scenario should be visible to leader@{client_id}"
         )
-
-    _override_user(shared_client, "admin", client_id_assigned=None)
-    shared_client.delete(f"/api/v2/simulation/scenarios/{sid}")
 
 
 # =============================================================================

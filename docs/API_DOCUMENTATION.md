@@ -827,14 +827,52 @@ Supports 8 scenario types: OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THR
 
 Prefix: `/api/v2/simulation` | Auth: Required
 
-Ephemeral production-line simulation engine (no database dependencies). Accepts JSON payloads describing lines, products, and parameters; returns simulation results in-memory.
+SimPy-based discrete-event simulation engine. The core endpoints are stateless (no DB dependencies) and accept JSON payloads describing operations, schedule, demand, and breakdowns. Scenario persistence and historical calibration add stateful surfaces backed by `SIMULATION_SCENARIO` and the platform's existing KPI tables.
+
+### Core engine
 
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v2/simulation/` | Get simulation engine info and capabilities |
 | POST | `/api/v2/simulation/validate` | Validate simulation input payload |
 | POST | `/api/v2/simulation/run` | Run a full simulation and return results |
+| POST | `/api/v2/simulation/run-monte-carlo` | Run N replications, return mean ± 95% CI per metric |
 | GET | `/api/v2/simulation/schema` | Get JSON schema for simulation input |
+
+### MiniZinc optimization (D2 — 4 patterns)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v2/simulation/optimize-operators` | Pattern 1 — minimize total operators required to meet demand |
+| POST | `/api/v2/simulation/rebalance-bottleneck` | Pattern 2 — redistribute a fixed operator pool to lift the bottleneck |
+| POST | `/api/v2/simulation/sequence-products` | Pattern 3 — find the product order that minimizes total wallclock makespan with setup costs |
+| POST | `/api/v2/simulation/plan-horizon` | Pattern 4 — distribute weekly demand across the horizon to minimize MAX daily load |
+
+### Scenario persistence (D3)
+
+Persistent storage of named SimulationConfigs with optional run summaries. Tenant-scoped: planners see scenarios for their assigned `client_id` plus admin-authored global templates (NULL `client_id`). Operators are read-only; leader / supervisor / poweruser / admin can mutate.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v2/simulation/scenarios` | List scenarios visible to the user (lightweight summary) |
+| GET | `/api/v2/simulation/scenarios/{scenario_id}` | Fetch one scenario with full `config_json` |
+| POST | `/api/v2/simulation/scenarios` | Create a scenario from a SimulationConfig |
+| PUT | `/api/v2/simulation/scenarios/{scenario_id}` | Update name / description / config / tags |
+| DELETE | `/api/v2/simulation/scenarios/{scenario_id}` | Soft-delete (sets `is_active=False`) |
+| POST | `/api/v2/simulation/scenarios/{scenario_id}/duplicate` | Duplicate, optionally with a new name |
+| POST | `/api/v2/simulation/scenarios/{scenario_id}/run` | Run the engine on the stored config and pin a result summary |
+
+A 422 from `/run` with detail "Scenario config is incompatible with the current engine schema" indicates the saved config predates a model field change; re-save from the UI to migrate it.
+
+### Historical calibration (D4)
+
+Pre-fills a SimulationConfig from production / quality / downtime / shift history so a planner doesn't have to type SAM, grade %, rework %, demand, and shift hours by hand. Read-only — the endpoint never writes.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v2/simulation/calibration` | Aggregate history into a SimulationConfig + per-field provenance |
+
+Query parameters: `client_id` (required), `period_start` / `period_end` (ISO date, optional — default last 30 days). Reversed dates return 400. Permission gate matches scenarios (planner-or-above). Response shape: `{client_id, period, config, sources: {field_path: {source, sample_size, period, confidence}}, warnings}` where `confidence ∈ {high, medium, low, none}` reflects the underlying sample size.
 
 > **Note:** Simulation V1 (`/api/simulation/*`) is deprecated but still active due to the floating-pool dependency. Prefer V2 for new integrations.
 
