@@ -18,6 +18,8 @@ means any JSON-serialisable value is allowed.
 
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 
 # Each entry: (name, description, allowed_values | None, default_value)
 # - allowed_values=None means free-form (must still be JSON-serialisable).
@@ -97,7 +99,7 @@ CANONICAL_METRIC_DEPENDENCIES: list[tuple[str, str, str]] = [
 ]
 
 
-def seed_metric_dependencies(db) -> int:
+def seed_metric_dependencies(db: Session) -> int:
     """
     Idempotently insert CANONICAL_METRIC_DEPENDENCIES into the
     METRIC_ASSUMPTION_DEPENDENCY table.

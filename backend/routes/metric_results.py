@@ -83,14 +83,16 @@ def _expand_assumptions(db: Session, snapshot: dict[str, dict[str, Any]]) -> lis
     out: list[AssumptionInLineage] = []
     for name, entry in snapshot.items():
         assumption_id = entry.get("assumption_id")
-        rec = records.get(assumption_id) if assumption_id else None
+        # Different name from the loop variable above so mypy doesn't reuse
+        # the narrower CalculationAssumption binding when we re-assign here.
+        lookup: Optional[CalculationAssumption] = records.get(assumption_id) if assumption_id else None
         catalog_entry = V1_CATALOG.get(name, {})
         out.append(
             AssumptionInLineage(
                 name=name,
                 value=entry.get("value"),
                 description=catalog_entry.get("description"),
-                rationale=rec.rationale if rec else None,
+                rationale=lookup.rationale if lookup else None,
                 approved_by=entry.get("approved_by"),
                 approved_at=_parse_iso(entry.get("approved_at")),
                 assumption_id=assumption_id,

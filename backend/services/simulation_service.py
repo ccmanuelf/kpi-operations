@@ -19,6 +19,8 @@ target_efficiency, ideal_cycle_time_source, etc.) from the registry before
 delegating. The pure re-exports remain untouched.
 """
 
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from backend.calculations.production_line_simulation import (
@@ -83,11 +85,11 @@ class SimulationService:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def calculate_capacity_requirements(self, *args, **kwargs) -> CapacityRequirement:
+    def calculate_capacity_requirements(self, *args: Any, **kwargs: Any) -> CapacityRequirement:
         return _calculate_capacity_requirements_db(self.db, *args, **kwargs)
 
-    def optimize_floating_pool_allocation(self, *args, **kwargs) -> FloatingPoolOptimization:
+    def optimize_floating_pool_allocation(self, *args: Any, **kwargs: Any) -> FloatingPoolOptimization:
         return _optimize_floating_pool_allocation_db(self.db, *args, **kwargs)
 
-    def run_capacity_simulation(self, *args, **kwargs) -> dict:
+    def run_capacity_simulation(self, *args: Any, **kwargs: Any) -> dict:
         return _run_capacity_simulation_db(self.db, *args, **kwargs)

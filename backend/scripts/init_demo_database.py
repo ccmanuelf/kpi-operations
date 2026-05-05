@@ -20,7 +20,7 @@ import json
 import random
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 import random
 
 # Ensure backend module is importable
@@ -468,13 +468,13 @@ def init_database() -> None:
             all_products[client_id] = client_products
 
             client_shifts = []
-            for name, start, end in shifts_data:
+            for name, shift_start, shift_end in shifts_data:
                 shift = TestDataFactory.create_shift(
                     db,
                     client_id=client_id,
                     shift_name=name,
-                    start_time=start,
-                    end_time=end,
+                    start_time=shift_start,
+                    end_time=shift_end,
                 )
                 client_shifts.append(shift)
             all_shifts[client_id] = client_shifts
@@ -1152,7 +1152,10 @@ def init_database() -> None:
         #                  0.5 for IN_PROGRESS (half-built),
         #                  0.0 for RECEIVED (not started),
         #                  ~0.3 for ON_HOLD (paused mid-production)
-        WO_PLAN = [
+        # Explicit annotation so mypy doesn't carry the earlier `status` /
+        # `scenario` bindings forward (lines 749 / 1076 bound them to
+        # ComponentStatus and CapacityScenario respectively).
+        WO_PLAN: List[Tuple[int, int, WorkOrderStatus, int, int, Optional[int], float, str]] = [
             # On-time delivery: shipped a week ago, ahead of required by 2 days
             (0, 1000, WorkOrderStatus.SHIPPED, -28, -10, -12, 1.00, "shipped_on_time"),
             # Late delivery: shipped 5 days late
@@ -1171,20 +1174,20 @@ def init_database() -> None:
 
         for client_id, client in clients.items():
             client_work_orders = []
-            for idx, planned, status, recv_off, req_off, ship_off, completion_pct, scenario in WO_PLAN:
+            for idx, planned, wo_status, recv_off, req_off, ship_off, completion_pct, wo_scenario in WO_PLAN:
                 mp = MASTER_PRODUCTS[idx]
                 wo = TestDataFactory.create_work_order(
                     db,
                     client_id=client_id,
                     work_order_id=f"WO-{client_id[:4]}-{idx+1:03d}",
                     style_model=mp["code"],
-                    status=status,
+                    status=wo_status,
                     planned_quantity=planned,
                     received_date=datetime.combine(today_d + timedelta(days=recv_off), datetime.min.time()),
                     planned_ship_date=datetime.combine(today_d + timedelta(days=req_off), datetime.min.time()),
                 )
                 wo.required_date = datetime.combine(today_d + timedelta(days=req_off), datetime.min.time())
-                wo.priority = "URGENT" if scenario == "shipped_late" else ("HIGH" if idx <= 1 else "MEDIUM")
+                wo.priority = "URGENT" if wo_scenario == "shipped_late" else ("HIGH" if idx <= 1 else "MEDIUM")
 
                 expected_units = int(planned * completion_pct)
                 wo_expected_production[wo.work_order_id] = expected_units
@@ -1218,10 +1221,10 @@ def init_database() -> None:
                     matching_cap.completed_quantity = expected_units
                     matching_cap.status = (
                         OrderStatus.COMPLETED
-                        if status == WorkOrderStatus.SHIPPED
+                        if wo_status == WorkOrderStatus.SHIPPED
                         else (
                             OrderStatus.IN_PROGRESS
-                            if status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD)
+                            if wo_status in (WorkOrderStatus.IN_PROGRESS, WorkOrderStatus.ON_HOLD)
                             else OrderStatus.CONFIRMED
                         )
                     )

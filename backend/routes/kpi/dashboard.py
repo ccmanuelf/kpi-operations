@@ -163,8 +163,9 @@ def get_aggregated_dashboard(
             from backend.orm.client_config import ClientConfig
 
             cc = db.query(ClientConfig).filter(ClientConfig.client_id == effective_client_id).first()
-            if cc and getattr(cc, "dpmo_opportunities_default", None):
-                opps_per_unit = max(1, int(cc.dpmo_opportunities_default))
+            opps_default = getattr(cc, "dpmo_opportunities_default", None) if cc else None
+            if opps_default is not None:
+                opps_per_unit = max(1, int(opps_default))
 
         q_query = db.query(
             func.coalesce(func.sum(QualityEntry.units_inspected), 0).label("inspected"),

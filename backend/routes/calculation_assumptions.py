@@ -44,7 +44,7 @@ router = APIRouter(prefix="/api/assumptions", tags=["Calculation Assumptions"])
 # --------------------------------------------------------------------- helpers
 
 
-def _to_response(record) -> AssumptionResponse:
+def _to_response(record: Any) -> AssumptionResponse:
     import json
 
     return AssumptionResponse(
@@ -68,7 +68,7 @@ def _to_response(record) -> AssumptionResponse:
     )
 
 
-def _to_change_response(change) -> AssumptionChangeResponse:
+def _to_change_response(change: Any) -> AssumptionChangeResponse:
     import json
 
     return AssumptionChangeResponse(

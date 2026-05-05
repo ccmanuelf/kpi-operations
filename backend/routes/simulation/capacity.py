@@ -197,8 +197,7 @@ async def quick_staffing_calculation(
     client_id_assigned = current_user.client_id_assigned
     if not client_id_assigned:
         raise HTTPException(status_code=400, detail="User has no client assignment")
-    result = calculate_capacity_requirements(
-        db=db,
+    result = SimulationService(db).calculate_capacity_requirements(
         client_id=client_id_assigned,
         target_units=target_units,
         target_date=date.today(),

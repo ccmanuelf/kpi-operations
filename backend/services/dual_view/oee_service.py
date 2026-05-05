@@ -52,7 +52,7 @@ from backend.services.calculations.availability import (
     AvailabilityInputs,
     calculate_availability,
 )
-from backend.services.calculations.result import AssumptionApplied
+from backend.services.calculations.result import AssumptionApplied, CalculationResult
 from backend.services.dual_view.dual_view_result import DualViewResult
 from backend.utils.logging_utils import get_module_logger
 
@@ -162,7 +162,7 @@ class OEECalculationService:
         inputs: OEERawInputs,
         mode: str,
         assumptions: dict[str, CalculationAssumption],
-    ):
+    ) -> CalculationResult[Decimal]:
         """Run the three components + the OEE composition. Returns the OEE result."""
 
         # Availability

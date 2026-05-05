@@ -14,3 +14,6 @@ bandit==1.8.3
 black==25.1.0
 flake8==7.2.0
 mypy==1.17.1
+
+# Type stubs (required by mypy --no-error-summary)
+types-python-dateutil==2.9.0.20241206

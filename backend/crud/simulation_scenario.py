@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Set
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 from backend.orm.simulation_scenario import SimulationScenario
 from backend.orm.user import User
@@ -36,17 +36,20 @@ def _resolve_allowed_clients(user: User) -> Optional[Set[str]]:
     return {c.strip() for c in raw.split(",") if c.strip()}
 
 
-def _scope_filter(query, user: User):
+def _scope_filter(query: Query, user: User) -> Query:
     """Apply the tenant scope filter to a query. NULL client_id (global
     templates) is visible to everyone — they are intentional shared
     baselines."""
     allowed = _resolve_allowed_clients(user)
     if allowed is None:
         return query  # admin / poweruser
+    if not allowed:
+        # Non-admin user with empty allow-list — only global templates.
+        return query.filter(SimulationScenario.client_id.is_(None))
     return query.filter(
         or_(
             SimulationScenario.client_id.is_(None),  # global template
-            SimulationScenario.client_id.in_(allowed) if allowed else SimulationScenario.client_id.is_(None),
+            SimulationScenario.client_id.in_(allowed),
         )
     )
 
@@ -74,19 +77,21 @@ def list_scenarios(
         q = q.filter(SimulationScenario.is_active.is_(True))
     if client_id is not None:
         q = q.filter(SimulationScenario.client_id == client_id)
-    return (
+    rows: List[SimulationScenario] = (
         q.order_by(SimulationScenario.updated_at.desc().nullslast(), SimulationScenario.id.desc())
         .offset(skip)
         .limit(limit)
         .all()
     )
+    return rows
 
 
 def get_scenario(db: Session, user: User, scenario_id: int) -> Optional[SimulationScenario]:
     """Fetch one scenario the user is allowed to see (or None)."""
     q = db.query(SimulationScenario).filter(SimulationScenario.id == scenario_id)
     q = _scope_filter(q, user)
-    return q.first()
+    row: Optional[SimulationScenario] = q.first()
+    return row
 
 
 def create_scenario(db: Session, user: User, payload: Dict[str, Any]) -> SimulationScenario:

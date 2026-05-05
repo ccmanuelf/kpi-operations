@@ -211,7 +211,7 @@ def aggregate_oee_inputs(
         run_time,
     )
 
-    rework_q = db.query(func.coalesce(func.sum(QualityEntry.units_reworked), 0)).filter(
+    rework_q: Query = db.query(func.coalesce(func.sum(QualityEntry.units_reworked), 0)).filter(
         and_(
             QualityEntry.client_id == client_id,
             QualityEntry.shift_date >= period_start,
@@ -315,7 +315,7 @@ def aggregate_fpy_inputs(
 
     del line_id, shift_id, product_id
 
-    q = db.query(
+    q: Query = db.query(
         func.coalesce(func.sum(QualityEntry.units_inspected), 0).label("inspected"),
         func.coalesce(func.sum(QualityEntry.units_passed), 0).label("passed"),
         func.coalesce(func.sum(QualityEntry.units_reworked), 0).label("reworked"),

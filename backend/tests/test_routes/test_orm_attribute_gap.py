@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Any, Dict, List, Set, Tuple
 
 import pytest
 from sqlalchemy import inspect
@@ -37,7 +37,7 @@ from backend.orm.job import Job
 from backend.schemas.alert import Alert, AlertConfig, AlertHistory
 
 
-_TRACKED_ORMS = {
+_TRACKED_ORMS: Dict[str, Any] = {
     "ProductionEntry": ProductionEntry,
     "QualityEntry": QualityEntry,
     "DowntimeEntry": DowntimeEntry,

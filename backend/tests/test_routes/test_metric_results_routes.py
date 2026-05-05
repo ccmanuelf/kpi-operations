@@ -81,6 +81,7 @@ def _seed_oee_with_assumption(seeded) -> int:
         raw_inputs=inputs,
         persist=True,
     )
+    assert result.result_id is not None  # persist=True guarantees an id
     return result.result_id
 
 
@@ -94,6 +95,7 @@ def _seed_fpy_no_assumption(seeded) -> int:
         raw_inputs=inputs,
         persist=True,
     )
+    assert result.result_id is not None
     return result.result_id
 
 

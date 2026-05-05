@@ -378,15 +378,20 @@ def calibrate_from_history(
         .filter(CapacityProductionStandard.client_id == client_id)
         .distinct()
     }
-    products_with_data = (
-        db.query(Product)
-        .filter(
-            Product.client_id == client_id,
-            Product.product_code.in_(standard_codes) if standard_codes else False,
+    if standard_codes:
+        products_with_data = (
+            db.query(Product)
+            .filter(
+                Product.client_id == client_id,
+                Product.product_code.in_(standard_codes),
+            )
+            .order_by(Product.product_id)
+            .all()
         )
-        .order_by(Product.product_id)
-        .all()
-    )
+    else:
+        # No standards yet → no products to calibrate against (the route
+        # will surface a warning in the response payload).
+        products_with_data = []
 
     # Compute schedule first — _build_demands needs work_days to keep
     # daily/weekly internally consistent.

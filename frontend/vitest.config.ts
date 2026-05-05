@@ -33,9 +33,14 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: [
-        'src/services/**/*.js',
-        'src/stores/**/*.js',
-        'src/utils/**/*.js',
+        // Include both .js and .ts — services / stores / utils / composables
+        // were progressively migrated to TypeScript and the legacy .js-only
+        // glob silently excluded them from measurement. (E.g. all 28 services,
+        // 19 stores, 9 utils, and 66 composables are now .ts-only.)
+        'src/services/**/*.{js,ts}',
+        'src/stores/**/*.{js,ts}',
+        'src/utils/**/*.{js,ts}',
+        'src/composables/**/*.{js,ts}',
         'src/components/**/*.vue',
         'src/views/**/*.vue'
       ],
@@ -54,12 +59,14 @@ export default defineConfig({
         // behavior change, not an actual coverage regression.
         // Original thresholds (vitest 1): 55/45/50/55
         // Run 5 remediation aspiration: 30/25/20/30 (never met — many views at 0%)
-        // Current floor (locked as no-regression gate, must only ratchet up):
-        // measured 18.35/18.67/10.97/19.93 on 2026-04-27.
-        statements: 18,
-        branches: 18,
-        functions: 10,
-        lines: 19
+        // 2026-04-27 measured floor (.js-only include glob): 18.35/18.67/10.97/19.93.
+        // 2026-05-04 — included .ts files in the coverage glob to match the
+        // post-TS-port codebase (services/stores/utils/composables are all
+        // .ts now). Current floor measured: 22.68/20.5/15.02/24.32.
+        statements: 22,
+        branches: 20,
+        functions: 15,
+        lines: 24
       }
     }
   }
