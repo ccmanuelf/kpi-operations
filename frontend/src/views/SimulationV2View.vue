@@ -243,6 +243,27 @@
               {{ t('simulationV2.actions.planHorizon') }}
             </v-btn>
 
+            <v-divider vertical inset class="mx-2" />
+
+            <v-btn
+              color="success"
+              variant="outlined"
+              :disabled="store.operations.length === 0"
+              @click="openSaveScenarioDialog"
+            >
+              <v-icon start>mdi-content-save</v-icon>
+              {{ t('simulationV2.scenarios.save') }}
+            </v-btn>
+
+            <v-btn
+              color="success"
+              variant="outlined"
+              @click="openScenariosDrawer"
+            >
+              <v-icon start>mdi-folder-open</v-icon>
+              {{ t('simulationV2.scenarios.load') }}
+            </v-btn>
+
             <v-spacer />
 
             <v-btn
@@ -972,6 +993,150 @@
       </v-card>
     </v-dialog>
 
+    <!-- Save Scenario Dialog (D3) -->
+    <v-dialog v-model="showSaveScenarioDialog" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="success">mdi-content-save</v-icon>
+          {{ t('simulationV2.scenarios.saveDialogTitle') }}
+        </v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="saveScenarioName"
+            :label="t('simulationV2.scenarios.fieldName')"
+            :hint="t('simulationV2.scenarios.fieldNameHint')"
+            persistent-hint
+            density="comfortable"
+            variant="outlined"
+            class="mb-3"
+            autofocus
+            :rules="[v => !!v || t('simulationV2.scenarios.nameRequired')]"
+          />
+          <v-textarea
+            v-model="saveScenarioDescription"
+            :label="t('simulationV2.scenarios.fieldDescription')"
+            density="comfortable"
+            variant="outlined"
+            rows="2"
+            class="mb-3"
+          />
+          <v-combobox
+            v-model="saveScenarioTags"
+            :label="t('simulationV2.scenarios.fieldTags')"
+            :hint="t('simulationV2.scenarios.fieldTagsHint')"
+            persistent-hint
+            density="comfortable"
+            variant="outlined"
+            multiple
+            chips
+            closable-chips
+          />
+          <v-text-field
+            v-if="canSetClient"
+            v-model="saveScenarioClientId"
+            :label="t('simulationV2.scenarios.fieldClient')"
+            :hint="t('simulationV2.scenarios.fieldClientHint')"
+            persistent-hint
+            density="comfortable"
+            variant="outlined"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showSaveScenarioDialog = false">
+            {{ t('common.close') }}
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            :loading="isSavingScenario"
+            :disabled="!saveScenarioName.trim()"
+            @click="handleSaveScenario"
+          >
+            <v-icon start>mdi-check</v-icon>
+            {{ t('simulationV2.scenarios.saveButton') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Scenarios List Drawer (D3) -->
+    <v-dialog v-model="showScenariosDrawer" max-width="1100" scrollable>
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          <v-icon start color="success">mdi-folder-open</v-icon>
+          {{ t('simulationV2.scenarios.listDialogTitle') }}
+          <v-spacer />
+          <v-btn icon size="small" @click="refreshScenarios" :loading="isLoadingScenarios">
+            <v-icon>mdi-refresh</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text style="min-height: 400px;">
+          <v-alert
+            v-if="!scenariosList.length && !isLoadingScenarios"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+          >
+            {{ t('simulationV2.scenarios.empty') }}
+          </v-alert>
+          <v-table v-if="scenariosList.length" density="compact" hover>
+            <thead>
+              <tr>
+                <th>{{ t('simulationV2.scenarios.col.name') }}</th>
+                <th>{{ t('simulationV2.scenarios.col.client') }}</th>
+                <th>{{ t('simulationV2.scenarios.col.tags') }}</th>
+                <th>{{ t('simulationV2.scenarios.col.lastRun') }}</th>
+                <th>{{ t('simulationV2.scenarios.col.throughput') }}</th>
+                <th>{{ t('simulationV2.scenarios.col.coverage') }}</th>
+                <th>{{ t('simulationV2.scenarios.col.actions') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in scenariosList" :key="s.id">
+                <td>
+                  <strong>{{ s.name }}</strong>
+                  <div v-if="s.description" class="text-caption text-medium-emphasis">{{ s.description }}</div>
+                </td>
+                <td>{{ s.client_id || t('simulationV2.scenarios.globalClient') }}</td>
+                <td>
+                  <v-chip v-for="tag in (s.tags || [])" :key="tag" size="x-small" class="mr-1">{{ tag }}</v-chip>
+                </td>
+                <td class="text-caption">{{ s.last_run_at ? formatDate(s.last_run_at) : '—' }}</td>
+                <td>{{ s.last_run_summary?.daily_throughput_pcs ?? '—' }}</td>
+                <td>
+                  <span :class="coverageClass(s.last_run_summary?.daily_coverage_pct)">
+                    {{ s.last_run_summary?.daily_coverage_pct != null ? s.last_run_summary.daily_coverage_pct.toFixed(1) + '%' : '—' }}
+                  </span>
+                </td>
+                <td>
+                  <v-btn icon size="x-small" variant="text" :title="t('simulationV2.scenarios.action.load')" @click="handleLoadScenario(s.id)">
+                    <v-icon>mdi-download</v-icon>
+                  </v-btn>
+                  <v-btn icon size="x-small" variant="text" :title="t('simulationV2.scenarios.action.run')" @click="handleRunScenario(s.id)" :loading="runningScenarioId === s.id">
+                    <v-icon>mdi-play</v-icon>
+                  </v-btn>
+                  <v-btn icon size="x-small" variant="text" :title="t('simulationV2.scenarios.action.duplicate')" @click="handleDuplicateScenario(s.id)">
+                    <v-icon>mdi-content-copy</v-icon>
+                  </v-btn>
+                  <v-btn icon size="x-small" variant="text" color="error" :title="t('simulationV2.scenarios.action.delete')" @click="handleDeleteScenario(s)">
+                    <v-icon>mdi-delete</v-icon>
+                  </v-btn>
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="showScenariosDrawer = false">
+            {{ t('common.close') }}
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Reset Confirmation Dialog -->
     <v-dialog v-model="showResetDialog" max-width="450">
       <v-card>
@@ -1036,6 +1201,15 @@ import { useI18n } from 'vue-i18n'
 import { useSimulationV2Store } from '@/stores/simulationV2Store'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { optimizeOperatorAllocation, rebalanceBottlenecks, sequenceProducts, planHorizon } from '@/services/api/simulationV2'
+import {
+  listScenarios,
+  createScenario,
+  getScenario,
+  deleteScenario,
+  duplicateScenario,
+  runScenario,
+} from '@/services/api/simulationScenarios'
+import { useAuthStore } from '@/stores/authStore'
 import { useSimulationComparison } from '@/composables/useSimulationComparison'
 import OperationsGrid from '@/components/simulation/OperationsGrid.vue'
 import ScheduleForm from '@/components/simulation/ScheduleForm.vue'
@@ -1094,6 +1268,24 @@ const planningResult = ref(null)
 const showPlanSetupDialog = ref(false)
 const showPlanResultDialog = ref(false)
 const planHorizonDays = ref(5)
+
+// D3 — Scenario persistence state.
+const authStore = useAuthStore()
+const showSaveScenarioDialog = ref(false)
+const showScenariosDrawer = ref(false)
+const isSavingScenario = ref(false)
+const isLoadingScenarios = ref(false)
+const runningScenarioId = ref(null)
+const scenariosList = ref([])
+const saveScenarioName = ref('')
+const saveScenarioDescription = ref('')
+const saveScenarioTags = ref([])
+const saveScenarioClientId = ref('')
+
+const canSetClient = computed(() => {
+  const role = (authStore.currentUser?.role || '').toLowerCase()
+  return role === 'admin' || role === 'poweruser'
+})
 
 // Computed
 const canRunSimulation = computed(() => {
@@ -1350,6 +1542,160 @@ function applyRebalancing() {
   })
   showRebalancingDialog.value = false
   notify.showSuccess(t('simulationV2.rebalance.applied'))
+}
+
+// =============================================================================
+// D3 — Scenario persistence handlers
+// =============================================================================
+
+/**
+ * Open the save dialog. Pre-fills client_id from the user's
+ * assignment so non-admin save lands in their tenant by default.
+ */
+function openSaveScenarioDialog() {
+  saveScenarioName.value = ''
+  saveScenarioDescription.value = ''
+  saveScenarioTags.value = []
+  // Default client = user's assigned client for non-admin/poweruser.
+  // Admin/poweruser see the field and can override (NULL = global).
+  const assigned = authStore.currentUser?.client_id_assigned || ''
+  saveScenarioClientId.value = assigned.split(',')[0]?.trim() || ''
+  showSaveScenarioDialog.value = true
+}
+
+async function handleSaveScenario() {
+  if (!saveScenarioName.value.trim()) return
+  isSavingScenario.value = true
+  try {
+    const config = store.buildConfig()
+    const payload = {
+      name: saveScenarioName.value.trim(),
+      description: saveScenarioDescription.value.trim() || null,
+      config_json: config,
+      tags: saveScenarioTags.value.length ? saveScenarioTags.value : null,
+    }
+    // Admin / poweruser can leave client blank to create a global template.
+    if (canSetClient.value) {
+      payload.client_id = saveScenarioClientId.value.trim() || null
+    } else {
+      // Non-admin: must pin to their client (server enforces too)
+      payload.client_id = saveScenarioClientId.value.trim() || authStore.currentUser?.client_id_assigned || null
+    }
+    const created = await createScenario(payload)
+    notify.showSuccess(t('simulationV2.scenarios.savedSuccess', { name: created.name }))
+    showSaveScenarioDialog.value = false
+  } catch (error) {
+    console.error('Save scenario error:', error)
+    notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.saveFailed'))
+  } finally {
+    isSavingScenario.value = false
+  }
+}
+
+async function refreshScenarios() {
+  isLoadingScenarios.value = true
+  try {
+    scenariosList.value = await listScenarios({ limit: 200 })
+  } catch (error) {
+    console.error('List scenarios error:', error)
+    notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.loadListFailed'))
+  } finally {
+    isLoadingScenarios.value = false
+  }
+}
+
+function openScenariosDrawer() {
+  showScenariosDrawer.value = true
+  refreshScenarios()
+}
+
+/**
+ * Load a scenario's config_json back into the workbench. Replaces the
+ * current operations / schedule / demands / breakdowns. Confirms with
+ * the operator if they have unsaved work.
+ */
+async function handleLoadScenario(scenarioId) {
+  try {
+    const full = await getScenario(scenarioId)
+    const cfg = full.config_json || {}
+    // Mirror the shape the store expects from a buildConfig() round-trip.
+    if (Array.isArray(cfg.operations)) store.operations = cfg.operations
+    if (cfg.schedule) Object.assign(store.schedule, cfg.schedule)
+    if (Array.isArray(cfg.demands)) store.demands = cfg.demands
+    if (Array.isArray(cfg.breakdowns)) store.breakdowns = cfg.breakdowns
+    if (cfg.mode) store.mode = cfg.mode
+    if (cfg.horizon_days != null) store.horizonDays = cfg.horizon_days
+    notify.showSuccess(t('simulationV2.scenarios.loadedSuccess', { name: full.name }))
+    showScenariosDrawer.value = false
+  } catch (error) {
+    console.error('Load scenario error:', error)
+    notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.loadFailed'))
+  }
+}
+
+async function handleRunScenario(scenarioId) {
+  runningScenarioId.value = scenarioId
+  try {
+    const updated = await runScenario(scenarioId)
+    // Update the row in the list with the new last_run_summary
+    const idx = scenariosList.value.findIndex((s) => s.id === scenarioId)
+    if (idx >= 0) {
+      scenariosList.value[idx] = {
+        ...scenariosList.value[idx],
+        last_run_summary: updated.last_run_summary,
+        last_run_at: updated.last_run_at,
+      }
+    }
+    const s = updated.last_run_summary || {}
+    notify.showSuccess(t('simulationV2.scenarios.ranSuccess', {
+      throughput: s.daily_throughput_pcs ?? '—',
+      coverage: s.daily_coverage_pct != null ? s.daily_coverage_pct.toFixed(1) : '—',
+    }))
+  } catch (error) {
+    console.error('Run scenario error:', error)
+    notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.runFailed'))
+  } finally {
+    runningScenarioId.value = null
+  }
+}
+
+async function handleDuplicateScenario(scenarioId) {
+  try {
+    await duplicateScenario(scenarioId)
+    notify.showSuccess(t('simulationV2.scenarios.duplicatedSuccess'))
+    refreshScenarios()
+  } catch (error) {
+    console.error('Duplicate scenario error:', error)
+    notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.duplicateFailed'))
+  }
+}
+
+async function handleDeleteScenario(scenario) {
+  if (!confirm(t('simulationV2.scenarios.confirmDelete', { name: scenario.name }))) return
+  try {
+    await deleteScenario(scenario.id)
+    notify.showSuccess(t('simulationV2.scenarios.deletedSuccess', { name: scenario.name }))
+    refreshScenarios()
+  } catch (error) {
+    console.error('Delete scenario error:', error)
+    notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.deleteFailed'))
+  }
+}
+
+function formatDate(iso) {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return iso
+  }
+}
+
+function coverageClass(pct) {
+  if (pct == null) return ''
+  if (pct >= 100) return 'text-success'
+  if (pct >= 90) return 'text-warning'
+  return 'text-error'
 }
 
 /** Comparison metric definitions used by the side-by-side panel. */

@@ -2979,6 +2979,50 @@
         "slack": "Holgura (pcs/día)"
       }
     },
+    "scenarios": {
+      "save": "Guardar Escenario",
+      "load": "Escenarios",
+      "saveDialogTitle": "Guardar Configuración Actual como Escenario",
+      "listDialogTitle": "Escenarios Guardados",
+      "fieldName": "Nombre del escenario",
+      "fieldNameHint": "Un nombre único y descriptivo (ej. 'Línea base T3', '¿Qué pasa si autorizo OT?')",
+      "fieldDescription": "Descripción (opcional)",
+      "fieldTags": "Etiquetas (opcional)",
+      "fieldTagsHint": "Escribe y presiona Enter para agregar varias",
+      "fieldClient": "Cliente (opcional — solo admin/poweruser)",
+      "fieldClientHint": "Deja en blanco para crear una plantilla global visible a todos los clientes",
+      "saveButton": "Guardar",
+      "savedSuccess": "Escenario \"{name}\" guardado",
+      "saveFailed": "No se pudo guardar el escenario",
+      "nameRequired": "El nombre es obligatorio",
+      "loadListFailed": "No se pudieron cargar los escenarios guardados",
+      "loadedSuccess": "Escenario \"{name}\" cargado en el área de trabajo",
+      "loadFailed": "No se pudo cargar el escenario",
+      "ranSuccess": "Escenario ejecutado: producción {throughput} pzs/día, cobertura {coverage}%",
+      "runFailed": "La ejecución del escenario falló",
+      "duplicatedSuccess": "Escenario duplicado",
+      "duplicateFailed": "No se pudo duplicar el escenario",
+      "deletedSuccess": "Escenario \"{name}\" eliminado",
+      "deleteFailed": "No se pudo eliminar el escenario",
+      "confirmDelete": "¿Eliminar el escenario \"{name}\"? Quedará marcado como inactivo y un admin podrá recuperarlo.",
+      "empty": "Aún no hay escenarios guardados. Usa el botón Guardar Escenario en la barra de herramientas.",
+      "globalClient": "(global)",
+      "col": {
+        "name": "Nombre",
+        "client": "Cliente",
+        "tags": "Etiquetas",
+        "lastRun": "Última ejecución",
+        "throughput": "Producción (pzs/día)",
+        "coverage": "Cobertura",
+        "actions": "Acciones"
+      },
+      "action": {
+        "load": "Cargar en el área de trabajo",
+        "run": "Ejecutar con el motor",
+        "duplicate": "Duplicar",
+        "delete": "Eliminar (lógico)"
+      }
+    },
     "plan": {
       "setupDialogTitle": "Planear Horizonte — Cronograma Multi-Día",
       "setupIntro": "Distribuye la demanda semanal a lo largo del horizonte de planeación para minimizar la MÁXIMA utilización diaria (carga más uniforme). Lee weekly_demand de cada producto (o daily_demand × días laborales si no hay semanal).",

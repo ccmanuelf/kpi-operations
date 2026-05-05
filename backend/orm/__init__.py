@@ -109,6 +109,9 @@ from .capacity import (
     CapacityKPICommitment,
 )
 
+# D3 — SimPy V2 / MiniZinc scenario persistence
+from .simulation_scenario import SimulationScenario
+
 __all__ = [
     # Core foundation
     "Client",
@@ -195,4 +198,6 @@ __all__ = [
     "ScheduleStatus",
     "CapacityScenario",
     "CapacityKPICommitment",
+    # Simulation V2 scenario persistence (D3)
+    "SimulationScenario",
 ]

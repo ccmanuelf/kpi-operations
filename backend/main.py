@@ -601,6 +601,7 @@ from backend.routes import (
     workflow_router,
     simulation_router,
     simulation_v2_router,
+    simulation_scenarios_router,
     # Database configuration router (Phase 12)
     database_config_router,
     # Cache management router (Phase A.1)
@@ -776,6 +777,7 @@ app.include_router(simulation_router)
 # Simulation v2.0: Ephemeral production line simulation (no DB dependencies)
 # ============================================================================
 app.include_router(simulation_v2_router)
+app.include_router(simulation_scenarios_router)
 
 # ============================================================================
 # Register CSV upload routes for all resources

@@ -135,6 +135,25 @@ Two options:
 - **Clear all** — empty config
 - **Load sample T-Shirt** — populates with the worked-example garment line
 
+## Saved scenarios (D3 — persistence)
+
+The toolbar carries two scenario buttons in the new "Save / Load" group:
+
+- **Save Scenario** — captures the current Operations / Schedule / Demand / Breakdowns config under a name. Add a description, tags, and optionally pin it to a specific client.
+- **Scenarios** — opens a list of all scenarios visible to you (filtered server-side by your client assignment). From the list:
+  - **Load** — replaces the current workbench config with the saved scenario
+  - **Run** — executes the engine on the saved config and pins a result summary on the row (so the next time you visit, you see the headline metrics without re-running)
+  - **Duplicate** — clones the scenario (with a `(copy)` suffix or a new name)
+  - **Delete** — soft-deletes (recoverable by an admin)
+
+Permissions:
+- Anyone authenticated can list scenarios visible to their client(s).
+- Operators can read but cannot save / run / duplicate / delete.
+- Leader / supervisor / poweruser / admin can mutate.
+- Admin / poweruser can also create global (NULL `client_id`) scenarios that act as templates visible to all clients.
+
+The scenario stores the SimulationConfig as a JSON blob, so engine upgrades preserve old saves. If a stored config becomes incompatible with the current engine schema (e.g. a field was renamed), the **Run** button surfaces a 422 with a helpful message; re-save from the UI to migrate it.
+
 ## Output blocks
 
 After **Run Simulation** completes, you get 8 result blocks:

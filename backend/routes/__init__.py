@@ -51,6 +51,7 @@ from .alerts import router as alerts_router
 from .workflow import router as workflow_router
 from .simulation import router as simulation_router
 from .simulation_v2 import router as simulation_v2_router
+from .simulation_scenarios import router as simulation_scenarios_router
 from .database_config import router as database_config_router
 from .cache import router as cache_router
 
@@ -99,6 +100,7 @@ __all__ = [
     "workflow_router",
     "simulation_router",
     "simulation_v2_router",
+    "simulation_scenarios_router",
     "database_config_router",
     "cache_router",
     # Capacity Planning

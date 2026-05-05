@@ -2982,6 +2982,50 @@
         "slack": "Slack (pcs/day)"
       }
     },
+    "scenarios": {
+      "save": "Save Scenario",
+      "load": "Scenarios",
+      "saveDialogTitle": "Save Current Configuration as Scenario",
+      "listDialogTitle": "Saved Scenarios",
+      "fieldName": "Scenario name",
+      "fieldNameHint": "A unique, descriptive name (e.g. 'Q3 baseline', 'OT-budget what-if')",
+      "fieldDescription": "Description (optional)",
+      "fieldTags": "Tags (optional)",
+      "fieldTagsHint": "Type and press Enter to add multiple tags",
+      "fieldClient": "Client (optional — admin/poweruser only)",
+      "fieldClientHint": "Leave blank to create a global template visible to all clients",
+      "saveButton": "Save",
+      "savedSuccess": "Saved scenario \"{name}\"",
+      "saveFailed": "Could not save the scenario",
+      "nameRequired": "Name is required",
+      "loadListFailed": "Could not load saved scenarios",
+      "loadedSuccess": "Loaded scenario \"{name}\" into the workbench",
+      "loadFailed": "Could not load the scenario",
+      "ranSuccess": "Ran scenario: throughput {throughput} pcs/day, coverage {coverage}%",
+      "runFailed": "Scenario run failed",
+      "duplicatedSuccess": "Scenario duplicated",
+      "duplicateFailed": "Could not duplicate the scenario",
+      "deletedSuccess": "Deleted scenario \"{name}\"",
+      "deleteFailed": "Could not delete the scenario",
+      "confirmDelete": "Delete scenario \"{name}\"? It will be soft-deleted and recoverable by an admin.",
+      "empty": "No saved scenarios yet. Save the current configuration via the toolbar Save Scenario button.",
+      "globalClient": "(global)",
+      "col": {
+        "name": "Name",
+        "client": "Client",
+        "tags": "Tags",
+        "lastRun": "Last run",
+        "throughput": "Throughput (pcs/day)",
+        "coverage": "Coverage",
+        "actions": "Actions"
+      },
+      "action": {
+        "load": "Load into workbench",
+        "run": "Run with engine",
+        "duplicate": "Duplicate",
+        "delete": "Delete (soft)"
+      }
+    },
     "plan": {
       "setupDialogTitle": "Plan Horizon — Multi-Day Schedule",
       "setupIntro": "Distribute weekly demand across the planning horizon to minimize the MAX daily utilization (smoothest workload). Reads weekly_demand from each product (or daily_demand × work_days if weekly is absent).",
