@@ -13,7 +13,6 @@ not how fast the machine ran during actual operation.
 """
 
 from typing import Optional
-from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 

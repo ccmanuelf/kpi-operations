@@ -4,7 +4,6 @@ Initialize SQLite Database Schema with All Security Fixes
 Standalone script that doesn't require backend configuration
 """
 
-import sys
 import os
 import sqlite3
 

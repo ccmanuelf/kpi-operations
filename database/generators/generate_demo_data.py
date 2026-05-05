@@ -20,14 +20,11 @@ Date: 2026-01-27
 """
 
 import os
-import sys
 import random
 import sqlite3
 import json
 import uuid
-from datetime import datetime, timedelta, date
-from decimal import Decimal
-from typing import List, Dict, Any, Tuple, Optional
+from datetime import datetime, timedelta
 
 # ============================================================================
 # Configuration
