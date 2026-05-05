@@ -9,7 +9,7 @@ from datetime import date
 
 from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus
 from backend.schemas.hold import WIPHoldResponse
-from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
+from backend.middleware.client_auth import build_client_filter_clause
 from backend.orm.user import User
 
 

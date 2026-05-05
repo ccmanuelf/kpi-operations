@@ -5,10 +5,9 @@ SECURITY: All operations enforce client-based access control
 """
 
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import date
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
-from fastapi import HTTPException
+from sqlalchemy import func
 
 from backend.orm.defect_detail import DefectDetail
 from backend.orm.user import User

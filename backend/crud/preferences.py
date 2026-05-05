@@ -11,7 +11,6 @@ import json
 import logging
 
 from backend.orm.user_preferences import UserPreferences, DashboardWidgetDefaults
-from backend.orm.user import User
 from backend.schemas.preferences import (
     DashboardPreferences,
     DashboardWidgetConfig,

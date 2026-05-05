@@ -5,7 +5,7 @@ Enforces allocation rules: max 2 active lines per employee, total <= 100%.
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import and_, or_, func as sqlfunc
+from sqlalchemy import or_, func as sqlfunc
 from typing import Any, List, Optional
 from datetime import date
 from decimal import Decimal

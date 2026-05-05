@@ -3,12 +3,12 @@ Analytics CRUD operations
 Database queries for retrieving analytics data with multi-tenant filtering
 """
 
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Tuple
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import date
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select, and_, or_, case
-from backend.middleware.client_auth import build_client_filter_clause, get_user_client_filter
+from sqlalchemy import func, select, and_
+from backend.middleware.client_auth import get_user_client_filter
 from backend.orm.user import User
 
 

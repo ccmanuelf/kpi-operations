@@ -6,7 +6,7 @@ and bridging to Capacity Planning production lines.
 
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from backend.orm.production_line import ProductionLine
 from backend.orm.capacity.production_lines import CapacityProductionLine

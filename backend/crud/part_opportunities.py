@@ -8,8 +8,6 @@ import logging
 from typing import Any, List, Optional, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import and_
-from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 

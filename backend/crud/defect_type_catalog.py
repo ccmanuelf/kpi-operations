@@ -17,7 +17,6 @@ from backend.orm.defect_type_catalog import DefectTypeCatalog
 from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCreate,
     DefectTypeCatalogUpdate,
-    DefectTypeCatalogResponse,
     DefectTypeCatalogCSVRow,
 )
 from backend.middleware.client_auth import verify_client_access

@@ -4,8 +4,8 @@ P2-001: Hold Duration Auto-Calculation functions
 """
 
 from sqlalchemy.orm import Session
-from typing import Optional, List
-from datetime import date, datetime, timezone
+from typing import Optional
+from datetime import datetime, timezone
 from decimal import Decimal
 from fastapi import HTTPException
 

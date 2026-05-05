@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_
 from typing import List, Optional
-from datetime import datetime, timezone
 
 from backend.orm.hold_status_catalog import HoldStatusCatalog
 from backend.orm.hold_reason_catalog import HoldReasonCatalog

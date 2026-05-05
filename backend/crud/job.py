@@ -8,8 +8,6 @@ from decimal import Decimal
 from typing import List, Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
-from fastapi import HTTPException
 
 from backend.orm.job import Job
 from backend.orm.user import User

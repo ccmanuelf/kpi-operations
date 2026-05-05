@@ -4,7 +4,6 @@ PHASE 2
 """
 
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
 from typing import Optional, List
 from datetime import date
 from fastapi import HTTPException

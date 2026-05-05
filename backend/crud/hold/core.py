@@ -7,7 +7,6 @@ import uuid
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import date, datetime, timezone
-from decimal import Decimal
 from fastapi import HTTPException
 
 from backend.orm.hold_entry import HoldEntry as WIPHold, HoldStatus

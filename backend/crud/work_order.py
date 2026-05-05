@@ -7,16 +7,16 @@ Phase 10: Integrated with Workflow State Machine
 
 import logging
 from typing import Any, List, Optional
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from sqlalchemy import and_
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.orm.work_order import WorkOrder, WorkOrderStatus
+from backend.orm.work_order import WorkOrder
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
