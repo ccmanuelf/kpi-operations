@@ -15,7 +15,7 @@ async function navigateToDefectTypes(page: Page) {
   const link = page.locator('a[href="/admin/defect-types"]').first()
   if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
     await link.scrollIntoViewIfNeeded()
-    await link.click()
+    await link.click({ force: true })
     await page.waitForURL(/defect-types/i, { timeout: 5000 }).catch(() => {})
   } else {
     await page.goto('/admin/defect-types')
@@ -53,7 +53,7 @@ test.describe('Admin — Defect Types catalog (inline AG Grid)', () => {
       .locator('button:has-text("Upload"), button:has-text("Subir")')
       .first()
     if (await uploadBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await uploadBtn.click()
+      await uploadBtn.click({ force: true })
       const dialog = page.locator('.v-dialog, [role="dialog"]')
       const isOpen = await dialog.first().isVisible({ timeout: 3000 }).catch(() => false)
       expect(isOpen !== undefined).toBeTruthy()

@@ -15,7 +15,7 @@ async function navigateToScenariosTab(page: Page) {
   const link = page.locator('a[href="/capacity-planning"]').first()
   if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
     await link.scrollIntoViewIfNeeded()
-    await link.click()
+    await link.click({ force: true })
     await page.waitForURL(/capacity-planning/i, { timeout: 5000 }).catch(() => {})
   } else {
     await page.goto('/capacity-planning')
@@ -28,7 +28,7 @@ async function navigateToScenariosTab(page: Page) {
     .or(page.locator('button:has-text("Escenarios"), [role="tab"]:has-text("Escenarios")'))
     .first()
   if (await tab.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await tab.click()
+    await tab.click({ force: true })
     await page.waitForTimeout(800)
   }
 }

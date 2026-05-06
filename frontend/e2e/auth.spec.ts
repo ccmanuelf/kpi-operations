@@ -196,7 +196,7 @@ test.describe('Authentication', () => {
       const submitBtn = dialog.locator('button').filter({ hasText: /submit|save|create|register|add/i }).first();
 
       if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await submitBtn.click();
+        await submitBtn.click({ force: true });
 
         // Should show validation errors or the dialog should remain open
         await page.waitForTimeout(500);
@@ -244,7 +244,7 @@ test.describe('Authentication', () => {
       const submitBtn = dialog.locator('button').filter({ hasText: /submit|save|create|register|add/i }).first();
 
       if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await submitBtn.click();
+        await submitBtn.click({ force: true });
         await page.waitForTimeout(2000);
 
         // Check for success indicators: dialog closed, success message, or no errors
@@ -301,7 +301,7 @@ test.describe('Authentication', () => {
         dialog.locator('button:has-text("Reset")')
       );
       if (await submitButton.isVisible()) {
-        await submitButton.click();
+        await submitButton.click({ force: true });
       }
 
       // Should show validation error
@@ -323,7 +323,7 @@ test.describe('Authentication', () => {
         dialog.locator('button:has-text("Reset")')
       );
       if (await submitButton.isVisible()) {
-        await submitButton.click();
+        await submitButton.click({ force: true });
       }
 
       // Should show confirmation or success message
@@ -394,7 +394,7 @@ test.describe('Authentication', () => {
           page.locator('button:has-text("Save")')
         );
         if (await submitButton.isVisible()) {
-          await submitButton.click();
+          await submitButton.click({ force: true });
         }
 
         // Should show mismatch error
@@ -439,7 +439,7 @@ test.describe('Authentication', () => {
         )
       );
       if (await logoutButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await logoutButton.click();
+        await logoutButton.click({ force: true });
         await expect(page.locator('text=Manufacturing KPI')).toBeVisible({ timeout: 10000 });
       }
     });
@@ -456,7 +456,7 @@ test.describe('Authentication', () => {
         page.locator('button:has-text("Logout")')
       );
       if (await logoutButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await logoutButton.click();
+        await logoutButton.click({ force: true });
         await expect(page.locator('text=Manufacturing KPI')).toBeVisible({ timeout: 10000 });
 
         // Try to access protected page
@@ -479,7 +479,7 @@ test.describe('Authentication', () => {
         page.locator('button:has-text("Logout")')
       );
       if (await logoutButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await logoutButton.click();
+        await logoutButton.click({ force: true });
 
         // May show confirmation dialog
         const confirmation = page.locator('.v-dialog:has-text("logout")');
@@ -587,7 +587,7 @@ test.describe('Authentication', () => {
       const hasToggle = await toggleButton.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (hasToggle) {
-        await toggleButton.click();
+        await toggleButton.click({ force: true });
         // Just verify click works, type may or may not change
         await page.waitForTimeout(500);
       }

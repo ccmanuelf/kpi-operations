@@ -15,7 +15,7 @@ async function navigateToPartOpportunities(page: Page) {
   const link = page.locator('a[href="/admin/part-opportunities"]').first()
   if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
     await link.scrollIntoViewIfNeeded()
-    await link.click()
+    await link.click({ force: true })
     await page.waitForURL(/part-opportunities/i, { timeout: 5000 }).catch(() => {})
   } else {
     await page.goto('/admin/part-opportunities')

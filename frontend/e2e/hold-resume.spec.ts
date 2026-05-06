@@ -110,7 +110,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
       // Try to select an option if available
       const option = page.locator('.v-list-item').first();
       if (await option.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await option.click();
+        await option.click({ force: true });
         await page.waitForTimeout(300);
       }
 
@@ -125,7 +125,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
       await page.waitForTimeout(500);
       const reasonOption = page.locator('.v-list-item').first();
       if (await reasonOption.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await reasonOption.click();
+        await reasonOption.click({ force: true });
         await page.waitForTimeout(300);
       }
 
@@ -135,7 +135,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
       await page.waitForTimeout(500);
       const severityOption = page.locator('.v-list-item').first();
       if (await severityOption.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await severityOption.click();
+        await severityOption.click({ force: true });
         await page.waitForTimeout(300);
       }
 
@@ -158,7 +158,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
       const resumedTab = page.getByRole('tab', { name: 'Resumed' });
       await expect(resumedTab).toBeVisible({ timeout: 10000 });
 
-      await resumedTab.click();
+      await resumedTab.click({ force: true });
       await page.waitForTimeout(500);
 
       // The Resumed tab should now be selected
@@ -168,7 +168,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
     test('should show hold selection dropdown in resume tab', async ({ page }) => {
       // Click on Resumed tab
       const resumedTab = page.getByRole('tab', { name: 'Resumed' });
-      await resumedTab.click();
+      await resumedTab.click({ force: true });
       await page.waitForTimeout(1000);
 
       // Verify tab is selected
@@ -182,7 +182,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
     test('should show resolution notes field in resume tab', async ({ page }) => {
       // Click on Resumed tab
       const resumedTab = page.getByRole('tab', { name: 'Resumed' });
-      await resumedTab.click();
+      await resumedTab.click({ force: true });
       await page.waitForTimeout(1000);
 
       // The Resumed tab should be active and display content
@@ -233,7 +233,7 @@ test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEnt
       );
 
       if (await navLink.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await navLink.click();
+        await navLink.click({ force: true });
         await page.waitForLoadState('networkidle');
 
         // Should navigate to hold/resume page

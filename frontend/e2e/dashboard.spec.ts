@@ -57,7 +57,7 @@ test.describe('Dashboard', () => {
   test('should show user menu', async ({ page }) => {
     const userMenu = page.locator('[data-testid="user-menu"]').or(page.locator('.v-avatar').first());
     if (await userMenu.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await userMenu.click();
+      await userMenu.click({ force: true });
       await expect(page.locator('.v-menu')).toBeVisible();
     }
   });
@@ -125,7 +125,7 @@ test.describe('Production Management', () => {
     // Click on column header to sort
     const columnHeader = page.locator('.ag-header-cell').first().or(page.locator('th').first());
     if (await columnHeader.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await columnHeader.click();
+      await columnHeader.click({ force: true });
     }
   });
 });

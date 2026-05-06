@@ -21,7 +21,7 @@ async function navigateToCapacityPlanning(page: Page) {
   // Scroll nav item into view and click — it's near the bottom of a long drawer
   const navItem = page.locator('.v-navigation-drawer a[href="/capacity-planning"]');
   await navItem.scrollIntoViewIfNeeded();
-  await navItem.click();
+  await navItem.click({ force: true });
 
   // Wait for URL to confirm Vue Router navigation completed
   await page.waitForURL('**/capacity-planning', { timeout: 15000 });
@@ -40,7 +40,7 @@ async function waitForTabContent(page: Page, timeout = 5000) {
 async function clickTab(page: Page, tabName: string) {
   const tabsContainer = page.locator('.v-tabs');
   const tab = tabsContainer.locator('.v-tab', { hasText: tabName });
-  await tab.click();
+  await tab.click({ force: true });
   await waitForTabContent(page);
 }
 

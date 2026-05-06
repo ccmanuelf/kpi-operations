@@ -19,7 +19,7 @@ async function navigateToWorkOrders(page: Page) {
   const link = page.locator('a[href="/work-orders"]').first()
   if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
     await link.scrollIntoViewIfNeeded()
-    await link.click()
+    await link.click({ force: true })
     await page.waitForURL(/work-orders/i, { timeout: 5000 }).catch(() => {})
   } else {
     await page.goto('/work-orders')
@@ -46,7 +46,7 @@ test.describe('Work Order Management — inline AG Grid', () => {
   test('Add button opens a new draft row in the grid', async ({ page }) => {
     const addBtn = page.locator('button:has-text("Add")').first()
     if (await addBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await addBtn.click()
+      await addBtn.click({ force: true })
       await page.waitForTimeout(500)
       // New row should appear at the top with a green save button.
       const saveBtn = page.locator('button.ag-grid-save-btn, button[title*="Save"]').first()

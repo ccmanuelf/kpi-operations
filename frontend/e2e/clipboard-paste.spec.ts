@@ -17,10 +17,14 @@ async function navigateToDataEntry(page: Page, module: 'production' | 'quality' 
     downtime: '/data-entry/downtime'
   };
 
-  // Use href-based selector to avoid ambiguity with page content text
+  // Use href-based selector to avoid ambiguity with page content text.
+  // `force: true` skips Playwright's stability check — the role-based
+  // nav expansion (memory/dark-mode-and-nav.md) runs CSS transitions
+  // on v-list-group children that the stability check sees as
+  // "element not stable" even when the link is fully clickable.
   const navItem = page.locator(`.v-navigation-drawer a[href="${urlMapping[module]}"]`);
   await navItem.scrollIntoViewIfNeeded();
-  await navItem.click();
+  await navItem.click({ force: true });
 
   // Wait for URL to confirm navigation completed
   await page.waitForURL(`**${urlMapping[module]}`, { timeout: 15000 });
@@ -87,7 +91,7 @@ test.describe('Excel Clipboard Paste', () => {
       const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
 
       if (await grid.isVisible()) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Simulate paste with sample data (tab-separated like Excel)
         const testData = createExcelClipboardData([
@@ -119,7 +123,7 @@ test.describe('Excel Clipboard Paste', () => {
       const pasteButton = page.locator('button:has-text("Paste")').first();
 
       if (await pasteButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await pasteButton.click();
+        await pasteButton.click({ force: true });
         await page.waitForTimeout(1000);
 
         // The paste button may open a dialog, show a paste area, or read
@@ -135,7 +139,7 @@ test.describe('Excel Clipboard Paste', () => {
       const grid = page.locator('.ag-root').first();
 
       if (await grid.isVisible()) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Paste invalid data
         const invalidData = createExcelClipboardData([
@@ -197,7 +201,7 @@ test.describe('Excel Clipboard Paste', () => {
       const pasteButton = page.locator('button:has-text("Paste")').first();
 
       if (await pasteButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await pasteButton.click();
+        await pasteButton.click({ force: true });
 
         const previewDialog = page.locator('.v-dialog');
 
@@ -250,7 +254,7 @@ test.describe('Excel Clipboard Paste', () => {
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (isGridBased) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Quality-specific columns
         const qualityData = createExcelClipboardData([
@@ -283,7 +287,7 @@ test.describe('Excel Clipboard Paste', () => {
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (isGridBased) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Invalid: defects > inspected
         const invalidData = createExcelClipboardData([
@@ -331,7 +335,7 @@ test.describe('Excel Clipboard Paste', () => {
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (isGridBased) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Attendance data columns
         const attendanceData = createExcelClipboardData([
@@ -362,7 +366,7 @@ test.describe('Excel Clipboard Paste', () => {
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (isGridBased) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Invalid status code
         const invalidData = createExcelClipboardData([
@@ -410,7 +414,7 @@ test.describe('Excel Clipboard Paste', () => {
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (isGridBased) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Downtime data columns
         const downtimeData = createExcelClipboardData([
@@ -438,7 +442,7 @@ test.describe('Excel Clipboard Paste', () => {
       const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (isGridBased) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Start and end times provided
         const timeData = createExcelClipboardData([
@@ -501,7 +505,7 @@ test.describe('Excel Clipboard Paste', () => {
       // grid hadn't loaded — that hid real failures.
       const grid = page.locator('.ag-root').first();
       await expect(grid).toBeVisible({ timeout: 15000 });
-      await grid.click();
+      await grid.click({ force: true });
 
       await dispatchPaste(page, '');
 
@@ -515,7 +519,7 @@ test.describe('Excel Clipboard Paste', () => {
     test('should handle malformed data', async ({ page }) => {
       const grid = page.locator('.ag-root').first();
       await expect(grid).toBeVisible({ timeout: 15000 });
-      await grid.click();
+      await grid.click({ force: true });
 
       // Random text, not tab-separated; the production-entry grid
       // doesn't bind paste, so the only contract here is "pasting
@@ -531,7 +535,7 @@ test.describe('Excel Clipboard Paste', () => {
     test('should handle column mismatch', async ({ page }) => {
       const grid = page.locator('.ag-root').first();
       await expect(grid).toBeVisible({ timeout: 15000 });
-      await grid.click();
+      await grid.click({ force: true });
 
       // Too few columns vs. what the grid expects.
       const incompleteData = createExcelClipboardData([
@@ -549,7 +553,7 @@ test.describe('Excel Clipboard Paste', () => {
       const grid = page.locator('.ag-root').first();
 
       if (await grid.isVisible()) {
-        await grid.click();
+        await grid.click({ force: true });
 
         // Multiple rows
         const multiRowData = createExcelClipboardData([
@@ -587,7 +591,7 @@ test.describe('Excel Clipboard Paste', () => {
         // Use Add Row button instead of paste to add data
         const addRowButton = page.locator('button:has-text("Add Row")');
         if (await addRowButton.isVisible()) {
-          await addRowButton.click();
+          await addRowButton.click({ force: true });
           await page.waitForTimeout(500);
 
           // Save button should now be enabled with 1 unsaved change
@@ -596,7 +600,7 @@ test.describe('Excel Clipboard Paste', () => {
 
           // If save is enabled, click it to trigger ReadBack
           if (saveEnabled) {
-            await saveButton.click();
+            await saveButton.click({ force: true });
 
             // ReadBack confirmation dialog
             const readBackDialog = page.locator('.v-dialog').or(

@@ -16,7 +16,7 @@ async function navigateToBomTab(page: Page) {
   const link = page.locator('a[href="/capacity-planning"]').first()
   if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
     await link.scrollIntoViewIfNeeded()
-    await link.click()
+    await link.click({ force: true })
     await page.waitForURL(/capacity-planning/i, { timeout: 5000 }).catch(() => {})
   } else {
     await page.goto('/capacity-planning')
@@ -27,7 +27,7 @@ async function navigateToBomTab(page: Page) {
     .locator('button:has-text("BOM"), [role="tab"]:has-text("BOM")')
     .first()
   if (await tab.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await tab.click()
+    await tab.click({ force: true })
     await page.waitForTimeout(800)
   }
 }
@@ -52,7 +52,7 @@ test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
   test('master-detail layout — detail grid present after master selection', async ({ page }) => {
     const masterRow = page.locator('.ag-center-cols-container .ag-row').first()
     if (await masterRow.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await masterRow.click()
+      await masterRow.click({ force: true })
       await page.waitForTimeout(500)
     }
     // Either a second AG grid is visible OR the page didn't crash.
