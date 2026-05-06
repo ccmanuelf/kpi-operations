@@ -8,7 +8,17 @@ import { login } from './helpers';
 // Increase timeout for stability
 test.setTimeout(60000);
 
-test.describe('Quality Management', () => {
+// The entry-interface audit (memory/entry-interface-audit.md, Phase 3
+// closed 2026-05-02) migrated Quality, Attendance, and Downtime entries
+// from form-based UI (spinbutton fields like "Defect", "Inspected",
+// "Submit" button) to AG Grid surfaces. The selectors below — and the
+// `page.click('text=Quality')` ambiguous-click pattern — target UI that
+// no longer exists.
+//
+// New grid surfaces are covered by per-grid component tests; full E2E
+// rewrite against AGGridBase row-edit flows is tracked as Phase B.7
+// in memory/ci-hygiene-tracker.md.
+test.describe.skip('Quality Management [SKIPPED — old form UI replaced by AG Grid; see Phase B.7]', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.click('text=Quality');
@@ -46,7 +56,7 @@ test.describe('Quality Management', () => {
   });
 });
 
-test.describe('Attendance Tracking', () => {
+test.describe.skip('Attendance Tracking [SKIPPED — old form UI replaced by AG Grid; see Phase B.7]', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.click('text=Attendance');
@@ -82,7 +92,7 @@ test.describe('Attendance Tracking', () => {
   });
 });
 
-test.describe('Downtime Analysis', () => {
+test.describe.skip('Downtime Analysis [SKIPPED — old form UI replaced by AG Grid; see Phase B.7]', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.click('text=Downtime');

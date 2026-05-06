@@ -142,7 +142,16 @@ jobs:
             -e DATABASE_URL=sqlite:////tmp/test.db \
             -e SECRET_KEY=ci-test-only-32-chars-minimum-zzz \
             kpi-operations-backend
-          sleep 5
+          # Smart-reseed lifespan does a 10-step DB init on a fresh DB
+          # (~10-15s); a fixed `sleep 5` raced the init and curl 502'd
+          # before uvicorn was listening. Poll with a 60s budget instead.
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8000/health/live > /dev/null; then
+              echo "[CI] backend ready after ${i}x2s"
+              break
+            fi
+            sleep 2
+          done
           curl -f http://localhost:8000/health/live || (docker logs backend-smoke && exit 1)
           docker stop backend-smoke
           docker rm backend-smoke
@@ -154,7 +163,14 @@ jobs:
             -e DATABASE_URL=sqlite:////tmp/fresh.db \
             -e SECRET_KEY=ci-freshdb-test-32-chars-minimum-zzz \
             kpi-operations-backend
-          sleep 8
+          # Same poll pattern — fresh DB triggers full smart-reseed.
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8001/health/live > /dev/null; then
+              echo "[CI] freshdb backend ready after ${i}x2s"
+              break
+            fi
+            sleep 2
+          done
           # Auth
           TOKEN=$(curl -sf -X POST http://localhost:8001/api/auth/login \
             -H "Content-Type: application/json" \

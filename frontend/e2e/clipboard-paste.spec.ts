@@ -40,7 +40,14 @@ test.describe('Excel Clipboard Paste', () => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   });
 
-  test.describe('Production Data Entry', () => {
+  // The entry-interface audit (memory/entry-interface-audit.md) replaced
+  // the form-based paste UI on Production/Quality/Attendance/Downtime
+  // entry pages with AG Grid surfaces. The paste-button + paste-dialog
+  // selectors below target UI that no longer exists. The "Paste Error
+  // Handling" describe at the bottom of this file uses synthetic paste
+  // events and works against the new grid; those tests stay enabled.
+  // Full rewrite tracked in Phase B.7 (memory/ci-hygiene-tracker.md).
+  test.describe.skip('Production Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateToDataEntry(page, 'production');
@@ -221,7 +228,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
   });
 
-  test.describe('Quality Data Entry', () => {
+  test.describe.skip('Quality Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateToDataEntry(page, 'quality');
@@ -303,7 +310,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
   });
 
-  test.describe('Attendance Data Entry', () => {
+  test.describe.skip('Attendance Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateToDataEntry(page, 'attendance');
@@ -382,7 +389,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
   });
 
-  test.describe('Downtime Data Entry', () => {
+  test.describe.skip('Downtime Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateToDataEntry(page, 'downtime');
@@ -567,7 +574,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
   });
 
-  test.describe('ReadBack Integration', () => {
+  test.describe.skip('ReadBack Integration [SKIPPED — depends on old paste flow; see Phase B.7]', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateToDataEntry(page, 'production');

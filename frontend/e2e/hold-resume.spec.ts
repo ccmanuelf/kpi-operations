@@ -19,7 +19,23 @@ async function navigateToHoldResume(page: Page) {
   await pageContent.first().waitFor({ state: 'visible', timeout: 10000 });
 }
 
-test.describe('Hold/Resume Workflow', () => {
+// The entry-interface audit (memory/entry-interface-audit.md, Phase 3
+// closed 2026-05-02) migrated HoldResumeEntry from a tabbed form-based UI
+// (Add Holds / Resumed tabs + Work Order combobox / Quantity spinbutton /
+// Submit button) to a single AG Grid surface (HoldEntryGrid). Every test
+// in this file targets the OLD UI — selectors like
+// `getByRole('tab', { name: 'Add Holds' })` and
+// `getByRole('combobox', { name: /Work Order/ })` no longer match because
+// those elements were replaced by the grid's row-edit flow.
+//
+// The new grid surface is covered by HoldEntryGrid component tests; this
+// file's E2E coverage needs a full rewrite against the AG Grid UI. That
+// rewrite is tracked as Phase B follow-up work in
+// memory/ci-hygiene-tracker.md (B.4 — e2e migration backlog).
+//
+// Skipped here, not deleted, so the rewrite has a starting point and the
+// migration backlog is visible in the test runner output.
+test.describe.skip('Hold/Resume Workflow [SKIPPED — old UI replaced by HoldEntryGrid; see Phase B.7]', () => {
   test.describe('Page Display', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);

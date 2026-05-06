@@ -301,7 +301,11 @@ test.describe('Floating Pool Management', () => {
     });
   });
 
-  test.describe('Utilization Dashboard', () => {
+  // Tautological assertions (`hasUtilization !== undefined` is always true)
+  // hide whatever the actual UX is. The block also depends on a navigation
+  // helper with multiple fallbacks that mostly miss in current builds.
+  // Skipped until rewritten against the current Floating Pool UI per Phase B.7.
+  test.describe.skip('Utilization Dashboard [SKIPPED — tautological asserts; see Phase B.7]', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateToFloatingPool(page);

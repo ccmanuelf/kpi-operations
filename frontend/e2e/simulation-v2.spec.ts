@@ -29,12 +29,14 @@ async function navigateToSimulationV2(page: Page, clearSampleData = true) {
   }
 
   // Scroll nav item into view and click — it's near the bottom of a long drawer
-  const navItem = page.locator('.v-navigation-drawer a[href="/simulation-v2"]');
+  const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
   await navItem.scrollIntoViewIfNeeded();
   await navItem.click();
 
   // Wait for URL to confirm Vue Router navigation completed
-  await page.waitForURL('**/simulation-v2', { timeout: 15000 });
+  // Router redirects /simulation-v2 → /simulation; the nav also points
+  // directly at /simulation, so wait for that final URL.
+  await page.waitForURL('**/simulation', { timeout: 15000 });
 
   // Wait for the page header to confirm navigation
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
@@ -48,12 +50,14 @@ async function navigateToSimulationV2WithSampleData(page: Page) {
   });
 
   // Navigate to the simulation page — scroll into view, it's near bottom of drawer
-  const navItem = page.locator('.v-navigation-drawer a[href="/simulation-v2"]');
+  const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
   await navItem.scrollIntoViewIfNeeded();
   await navItem.click();
 
   // Wait for URL to confirm Vue Router navigation completed
-  await page.waitForURL('**/simulation-v2', { timeout: 15000 });
+  // Router redirects /simulation-v2 → /simulation; the nav also points
+  // directly at /simulation, so wait for that final URL.
+  await page.waitForURL('**/simulation', { timeout: 15000 });
 
   // Wait for the page header to confirm navigation
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
