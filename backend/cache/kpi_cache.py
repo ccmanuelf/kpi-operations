@@ -253,9 +253,12 @@ def build_hash_key(prefix: str, **kwargs: Any) -> str:
         >>> build_hash_key("ppm", start_date="2024-01-01", end_date="2024-01-31", client_id="X")
         "ppm:abc123def456"
     """
-    # Sort kwargs for consistent ordering
+    # Sort kwargs for consistent ordering. MD5 is used purely as a stable
+    # 12-char fingerprint for cache-key collision avoidance — there is no
+    # security boundary on this digest. usedforsecurity=False makes that
+    # explicit and keeps bandit (B324) green on FIPS-mode hosts.
     param_str = json.dumps(kwargs, sort_keys=True, default=str)
-    hash_value = hashlib.md5(param_str.encode()).hexdigest()[:12]
+    hash_value = hashlib.md5(param_str.encode(), usedforsecurity=False).hexdigest()[:12]
     return f"{prefix}:{hash_value}"
 
 

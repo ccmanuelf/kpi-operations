@@ -230,10 +230,14 @@ class DataMigrator:
         Returns:
             Number of rows copied.
         """
-        # Check if table has data
+        # Check if table has data.
+        # nosec B608 — table_name is from inspect()/source_inspector.get_table_names()
+        # (sqlalchemy reflection), not user input. SQL doesn't allow
+        # parameterizing identifiers; reflection-based whitelisting is the
+        # standard mitigation.
         with self.source_engine.connect() as source_conn:
             count_result = source_conn.execute(
-                text(f"SELECT COUNT(*) FROM {table_name}")
+                text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
             ).scalar()
 
             if count_result == 0 and skip_empty:
@@ -326,10 +330,13 @@ class DataMigrator:
         source_inspector = inspect(self.source_engine)
         target_inspector = inspect(self.target_engine)
 
+        # nosec B608 — table_name is from sqlalchemy inspect() reflection,
+        # never user input. Whitelisting via reflection is the standard
+        # mitigation since SQL identifiers can't be parameterized.
         for table_name in source_inspector.get_table_names():
             with self.source_engine.connect() as conn:
                 count = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {table_name}")
+                    text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
                 ).scalar()
                 # .scalar() returns Optional[Any]; coerce to int (with
                 # 0 for the empty/None case) so the dict matches the
@@ -339,7 +346,7 @@ class DataMigrator:
         for table_name in target_inspector.get_table_names():
             with self.target_engine.connect() as conn:
                 count = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {table_name}")
+                    text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
                 ).scalar()
                 target_counts[table_name] = int(count or 0)
 

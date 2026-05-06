@@ -865,4 +865,7 @@ app.include_router(dual_view_calculate_router)
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 0.0.0.0 is required for Docker / Render container networking;
+    # the production entrypoint uses uvicorn via gunicorn in the
+    # Dockerfile, this branch is the local-development runner.
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # nosec B104
