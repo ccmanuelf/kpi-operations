@@ -464,70 +464,78 @@ test.describe('Excel Clipboard Paste', () => {
       await navigateToDataEntry(page, 'production');
     });
 
+    /**
+     * Helper: dispatch a synthetic paste event with the given text.
+     *
+     * Bypasses `navigator.clipboard.writeText` + `Ctrl+Shift+V`, which
+     * was hanging at the 15s actionTimeout in headless CI Chromium even
+     * with clipboard permissions granted. The synthetic event delivers
+     * the same payload to the app's paste handler without crossing the
+     * permission boundary.
+     */
+    async function dispatchPaste(page: Page, text: string): Promise<void> {
+      await page.evaluate((data) => {
+        const target = document.activeElement ?? document.body;
+        const dt = new DataTransfer();
+        dt.setData('text/plain', data);
+        target.dispatchEvent(
+          new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: dt,
+          }),
+        );
+      }, text);
+    }
+
     test('should handle empty clipboard gracefully', async ({ page }) => {
+      // Grid must render before we can interact with it. The previous
+      // `if (await grid.isVisible())` pattern silently passed when the
+      // grid hadn't loaded — that hid real failures.
       const grid = page.locator('.ag-root').first();
+      await expect(grid).toBeVisible({ timeout: 15000 });
+      await grid.click();
 
-      if (await grid.isVisible()) {
-        await grid.click();
+      await dispatchPaste(page, '');
 
-        // Clear clipboard and try to paste
-        await page.evaluate(() => navigator.clipboard.writeText(''));
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(500);
-
-        // Should not crash - either no action or show message
-        const noError = await page.locator('.fatal-error').isVisible({ timeout: 1000 }).catch(() => false);
-        expect(!noError).toBeTruthy();
-      }
+      // Empty paste must not crash the page or surface a fatal-error
+      // overlay. The grid stays visible afterward.
+      await expect(grid).toBeVisible();
+      const fatalError = page.locator('.fatal-error');
+      await expect(fatalError).not.toBeVisible();
     });
 
     test('should handle malformed data', async ({ page }) => {
       const grid = page.locator('.ag-root').first();
+      await expect(grid).toBeVisible({ timeout: 15000 });
+      await grid.click();
 
-      if (await grid.isVisible()) {
-        await grid.click();
+      // Random text, not tab-separated; the production-entry grid
+      // doesn't bind paste, so the only contract here is "pasting
+      // garbage doesn't crash". A fatal-error overlay or an
+      // unmounted grid would indicate a regression.
+      await dispatchPaste(page, 'This is not valid Excel data');
 
-        // Random text, not tab-separated
-        await page.evaluate(() => navigator.clipboard.writeText('This is not valid Excel data'));
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(500);
-
-        // Should show error or warning
-        const warning = page.locator('.v-alert').or(
-          page.locator('text=Invalid format')
-        );
-
-        const hasHandling = await warning.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasHandling !== undefined).toBeTruthy();
-      }
+      await expect(grid).toBeVisible();
+      const fatalError = page.locator('.fatal-error');
+      await expect(fatalError).not.toBeVisible();
     });
 
     test('should handle column mismatch', async ({ page }) => {
       const grid = page.locator('.ag-root').first();
+      await expect(grid).toBeVisible({ timeout: 15000 });
+      await grid.click();
 
-      if (await grid.isVisible()) {
-        await grid.click();
+      // Too few columns vs. what the grid expects.
+      const incompleteData = createExcelClipboardData([
+        ['WO-001', 'PROD-001'], // Missing required columns
+      ]);
+      await dispatchPaste(page, incompleteData);
 
-        // Too few columns
-        const incompleteData = createExcelClipboardData([
-          ['WO-001', 'PROD-001'] // Missing required columns
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), incompleteData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(500);
-
-        // Should show column mapping or error
-        const feedback = page.locator('.v-dialog').or(
-          page.locator('.v-alert')
-        );
-
-        const hasFeedback = await feedback.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasFeedback !== undefined).toBeTruthy();
-      }
+      // Same contract: page stays alive, grid stays mounted.
+      await expect(grid).toBeVisible();
+      const fatalError = page.locator('.fatal-error');
+      await expect(fatalError).not.toBeVisible();
     });
 
     test('should show row count summary', async ({ page }) => {

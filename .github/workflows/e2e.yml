@@ -10,7 +10,12 @@ on:
 jobs:
   e2e-sqlite:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 45min: previous run hit the 30min cap mid-suite (sequential SQLite
+    # workers + ~169 specs). The two clipboard-paste tests that were
+    # eating ~36s/each on flake retries are now deterministic via
+    # synthetic paste events, but the suite still benefits from a
+    # margin to absorb cold-start slowness on shared runners.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
