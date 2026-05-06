@@ -36,7 +36,6 @@ from backend.simulation_v2.monte_carlo import run_monte_carlo
 from backend.simulation_v2.optimization import (
     MiniZincNotAvailableError,
     MiniZincSolveError,
-    is_minizinc_available,
 )
 from backend.simulation_v2.optimization.operator_allocation import (
     apply_allocation_to_config,
@@ -395,14 +394,6 @@ async def optimize_operators_endpoint(
     """
     _check_simulation_permission(current_user)
 
-    if not is_minizinc_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Operator-allocation optimization requires MiniZinc; " "the binary is not installed on this server."
-            ),
-        )
-
     config = request.config
 
     logger.info(
@@ -414,6 +405,8 @@ async def optimize_operators_endpoint(
 
     # Validate the SimulationConfig itself before optimizing — surfaces
     # demand/operations mismatches with the same shape the /run path uses.
+    # Validation runs WITHOUT MiniZinc, so this check happens before the
+    # solver-availability gate.
     validation_report = validate_simulation_config(config)
     if validation_report.has_errors:
         return OperatorAllocationResponse(
@@ -443,10 +436,11 @@ async def optimize_operators_endpoint(
             detail=f"Solver error: {e}",
         )
     except MiniZincNotAvailableError:
-        # Race: the binary check passed but the runner failed. Treat as 503.
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="MiniZinc CLI became unavailable mid-request.",
+            detail=(
+                "Operator-allocation optimization requires MiniZinc; " "the binary is not installed on this server."
+            ),
         )
 
     validation_run = None
@@ -523,12 +517,6 @@ async def rebalance_bottlenecks_endpoint(
     """
     _check_simulation_permission(current_user)
 
-    if not is_minizinc_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=("Bottleneck rebalancing requires MiniZinc; the binary is " "not installed on this server."),
-        )
-
     config = request.config
 
     logger.info(
@@ -540,6 +528,8 @@ async def rebalance_bottlenecks_endpoint(
         request.max_operators_per_op,
     )
 
+    # Validation runs WITHOUT MiniZinc, so this check happens before the
+    # solver-availability gate.
     validation_report = validate_simulation_config(config)
     if validation_report.has_errors:
         return RebalancingResponse(
@@ -575,7 +565,7 @@ async def rebalance_bottlenecks_endpoint(
     except MiniZincNotAvailableError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="MiniZinc CLI became unavailable mid-request.",
+            detail=("Bottleneck rebalancing requires MiniZinc; " "the binary is not installed on this server."),
         )
 
     validation_run = None
@@ -655,12 +645,6 @@ async def sequence_products_endpoint(
     """
     _check_simulation_permission(current_user)
 
-    if not is_minizinc_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=("Product sequencing requires MiniZinc; the binary is " "not installed on this server."),
-        )
-
     config = request.config
 
     logger.info(
@@ -670,6 +654,8 @@ async def sequence_products_endpoint(
         len(request.setup_times_minutes),
     )
 
+    # Validation runs WITHOUT MiniZinc, so this check happens before the
+    # solver-availability gate.
     validation_report = validate_simulation_config(config)
     if validation_report.has_errors:
         return ProductSequencingResponse(
@@ -703,7 +689,7 @@ async def sequence_products_endpoint(
     except MiniZincNotAvailableError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="MiniZinc CLI became unavailable mid-request.",
+            detail=("Product sequencing requires MiniZinc; " "the binary is not installed on this server."),
         )
 
     logger.info(
@@ -762,12 +748,6 @@ async def plan_horizon_endpoint(
     """
     _check_simulation_permission(current_user)
 
-    if not is_minizinc_available():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=("Planning horizon requires MiniZinc; the binary is not " "installed on this server."),
-        )
-
     config = request.config
 
     logger.info(
@@ -778,6 +758,8 @@ async def plan_horizon_endpoint(
         request.horizon_days,
     )
 
+    # Validation runs WITHOUT MiniZinc, so this check happens before the
+    # solver-availability gate.
     validation_report = validate_simulation_config(config)
     if validation_report.has_errors:
         return PlanningHorizonResponse(
@@ -812,7 +794,7 @@ async def plan_horizon_endpoint(
     except MiniZincNotAvailableError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="MiniZinc CLI became unavailable mid-request.",
+            detail=("Planning horizon requires MiniZinc; " "the binary is not installed on this server."),
         )
 
     logger.info(

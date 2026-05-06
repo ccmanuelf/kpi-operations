@@ -182,9 +182,6 @@ def plan_horizon(
     utilization. Use the returned plan to feed SimPy day-by-day for
     execution-side validation.
     """
-    if not is_minizinc_available():
-        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; planning horizon is unavailable.")
-
     if horizon_days < 1:
         raise ValueError("horizon_days must be >= 1")
 
@@ -279,6 +276,11 @@ def plan_horizon(
         "minutes_per_piece_x100": minutes_active,
         "daily_minutes": daily_minutes,
     }
+
+    # Short-circuits above (zero demand, no-operations, single-product/day)
+    # don't need the solver. Only the multi-product / multi-day path does.
+    if not is_minizinc_available():
+        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; planning horizon is unavailable.")
 
     mz_result: MiniZincResult = run_minizinc(
         _MODEL_PATH,

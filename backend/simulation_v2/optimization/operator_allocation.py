@@ -175,11 +175,6 @@ def optimize_operator_allocation(
     `=====UNSATISFIABLE=====` and the caller can surface that as a
     user-facing message.
     """
-    if not is_minizinc_available():
-        raise MiniZincNotAvailableError(
-            "MiniZinc CLI is not installed; operator-allocation optimization is unavailable."
-        )
-
     data, operations = _build_minizinc_data(
         config,
         max_operators_per_op=max_operators_per_op,
@@ -196,6 +191,13 @@ def optimize_operator_allocation(
             total_operators_after=0,
             proposals=[],
             solver_message="No operations in configuration; nothing to optimize.",
+        )
+
+    # Short-circuit above (n_ops==0) doesn't need the solver. Only the
+    # n_ops>=1 path actually invokes MiniZinc.
+    if not is_minizinc_available():
+        raise MiniZincNotAvailableError(
+            "MiniZinc CLI is not installed; operator-allocation optimization is unavailable."
         )
 
     mz_result: MiniZincResult = run_minizinc(

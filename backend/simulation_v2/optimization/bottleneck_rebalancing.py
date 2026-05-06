@@ -176,9 +176,6 @@ def rebalance_bottleneck(
         layer presents that as a "best-effort, station X still short
         by Y pcs/day" warning.
     """
-    if not is_minizinc_available():
-        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; bottleneck rebalancing is unavailable.")
-
     data, operations = _build_minizinc_data(
         config,
         min_operators_per_op=min_operators_per_op,
@@ -240,6 +237,12 @@ def rebalance_bottleneck(
                 f"Existing throughput {predicted} pcs/day vs demand {demand}."
             ),
         )
+
+    # Short-circuits above (n_ops==0, n_ops==1) don't need the solver,
+    # so the availability check goes here — only the n_ops>=2 path
+    # actually invokes MiniZinc.
+    if not is_minizinc_available():
+        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; bottleneck rebalancing is unavailable.")
 
     mz_result: MiniZincResult = run_minizinc(
         _MODEL_PATH,

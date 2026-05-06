@@ -196,9 +196,6 @@ def sequence_products(
     setup-time entries. Returns the optimized order with per-position
     start/end times and total makespan.
     """
-    if not is_minizinc_available():
-        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; product sequencing is unavailable.")
-
     # Use the products that have demand (sequencing is about demand quotas).
     products = [d.product for d in config.demands]
     n_products = len(products)
@@ -250,6 +247,11 @@ def sequence_products(
         "production_time_min": production_time_minutes,
         "setup_time_min": setup_matrix,
     }
+
+    # Short-circuits above (n_products==0, n_products==1) don't need the
+    # solver. Only the n_products>=2 path actually invokes MiniZinc.
+    if not is_minizinc_available():
+        raise MiniZincNotAvailableError("MiniZinc CLI is not installed; product sequencing is unavailable.")
 
     mz_result: MiniZincResult = run_minizinc(
         _MODEL_PATH,
