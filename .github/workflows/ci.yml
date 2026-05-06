@@ -44,6 +44,18 @@ jobs:
       - name: Run linting
         run: flake8 . --count --show-source --statistics
 
+      - name: Seed demo database
+        # The smoke-test suite (test_smoke_paramless_get) hits every
+        # paramless GET via TestClient and expects no 5xx — that exercise
+        # only makes sense against a populated schema. Most other tests
+        # use the in-memory `transactional_db` fixture and ignore this
+        # file, but a handful (and the smoke test) bind to the file-based
+        # DATABASE_URL. Seeding once here gives them a working schema +
+        # 5 demo clients without polluting the rest of the suite (writes
+        # land in the disposable demo DB, not in any persistent store).
+        working-directory: .
+        run: PYTHONPATH=. python backend/scripts/init_demo_database.py
+
       - name: Run tests with coverage
         run: PYTHONPATH=.. pytest tests/ --tb=short -q --cov=. --cov=auth --cov=cache --cov=tasks --cov=utils --cov=endpoints --cov-report=xml:coverage.xml --cov-report=html:htmlcov --cov-fail-under=75
 

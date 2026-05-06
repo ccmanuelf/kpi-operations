@@ -419,6 +419,10 @@ async def export_employees(
         current_user.username,
     )
 
+    # Eager probe so a DB error fires BEFORE StreamingResponse flushes
+    # headers (otherwise Starlette can't convert mid-stream errors to 503).
+    db.query(Employee).limit(1).first()
+
     generator = stream_csv_export(
         db=db,
         model_class=Employee,
