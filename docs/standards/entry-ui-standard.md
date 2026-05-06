@@ -192,7 +192,71 @@ The default answer is "use AGGridBase".
 
 ---
 
-## 7. References
+## 7. E2E test parity (mandatory)
+
+**Any migration to AGGridBase must update the corresponding Playwright
+spec in `frontend/e2e/` IN THE SAME PR.** Not deferred, not skipped,
+not "we'll do it later".
+
+This rule was added 2026-05-06 after the Phase 3 migration shipped
+without updating the test suite. The downstream effects:
+
+- ~83 e2e tests targeted obsolete UI (form-based selectors that no
+  longer matched) and silently failed for 50+ consecutive commits.
+- The CI red signal got buried under unrelated failures (lint, mypy)
+  and was only noticed when those upstream issues were cleared.
+- Recovering required a multi-session rewrite (`memory/ci-hygiene-
+  tracker.md` Phase B.7) — work that would have taken minutes per
+  surface if done at migration time.
+
+### What "update the e2e spec" means
+
+For each surface migrated to AGGridBase:
+
+1. **Read the new component** (e.g., `HoldEntryGrid.vue`) and identify
+   the user-visible contract: what flows the user can perform (add
+   row, edit cell, save, validation feedback, paste-to-grid, etc.).
+
+2. **Rewrite the matching spec** (`frontend/e2e/<surface>.spec.ts`)
+   to assert against those flows using the stable selector hierarchy
+   defined in `docs/CONTRIBUTING.md` (E2E Parity section):
+   - `a[href="/route"]` for navigation
+   - `data-testid="..."` for grid affordances (preferred)
+   - `getByRole('grid' | 'row' | 'cell')` for AG Grid surfaces
+   - Avoid ambiguous `text=X` and silent-pass `if (await
+     x.isVisible()) { ... }` patterns.
+
+3. **Add `data-testid` hooks to the new component** wherever a test
+   needs a stable handle. AGGridBase already exposes a few; the row-
+   action buttons in your new grid should follow the same convention.
+   Naming: `<entity>-<role>-btn` (e.g., `holds-add-row-btn`).
+
+4. **Verify locally** before pushing:
+   ```bash
+   cd frontend && npm run test:e2e:sqlite -- e2e/<surface>.spec.ts
+   ```
+
+5. **Don't `test.describe.skip(...)` your way past the work.** A
+   skip without a linked issue and target-re-enable date will be
+   rejected at review per the PR template.
+
+### Migration rubric
+
+When moving a surface to AGGridBase, the deliverable in the PR is:
+
+| Artifact | Required? |
+|---|---|
+| `src/views/<View>.vue` or `src/components/grids/<Grid>.vue` | The migration itself |
+| `src/components/__tests__/<Grid>.spec.ts` | Component-level tests for the new grid |
+| `frontend/e2e/<surface>.spec.ts` | Rewritten e2e against the new selectors |
+| `docs/views/<surface>.md` (if it exists) | Updated user-facing documentation |
+
+If the e2e spec artifact is missing for a frontend-mutation surface
+migration, the PR is incomplete.
+
+---
+
+## 8. References
 
 - Source spec: `/Users/mcampos.cerda/Downloads/06_kpi-operations_entry_interface_audit.md`
 - Inventory (Phase 0): `docs/audit/entry-surface-inventory.md`

@@ -101,6 +101,15 @@ jobs:
       - name: Run TypeScript type-check
         run: npm run typecheck
 
+      - name: Check for orphan test skips
+        # Guards against the failure mode that triggered the Phase B.7
+        # rewrite: an entry-interface migration shipping with
+        # test.describe.skip(...) stopgaps that nobody ever revisited.
+        # Every skip must declare a Phase/issue reference or a FIXME
+        # date — see docs/CONTRIBUTING.md "E2E Parity" section.
+        working-directory: ..
+        run: bash scripts/check-skipped-tests.sh
+
       - name: Build frontend
         run: npm run build
 
