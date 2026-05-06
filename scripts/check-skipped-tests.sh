@@ -20,7 +20,11 @@
 
 set -e
 
-SPEC_DIR="frontend/e2e"
+# Self-locate so the script works whether invoked from the project
+# root (`bash scripts/check-skipped-tests.sh`) or from `frontend/`
+# (`bash ../scripts/check-skipped-tests.sh` — the CI invocation).
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SPEC_DIR="${PROJECT_ROOT}/frontend/e2e"
 EXIT_CODE=0
 ORPHAN_SKIPS=()
 

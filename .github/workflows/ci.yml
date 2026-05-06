@@ -107,8 +107,9 @@ jobs:
         # test.describe.skip(...) stopgaps that nobody ever revisited.
         # Every skip must declare a Phase/issue reference or a FIXME
         # date — see docs/CONTRIBUTING.md "E2E Parity" section.
-        working-directory: ..
-        run: bash scripts/check-skipped-tests.sh
+        # The job's default working-directory is `frontend/`; the
+        # script lives at the project root, so reach up one level.
+        run: bash ../scripts/check-skipped-tests.sh
 
       - name: Build frontend
         run: npm run build
