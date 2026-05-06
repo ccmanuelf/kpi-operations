@@ -1,9 +1,10 @@
 <template>
-  <div class="ag-grid-wrapper">
+  <div class="ag-grid-wrapper" data-testid="ag-grid-wrapper">
     <!-- Toolbar (paste-from-Excel + CSV import + export) -->
     <div
       v-if="enableExcelPaste || enableCsvImport || enableExport"
       class="paste-toolbar d-flex align-center ga-2 mb-2"
+      data-testid="ag-grid-toolbar"
     >
       <v-btn
         v-if="enableExcelPaste"
@@ -11,6 +12,7 @@
         variant="outlined"
         size="small"
         :loading="pasteLoading"
+        data-testid="paste-excel-btn"
         @click="handlePasteFromExcel"
       >
         <v-icon left>mdi-microsoft-excel</v-icon>
@@ -23,6 +25,7 @@
         size="small"
         :aria-label="$t('csv.importAria')"
         :loading="pasteLoading"
+        data-testid="csv-import-btn"
         @click="triggerCsvFilePicker"
       >
         <v-icon left>mdi-file-upload-outline</v-icon>
@@ -35,7 +38,7 @@
         style="display: none"
         @change="onCsvFileSelected"
       />
-      <v-chip v-if="lastPasteCount > 0" size="small" color="success" variant="tonal">
+      <v-chip v-if="lastPasteCount > 0" size="small" color="success" variant="tonal" data-testid="paste-count-chip">
         {{ $t('paste.lastPasted', { count: lastPasteCount }) }}
       </v-chip>
       <v-spacer />
@@ -45,6 +48,7 @@
         variant="outlined"
         size="small"
         :aria-label="$t('grids.exportCsvAria')"
+        data-testid="csv-export-btn"
         @click="exportCsvFromToolbar"
       >
         <v-icon left>mdi-file-delimited-outline</v-icon>

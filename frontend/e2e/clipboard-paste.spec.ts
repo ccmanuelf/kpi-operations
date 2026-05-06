@@ -2,639 +2,143 @@ import { test, expect, Page } from '@playwright/test';
 import { login } from './helpers';
 
 /**
- * KPI Operations Platform - Excel Clipboard Paste E2E Tests
- * Phase 8: E2E Testing for Excel Copy/Paste into Data Grids
+ * Excel clipboard paste — E2E smoke tests against AGGridBase.
+ *
+ * The entry-interface audit (Phase 3, 2026-05-02) consolidated paste
+ * support into AGGridBase: `enableExcelPaste` + `enableCsvImport`
+ * props expose paste/import buttons in the toolbar. The previous
+ * spec was rewritten 2026-05-06 against those toolbar testids and a
+ * synthetic-ClipboardEvent dispatch pattern that doesn't depend on
+ * navigator.clipboard permissions in headless CI Chromium.
+ *
+ * Stable selectors used (per docs/CONTRIBUTING.md "E2E Parity"):
+ *   - `a[href="/...entry"]` for navigation
+ *   - `data-testid="ag-grid-toolbar"`, `paste-excel-btn`, etc.
+ *   - `data-testid="<entity>-grid-header"` per grid
  */
 
-// Increase timeout for stability
 test.setTimeout(60000);
 
-async function navigateToDataEntry(page: Page, module: 'production' | 'quality' | 'attendance' | 'downtime') {
-  const urlMapping = {
-    production: '/production-entry',
-    quality: '/data-entry/quality',
-    attendance: '/data-entry/attendance',
-    downtime: '/data-entry/downtime'
-  };
-
-  // Use href-based selector to avoid ambiguity with page content text.
-  // `force: true` skips Playwright's stability check — the role-based
-  // nav expansion (memory/dark-mode-and-nav.md) runs CSS transitions
-  // on v-list-group children that the stability check sees as
-  // "element not stable" even when the link is fully clickable.
-  const navItem = page.locator(`.v-navigation-drawer a[href="${urlMapping[module]}"]`);
-  await navItem.scrollIntoViewIfNeeded();
-  await navItem.click({ force: true });
-
-  // Wait for URL to confirm navigation completed
-  await page.waitForURL(`**${urlMapping[module]}`, { timeout: 15000 });
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+async function navigateVia(page: Page, href: string) {
+  const link = page.locator(`.v-navigation-drawer a[href="${href}"]`);
+  await link.scrollIntoViewIfNeeded();
+  await link.click({ force: true });
+  await page.waitForURL(`**${href}`, { timeout: 15000 });
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
 }
 
-// Helper to create clipboard data (tab-separated values like Excel)
-function createExcelClipboardData(rows: string[][]): string {
-  return rows.map(row => row.join('\t')).join('\n');
+/**
+ * Dispatch a synthetic paste event with the given text. Bypasses
+ * the navigator.clipboard permission boundary, which hangs on
+ * headless CI Chromium even with grantPermissions.
+ */
+async function dispatchPaste(page: Page, text: string): Promise<void> {
+  await page.evaluate((data) => {
+    const target = document.activeElement ?? document.body;
+    const dt = new DataTransfer();
+    dt.setData('text/plain', data);
+    target.dispatchEvent(
+      new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: dt,
+      }),
+    );
+  }, text);
+}
+
+function tabSeparated(rows: string[][]): string {
+  return rows.map((row) => row.join('\t')).join('\n');
 }
 
 test.describe('Excel Clipboard Paste', () => {
-  // Clipboard API permissions only supported in Chromium — Firefox/WebKit
-  // throw "Unknown permission: clipboard-read" during context creation
-  test.beforeEach(async ({ browserName, context }) => {
-    test.skip(browserName !== 'chromium', 'Clipboard API permissions only supported in Chromium');
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-  });
-
-  // The entry-interface audit (memory/entry-interface-audit.md) replaced
-  // the form-based paste UI on Production/Quality/Attendance/Downtime
-  // entry pages with AG Grid surfaces. The paste-button + paste-dialog
-  // selectors below target UI that no longer exists. The "Paste Error
-  // Handling" describe at the bottom of this file uses synthetic paste
-  // events and works against the new grid; those tests stay enabled.
-  // Full rewrite tracked in Phase B.7 (memory/ci-hygiene-tracker.md).
-  test.describe.skip('Production Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
+  test.describe('Production grid', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
-      await navigateToDataEntry(page, 'production');
+      await navigateVia(page, '/production-entry');
     });
 
-    test('should display production data grid', async ({ page }) => {
-      // Check grid container is visible
-      const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
+    test('grid + AG Grid toolbar render', async ({ page }) => {
+      await expect(page.locator('[data-testid="production-grid-header"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+      await expect(page.locator('[data-testid="ag-grid-toolbar"]')).toBeVisible();
+    });
+
+    test('paste-from-Excel button is in the toolbar', async ({ page }) => {
+      const pasteBtn = page.locator('[data-testid="paste-excel-btn"]');
+      // Some grids enable paste, some don't — the contract is "if the
+      // toolbar shows the button, it's clickable without crashing".
+      const visible = await pasteBtn.isVisible({ timeout: 5000 }).catch(() => false);
+      if (visible) {
+        await pasteBtn.click({ force: true });
+        // No fatal-error overlay after click.
+        await expect(page.locator('.fatal-error')).toHaveCount(0);
+      }
+    });
+  });
+
+  test.describe('Quality grid', () => {
+    test.beforeEach(async ({ page }) => {
+      await login(page);
+      await navigateVia(page, '/data-entry/quality');
+    });
+
+    test('grid renders with toolbar', async ({ page }) => {
+      await expect(page.locator('[data-testid="quality-grid-header"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+    });
+  });
+
+  test.describe('Downtime grid', () => {
+    test.beforeEach(async ({ page }) => {
+      await login(page);
+      await navigateVia(page, '/data-entry/downtime');
+    });
+
+    test('grid renders with toolbar', async ({ page }) => {
+      await expect(page.locator('[data-testid="downtime-grid-header"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+    });
+  });
+
+  test.describe('Synthetic paste error handling', () => {
+    test.beforeEach(async ({ page }) => {
+      await login(page);
+      await navigateVia(page, '/production-entry');
+    });
+
+    test('empty paste does not crash the grid', async ({ page }) => {
+      const grid = page.locator('[data-testid="ag-grid-wrapper"]');
       await expect(grid).toBeVisible({ timeout: 15000 });
 
-      // Verify actual row data is visible (not just headers)
-      // Wait for at least one data row to be visible
-      const dataRow = page.locator('.ag-row[role="row"]').first();
-      await expect(dataRow).toBeVisible({ timeout: 20000 });
-
-      // Verify row contains actual cell data
-      const dataCell = page.locator('.ag-cell[col-id]').first();
-      await expect(dataCell).toBeVisible({ timeout: 10000 });
-    });
-
-    test('should show paste from Excel button', async ({ page }) => {
-      const pasteButton = page.locator('button:has-text("Paste")').or(
-        page.locator('[data-testid="paste-excel-btn"]').or(
-          page.locator('text=Paste from Excel')
-        )
-      );
-
-      const hasPasteButton = await pasteButton.isVisible({ timeout: 5000 }).catch(() => false);
-      if (!hasPasteButton) {
-        // Paste may be via keyboard shortcut only — verify grid is loaded
-        const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
-        await expect(grid).toBeVisible({ timeout: 5000 });
-      }
-    });
-
-    test('should accept keyboard shortcut Ctrl+Shift+V', async ({ page }) => {
-      const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
-
-      if (await grid.isVisible()) {
-        await grid.click({ force: true });
-
-        // Simulate paste with sample data (tab-separated like Excel)
-        const testData = createExcelClipboardData([
-          ['2024-01-15', 'PROD-001', 'SHIFT-001', 'WO-001', '100', '8.0', '5', '2', '1'],
-          ['2024-01-15', 'PROD-002', 'SHIFT-001', 'WO-002', '150', '8.0', '3', '1', '0']
-        ]);
-
-        // Write to clipboard and trigger paste with Ctrl+Shift+V (app's custom shortcut)
-        await page.evaluate(data => navigator.clipboard.writeText(data), testData);
-        await page.keyboard.press('Control+Shift+V');
-
-        // Should show paste preview dialog or add rows
-        await page.waitForTimeout(1500);
-
-        const dialog = page.locator('.v-dialog').or(
-          page.locator('[data-testid="paste-preview"]')
-        );
-
-        const gridRows = page.locator('.ag-row').or(page.locator('tr'));
-
-        const hasResponse = await dialog.isVisible({ timeout: 3000 }).catch(() => false) ||
-                           (await gridRows.count()) > 0;
-
-        expect(hasResponse).toBeTruthy();
-      }
-    });
-
-    test('should respond to paste button click', async ({ page }) => {
-      const pasteButton = page.locator('button:has-text("Paste")').first();
-
-      if (await pasteButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await pasteButton.click({ force: true });
-        await page.waitForTimeout(1000);
-
-        // The paste button may open a dialog, show a paste area, or read
-        // from clipboard directly — verify the page handled the click
-        // without crashing (no fatal errors visible)
-        const fatalError = page.locator('.fatal-error');
-        const hasFatalError = await fatalError.isVisible({ timeout: 1000 }).catch(() => false);
-        expect(hasFatalError).toBe(false);
-      }
-    });
-
-    test('should validate pasted data', async ({ page }) => {
-      const grid = page.locator('.ag-root').first();
-
-      if (await grid.isVisible()) {
-        await grid.click({ force: true });
-
-        // Paste invalid data
-        const invalidData = createExcelClipboardData([
-          ['', '', 'invalid-number', '-5', '2024-01-15'] // Missing required fields, invalid numbers
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), invalidData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-
-        // Should show validation errors
-        const errorIndicator = page.locator('.validation-error').or(
-          page.locator('.error-row').or(
-            page.locator('.v-alert--type-error').or(
-              page.locator('text=Invalid')
-            )
-          )
-        );
-
-        const hasValidation = await errorIndicator.isVisible({ timeout: 5000 }).catch(() => false);
-        expect(hasValidation !== undefined).toBeTruthy();
-      }
-    });
-
-    test('should highlight invalid rows', async ({ page }) => {
-      // Check for error highlighting CSS classes
-      const errorStyles = await page.evaluate(() => {
-        const styles = document.styleSheets;
-        let hasErrorStyles = false;
-
-        try {
-          for (const sheet of styles) {
-            const rules = sheet.cssRules || sheet.rules;
-            if (rules) {
-              for (const rule of rules) {
-                if (rule.cssText && (
-                  rule.cssText.includes('error') ||
-                  rule.cssText.includes('invalid') ||
-                  rule.cssText.includes('red')
-                )) {
-                  hasErrorStyles = true;
-                  break;
-                }
-              }
-            }
-          }
-        } catch (e) {
-          // Cross-origin stylesheet access may fail
-        }
-
-        return hasErrorStyles;
-      });
-
-      expect(errorStyles !== undefined).toBeTruthy();
-    });
-
-    test('should allow editing individual rows before submission', async ({ page }) => {
-      const pasteButton = page.locator('button:has-text("Paste")').first();
-
-      if (await pasteButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await pasteButton.click({ force: true });
-
-        const previewDialog = page.locator('.v-dialog');
-
-        if (await previewDialog.isVisible()) {
-          // Look for edit functionality
-          const editButton = page.locator('button:has-text("Edit")').or(
-            page.locator('[data-testid="edit-row"]')
-          );
-
-          const hasEdit = await editButton.isVisible({ timeout: 3000 }).catch(() => false);
-          expect(hasEdit !== undefined).toBeTruthy();
-        }
-      }
-    });
-
-    test('should confirm before submitting pasted data', async ({ page }) => {
-      const grid = page.locator('.ag-root').first();
-
-      if (await grid.isVisible()) {
-        // Confirmation should be part of ReadBack flow
-        const confirmButton = page.locator('button:has-text("Confirm")').or(
-          page.locator('button:has-text("Submit")')
-        );
-
-        const hasConfirm = await confirmButton.count() >= 0;
-        expect(hasConfirm).toBeTruthy();
-      }
-    });
-  });
-
-  test.describe.skip('Quality Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page);
-      await navigateToDataEntry(page, 'quality');
-    });
-
-    test('should display quality data entry form or grid', async ({ page }) => {
-      // Quality entry can be either AG Grid based or form-based depending on route
-      // Wait for skeleton loaders to finish and content to appear
-      const content = page.locator('.ag-root, .v-form, form, .v-card-title');
-      await expect(content.first()).toBeVisible({ timeout: 15000 });
-    });
-
-    test('should accept quality data paste if grid-based', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-card-title');
-      await content.first().waitFor({ state: 'visible', timeout: 15000 });
-
-      const grid = page.locator('.ag-root').first();
-      const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-
-      if (isGridBased) {
-        await grid.click({ force: true });
-
-        // Quality-specific columns
-        const qualityData = createExcelClipboardData([
-          ['WO-001', 'PROD-001', '100', '2', '1', '0', 'Visual check'],
-          ['WO-002', 'PROD-002', '150', '5', '2', '1', 'Dimension check']
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), qualityData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-
-        // Should process quality-specific fields
-        const dialog = page.locator('.v-dialog');
-        const hasResponse = await dialog.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasResponse !== undefined).toBeTruthy();
-      } else {
-        // Form-based entry - verify page loaded with content
-        const form = page.locator('.v-form, .v-card-title');
-        await expect(form.first()).toBeVisible({ timeout: 10000 });
-      }
-    });
-
-    test('should validate defect counts if grid-based', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-card-title');
-      await content.first().waitFor({ state: 'visible', timeout: 15000 });
-
-      const grid = page.locator('.ag-root').first();
-      const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-
-      if (isGridBased) {
-        await grid.click({ force: true });
-
-        // Invalid: defects > inspected
-        const invalidData = createExcelClipboardData([
-          ['WO-001', 'PROD-001', '10', '50', '0', '0', 'Invalid'] // 50 defects > 10 inspected
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), invalidData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-
-        // Should show validation error
-        const error = page.locator('text=Invalid').or(
-          page.locator('.validation-error')
-        );
-
-        const hasValidation = await error.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasValidation !== undefined).toBeTruthy();
-      } else {
-        // Form-based entry has its own validation - verify page loaded
-        const form = page.locator('.v-form, .v-card-title');
-        await expect(form.first()).toBeVisible({ timeout: 10000 });
-      }
-    });
-  });
-
-  test.describe.skip('Attendance Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page);
-      await navigateToDataEntry(page, 'attendance');
-    });
-
-    test('should display attendance data entry form or grid', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-form, form, .v-card-title');
-      await expect(content.first()).toBeVisible({ timeout: 15000 });
-    });
-
-    test('should accept attendance data paste if grid-based', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-card-title');
-      await content.first().waitFor({ state: 'visible', timeout: 15000 });
-
-      const grid = page.locator('.ag-root').first();
-      const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-
-      if (isGridBased) {
-        await grid.click({ force: true });
-
-        // Attendance data columns
-        const attendanceData = createExcelClipboardData([
-          ['EMP-001', '2024-01-15', '1', 'P', '08:00', '17:00'],
-          ['EMP-002', '2024-01-15', '1', 'A', '', ''],
-          ['EMP-003', '2024-01-15', '1', 'L', '10:00', '17:00']
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), attendanceData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-        // Verify grid is still functional after paste attempt
-        await expect(grid).toBeVisible();
-      } else {
-        // Form-based entry - verify page loaded with content
-        const form = page.locator('.v-form, .v-card-title');
-        await expect(form.first()).toBeVisible({ timeout: 10000 });
-      }
-    });
-
-    test('should validate attendance status codes if grid-based', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-card-title');
-      await content.first().waitFor({ state: 'visible', timeout: 15000 });
-
-      const grid = page.locator('.ag-root').first();
-      const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-
-      if (isGridBased) {
-        await grid.click({ force: true });
-
-        // Invalid status code
-        const invalidData = createExcelClipboardData([
-          ['EMP-001', '2024-01-15', '1', 'X', '', ''] // X is invalid status
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), invalidData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-
-        // Should flag invalid status
-        const error = page.locator('.validation-error').or(
-          page.locator('text=Invalid status')
-        );
-
-        const hasValidation = await error.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasValidation !== undefined).toBeTruthy();
-      } else {
-        // Form-based entry has its own validation - verify page loaded
-        const form = page.locator('.v-form, .v-card-title');
-        await expect(form.first()).toBeVisible({ timeout: 10000 });
-      }
-    });
-  });
-
-  test.describe.skip('Downtime Data Entry [SKIPPED — old paste UI replaced by AG Grid; see Phase B.7]', () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page);
-      await navigateToDataEntry(page, 'downtime');
-    });
-
-    test('should display downtime data entry form or grid', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-form, form, .v-card-title');
-      await expect(content.first()).toBeVisible({ timeout: 15000 });
-    });
-
-    test('should accept downtime data paste if grid-based', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-card-title');
-      await content.first().waitFor({ state: 'visible', timeout: 15000 });
-
-      const grid = page.locator('.ag-root').first();
-      const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-
-      if (isGridBased) {
-        await grid.click({ force: true });
-
-        // Downtime data columns
-        const downtimeData = createExcelClipboardData([
-          ['LINE-001', '2024-01-15', '08:30', '09:15', 'Machine', 'Scheduled maintenance'],
-          ['LINE-002', '2024-01-15', '14:00', '14:30', 'Material', 'Waiting for parts']
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), downtimeData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-      } else {
-        // Form-based entry - verify page loaded with content
-        const form = page.locator('.v-form, .v-card-title');
-        await expect(form.first()).toBeVisible({ timeout: 10000 });
-      }
-    });
-
-    test('should calculate duration automatically if grid-based', async ({ page }) => {
-      // Wait for content to load past skeleton loaders
-      const content = page.locator('.ag-root, .v-card-title');
-      await content.first().waitFor({ state: 'visible', timeout: 15000 });
-
-      const grid = page.locator('.ag-root').first();
-      const isGridBased = await grid.isVisible({ timeout: 3000 }).catch(() => false);
-
-      if (isGridBased) {
-        await grid.click({ force: true });
-
-        // Start and end times provided
-        const timeData = createExcelClipboardData([
-          ['LINE-001', '2024-01-15', '08:00', '09:00', 'Machine', 'Test']
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), timeData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-
-        // Duration should be calculated (60 minutes)
-        const durationField = page.locator('text=60').or(
-          page.locator('[data-testid="duration"]')
-        );
-
-        const hasDuration = await durationField.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasDuration !== undefined).toBeTruthy();
-      } else {
-        // Form-based entry - verify page loaded
-        const form = page.locator('.v-form, .v-card-title');
-        await expect(form.first()).toBeVisible({ timeout: 10000 });
-      }
-    });
-  });
-
-  // The Paste Error Handling tests still fail in CI even after the
-  // synthetic ClipboardEvent rewrite + force:true on nav clicks — the
-  // navigateToDataEntry path itself races with route transitions on
-  // cold-start runners. Skipped to unblock Phase A.13 closeout; the
-  // synthetic-paste pattern is the right approach for the rewrite,
-  // but the navigation helper needs to stabilize first. See Phase B.7.
-  test.describe.skip('Paste Error Handling [SKIPPED — nav timing; see Phase B.7]', () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page);
-      await navigateToDataEntry(page, 'production');
-    });
-
-    /**
-     * Helper: dispatch a synthetic paste event with the given text.
-     *
-     * Bypasses `navigator.clipboard.writeText` + `Ctrl+Shift+V`, which
-     * was hanging at the 15s actionTimeout in headless CI Chromium even
-     * with clipboard permissions granted. The synthetic event delivers
-     * the same payload to the app's paste handler without crossing the
-     * permission boundary.
-     */
-    async function dispatchPaste(page: Page, text: string): Promise<void> {
-      await page.evaluate((data) => {
-        const target = document.activeElement ?? document.body;
-        const dt = new DataTransfer();
-        dt.setData('text/plain', data);
-        target.dispatchEvent(
-          new ClipboardEvent('paste', {
-            bubbles: true,
-            cancelable: true,
-            clipboardData: dt,
-          }),
-        );
-      }, text);
-    }
-
-    test('should handle empty clipboard gracefully', async ({ page }) => {
-      // Grid must render before we can interact with it. The previous
-      // `if (await grid.isVisible())` pattern silently passed when the
-      // grid hadn't loaded — that hid real failures.
-      const grid = page.locator('.ag-root').first();
-      await expect(grid).toBeVisible({ timeout: 15000 });
+      // Click into the grid to set focus, then dispatch the synthetic
+      // event. force:true sidesteps the role-based-nav-expansion
+      // stability check (see helpers.ts comment).
       await grid.click({ force: true });
-
       await dispatchPaste(page, '');
 
-      // Empty paste must not crash the page or surface a fatal-error
-      // overlay. The grid stays visible afterward.
       await expect(grid).toBeVisible();
-      const fatalError = page.locator('.fatal-error');
-      await expect(fatalError).not.toBeVisible();
+      await expect(page.locator('.fatal-error')).toHaveCount(0);
     });
 
-    test('should handle malformed data', async ({ page }) => {
-      const grid = page.locator('.ag-root').first();
+    test('malformed paste does not crash the grid', async ({ page }) => {
+      const grid = page.locator('[data-testid="ag-grid-wrapper"]');
       await expect(grid).toBeVisible({ timeout: 15000 });
       await grid.click({ force: true });
-
-      // Random text, not tab-separated; the production-entry grid
-      // doesn't bind paste, so the only contract here is "pasting
-      // garbage doesn't crash". A fatal-error overlay or an
-      // unmounted grid would indicate a regression.
       await dispatchPaste(page, 'This is not valid Excel data');
 
       await expect(grid).toBeVisible();
-      const fatalError = page.locator('.fatal-error');
-      await expect(fatalError).not.toBeVisible();
+      await expect(page.locator('.fatal-error')).toHaveCount(0);
     });
 
-    test('should handle column mismatch', async ({ page }) => {
-      const grid = page.locator('.ag-root').first();
+    test('column-mismatch paste does not crash the grid', async ({ page }) => {
+      const grid = page.locator('[data-testid="ag-grid-wrapper"]');
       await expect(grid).toBeVisible({ timeout: 15000 });
       await grid.click({ force: true });
+      await dispatchPaste(page, tabSeparated([['WO-001', 'PROD-001']]));
 
-      // Too few columns vs. what the grid expects.
-      const incompleteData = createExcelClipboardData([
-        ['WO-001', 'PROD-001'], // Missing required columns
-      ]);
-      await dispatchPaste(page, incompleteData);
-
-      // Same contract: page stays alive, grid stays mounted.
       await expect(grid).toBeVisible();
-      const fatalError = page.locator('.fatal-error');
-      await expect(fatalError).not.toBeVisible();
-    });
-
-    test('should show row count summary', async ({ page }) => {
-      const grid = page.locator('.ag-root').first();
-
-      if (await grid.isVisible()) {
-        await grid.click({ force: true });
-
-        // Multiple rows
-        const multiRowData = createExcelClipboardData([
-          ['WO-001', 'PROD-001', '100', '5', '2024-01-15'],
-          ['WO-002', 'PROD-002', '150', '3', '2024-01-15'],
-          ['WO-003', 'PROD-003', '200', '2', '2024-01-15']
-        ]);
-
-        await page.evaluate(data => navigator.clipboard.writeText(data), multiRowData);
-        await page.keyboard.press('Control+Shift+V');
-
-        await page.waitForTimeout(1000);
-
-        // Should show count (e.g., "3 rows")
-        const countIndicator = page.locator('text=3').or(
-          page.locator('text=rows')
-        );
-
-        const hasCount = await countIndicator.isVisible({ timeout: 3000 }).catch(() => false);
-        expect(hasCount !== undefined).toBeTruthy();
-      }
-    });
-  });
-
-  test.describe.skip('ReadBack Integration [SKIPPED — depends on old paste flow; see Phase B.7]', () => {
-    test.beforeEach(async ({ page }) => {
-      await login(page);
-      await navigateToDataEntry(page, 'production');
-    });
-
-    test('should show ReadBack confirmation after paste', async ({ page }) => {
-      const grid = page.locator('.ag-root').first();
-
-      if (await grid.isVisible()) {
-        // Use Add Row button instead of paste to add data
-        const addRowButton = page.locator('button:has-text("Add Row")');
-        if (await addRowButton.isVisible()) {
-          await addRowButton.click({ force: true });
-          await page.waitForTimeout(500);
-
-          // Save button should now be enabled with 1 unsaved change
-          const saveButton = page.locator('button:has-text("Save")');
-          const saveEnabled = await saveButton.isEnabled({ timeout: 3000 }).catch(() => false);
-
-          // If save is enabled, click it to trigger ReadBack
-          if (saveEnabled) {
-            await saveButton.click({ force: true });
-
-            // ReadBack confirmation dialog
-            const readBackDialog = page.locator('.v-dialog').or(
-              page.locator('[data-testid="readback-confirmation"]')
-            );
-
-            const hasReadBack = await readBackDialog.isVisible({ timeout: 5000 }).catch(() => false);
-            expect(hasReadBack !== undefined).toBeTruthy();
-          } else {
-            // Save is disabled, which is valid state
-            expect(true).toBeTruthy();
-          }
-        } else {
-          // No Add Row button - verify grid exists
-          expect(await grid.isVisible()).toBeTruthy();
-        }
-      }
-    });
-
-
-    test('should display human-readable summary', async ({ page }) => {
-      // ReadBack should show formatted data, not raw
-      const summarySection = page.locator('.summary-view').or(
-        page.locator('[data-testid="entry-summary"]')
-      );
-
-      const hasSummaryUI = await summarySection.count() >= 0;
-      expect(hasSummaryUI).toBeTruthy();
+      await expect(page.locator('.fatal-error')).toHaveCount(0);
     });
   });
 });

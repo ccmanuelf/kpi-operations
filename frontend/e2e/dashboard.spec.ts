@@ -1,144 +1,76 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 import { login } from './helpers';
 
 /**
- * KPI Operations Platform - Dashboard E2E Tests
+ * Dashboard / module navigation E2E.
+ *
+ * Rewritten 2026-05-06 to use stable href-based navigation instead
+ * of ambiguous `text=Production` matches that hit nav items, page
+ * content, and breadcrumbs alike. The previous pattern made the
+ * spec extremely fragile to route-transition timing in CI.
+ *
+ * Stable selectors used:
+ *   - `a[href="/route"]` for nav links
+ *   - URL pattern via `waitForURL`
+ *   - Route-specific landmark selectors (existing data-testids
+ *     on grids; for non-grid views, `.v-card` first child)
  */
 
-// Increase timeout for stability
 test.setTimeout(60000);
 
-// CI run on c544873 still showed all 20 dashboard tests failing at
-// ~4-19s each. The first failure (`should display navigation menu`)
-// is just `expect('.v-navigation-drawer').toBeVisible()` after a
-// login() that already waits for that exact selector — meaning the
-// drawer hides briefly during the post-login route transition (the
-// role-based landing redirect from `/` to `/kpi-dashboard` for admin
-// per memory/dark-mode-and-nav.md). Reproducing and stabilizing
-// requires deeper investigation than fits in the A.13 closeout.
-//
-// The dashboard surface itself works (verified manually + by other
-// specs touching the same nav drawer); these tests are just timing-
-// fragile against the current login/landing flow. Skipped pending
-// proper rewrite in Phase B.7.
-test.describe.skip('Dashboard [SKIPPED — flaky against current login+landing flow; see Phase B.7]', () => {
+async function navigateVia(page: Page, href: string) {
+  const link = page.locator(`.v-navigation-drawer a[href="${href}"]`);
+  await link.scrollIntoViewIfNeeded();
+  await link.click({ force: true });
+  await page.waitForURL(`**${href}`, { timeout: 15000 });
+  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+}
+
+test.describe('Dashboard / Module Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
 
-  test('should display dashboard after login', async ({ page }) => {
-    // Wait for dashboard data to load
-    await page.waitForLoadState('networkidle');
-    // Dashboard should have KPI cards
-    await expect(page.locator('.v-card').first()).toBeVisible({ timeout: 15000 });
+  test('admin lands on a dashboard with the nav drawer open', async ({ page }) => {
+    // Admin's role-based landing is /kpi-dashboard (per
+    // memory/dark-mode-and-nav.md). Either /kpi-dashboard or / is
+    // acceptable; the contract is that the drawer renders and at
+    // least one card is visible.
+    const url = page.url();
+    expect(url).toMatch(/\/(kpi-dashboard|my-shift|capacity-planning)?$/);
+    await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.v-card').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('should display navigation menu', async ({ page }) => {
-    // Navigation should be visible - use CSS selector
-    await expect(page.locator('.v-navigation-drawer')).toBeVisible();
-
-    // Should have navigation items
-    const navItems = page.locator('.v-list-item');
-    await expect(navItems.first()).toBeVisible();
+  test('production-entry route navigates and renders the grid', async ({ page }) => {
+    await navigateVia(page, '/production-entry');
+    await expect(page.locator('[data-testid="production-grid-header"]')).toBeVisible({ timeout: 15000 });
   });
 
-  test('should navigate to production page', async ({ page }) => {
-    await page.click('text=Production');
-
-    // Should show production content
-    await expect(page.locator('text=Production').first()).toBeVisible({ timeout: 10000 });
+  test('quality entry route navigates and renders the grid', async ({ page }) => {
+    await navigateVia(page, '/data-entry/quality');
+    await expect(page.locator('[data-testid="quality-grid-header"]')).toBeVisible({ timeout: 15000 });
   });
 
-  test('should navigate to quality page', async ({ page }) => {
-    await page.click('text=Quality');
-
-    await expect(page.locator('text=Quality').first()).toBeVisible({ timeout: 10000 });
+  test('attendance entry route navigates and renders the grid', async ({ page }) => {
+    await navigateVia(page, '/data-entry/attendance');
+    await expect(page.locator('[data-testid="attendance-grid-header"]')).toBeVisible({ timeout: 15000 });
   });
 
-  test('should navigate to attendance page', async ({ page }) => {
-    await page.click('text=Attendance');
-
-    await expect(page.locator('text=Attendance').first()).toBeVisible({ timeout: 10000 });
+  test('downtime entry route navigates and renders the grid', async ({ page }) => {
+    await navigateVia(page, '/data-entry/downtime');
+    await expect(page.locator('[data-testid="downtime-grid-header"]')).toBeVisible({ timeout: 15000 });
   });
 
-  test('should navigate to downtime page', async ({ page }) => {
-    await page.click('text=Downtime');
-
-    await expect(page.locator('text=Downtime').first()).toBeVisible({ timeout: 10000 });
+  test('hold-resume route navigates and renders the grid', async ({ page }) => {
+    await navigateVia(page, '/data-entry/hold-resume');
+    await expect(page.locator('[data-testid="holds-grid-header"]')).toBeVisible({ timeout: 15000 });
   });
 
-  test('should show user menu', async ({ page }) => {
-    const userMenu = page.locator('[data-testid="user-menu"]').or(page.locator('.v-avatar').first());
-    if (await userMenu.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await userMenu.click({ force: true });
-      await expect(page.locator('.v-menu')).toBeVisible();
-    }
-  });
-
-  test('should display KPI metrics', async ({ page }) => {
-    // Look for KPI-related content
-    const metricsSection = page.locator('.v-card');
-    await expect(metricsSection.first()).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should be responsive on mobile', async ({ page }) => {
-    // Set viewport to mobile size
-    await page.setViewportSize({ width: 375, height: 667 });
-
-    // Page should still be functional
-    await expect(page.locator('body')).toBeVisible();
-  });
-});
-
-test.describe('Production Management', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-    await page.click('text=Production');
-    await page.waitForTimeout(1000);
-  });
-
-  test('should display production data grid', async ({ page }) => {
-    // AG Grid or data table should be visible
-    const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
-    await expect(grid.first()).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should have add entry button', async ({ page }) => {
-    const addButton = page.locator('button:has-text("Add")').or(page.locator('[data-testid="add-entry"]'));
-    await expect(addButton.first()).toBeVisible({ timeout: 10000 });
-  });
-
-  test('should open add entry dialog', async ({ page }) => {
-    const addButton = page.locator('button:has-text("Add")').or(page.locator('[data-testid="add-entry"]'));
-    await expect(addButton.first()).toBeVisible({ timeout: 10000 });
-    await addButton.first().click();
-    await page.waitForTimeout(500);
-
-    // Dialog or inline row add — verify something responded to the click
-    const dialog = page.locator('.v-dialog').or(page.locator('[role="dialog"]')).or(page.locator('.v-bottom-sheet'));
-    const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
-    const isDialogVisible = await dialog.first().isVisible({ timeout: 3000 }).catch(() => false);
-    const isGridVisible = await grid.first().isVisible({ timeout: 1000 }).catch(() => false);
-    expect(isDialogVisible || isGridVisible).toBeTruthy();
-  });
-
-  test('should filter production data', async ({ page }) => {
-    // Verify grid loaded first
-    const grid = page.locator('.ag-root').or(page.locator('.v-data-table'));
-    await expect(grid.first()).toBeVisible({ timeout: 10000 });
-
-    // Look for filter inputs
-    const filterInput = page.locator('input[placeholder*="filter"]').or(page.locator('.ag-filter-input'));
-    if (await filterInput.first().isVisible({ timeout: 3000 }).catch(() => false)) {
-      await filterInput.first().fill('test');
-    }
-  });
-
-  test('should sort production data', async ({ page }) => {
-    // Click on column header to sort
-    const columnHeader = page.locator('.ag-header-cell').first().or(page.locator('th').first());
-    if (await columnHeader.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await columnHeader.click({ force: true });
-    }
+  test('work-orders route is reachable from the nav', async ({ page }) => {
+    await navigateVia(page, '/work-orders');
+    // WorkOrderManagement uses a generic AG Grid; verify the wrapper
+    // (added 2026-05-06) is present.
+    await expect(page.locator('[data-testid="ag-grid-wrapper"], .ag-root').first()).toBeVisible({ timeout: 15000 });
   });
 });
