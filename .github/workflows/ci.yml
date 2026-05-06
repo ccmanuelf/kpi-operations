@@ -133,9 +133,14 @@ jobs:
       - name: Smoke test backend image
         run: |
           set -e
+          # Four-slash sqlite URL: `sqlite:////tmp/test.db` is absolute
+          # `/tmp/test.db`. Three slashes (sqlite:///path) is relative to
+          # the container WORKDIR (/app), which doesn't have a `tmp/`
+          # subdir — that's what was producing "unable to open database
+          # file" on every CI run before the fix.
           docker run -d --name backend-smoke -p 8000:8000 \
-            -e DATABASE_URL=sqlite:///tmp/test.db \
-            -e SECRET_KEY=ci-test-only \
+            -e DATABASE_URL=sqlite:////tmp/test.db \
+            -e SECRET_KEY=ci-test-only-32-chars-minimum-zzz \
             kpi-operations-backend
           sleep 5
           curl -f http://localhost:8000/health/live || (docker logs backend-smoke && exit 1)
@@ -146,8 +151,8 @@ jobs:
         run: |
           set -e
           docker run -d --name backend-freshdb -p 8001:8000 \
-            -e DATABASE_URL=sqlite:///tmp/fresh.db \
-            -e SECRET_KEY=ci-freshdb-test \
+            -e DATABASE_URL=sqlite:////tmp/fresh.db \
+            -e SECRET_KEY=ci-freshdb-test-32-chars-minimum-zzz \
             kpi-operations-backend
           sleep 8
           # Auth
