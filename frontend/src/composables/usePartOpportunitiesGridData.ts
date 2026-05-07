@@ -37,13 +37,13 @@ export interface ClientOption {
 interface ColumnDef {
   headerName: string
   field?: string
-  editable?: boolean | ((params: { data: PartOpportunityGridRow }) => boolean)
+  editable?: boolean | ((_params: { data: PartOpportunityGridRow }) => boolean)
   cellEditor?: string
   cellEditorParams?:
     | { values?: unknown[]; min?: number; max?: number; precision?: number }
     | (() => { values?: unknown[] })
-  valueFormatter?: (params: { value?: unknown; data?: PartOpportunityGridRow }) => string
-  cellRenderer?: (params: {
+  valueFormatter?: (_params: { value?: unknown; data?: PartOpportunityGridRow }) => string
+  cellRenderer?: (_params: {
     data: PartOpportunityGridRow
     rowIndex: number
     value?: unknown
@@ -55,8 +55,8 @@ interface ColumnDef {
 }
 
 interface SnackbarLike {
-  showSuccess: (m: string) => void
-  showError: (m: string) => void
+  showSuccess: (_m: string) => void
+  showError: (_m: string) => void
 }
 
 interface UsePartOpportunitiesGridDataOptions {
@@ -65,15 +65,15 @@ interface UsePartOpportunitiesGridDataOptions {
   clientOptions: Ref<ClientOption[]> | ComputedRef<ClientOption[]>
   loadPartOpportunities: () => Promise<void>
   notify: SnackbarLike
-  onConfirmDelete: (row: PartOpportunityGridRow) => void
+  onConfirmDelete: (_row: PartOpportunityGridRow) => void
 }
 
 interface UsePartOpportunitiesGridDataReturn {
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeNewRow: (row: PartOpportunityGridRow) => void
-  saveNewRow: (row: PartOpportunityGridRow) => Promise<void>
-  onCellValueChanged: (event: {
+  removeNewRow: (_row: PartOpportunityGridRow) => void
+  saveNewRow: (_row: PartOpportunityGridRow) => Promise<void>
+  onCellValueChanged: (_event: {
     data: PartOpportunityGridRow
     column?: { colId?: string }
   }) => Promise<void>
@@ -279,9 +279,9 @@ const renderCheckmark = (value: boolean): HTMLElement => {
 const renderActions = (
   params: { data: PartOpportunityGridRow; rowIndex: number },
   handlers: {
-    saveNewRow: (row: PartOpportunityGridRow) => Promise<void>
-    removeNewRow: (row: PartOpportunityGridRow) => void
-    onConfirmDelete: (row: PartOpportunityGridRow) => void
+    saveNewRow: (_row: PartOpportunityGridRow) => Promise<void>
+    removeNewRow: (_row: PartOpportunityGridRow) => void
+    onConfirmDelete: (_row: PartOpportunityGridRow) => void
   },
 ): HTMLElement => {
   const div = document.createElement('div')

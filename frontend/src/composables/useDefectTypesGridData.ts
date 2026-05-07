@@ -45,10 +45,10 @@ export interface DefectTypeGridRow extends DefectType {
 interface ColumnDef {
   headerName: string
   field?: string
-  editable?: boolean | ((params: { data: DefectTypeGridRow }) => boolean)
+  editable?: boolean | ((_params: { data: DefectTypeGridRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; precision?: number }
-  cellRenderer?: (params: {
+  cellRenderer?: (_params: {
     data: DefectTypeGridRow
     rowIndex: number
     value?: unknown
@@ -66,8 +66,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 }
 
 interface SnackbarLike {
-  showSuccess: (m: string) => void
-  showError: (m: string) => void
+  showSuccess: (_m: string) => void
+  showError: (_m: string) => void
 }
 
 interface UseDefectTypesGridDataOptions {
@@ -75,15 +75,15 @@ interface UseDefectTypesGridDataOptions {
   defectTypes: Ref<DefectTypeGridRow[]>
   loadDefectTypes: () => Promise<void>
   notify: SnackbarLike
-  onConfirmDelete: (row: DefectTypeGridRow) => void
+  onConfirmDelete: (_row: DefectTypeGridRow) => void
 }
 
 interface UseDefectTypesGridDataReturn {
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeNewRow: (row: DefectTypeGridRow) => void
-  saveNewRow: (row: DefectTypeGridRow) => Promise<void>
-  onCellValueChanged: (event: {
+  removeNewRow: (_row: DefectTypeGridRow) => void
+  saveNewRow: (_row: DefectTypeGridRow) => Promise<void>
+  onCellValueChanged: (_event: {
     data: DefectTypeGridRow
     oldValue?: unknown
     column?: { colId?: string }
@@ -305,9 +305,9 @@ const renderCheckmark = (value: boolean): HTMLElement => {
 const renderActions = (
   params: { data: DefectTypeGridRow; rowIndex: number },
   handlers: {
-    saveNewRow: (row: DefectTypeGridRow) => Promise<void>
-    removeNewRow: (row: DefectTypeGridRow) => void
-    onConfirmDelete: (row: DefectTypeGridRow) => void
+    saveNewRow: (_row: DefectTypeGridRow) => Promise<void>
+    removeNewRow: (_row: DefectTypeGridRow) => void
+    onConfirmDelete: (_row: DefectTypeGridRow) => void
   },
 ): HTMLElement => {
   const div = document.createElement('div')

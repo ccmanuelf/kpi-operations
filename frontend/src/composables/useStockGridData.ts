@@ -38,9 +38,9 @@ interface ColumnDef {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; precision?: number }
-  cellRenderer?: (params: { data: StockRow; rowIndex: number }) => HTMLElement
-  valueFormatter?: (params: { value?: unknown }) => string
-  cellClass?: (params: { data: StockRow }) => string
+  cellRenderer?: (_params: { data: StockRow; rowIndex: number }) => HTMLElement
+  valueFormatter?: (_params: { value?: unknown }) => string
+  cellClass?: (_params: { data: StockRow }) => string
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -60,12 +60,12 @@ interface UseStockGridDataReturn {
   stalenessWarning: ComputedRef<string | null>
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeRow: (index: number) => void
-  onCellValueChanged: (event: {
+  removeRow: (_index: number) => void
+  onCellValueChanged: (_event: {
     data: StockRow
     column?: { colId?: string }
   }) => void
-  importData: (rows: Partial<StockRow>[]) => void
+  importData: (_rows: Partial<StockRow>[]) => void
 }
 
 export default function useStockGridData(): UseStockGridDataReturn {
@@ -262,7 +262,7 @@ export default function useStockGridData(): UseStockGridDataReturn {
 
 const renderDeleteAction = (
   params: { data: StockRow; rowIndex: number },
-  remove: (i: number) => void,
+  remove: (_i: number) => void,
 ): HTMLElement => {
   const div = document.createElement('div')
   div.style.cssText = 'display: flex; gap: 4px;'

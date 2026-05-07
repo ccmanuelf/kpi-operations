@@ -29,10 +29,10 @@ export interface CalendarRow {
 interface ColumnDef {
   headerName: string
   field?: string
-  editable?: boolean | ((params: { data: CalendarRow }) => boolean)
+  editable?: boolean | ((_params: { data: CalendarRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: number[]; min?: number; max?: number; precision?: number }
-  cellRenderer?: (params: { data: CalendarRow; rowIndex: number }) => HTMLElement
+  cellRenderer?: (_params: { data: CalendarRow; rowIndex: number }) => HTMLElement
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -44,10 +44,10 @@ interface UseCalendarGridDataReturn {
   hasChanges: ComputedRef<boolean>
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeRow: (index: number) => void
+  removeRow: (_index: number) => void
   onCellValueChanged: () => void
-  generateMonth: (year: number, month: number) => CalendarRow[]
-  importGeneratedMonth: (year: number, month: number) => void
+  generateMonth: (_year: number, _month: number) => CalendarRow[]
+  importGeneratedMonth: (_year: number, _month: number) => void
 }
 
 export default function useCalendarGridData(): UseCalendarGridDataReturn {
@@ -188,7 +188,7 @@ const renderCheckmark = (value: boolean): HTMLElement => {
 
 const renderDeleteAction = (
   params: { data: CalendarRow; rowIndex: number },
-  remove: (i: number) => void,
+  remove: (_i: number) => void,
 ): HTMLElement => {
   const div = document.createElement('div')
   div.style.cssText = 'display: flex; gap: 4px;'

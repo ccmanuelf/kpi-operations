@@ -40,16 +40,16 @@ export interface WorkOrderRow {
 interface ColumnDef {
   headerName: string
   field?: string
-  editable?: boolean | ((params: { data: WorkOrderRow }) => boolean)
+  editable?: boolean | ((_params: { data: WorkOrderRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; max?: number; precision?: number }
-  cellRenderer?: (params: {
+  cellRenderer?: (_params: {
     data: WorkOrderRow
     rowIndex: number
     value?: unknown
   }) => HTMLElement
-  valueGetter?: (params: { data: WorkOrderRow }) => unknown
-  valueFormatter?: (params: { value?: unknown; data?: WorkOrderRow }) => string
+  valueGetter?: (_params: { data: WorkOrderRow }) => unknown
+  valueFormatter?: (_params: { value?: unknown; data?: WorkOrderRow }) => string
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -107,24 +107,24 @@ const PRIORITY_COLORS: Record<string, string> = {
 }
 
 interface SnackbarLike {
-  showSuccess: (m: string) => void
-  showError: (m: string) => void
+  showSuccess: (_m: string) => void
+  showError: (_m: string) => void
 }
 
 interface UseWorkOrderGridDataOptions {
   workOrders: Ref<WorkOrderRow[]>
   loadWorkOrders: () => Promise<void>
   notify: SnackbarLike
-  onConfirmDelete: (row: WorkOrderRow) => void
-  onOpenDetail: (row: WorkOrderRow) => void
+  onConfirmDelete: (_row: WorkOrderRow) => void
+  onOpenDetail: (_row: WorkOrderRow) => void
 }
 
 interface UseWorkOrderGridDataReturn {
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeNewRow: (row: WorkOrderRow) => void
-  saveNewRow: (row: WorkOrderRow) => Promise<void>
-  onCellValueChanged: (event: {
+  removeNewRow: (_row: WorkOrderRow) => void
+  saveNewRow: (_row: WorkOrderRow) => Promise<void>
+  onCellValueChanged: (_event: {
     data: WorkOrderRow
     column?: { colId?: string }
   }) => Promise<void>
@@ -473,10 +473,10 @@ const renderDateWithOverdueFlag = (
 const renderActions = (
   params: { data: WorkOrderRow; rowIndex: number },
   handlers: {
-    saveNewRow: (row: WorkOrderRow) => Promise<void>
-    removeNewRow: (row: WorkOrderRow) => void
-    onConfirmDelete: (row: WorkOrderRow) => void
-    onOpenDetail: (row: WorkOrderRow) => void
+    saveNewRow: (_row: WorkOrderRow) => Promise<void>
+    removeNewRow: (_row: WorkOrderRow) => void
+    onConfirmDelete: (_row: WorkOrderRow) => void
+    onOpenDetail: (_row: WorkOrderRow) => void
   },
 ): HTMLElement => {
   const div = document.createElement('div')

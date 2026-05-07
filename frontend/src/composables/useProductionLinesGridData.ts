@@ -33,8 +33,8 @@ interface ColumnDef {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: { min?: number; max?: number; precision?: number }
-  cellRenderer?: (params: { data: ProductionLineRow; rowIndex: number }) => HTMLElement
-  valueFormatter?: (params: { value?: unknown }) => string
+  cellRenderer?: (_params: { data: ProductionLineRow; rowIndex: number }) => HTMLElement
+  valueFormatter?: (_params: { value?: unknown }) => string
   cellStyle?: Record<string, string>
   width?: number
   pinned?: 'left' | 'right'
@@ -47,8 +47,8 @@ interface UseProductionLinesGridDataReturn {
   hasChanges: ComputedRef<boolean>
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeRow: (index: number) => void
-  duplicateRow: (index: number) => void
+  removeRow: (_index: number) => void
+  duplicateRow: (_index: number) => void
   onCellValueChanged: () => void
 }
 
@@ -177,7 +177,7 @@ const renderCheckmark = (value: boolean): HTMLElement => {
 
 const renderActions = (
   params: { data: ProductionLineRow; rowIndex: number },
-  handlers: { duplicateRow: (i: number) => void; removeRow: (i: number) => void },
+  handlers: { duplicateRow: (_i: number) => void; removeRow: (_i: number) => void },
 ): HTMLElement => {
   const div = document.createElement('div')
   div.style.cssText = 'display: flex; gap: 4px;'

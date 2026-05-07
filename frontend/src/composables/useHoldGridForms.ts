@@ -20,10 +20,10 @@ import { HOLD_REASON_CODES } from './useHoldGridData'
 
 interface AGGridApi {
   sizeColumnsToFit: () => void
-  applyTransaction: (params: { add?: HoldEntry[]; remove?: HoldEntry[]; addIndex?: number }) => void
-  startEditingCell: (params: { rowIndex: number; colKey: string }) => void
-  refreshCells: (params: { rowNodes?: unknown[]; force?: boolean }) => void
-  forEachNode: (cb: (node: { data: HoldEntry }) => void) => void
+  applyTransaction: (_params: { add?: HoldEntry[]; remove?: HoldEntry[]; addIndex?: number }) => void
+  startEditingCell: (_params: { rowIndex: number; colKey: string }) => void
+  refreshCells: (_params: { rowNodes?: unknown[]; force?: boolean }) => void
+  forEachNode: (_cb: (_node: { data: HoldEntry }) => void) => void
 }
 
 interface AGGridRef {
@@ -52,11 +52,11 @@ export interface ConfirmationField {
 }
 
 interface KPIStoreLike {
-  deleteHoldEntry: (id: string | number) => Promise<unknown>
-  createHoldEntry: (data: Partial<HoldEntry>) => Promise<{ success: boolean; data?: HoldEntry }>
+  deleteHoldEntry: (_id: string | number) => Promise<unknown>
+  createHoldEntry: (_data: Partial<HoldEntry>) => Promise<{ success: boolean; data?: HoldEntry }>
   updateHoldEntry: (
-    id: string | number,
-    data: Partial<HoldEntry>,
+    _id: string | number,
+    _data: Partial<HoldEntry>,
   ) => Promise<{ success: boolean; data?: HoldEntry }>
   fetchHoldEntries: () => Promise<unknown>
 }
@@ -68,7 +68,7 @@ export interface UseHoldGridFormsOptions {
   workOrders: ComputedRef<WorkOrderRef[]>
   kpiStore: KPIStoreLike
   applyFilters: () => void
-  showSnackbar: (message: string, color?: string) => void
+  showSnackbar: (_message: string, _color?: string) => void
 }
 
 export function useHoldGridForms({
