@@ -58,13 +58,13 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('grid + AG Grid toolbar render', async ({ page }) => {
-      await expect(page.locator('[data-testid="production-grid-header"]')).toBeVisible({ timeout: 15000 });
-      await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+      await expect(page.locator('[data-testid="production-entry-view"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible();
       await expect(page.locator('[data-testid="ag-grid-toolbar"]')).toBeVisible();
     });
 
     test('paste-from-Excel button is in the toolbar', async ({ page }) => {
-      const pasteBtn = page.locator('[data-testid="paste-excel-btn"]');
+      const pasteBtn = page.locator('[data-testid="paste-excel-btn"]').first();
       // Some grids enable paste, some don't — the contract is "if the
       // toolbar shows the button, it's clickable without crashing".
       const visible = await pasteBtn.isVisible({ timeout: 5000 }).catch(() => false);
@@ -83,8 +83,8 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('grid renders with toolbar', async ({ page }) => {
-      await expect(page.locator('[data-testid="quality-grid-header"]')).toBeVisible({ timeout: 15000 });
-      await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+      await expect(page.locator('[data-testid="quality-entry-view"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible();
     });
   });
 
@@ -95,8 +95,8 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('grid renders with toolbar', async ({ page }) => {
-      await expect(page.locator('[data-testid="downtime-grid-header"]')).toBeVisible({ timeout: 15000 });
-      await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+      await expect(page.locator('[data-testid="downtime-entry-view"]')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible();
     });
   });
 
@@ -107,7 +107,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('empty paste does not crash the grid', async ({ page }) => {
-      const grid = page.locator('[data-testid="ag-grid-wrapper"]');
+      const grid = page.locator('[data-testid="ag-grid-wrapper"]').first();
       await expect(grid).toBeVisible({ timeout: 15000 });
 
       // Click into the grid to set focus, then dispatch the synthetic
@@ -121,7 +121,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('malformed paste does not crash the grid', async ({ page }) => {
-      const grid = page.locator('[data-testid="ag-grid-wrapper"]');
+      const grid = page.locator('[data-testid="ag-grid-wrapper"]').first();
       await expect(grid).toBeVisible({ timeout: 15000 });
       await grid.click({ force: true });
       await dispatchPaste(page, 'This is not valid Excel data');
@@ -131,7 +131,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
 
     test('column-mismatch paste does not crash the grid', async ({ page }) => {
-      const grid = page.locator('[data-testid="ag-grid-wrapper"]');
+      const grid = page.locator('[data-testid="ag-grid-wrapper"]').first();
       await expect(grid).toBeVisible({ timeout: 15000 });
       await grid.click({ force: true });
       await dispatchPaste(page, tabSeparated([['WO-001', 'PROD-001']]));

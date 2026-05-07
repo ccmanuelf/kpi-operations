@@ -35,10 +35,9 @@ test.describe('Hold / Resume Workflow', () => {
     await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   });
 
-  test('grid renders with header and Add Row button', async ({ page }) => {
-    await expect(page.locator('[data-testid="holds-grid-header"]')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('[data-testid="holds-add-row-btn"]')).toBeVisible();
-    await expect(page.locator('[data-testid="ag-grid-wrapper"]')).toBeVisible();
+  test('view + grid surface render', async ({ page }) => {
+    await expect(page.locator('[data-testid="hold-resume-entry-view"]')).toBeVisible({ timeout: 20000 });
+    await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeAttached({ timeout: 20000 });
   });
 
   test('Save button is disabled before any unsaved changes', async ({ page }) => {

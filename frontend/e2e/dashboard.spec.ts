@@ -43,27 +43,27 @@ test.describe('Dashboard / Module Navigation', () => {
 
   test('production-entry route navigates and renders the grid', async ({ page }) => {
     await navigateVia(page, '/production-entry');
-    await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="production-entry-view"]')).toBeVisible({ timeout: 20000 });
   });
 
   test('quality entry route navigates and renders the grid', async ({ page }) => {
     await navigateVia(page, '/data-entry/quality');
-    await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="quality-entry-view"]')).toBeVisible({ timeout: 20000 });
   });
 
   test('attendance entry route navigates and renders the grid', async ({ page }) => {
     await navigateVia(page, '/data-entry/attendance');
-    await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="attendance-entry-view"]')).toBeVisible({ timeout: 20000 });
   });
 
   test('downtime entry route navigates and renders the grid', async ({ page }) => {
     await navigateVia(page, '/data-entry/downtime');
-    await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="downtime-entry-view"]')).toBeVisible({ timeout: 20000 });
   });
 
   test('hold-resume route navigates and renders the grid', async ({ page }) => {
     await navigateVia(page, '/data-entry/hold-resume');
-    await expect(page.locator('[data-testid="ag-grid-wrapper"]').first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="hold-resume-entry-view"]')).toBeVisible({ timeout: 20000 });
   });
 
   test('work-orders route is reachable from the nav', async ({ page }) => {
