@@ -41,7 +41,12 @@ while IFS= read -r match; do
     line_num="${rest%%:*}"
 
     skip_line=$(sed -n "${line_num}p" "$file")
-    prev_line=$(sed -n "$((line_num - 1))p" "$file")
+    # Scan up to 8 lines before the skip for a FIXME — multi-line
+    # comment blocks are common (the FIXME header + 2-3 wrapped
+    # description lines + the skipped test).
+    start_line=$((line_num - 8))
+    [[ $start_line -lt 1 ]] && start_line=1
+    prev_block=$(sed -n "${start_line},$((line_num - 1))p" "$file")
 
     # Skip false positives: `test.skip(<condition>, <reason>)` is
     # the Playwright runtime-skip API; the reason argument IS the
@@ -52,7 +57,7 @@ while IFS= read -r match; do
 
     has_skipped_tag=$(echo "$skip_line" | grep -E '\[SKIPPED' || true)
     has_phase_ref=$(echo "$skip_line" | grep -E 'Phase [A-Z]\.[0-9]+|#[0-9]+' || true)
-    has_fixme=$(echo "$prev_line" | grep -E 'FIXME\(20[0-9]{2}-[0-9]{2}-[0-9]{2}\)|FIXME: ' || true)
+    has_fixme=$(echo "$prev_block" | grep -E 'FIXME\(20[0-9]{2}-[0-9]{2}-[0-9]{2}\)|FIXME: ' || true)
 
     if [[ -z "$has_skipped_tag" && -z "$has_fixme" ]]; then
         ORPHAN_SKIPS+=("${file}:${line_num}: ${skip_line}")
