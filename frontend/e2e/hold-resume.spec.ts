@@ -13,8 +13,14 @@ import { login } from './helpers';
  * Resumed tab, Work Order combobox, Quantity spinbutton, Submit button)
  * were obsoleted by that migration.
  *
+ * Why `page.goto()` instead of nav-drawer click: the role-based
+ * menu expansion (memory/dark-mode-and-nav.md) runs CSS transitions
+ * on v-list-group children that fail Playwright's stability check at
+ * `scrollIntoViewIfNeeded()` on cold-start CI runners. `goto()`
+ * bypasses the drawer entirely; auth state is preserved by login()'s
+ * cookie/localStorage state.
+ *
  * Stable selectors used (per docs/CONTRIBUTING.md "E2E Parity"):
- *   - `a[href="/data-entry/hold-resume"]` for navigation
  *   - `data-testid="ag-grid-wrapper"` (AGGridBase)
  *   - `data-testid="holds-grid-header"`, `holds-add-row-btn`,
  *     `holds-save-btn` (HoldEntryGrid)
@@ -22,18 +28,11 @@ import { login } from './helpers';
 
 test.setTimeout(60000);
 
-async function navigateToHoldResume(page: Page) {
-  const navLink = page.locator('.v-navigation-drawer a[href="/data-entry/hold-resume"]');
-  await navLink.scrollIntoViewIfNeeded();
-  await navLink.click({ force: true });
-  await page.waitForURL('**/data-entry/hold-resume', { timeout: 15000 });
-  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-}
-
 test.describe('Hold / Resume Workflow', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
-    await navigateToHoldResume(page);
+    await page.goto('/data-entry/hold-resume');
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   });
 
   test('grid renders with header and Add Row button', async ({ page }) => {

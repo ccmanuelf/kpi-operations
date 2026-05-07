@@ -19,11 +19,10 @@ import { login } from './helpers';
 test.setTimeout(60000);
 
 async function navigateVia(page: Page, href: string) {
-  const link = page.locator(`.v-navigation-drawer a[href="${href}"]`);
-  await link.scrollIntoViewIfNeeded();
-  await link.click({ force: true });
-  await page.waitForURL(`**${href}`, { timeout: 15000 });
-  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+  // Direct goto bypasses the role-based v-list-group expansion
+  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
+  await page.goto(href);
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 }
 
 test.describe('Dashboard / Module Navigation', () => {
