@@ -593,7 +593,7 @@ class TestBenchmarkSummary:
 
             # Calculations
             start = time.time()
-            outputs = calculate_all_blocks(config, metrics, report, sim_duration)
+            calculate_all_blocks(config, metrics, report, sim_duration)
             calculation_times.append(time.time() - start)
 
         # Calculate averages

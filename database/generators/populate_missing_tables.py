@@ -93,7 +93,7 @@ try:
                     ),
                 )
                 job_count += 1
-            except sqlite3.IntegrityError as e:
+            except sqlite3.IntegrityError:
                 print(f"   ⚠  {job_id} already exists")
 
     print(f"   ✓ Created {job_count} JOB entries")
@@ -140,7 +140,7 @@ try:
                     ),
                 )
                 hold_count += 1
-            except sqlite3.IntegrityError as e:
+            except sqlite3.IntegrityError:
                 print(f"   ⚠  Hold for {wo_id} already exists")
 
     print(f"   ✓ Created {hold_count} HOLD_ENTRY records")

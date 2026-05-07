@@ -13,9 +13,13 @@ exclude =
 per-file-ignores =
     __init__.py:F401
     # conftest.py imports the full ORM registry by name to force every
-    # __tablename__ to register on Base.metadata before tests run. The
-    # imports are intentional even though they aren't directly referenced.
+    # __tablename__ to register on Base.metadata before tests run, and
+    # re-exports fixture helpers that pytest discovers by attribute lookup
+    # rather than by source-code reference. Both patterns trigger F401.
+    # Two entries: the first matches `flake8 .` from project root,
+    # the second matches `flake8 .` from backend/ (CI's working dir).
     backend/tests/conftest.py:F401
+    tests/conftest.py:F401
 ignore =
     # W503 / W504: black doesn't enforce a binary-operator newline policy;
     # both are "default-ignore" in PEP 8 since 2016.

@@ -10,8 +10,6 @@ from datetime import date, datetime, timezone
 
 from backend.database import get_db
 from backend.utils.logging_utils import get_module_logger, log_operation, log_error
-
-logger = get_module_logger(__name__)
 from backend.schemas.downtime import (
     DowntimeEventCreate,
     DowntimeEventUpdate,
@@ -27,6 +25,8 @@ from backend.services.downtime_service import (
 from backend.calculations.availability import calculate_availability
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
 from backend.orm.user import User
+
+logger = get_module_logger(__name__)
 
 
 router = APIRouter(prefix="/api/downtime", tags=["Downtime Tracking"])

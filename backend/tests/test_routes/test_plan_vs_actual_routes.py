@@ -159,7 +159,7 @@ class TestPlanVsActualEndpoint:
         """GET /api/plan-vs-actual returns data for existing orders."""
         client, db = route_client
         cap = _create_capacity_order(db, CLIENT_ID, order_quantity=500)
-        wo = _create_linked_work_order(db, cap, actual_quantity=250)
+        _create_linked_work_order(db, cap, actual_quantity=250)
         db.commit()
 
         response = client.get(f"/api/plan-vs-actual?client_id={CLIENT_ID}")
@@ -197,7 +197,7 @@ class TestPlanVsActualEndpoint:
     def test_plan_vs_actual_with_status_filter(self, route_client):
         """Status query param filters correctly."""
         client, db = route_client
-        draft = _create_capacity_order(db, CLIENT_ID, status=OrderStatus.DRAFT)
+        _create_capacity_order(db, CLIENT_ID, status=OrderStatus.DRAFT)
         _create_capacity_order(db, CLIENT_ID, status=OrderStatus.CONFIRMED)
         db.commit()
 
@@ -227,7 +227,7 @@ class TestPlanVsActualSummaryEndpoint:
         client, db = route_client
         cap1 = _create_capacity_order(db, CLIENT_ID, order_quantity=100)
         _create_linked_work_order(db, cap1, actual_quantity=100)
-        cap2 = _create_capacity_order(db, CLIENT_ID, order_quantity=200)
+        _create_capacity_order(db, CLIENT_ID, order_quantity=200)
         db.commit()
 
         response = client.get(f"/api/plan-vs-actual/summary?client_id={CLIENT_ID}")

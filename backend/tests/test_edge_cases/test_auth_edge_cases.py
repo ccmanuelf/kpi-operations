@@ -219,7 +219,7 @@ class TestUserStateEdgeCases:
 
         # Should handle gracefully
         try:
-            filter_result = get_user_client_filter(user_no_client)
+            get_user_client_filter(user_no_client)
             # For operator without client, should return empty or raise
         except HTTPException as e:
             # Expected behavior for operator without assignment

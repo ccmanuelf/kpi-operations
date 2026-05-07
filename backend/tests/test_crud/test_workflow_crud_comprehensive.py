@@ -735,7 +735,7 @@ class TestEdgeCases:
         db = setup["db"]
 
         # Create a new client with no transitions
-        new_client = TestDataFactory.create_client(db, client_id="NEW-CLIENT", client_name="New Client")
+        TestDataFactory.create_client(db, client_id="NEW-CLIENT", client_name="New Client")
         new_user = TestDataFactory.create_user(db, username="new_user", role="supervisor", client_id="NEW-CLIENT")
         db.commit()
 
@@ -751,7 +751,7 @@ class TestEdgeCases:
         db = setup["db"]
 
         # Create a new client with no transitions
-        new_client = TestDataFactory.create_client(db, client_id="STATS-CLIENT", client_name="Stats Client")
+        TestDataFactory.create_client(db, client_id="STATS-CLIENT", client_name="Stats Client")
         new_user = TestDataFactory.create_user(db, username="stats_user", role="supervisor", client_id="STATS-CLIENT")
         db.commit()
 
@@ -769,7 +769,7 @@ class TestEdgeCases:
         db = setup["db"]
 
         # Create a new client without any config
-        new_client = TestDataFactory.create_client(db, client_id="CONFIG-CLIENT", client_name="Config Client")
+        TestDataFactory.create_client(db, client_id="CONFIG-CLIENT", client_name="Config Client")
         db.commit()
 
         config_update = {"workflow_statuses": ["RECEIVED", "IN_PROGRESS", "COMPLETED"]}

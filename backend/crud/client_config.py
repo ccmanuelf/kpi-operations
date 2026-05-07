@@ -111,7 +111,7 @@ def get_client_config(
 
     if not config and create_if_missing:
         # Create with defaults
-        config_data = {"client_id": client_id, **GLOBAL_DEFAULTS}
+        {"client_id": client_id, **GLOBAL_DEFAULTS}
         # Remove otd_mode string and set enum
         db_config = ClientConfig(
             client_id=client_id,

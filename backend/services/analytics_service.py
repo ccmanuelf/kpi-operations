@@ -246,8 +246,8 @@ class AnalyticsService:
             return cast(Dict[str, Any], cached_result)
 
         # Calculate date ranges
-        today_start = as_of_date
-        week_start = as_of_date - timedelta(days=7)
+        as_of_date
+        as_of_date - timedelta(days=7)
         month_start = as_of_date - timedelta(days=30)
 
         # Get today's metrics

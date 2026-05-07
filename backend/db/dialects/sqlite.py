@@ -62,20 +62,24 @@ class SQLiteDialect(DialectAdapter):
         if update_columns is None:
             update_columns = [c for c in columns if c not in conflict_columns]
 
+        # nosec B608 — table/cols/conflict/updates are derived from ORM
+        # mapping (DataMigrator's TABLE_ORDER + SQLAlchemy column metadata),
+        # never from user-controllable input. SQL doesn't allow parameterizing
+        # identifiers; whitelist enforcement is the standard mitigation.
         if not update_columns:
             # No columns to update, just ignore conflicts
             return f"""
                 INSERT INTO {table} ({cols})
                 VALUES ({placeholders})
                 ON CONFLICT ({conflict}) DO NOTHING
-            """.strip()
+            """.strip()  # nosec B608
 
         updates = ", ".join([f"{c} = excluded.{c}" for c in update_columns])
         return f"""
             INSERT INTO {table} ({cols})
             VALUES ({placeholders})
             ON CONFLICT ({conflict}) DO UPDATE SET {updates}
-        """.strip()
+        """.strip()  # nosec B608
 
     def get_boolean_literal(self, value: bool) -> str:
         """Return boolean literal.

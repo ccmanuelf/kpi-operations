@@ -257,11 +257,13 @@ class DatabaseMigrationTool:
             result["accessible"] = True
             result["table_count"] = len(tables)
 
-            # Check if any tables have data
+            # Check if any tables have data.
+            # nosec B608 — table_name comes from sqlalchemy inspect()
+            # reflection (built-in whitelisting), never user input.
             for table_name in tables:
                 try:
                     with target_engine.connect() as conn:
-                        count = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                        count = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()  # nosec B608
                         if count and count > 0:
                             result["has_data"] = True
                             result["tables_with_data"].append(table_name)
@@ -332,11 +334,13 @@ class DatabaseMigrationTool:
             # Count source rows for summary
             source_meta = MetaData()
             source_meta.reflect(bind=self.source_engine)
+            # nosec B608 — table_name from sqlalchemy MetaData.tables
+            # (reflection-based whitelisting), never user input.
             total_rows = 0
             table_counts = {}
             for table_name in source_meta.tables:
                 with self.source_engine.connect() as conn:
-                    count = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                    count = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()  # nosec B608
                     table_counts[table_name] = count or 0
                     total_rows += count or 0
 
@@ -590,7 +594,9 @@ class DatabaseMigrationTool:
             with self.target_engine.connect() as conn:
                 # .scalar() returns Optional[Any]; default None to 0 so
                 # the int subtraction below is well-typed.
-                actual_raw = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()
+                # nosec B608 — table_name from migrate_table loop driven
+                # by sqlalchemy reflection, never user input.
+                actual_raw = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"')).scalar()  # nosec B608
                 actual = int(actual_raw or 0)
 
             if actual != expected_count:

@@ -248,7 +248,7 @@ class TestAutoSyncLines:
         _seed_client(db, "BRG-S6")
 
         create_production_line(db, _make_create("BRG-S6", "SEW-01", "Sewing 1"))
-        cap = _create_capacity_line(db, "BRG-S6", "SEW-01", "Cap Sewing 1", is_active=False)
+        _create_capacity_line(db, "BRG-S6", "SEW-01", "Cap Sewing 1", is_active=False)
 
         result = auto_sync_lines(db, "BRG-S6")
         assert len(result["matched"]) == 0

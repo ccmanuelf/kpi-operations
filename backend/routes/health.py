@@ -135,7 +135,7 @@ async def detailed_health_check(
             if overall_status == "healthy":
                 overall_status = "degraded"
 
-    except (SQLAlchemyError, OSError) as e:
+    except (SQLAlchemyError, OSError):
         logger.exception("Database health check failed")
         checks["database"] = {"status": "unhealthy", "error": "Database connection failed"}
         overall_status = "unhealthy"
@@ -265,7 +265,7 @@ async def readiness_check(
         db.execute(_DB_PING_QUERY)
 
         return {"status": "ready", "timestamp": datetime.now(tz=timezone.utc).isoformat()}
-    except (SQLAlchemyError, OSError) as e:
+    except (SQLAlchemyError, OSError):
         logger.exception("Readiness check failed")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service not ready")
 

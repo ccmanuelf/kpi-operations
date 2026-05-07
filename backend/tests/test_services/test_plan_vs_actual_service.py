@@ -62,7 +62,7 @@ def pva_db():
 @pytest.fixture
 def admin_user(pva_db):
     """Create an admin user (can see all clients)."""
-    client = TestDataFactory.create_client(pva_db, client_id=CLIENT_ID, client_name="PVA Test Client")
+    TestDataFactory.create_client(pva_db, client_id=CLIENT_ID, client_name="PVA Test Client")
     user = TestDataFactory.create_user(
         pva_db,
         username="pva_admin",
@@ -224,7 +224,7 @@ class TestPlanVsActualWithLinkedOrders:
     def test_plan_vs_actual_no_production(self, pva_db, admin_user):
         """CapacityOrder + linked WorkOrder but no production entries."""
         cap = _create_capacity_order(pva_db, CLIENT_ID, order_quantity=500)
-        wo = _create_linked_work_order(pva_db, cap, actual_quantity=200)
+        _create_linked_work_order(pva_db, cap, actual_quantity=200)
         pva_db.commit()
 
         results = get_plan_vs_actual(pva_db, admin_user, client_id=CLIENT_ID)
@@ -521,10 +521,10 @@ class TestPlanVsActualSummary:
             order_quantity=100,
             required_date=date.today() + timedelta(days=30),
         )
-        wo1 = _create_linked_work_order(pva_db, cap1, actual_quantity=100)
+        _create_linked_work_order(pva_db, cap1, actual_quantity=100)
 
         # Order 2: in progress
-        cap2 = _create_capacity_order(
+        _create_capacity_order(
             pva_db,
             CLIENT_ID,
             order_quantity=200,
@@ -554,7 +554,7 @@ class TestMultiTenantIsolation:
 
         # Create capacity orders for both clients
         cap_a = _create_capacity_order(pva_db, CLIENT_ID, order_quantity=100)
-        cap_b = _create_capacity_order(pva_db, CLIENT_B_ID, order_quantity=200)
+        _create_capacity_order(pva_db, CLIENT_B_ID, order_quantity=200)
 
         # Create operator user for CLIENT_ID only
         operator = TestDataFactory.create_user(

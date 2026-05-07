@@ -96,7 +96,7 @@ class TestBulkCreateAttendanceRecords:
         client, user, employees, shift = _seed_prereqs(db, num_employees=2)
 
         # Create operator user for CLIENT-B (no access to BULK-ATT-C1)
-        other_client = TestDataFactory.create_client(db, client_id="BULK-OTHER-C", client_name="Other")
+        TestDataFactory.create_client(db, client_id="BULK-OTHER-C", client_name="Other")
         operator = TestDataFactory.create_user(db, username="bulk_operator", role="operator", client_id="BULK-OTHER-C")
         db.flush()
 

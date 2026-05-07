@@ -297,7 +297,7 @@ class TestMarkAllPresentRoute:
         s = bulk_setup
 
         # Create another client with its own shift
-        other_client = TestDataFactory.create_client(s["db"], client_id="BULK-OTHER-RT", client_name="Other RT")
+        TestDataFactory.create_client(s["db"], client_id="BULK-OTHER-RT", client_name="Other RT")
         other_shift = TestDataFactory.create_shift(s["db"], client_id="BULK-OTHER-RT", shift_name="Other Day Shift")
         s["db"].commit()
 

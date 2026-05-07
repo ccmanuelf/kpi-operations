@@ -67,13 +67,17 @@ class MySQLDialect(DialectAdapter):
                 VALUES ({placeholders})
             """.strip()
 
-        # MySQL 8.0.19+ uses alias syntax, but VALUES() still works
+        # MySQL 8.0.19+ uses alias syntax, but VALUES() still works.
+        # nosec B608 — table/cols/updates are derived from ORM mapping
+        # (DataMigrator's TABLE_ORDER + SQLAlchemy column metadata), never
+        # from user-controllable input. SQL doesn't allow parameterizing
+        # identifiers; whitelist enforcement is the standard mitigation.
         updates = ", ".join([f"{c} = VALUES({c})" for c in update_columns])
         return f"""
             INSERT INTO {table} ({cols})
             VALUES ({placeholders})
             ON DUPLICATE KEY UPDATE {updates}
-        """.strip()
+        """.strip()  # nosec B608
 
     def get_boolean_literal(self, value: bool) -> str:
         """Return boolean literal.

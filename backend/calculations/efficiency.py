@@ -20,12 +20,13 @@ import logging
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-logger = logging.getLogger(__name__)
 from backend.orm.product import Product
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.shift import Shift
 from backend.orm.coverage_entry import CoverageEntry
 from backend.crud.client_config import get_client_config_or_defaults
+
+logger = logging.getLogger(__name__)
 
 
 # Fallback defaults (used only if client config lookup fails)

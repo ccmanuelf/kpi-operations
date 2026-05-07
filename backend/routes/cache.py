@@ -132,7 +132,7 @@ async def cache_health() -> Dict[str, Any]:
             "entries": stats.get("entries", 0),
             "hit_rate": hit_rate,
         }
-    except Exception as e:
+    except Exception:
         logger.exception("Cache health check failed")
         return {
             "status": "error",

@@ -206,7 +206,7 @@ class TestFPYRTYCalculations:
     def test_hidden_factory_concept(self):
         """Test hidden factory (rework) impact"""
         production_rate = 1000  # units/day
-        fpy = 0.90  # 90% first pass
+        0.90  # 90% first pass
         rework_pct = 0.10  # 10% rework
 
         hidden_factory_units = production_rate * rework_pct

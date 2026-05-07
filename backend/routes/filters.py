@@ -13,8 +13,6 @@ from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.dependencies import PaginationParams
 from backend.utils.logging_utils import get_module_logger
-
-logger = get_module_logger(__name__)
 from backend.schemas.filters import (
     SavedFilterCreate,
     SavedFilterUpdate,
@@ -40,6 +38,8 @@ from backend.services.filter_service import (
     get_user_filter_statistics as get_filter_statistics,
     duplicate_saved_filter as duplicate_filter,
 )
+
+logger = get_module_logger(__name__)
 
 
 router = APIRouter(prefix="/api/filters", tags=["Saved Filters"])

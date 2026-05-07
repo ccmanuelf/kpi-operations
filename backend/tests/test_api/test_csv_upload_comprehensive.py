@@ -194,7 +194,7 @@ class TestCSVUploadEndpoints:
 
         # Validate numeric field
         try:
-            value = int(rows[0]["units_produced"])
+            int(rows[0]["units_produced"])
             is_valid = True
         except ValueError:
             is_valid = False
@@ -209,7 +209,7 @@ class TestCSVUploadEndpoints:
 
         # Validate date field
         try:
-            date_value = datetime.strptime(rows[0]["entry_date"], "%Y-%m-%d")
+            datetime.strptime(rows[0]["entry_date"], "%Y-%m-%d")
             is_valid = True
         except ValueError:
             is_valid = False

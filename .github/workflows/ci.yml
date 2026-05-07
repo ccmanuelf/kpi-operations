@@ -44,6 +44,18 @@ jobs:
       - name: Run linting
         run: flake8 . --count --show-source --statistics
 
+      - name: Seed demo database
+        # The smoke-test suite (test_smoke_paramless_get) hits every
+        # paramless GET via TestClient and expects no 5xx — that exercise
+        # only makes sense against a populated schema. Most other tests
+        # use the in-memory `transactional_db` fixture and ignore this
+        # file, but a handful (and the smoke test) bind to the file-based
+        # DATABASE_URL. Seeding once here gives them a working schema +
+        # 5 demo clients without polluting the rest of the suite (writes
+        # land in the disposable demo DB, not in any persistent store).
+        working-directory: .
+        run: PYTHONPATH=. python backend/scripts/init_demo_database.py
+
       - name: Run tests with coverage
         run: PYTHONPATH=.. pytest tests/ --tb=short -q --cov=. --cov=auth --cov=cache --cov=tasks --cov=utils --cov=endpoints --cov-report=xml:coverage.xml --cov-report=html:htmlcov --cov-fail-under=75
 
@@ -89,6 +101,16 @@ jobs:
       - name: Run TypeScript type-check
         run: npm run typecheck
 
+      - name: Check for orphan test skips
+        # Guards against the failure mode that triggered the Phase B.7
+        # rewrite: an entry-interface migration shipping with
+        # test.describe.skip(...) stopgaps that nobody ever revisited.
+        # Every skip must declare a Phase/issue reference or a FIXME
+        # date — see docs/CONTRIBUTING.md "E2E Parity" section.
+        # The job's default working-directory is `frontend/`; the
+        # script lives at the project root, so reach up one level.
+        run: bash ../scripts/check-skipped-tests.sh
+
       - name: Build frontend
         run: npm run build
 
@@ -121,11 +143,25 @@ jobs:
       - name: Smoke test backend image
         run: |
           set -e
+          # Four-slash sqlite URL: `sqlite:////tmp/test.db` is absolute
+          # `/tmp/test.db`. Three slashes (sqlite:///path) is relative to
+          # the container WORKDIR (/app), which doesn't have a `tmp/`
+          # subdir — that's what was producing "unable to open database
+          # file" on every CI run before the fix.
           docker run -d --name backend-smoke -p 8000:8000 \
-            -e DATABASE_URL=sqlite:///tmp/test.db \
-            -e SECRET_KEY=ci-test-only \
+            -e DATABASE_URL=sqlite:////tmp/test.db \
+            -e SECRET_KEY=ci-test-only-32-chars-minimum-zzz \
             kpi-operations-backend
-          sleep 5
+          # Smart-reseed lifespan does a 10-step DB init on a fresh DB
+          # (~10-15s); a fixed `sleep 5` raced the init and curl 502'd
+          # before uvicorn was listening. Poll with a 60s budget instead.
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8000/health/live > /dev/null; then
+              echo "[CI] backend ready after ${i}x2s"
+              break
+            fi
+            sleep 2
+          done
           curl -f http://localhost:8000/health/live || (docker logs backend-smoke && exit 1)
           docker stop backend-smoke
           docker rm backend-smoke
@@ -134,10 +170,17 @@ jobs:
         run: |
           set -e
           docker run -d --name backend-freshdb -p 8001:8000 \
-            -e DATABASE_URL=sqlite:///tmp/fresh.db \
-            -e SECRET_KEY=ci-freshdb-test \
+            -e DATABASE_URL=sqlite:////tmp/fresh.db \
+            -e SECRET_KEY=ci-freshdb-test-32-chars-minimum-zzz \
             kpi-operations-backend
-          sleep 8
+          # Same poll pattern — fresh DB triggers full smart-reseed.
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8001/health/live > /dev/null; then
+              echo "[CI] freshdb backend ready after ${i}x2s"
+              break
+            fi
+            sleep 2
+          done
           # Auth
           TOKEN=$(curl -sf -X POST http://localhost:8001/api/auth/login \
             -H "Content-Type: application/json" \

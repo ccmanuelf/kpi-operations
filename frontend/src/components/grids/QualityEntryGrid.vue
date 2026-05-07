@@ -1,6 +1,6 @@
 <template>
   <v-card>
-    <v-card-title class="bg-primary">
+    <v-card-title class="bg-primary" data-testid="quality-grid-header">
       <div class="d-flex align-center justify-space-between" style="width: 100%;">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-clipboard-check</v-icon>
@@ -12,6 +12,7 @@
             variant="outlined"
             @click="addRow"
             class="mr-2"
+            data-testid="quality-add-row-btn"
           >
             <v-icon left>mdi-plus</v-icon>
             {{ $t('grids.quality.addInspection') }}
@@ -21,6 +22,7 @@
             @click="saveInspections"
             :loading="saving"
             :disabled="!hasChanges"
+            data-testid="quality-save-btn"
           >
             <v-icon left>mdi-content-save</v-icon>
             {{ $t('grids.quality.saveAll') }} ({{ changedRowsCount }})

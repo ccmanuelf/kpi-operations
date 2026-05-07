@@ -6,6 +6,17 @@ Uses mock-based testing pattern consistent with other tests
 import pytest
 from unittest.mock import MagicMock
 from datetime import date
+from decimal import Decimal
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from backend.database import Base
+from backend.orm import ClientType
+from backend.orm.product import Product
+from backend.orm.production_entry import ProductionEntry
+from backend.tests.fixtures.factories import TestDataFactory
 
 
 class TestPerformanceCalculations:
@@ -330,16 +341,6 @@ class TestPerformanceIntegration:
 # =============================================================================
 # REAL DATABASE INTEGRATION TESTS
 # =============================================================================
-from decimal import Decimal
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
-from backend.database import Base
-from backend.orm import ClientType
-from backend.orm.product import Product
-from backend.orm.production_entry import ProductionEntry
-from backend.tests.fixtures.factories import TestDataFactory
 
 
 @pytest.fixture(scope="function")

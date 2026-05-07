@@ -87,6 +87,12 @@ def _build_csv_response(
         current_user.username,
     )
 
+    # Eagerly probe the table so SQLAlchemyError surfaces BEFORE we
+    # return a StreamingResponse. Once the streaming response starts
+    # flushing headers, a mid-iteration DB error can't be converted
+    # to a 503 — Starlette would raise "response already started".
+    db.query(model_class).limit(1).first()
+
     generator = stream_csv_export(
         db=db,
         model_class=model_class,
@@ -412,6 +418,10 @@ async def export_employees(
         client_id,
         current_user.username,
     )
+
+    # Eager probe so a DB error fires BEFORE StreamingResponse flushes
+    # headers (otherwise Starlette can't convert mid-stream errors to 503).
+    db.query(Employee).limit(1).first()
 
     generator = stream_csv_export(
         db=db,

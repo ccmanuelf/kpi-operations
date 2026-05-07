@@ -18,10 +18,10 @@ from typing import Optional, Tuple
 import logging
 
 from backend.orm.quality_entry import QualityEntry
-
-logger = logging.getLogger(__name__)
 from backend.orm.part_opportunities import PartOpportunities
 from backend.crud.client_config import get_client_config_or_defaults
+
+logger = logging.getLogger(__name__)
 
 
 # DPMO to Sigma Level lookup table

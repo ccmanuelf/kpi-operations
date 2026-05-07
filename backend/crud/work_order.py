@@ -11,9 +11,6 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from fastapi import HTTPException
-
-logger = logging.getLogger(__name__)
-
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.orm.work_order import WorkOrder
@@ -21,6 +18,8 @@ from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
 from backend.calculations.workflow_engine import WorkflowStateMachine, execute_transition
+
+logger = logging.getLogger(__name__)
 
 
 def create_work_order(db: Session, work_order_data: dict, current_user: User) -> WorkOrder:
@@ -76,7 +75,7 @@ def create_work_order(db: Session, work_order_data: dict, current_user: User) ->
         )
         db.add(initial_log)
         db.flush()
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         # Don't fail creation if logging fails
         logger.exception("Failed to log initial status transition for work_order_id=%s", db_work_order.work_order_id)
 
@@ -201,7 +200,7 @@ def update_work_order(
             raise HTTPException(status_code=400, detail=f"Invalid status transition: {reason}")
 
         # Store previous status for ON_HOLD tracking
-        old_status = db_work_order.status
+        db_work_order.status
 
         # Update status and log transition. WorkflowTransitionLog
         # and WorkOrder.closed_by are Mapped[Optional[str]] (FK to
@@ -220,7 +219,7 @@ def update_work_order(
             work_order_update = {k: v for k, v in work_order_update.items() if k != "status"}
         except HTTPException:
             raise
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             # Log but don't fail the update
             logger.exception("Database error executing status transition for work_order_id=%s", work_order_id)
 

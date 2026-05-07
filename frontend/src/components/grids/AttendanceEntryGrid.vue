@@ -1,6 +1,6 @@
 <template>
   <v-card>
-    <v-card-title class="bg-primary">
+    <v-card-title class="bg-primary" data-testid="attendance-grid-header">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-account-clock</v-icon>
         <span class="text-h5">{{ $t('grids.attendance.title') }}</span>
@@ -46,6 +46,7 @@
             :loading="loading"
             :disabled="!selectedDate || !selectedShift"
             block
+            data-testid="attendance-load-employees-btn"
           >
             <v-icon left>mdi-account-multiple</v-icon>
             {{ $t('grids.attendance.loadEmployees') }}
@@ -57,6 +58,7 @@
             @click="bulkSetStatus"
             :disabled="attendanceData.length === 0"
             block
+            data-testid="attendance-mark-all-present-btn"
           >
             <v-icon left>mdi-check-all</v-icon>
             {{ $t('grids.attendance.markAllPresent') }}

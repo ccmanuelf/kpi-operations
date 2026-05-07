@@ -12,8 +12,6 @@ import uuid
 from backend.database import get_db
 from backend.config import settings
 from backend.utils.logging_utils import get_module_logger, log_security_event
-
-logger = get_module_logger(__name__)
 from backend.schemas.user import (
     UserCreate,
     UserLogin,
@@ -33,6 +31,8 @@ from backend.auth.jwt import (
     _token_blacklist,
 )
 from backend.orm.user import User
+
+logger = get_module_logger(__name__)
 
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
@@ -195,7 +195,7 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
         # TODO: Send email with reset link
         # In production, integrate with email service
         # For now, log the token (remove in production)
-        get_module_logger(__name__).debug("Password reset token generated for %s", user.email)
+        get_module_logger(__name__).debug("Password reset token generated for %s: %s", user.email, reset_token)
 
     # Always return success to prevent email enumeration
     return {

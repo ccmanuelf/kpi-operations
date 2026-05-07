@@ -543,7 +543,7 @@ class TestApplyWorkflowTemplate:
         mock_query.filter.return_value = mock_query
         mock_query.first.return_value = None  # No existing config
 
-        result = apply_workflow_template(mock_db, "CLIENT-001", "simple")
+        apply_workflow_template(mock_db, "CLIENT-001", "simple")
 
         # Verify add was called for new config
         mock_db.add.assert_called_once()

@@ -9,12 +9,12 @@ from typing import Any, List, Optional, Dict
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
-logger = logging.getLogger(__name__)
-
 from backend.orm.part_opportunities import PartOpportunities
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access, build_client_filter_clause
 from backend.utils.soft_delete import soft_delete
+
+logger = logging.getLogger(__name__)
 
 
 def create_part_opportunity(db: Session, part_data: dict, current_user: User) -> PartOpportunities:
@@ -217,11 +217,11 @@ def bulk_import_opportunities(db: Session, opportunities_list: List[dict], curre
                 db.add(db_part)
 
             success_count += 1
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error importing part opportunity at row %d", idx + 1)
             failure_count += 1
             errors.append(f"Row {idx + 1}: Database error importing part opportunity")
-        except (ValueError, TypeError, KeyError) as e:
+        except (ValueError, TypeError, KeyError):
             logger.exception("Validation error importing part opportunity at row %d", idx + 1)
             failure_count += 1
             errors.append(f"Row {idx + 1}: Validation error importing part opportunity")

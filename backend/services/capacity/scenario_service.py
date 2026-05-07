@@ -530,11 +530,6 @@ class ScenarioService:
         """
         comparisons: List[ScenarioComparison] = []
 
-        # Get baseline analysis (no scenario)
-        baseline = self.analysis_service.analyze_capacity(
-            client_id=client_id, period_start=period_start, period_end=period_end
-        )
-
         for scenario_id in scenario_ids:
             result = self.apply_scenario_parameters(
                 client_id=client_id, scenario_id=scenario_id, period_start=period_start, period_end=period_end
@@ -687,7 +682,7 @@ class ScenarioService:
         elif scenario_type == ScenarioType.SETUP_REDUCTION.value:
             reduction_percent = Decimal(str(params.get("reduction_percent", 30))) / 100
             setup_portion = Decimal(str(params.get("setup_time_portion", "0.10")))
-            affected_ops = params.get("affected_operations", ["all"])
+            params.get("affected_operations", ["all"])
 
             # Reducing setup time frees up capacity
             capacity_gain_factor = setup_portion * reduction_percent
@@ -774,7 +769,6 @@ class ScenarioService:
         # Scenario Type: THREE_SHIFT (Add 3rd shift)
         # =====================================================================
         elif scenario_type == ScenarioType.THREE_SHIFT.value:
-            shifts_enabled = params.get("shifts_enabled", 3)
             shift3_hours = Decimal(str(params.get("shift3_hours", "8.0")))
             shift3_efficiency = Decimal(str(params.get("shift3_efficiency", "0.80")))
             affected_lines_param = params.get("affected_lines", ["all"])
@@ -826,7 +820,7 @@ class ScenarioService:
             affected_departments = params.get("affected_departments", ["all"])
 
             # Absenteeism reduces capacity
-            capacity_reduction_factor = 1 - absenteeism_percent
+            1 - absenteeism_percent
 
             for line in modified_lines:
                 if affected_departments == ["all"] or line.get("department") in affected_departments:

@@ -14,8 +14,6 @@ from pydantic import ValidationError
 import io
 import csv
 
-logger = logging.getLogger(__name__)
-
 from backend.database import get_db
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User, UserRole
@@ -47,6 +45,8 @@ from backend.schemas.job import JobCreate
 from backend.schemas.client import ClientCreate
 from backend.schemas.employee import EmployeeCreate
 from backend.schemas.floating_pool import FloatingPoolCreate
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -198,7 +198,7 @@ async def upload_downtime_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -299,7 +299,7 @@ async def upload_holds_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -405,7 +405,7 @@ async def upload_attendance_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -483,7 +483,7 @@ async def upload_coverage_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -606,7 +606,7 @@ async def upload_quality_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -688,7 +688,7 @@ async def upload_defects_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -797,7 +797,7 @@ async def upload_work_orders_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -903,7 +903,7 @@ async def upload_jobs_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -992,7 +992,7 @@ async def upload_clients_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -1081,7 +1081,7 @@ async def upload_employees_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})
@@ -1167,7 +1167,7 @@ async def upload_floating_pool_csv(
             logger.warning("CSV row %d validation failed: %s", row_num, e)
             failed += 1
             errors.append({"row": row_num, "error": "Validation error in CSV row data", "data": row})
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error processing CSV row %d", row_num)
             failed += 1
             errors.append({"row": row_num, "error": "Database error processing row", "data": row})

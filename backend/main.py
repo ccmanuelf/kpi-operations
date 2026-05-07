@@ -15,11 +15,90 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Optional
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime, timezone
+import logging
+
+from sqlalchemy.exc import SQLAlchemyError
 
 from backend.config import settings
 from backend.database import engine, Base
+
+# Domain Events Infrastructure (Phase 3)
+from backend.events import register_all_handlers, get_event_bus
+from backend.orm.event_store import create_event_persistence_handler
+from backend.middleware.rate_limit import configure_rate_limiting
+from backend.middleware.security_headers import SecurityHeadersMiddleware
+from backend.middleware.audit_log import AuditLogMiddleware
+from backend.exceptions.domain_exceptions import (
+    DomainException,
+    ResourceNotFoundError,
+    ValidationError as DomainValidationError,
+)
+
+# Modular routers
+from backend.routes import (
+    attendance_router,
+    coverage_router,
+    quality_router,
+    defect_router,
+    reports_router,
+    health_router,
+    analytics_router,
+    predictions_router,
+    qr_router,
+    preferences_router,
+    filters_router,
+    auth_router,
+    users_router,
+    production_router,
+    import_logs_router,
+    kpi_router,
+    kpi_thresholds_router,
+    downtime_router,
+    availability_router,
+    holds_router,
+    wip_aging_router,
+    jobs_router,
+    work_order_jobs_router,
+    work_orders_router,
+    client_work_orders_router,
+    clients_router,
+    client_config_router,
+    employees_router,
+    client_employees_router,
+    floating_pool_router,
+    client_floating_pool_router,
+    part_opportunities_router,
+    reference_router,
+    data_completeness_router,
+    my_shift_router,
+    alerts_router,
+    workflow_router,
+    simulation_router,
+    simulation_v2_router,
+    simulation_scenarios_router,
+    simulation_calibration_router,
+    database_config_router,
+    cache_router,
+    capacity_router,
+)
+from backend.routes.defect_type_catalog import router as defect_type_catalog_router
+from backend.routes.hold_catalogs import router as hold_catalogs_router
+from backend.routes.shifts import router as shifts_router
+from backend.routes.break_times import router as break_times_router
+from backend.routes.calendar import router as calendar_router
+from backend.routes.production_lines import router as production_lines_router
+from backend.routes.equipment import router as equipment_router
+from backend.routes.employee_line_assignments import router as employee_line_assignments_router
+from backend.routes.plan_vs_actual import router as plan_vs_actual_router
+from backend.routes.export import router as export_router
+from backend.routes.onboarding import router as onboarding_router
+from backend.endpoints.csv_upload import router as csv_upload_router
+from backend.routes.calculation_assumptions import router as calculation_assumptions_router
+from backend.routes.metric_results import router as metric_results_router
+from backend.routes.dual_view_calculate import router as dual_view_calculate_router
 
 
 # =============================================================================
@@ -81,23 +160,6 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         return response
 
-
-# Domain Events Infrastructure (Phase 3)
-from backend.events import register_all_handlers, get_event_bus
-from backend.orm.event_store import create_event_persistence_handler
-from backend.middleware.rate_limit import configure_rate_limiting
-from backend.middleware.security_headers import SecurityHeadersMiddleware
-from backend.middleware.audit_log import AuditLogMiddleware
-
-import logging
-
-from fastapi.responses import JSONResponse
-from sqlalchemy.exc import SQLAlchemyError
-from backend.exceptions.domain_exceptions import (
-    DomainException,
-    ResourceNotFoundError,
-    ValidationError as DomainValidationError,
-)
 
 _logger = logging.getLogger(__name__)
 
@@ -556,96 +618,6 @@ def root() -> Dict[str, Any]:
 # MODULAR ROUTE REGISTRATION
 # ============================================================================
 
-# Import all routers from routes package
-from backend.routes import (
-    # Existing routers
-    attendance_router,
-    coverage_router,
-    quality_router,
-    defect_router,
-    reports_router,
-    health_router,
-    analytics_router,
-    predictions_router,
-    qr_router,
-    preferences_router,
-    filters_router,
-    # Newly extracted routers
-    auth_router,
-    users_router,
-    production_router,
-    import_logs_router,
-    kpi_router,
-    kpi_thresholds_router,
-    downtime_router,
-    availability_router,
-    holds_router,
-    wip_aging_router,
-    jobs_router,
-    work_order_jobs_router,
-    work_orders_router,
-    client_work_orders_router,
-    clients_router,
-    client_config_router,
-    employees_router,
-    client_employees_router,
-    floating_pool_router,
-    client_floating_pool_router,
-    part_opportunities_router,
-    reference_router,
-    data_completeness_router,
-    my_shift_router,
-    alerts_router,
-    workflow_router,
-    simulation_router,
-    simulation_v2_router,
-    simulation_scenarios_router,
-    simulation_calibration_router,
-    # Database configuration router (Phase 12)
-    database_config_router,
-    # Cache management router (Phase A.1)
-    cache_router,
-    # Capacity Planning router (Phase B.3)
-    capacity_router,
-)
-
-# Import defect type catalog router
-from backend.routes.defect_type_catalog import router as defect_type_catalog_router
-
-# Import hold catalog router (Sprint 0 Task 0.5)
-from backend.routes.hold_catalogs import router as hold_catalogs_router
-
-# Sprint 1: Shift management routers
-from backend.routes.shifts import router as shifts_router
-from backend.routes.break_times import router as break_times_router
-from backend.routes.calendar import router as calendar_router
-
-# Sprint 2: Production line topology routers
-from backend.routes.production_lines import router as production_lines_router
-from backend.routes.equipment import router as equipment_router
-from backend.routes.employee_line_assignments import router as employee_line_assignments_router
-
-# Sprint 3: Plan vs Actual router
-from backend.routes.plan_vs_actual import router as plan_vs_actual_router
-
-# Sprint 4: CSV/XLSX export router
-from backend.routes.export import router as export_router
-
-# Sprint 5: Onboarding status router
-from backend.routes.onboarding import router as onboarding_router
-
-# Import CSV upload endpoints
-from backend.endpoints.csv_upload import router as csv_upload_router
-
-# Dual-View Architecture Phase 2: Calculation Assumption Registry
-from backend.routes.calculation_assumptions import router as calculation_assumptions_router
-
-# Dual-View Architecture Phase 4: Inspector API for metric calculation results
-from backend.routes.metric_results import router as metric_results_router
-
-# Dual-View Architecture Phase 4c: On-demand calculation endpoints
-from backend.routes.dual_view_calculate import router as dual_view_calculate_router
-
 # ============================================================================
 # Register health check and monitoring routes
 # ============================================================================
@@ -893,4 +865,7 @@ app.include_router(dual_view_calculate_router)
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # 0.0.0.0 is required for Docker / Render container networking;
+    # the production entrypoint uses uvicorn via gunicorn in the
+    # Dockerfile, this branch is the local-development runner.
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # nosec B104

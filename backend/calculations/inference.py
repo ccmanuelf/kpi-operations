@@ -176,7 +176,7 @@ class InferenceEngine:
         """
 
         # Historical shift average
-        thirty_days_ago = date.today() - timedelta(days=30)
+        date.today() - timedelta(days=30)
 
         # This would query attendance records when available
         # For now, return industry standard

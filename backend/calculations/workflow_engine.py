@@ -32,12 +32,12 @@ from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 from backend.orm.client_config import ClientConfig
 from backend.orm.workflow import WorkflowTransitionLog
 from backend.schemas.workflow import WORKFLOW_TEMPLATES
+
+logger = logging.getLogger(__name__)
 
 
 # Default workflow transitions (used when no client config exists)
@@ -470,13 +470,13 @@ def bulk_transition(
         except HTTPException as e:
             results["results"].append({"work_order_id": wo_id, "success": False, "error": e.detail})
             results["failed"] += 1
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error during bulk transition for work_order_id=%s", wo_id)
             results["results"].append(
                 {"work_order_id": wo_id, "success": False, "error": "Database error during transition"}
             )
             results["failed"] += 1
-        except (ValueError, TypeError) as e:
+        except (ValueError, TypeError):
             logger.exception("Validation error during bulk transition for work_order_id=%s", wo_id)
             results["results"].append(
                 {"work_order_id": wo_id, "success": False, "error": "Validation error during transition"}

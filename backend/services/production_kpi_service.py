@@ -19,14 +19,14 @@ from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-logger = logging.getLogger(__name__)
-
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.product import Product
 from backend.orm.shift import Shift
 from backend.crud.client_config import get_client_config_or_defaults
 from backend.cache import get_cache
 from backend.cache.kpi_cache import build_cache_key
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -394,14 +394,14 @@ class ProductionKPIService:
                     )
                     results["successful"] += 1
 
-                except (ValueError, TypeError, ArithmeticError) as e:
+                except (ValueError, TypeError, ArithmeticError):
                     logger.exception("KPI calculation failed for entry_id=%s", entry_id)
                     results["entries"].append(
                         {"entry_id": entry_id, "success": False, "error": "KPI calculation failed"}
                     )
                     results["failed"] += 1
 
-        except (SQLAlchemyError, ValueError, TypeError, ArithmeticError) as e:
+        except (SQLAlchemyError, ValueError, TypeError, ArithmeticError):
             # If batch calculation fails, fall back to individual processing
             logger.exception("Batch KPI calculation failed, falling back to individual processing")
             for entry in entries:
@@ -425,7 +425,7 @@ class ProductionKPIService:
                     )
                     results["successful"] += 1
 
-                except (ValueError, TypeError, ArithmeticError) as entry_error:
+                except (ValueError, TypeError, ArithmeticError):
                     logger.exception("Individual KPI calculation failed for entry_id=%s", entry.production_entry_id)
                     results["entries"].append(
                         {"entry_id": entry.production_entry_id, "success": False, "error": "KPI calculation failed"}
@@ -503,10 +503,10 @@ class ProductionKPIService:
             return {}
         try:
             return get_client_config_or_defaults(self.db, client_id)
-        except SQLAlchemyError as e:
+        except SQLAlchemyError:
             logger.exception("Database error fetching client config for client_id=%s", client_id)
             return {}
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError):
             logger.exception("Invalid client config data for client_id=%s", client_id)
             return {}
 

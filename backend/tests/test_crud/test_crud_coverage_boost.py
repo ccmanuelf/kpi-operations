@@ -42,7 +42,7 @@ class TestCoverageCRUD:
         """Test get shift coverages with real data"""
         from backend.crud.coverage import get_shift_coverages
 
-        client = TestDataFactory.create_client(transactional_db, client_id="COV-CL")
+        TestDataFactory.create_client(transactional_db, client_id="COV-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="COV-CL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="COV-CL")
         transactional_db.flush()
@@ -77,7 +77,7 @@ class TestDefectDetailCRUD:
         """Test get defect details with real data"""
         from backend.crud.defect_detail import get_defect_details
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DD-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DD-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="DD-CL")
         transactional_db.flush()
@@ -104,7 +104,7 @@ class TestDefectTypeCatalogCRUD:
         """Test get defect types returns empty list for new client"""
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTC-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC-CL")
         transactional_db.commit()
 
@@ -115,7 +115,7 @@ class TestDefectTypeCatalogCRUD:
         """Test get defect types with seeded catalog entries"""
         from backend.crud.defect_type_catalog import get_defect_types_by_client
 
-        client = TestDataFactory.create_client(transactional_db, client_id="DTC2-CL")
+        TestDataFactory.create_client(transactional_db, client_id="DTC2-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="DTC2-CL")
         TestDataFactory.create_defect_type_catalog(transactional_db, client_id="DTC2-CL", defect_name="Thread Loose")
         transactional_db.commit()
@@ -155,7 +155,7 @@ class TestEmployeeCRUD:
         """Test get employees with seeded data"""
         from backend.crud.employee import get_employees
 
-        client = TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
+        TestDataFactory.create_client(transactional_db, client_id="EMP-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="EMP-CL")
         TestDataFactory.create_employee(transactional_db, client_id="EMP-CL")
         transactional_db.commit()
@@ -185,7 +185,7 @@ class TestJobCRUD:
         """Test get jobs with seeded data"""
         from backend.crud.job import get_jobs
 
-        client = TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
+        TestDataFactory.create_client(transactional_db, client_id="JOB-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="JOB-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="JOB-CL")
         transactional_db.flush()

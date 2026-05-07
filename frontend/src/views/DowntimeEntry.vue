@@ -1,5 +1,5 @@
 <template>
-  <v-container fluid>
+  <v-container fluid data-testid="downtime-entry-view">
     <v-row>
       <v-col cols="12">
         <div class="d-flex justify-space-between align-center mb-4">

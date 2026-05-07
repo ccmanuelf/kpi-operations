@@ -176,8 +176,8 @@ def calculate_fpy(
 
     total_units = sum(i.units_inspected or 0 for i in inspections)
     total_passed = sum(i.units_passed or 0 for i in inspections)
-    total_rework = sum(i.units_reworked or 0 for i in inspections)
-    total_repair = sum(i.units_requiring_repair or 0 for i in inspections)
+    sum(i.units_reworked or 0 for i in inspections)
+    sum(i.units_requiring_repair or 0 for i in inspections)
 
     # First Pass Good = units that passed WITHOUT needing any rework or repair
     # If units_passed already excludes rework/repair, use it directly

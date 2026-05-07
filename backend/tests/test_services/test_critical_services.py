@@ -259,7 +259,7 @@ class TestQualityKPIService:
 
     def test_calculate_ppm(self, transactional_db):
         """PPM = (defects / inspected) * 1,000,000."""
-        data = _setup_quality_data(transactional_db, days=3, defects=5)
+        _setup_quality_data(transactional_db, days=3, defects=5)
         service = QualityKPIService(transactional_db)
 
         base = date.today() - timedelta(days=5)
@@ -284,7 +284,7 @@ class TestQualityKPIService:
 
     def test_calculate_dpmo(self, transactional_db):
         """DPMO = (defects / (units * opportunities)) * 1,000,000."""
-        data = _setup_quality_data(transactional_db, days=1, defects=10)
+        _setup_quality_data(transactional_db, days=1, defects=10)
         service = QualityKPIService(transactional_db)
 
         base = date.today() - timedelta(days=3)
@@ -300,7 +300,7 @@ class TestQualityKPIService:
 
     def test_calculate_fpy(self, transactional_db):
         """FPY = (passed / inspected) * 100."""
-        data = _setup_quality_data(transactional_db, days=2, defects=10)
+        _setup_quality_data(transactional_db, days=2, defects=10)
         service = QualityKPIService(transactional_db)
 
         base = date.today() - timedelta(days=5)
@@ -315,7 +315,7 @@ class TestQualityKPIService:
 
     def test_calculate_rty(self, transactional_db):
         """RTY is computed across process steps (uses default stages)."""
-        data = _setup_quality_data(transactional_db, days=3, defects=5)
+        _setup_quality_data(transactional_db, days=3, defects=5)
         service = QualityKPIService(transactional_db)
 
         base = date.today() - timedelta(days=5)
@@ -473,7 +473,7 @@ class TestAnalyticsService:
     def test_work_order_summary(self, transactional_db):
         """Work order summary groups counts by status."""
         TestDataFactory.reset_counters()
-        client = TestDataFactory.create_client(transactional_db, client_id="AN-CLIENT")
+        TestDataFactory.create_client(transactional_db, client_id="AN-CLIENT")
         product = TestDataFactory.create_product(transactional_db, client_id="AN-CLIENT")
         transactional_db.flush()
         TestDataFactory.create_work_order(

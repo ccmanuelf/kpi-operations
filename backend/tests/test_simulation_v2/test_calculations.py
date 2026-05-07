@@ -161,7 +161,7 @@ class TestBlock3StationPerformance:
 
         results = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
-        overlock_row = next(r for r in results if r.machine_tool == "Overlock 4-thread")
+        next(r for r in results if r.machine_tool == "Overlock 4-thread")
         # With 500 min busy time over 480 min available (with 3 operators = 1440)
         # utilization would be around 34.7%, not a bottleneck
         # To be a bottleneck we need util >= 95%
@@ -175,7 +175,7 @@ class TestBlock3StationPerformance:
 
         results = _calculate_block3_station_performance(simple_config, sample_metrics, horizon_minutes)
 
-        cutting_row = next(r for r in results if r.machine_tool == "Cutting Table")
+        next(r for r in results if r.machine_tool == "Cutting Table")
         # Cutting has 2 operators, low util could make it donor
 
 

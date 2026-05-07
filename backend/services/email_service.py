@@ -11,8 +11,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-logger = logging.getLogger(__name__)
-
 try:
     from sendgrid import SendGridAPIClient
     from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
@@ -22,6 +20,8 @@ except ImportError:
     SENDGRID_AVAILABLE = False
 
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class EmailService:
@@ -113,10 +113,10 @@ class EmailService:
                 "message": "Email sent successfully via SendGrid",
             }
 
-        except (ConnectionError, TimeoutError) as e:
+        except (ConnectionError, TimeoutError):
             logger.exception("SendGrid API connection failed")
             return {"success": False, "message": "Failed to connect to SendGrid API"}
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error sending email via SendGrid")
             return {"success": False, "message": "Failed to send email via SendGrid"}
 
@@ -151,10 +151,10 @@ class EmailService:
 
             return {"success": True, "message": "Email sent successfully via SMTP"}
 
-        except smtplib.SMTPAuthenticationError as e:
+        except smtplib.SMTPAuthenticationError:
             logger.exception("SMTP authentication failed")
             return {"success": False, "message": "SMTP authentication failed"}
-        except (smtplib.SMTPException, ConnectionError, TimeoutError, OSError) as e:
+        except (smtplib.SMTPException, ConnectionError, TimeoutError, OSError):
             logger.exception("SMTP delivery failed")
             return {"success": False, "message": "Failed to send email via SMTP"}
 
@@ -224,7 +224,8 @@ class EmailService:
     <div class="content">
         <p>Dear Team,</p>
 
-        <p>Please find attached your daily KPI performance report for <strong>{report_date.strftime('%B %d, %Y')}</strong>.</p>
+        <p>Please find attached your daily KPI performance report for
+           <strong>{report_date.strftime('%B %d, %Y')}</strong>.</p>
 
         {f'<div class="info-box"><p>{additional_message}</p></div>' if additional_message else ''}
 
@@ -285,10 +286,10 @@ class EmailService:
                 sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
                 response = sg.send(message)
                 return {"success": True, "status_code": response.status_code}
-            except (ConnectionError, TimeoutError) as e:
+            except (ConnectionError, TimeoutError):
                 logger.exception("SendGrid test email connection failed")
                 return {"success": False, "message": "Failed to connect to SendGrid API"}
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error sending test email via SendGrid")
                 return {"success": False, "message": "Failed to send test email via SendGrid"}
         else:
@@ -306,9 +307,9 @@ class EmailService:
                         server.login(self.smtp_user, self.smtp_password)
                     server.send_message(msg)
                 return {"success": True}
-            except smtplib.SMTPAuthenticationError as e:
+            except smtplib.SMTPAuthenticationError:
                 logger.exception("SMTP test email authentication failed")
                 return {"success": False, "message": "SMTP authentication failed"}
-            except (smtplib.SMTPException, ConnectionError, TimeoutError, OSError) as e:
+            except (smtplib.SMTPException, ConnectionError, TimeoutError, OSError):
                 logger.exception("SMTP test email delivery failed")
                 return {"success": False, "message": "Failed to send test email via SMTP"}

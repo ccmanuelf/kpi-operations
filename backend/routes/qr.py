@@ -4,16 +4,13 @@ Provides QR code generation and lookup endpoints for work orders, products, jobs
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-
-from backend.utils.logging_utils import get_module_logger
-
-logger = get_module_logger(__name__)
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Any
 from urllib.parse import unquote
 
 from backend.database import get_db
+from backend.utils.logging_utils import get_module_logger
 from backend.auth.jwt import get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
@@ -25,6 +22,8 @@ from backend.orm.work_order import WorkOrder
 from backend.orm.product import Product
 from backend.orm.job import Job
 from backend.orm.employee import Employee
+
+logger = get_module_logger(__name__)
 
 router = APIRouter(prefix="/api/qr", tags=["qr"])
 

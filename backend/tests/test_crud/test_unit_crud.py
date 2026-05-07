@@ -82,11 +82,11 @@ class TestProductionCRUD:
         """Test getting production entries with seeded data"""
         from backend.crud.production import get_production_entries
 
-        client = TestDataFactory.create_client(transactional_db, client_id="UCPE-CL")
+        TestDataFactory.create_client(transactional_db, client_id="UCPE-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="UCPE-CL")
         product = TestDataFactory.create_product(transactional_db, client_id="UCPE-CL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="UCPE-CL")
-        wo = TestDataFactory.create_work_order(transactional_db, client_id="UCPE-CL")
+        TestDataFactory.create_work_order(transactional_db, client_id="UCPE-CL")
         transactional_db.flush()
 
         TestDataFactory.create_production_entry(
@@ -185,7 +185,7 @@ class TestEmployeeCRUD:
         """Test getting employee by ID"""
         from backend.crud.employee import get_employee
 
-        client = TestDataFactory.create_client(transactional_db, client_id="UCEBI-CL")
+        TestDataFactory.create_client(transactional_db, client_id="UCEBI-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="UCEBI-CL")
         emp = TestDataFactory.create_employee(transactional_db, client_id="UCEBI-CL")
         transactional_db.commit()
@@ -212,7 +212,7 @@ class TestJobCRUD:
         """Test getting jobs with seeded data"""
         from backend.crud.job import get_jobs
 
-        client = TestDataFactory.create_client(transactional_db, client_id="UCJD-CL")
+        TestDataFactory.create_client(transactional_db, client_id="UCJD-CL")
         admin = TestDataFactory.create_user(transactional_db, role="admin", client_id="UCJD-CL")
         wo = TestDataFactory.create_work_order(transactional_db, client_id="UCJD-CL")
         transactional_db.flush()

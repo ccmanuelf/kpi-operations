@@ -550,7 +550,7 @@ class TestProductionCRUDIntegration:
         db = transactional_db
         client, user, product, shift = _seed_production_prereqs(db)
 
-        entries = TestDataFactory.create_production_entries_batch(
+        TestDataFactory.create_production_entries_batch(
             db,
             client_id=client.client_id,
             product_id=product.product_id,

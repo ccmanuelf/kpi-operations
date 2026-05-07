@@ -28,7 +28,7 @@ class TestBreakTimeCRUD:
 
     def test_create_break_time(self, transactional_db):
         """Create a break time linked to a valid shift."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-CL")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-CL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-CL")
         transactional_db.commit()
 
@@ -71,7 +71,7 @@ class TestBreakTimeCRUD:
 
     def test_list_break_times_empty(self, transactional_db):
         """List returns empty when no breaks exist for the shift."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-LE")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-LE")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-LE")
         transactional_db.commit()
 
@@ -80,7 +80,7 @@ class TestBreakTimeCRUD:
 
     def test_list_break_times_ordered(self, transactional_db):
         """Breaks are returned ordered by start_offset_minutes."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-ORD")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-ORD")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-ORD")
         transactional_db.flush()
 
@@ -105,7 +105,7 @@ class TestBreakTimeCRUD:
 
     def test_list_break_times_excludes_inactive(self, transactional_db):
         """Inactive breaks are excluded from the listing."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-INACT")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-INACT")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-INACT")
         transactional_db.flush()
 
@@ -143,7 +143,7 @@ class TestBreakTimeCRUD:
 
     def test_list_break_times_for_client(self, transactional_db):
         """List all active breaks across shifts for a client."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-ALL")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-ALL")
         shift_a = TestDataFactory.create_shift(transactional_db, client_id="BRK-ALL", shift_name="Day")
         shift_b = TestDataFactory.create_shift(transactional_db, client_id="BRK-ALL", shift_name="Night")
         transactional_db.flush()
@@ -171,7 +171,7 @@ class TestBreakTimeCRUD:
 
     def test_get_total_break_minutes_single(self, transactional_db):
         """Total break minutes for a shift with one break."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-SUM1")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-SUM1")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-SUM1")
         transactional_db.flush()
 
@@ -193,7 +193,7 @@ class TestBreakTimeCRUD:
 
     def test_get_total_break_minutes_multiple(self, transactional_db):
         """Total break minutes sums all active breaks."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-SUM2")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-SUM2")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-SUM2")
         transactional_db.flush()
 
@@ -220,7 +220,7 @@ class TestBreakTimeCRUD:
 
     def test_get_total_break_minutes_excludes_inactive(self, transactional_db):
         """Inactive breaks are not counted in the sum."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-SUM3")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-SUM3")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-SUM3")
         transactional_db.flush()
 
@@ -253,7 +253,7 @@ class TestBreakTimeCRUD:
 
     def test_get_total_break_minutes_no_breaks(self, transactional_db):
         """Returns 0 when no breaks exist for the shift."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-SUM4")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-SUM4")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-SUM4")
         transactional_db.commit()
 
@@ -266,8 +266,8 @@ class TestBreakTimeCRUD:
 
     def test_multi_tenant_isolation(self, transactional_db):
         """Breaks for one client are invisible to another."""
-        client_a = TestDataFactory.create_client(transactional_db, client_id="BRK-A")
-        client_b = TestDataFactory.create_client(transactional_db, client_id="BRK-B")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-A")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-B")
         shift_a = TestDataFactory.create_shift(transactional_db, client_id="BRK-A")
         shift_b = TestDataFactory.create_shift(transactional_db, client_id="BRK-B")
         transactional_db.flush()
@@ -319,7 +319,7 @@ class TestBreakTimeCRUD:
 
     def test_update_break_time(self, transactional_db):
         """Partial update of break time fields."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-UPD")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-UPD")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-UPD")
         transactional_db.flush()
 
@@ -358,7 +358,7 @@ class TestBreakTimeCRUD:
 
     def test_deactivate_break_time(self, transactional_db):
         """Soft-delete sets is_active to False."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-DEL")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-DEL")
         shift = TestDataFactory.create_shift(transactional_db, client_id="BRK-DEL")
         transactional_db.flush()
 
@@ -397,7 +397,7 @@ class TestBreakTimeCRUD:
 
     def test_break_associated_with_correct_shift(self, transactional_db):
         """Breaks are scoped to their parent shift."""
-        client = TestDataFactory.create_client(transactional_db, client_id="BRK-ASSOC")
+        TestDataFactory.create_client(transactional_db, client_id="BRK-ASSOC")
         shift_day = TestDataFactory.create_shift(transactional_db, client_id="BRK-ASSOC", shift_name="Day")
         shift_night = TestDataFactory.create_shift(transactional_db, client_id="BRK-ASSOC", shift_name="Night")
         transactional_db.flush()

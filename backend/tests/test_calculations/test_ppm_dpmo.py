@@ -298,7 +298,7 @@ class TestQualityEdgeCases:
         # Given: Small sample, poor quality
         defects = 5
         units = 10
-        opportunities = 1
+        1
 
         # When: Calculate PPM
         ppm = (Decimal(str(defects)) / Decimal(str(units))) * Decimal("1000000")

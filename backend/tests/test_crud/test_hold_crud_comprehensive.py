@@ -264,7 +264,7 @@ class TestResumeHold:
         from backend.crud.hold.duration import resume_hold
 
         with patch("backend.crud.hold.duration.verify_client_access"):
-            result = resume_hold(db, hold.hold_entry_id, user.user_id, user)
+            resume_hold(db, hold.hold_entry_id, user.user_id, user)
 
         # Reload from DB to verify persistence
         db.expire_all()

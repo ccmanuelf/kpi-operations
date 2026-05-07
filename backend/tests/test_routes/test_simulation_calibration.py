@@ -11,22 +11,30 @@ Coverage:
   - Source provenance present for products + schedule
   - Confidence buckets ('low' for sparse demo data) are reported
 
-We hit the live demo SQLite (same pattern as D3 tests). Task #130
-tracks moving these to a transactional fixture; until that lands the
-tests are read-only — calibration never writes to the DB.
+Isolation: every test runs against an in-memory SQLite via the shared
+`transactional_db` fixture (conftest.py). The `get_db` dependency is
+overridden to yield that session, so calibration never touches the
+live demo DB. (Closes follow-up #130 for the calibration tests.)
+
+Tests that need seeded data use the `seeded_db` fixture which adds a
+minimal calibration scenario (1 client, 5 products × 5 standards,
+2 shifts, ~30 days of production entries) via TestDataFactory.
 """
 
 from __future__ import annotations
 
 from datetime import date, timedelta
+from decimal import Decimal
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
 from backend.auth.jwt import get_current_user
+from backend.database import get_db
 from backend.main import app
 from backend.simulation_v2.models import SimulationConfig
+from backend.tests.fixtures.factories import TestDataFactory
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +69,91 @@ def _override_user(
 
 
 @pytest.fixture
-def shared_client():
+def isolated_db(transactional_db):
+    """Override `get_db` for the lifetime of one test so the calibration
+    route reads from the function-scoped in-memory SQLite. Schema-only
+    DB (no demo data) — seed via the helper below for tests needing data.
+    """
+    app.dependency_overrides[get_db] = lambda: transactional_db
+    yield transactional_db
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+def shared_client(isolated_db):
+    """TestClient bound to the isolated DB. Tests switch persona via
+    `_override_user(client, role)`."""
+    yield TestClient(app)
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+def _seed_calibration_scenario(db) -> None:
+    """Seed a calibration scenario into an isolated DB:
+      - Client ACME-MFG
+      - 2 shifts (Day/Night)
+      - 5 products × 5 production standards = 25 calibrated operations
+      - 30 days of production entries (drives source confidence + FPD warning)
+
+    Used by tests that assert on operations/sources/warnings.
+    """
+    from backend.orm.capacity.standards import CapacityProductionStandard
+
+    TestDataFactory.create_client(db, client_id="ACME-MFG", client_name="Acme Mfg")
+    TestDataFactory.create_shift(db, client_id="ACME-MFG", shift_name="Day", start_time="06:00:00", end_time="14:00:00")
+    TestDataFactory.create_shift(
+        db, client_id="ACME-MFG", shift_name="Night", start_time="14:00:00", end_time="22:00:00"
+    )
+
+    products = []
+    for i in range(5):
+        p = TestDataFactory.create_product(
+            db,
+            client_id="ACME-MFG",
+            product_code=f"PROD-{i + 1}",
+            product_name=f"Product {i + 1}",
+        )
+        products.append(p)
+
+    # 5 ops × 5 products = 25 standards (each row → calibrated operation)
+    for p in products:
+        for op_seq in range(1, 6):
+            db.add(
+                CapacityProductionStandard(
+                    client_id="ACME-MFG",
+                    style_model=p.product_code,
+                    operation_code=f"OP-{op_seq}",
+                    operation_name=f"Operation {op_seq}",
+                    department=f"Tool{op_seq}",
+                    sam_minutes=Decimal("1.5"),
+                )
+            )
+    db.flush()
+
+    admin = TestDataFactory.create_user(db, role="admin", client_id="ACME-MFG")
+    base = date.today()
+    for offset in range(30):
+        d = base - timedelta(days=offset)
+        TestDataFactory.create_production_entry(
+            db,
+            client_id="ACME-MFG",
+            product_id=products[offset % 5].product_id,
+            shift_id=1,
+            entered_by=admin.user_id,
+            production_date=d,
+            units_produced=100,
+            defect_count=2,
+            scrap_count=1,
+            rework_count=1,
+        )
+    db.commit()
+
+
+@pytest.fixture
+def seeded_client(isolated_db):
+    """TestClient bound to a seeded isolated DB. Used by tests that
+    assert on calibrated config payload structure (operations, sources,
+    warnings)."""
+    _seed_calibration_scenario(isolated_db)
     yield TestClient(app)
     app.dependency_overrides.pop(get_current_user, None)
 
@@ -173,10 +265,10 @@ def test_one_day_window_allowed(shared_client: TestClient) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_response_shape_full(shared_client: TestClient) -> None:
+def test_response_shape_full(seeded_client: TestClient) -> None:
     """Full payload — operations, demands, breakdowns, schedule,
     sources, warnings — for a client with seeded data."""
-    client = _override_user(shared_client, "admin", client_id_assigned=None)
+    client = _override_user(seeded_client, "admin", client_id_assigned=None)
     resp = client.get(
         "/api/v2/simulation/calibration",
         params={
@@ -222,11 +314,11 @@ def test_response_shape_full(shared_client: TestClient) -> None:
     assert any("FPD" in w for w in body["warnings"])
 
 
-def test_calibrated_config_runs_through_engine(shared_client: TestClient) -> None:
+def test_calibrated_config_runs_through_engine(seeded_client: TestClient) -> None:
     """Round-trip: calibration output → SimulationConfig.model_validate
     must succeed. Catches schema drift (the engine adds a required
     field, calibration forgets to emit it)."""
-    client = _override_user(shared_client, "admin", client_id_assigned=None)
+    client = _override_user(seeded_client, "admin", client_id_assigned=None)
     resp = client.get(
         "/api/v2/simulation/calibration",
         params={
@@ -263,9 +355,9 @@ def test_empty_client_returns_warnings(shared_client: TestClient) -> None:
     assert any("standards" in w.lower() for w in body["warnings"])
 
 
-def test_short_window_yields_low_confidence(shared_client: TestClient) -> None:
+def test_short_window_yields_low_confidence(seeded_client: TestClient) -> None:
     """A 1-day window can only produce 'low' or 'none' confidence."""
-    client = _override_user(shared_client, "admin", client_id_assigned=None)
+    client = _override_user(seeded_client, "admin", client_id_assigned=None)
     resp = client.get(
         "/api/v2/simulation/calibration",
         params={

@@ -8,10 +8,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-import sys
-import os
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from backend.database import Base, get_db
 from backend.main import app
@@ -222,7 +218,7 @@ class TestHealthRoutes:
     def test_health_db_check(self, test_client, auth_headers):
         """Test database health check via readiness probe (requires auth)"""
         response = test_client.get("/health/ready", headers=auth_headers)
-        data = response.json()
+        response.json()
         assert response.status_code == 200
 
 
@@ -307,12 +303,12 @@ class TestMiddleware:
 
     def test_cors_headers(self, test_client):
         """Test CORS headers are present"""
-        response = test_client.options("/health/")
+        test_client.options("/health/")
         # CORS should be configured
 
     def test_request_timing(self, test_client):
         """Test request timing middleware"""
-        response = test_client.get("/health/")
+        test_client.get("/health/")
         # Should have timing info if configured
 
 

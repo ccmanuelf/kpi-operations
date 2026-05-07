@@ -104,11 +104,19 @@ export async function login(
     // Wait for navigation drawer to confirm successful login
     try {
       await page.waitForSelector('.v-navigation-drawer', { state: 'visible', timeout: 25000 });
+      // The role-based menu expansion (admin=all sections expanded) runs
+      // CSS transitions on v-list-group children. If a test clicks a nav
+      // link before those transitions settle, Playwright's stability
+      // check fires "element is not stable" and the click times out at
+      // the 15s actionTimeout. Wait one frame past Vuetify's default
+      // 250ms transition before declaring login complete.
+      await page.waitForTimeout(500);
       return; // Success
     } catch {
       // Fallback: wait for any indication of successful login
       try {
         await page.waitForSelector('text=Dashboard', { state: 'visible', timeout: 15000 });
+        await page.waitForTimeout(500);
         return; // Success
       } catch {
         if (attempt < maxRetries) {

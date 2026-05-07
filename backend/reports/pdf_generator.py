@@ -212,7 +212,7 @@ class PDFReportGenerator:
         kpi_values = self._fetch_kpi_summary(client_id, start_date, end_date)
 
         for kpi in kpi_values:
-            status_color = self._get_status_color(kpi["value"], kpi["target"], kpi["higher_better"])
+            self._get_status_color(kpi["value"], kpi["target"], kpi["higher_better"])
             summary_data.append(
                 [kpi["name"], f"{kpi['value']:.1f}{kpi['unit']}", f"{kpi['target']}{kpi['unit']}", kpi["status"]]
             )

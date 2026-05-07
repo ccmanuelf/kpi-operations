@@ -484,7 +484,7 @@ async def run_migration(
 
         logger.info(f"Migration completed successfully: sqlite → {target_provider}")
 
-    except DataMigrationError as e:
+    except DataMigrationError:
         logger.exception("Data migration failed")
 
         state_manager.add_migration_history(

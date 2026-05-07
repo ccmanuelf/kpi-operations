@@ -82,6 +82,86 @@ buckets (login / admin config / filter dialog / confirmation) are
 listed by path in `eslint.config.js`. To add a new exception,
 update that list with a one-line justification.
 
+### E2E Parity (mandatory for any view/component change)
+
+When a PR migrates, replaces, or substantially restructures a Vue
+view in `frontend/src/views/` or a grid/entry component in
+`frontend/src/components/`, the corresponding Playwright spec in
+`frontend/e2e/` MUST be updated **in the same PR** — not deferred,
+not marked `test.describe.skip`, not "we'll do it later".
+
+This rule exists because the entry-interface migration (Phase 3,
+2026-05-02) shipped to `main` without updating ~83 e2e tests across
+~10 spec files; the obsoleted selectors silently broke CI for 50+
+consecutive commits and only surfaced when the rest of CI was
+cleaned up. Recovering required a multi-session rewrite tracked as
+`memory/ci-hygiene-tracker.md` Phase B.7.
+
+**What "updated in the same PR" means:**
+
+1. **If the change is a UI refactor** (form → grid, tabs → single
+   surface, role/aria changes), every test in the affected spec file
+   that touches the changed UI must be rewritten to match the new
+   surface. Don't write tests against the old API and assume someone
+   else will update them.
+
+2. **If the change deletes a feature**, the corresponding spec
+   describe block is deleted (not skipped). Leaving `test.describe(
+   'X', ...)` for a feature that no longer exists is rot.
+
+3. **If the change adds a feature**, new tests cover the user-facing
+   contract. Coverage must not regress.
+
+4. **`test.describe.skip(...)` is reserved for transient outages**
+   (e.g., upstream library bug, environment-specific limitation) and
+   MUST include either a linked GitHub issue or a `// FIXME(date)`
+   comment with a target re-enable date. PRs that add a new skip
+   without a tracking link will be rejected at review.
+
+**Why the tests can't wait:**
+
+- Skipped tests don't fail CI, so they hide regressions on the
+  *non-skipped* tests too — pytest/Playwright runners surface a
+  passing-suite signal that's actually misleading.
+- "Rewrite later" never happens unless someone else makes it their
+  problem. The PR author has the deepest context for the change and
+  is the right person to do the test update.
+- Stale specs become harder to rewrite over time as the gap between
+  test selectors and current UI widens.
+
+**Reviewer checklist:**
+
+- If the diff includes `frontend/src/views/**` or
+  `frontend/src/components/grids/**`, find the matching spec in
+  `frontend/e2e/`. Verify it was updated in the same diff.
+- If the diff adds a `test.describe.skip(`, ask: is there a linked
+  issue? a target date? Reject if not.
+- If a Vue surface was deleted, the spec describe should be deleted
+  or rewritten — not left orphaned.
+
+**Stable selectors (use these, in this order of preference):**
+
+1. `a[href="/route"]` for navigation links — stable across i18n.
+2. `data-testid="..."` attributes added to Vue components — most
+   stable, immune to UI restyling. Prefer these over class/role
+   selectors when adding new tests.
+3. `getByRole('grid' | 'row' | 'cell' | ...)` for AG Grid surfaces —
+   semantic and accessibility-friendly.
+4. `text=...` / `getByText(...)` ONLY for static labels that are
+   part of the user-visible contract; avoid for dynamic content,
+   nav items (use `a[href]`), or anything localized.
+
+**Never use:**
+
+- `text=Foo` for nav items (matches *any* element with that text,
+  including page content).
+- `if (await x.isVisible()) { ... }` early-exit patterns that
+  silently pass when the element is missing — use
+  `await expect(x).toBeVisible()` and let it fail loud.
+- Tautological assertions like `expect(value !== undefined)
+  .toBeTruthy()` — these can only fail via timeout, never by
+  contract violation.
+
 ### General
 
 - See `.editorconfig` for editor-level settings

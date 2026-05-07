@@ -10,9 +10,6 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
 
 from backend.utils.logging_utils import get_module_logger
-
-logger = get_module_logger(__name__)
-
 from backend.database import get_db
 from backend.schemas.work_order import WorkOrderCreate, WorkOrderUpdate, WorkOrderResponse
 from backend.services.work_order_service import (
@@ -26,12 +23,19 @@ from backend.services.work_order_service import (
     list_orders_by_date_range as get_work_orders_by_date_range,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.orm.user import User as _User_for_perm
+from backend.orm.user import User
+from backend.orm.production_entry import ProductionEntry
+from backend.orm.product import Product
+from backend.orm.shift import Shift
+from backend.orm.quality_entry import QualityEntry
+from backend.orm.hold_entry import HoldEntry
+
+logger = get_module_logger(__name__)
 
 _WRITE_ALLOWED_ROLES = {"admin", "ADMIN", "poweruser", "leader", "supervisor"}
 
 
-def _check_wo_write_permission(user: "_User_for_perm") -> None:
+def _check_wo_write_permission(user: User) -> None:
     """Reject operator/viewer roles from mutating work orders.
 
     Operators are data collectors — they enter production/downtime/quality
@@ -45,14 +49,6 @@ def _check_wo_write_permission(user: "_User_for_perm") -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Work order mutations require leader, supervisor, poweruser, or admin role",
         )
-
-
-from backend.orm.user import User
-from backend.orm.production_entry import ProductionEntry
-from backend.orm.product import Product
-from backend.orm.shift import Shift
-from backend.orm.quality_entry import QualityEntry
-from backend.orm.hold_entry import HoldEntry
 
 
 router = APIRouter(prefix="/api/work-orders", tags=["Work Orders"])
@@ -195,7 +191,7 @@ def get_work_order_progress(
                     "product_name": row.product_name,
                 }
             )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch production entries for work order %s", work_order_id, exc_info=True)
 
     # Get quality inspections for this work order (from QUALITY_ENTRY table)
@@ -234,7 +230,7 @@ def get_work_order_progress(
                     "notes": row.notes,
                 }
             )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch quality inspections for work order %s", work_order_id, exc_info=True)
 
     # Get hold history (from HOLD_ENTRY table)
@@ -267,7 +263,7 @@ def get_work_order_progress(
                     "status": row.hold_status.value if hasattr(row.hold_status, "value") else row.hold_status,
                 }
             )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch hold history for work order %s", work_order_id, exc_info=True)
 
     return {
@@ -406,7 +402,7 @@ def get_work_order_timeline(
                         "color": "info",
                     }
                 )
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.warning("Could not fetch hold events for work order %s", work_order_id, exc_info=True)
 
     # Sort all events by timestamp
@@ -552,7 +548,7 @@ def approve_qc(
             trigger_source="qc_approval",
         )
         db.add(log_entry)
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         # Log but don't fail - audit log is secondary
         logger.warning("Could not create QC approval log for work order %s", work_order_id, exc_info=True)
 

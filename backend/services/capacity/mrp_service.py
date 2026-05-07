@@ -15,14 +15,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
 
-logger = logging.getLogger(__name__)
-
 from backend.orm.capacity.component_check import CapacityComponentCheck, ComponentStatus
 from backend.orm.capacity.stock import CapacityStockSnapshot
 from backend.orm.capacity.orders import CapacityOrder
 from backend.services.capacity.bom_service import BOMService, BOMExplosionResult
 from backend.events.bus import event_bus
 from backend.events.domain_events import ComponentShortageDetected
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -129,7 +129,7 @@ class MRPService:
                 if order.style_model not in order_by_style:
                     order_by_style[order.style_model] = []
                 order_by_style[order.style_model].append(order.order_number)
-            except (SQLAlchemyError, ValueError, KeyError) as e:
+            except (SQLAlchemyError, ValueError, KeyError):
                 # Skip orders without valid BOMs
                 logger.exception("BOM explosion failed for order %s", order.order_number)
                 continue
