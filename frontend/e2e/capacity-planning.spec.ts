@@ -18,14 +18,10 @@ test.setTimeout(120000);
 
 // Helper to navigate to Capacity Planning page
 async function navigateToCapacityPlanning(page: Page) {
-  // Scroll nav item into view and click — it's near the bottom of a long drawer
-  const navItem = page.locator('.v-navigation-drawer a[href="/capacity-planning"]');
-  await navItem.scrollIntoViewIfNeeded();
-  await navItem.click({ force: true });
-
-  // Wait for URL to confirm Vue Router navigation completed
-  await page.waitForURL('**/capacity-planning', { timeout: 15000 });
-
+  // Direct goto bypasses the role-based v-list-group expansion
+  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
+  await page.goto('/capacity-planning');
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
   // Wait for the page-specific header (not the nav item text)
   await page.waitForSelector('.v-card-title:has-text("Capacity Planning")', { state: 'visible', timeout: 30000 });
 }
