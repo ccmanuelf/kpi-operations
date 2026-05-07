@@ -132,8 +132,16 @@ docs/reports/
 # Spreadsheets
 *.xlsx
 
-# Audit working files (current and legacy DDD audit archives)
-_audit/
+# Audit working files (current and legacy DDD audit archives).
+# Exception: Phase A/B/C robustness-audit deliverables — those are
+# tracked artifacts per memory/ci-hygiene-tracker.md acceptance
+# criteria ("committed to git under _audit/"). Pattern: re-include
+# the directory, ignore all contents, then whitelist specific files.
+!_audit/
+_audit/*
+!_audit/B[0-9]*-*.md
+!_audit/B[0-9]*.txt
+!_audit/PHASE-[A-C]-*.md
 _ddd_audit/
 
 # Task management
