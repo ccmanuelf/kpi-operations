@@ -13,15 +13,10 @@ import { login } from './helpers'
 test.setTimeout(60000)
 
 async function navigateToBomTab(page: Page) {
-  const link = page.locator('a[href="/capacity-planning"]').first()
-  if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await link.scrollIntoViewIfNeeded()
-    await link.click({ force: true })
-    await page.waitForURL(/capacity-planning/i, { timeout: 5000 }).catch(() => {})
-  } else {
-    await page.goto('/capacity-planning')
-  }
-  await page.waitForTimeout(1000)
+  // Direct goto bypasses the role-based v-list-group expansion
+  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
+  await page.goto('/capacity-planning')
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
 
   const tab = page
     .locator('button:has-text("BOM"), [role="tab"]:has-text("BOM")')

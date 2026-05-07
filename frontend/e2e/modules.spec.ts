@@ -116,7 +116,7 @@ test.describe('Admin — Client Management (admin role only)', () => {
       await page.waitForLoadState('networkidle');
       await expect(page.locator('.v-card, .ag-root').first()).toBeVisible({ timeout: 10000 });
     } else {
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible();
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible();
     }
   });
 });

@@ -37,7 +37,7 @@ test.describe('Dashboard / Module Navigation', () => {
     // least one card is visible.
     const url = page.url();
     expect(url).toMatch(/\/(kpi-dashboard|my-shift|capacity-planning)?$/);
-    await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 10000 });
     await expect(page.locator('.v-card').first()).toBeVisible({ timeout: 10000 });
   });
 

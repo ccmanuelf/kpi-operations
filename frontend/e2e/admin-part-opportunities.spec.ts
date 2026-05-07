@@ -12,15 +12,10 @@ import { login } from './helpers'
 test.setTimeout(60000)
 
 async function navigateToPartOpportunities(page: Page) {
-  const link = page.locator('a[href="/admin/part-opportunities"]').first()
-  if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await link.scrollIntoViewIfNeeded()
-    await link.click({ force: true })
-    await page.waitForURL(/part-opportunities/i, { timeout: 5000 }).catch(() => {})
-  } else {
-    await page.goto('/admin/part-opportunities')
-  }
-  await page.waitForTimeout(1000)
+  // Direct goto bypasses the role-based v-list-group expansion
+  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
+  await page.goto('/admin/part-opportunities')
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
 }
 
 test.describe('Admin — Part Opportunities (inline AG Grid)', () => {

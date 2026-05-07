@@ -16,15 +16,10 @@ import { login } from './helpers'
 test.setTimeout(60000)
 
 async function navigateToWorkOrders(page: Page) {
-  const link = page.locator('a[href="/work-orders"]').first()
-  if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await link.scrollIntoViewIfNeeded()
-    await link.click({ force: true })
-    await page.waitForURL(/work-orders/i, { timeout: 5000 }).catch(() => {})
-  } else {
-    await page.goto('/work-orders')
-  }
-  await page.waitForTimeout(1000)
+  // Direct goto bypasses the role-based v-list-group expansion
+  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
+  await page.goto('/work-orders')
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
 }
 
 test.describe('Work Order Management — inline AG Grid', () => {

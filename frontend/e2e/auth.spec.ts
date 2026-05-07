@@ -67,7 +67,7 @@ test.describe('Authentication', () => {
       await login(page);
 
       // Should redirect to dashboard - wait for navigation drawer to appear
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
     });
 
     test('should persist session after page refresh', async ({ page }) => {
@@ -75,13 +75,13 @@ test.describe('Authentication', () => {
       await login(page);
 
       // Wait for navigation drawer (specific to avoid matching pagination)
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
       // Refresh page
       await page.reload();
 
       // Should still be logged in
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 10000 });
     });
 
     test('should redirect to login when accessing protected route', async ({ page }) => {
@@ -430,7 +430,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
 
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
       // Find and click logout button
       const logoutButton = page.locator('[data-testid="logout-btn"]').or(
@@ -449,7 +449,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
       // Logout
       const logoutButton = page.locator('[data-testid="logout-btn"]').or(
@@ -472,7 +472,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
       // Click logout
       const logoutButton = page.locator('[data-testid="logout-btn"]').or(
@@ -498,7 +498,7 @@ test.describe('Authentication', () => {
       await page.fill('input[type="text"]', 'admin');
       await page.fill('input[type="password"]', 'admin123');
       await page.click('button:has-text("Sign In")');
-      await expect(page.locator('.v-navigation-drawer')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.v-navigation-drawer').first()).toBeVisible({ timeout: 15000 });
 
       // Clear token to simulate timeout
       await page.evaluate(() => {
