@@ -302,27 +302,19 @@ class TestTestEmail:
     """Tests for test email endpoint."""
 
     def test_send_test_email(self, supervisor_client):
-        """Test sending a test email.
+        """Test sending a test email — smoke check that the route reaches the email branch.
 
-        The endpoint tries to deliver via SMTP/SendGrid; in the test
-        environment neither is configured, so the route returns 500
-        (or 200 with the demo-fallback message if EmailService is
-        ImportError-shielded). Either status indicates the route is
-        reachable and reaches the email branch — that's what this
-        smoke test cares about. Previously this was hard-skipped,
+        The endpoint tries to deliver via SMTP/SendGrid; in the test environment
+        neither is configured, so the real send fails with 500. This asserts the
+        route is wired up and reaches the email branch. Previously hard-skipped,
         which removed the only reachability check on the endpoint.
         """
         client, setup = supervisor_client
 
         response = client.post("/api/reports/email-config/test", json={"email": "test@example.com"})
 
-        # Accept 200 (email sent or demo-fallback) or 500 (real send
-        # failure due to missing SMTP/SendGrid credentials in test).
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "test@example.com" in data["message"]
+        # No SMTP/SendGrid credentials in test env → real send raises 500
+        assert response.status_code == 500
 
 
 class TestPDFReportGeneration:

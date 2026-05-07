@@ -50,14 +50,21 @@ class TestAuthEndpointRateLimiting:
     """Tests for authentication endpoint rate limiting"""
 
     def test_login_rate_limit_header(self, test_client):
-        """Test login endpoint has rate limit applied"""
+        """Test login endpoint has rate limit applied — failed login returns 401, not 429.
+
+        The test runs a single request, well under the rate limit, so the limiter
+        does not fire here. This asserts the route is reachable with limiter wired in.
+        """
         response = test_client.post("/api/auth/login", json={"username": "nonexistent", "password": "password"})
 
-        # Even failed login should have rate limit headers
-        assert response.status_code in [401, 429]
+        assert response.status_code == 401
 
     def test_register_rate_limit_header(self, test_client):
-        """Test register endpoint has rate limit applied"""
+        """Test register endpoint has rate limit applied — single registration succeeds (201).
+
+        The test runs a single request, well under the rate limit, so the limiter
+        does not fire here. This asserts the route is reachable with limiter wired in.
+        """
         response = test_client.post(
             "/api/auth/register",
             json={
@@ -69,8 +76,7 @@ class TestAuthEndpointRateLimiting:
             },
         )
 
-        # Response should be 201 (created), 400 (exists), or 422 (validation)
-        assert response.status_code in [201, 400, 422, 429]
+        assert response.status_code == 201
 
 
 class TestRateLimitConfig:

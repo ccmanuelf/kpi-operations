@@ -33,59 +33,57 @@ class TestSingleKPIPrediction:
     def test_efficiency_prediction_requires_client_id(self, authenticated_client):
         """Test efficiency prediction requires client_id parameter"""
         response = authenticated_client.get("/api/predictions/efficiency")
-        # 403 if auth middleware checks client access first, 422 if validation runs first
-        assert response.status_code in [403, 422]
+        assert response.status_code == 403
 
     def test_efficiency_prediction_basic(self, authenticated_client):
         """Test basic efficiency prediction"""
         response = authenticated_client.get("/api/predictions/efficiency", params={"client_id": "TEST-CLIENT"})
-        # May return 200, 403 (access denied), or 400 (insufficient data)
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_performance_prediction(self, authenticated_client):
         """Test performance KPI prediction"""
         response = authenticated_client.get("/api/predictions/performance", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_availability_prediction(self, authenticated_client):
         """Test availability KPI prediction"""
         response = authenticated_client.get("/api/predictions/availability", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_oee_prediction(self, authenticated_client):
         """Test OEE KPI prediction"""
         response = authenticated_client.get("/api/predictions/oee", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_ppm_prediction(self, authenticated_client):
         """Test PPM (Parts Per Million) prediction"""
         response = authenticated_client.get("/api/predictions/ppm", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_dpmo_prediction(self, authenticated_client):
         """Test DPMO prediction"""
         response = authenticated_client.get("/api/predictions/dpmo", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_fpy_prediction(self, authenticated_client):
         """Test First Pass Yield prediction"""
         response = authenticated_client.get("/api/predictions/fpy", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_rty_prediction(self, authenticated_client):
         """Test Rolled Throughput Yield prediction"""
         response = authenticated_client.get("/api/predictions/rty", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_absenteeism_prediction(self, authenticated_client):
         """Test absenteeism rate prediction"""
         response = authenticated_client.get("/api/predictions/absenteeism", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_otd_prediction(self, authenticated_client):
         """Test On-Time Delivery prediction"""
         response = authenticated_client.get("/api/predictions/otd", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_invalid_kpi_type(self, authenticated_client):
         """Test prediction with invalid KPI type returns 404"""
@@ -103,14 +101,14 @@ class TestPredictionParameters:
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "forecast_days": 1}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_forecast_days_max(self, authenticated_client):
         """Test maximum forecast_days (30)"""
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "forecast_days": 30}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_forecast_days_invalid_too_low(self, authenticated_client):
         """Test forecast_days below minimum"""
@@ -131,14 +129,14 @@ class TestPredictionParameters:
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "historical_days": 7}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_historical_days_max(self, authenticated_client):
         """Test maximum historical_days (90)"""
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "historical_days": 90}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_historical_days_invalid_too_low(self, authenticated_client):
         """Test historical_days below minimum"""
@@ -163,28 +161,28 @@ class TestForecastingMethods:
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "method": "auto"}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_method_simple(self, authenticated_client):
         """Test simple exponential smoothing"""
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "method": "simple"}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_method_double(self, authenticated_client):
         """Test double exponential smoothing (Holt's)"""
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "method": "double"}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_method_linear(self, authenticated_client):
         """Test linear trend extrapolation"""
         response = authenticated_client.get(
             "/api/predictions/efficiency", params={"client_id": "TEST-CLIENT", "method": "linear"}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_method_invalid(self, authenticated_client):
         """Test invalid forecasting method"""
@@ -205,27 +203,26 @@ class TestAllKPIPredictionsDashboard:
     def test_dashboard_all_requires_client_id(self, authenticated_client):
         """Test dashboard/all requires client_id"""
         response = authenticated_client.get("/api/predictions/dashboard/all")
-        # 403 if auth middleware checks client access first, 422 if validation runs first
-        assert response.status_code in [403, 422]
+        assert response.status_code == 403
 
     def test_dashboard_all_basic(self, authenticated_client):
         """Test basic dashboard/all request"""
         response = authenticated_client.get("/api/predictions/dashboard/all", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_dashboard_all_with_forecast_days(self, authenticated_client):
         """Test dashboard/all with custom forecast_days"""
         response = authenticated_client.get(
             "/api/predictions/dashboard/all", params={"client_id": "TEST-CLIENT", "forecast_days": 14}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_dashboard_all_with_historical_days(self, authenticated_client):
         """Test dashboard/all with custom historical_days"""
         response = authenticated_client.get(
             "/api/predictions/dashboard/all", params={"client_id": "TEST-CLIENT", "historical_days": 60}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_dashboard_all_response_structure(self, authenticated_client):
         """Test dashboard/all response has correct structure"""
@@ -251,17 +248,14 @@ class TestBenchmarksEndpoint:
     def test_benchmarks_requires_auth(self, test_client):
         """Test benchmarks requires authentication"""
         response = test_client.get("/api/predictions/benchmarks")
-        assert response.status_code in [401, 422]  # 401 for auth, 422 if missing client_id
+        assert response.status_code == 401
 
     def test_benchmarks_endpoint(self, authenticated_client):
-        """Test benchmarks endpoint behavior"""
+        """Test benchmarks endpoint returns 200 with the static benchmark dict"""
         response = authenticated_client.get("/api/predictions/benchmarks")
-        # Due to route ordering, /benchmarks may match /{kpi_type} first
-        # In that case it returns 422 (missing client_id) or 404 (invalid kpi)
-        assert response.status_code in [200, 404, 422]
-        if response.status_code == 200:
-            data = response.json()
-            assert isinstance(data, dict)
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, dict)
 
     def test_benchmarks_with_data(self, authenticated_client):
         """Test benchmarks returns proper data when accessible"""
@@ -295,35 +289,34 @@ class TestDemoSeedEndpoint:
         """Test demo/seed requires admin role"""
         response = authenticated_client.post("/api/predictions/demo/seed")
         # Should be 403 for non-admin users
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 403
 
     def test_demo_seed_admin_access(self, admin_auth_headers, test_client):
-        """Test demo/seed with admin access"""
+        """Test demo/seed with admin access succeeds"""
         response = test_client.post("/api/predictions/demo/seed", headers=admin_auth_headers)
-        # Admin should be able to access (may fail due to missing generator)
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 200
 
     def test_demo_seed_with_client_id(self, admin_auth_headers, test_client):
-        """Test demo/seed with custom client_id"""
+        """Test demo/seed with custom client_id succeeds"""
         response = test_client.post(
             "/api/predictions/demo/seed", params={"client_id": "CUSTOM-DEMO-CLIENT"}, headers=admin_auth_headers
         )
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 200
 
     def test_demo_seed_with_days(self, admin_auth_headers, test_client):
-        """Test demo/seed with custom days parameter"""
+        """Test demo/seed with custom days parameter (60) succeeds"""
         response = test_client.post("/api/predictions/demo/seed", params={"days": 60}, headers=admin_auth_headers)
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 200
 
     def test_demo_seed_days_min(self, admin_auth_headers, test_client):
-        """Test demo/seed with minimum days (30)"""
+        """Test demo/seed with minimum days (30) succeeds"""
         response = test_client.post("/api/predictions/demo/seed", params={"days": 30}, headers=admin_auth_headers)
-        assert response.status_code in [200, 403, 422, 500]
+        assert response.status_code == 200
 
     def test_demo_seed_days_invalid_too_low(self, admin_auth_headers, test_client):
-        """Test demo/seed with days below minimum"""
+        """Test demo/seed with days below minimum (Pydantic validation rejects)"""
         response = test_client.post("/api/predictions/demo/seed", params={"days": 10}, headers=admin_auth_headers)
-        assert response.status_code in [403, 422]
+        assert response.status_code == 422
 
 
 class TestKPIHealthAssessment:
@@ -337,23 +330,22 @@ class TestKPIHealthAssessment:
     def test_health_assessment_requires_client_id(self, authenticated_client):
         """Test health assessment requires client_id"""
         response = authenticated_client.get("/api/predictions/health/efficiency")
-        # 403 if auth middleware checks client access first, 422 if validation runs first
-        assert response.status_code in [403, 422]
+        assert response.status_code == 403
 
     def test_health_assessment_efficiency(self, authenticated_client):
         """Test health assessment for efficiency KPI"""
         response = authenticated_client.get("/api/predictions/health/efficiency", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_health_assessment_oee(self, authenticated_client):
         """Test health assessment for OEE KPI"""
         response = authenticated_client.get("/api/predictions/health/oee", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_health_assessment_ppm(self, authenticated_client):
         """Test health assessment for PPM KPI"""
         response = authenticated_client.get("/api/predictions/health/ppm", params={"client_id": "TEST-CLIENT"})
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_health_assessment_response_structure(self, authenticated_client):
         """Test health assessment response structure"""
@@ -413,21 +405,21 @@ class TestClientAccessControl:
             "/api/predictions/efficiency", params={"client_id": "NONEXISTENT-CLIENT-12345"}
         )
         # Should be 403 (access denied) or 404 (not found)
-        assert response.status_code in [400, 403, 404]
+        assert response.status_code == 403
 
     def test_dashboard_nonexistent_client(self, authenticated_client):
         """Test dashboard/all with non-existent client"""
         response = authenticated_client.get(
             "/api/predictions/dashboard/all", params={"client_id": "NONEXISTENT-CLIENT-12345"}
         )
-        assert response.status_code in [400, 403, 404]
+        assert response.status_code == 403
 
     def test_health_assessment_nonexistent_client(self, authenticated_client):
         """Test health assessment with non-existent client"""
         response = authenticated_client.get(
             "/api/predictions/health/efficiency", params={"client_id": "NONEXISTENT-CLIENT-12345"}
         )
-        assert response.status_code in [400, 403, 404]
+        assert response.status_code == 403
 
 
 class TestInsufficientData:
@@ -515,7 +507,7 @@ class TestBenchmarkFields:
                 assert isinstance(benchmark["target"], (int, float))
         else:
             # Route not accessible due to ordering - skip validation
-            assert response.status_code in [404, 422]
+            assert response.status_code == 422
 
     def test_benchmark_has_excellent(self, authenticated_client):
         """Test each benchmark has excellent threshold"""
@@ -525,7 +517,7 @@ class TestBenchmarkFields:
             for kpi, benchmark in data.items():
                 assert "excellent" in benchmark
         else:
-            assert response.status_code in [404, 422]
+            assert response.status_code == 422
 
     def test_benchmark_has_good(self, authenticated_client):
         """Test each benchmark has good threshold"""
@@ -535,7 +527,7 @@ class TestBenchmarkFields:
             for kpi, benchmark in data.items():
                 assert "good" in benchmark
         else:
-            assert response.status_code in [404, 422]
+            assert response.status_code == 422
 
     def test_benchmark_has_fair(self, authenticated_client):
         """Test each benchmark has fair threshold"""
@@ -545,7 +537,7 @@ class TestBenchmarkFields:
             for kpi, benchmark in data.items():
                 assert "fair" in benchmark
         else:
-            assert response.status_code in [404, 422]
+            assert response.status_code == 422
 
 
 class TestDashboardKPIFields:
@@ -669,19 +661,19 @@ class TestQualityKPIProxy:
         """Test quality KPI prediction (proxied to FPY)"""
         response = authenticated_client.get("/api/predictions/quality", params={"client_id": "TEST-CLIENT"})
         # May map to fpy internally
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_defect_rate_prediction(self, authenticated_client):
         """Test defect_rate KPI prediction (proxied to PPM)"""
         response = authenticated_client.get("/api/predictions/defect_rate", params={"client_id": "TEST-CLIENT"})
         # May map to ppm internally
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
     def test_attendance_prediction(self, authenticated_client):
         """Test attendance KPI prediction (proxied to absenteeism)"""
         response = authenticated_client.get("/api/predictions/attendance", params={"client_id": "TEST-CLIENT"})
         # May map to absenteeism internally
-        assert response.status_code in [200, 400, 403, 404]
+        assert response.status_code == 403
 
 
 if __name__ == "__main__":

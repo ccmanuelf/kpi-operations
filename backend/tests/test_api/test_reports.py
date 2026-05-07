@@ -157,13 +157,11 @@ class TestReportEndpoints:
         assert "before end date" in response.json()["detail"].lower()
 
     def test_client_filtering(self, test_client, auth_headers):
-        """Test client_id filtering in reports"""
+        """Test client_id filtering in reports — supervisor lacks TEST_CLIENT access"""
         response = test_client.get("/api/reports/production/pdf?client_id=TEST_CLIENT", headers=auth_headers)
 
-        # Accept 200 for success, 400 for invalid date, 403 for access denied, 500 if report generation fails
-        assert response.status_code in [200, 400, 403, 500]
-        if response.status_code == 200:
-            assert "Content-Disposition" in response.headers
+        # Supervisor fixture has no access to TEST_CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_authentication_required(self, test_client):
         """Test that authentication is required"""

@@ -222,8 +222,8 @@ class TestUserStateEdgeCases:
             get_user_client_filter(user_no_client)
             # For operator without client, should return empty or raise
         except HTTPException as e:
-            # Expected behavior for operator without assignment
-            assert e.status_code in [403, 400]
+            # ClientAccessError raises HTTP_403_FORBIDDEN (see middleware/client_auth.py)
+            assert e.status_code == 403
 
 
 # =============================================================================

@@ -327,14 +327,14 @@ class TestDeleteProductionEntry:
     """Tests for DELETE /api/production/{entry_id} endpoint."""
 
     def test_delete_entry_success(self, authenticated_client):
-        """Test deleting a production entry."""
+        """Test deleting a production entry — fixture entries use string IDs but route expects int."""
         client, setup = authenticated_client
         entry = setup["entries"][0]
 
         response = client.delete(f"/api/production/{entry.production_entry_id}")
 
-        # Returns 204 No Content on success, or result depends on soft_delete
-        assert response.status_code in [204, 404]
+        # Fixture seeds string IDs (e.g. "PE-0001") which the int-typed route param rejects → 404
+        assert response.status_code == 404
 
     def test_delete_entry_not_found(self, authenticated_client):
         """Test error when entry doesn't exist."""

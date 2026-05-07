@@ -258,8 +258,7 @@ class TestKPIDashboard:
 
         response = client.get("/api/kpi/dashboard")
 
-        # May return empty data but should be valid
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 200
 
     def test_get_dashboard_with_date_range(self, supervisor_client):
         """Test getting dashboard with date range."""
@@ -269,7 +268,7 @@ class TestKPIDashboard:
 
         response = client.get(f"/api/kpi/dashboard?start_date={start}&end_date={end}")
 
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 200
 
     def test_get_dashboard_with_client_id(self, admin_client):
         """Test getting dashboard with client filter."""
@@ -278,7 +277,7 @@ class TestKPIDashboard:
 
         response = client.get(f"/api/kpi/dashboard?client_id={client_id}")
 
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 200
 
 
 class TestEfficiencyRoutes:
@@ -463,7 +462,7 @@ class TestKPICalculation:
 
         if entry:
             response = client.get(f"/api/kpi/calculate/{entry.production_entry_id}")
-            assert response.status_code in [200, 404]
+            assert response.status_code == 200
 
     def test_calculate_kpis_entry_not_found(self, supervisor_client):
         """Test KPI calculation for non-existent entry."""
@@ -588,7 +587,7 @@ class TestAggregatedDashboard:
 
         response = client.get("/api/kpi/dashboard/aggregated")
 
-        assert response.status_code in [200, 500]
+        assert response.status_code == 200
 
     def test_get_aggregated_dashboard_with_dates(self, supervisor_client):
         """Test aggregated dashboard with date range."""
@@ -598,7 +597,7 @@ class TestAggregatedDashboard:
 
         response = client.get(f"/api/kpi/dashboard/aggregated?start_date={start}&end_date={end}")
 
-        assert response.status_code in [200, 500]
+        assert response.status_code == 200
 
 
 class TestThresholdsDelete:
@@ -617,7 +616,7 @@ class TestThresholdsDelete:
         # Now delete it
         response = client.delete(f"/api/kpi-thresholds/{client_id}/efficiency")
 
-        assert response.status_code in [200, 404]  # May not exist if creation failed
+        assert response.status_code == 200
 
     def test_delete_threshold_not_found(self, admin_client):
         """Test deleting non-existent threshold."""

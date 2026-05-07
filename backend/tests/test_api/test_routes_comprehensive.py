@@ -75,17 +75,17 @@ class TestProductionRoutes:
     def test_get_production_list(self, test_client, auth_headers):
         """Test GET /api/production"""
         response = test_client.get("/api/production", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_production_efficiency(self, test_client, auth_headers):
-        """Test GET /api/production/efficiency"""
+        """Test GET /api/production/kpi/efficiency (endpoint not implemented in current router)"""
         response = test_client.get("/api/production/kpi/efficiency", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 404
 
     def test_get_production_oee(self, test_client, auth_headers):
-        """Test GET /api/production/oee"""
+        """Test GET /api/production/kpi/oee (endpoint not implemented in current router)"""
         response = test_client.get("/api/production/kpi/oee", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 404
 
 
 class TestQualityRoutes:
@@ -94,22 +94,22 @@ class TestQualityRoutes:
     def test_get_quality_list(self, test_client, auth_headers):
         """Test GET /api/quality"""
         response = test_client.get("/api/quality", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_quality_ppm(self, test_client, auth_headers):
-        """Test GET /api/quality/kpi/ppm (may return 422 if query params required)"""
+        """Test GET /api/quality/kpi/ppm"""
         response = test_client.get("/api/quality/kpi/ppm", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_quality_fpy(self, test_client, auth_headers):
-        """Test GET /api/quality/kpi/fpy"""
+        """Test GET /api/quality/kpi/fpy (endpoint not implemented in current router)"""
         response = test_client.get("/api/quality/kpi/fpy", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 404
 
     def test_get_quality_dpmo(self, test_client, auth_headers):
         """Test GET /api/quality/kpi/dpmo"""
         response = test_client.get("/api/quality/kpi/dpmo", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
 
 class TestAttendanceRoutes:
@@ -118,12 +118,12 @@ class TestAttendanceRoutes:
     def test_get_attendance_list(self, test_client, auth_headers):
         """Test GET /api/attendance"""
         response = test_client.get("/api/attendance", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_absenteeism(self, test_client, auth_headers):
-        """Test GET /api/attendance/absenteeism"""
+        """Test GET /api/attendance/absenteeism (endpoint not implemented in current router)"""
         response = test_client.get("/api/attendance/absenteeism", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 404
 
 
 class TestDowntimeRoutes:
@@ -132,12 +132,12 @@ class TestDowntimeRoutes:
     def test_get_downtime_list(self, test_client, auth_headers):
         """Test GET /api/downtime"""
         response = test_client.get("/api/downtime", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_downtime_summary(self, test_client, auth_headers):
-        """Test GET /api/downtime/summary"""
+        """Test GET /api/downtime/summary (endpoint not implemented in current router)"""
         response = test_client.get("/api/downtime/summary", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 404
 
 
 class TestHoldRoutes:
@@ -146,12 +146,12 @@ class TestHoldRoutes:
     def test_get_holds_list(self, test_client, auth_headers):
         """Test GET /api/holds"""
         response = test_client.get("/api/holds", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_wip_aging(self, test_client, auth_headers):
-        """Test GET /api/holds/wip-aging"""
+        """Test GET /api/holds/wip-aging (endpoint not implemented in current router)"""
         response = test_client.get("/api/holds/wip-aging", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 404
 
 
 class TestCoverageRoutes:
@@ -160,7 +160,7 @@ class TestCoverageRoutes:
     def test_get_coverage_list(self, test_client, auth_headers):
         """Test GET /api/coverage"""
         response = test_client.get("/api/coverage", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
 
 class TestPredictionRoutes:
@@ -169,7 +169,8 @@ class TestPredictionRoutes:
     def test_get_efficiency_prediction(self, test_client, auth_headers):
         """Test GET /api/predictions/efficiency"""
         response = test_client.get("/api/predictions/efficiency", headers=auth_headers)
-        assert response.status_code in [200, 400, 404, 422]
+        # In-memory test DB has no production history → insufficient-data branch returns 400
+        assert response.status_code == 400
 
 
 class TestClientRoutes:
@@ -178,12 +179,12 @@ class TestClientRoutes:
     def test_get_clients(self, test_client, auth_headers):
         """Test GET /api/clients"""
         response = test_client.get("/api/clients", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_get_client_by_id(self, test_client, auth_headers):
         """Test GET /api/clients/{client_id}"""
         response = test_client.get("/api/clients/ROUTE-TEST-CLIENT", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
 
 class TestDefectRoutes:
@@ -192,7 +193,7 @@ class TestDefectRoutes:
     def test_get_defects(self, test_client, auth_headers):
         """Test GET /api/defects"""
         response = test_client.get("/api/defects", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
 
 class TestHealthRoutes:
@@ -253,7 +254,7 @@ class TestAuthRoutes:
                 "full_name": "New User",
             },
         )
-        assert response.status_code in [200, 201]
+        assert response.status_code == 201
 
     def test_register_duplicate_username(self, test_client):
         """Test registration with duplicate username"""
@@ -278,7 +279,7 @@ class TestAuthRoutes:
                 "full_name": "Duplicate User",
             },
         )
-        assert response.status_code in [400, 409]
+        assert response.status_code == 400
 
     def test_forgot_password(self, test_client):
         """Test forgot password endpoint"""
@@ -337,17 +338,17 @@ class TestQueryParameters:
     def test_pagination_parameters(self, test_client, auth_headers):
         """Test pagination query parameters"""
         response = test_client.get("/api/production?skip=0&limit=10", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_date_range_parameters(self, test_client, auth_headers):
         """Test date range query parameters"""
         response = test_client.get("/api/production?start_date=2024-01-01&end_date=2024-12-31", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
     def test_client_filter_parameter(self, test_client, auth_headers):
         """Test client ID filter parameter"""
         response = test_client.get("/api/production?client_id=TEST-CLIENT", headers=auth_headers)
-        assert response.status_code in [200, 404, 422]
+        assert response.status_code == 200
 
 
 class TestReportRoutes:
@@ -367,12 +368,10 @@ class TestReportRoutes:
         assert response.headers["content-type"] == "application/pdf"
 
     def test_production_excel_report(self, test_client, auth_headers):
-        """Test production Excel report generation (may fail without data)"""
+        """Test production Excel report generation"""
         response = test_client.get("/api/reports/production/excel", headers=auth_headers)
-        # Accept 200 or 500 (may fail if no data or dependencies missing)
-        assert response.status_code in [200, 500]
-        if response.status_code == 200:
-            assert "spreadsheetml" in response.headers.get("content-type", "")
+        assert response.status_code == 200
+        assert "spreadsheetml" in response.headers.get("content-type", "")
 
 
 if __name__ == "__main__":

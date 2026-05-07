@@ -200,8 +200,10 @@ class TestAnalyticsEndpoints:
     """Test analytics API endpoints"""
 
     def test_analytics_requires_auth(self, test_client):
+        # /api/analytics/summary endpoint does not exist; route registry returns 404
+        # (404 fires before auth middleware on unregistered paths)
         response = test_client.get("/api/analytics/summary")
-        assert response.status_code in [401, 404]
+        assert response.status_code == 404
 
 
 class TestReportsEndpoints:

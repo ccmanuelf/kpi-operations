@@ -494,8 +494,7 @@ class TestComponentCheckEndpoints:
             json={"order_ids": [1, 2]},
             params={"client_id": CLIENT_ID},
         )
-        # 200 if MRP service works, 400 if data issues, 501 if not implemented, 500 if error
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_run_component_check_with_date_range(self, cap_client_with_data):
         """Test with date range -- service may not be implemented (501)."""
@@ -508,7 +507,7 @@ class TestComponentCheckEndpoints:
             },
             params={"client_id": CLIENT_ID},
         )
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_run_component_check_partial_date_range(self, cap_client_with_data):
         """Only start_date without end_date should trigger 400."""
@@ -562,7 +561,7 @@ class TestAnalysisEndpoints:
             params={"client_id": CLIENT_ID},
         )
         # 200 if service works, 400 if data issues, 501 if not implemented
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_run_capacity_analysis_with_department(self, cap_client_with_data):
         """Test analysis with department filter."""
@@ -577,7 +576,7 @@ class TestAnalysisEndpoints:
             json=body,
             params={"client_id": CLIENT_ID},
         )
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_get_bottleneck_lines_empty(self, cap_client_with_data):
         """Get bottleneck lines -- returns empty if no analysis data."""
@@ -680,7 +679,7 @@ class TestScheduleEndpoints:
                     "client_id": CLIENT_ID,
                 },
             )
-            assert resp.status_code in [200, 400, 500, 501]
+            assert resp.status_code == 200
         except Exception:
             # Known issue: SchedulingService returns GeneratedSchedule which
             # does not match ScheduleResponse Pydantic model
@@ -858,7 +857,7 @@ class TestScenarioEndpoints:
             },
             params={"client_id": CLIENT_ID},
         )
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_run_scenario_not_found(self, cap_client_with_data):
         client, db = cap_client_with_data
@@ -884,7 +883,7 @@ class TestScenarioEndpoints:
             json={},
             params={"client_id": CLIENT_ID},
         )
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_delete_scenario(self, cap_client_with_data):
         client, db = cap_client_with_data
@@ -927,7 +926,7 @@ class TestScenarioEndpoints:
             json={"scenario_ids": [r1.json()["id"], r2.json()["id"]]},
             params={"client_id": CLIENT_ID},
         )
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
 
 # =============================================================================
@@ -989,16 +988,17 @@ class TestKPIEndpoints:
         """Variance report -- may return 501 if service not implemented."""
         client, db = cap_client_with_data
         resp = client.get("/api/capacity/kpi/variance", params={"client_id": CLIENT_ID})
-        assert resp.status_code in [200, 400, 500, 501]
+        assert resp.status_code == 200
 
     def test_get_kpi_variance_report_with_schedule(self, cap_client_with_data):
-        """Variance report filtered by schedule_id."""
+        """Variance report rejects unknown schedule_id with 400."""
         client, db = cap_client_with_data
         resp = client.get(
             "/api/capacity/kpi/variance",
             params={"client_id": CLIENT_ID, "schedule_id": 999},
         )
-        assert resp.status_code in [200, 400, 500, 501]
+        # Schedule_id 999 does not exist in fixture data → 400 (validation)
+        assert resp.status_code == 400
 
 
 # =============================================================================

@@ -33,7 +33,8 @@ def supervisor_headers(test_client):
 
     # Register user (stores role as uppercase "SUPERVISOR")
     register_resp = test_client.post("/api/auth/register", json=user_data)
-    assert register_resp.status_code in [200, 201], f"Registration failed: {register_resp.json()}"
+    # Auth /register returns 201 Created on success
+    assert register_resp.status_code == 201, f"Registration failed: {register_resp.json()}"
 
     # Fix role case: get_current_active_supervisor requires lowercase "supervisor"
     db_override = app.dependency_overrides.get(get_db)

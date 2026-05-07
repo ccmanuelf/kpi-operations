@@ -37,42 +37,40 @@ class TestDetailedHealthChecks:
     def test_detailed_health_check(self, test_client, auth_headers):
         """Test detailed health check endpoint"""
         response = test_client.get("/health/detailed", headers=auth_headers)
-        assert response.status_code in [200, 403, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert "status" in data
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
 
     def test_database_health_check(self, test_client):
         """Test database connectivity check"""
         response = test_client.get("/health/database")
-        assert response.status_code in [200, 403, 404]
-        if response.status_code == 200:
-            data = response.json()
-            assert "database" in data or "status" in data
+        assert response.status_code == 200
+        data = response.json()
+        assert "database" in data or "status" in data
 
     def test_services_health_check(self, test_client):
-        """Test services health check"""
+        """Test services health check (endpoint not implemented in current router)"""
         response = test_client.get("/health/services")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
     def test_dependencies_health_check(self, test_client):
-        """Test dependencies health check"""
+        """Test dependencies health check (endpoint not implemented in current router)"""
         response = test_client.get("/health/dependencies")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
 
 class TestHealthCheckWithData:
     """Tests for health checks that require database data"""
 
     def test_health_metrics_endpoint(self, authenticated_client):
-        """Test health metrics endpoint"""
+        """Test health metrics endpoint (endpoint not implemented in current router)"""
         response = authenticated_client.get("/health/metrics")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
     def test_health_status_with_details(self, authenticated_client):
-        """Test health status with details"""
+        """Test health status with details (endpoint not implemented in current router)"""
         response = authenticated_client.get("/health/status")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
 
 class TestHealthCheckResponses:
@@ -168,16 +166,14 @@ class TestHealthCheckComponents:
         assert response.status_code == 200
 
     def test_check_memory_component(self, test_client):
-        """Test memory component if available"""
+        """Test memory component (endpoint not implemented in current router)"""
         response = test_client.get("/health/memory")
-        # May or may not exist
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
     def test_check_disk_component(self, test_client):
-        """Test disk component if available"""
+        """Test disk component (endpoint not implemented in current router)"""
         response = test_client.get("/health/disk")
-        # May or may not exist
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
 
 class TestHealthCheckVersionInfo:
@@ -192,10 +188,9 @@ class TestHealthCheckVersionInfo:
             assert isinstance(data, dict)
 
     def test_detailed_version_info(self, test_client):
-        """Test detailed version information"""
+        """Test detailed version information (endpoint not implemented in current router)"""
         response = test_client.get("/health/version")
-        # May or may not exist
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
 
 class TestHealthCheckErrorHandling:
@@ -214,26 +209,26 @@ class TestHealthCheckErrorHandling:
     def test_health_with_post_method(self, test_client):
         """Test health endpoint rejects POST method"""
         response = test_client.post("/health/")
-        assert response.status_code in [405, 200]  # Some implementations may accept POST
+        assert response.status_code == 405
 
     def test_health_head_request(self, test_client):
-        """Test health endpoint supports HEAD request"""
+        """Test health endpoint rejects HEAD request (router only registered GET)"""
         response = test_client.head("/health/")
-        assert response.status_code in [200, 405]
+        assert response.status_code == 405
 
 
 class TestHealthCheckMetrics:
     """Tests for health check metrics endpoints"""
 
     def test_prometheus_metrics(self, test_client):
-        """Test Prometheus metrics endpoint if available"""
+        """Test Prometheus metrics endpoint (endpoint not implemented in current router)"""
         response = test_client.get("/metrics")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
     def test_health_statistics(self, test_client):
-        """Test health statistics endpoint"""
+        """Test health statistics endpoint (endpoint not implemented in current router)"""
         response = test_client.get("/health/stats")
-        assert response.status_code in [200, 403, 404]
+        assert response.status_code == 404
 
 
 class TestHealthCheckAuthentication:
