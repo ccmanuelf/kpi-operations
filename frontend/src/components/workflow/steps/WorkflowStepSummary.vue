@@ -333,7 +333,8 @@ const exportPDF = async () => {
   try {
     // In a real implementation, this would generate a PDF
     await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('PDF exported')
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.log('PDF exported')
   } finally {
     exporting.value = null
   }
@@ -343,7 +344,8 @@ const exportExcel = async () => {
   exporting.value = 'excel'
   try {
     await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('Excel exported')
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.log('Excel exported')
   } finally {
     exporting.value = null
   }
@@ -353,7 +355,8 @@ const emailSummary = async () => {
   exporting.value = 'email'
   try {
     await new Promise(resolve => setTimeout(resolve, 1000))
-    console.log('Email sent')
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.log('Email sent')
   } finally {
     exporting.value = null
   }
@@ -372,7 +375,8 @@ const fetchSummary = async () => {
     const response = await api.get('/shifts/current/summary')
     summary.value = response.data
   } catch (error) {
-    console.error('Failed to fetch summary:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to fetch summary:', error)
     // Generate summary from workflow data or use mock
     const productionData = props.workflowData['complete-production'] || {}
     const downtimeData = props.workflowData['close-downtime'] || {}

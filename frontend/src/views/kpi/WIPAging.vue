@@ -357,7 +357,8 @@ const loadClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
   }
 }
 
@@ -373,7 +374,8 @@ const loadHoldHistory = async () => {
     const response = await api.getHoldEntries(params)
     holdHistory.value = response.data || []
   } catch (error) {
-    console.error('Failed to load hold history:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load hold history:', error)
     holdHistory.value = []
   }
 }
@@ -396,7 +398,8 @@ const refreshData = async () => {
       loadHoldHistory()
     ])
   } catch (error) {
-    console.error('Failed to refresh data:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to refresh data:', error)
   } finally {
     loading.value = false
   }

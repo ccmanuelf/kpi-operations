@@ -225,7 +225,8 @@ const loadJobs = async () => {
     const response = await api.get(`/api/work-orders/${props.workOrderId}/jobs`)
     jobs.value = response.data || []
   } catch (error) {
-    console.error('Failed to load jobs:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load jobs:', error)
     jobs.value = []
   } finally {
     loading.value = false
@@ -241,7 +242,8 @@ const loadWorkOrderRty = async () => {
     rtyData.value = response.data
     emit('rty-loaded', response.data)
   } catch (error) {
-    console.error('Failed to load work order RTY:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load work order RTY:', error)
     rtyData.value = null
   } finally {
     loadingRty.value = false
@@ -257,7 +259,8 @@ const loadJobYield = async (job) => {
     jobYieldData.value = response.data
     yieldDialog.value = true
   } catch (error) {
-    console.error('Failed to load job yield:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load job yield:', error)
     jobYieldData.value = null
   } finally {
     loadingJobId.value = null

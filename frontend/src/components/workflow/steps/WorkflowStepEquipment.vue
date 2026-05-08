@@ -261,7 +261,8 @@ const fetchData = async () => {
     equipment.value = equipmentRes.data
     maintenanceAlerts.value = alertsRes.data
   } catch (error) {
-    console.error('Failed to fetch equipment data:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to fetch equipment data:', error)
     // Mock data for demonstration
     equipment.value = [
       { id: 1, name: 'CNC Machine #1', location: 'Line 1', status: 'Operational', pmDue: false, lastCheck: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), notes: null },

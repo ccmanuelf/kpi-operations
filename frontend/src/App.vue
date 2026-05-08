@@ -244,8 +244,12 @@ watch(() => authStore.currentUser?.role, (role) => {
 
 // Error handling for child components
 onErrorCaptured((err, instance, info) => {
-  console.error('Component Error:', err)
-  console.error('Error Info:', info)
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console -- DEV-only diagnostic for child component errors
+    console.error('Component Error:', err)
+    // eslint-disable-next-line no-console -- DEV-only diagnostic for child component errors
+    console.error('Error Info:', info)
+  }
   // Return false to prevent the error from propagating
   return false
 })

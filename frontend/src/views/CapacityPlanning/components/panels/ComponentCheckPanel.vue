@@ -209,7 +209,8 @@ const runCheck = async () => {
   try {
     await store.runComponentCheck()
   } catch (error) {
-    console.error('Component check failed:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Component check failed:', error)
   }
 }
 </script>

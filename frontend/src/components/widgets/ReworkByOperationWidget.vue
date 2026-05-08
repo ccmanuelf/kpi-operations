@@ -350,7 +350,8 @@ const fetchData = async () => {
       await fetchQualityAndAggregate()
     }
   } catch {
-    console.warn('Rework by operation API not available, using fallback calculation')
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.warn('Rework by operation API not available, using fallback calculation')
     await fetchQualityAndAggregate()
   } finally {
     loading.value = false

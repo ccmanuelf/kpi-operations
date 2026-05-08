@@ -200,11 +200,13 @@ const formatTime = (timeString) => {
 }
 
 const handleNavigate = (categoryId, route) => {
-  console.log('Navigate to:', categoryId, route)
+  // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+  if (import.meta.env.DEV) console.log('Navigate to:', categoryId, route)
 }
 
 const handleRefresh = (data) => {
-  console.log('Refresh data:', data)
+  // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+  if (import.meta.env.DEV) console.log('Refresh data:', data)
 }
 
 const goToCategory = (category) => {
@@ -219,7 +221,8 @@ const notifyOperators = async () => {
     })
     // Show success notification
   } catch (error) {
-    console.error('Failed to notify operators:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to notify operators:', error)
   } finally {
     notifying.value = false
   }
@@ -302,7 +305,8 @@ const fetchData = async () => {
 
     openDowntimeIncidents.value = downtimeRes.data || []
   } catch (error) {
-    console.error('Failed to fetch completeness data:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to fetch completeness data:', error)
     // Mock data
     dataCategories.value = [
       { id: 'production', name: 'Production', icon: 'mdi-factory', color: 'primary', route: '/production-entry', entered: 12, expected: 15, missing: 3, percentage: 80 },

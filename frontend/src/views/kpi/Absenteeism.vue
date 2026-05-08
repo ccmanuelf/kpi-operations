@@ -382,7 +382,8 @@ const loadClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
   }
 }
 
@@ -402,7 +403,8 @@ const loadAttendanceHistory = async () => {
       status: record.is_absent ? 'ABSENT' : 'PRESENT'
     }))
   } catch (error) {
-    console.error('Failed to load attendance history:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load attendance history:', error)
     attendanceHistory.value = []
   }
 }
@@ -425,7 +427,8 @@ const refreshData = async () => {
       loadAttendanceHistory()
     ])
   } catch (error) {
-    console.error('Failed to refresh data:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to refresh data:', error)
   } finally {
     loading.value = false
   }

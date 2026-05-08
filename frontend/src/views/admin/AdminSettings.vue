@@ -365,7 +365,8 @@ const loadClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
   }
 }
 
@@ -389,7 +390,8 @@ const loadThresholds = async () => {
       globalDefaults.value = { ...thresholds.value }
     }
   } catch (error) {
-    console.error('Failed to load thresholds:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load thresholds:', error)
     showSnackbar(t('admin.settings.failedToLoad') + ' thresholds', 'error')
   } finally {
     loadingThresholds.value = false

@@ -1448,7 +1448,8 @@ async function handleValidate() {
   try {
     await store.validate()
   } catch (error) {
-    console.error('Validation error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Validation error:', error)
   }
 }
 
@@ -1476,7 +1477,8 @@ async function handleRun() {
       }
     }
   } catch (error) {
-    console.error('Simulation error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Simulation error:', error)
   }
 }
 
@@ -1508,7 +1510,8 @@ async function handleOptimizeOperators() {
       notify.showError(response?.solver_message || t('simulationV2.optimize.failed'))
     }
   } catch (error) {
-    console.error('Optimization error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Optimization error:', error)
     const detail = error?.response?.data?.detail || error?.message || ''
     notify.showError(detail || t('simulationV2.optimize.failed'))
   } finally {
@@ -1561,7 +1564,8 @@ async function handleRebalanceBottlenecks() {
       notify.showError(response?.solver_message || t('simulationV2.rebalance.failed'))
     }
   } catch (error) {
-    console.error('Rebalancing error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Rebalancing error:', error)
     const detail = error?.response?.data?.detail || error?.message || ''
     notify.showError(detail || t('simulationV2.rebalance.failed'))
   } finally {
@@ -1629,7 +1633,8 @@ async function handleSequenceProducts() {
       notify.showError(response?.solver_message || t('simulationV2.sequence.failed'))
     }
   } catch (error) {
-    console.error('Sequencing error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Sequencing error:', error)
     const detail = error?.response?.data?.detail || error?.message || ''
     notify.showError(detail || t('simulationV2.sequence.failed'))
   } finally {
@@ -1672,7 +1677,8 @@ async function handlePlanHorizon() {
       notify.showError(response?.solver_message || t('simulationV2.plan.failed'))
     }
   } catch (error) {
-    console.error('Planning error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Planning error:', error)
     const detail = error?.response?.data?.detail || error?.message || ''
     notify.showError(detail || t('simulationV2.plan.failed'))
   } finally {
@@ -1733,7 +1739,8 @@ async function handleSaveScenario() {
     notify.showSuccess(t('simulationV2.scenarios.savedSuccess', { name: created.name }))
     showSaveScenarioDialog.value = false
   } catch (error) {
-    console.error('Save scenario error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Save scenario error:', error)
     notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.saveFailed'))
   } finally {
     isSavingScenario.value = false
@@ -1745,7 +1752,8 @@ async function refreshScenarios() {
   try {
     scenariosList.value = await listScenarios({ limit: 200 })
   } catch (error) {
-    console.error('List scenarios error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('List scenarios error:', error)
     notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.loadListFailed'))
   } finally {
     isLoadingScenarios.value = false
@@ -1776,7 +1784,8 @@ async function handleLoadScenario(scenarioId) {
     notify.showSuccess(t('simulationV2.scenarios.loadedSuccess', { name: full.name }))
     showScenariosDrawer.value = false
   } catch (error) {
-    console.error('Load scenario error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Load scenario error:', error)
     notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.loadFailed'))
   }
 }
@@ -1800,7 +1809,8 @@ async function handleRunScenario(scenarioId) {
       coverage: s.daily_coverage_pct != null ? s.daily_coverage_pct.toFixed(1) : '—',
     }))
   } catch (error) {
-    console.error('Run scenario error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Run scenario error:', error)
     notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.runFailed'))
   } finally {
     runningScenarioId.value = null
@@ -1813,7 +1823,8 @@ async function handleDuplicateScenario(scenarioId) {
     notify.showSuccess(t('simulationV2.scenarios.duplicatedSuccess'))
     refreshScenarios()
   } catch (error) {
-    console.error('Duplicate scenario error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Duplicate scenario error:', error)
     notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.duplicateFailed'))
   }
 }
@@ -1825,7 +1836,8 @@ async function handleDeleteScenario(scenario) {
     notify.showSuccess(t('simulationV2.scenarios.deletedSuccess', { name: scenario.name }))
     refreshScenarios()
   } catch (error) {
-    console.error('Delete scenario error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Delete scenario error:', error)
     notify.showError(error?.response?.data?.detail || error?.message || t('simulationV2.scenarios.deleteFailed'))
   }
 }
@@ -1972,7 +1984,8 @@ async function handleFetchCalibration() {
     })
     calibrationPreview.value = result
   } catch (error) {
-    console.error('Calibration error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Calibration error:', error)
     notify.showError(
       error?.response?.data?.detail
         || error?.message

@@ -248,7 +248,8 @@ const fetchData = async () => {
       }
     }
   } catch {
-    console.warn('Absenteeism API not available, using demo data')
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.warn('Absenteeism API not available, using demo data')
     // Demo data for display
     absenteeismRate.value = 7.2
     scheduledHours.value = 4800

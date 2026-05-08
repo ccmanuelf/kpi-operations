@@ -210,7 +210,8 @@ const fetchPreviousShift = async () => {
     const response = await api.get('/shifts/previous/summary')
     previousShift.value = response.data
   } catch (error) {
-    console.error('Failed to fetch previous shift:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to fetch previous shift:', error)
     // Use mock data for demonstration
     previousShift.value = {
       productionActual: 2450,

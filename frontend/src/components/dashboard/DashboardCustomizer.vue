@@ -302,7 +302,8 @@ const save = async () => {
     emit('saved')
     close()
   } catch (error) {
-    console.error('Failed to save dashboard preferences:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to save dashboard preferences:', error)
   } finally {
     saving.value = false
   }

@@ -360,7 +360,8 @@ const refreshClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
     showSnackbar(t('admin.clients.failedToLoadClients'), 'error')
   } finally {
     loading.value = false

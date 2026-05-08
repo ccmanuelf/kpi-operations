@@ -190,7 +190,8 @@ const fetchAllowedTransitions = async () => {
     const response = await getAllowedTransitions(props.workOrderId)
     allowedStatuses.value = response.data?.allowed_transitions || []
   } catch (error) {
-    console.error('Error fetching allowed transitions:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error fetching allowed transitions:', error)
     allowedStatuses.value = []
   } finally {
     loading.value = false
@@ -233,7 +234,8 @@ const confirmTransition = async () => {
     // Refresh allowed transitions
     await fetchAllowedTransitions()
   } catch (error) {
-    console.error('Transition error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Transition error:', error)
     // Prefer backend-provided detail (server-side validation message
     // surfaces the real reason); otherwise use the i18n fallback. The
     // earlier `|| 'Failed to change status'` literal was unreachable

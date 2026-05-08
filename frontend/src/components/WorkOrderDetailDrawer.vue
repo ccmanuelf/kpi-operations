@@ -393,7 +393,8 @@ const updateStatus = async (newStatus) => {
     emit('update')
     emit('update:modelValue', false)
   } catch (error) {
-    console.error('Error updating status:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error updating status:', error)
     // Fallback to direct update if workflow API fails
     try {
       await api.updateWorkOrder(props.workOrder.work_order_id, { status: newStatus })

@@ -305,7 +305,8 @@ const refreshUsers = async () => {
     const response = await api.getUsers()
     users.value = response.data || []
   } catch (error) {
-    console.error('Failed to load users:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load users:', error)
     showSnackbar(t('admin.users.failedToLoadUsers'), 'error')
   } finally {
     loading.value = false
@@ -317,7 +318,8 @@ const loadClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
   }
 }
 

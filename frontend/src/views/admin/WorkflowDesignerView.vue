@@ -113,7 +113,8 @@ const loadClients = async () => {
     const response = await api.get('/clients')
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
     showNotification(t('errors.general'), 'error')
   } finally {
     loadingClients.value = false

@@ -155,7 +155,8 @@ const onCameraOff = () => {
 }
 
 const onCameraError = (error) => {
-  console.error('Camera error:', error)
+  // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+  if (import.meta.env.DEV) console.error('Camera error:', error)
 }
 
 const onDetect = async (detectedCodes) => {
@@ -166,7 +167,8 @@ const onDetect = async (detectedCodes) => {
     const data = await handleDecode(result)
     emit('scanned', data)
   } catch (error) {
-    console.error('Decode error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Decode error:', error)
   }
 }
 
@@ -192,7 +194,8 @@ const lookupManual = async () => {
     const data = await manualLookup(manualType.value, manualId.value)
     emit('scanned', data)
   } catch (error) {
-    console.error('Manual lookup error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Manual lookup error:', error)
   } finally {
     isLoading.value = false
   }
@@ -205,7 +208,8 @@ const generateQR = async () => {
     const blob = await generateQRCode(generateType.value, generateId.value)
     generatedQR.value = URL.createObjectURL(blob)
   } catch (error) {
-    console.error('Generate error:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Generate error:', error)
   } finally {
     isLoading.value = false
   }

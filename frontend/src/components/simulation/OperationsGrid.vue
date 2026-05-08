@@ -312,7 +312,8 @@ const importCsv = () => {
       }
     },
     error: (error) => {
-      console.error('CSV parse error:', error)
+      // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+      if (import.meta.env.DEV) console.error('CSV parse error:', error)
       snackbar.value = {
         show: true,
         text: t('simulation.operations.parseError'),

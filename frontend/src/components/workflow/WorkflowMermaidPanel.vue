@@ -194,7 +194,8 @@ const copyToClipboard = async () => {
     await navigator.clipboard.writeText(mermaidCode.value)
     showCopySnackbar.value = true
   } catch (err) {
-    console.error('Failed to copy:', err)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to copy:', err)
   }
 }
 </script>
