@@ -42,15 +42,33 @@ test.describe('Work Order Management — inline AG Grid', () => {
     // Wait for the grid to mount before looking for Add (header buttons
     // render after AG-Grid's first paint).
     await expect(page.locator('[data-testid="ag-grid-wrapper"], .ag-root').first()).toBeVisible({ timeout: 15000 })
-    const addBtn = page.locator('button:has-text("Add")').first()
-    if (await addBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await addBtn.click({ force: true })
-      // Stable data-testid hook on the row-level save button — the prior
-      // CSS-class selector raced with AG-Grid's render order, which the
-      // Phase B.7 stabilization plan flagged as the root cause.
-      const saveBtn = page.locator('[data-testid="work-order-row-save-btn"]').first()
-      await expect(saveBtn).toBeVisible({ timeout: 5000 })
+
+    // The Add button is disabled until a client is selected. On
+    // fresh CI runs the kpi store has selectedClient=null, so we
+    // must pick a client first; otherwise the click is a no-op and
+    // the row-save-btn never appears.
+    const clientSelect = page.locator('input[role="combobox"]').first()
+    if (await clientSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await clientSelect.click({ force: true })
+      // Pick the first option from the dropdown if any are listed.
+      const firstOption = page.locator('.v-overlay .v-list-item').first()
+      if (await firstOption.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await firstOption.click({ force: true })
+        await page.waitForTimeout(300)
+      } else {
+        // No clients seeded → Add stays disabled; assert that contract.
+        await expect(page.locator('button:has-text("Add")').first()).toBeDisabled({ timeout: 3000 })
+        return
+      }
     }
+
+    const addBtn = page.locator('button:has-text("Add")').first()
+    await expect(addBtn).toBeEnabled({ timeout: 5000 })
+    await addBtn.click({ force: true })
+    // Stable data-testid hook on the row-level save button — the prior
+    // CSS-class selector raced with AG-Grid's render order.
+    const saveBtn = page.locator('[data-testid="work-order-row-save-btn"]').first()
+    await expect(saveBtn).toBeVisible({ timeout: 10000 })
   })
 
   test('toolbar exposes Export CSV and Import CSV buttons', async ({ page }) => {

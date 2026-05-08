@@ -185,7 +185,15 @@ test.describe('Simulation V2 - Schedule Tab', () => {
   });
 
   test('should show shift configuration', async ({ page }) => {
-    await expect(page.locator('text=Shifts').or(page.locator('text=Shift')).first()).toBeVisible({ timeout: 15000 });
+    // ScheduleForm renders inputs labelled "Shift 1 Hours" /
+    // "Shift 2 Hours" / "Shift 3 Hours" (i18n
+    // simulationV2.schedule.shift{N}Hours). The shift1_hours field is
+    // always rendered (shifts_enabled >= 1 by default). The prior
+    // assertion looked for `text=Shifts` which is the section title —
+    // that title renders inside a v-card-title with an icon prefix
+    // and Playwright's `text=` matcher races with the icon mounting.
+    // The "Shift 1 Hours" text is in a plain `<label>` — stable.
+    await expect(page.locator('text=/Shift 1 Hours/i').first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should show work days configuration', async ({ page }) => {
@@ -645,10 +653,9 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
       localStorage.removeItem('simulation_v2_visited');
     });
 
-    // Navigate to simulation page via stable href selector (locale-independent)
-    const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
-    await navItem.scrollIntoViewIfNeeded();
-    await navItem.click({ force: true });
+    // Direct goto bypasses the role-based v-list-group click race in
+    // CI Chromium (matches the navigateToSimulationV2 helper above).
+    await page.goto('/simulation', { waitUntil: 'domcontentloaded' });
 
     // Wait for the page header to confirm navigation
     await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
@@ -740,10 +747,9 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
       localStorage.removeItem('simulation_v2_visited');
     });
 
-    // Navigate to simulation page via stable href selector (locale-independent)
-    const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
-    await navItem.scrollIntoViewIfNeeded();
-    await navItem.click({ force: true });
+    // Direct goto bypasses the role-based v-list-group click race in
+    // CI Chromium (matches the navigateToSimulationV2 helper above).
+    await page.goto('/simulation', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 
     // Verify sample data is loaded
