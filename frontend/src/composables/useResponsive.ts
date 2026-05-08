@@ -82,9 +82,9 @@ export function useResponsive() {
   }
 
   const throttle = <TArgs extends unknown[]>(
-    func: (...args: TArgs) => void,
+    func: (..._args: TArgs) => void,
     delay = 150,
-  ): ((...args: TArgs) => void) => {
+  ): ((..._args: TArgs) => void) => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null
     let lastRan: number | null = null
 

@@ -426,7 +426,7 @@ const toggleClientStatus = async (client) => {
     await api.updateClient(client.client_id, { is_active: !client.is_active })
     showSnackbar(client.is_active ? t('admin.clients.clientDeactivated') : t('admin.clients.clientActivated'))
     refreshClients()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.clients.failedToUpdateStatus'), 'error')
   }
 }
@@ -443,7 +443,7 @@ const deleteClient = async () => {
     showSnackbar(t('admin.clients.clientDeleted'))
     deleteDialog.value = false
     refreshClients()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.clients.failedToDeleteClient'), 'error')
   } finally {
     deleting.value = false

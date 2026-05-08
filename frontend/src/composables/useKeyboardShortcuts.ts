@@ -15,7 +15,7 @@
  */
 import { onMounted, onUnmounted, ref } from 'vue'
 
-type ShortcutHandler = (event: KeyboardEvent) => void
+type ShortcutHandler = (_event: KeyboardEvent) => void
 
 interface ShortcutConfig {
   key: string

@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, computed, markRaw, watch } from 'vue'
+import { markRaw, watch } from 'vue'
 import { VueFlow, ConnectionMode, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
@@ -70,7 +70,7 @@ import '@vue-flow/core/dist/theme-default.css'
 import '@vue-flow/controls/dist/style.css'
 import '@vue-flow/minimap/dist/style.css'
 
-const props = defineProps({
+defineProps({
   showMinimap: {
     type: Boolean,
     default: true

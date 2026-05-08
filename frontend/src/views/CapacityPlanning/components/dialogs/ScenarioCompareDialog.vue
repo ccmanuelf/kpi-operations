@@ -157,7 +157,6 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps({
@@ -171,7 +170,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'close'])
+defineEmits(['update:modelValue', 'close'])
 
 const { t } = useI18n()
 

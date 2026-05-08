@@ -1,11 +1,8 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
-declare module 'vue-router' {
-  interface RouteMeta {
-    requiresAuth?: boolean
-    requiresAdmin?: boolean
-  }
-}
+// `RouteMeta` augmentation lives in src/types/shims.d.ts so the
+// standard ESLint no-unused-vars rule does not flag the merged
+// interface name. See that file for context.
 
 interface StoredUser {
   role?: string

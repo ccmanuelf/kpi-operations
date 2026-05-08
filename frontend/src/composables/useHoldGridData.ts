@@ -64,9 +64,9 @@ interface ColumnDef {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: unknown
-  valueFormatter?: (params: { value?: unknown; data?: unknown }) => string
-  valueGetter?: (params: { value?: unknown; data: HoldEntry }) => unknown
-  cellClass?: string | ((params: { value?: unknown; data: HoldEntry }) => string)
+  valueFormatter?: (_params: { value?: unknown; data?: unknown }) => string
+  valueGetter?: (_params: { value?: unknown; data: HoldEntry }) => unknown
+  cellClass?: string | ((_params: { value?: unknown; data: HoldEntry }) => string)
   pinned?: 'left' | 'right'
   width?: number
   sort?: 'asc' | 'desc'

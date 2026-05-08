@@ -20,7 +20,7 @@ import {
   type MapColumnsResult,
 } from '@/utils/clipboardParser'
 
-type EmitFn = (event: string, payload?: unknown) => void
+type EmitFn = (_event: string, _payload?: unknown) => void
 
 interface RowSelectionConfig {
   mode: 'singleRow' | 'multiRow'
@@ -48,12 +48,12 @@ interface SnackbarState {
 
 interface GridApi {
   sizeColumnsToFit: () => void
-  exportDataAsCsv: (params: { fileName: string }) => void
-  exportDataAsExcel: (params: { fileName: string }) => void
+  exportDataAsCsv: (_params: { fileName: string }) => void
+  exportDataAsExcel: (_params: { fileName: string }) => void
   deselectAll: () => void
   getSelectedRows: () => GridRow[]
   refreshCells: () => void
-  applyTransaction: (params: { add: GridRow[]; addIndex?: number }) => void
+  applyTransaction: (_params: { add: GridRow[]; addIndex?: number }) => void
   getGridOptions?: () => { context?: { eGridDiv?: HTMLElement } }
 }
 

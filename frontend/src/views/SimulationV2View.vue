@@ -1366,7 +1366,6 @@ const {
   previousResult,
   hasHistory,
   saveResult,
-  clearHistory,
   getDelta,
   countBottlenecks,
 } = useSimulationComparison()
@@ -1905,11 +1904,6 @@ function handleResetClear() {
 function handleResetToSample() {
   store.resetToSample()
   showResetDialog.value = false
-}
-
-// Legacy function for backwards compatibility
-function handleReset() {
-  handleResetClear()
 }
 
 function importConfig() {

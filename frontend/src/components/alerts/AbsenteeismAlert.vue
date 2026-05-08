@@ -247,7 +247,7 @@ const fetchData = async () => {
         }
       }
     }
-  } catch (err: any) {
+  } catch {
     console.warn('Absenteeism API not available, using demo data')
     // Demo data for display
     absenteeismRate.value = 7.2

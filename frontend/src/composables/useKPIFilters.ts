@@ -12,8 +12,8 @@ export interface FilterTypeOption {
   value: FilterType
 }
 
-type SnackbarFn = (message: string, color?: string) => void
-type FilterChangeFn = (config: FilterConfig) => void
+type SnackbarFn = (_message: string, _color?: string) => void
+type FilterChangeFn = (_config: FilterConfig) => void
 type SelectedClientGetter = () => string | number | null
 type DateRangeGetter = () => Date[] | null | undefined
 

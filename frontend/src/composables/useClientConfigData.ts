@@ -22,8 +22,8 @@ export interface SnackbarState {
 export interface ConfigSectionField {
   configKey: keyof ClientConfigData | string
   labelKey: string
-  getValue: (cfg: ClientConfigEnvelope, defaults: ClientConfigData | null) => unknown
-  getIsDefault?: (cfg: ClientConfigEnvelope) => boolean
+  getValue: (_cfg: ClientConfigEnvelope, _defaults: ClientConfigData | null) => unknown
+  getIsDefault?: (_cfg: ClientConfigEnvelope) => boolean
 }
 
 export interface ConfigSection {

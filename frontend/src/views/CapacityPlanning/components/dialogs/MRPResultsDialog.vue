@@ -164,7 +164,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'close'])
+defineEmits(['update:modelValue', 'close'])
 
 const shortages = computed(() =>
   props.results?.components?.filter(c => c.status === 'SHORTAGE') || []

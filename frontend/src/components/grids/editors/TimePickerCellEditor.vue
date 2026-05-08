@@ -64,7 +64,7 @@ const onEscape = () => {
   props.params.stopEditing(true) // Cancel editing
 }
 
-const onTab = (event) => {
+const onTab = (_event) => {
   props.params.stopEditing()
   // Allow default tab behavior to move to next cell
 }

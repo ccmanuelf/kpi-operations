@@ -306,7 +306,7 @@ const fetchData = async () => {
     } else {
       await fetchQualityAndAggregate()
     }
-  } catch (err: any) {
+  } catch {
     console.warn('Quality by operator API not available, using fallback calculation')
     await fetchQualityAndAggregate()
   } finally {
@@ -364,7 +364,7 @@ const fetchQualityAndAggregate = async () => {
       // Use demo data
       operatorQuality.value = generateDemoData()
     }
-  } catch (err: any) {
+  } catch {
     // Use demo data for display
     operatorQuality.value = generateDemoData()
   }

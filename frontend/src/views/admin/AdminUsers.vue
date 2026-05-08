@@ -371,7 +371,7 @@ const toggleUserStatus = async (user) => {
     await api.updateUser(user.user_id, { is_active: !user.is_active })
     showSnackbar(user.is_active ? t('admin.users.userDeactivated') : t('admin.users.userActivated'))
     refreshUsers()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.users.failedToUpdateStatus'), 'error')
   }
 }
@@ -388,7 +388,7 @@ const deleteUser = async () => {
     showSnackbar(t('admin.users.userDeleted'))
     deleteDialog.value = false
     refreshUsers()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.users.failedToDeleteUser'), 'error')
   } finally {
     deleting.value = false

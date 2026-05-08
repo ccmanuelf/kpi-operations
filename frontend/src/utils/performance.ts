@@ -16,14 +16,14 @@ export interface DebounceOptions {
 }
 
 export interface DebouncedFn<TArgs extends unknown[], TResult> {
-  (...args: TArgs): TResult | undefined
+  (..._args: TArgs): TResult | undefined
   cancel: () => void
   flush: () => TResult | undefined
   pending: () => boolean
 }
 
 export function debounce<TArgs extends unknown[], TResult>(
-  func: (...args: TArgs) => TResult,
+  func: (..._args: TArgs) => TResult,
   wait: number = 300,
   options: DebounceOptions = {},
 ): DebouncedFn<TArgs, TResult> {
@@ -133,7 +133,7 @@ export function debounce<TArgs extends unknown[], TResult>(
 }
 
 export function throttle<TArgs extends unknown[], TResult>(
-  func: (...args: TArgs) => TResult,
+  func: (..._args: TArgs) => TResult,
   wait: number = 100,
   options: DebounceOptions = {},
 ): DebouncedFn<TArgs, TResult> {
@@ -148,7 +148,7 @@ export function throttle<TArgs extends unknown[], TResult>(
 export interface RequestCacheOptions<T = unknown> {
   defaultTTL?: number
   maxSize?: number
-  onEvict?: ((key: string, data: T) => void) | null
+  onEvict?: ((_key: string, _data: T) => void) | null
 }
 
 export interface CacheGetOptions {
@@ -185,7 +185,7 @@ export class RequestCacheManager {
   private pendingRequests: Map<string, Promise<unknown>>
   private defaultTTL: number
   private maxSize: number
-  private onEvict: ((key: string, data: unknown) => void) | null
+  private onEvict: ((_key: string, _data: unknown) => void) | null
 
   constructor(options: RequestCacheOptions<unknown> = {}) {
     this.cache = new Map()
@@ -572,7 +572,7 @@ export function useDebouncedRef<T>(initialValue: T, delay: number = 300) {
 }
 
 export function useThrottledCallback<TArgs extends unknown[]>(
-  callback: (...args: TArgs) => void,
+  callback: (..._args: TArgs) => void,
   limit: number = 100,
 ) {
   const throttledFn = throttle(callback, limit)
@@ -683,10 +683,10 @@ export interface LazyComponentDefinition {
   loadingComponent: unknown | null
   errorComponent: unknown | null
   onError: (
-    error: unknown,
-    retry: () => void,
-    fail: () => void,
-    attempts: number,
+    _error: unknown,
+    _retry: () => void,
+    _fail: () => void,
+    _attempts: number,
   ) => void
 }
 
@@ -754,7 +754,7 @@ export function useAbortController(): AbortController {
 }
 
 export interface CleanupRegistry {
-  register: (fn: () => void) => void
+  register: (_fn: () => void) => void
   cleanup: () => void
 }
 

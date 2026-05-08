@@ -443,7 +443,7 @@ const resetToGlobal = async () => {
 
     showSnackbar(`${t('admin.settings.resetToGlobalSuccess')} - ${selectedClientName.value}`)
     await loadThresholds()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   }
 }
@@ -453,7 +453,7 @@ const saveGeneralSettings = async () => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
     showSnackbar(t('admin.settings.generalSettingsSaved'))
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
@@ -465,7 +465,7 @@ const saveNotificationSettings = async () => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
     showSnackbar(t('admin.settings.notificationSettingsSaved'))
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
@@ -477,7 +477,7 @@ const saveDataSettings = async () => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
     showSnackbar(t('admin.settings.dataSettingsSaved'))
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false

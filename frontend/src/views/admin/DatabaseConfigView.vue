@@ -198,7 +198,7 @@ async function handleMigrationStart(config) {
       config.targetUrl,
       config.confirmationText
     )
-  } catch (e) {
+  } catch {
     // Error is handled by store
   }
 }

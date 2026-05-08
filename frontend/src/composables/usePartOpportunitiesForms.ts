@@ -28,7 +28,7 @@ interface FormHandle {
   validate?: () => Promise<{ valid: boolean }>
 }
 
-type ValidationRule = (v: unknown) => true | string
+type ValidationRule = (_v: unknown) => true | string
 
 interface ValidationRules {
   required: ValidationRule
@@ -36,7 +36,7 @@ interface ValidationRules {
   positive: ValidationRule
 }
 
-type SnackbarFn = (message: string, color: string) => void
+type SnackbarFn = (_message: string, _color: string) => void
 
 const DEFAULT_FORM_DATA = (): PartOpportunityFormData => ({
   part_number: '',

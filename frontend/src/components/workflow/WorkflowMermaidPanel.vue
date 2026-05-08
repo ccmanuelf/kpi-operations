@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
 import { validateMermaidSyntax } from '@/utils/workflow/mermaidParser'

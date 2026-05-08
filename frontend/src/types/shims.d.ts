@@ -15,3 +15,16 @@ declare module '*.vue' {
   const component: DefineComponent<Record<string, never>, Record<string, never>, any>
   export default component
 }
+
+// vue-router meta-field augmentation. Re-exported below so the standard
+// ESLint `no-unused-vars` rule (used in lieu of
+// `@typescript-eslint/no-unused-vars`) does not flag the merged
+// interface name — declaration merging is a type-system construct
+// invisible to ESLint's variable-tracker, and the re-export gives it a
+// "use" it can see.
+declare module 'vue-router' {
+  export interface RouteMeta {
+    requiresAuth?: boolean
+    requiresAdmin?: boolean
+  }
+}

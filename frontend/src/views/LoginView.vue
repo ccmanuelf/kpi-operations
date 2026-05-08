@@ -306,7 +306,7 @@ const handleForgotPassword = async () => {
       resetEmail.value = ''
       resetSuccess.value = ''
     }, 3000)
-  } catch (error) {
+  } catch {
     resetErrors.value.email = [t('auth.resetFailed')]
   } finally {
     resetLoading.value = false

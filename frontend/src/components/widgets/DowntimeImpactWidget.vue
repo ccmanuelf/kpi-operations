@@ -241,7 +241,7 @@ const fetchData = async () => {
     }
 
     lastUpdated.value = new Date().toLocaleTimeString()
-  } catch (err: any) {
+  } catch {
     console.warn('Downtime impact API not available, using fallback calculation')
     await fetchDowntimeEvents()
   } finally {

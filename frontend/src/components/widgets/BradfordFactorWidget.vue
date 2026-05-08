@@ -268,7 +268,7 @@ const fetchData = async () => {
       spells.value = response.data.spells || response.data.absence_spells || 0
       totalDays.value = response.data.total_days || response.data.absence_days || 0
     }
-  } catch (err: any) {
+  } catch {
     console.warn('Bradford Factor API not available, using fallback calculation')
     await fetchAttendanceAndCalculate()
   } finally {
@@ -325,7 +325,7 @@ const fetchAttendanceAndCalculate = async () => {
       totalDays.value = 0
       score.value = 0
     }
-  } catch (err: any) {
+  } catch {
     // Use demo data for display
     spells.value = 3
     totalDays.value = 8

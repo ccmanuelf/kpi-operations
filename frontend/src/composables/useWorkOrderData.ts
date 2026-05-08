@@ -47,9 +47,9 @@ interface SummaryStats {
 }
 
 const debounce = <TArgs extends unknown[]>(
-  fn: (...args: TArgs) => void,
+  fn: (..._args: TArgs) => void,
   delay: number,
-): ((...args: TArgs) => void) => {
+): ((..._args: TArgs) => void) => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   return (...args: TArgs) => {
     if (timeoutId) clearTimeout(timeoutId)

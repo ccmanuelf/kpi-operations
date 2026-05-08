@@ -34,7 +34,7 @@ interface FilterBarProps {
   [key: string]: unknown
 }
 
-type EmitFn = (event: string, payload?: unknown) => void
+type EmitFn = (_event: string, _payload?: unknown) => void
 
 interface DebouncedFn {
   (): void

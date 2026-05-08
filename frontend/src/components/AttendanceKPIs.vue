@@ -122,7 +122,7 @@ import axios from 'axios'
 
 const { t } = useI18n()
 
-const props = defineProps<{
+defineProps<{
   dateRange: string
 }>()
 

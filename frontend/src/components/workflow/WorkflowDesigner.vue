@@ -109,7 +109,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
@@ -132,8 +132,6 @@ const props = defineProps({
 const emit = defineEmits(['saved', 'error'])
 
 const { t } = useI18n()
-const route = useRoute()
-const router = useRouter()
 const store = useWorkflowDesignerStore()
 
 const {

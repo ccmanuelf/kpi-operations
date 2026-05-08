@@ -203,7 +203,7 @@ import { useI18n } from 'vue-i18n'
 import { useWorkflowDesignerStore } from '@/stores/workflowDesignerStore'
 import { STATUS_TYPES, getStatusTypeStyle } from '@/utils/workflow/statusClassifier'
 
-const props = defineProps({
+defineProps({
   isOpen: {
     type: Boolean,
     default: false

@@ -15,7 +15,7 @@ export interface HistoryManager<T = unknown> {
   past: string[]
   future: string[]
   maxHistory: number
-  push(state: HistoryState<T>): void
+  push(_state: HistoryState<T>): void
   undo(): HistoryState<T> | null
   redo(): HistoryState<T> | null
   canUndo(): boolean

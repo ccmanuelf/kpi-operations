@@ -227,7 +227,7 @@ const startEndShift = () => {
   }
 }
 
-const onWorkflowComplete = (data) => {
+const onWorkflowComplete = (_data) => {
   showWorkflowWizard.value = false
   const message = workflowStore.currentWorkflow === 'shift-start'
     ? t('quickActionsFab.shiftStartedSuccess')

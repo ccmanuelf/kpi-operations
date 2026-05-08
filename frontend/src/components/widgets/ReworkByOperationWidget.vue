@@ -349,7 +349,7 @@ const fetchData = async () => {
     } else {
       await fetchQualityAndAggregate()
     }
-  } catch (err: any) {
+  } catch {
     console.warn('Rework by operation API not available, using fallback calculation')
     await fetchQualityAndAggregate()
   } finally {
@@ -412,7 +412,7 @@ const fetchQualityAndAggregate = async () => {
       // Use demo data
       reworkOperations.value = generateDemoData()
     }
-  } catch (err: any) {
+  } catch {
     // Use demo data for display
     reworkOperations.value = generateDemoData()
     totalUnitsProduced.value = 10000
