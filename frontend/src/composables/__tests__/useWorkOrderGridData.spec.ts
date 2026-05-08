@@ -49,7 +49,7 @@ import useWorkOrderGridData, {
 
 interface ColumnDefShape {
   field?: string
-  editable?: boolean | ((params: { data: WorkOrderRow }) => boolean)
+  editable?: boolean | ((_params: { data: WorkOrderRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: unknown[]; min?: number; precision?: number }
   pinned?: 'left' | 'right'
@@ -150,7 +150,7 @@ describe('useWorkOrderGridData', () => {
     it('work_order_id editable only on new rows', () => {
       const { columnDefs } = buildHarness()
       const col = findCol(columnDefs.value, 'work_order_id')!
-      const editable = col.editable as (p: { data: WorkOrderRow }) => boolean
+      const editable = col.editable as (_p: { data: WorkOrderRow }) => boolean
       expect(editable({ data: { _isNew: true } })).toBe(true)
       expect(editable({ data: { _isNew: false, work_order_id: 'WO-1' } })).toBe(false)
       expect(col.pinned).toBe('left')

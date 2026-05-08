@@ -92,39 +92,8 @@ vi.mock('@/stores/databaseConfigStore', () => ({
 
 // Composables used by admin views — each provides the minimum surface
 // the view destructures. Real behavior lives in the composables' own
-// unit specs.
-function makeGridComposableStub() {
-  return () => ({
-    gridRef: ref(null),
-    rowData: ref([]),
-    columnDefs: ref([]),
-    onGridReady: vi.fn(),
-    onCellValueChanged: vi.fn(),
-    onRowsPasted: vi.fn(),
-    addNewEntry: vi.fn(),
-    saveChanges: vi.fn(),
-    onConfirmSave: vi.fn(),
-    onCancelSave: vi.fn(),
-    showConfirmDialog: ref(false),
-    pendingData: ref(null),
-    pendingRowsCount: ref(0),
-    confirmationFieldConfig: ref([]),
-    showPasteDialog: ref(false),
-    parsedPasteData: ref([]),
-    convertedPasteRows: ref([]),
-    pasteValidationResult: ref({ valid: true }),
-    pasteColumnMapping: ref({}),
-    pasteGridColumns: ref([]),
-    onPasteConfirm: vi.fn(),
-    onPasteCancel: vi.fn(),
-    saving: ref(false),
-    snackbar: ref({ show: false, message: '', color: 'success' }),
-    unsavedChanges: ref(new Set()),
-    hasUnsavedChanges: computed(() => false),
-    filteredEntries: ref([]),
-    applyFilters: vi.fn(),
-  })
-}
+// unit specs. Each `vi.mock` below defines its own inline stub
+// matching the surface the corresponding view destructures.
 
 vi.mock('@/composables/useDefectTypesData', () => ({
   default: () => ({

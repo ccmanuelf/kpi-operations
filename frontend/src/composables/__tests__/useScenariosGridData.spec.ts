@@ -27,12 +27,12 @@ import useScenariosGridData, {
 
 interface ColumnDefShape {
   field?: string
-  editable?: boolean | ((params: { data: ScenarioRow }) => boolean)
+  editable?: boolean | ((_params: { data: ScenarioRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: unknown[] }
-  valueGetter?: (params: { data: ScenarioRow }) => unknown
-  valueFormatter?: (params: { value?: unknown; data?: ScenarioRow }) => string
-  valueSetter?: (params: { data: ScenarioRow; newValue: unknown }) => boolean
+  valueGetter?: (_params: { data: ScenarioRow }) => unknown
+  valueFormatter?: (_params: { value?: unknown; data?: ScenarioRow }) => string
+  valueSetter?: (_params: { data: ScenarioRow; newValue: unknown }) => boolean
   pinned?: 'left' | 'right'
   width?: number
 }
@@ -99,7 +99,7 @@ describe('column definitions', () => {
   it('checkbox selection column is hidden for new rows', () => {
     const { columnDefs } = buildHarness()
     const col = findCol(columnDefs.value, '_select') as
-      | { checkboxSelection?: (p: { data: ScenarioRow }) => boolean }
+      | { checkboxSelection?: (_p: { data: ScenarioRow }) => boolean }
       | undefined
     expect(col).toBeDefined()
     expect(col!.checkboxSelection!({ data: { _isNew: true } })).toBe(false)
@@ -111,8 +111,8 @@ describe('column definitions', () => {
     const col = findCol(columnDefs.value, 'scenario_name')
     expect(col).toBeDefined()
     expect(typeof col!.editable).toBe('function')
-    expect((col!.editable as (p: { data: ScenarioRow }) => boolean)({ data: { _isNew: true } })).toBe(true)
-    expect((col!.editable as (p: { data: ScenarioRow }) => boolean)({ data: { _isNew: false } })).toBe(false)
+    expect((col!.editable as (_p: { data: ScenarioRow }) => boolean)({ data: { _isNew: true } })).toBe(true)
+    expect((col!.editable as (_p: { data: ScenarioRow }) => boolean)({ data: { _isNew: false } })).toBe(false)
   })
 
   it('scenario_type uses agSelectCellEditor with backend catalogue', () => {
@@ -326,7 +326,7 @@ describe('row actions (via cell renderer)', () => {
   // on the rendered HTMLElement.
   const renderActions = (row: ScenarioRow, harness: ReturnType<typeof buildHarness>) => {
     const col = findCol(harness.columnDefs.value, '_actions') as
-      | { cellRenderer?: (p: { data: ScenarioRow; rowIndex: number }) => HTMLElement }
+      | { cellRenderer?: (_p: { data: ScenarioRow; rowIndex: number }) => HTMLElement }
       | undefined
     return col!.cellRenderer!({ data: row, rowIndex: 0 })
   }

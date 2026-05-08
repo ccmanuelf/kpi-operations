@@ -7,7 +7,7 @@
  * - Connection testing
  * - Confirmation flow
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 
 // Test the component logic directly without mounting
 // This avoids Vuetify CSS import issues in test environment

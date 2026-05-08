@@ -3,7 +3,6 @@
  * Tests axios instance configuration, interceptors, and error handling
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import axios from 'axios'
 
 // We need to test the client module's interceptors and configuration
 // Since the module is auto-executed, we test behavior patterns

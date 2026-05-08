@@ -258,6 +258,32 @@ describe('Capacity Planning Store', () => {
       expect(inputs.default_efficiency).toBe(85)
       expect(inputs.auto_schedule_enabled).toBe(false)
     })
+
+    it('getDefaultStockSnapshot returns correct shape', () => {
+      const snapshot = getDefaultStockSnapshot()
+      expect(snapshot.unit_of_measure).toBe('EA')
+      expect(snapshot.on_hand_quantity).toBe(0)
+    })
+
+    it('getDefaultComponentCheckRow returns correct shape', () => {
+      const row = getDefaultComponentCheckRow()
+      expect(row.status).toBe('AVAILABLE')
+    })
+
+    it('getDefaultCapacityAnalysisRow returns correct shape', () => {
+      const row = getDefaultCapacityAnalysisRow()
+      expect(row.is_bottleneck).toBe(false)
+    })
+
+    it('getDefaultScheduleRow returns correct shape', () => {
+      const row = getDefaultScheduleRow()
+      expect(row.status).toBe('SCHEDULED')
+    })
+
+    it('getDefaultKPITrackingRow returns correct shape', () => {
+      const row = getDefaultKPITrackingRow()
+      expect(row.status).toBe('PENDING')
+    })
   })
 
   // =========================================================================

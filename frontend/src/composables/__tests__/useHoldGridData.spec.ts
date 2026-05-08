@@ -41,8 +41,8 @@ interface ColumnDefShape {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: { values?: unknown[] } | (() => { values?: unknown[] })
-  valueGetter?: (params: { data: HoldEntry }) => unknown
-  cellClass?: string | ((params: { data: HoldEntry; value?: unknown }) => string)
+  valueGetter?: (_params: { data: HoldEntry }) => unknown
+  cellClass?: string | ((_params: { data: HoldEntry; value?: unknown }) => string)
 }
 
 const findCol = (cols: unknown[], field: string): ColumnDefShape | undefined =>

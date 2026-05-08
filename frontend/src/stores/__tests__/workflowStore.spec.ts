@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useWorkflowStore } from '../workflowStore'
-import { useAuthStore } from '../authStore'
 
 // Mock authStore
 vi.mock('../authStore', () => ({

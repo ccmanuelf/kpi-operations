@@ -42,7 +42,7 @@ interface ColumnDefShape {
   cellEditor?: string
   cellEditorParams?: { values?: unknown[]; min?: number; max?: number }
   pinned?: 'left' | 'right'
-  valueGetter?: (params: { data: BOMHeaderRow }) => unknown
+  valueGetter?: (_params: { data: BOMHeaderRow }) => unknown
 }
 
 const findCol = (cols: unknown[], field: string): ColumnDefShape | undefined =>
