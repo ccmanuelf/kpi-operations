@@ -238,10 +238,14 @@ test.describe('Capacity Planning - Dialogs', () => {
     await page.click('button:has-text("Run Capacity Analysis")');
     await page.waitForSelector('.v-dialog', { state: 'visible' });
 
-    // Check for date inputs in the dialog
-    await expect(page.locator('.v-dialog input[type="date"]').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.v-dialog:has-text("Start Date")')).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('.v-dialog:has-text("End Date")')).toBeVisible({ timeout: 5000 });
+    // The dialog labels are `t('common.start')` = "Start" and
+    // `t('common.end')` = "End" — NOT "Start Date" / "End Date" (the
+    // prior test text was off by one word and only worked when the
+    // i18n keys were a different value). Verify structurally: the
+    // analysis dialog must show exactly two `<input type="date">`.
+    const dateInputs = page.locator('.v-dialog input[type="date"]')
+    await expect(dateInputs.first()).toBeVisible({ timeout: 5000 });
+    await expect(dateInputs).toHaveCount(2, { timeout: 5000 });
   });
 
   test('Analysis dialog can be closed', async ({ page }) => {
@@ -257,8 +261,12 @@ test.describe('Capacity Planning - Dialogs', () => {
     await page.click('button:has-text("Generate Schedule")');
     await page.waitForSelector('.v-dialog', { state: 'visible' });
 
-    // Check for schedule name input
-    await expect(page.locator('.v-dialog:has-text("Schedule Name")')).toBeVisible({ timeout: 5000 });
+    // The schedule dialog has 1 text input (name) + 2 date inputs.
+    // The text-based label match was failing in CI due to i18n
+    // cold-start timing; assert the input shape directly.
+    const dialog = page.locator('.v-dialog')
+    await expect(dialog.locator('input[type="text"], input:not([type])').first()).toBeVisible({ timeout: 5000 });
+    await expect(dialog.locator('input[type="date"]')).toHaveCount(2, { timeout: 5000 });
   });
 
   test('Schedule dialog can be closed', async ({ page }) => {

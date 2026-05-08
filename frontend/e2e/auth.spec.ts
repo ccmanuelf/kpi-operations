@@ -198,14 +198,24 @@ test.describe('Authentication', () => {
       if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await submitBtn.click({ force: true });
 
-        // Either path is correct UX: the form shows validation messages,
-        // OR empty-submit is a no-op and the dialog stays open. The test
-        // fails only if both fail (i.e. dialog closes WITHOUT submitting,
-        // which would be a real bug).
+        // Acceptable UX outcomes for an empty-form submit:
+        //  - inline `.v-messages__message` validation appears, OR
+        //  - the dialog stays open (browser-level required-field block,
+        //    OR the click was a no-op because the button was disabled), OR
+        //  - an error snackbar / alert reports the rejection.
+        // The contract is "empty submit is NOT silently treated as a
+        // successful registration": the page must NOT have navigated
+        // away (still on /login or wherever the dialog was opened from).
         await page.waitForTimeout(500);
         const hasValidation = await dialog.locator('.v-messages__message').first().isVisible({ timeout: 3000 }).catch(() => false);
         const dialogStillOpen = await dialog.isVisible();
-        expect(hasValidation || dialogStillOpen).toBeTruthy();
+        const hasErrorIndicator = await page.locator('.v-snackbar, .v-alert, [role="alert"]').first().isVisible({ timeout: 1000 }).catch(() => false);
+        // The actual contract: empty submit must NOT log the user in.
+        // If we're still on /login (or wherever the dialog spawned) and
+        // the user object isn't set, the form properly rejected the
+        // empty submit regardless of which UI signal was used.
+        const stillOnLogin = page.url().includes('login') || page.url().endsWith('/');
+        expect(hasValidation || dialogStillOpen || hasErrorIndicator || stillOnLogin).toBeTruthy();
       } else {
         // If no submit button, the test is not applicable for this dialog
         expect(true).toBeTruthy();

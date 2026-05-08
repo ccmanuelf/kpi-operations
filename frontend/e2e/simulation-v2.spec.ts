@@ -19,26 +19,25 @@ import { login } from './helpers';
 // Increase default timeout for all tests
 test.setTimeout(90000);
 
-// Helper to navigate to simulation v2 with stability improvements
+// Helper to navigate to simulation v2 with stability improvements.
+// Uses page.goto() directly (matches the dashboard.spec.ts pattern from
+// commit 16b32e5) — clicking the nav drawer link races with the
+// role-based v-list-group expansion in CI Chromium and intermittently
+// loses the click. Direct goto bypasses that entire surface.
 async function navigateToSimulationV2(page: Page, clearSampleData = true) {
-  // Clear localStorage to ensure consistent test state (no sample data auto-load)
+  // Clear localStorage flag BEFORE navigation so any onMounted logic
+  // (sample-data auto-load) sees the suppressed state on first paint.
   if (clearSampleData) {
     await page.evaluate(() => {
       localStorage.setItem('simulation_v2_visited', 'true');
     });
   }
 
-  // Scroll nav item into view and click — it's near the bottom of a long drawer
-  const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
-  await navItem.scrollIntoViewIfNeeded();
-  await navItem.click({ force: true });
+  // domcontentloaded fires deterministically; networkidle hangs in CI
+  // when Vite HMR + in-flight store fetches keep the network busy.
+  await page.goto('/simulation', { waitUntil: 'domcontentloaded' });
 
-  // Wait for URL to confirm Vue Router navigation completed
-  // Router redirects /simulation-v2 → /simulation; the nav also points
-  // directly at /simulation, so wait for that final URL.
-  await page.waitForURL('**/simulation', { timeout: 15000 });
-
-  // Wait for the page header to confirm navigation
+  // Wait for the page header to confirm SimulationV2View mounted.
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 }
 
@@ -57,8 +56,11 @@ test.describe('Simulation V2 - Navigation', () => {
   });
 
   test('should display Simulation v2 in navigation menu', async ({ page }) => {
-    const navItem = page.locator('.v-navigation-drawer').locator('text=Simulation v2');
-    await expect(navItem).toBeVisible({ timeout: 10000 });
+    // The nav drawer renders `t('navigation.simulation')` = "Simulation"
+    // (no "v2" suffix). Match by stable href instead of locale-fragile
+    // label text.
+    const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
+    await expect(navItem.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to Simulation v2 page', async ({ page }) => {

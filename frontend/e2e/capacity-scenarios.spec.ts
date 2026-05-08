@@ -39,10 +39,19 @@ test.describe('Capacity Scenarios — inline AG Grid (new rows only)', () => {
   })
 
   test('Create Scenario button is visible', async ({ page }) => {
+    // Wait for the panel's AG-Grid (or the "no scenarios" empty state)
+    // to mount first — the Create Scenario button is rendered alongside
+    // the grid header and only appears once the lazy panel chunk has
+    // loaded. CI cold-start needs longer than the prior 15s allowed.
+    const gridOrEmpty = page.locator('.ag-root').or(page.locator('text=/no scenarios|sin escenarios/i'))
+    await expect(gridOrEmpty.first()).toBeVisible({ timeout: 20000 })
+    // Drop the loose text=Create|Crear fallbacks — they matched
+    // unrelated buttons in some browser configs. Match the actual
+    // i18n string verbatim.
     const btn = page
-      .locator('button:has-text("Create Scenario"), button:has-text("Crear Escenario"), button:has-text("Create"), button:has-text("Crear")')
+      .locator('button:has-text("Create Scenario"), button:has-text("Crear Escenario")')
       .first()
-    await expect(btn).toBeVisible({ timeout: 15000 })
+    await expect(btn).toBeVisible({ timeout: 5000 })
   })
 
   test('grid or empty-state renders after data load', async ({ page }) => {
