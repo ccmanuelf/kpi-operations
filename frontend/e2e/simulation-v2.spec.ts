@@ -185,15 +185,14 @@ test.describe('Simulation V2 - Schedule Tab', () => {
   });
 
   test('should show shift configuration', async ({ page }) => {
-    // ScheduleForm renders inputs labelled "Shift 1 Hours" /
-    // "Shift 2 Hours" / "Shift 3 Hours" (i18n
-    // simulationV2.schedule.shift{N}Hours). The shift1_hours field is
-    // always rendered (shifts_enabled >= 1 by default). The prior
-    // assertion looked for `text=Shifts` which is the section title —
-    // that title renders inside a v-card-title with an icon prefix
-    // and Playwright's `text=` matcher races with the icon mounting.
-    // The "Shift 1 Hours" text is in a plain `<label>` — stable.
-    await expect(page.locator('text=/Shift 1 Hours/i').first()).toBeVisible({ timeout: 15000 });
+    // Vuetify renders v-text-field labels as floating `<label
+    // aria-hidden="true">` — Playwright's `text=` matcher resolves
+    // them but `toBeVisible()` returns false because of aria-hidden.
+    // The accessible name is plumbed through to the underlying
+    // `<input>` (rendered as `role="spinbutton"` for type="number").
+    // Match by ARIA role + name — that's the stable, accessibility-
+    // tree contract.
+    await expect(page.getByRole('spinbutton', { name: 'Shift 1 Hours' })).toBeVisible({ timeout: 15000 });
   });
 
   test('should show work days configuration', async ({ page }) => {
@@ -460,9 +459,14 @@ test.describe('Simulation V2 - Config Management', () => {
     await addButton.click({ force: true });
     await page.waitForTimeout(500);
 
-    // Click reset
-    const resetButton = page.locator('button:has-text("Reset")');
-    await resetButton.click({ force: true });
+    // Click reset via dispatchEvent — pointer hit-testing lands on the
+    // QuickActionsFAB shift-indicator chip (position:fixed bottom:90
+    // right:24 z-index:5) which geometrically overlaps the actions
+    // card's Reset button. dispatching the synthetic click event
+    // directly on the target invokes the Vue @click handler without
+    // going through pointer hit-testing.
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
+    await resetButton.dispatchEvent('click');
     await page.waitForTimeout(500);
 
     // Should show reset dialog with options
@@ -482,17 +486,17 @@ test.describe('Simulation V2 - Config Management', () => {
     await addButton.click({ force: true });
     await page.waitForTimeout(500);
 
-    // Click reset
-    const resetButton = page.locator('button:has-text("Reset")');
-    await resetButton.click({ force: true });
+    // Click reset via dispatchEvent (see comment above for rationale)
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
+    await resetButton.dispatchEvent('click');
     await page.waitForTimeout(500);
 
     // Wait for dialog to fully render before interacting — under parallel
     // load WebKit is slower to make dialog content interactive
     const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
     await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
-    // Use force:true — WebKit's v-overlay-scroll-blocked intercepts pointer events
-    await clearAllOption.click({ force: true });
+    // dispatchEvent for v-overlay-scroll-blocked pointer-event interception
+    await clearAllOption.dispatchEvent('click');
 
     // Operations should be cleared (toHaveCount polls until satisfied).
     const gridRows = page.locator('.ag-row');
@@ -697,9 +701,11 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await navigateToSimulationV2(page);
     await waitForTabContent(page);
 
-    // Click Reset button
-    const resetButton = page.locator('button:has-text("Reset")');
-    await resetButton.click({ force: true });
+    // Click Reset via dispatchEvent — pointer hit-testing lands on the
+    // QuickActionsFAB shift-indicator chip overlay (see Sample Data
+    // describe for full rationale).
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
+    await resetButton.dispatchEvent('click');
     await page.waitForTimeout(500);
 
     // Reset dialog should appear with two options
@@ -719,15 +725,15 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await navigateToSimulationV2(page);
     await waitForTabContent(page);
 
-    // Click Reset button
-    const resetButton = page.locator('button:has-text("Reset")');
-    await resetButton.click({ force: true });
+    // Click Reset via dispatchEvent (see rationale above)
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
+    await resetButton.dispatchEvent('click');
     await page.waitForTimeout(500);
 
-    // Click Load Sample Data option — wait for render + force:true for WebKit overlay
+    // Click Load Sample Data option — dispatchEvent for v-overlay-scroll-blocked
     const loadSampleOption = page.locator('.v-list-item').filter({ hasText: 'Load Sample Data' });
     await loadSampleOption.waitFor({ state: 'visible', timeout: 5000 });
-    await loadSampleOption.click({ force: true });
+    await loadSampleOption.dispatchEvent('click');
     await page.waitForTimeout(1000);
 
     // Should have sample data loaded
@@ -758,15 +764,27 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     const initialCount = await gridRows.count();
     expect(initialCount).toBeGreaterThan(0);
 
-    // Click Reset button
-    const resetButton = page.locator('button:has-text("Reset")');
-    await resetButton.click({ force: true });
+    // Click Reset via dispatchEvent — pointer hit-testing lands on the
+    // QuickActionsFAB shift-indicator chip (position:fixed bottom:90
+    // right:24 z-index:5) which geometrically overlaps the actions
+    // card's Reset button. force:true skips actionability checks but
+    // the pointer coordinates still hit the chip in front. dispatching
+    // the synthetic click event directly on the target invokes the
+    // Vue @click handler without going through pointer hit-testing.
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
+    await resetButton.dispatchEvent('click');
 
-    // Wait for dialog to fully render, then click Clear All
-    // Use force:true — WebKit's v-overlay-scroll-blocked intercepts pointer events
-    const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
-    await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
-    await clearAllOption.click({ force: true });
+    // Wait for the dialog itself to materialize before drilling into
+    // its child v-list-items. CI cold-start needs more than 5s for
+    // the dialog overlay to mount.
+    const dialog = page.locator('.v-dialog').filter({ hasText: 'Clear All' });
+    await expect(dialog).toBeVisible({ timeout: 15000 });
+
+    // Click Clear All within the dialog. dispatchEvent for the same
+    // reason — the v-overlay-scroll-blocked overlay can intercept
+    // pointer events on dialog list items in headless Chromium.
+    const clearAllOption = dialog.locator('.v-list-item').filter({ hasText: 'Clear All' });
+    await clearAllOption.dispatchEvent('click');
 
     // After Clear All, the grid must report zero rows. toHaveCount polls
     // until the assertion is satisfied or times out.

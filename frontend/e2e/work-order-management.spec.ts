@@ -44,23 +44,30 @@ test.describe('Work Order Management — inline AG Grid', () => {
     await expect(page.locator('[data-testid="ag-grid-wrapper"], .ag-root').first()).toBeVisible({ timeout: 15000 })
 
     // The Add button is disabled until a client is selected. On
-    // fresh CI runs the kpi store has selectedClient=null, so we
-    // must pick a client first; otherwise the click is a no-op and
-    // the row-save-btn never appears.
-    const clientSelect = page.locator('input[role="combobox"]').first()
-    if (await clientSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await clientSelect.click({ force: true })
-      // Pick the first option from the dropdown if any are listed.
-      const firstOption = page.locator('.v-overlay .v-list-item').first()
-      if (await firstOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await firstOption.click({ force: true })
-        await page.waitForTimeout(300)
-      } else {
-        // No clients seeded → Add stays disabled; assert that contract.
-        await expect(page.locator('button:has-text("Add")').first()).toBeDisabled({ timeout: 3000 })
-        return
-      }
+    // fresh CI runs the kpi store's selectedClient is null. UI-driven
+    // selection through Vuetify's v-select dropdown is fragile in
+    // headless Chromium; reach into the Pinia store via window for a
+    // stable test-only setup. The fallback is to assert the disabled-
+    // state contract when no clients exist in the seeded DB.
+    const clients = await page.evaluate(async () => {
+      const res = await fetch('/api/clients/active/list')
+      if (!res.ok) return []
+      const data = await res.json()
+      return Array.isArray(data) ? data : []
+    })
+    if (clients.length === 0) {
+      await expect(page.locator('button:has-text("Add")').first()).toBeDisabled({ timeout: 3000 })
+      return
     }
+    // Set selected client by clicking the first option in the v-select.
+    // Use ARIA label match (Vuetify wires it to the underlying input).
+    const clientCombo = page.getByRole('combobox', { name: /Filter by Client|filters\.client/i }).first()
+    await clientCombo.click({ force: true })
+    const firstOption = page.locator('.v-list-item').filter({ hasText: clients[0].client_name }).first()
+    await firstOption.waitFor({ state: 'visible', timeout: 5000 })
+    await firstOption.click({ force: true })
+    // Allow the v-model + reactive disabled binding to flush.
+    await page.waitForTimeout(500)
 
     const addBtn = page.locator('button:has-text("Add")').first()
     await expect(addBtn).toBeEnabled({ timeout: 5000 })

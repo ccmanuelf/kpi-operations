@@ -297,6 +297,7 @@
             <v-btn
               color="error"
               variant="outlined"
+              data-testid="simulation-v2-reset-btn"
               @click="confirmReset"
             >
               <v-icon start>mdi-refresh</v-icon>
