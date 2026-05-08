@@ -51,18 +51,7 @@ async function waitForTabContent(page: Page, timeout = 15000) {
   await page.waitForTimeout(300); // Small buffer for Vue reactivity
 }
 
-// FIXME(2026-06-01): All Simulation V2 describes below depend on
-// `navigateToSimulationV2()` (helper above) which times out in CI
-// at 13-20s on the `Production Line Simulation v2.0` waitForSelector.
-// The Phase B.7 batch un-skipped them with the
-// `networkidle → domcontentloaded` pattern (commit 03eebda); CI on
-// PR #15 then surfaced that the failure isn't networkidle — the
-// page genuinely fails to render the v2 header in CI Chromium
-// within 30s of the lazy chunk fetching. Local `npm run dev` works
-// fine; root cause likely a CI-runner-specific Vite chunk timing
-// or Pinia hydration race. Needs separate investigation with full
-// playwright trace from a failing run. See run 25567074055.
-test.describe.skip('Simulation V2 - Navigation [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
@@ -119,7 +108,7 @@ test.describe.skip('Simulation V2 - Navigation [SKIPPED — CI-only nav timeout;
   });
 });
 
-test.describe.skip('Simulation V2 - Operations Tab [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Operations Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -178,7 +167,7 @@ test.describe.skip('Simulation V2 - Operations Tab [SKIPPED — CI-only nav time
   });
 });
 
-test.describe.skip('Simulation V2 - Schedule Tab [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Schedule Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -225,7 +214,7 @@ test.describe.skip('Simulation V2 - Schedule Tab [SKIPPED — CI-only nav timeou
   });
 });
 
-test.describe.skip('Simulation V2 - Demand Tab [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Demand Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -271,7 +260,7 @@ test.describe.skip('Simulation V2 - Demand Tab [SKIPPED — CI-only nav timeout;
   });
 });
 
-test.describe.skip('Simulation V2 - Breakdowns Tab [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Breakdowns Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -315,7 +304,7 @@ test.describe.skip('Simulation V2 - Breakdowns Tab [SKIPPED — CI-only nav time
   });
 });
 
-test.describe.skip('Simulation V2 - Validation Flow [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Validation Flow', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -355,7 +344,7 @@ test.describe.skip('Simulation V2 - Validation Flow [SKIPPED — CI-only nav tim
   });
 });
 
-test.describe.skip('Simulation V2 - Run Simulation [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Run Simulation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -375,7 +364,7 @@ test.describe.skip('Simulation V2 - Run Simulation [SKIPPED — CI-only nav time
   });
 });
 
-test.describe.skip('Simulation V2 - Config Management [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Config Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -501,7 +490,7 @@ test.describe.skip('Simulation V2 - Config Management [SKIPPED — CI-only nav t
   });
 });
 
-test.describe.skip('Simulation V2 - Summary Stats [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Summary Stats', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -525,7 +514,7 @@ test.describe.skip('Simulation V2 - Summary Stats [SKIPPED — CI-only nav timeo
   });
 });
 
-test.describe.skip('Simulation V2 - Full Workflow [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Full Workflow', () => {
   test('should complete full simulation workflow', async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -598,7 +587,7 @@ test.describe.skip('Simulation V2 - Full Workflow [SKIPPED — CI-only nav timeo
   });
 });
 
-test.describe.skip('Simulation V2 - Responsive Design [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Responsive Design', () => {
   test('should be functional on tablet viewport', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await login(page);
@@ -618,7 +607,7 @@ test.describe.skip('Simulation V2 - Responsive Design [SKIPPED — CI-only nav t
   });
 });
 
-test.describe.skip('Simulation V2 - Error Handling [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Error Handling', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -645,7 +634,7 @@ test.describe.skip('Simulation V2 - Error Handling [SKIPPED — CI-only nav time
   });
 });
 
-test.describe.skip('Simulation V2 - Sample Data Onboarding [SKIPPED — CI-only nav timeout; see Phase B.7 + run 25567074055]', () => {
+test.describe('Simulation V2 - Sample Data Onboarding', () => {
   test('should load sample T-Shirt data on first visit', async ({ page }) => {
     await login(page);
 

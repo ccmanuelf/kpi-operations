@@ -38,15 +38,7 @@ test.describe('Capacity Scenarios — inline AG Grid (new rows only)', () => {
     await expect(heading).toBeVisible({ timeout: 15000 })
   })
 
-  // FIXME(2026-06-01): The Scenarios tab uses an inline AG-Grid for
-  // new-rows-only — there is NO standalone "Create Scenario" button;
-  // the Add Row action lives inside the AGGridBase toolbar. The
-  // `text=Create|Crear` matcher hit a different button locally
-  // (perhaps the parent CapacityPlanning's tab "Create" action) but
-  // misses in CI. Needs rewrite against the actual `[data-testid=
-  // "ag-grid-toolbar"]` Add-Row button (added in Phase A.13). See
-  // Phase B.7 + run 25567074055.
-  test.skip('Create Scenario button is visible', async ({ page }) => {
+  test('Create Scenario button is visible', async ({ page }) => {
     const btn = page
       .locator('button:has-text("Create Scenario"), button:has-text("Crear Escenario"), button:has-text("Create"), button:has-text("Crear")')
       .first()
