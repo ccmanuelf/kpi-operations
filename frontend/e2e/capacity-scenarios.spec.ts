@@ -18,13 +18,15 @@ async function navigateToScenariosTab(page: Page) {
   // Wait for the page-specific header before switching tabs.
   await page.waitForSelector('.v-card-title:has-text("Capacity Planning")', { state: 'visible', timeout: 30000 })
 
-  // Switch to the Scenarios tab.
-  const tab = page
-    .locator('button:has-text("Scenarios"), [role="tab"]:has-text("Scenarios")')
-    .or(page.locator('button:has-text("Escenarios"), [role="tab"]:has-text("Escenarios")'))
-    .first()
+  // Use ARIA role+name to target the tab — `force:true` on a text-match
+  // selector races with v-tabs animation and intermittently misses.
+  // The tab label resolves to "Scenarios" (en) / "Escenarios" (es).
+  const tab = page.getByRole('tab', { name: /Scenarios|Escenarios/ })
   await tab.waitFor({ state: 'visible', timeout: 15000 })
-  await tab.click({ force: true })
+  await tab.click()
+  // Wait for v-tabs to actually mark Scenarios as selected — without
+  // this, follow-up assertions race against the prior tab's content.
+  await expect(page.getByRole('tab', { name: /Scenarios|Escenarios/, selected: true })).toBeVisible({ timeout: 10000 })
 }
 
 test.describe('Capacity Scenarios — inline AG Grid (new rows only)', () => {

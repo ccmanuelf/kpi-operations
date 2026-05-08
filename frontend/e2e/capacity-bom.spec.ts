@@ -18,19 +18,15 @@ async function navigateToBomTab(page: Page) {
   // fetches — keep the network active.
   await page.goto('/capacity-planning', { waitUntil: 'domcontentloaded' })
 
-  const tab = page
-    .locator('button:has-text("BOM"), [role="tab"]:has-text("BOM")')
-    .first()
-  // Wait long enough for the lazy-mounted CapacityPlanningView and its
-  // tab list to register. CI cold-start Chromium needs more than the
-  // prior 5s for the tab to even appear.
-  if (await tab.isVisible({ timeout: 15000 }).catch(() => false)) {
-    await tab.click({ force: true })
-    // Allow the BOM panel chunk + AG-Grid to mount. Polled below
-    // through .ag-root visibility — this 800ms is just a render-tick
-    // breather to avoid double-clicks during transition.
-    await page.waitForTimeout(800)
-  }
+  // Use ARIA role+name to target the tab — `force:true` on a text-match
+  // selector races with v-tabs animation and intermittently misses.
+  const tab = page.getByRole('tab', { name: 'BOM' })
+  await tab.waitFor({ state: 'visible', timeout: 15000 })
+  await tab.click()
+  // Wait for v-tabs to actually mark BOM as selected — Playwright
+  // re-evaluates [aria-selected="true"] on the same role+name match
+  // until the v-model update flushes.
+  await expect(page.getByRole('tab', { name: 'BOM', selected: true })).toBeVisible({ timeout: 10000 })
 }
 
 test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
@@ -52,6 +48,9 @@ test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
   })
 
   test('master-detail layout — detail grid present after master selection', async ({ page }) => {
+    // Wait for the master grid to mount before counting — point-in-time
+    // .count() returns 0 if AG-Grid hasn't finished its initial paint yet.
+    await expect(page.locator('.ag-root').first()).toBeVisible({ timeout: 20000 })
     const masterRow = page.locator('.ag-center-cols-container .ag-row').first()
     if (await masterRow.isVisible({ timeout: 5000 }).catch(() => false)) {
       await masterRow.click({ force: true })
