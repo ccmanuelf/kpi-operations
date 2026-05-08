@@ -9,9 +9,9 @@
       </v-col>
       <v-col cols="12" md="6" class="text-right">
         <v-chip :color="statusColor" size="large" class="mr-2 text-white" variant="flat">
-          {{ formatValue(wipData?.average_days) }} {{ t('kpi.daysAvg') }}
+          {{ formatValue(wipData?.average_days) }} {{ $t('kpi.daysAvg') }}
         </v-chip>
-        <v-chip color="grey-darken-2">{{ t('kpi.targetDaysValue', { value: 7 }) }}</v-chip>
+        <v-chip color="grey-darken-2">{{ $t('kpi.targetDaysValue', { value: 7 }) }}</v-chip>
       </v-col>
     </v-row>
 
@@ -70,8 +70,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.totalWipMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.totalWipMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -81,15 +81,15 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-medium-emphasis">{{ $t('kpi.averageAge') }}</div>
-                <div class="text-h4 font-weight-bold">{{ t('kpi.daysCount', { count: formatValue(wipData?.average_days) }) }}</div>
+                <div class="text-h4 font-weight-bold">{{ $t('kpi.daysCount', { count: formatValue(wipData?.average_days) }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.averageAgeFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.averageAgeMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.averageAgeFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.averageAgeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -99,13 +99,13 @@
             <v-card v-bind="props" variant="outlined" class="cursor-help">
               <v-card-text>
                 <div class="text-caption text-medium-emphasis">{{ $t('kpi.oldestItem') }}</div>
-                <div class="text-h4 font-weight-bold">{{ t('kpi.daysCount', { count: wipData?.max_days || 0 }) }}</div>
+                <div class="text-h4 font-weight-bold">{{ $t('kpi.daysCount', { count: wipData?.max_days || 0 }) }}</div>
               </v-card-text>
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.oldestItemMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.oldestItemMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -120,8 +120,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.criticalItemsMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.criticalItemsMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -165,7 +165,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.hold_date="{ item }">
                 {{ formatDate(item.hold_date) }}
@@ -192,22 +192,22 @@
                 <template v-slot:prepend>
                   <v-icon color="success">mdi-check-circle</v-icon>
                 </template>
-                <v-list-item-title>{{ t('kpi.ageDays0to7', { status: t('kpi.onTrack') }) }}</v-list-item-title>
-                <v-list-item-subtitle>{{ t('kpi.unitsCount', { count: wipData?.age_0_7 || 0 }) }}</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('kpi.ageDays0to7', { status: $t('kpi.onTrack') }) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('kpi.unitsCount', { count: wipData?.age_0_7 || 0 }) }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
                   <v-icon color="warning">mdi-alert-circle</v-icon>
                 </template>
-                <v-list-item-title>{{ t('kpi.ageDays8to14', { status: t('kpi.atRisk') }) }}</v-list-item-title>
-                <v-list-item-subtitle>{{ t('kpi.unitsCount', { count: wipData?.age_8_14 || 0 }) }}</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('kpi.ageDays8to14', { status: $t('kpi.atRisk') }) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('kpi.unitsCount', { count: wipData?.age_8_14 || 0 }) }}</v-list-item-subtitle>
               </v-list-item>
               <v-list-item>
                 <template v-slot:prepend>
                   <v-icon color="error">mdi-close-circle</v-icon>
                 </template>
-                <v-list-item-title>{{ t('kpi.ageDays15plus', { status: t('kpi.critical') }) }}</v-list-item-title>
-                <v-list-item-subtitle>{{ t('kpi.unitsCount', { count: wipData?.age_15_plus || 0 }) }}</v-list-item-subtitle>
+                <v-list-item-title>{{ $t('kpi.ageDays15plus', { status: $t('kpi.critical') }) }}</v-list-item-title>
+                <v-list-item-subtitle>{{ $t('kpi.unitsCount', { count: wipData?.age_15_plus || 0 }) }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
           </v-card-text>
@@ -224,11 +224,11 @@
               :items="wipData?.top_aging || []"
               density="compact"
               :items-per-page="10"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.age="{ item }">
                 <v-chip :color="getAgeColor(item.age)" size="small">
-                  {{ t('kpi.daysCount', { count: item.age }) }}
+                  {{ $t('kpi.daysCount', { count: item.age }) }}
                 </v-chip>
               </template>
             </v-data-table>
@@ -244,177 +244,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted } from 'vue'
 import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { format } from 'date-fns'
-import { useKPIStore } from '@/stores/kpi'
-import api from '@/services/api'
+import useWIPAgingData from '@/composables/useWIPAgingData'
+import useWIPAgingCharts from '@/composables/useWIPAgingCharts'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+const {
+  loading, clients, selectedClient, startDate, endDate, tableSearch,
+  holdHistory, wipData, statusColor,
+  agingHeaders, historyHeaders,
+  formatValue, formatDate, getAgeColor,
+  onClientChange, onDateChange, refreshData, initialize
+} = useWIPAgingData()
 
-const { t } = useI18n()
-const kpiStore = useKPIStore()
-const loading = ref(false)
-const clients = ref([])
-const selectedClient = ref(null)
-const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-const endDate = ref(new Date().toISOString().split('T')[0])
-const tableSearch = ref('')
-const holdHistory = ref([])
+const { chartData, chartOptions } = useWIPAgingCharts()
 
-const wipData = computed(() => kpiStore.wipAging)
-
-const statusColor = computed(() => {
-  const avg = wipData.value?.average_days || 0
-  if (avg <= 7) return 'success'
-  if (avg <= 14) return 'amber-darken-3'
-  return 'error'
-})
-
-const agingHeaders = computed(() => [
-  { title: t('kpi.headers.workOrder'), key: 'work_order', sortable: true },
-  { title: t('kpi.headers.product'), key: 'product', sortable: true },
-  { title: t('kpi.headers.age'), key: 'age', sortable: true },
-  { title: t('kpi.headers.quantity'), key: 'quantity', sortable: true }
-])
-
-const historyHeaders = computed(() => [
-  { title: t('kpi.headers.holdDate'), key: 'hold_date', sortable: true },
-  { title: t('kpi.headers.workOrder'), key: 'work_order_id', sortable: true },
-  { title: t('kpi.headers.category'), key: 'hold_reason_category', sortable: true },
-  { title: t('kpi.headers.reason'), key: 'hold_reason_description', sortable: true },
-  { title: t('kpi.headers.status'), key: 'hold_status', sortable: true }
-])
-
-const chartData = computed(() => ({
-  labels: kpiStore.trends.wipAging.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: t('kpi.charts.avgWipAgeDays'),
-      data: kpiStore.trends.wipAging.map(d => d.value),
-      borderColor: '#f57c00',
-      backgroundColor: 'rgba(245, 124, 0, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: t('kpi.charts.targetDays', { value: 7 }),
-      data: Array(kpiStore.trends.wipAging.length).fill(7),
-      borderColor: '#2e7d32',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: { display: true, position: 'top' },
-    tooltip: { mode: 'index', intersect: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      ticks: { callback: (value) => `${value}d` }
-    }
-  }
-}
-
-const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(1) : t('common.na')
-}
-
-const formatDate = (dateStr) => {
-  try {
-    return format(new Date(dateStr), 'MMM dd, yyyy')
-  } catch {
-    return dateStr
-  }
-}
-
-const getAgeColor = (age) => {
-  if (age <= 7) return 'success'
-  if (age <= 14) return 'amber-darken-3'
-  return 'error'
-}
-
-const loadClients = async () => {
-  try {
-    const response = await api.getClients()
-    clients.value = response.data || []
-  } catch (error) {
-    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
-    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
-  }
-}
-
-const loadHoldHistory = async () => {
-  try {
-    const params = {
-      start_date: startDate.value,
-      end_date: endDate.value
-    }
-    if (selectedClient.value) {
-      params.client_id = selectedClient.value
-    }
-    const response = await api.getHoldEntries(params)
-    holdHistory.value = response.data || []
-  } catch (error) {
-    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
-    if (import.meta.env.DEV) console.error('Failed to load hold history:', error)
-    holdHistory.value = []
-  }
-}
-
-const onClientChange = () => {
-  kpiStore.setClient(selectedClient.value)
-  refreshData()
-}
-
-const onDateChange = () => {
-  kpiStore.setDateRange(startDate.value, endDate.value)
-  refreshData()
-}
-
-const refreshData = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      kpiStore.fetchWIPAging(),
-      loadHoldHistory()
-    ])
-  } catch (error) {
-    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
-    if (import.meta.env.DEV) console.error('Failed to refresh data:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await loadClients()
-    kpiStore.setDateRange(startDate.value, endDate.value)
-    await refreshData()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(() => initialize())
 </script>
 
 <style scoped>
