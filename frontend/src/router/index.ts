@@ -1,8 +1,20 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 
-// `RouteMeta` augmentation lives in src/types/shims.d.ts so the
-// standard ESLint no-unused-vars rule does not flag the merged
-// interface name. See that file for context.
+// vue-router module augmentation. Must live in a `.ts` file (NOT a
+// `.d.ts`) so it merges with vue-router's own type exports rather
+// than replacing them — moving this to types/shims.d.ts in commit
+// 9a3144f broke vue-tsc resolution of useRouter/useRoute/createRouter
+// across 16 files. `RouteMeta` is referenced by vue-router's
+// `route.meta` typing, not by any local code, so ESLint's standard
+// no-unused-vars (which has no awareness of TS module augmentation)
+// cannot see the use.
+declare module 'vue-router' {
+  // eslint-disable-next-line no-unused-vars
+  interface RouteMeta {
+    requiresAuth?: boolean
+    requiresAdmin?: boolean
+  }
+}
 
 interface StoredUser {
   role?: string
