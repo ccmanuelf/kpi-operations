@@ -12,31 +12,22 @@ import { login } from './helpers'
 test.setTimeout(60000)
 
 async function navigateToScenariosTab(page: Page) {
-  const link = page.locator('a[href="/capacity-planning"]').first()
-  if (await link.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await link.scrollIntoViewIfNeeded()
-    await link.click({ force: true })
-    await page.waitForURL(/capacity-planning/i, { timeout: 5000 }).catch(() => {})
-  } else {
-    await page.goto('/capacity-planning')
-  }
-  await page.waitForTimeout(1000)
+  // Direct goto with domcontentloaded: this fires deterministically vs.
+  // networkidle which is held open by Vite HMR + in-flight store fetches.
+  await page.goto('/capacity-planning', { waitUntil: 'domcontentloaded' })
+  // Wait for the page-specific header before switching tabs.
+  await page.waitForSelector('.v-card-title:has-text("Capacity Planning")', { state: 'visible', timeout: 30000 })
 
   // Switch to the Scenarios tab.
   const tab = page
     .locator('button:has-text("Scenarios"), [role="tab"]:has-text("Scenarios")')
     .or(page.locator('button:has-text("Escenarios"), [role="tab"]:has-text("Escenarios")'))
     .first()
-  if (await tab.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await tab.click({ force: true })
-    await page.waitForTimeout(800)
-  }
+  await tab.waitFor({ state: 'visible', timeout: 15000 })
+  await tab.click({ force: true })
 }
 
-// Capacity Scenarios tab is lazy-mounted inside CapacityPlanningView;
-// the helper's 8s wait isn't enough on cold-start CI runners. Phase B.7
-// rewrite will replace the polling pattern with a stable selector.
-test.describe.skip('Capacity Scenarios — inline AG Grid (new rows only) [SKIPPED — lazy-mount timing; see Phase B.7]', () => {
+test.describe('Capacity Scenarios — inline AG Grid (new rows only)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, 'admin')
     await navigateToScenariosTab(page)
@@ -44,24 +35,20 @@ test.describe.skip('Capacity Scenarios — inline AG Grid (new rows only) [SKIPP
 
   test('Scenarios tab renders without crashing', async ({ page }) => {
     const heading = page.locator('text=/scenarios|escenarios|what.if/i').first()
-    await expect(heading).toBeVisible({ timeout: 10000 })
+    await expect(heading).toBeVisible({ timeout: 15000 })
   })
 
   test('Create Scenario button is visible', async ({ page }) => {
     const btn = page
       .locator('button:has-text("Create Scenario"), button:has-text("Crear Escenario"), button:has-text("Create"), button:has-text("Crear")')
       .first()
-    const visible = await btn.isVisible({ timeout: 5000 }).catch(() => false)
-    expect(visible !== undefined).toBeTruthy()
+    await expect(btn).toBeVisible({ timeout: 15000 })
   })
 
   test('grid or empty-state renders after data load', async ({ page }) => {
     // After load, either the AG Grid root OR the no-scenarios placeholder is present.
-    const grid = page.locator('.ag-root')
-    const emptyState = page.locator('text=/no scenarios|sin escenarios/i')
-    const visible = (await grid.isVisible({ timeout: 8000 }).catch(() => false))
-      || (await emptyState.isVisible({ timeout: 5000 }).catch(() => false))
-    expect(visible).toBeTruthy()
+    const gridOrEmpty = page.locator('.ag-root').or(page.locator('text=/no scenarios|sin escenarios/i'))
+    await expect(gridOrEmpty.first()).toBeVisible({ timeout: 20000 })
   })
 
   test('Compare button only appears when 2+ rows are selected', async ({ page }) => {

@@ -16,10 +16,10 @@
             </div>
           </v-card-title>
 
-          <v-card-text>
+          <v-card-text data-testid="floating-pool-content">
             <v-row class="mb-4">
               <v-col cols="12" md="3">
-                <v-card variant="outlined" color="primary">
+                <v-card variant="outlined" color="primary" data-testid="floating-pool-total-card">
                   <v-card-text class="text-center">
                     <div class="text-h4">{{ summary.total }}</div>
                     <div class="text-caption">{{ $t('admin.floatingPool.totalEmployees') }}</div>
@@ -27,7 +27,7 @@
                 </v-card>
               </v-col>
               <v-col cols="12" md="3">
-                <v-card variant="outlined" color="success">
+                <v-card variant="outlined" color="success" data-testid="floating-pool-available-card">
                   <v-card-text class="text-center">
                     <div class="text-h4">{{ summary.available }}</div>
                     <div class="text-caption">{{ $t('admin.floatingPool.available') }}</div>
@@ -35,7 +35,7 @@
                 </v-card>
               </v-col>
               <v-col cols="12" md="3">
-                <v-card variant="outlined" color="warning">
+                <v-card variant="outlined" color="warning" data-testid="floating-pool-assigned-card">
                   <v-card-text class="text-center">
                     <div class="text-h4">{{ summary.assigned }}</div>
                     <div class="text-caption">{{ $t('admin.floatingPool.currentlyAssigned') }}</div>
@@ -43,7 +43,7 @@
                 </v-card>
               </v-col>
               <v-col cols="12" md="3">
-                <v-card variant="outlined" color="info">
+                <v-card variant="outlined" color="info" data-testid="floating-pool-utilization-card">
                   <v-card-text class="text-center">
                     <div class="text-h4">{{ utilizationPercent }}%</div>
                     <div class="text-caption">{{ $t('admin.floatingPool.utilization') }}</div>
