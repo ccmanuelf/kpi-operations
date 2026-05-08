@@ -38,18 +38,18 @@ test.describe('Work Order Management — inline AG Grid', () => {
     await expect(totalCard).toBeVisible({ timeout: 10000 })
   })
 
-  // FIXME(2026-06-01): the inline-grid Add button creates a draft
-  // row whose save button uses CSS class `ag-grid-save-btn` — that
-  // selector is fragile (depends on AG Grid render order).
-  // See Phase B.7 — replace with stable data-testid.
-  test.skip('Add button opens a new draft row in the grid', async ({ page }) => {
+  test('Add button opens a new draft row in the grid', async ({ page }) => {
+    // Wait for the grid to mount before looking for Add (header buttons
+    // render after AG-Grid's first paint).
+    await expect(page.locator('[data-testid="ag-grid-wrapper"], .ag-root').first()).toBeVisible({ timeout: 15000 })
     const addBtn = page.locator('button:has-text("Add")').first()
     if (await addBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await addBtn.click({ force: true })
-      await page.waitForTimeout(500)
-      const saveBtn = page.locator('button.ag-grid-save-btn, button[title*="Save"]').first()
-      const hasDraft = await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasDraft).toBeTruthy()
+      // Stable data-testid hook on the row-level save button — the prior
+      // CSS-class selector raced with AG-Grid's render order, which the
+      // Phase B.7 stabilization plan flagged as the root cause.
+      const saveBtn = page.locator('[data-testid="work-order-row-save-btn"]').first()
+      await expect(saveBtn).toBeVisible({ timeout: 5000 })
     }
   })
 

@@ -483,7 +483,7 @@ const renderActions = (
   div.style.cssText = 'display: flex; gap: 4px;'
   if (params.data._isNew) {
     div.innerHTML = `
-      <button class="ag-grid-save-btn" title="Save new work order" style="
+      <button class="ag-grid-save-btn" data-testid="work-order-row-save-btn" title="Save new work order" style="
         background: #2e7d32;
         color: white;
         border: none;
@@ -492,7 +492,7 @@ const renderActions = (
         cursor: pointer;
         font-size: 12px;
       ">✓</button>
-      <button class="ag-grid-cancel-btn" title="Discard new row" style="
+      <button class="ag-grid-cancel-btn" data-testid="work-order-row-cancel-btn" title="Discard new row" style="
         background: transparent;
         color: #c62828;
         border: 1px solid #c62828;

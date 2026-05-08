@@ -186,11 +186,7 @@ test.describe('Authentication', () => {
       }
     });
 
-    // FIXME(2026-06-01): Registration form validation depends on a
-    // dialog that closes immediately on empty submit (the test then
-    // can't observe validation errors). UI flow needs investigation —
-    // is empty-submit a no-op? See Phase B.7.
-    test.skip('should validate registration form on submit', async ({ page }) => {
+    test('should validate registration form on submit', async ({ page }) => {
       await page.getByRole('button', { name: /register/i }).click();
 
       const dialog = page.locator('.v-dialog');
@@ -202,7 +198,10 @@ test.describe('Authentication', () => {
       if (await submitBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
         await submitBtn.click({ force: true });
 
-        // Should show validation errors or the dialog should remain open
+        // Either path is correct UX: the form shows validation messages,
+        // OR empty-submit is a no-op and the dialog stays open. The test
+        // fails only if both fail (i.e. dialog closes WITHOUT submitting,
+        // which would be a real bug).
         await page.waitForTimeout(500);
         const hasValidation = await dialog.locator('.v-messages__message').first().isVisible({ timeout: 3000 }).catch(() => false);
         const dialogStillOpen = await dialog.isVisible();

@@ -20,10 +20,11 @@ import { login } from './helpers';
 test.setTimeout(60000);
 
 async function navigateVia(page: Page, href: string) {
-  // Direct goto bypasses the role-based v-list-group expansion
-  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
-  await page.goto(href);
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  // domcontentloaded (vs networkidle) avoids waits that never resolve
+  // when long-lived connections — Vite HMR websocket, in-flight store
+  // fetches — keep the network active. Phase B.7 root-caused the
+  // original CI flakes to that exact pattern.
+  await page.goto(href, { waitUntil: 'domcontentloaded' });
 }
 
 /**
@@ -76,9 +77,7 @@ test.describe('Excel Clipboard Paste', () => {
     });
   });
 
-  // FIXME(2026-06-01): Quality view race with useKPIStore initial
-  // fetch causes 21s timeout in CI; works locally. See Phase B.7.
-  test.describe.skip('Quality grid [SKIPPED — CI-only render race; see Phase B.7]', () => {
+  test.describe('Quality grid', () => {
     test.beforeEach(async ({ page }) => {
       await login(page);
       await navigateVia(page, '/data-entry/quality');
