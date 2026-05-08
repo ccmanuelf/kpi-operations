@@ -1,7 +1,7 @@
 # Phase B — Robustness Audit: Final Verdict
 
 **Period**: 2026-05-07 (single-day execution)
-**Status**: Sub-phases B.1, B.2, B.3, B.5 ✅ COMPLETE. B.4 partially complete with documented deferred items. B.7 closed in Phase A.13. Pending user approval to close Phase B.
+**Status**: Sub-phases B.1, B.2, B.3, B.4, B.5 ✅ COMPLETE. B.7 (E2E migration backlog) carries forward to 2026-06-01 per the entry-UI standard's published deadline. Pending user approval to close Phase B.
 
 ---
 
@@ -16,7 +16,7 @@ UI/test code. The headline numbers:
 | Backend pytest | 5306 passed (with 480+ padding) | **4842 passed**, 1 skipped, 0 failed | -464 tests deleted (all coverage padding) |
 | Frontend vitest | 1826 passed (78 files) | **1915 passed** (80 files) | +89 (+5 missing-assertion fixes, +84 new view tests) |
 | Permissive assertions (`status_code in [...]`) | 778 hits / 28 files | **0** | All tightened to specific codes |
-| Frontend lint warnings | 395 | **33** | -362 (-92%); remainder structural |
+| Frontend lint warnings | 395 | **0** | -395 (-100%) |
 | Frontend coverage (statements / branches / functions / lines) | 22.68 / 20.5 / 15.02 / 24.32 | **33.34 / 26.68 / 26.14 / 35.43** | +10–11 pts on every dimension |
 | Coverage thresholds in vitest.config.ts | 22 / 20 / 15 / 24 | **32 / 25 / 25 / 34** | Ratcheted to lock in gains |
 | 0%-coverage view files | 47 | 18 (capacity sub-components — covered by E2E) | 29 lifted off 0% |
@@ -92,7 +92,7 @@ OnTimeDelivery, WIPAging) — the existing composable extraction
 pattern was only applied to Efficiency, Performance, Quality. Out
 of scope for B.3; tracked as a separate refactor task.
 
-### B.4 — Frontend lint warnings 🔄 partial (395 → 33; structural deferred)
+### B.4 — Frontend lint warnings ✅ (395 → 0)
 
 Four batches across 80+ files. Pattern split:
 
@@ -124,24 +124,36 @@ Four batches across 80+ files. Pattern split:
   verified to also have user-facing notification or store-level
   error state — no info loss from gating.
 
-**Deferred** (33 warnings remaining):
+**Batch 5 — structural refactor of dialog children (commit 76f0144)**:
 
-- **31 vue/no-mutating-props** in `WorkbookActionDialogs.vue` and
-  `ShiftDashboardDialogs.vue`. These dialogs receive a `state` prop
-  containing a `reactive(...)` object of refs and modify properties
-  directly (`state.showAnalysisDialog = false`). The pattern WORKS
-  due to reactive auto-unwrap, but it's the canonical Vue 3
-  anti-pattern the lint rule guards against. Real fix requires
-  structural refactor: convert to `defineModel`-per-property or
-  individual `v-model:propName` API + emits. **Decision**: defer to
-  a separate batch with explicit user approval — this is genuine
-  architectural work, not lint hygiene.
+The remaining 31 `vue/no-mutating-props` warnings lived in
+`WorkbookActionDialogs.vue` (18) and `ShiftDashboardDialogs.vue`
+(13). Both children received parent state as plain props and
+mutated fields directly — works via reactive auto-unwrap, but is
+the canonical Vue 3 anti-pattern.
 
-- **1 vue/no-unused-vars** at `DashboardCustomizer.vue:63` — slot
-  template arg `index` is unused but conventionally shown for
-  template clarity. Low value.
+Real fix:
+  - `WorkbookActionDialogs.vue`: 13 `defineModel` declarations
+    covering every two-way-bound piece of state (5 visibility
+    flags + 8 form fields). `worksheetOptions` stays read-only.
+    Parent `CapacityPlanningView.vue` now uses `v-model:propName=`
+    per piece; the dead `dialogState = reactive({...})` aggregator
+    and the unused `reactive` import were dropped.
+  - `ShiftDashboardDialogs.vue`: visibility flags were already on
+    `defineModel` (correct half). Form objects (`productionForm`,
+    `downtimeForm`, `qualityForm`, `helpForm`) were the broken
+    half — converted each to `defineModel('xForm', { type: Object
+    })`. Parent `MyShiftDashboard.vue` now uses
+    `v-model:production-form=` etc.
 
-- **1 no-console** in `ProductionKPIs.spec.ts` test fixture.
+Final 2 cleanups in the same commit:
+  - `ProductionKPIs.spec.ts:91` — DEV-gated `console.error` in a
+    catch handler (matches the production-source pattern from
+    batch 3).
+  - `DashboardCustomizer.vue:63` — slot template arg `index` was
+    unused; dropped from destructure.
+
+**Final result: 0 lint warnings, 1915 tests pass.**
 
 ### B.5 — Test pollution sweep ✅
 
@@ -232,7 +244,7 @@ measurement 78.66 % per the prior audit.
 
 | Gap | Risk | Mitigation |
 |---|---|---|
-| 31 `vue/no-mutating-props` warnings | LOW (the pattern works via `reactive()` unwrap; lint flag is informational). Bug surface: a future Vue minor that tightens prop-mutation detection could break the dialogs at runtime. | Defer to a focused refactor PR; document as `B.4-deferred`. |
+| 31 `vue/no-mutating-props` warnings | RESOLVED (commit 76f0144) — converted to `defineModel` per state piece in both dialog children + their parents. | n/a — closed in B.4. |
 | 5 of 8 KPI detail pages still inline logic | LOW (smoke-mount provides 60-72% line coverage; no behavioral coverage gap). | Refactor to composables in a separate batch when one of these views needs new features. |
 | 18 0%-coverage capacity sub-components | LOW (E2E specs exercise them; v8 just doesn't account E2E coverage to the unit metric). | No action; this is an artifact of the v8 vs istanbul reporting difference flagged in `vitest.config.ts`. |
 | 8 skipped E2E describe blocks | MEDIUM (covered by FIXME deadline 2026-06-01; the guard prevents recurrence). | Owned by team for 2026-06-01 close-out per `docs/standards/entry-ui-standard.md` §7. |

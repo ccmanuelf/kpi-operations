@@ -114,7 +114,7 @@ Across Phases A, B, and C:
 | Backend pytest | 5306 (with 480+ padding) | 4842 (real coverage) | ✅ |
 | Frontend vitest | 1826 | 1915 (+89, +5 missing-assertion fixes) | ✅ |
 | Permissive assertions | 778 | 0 | ✅ |
-| Frontend lint warnings | 395 | 33 (remainder structural — deferred) | partial |
+| Frontend lint warnings | 395 | **0** | ✅ |
 | Frontend coverage thresholds | 22/20/15/24 | 32/25/25/34 | ✅ |
 | 0%-coverage views | 47 | 18 (rest covered by E2E) | ✅ |
 | Test pollution | unverified | zero artifacts confirmed | ✅ |
@@ -140,32 +140,20 @@ Across Phases A, B, and C:
 
 These are documented and tracked but not closed in this audit cycle:
 
-1. **Phase B.4 — 31 `vue/no-mutating-props` warnings** in
-   `WorkbookActionDialogs.vue` and `ShiftDashboardDialogs.vue`. The
-   children mutate parent's `state` prop directly; works due to
-   `reactive()` auto-unwrap but is the canonical Vue 3 anti-pattern.
-   Real fix requires structural refactor: convert to
-   `defineModel`-per-property or individual `v-model:propName` API.
-   Substantial work — separate batch with explicit user approval.
-
-2. **Phase B.4 — 1 `vue/no-unused-vars`** at
-   `DashboardCustomizer.vue:63` and **1 `no-console`** in
-   `ProductionKPIs.spec.ts` test fixture. Trivial; left as-is.
-
-3. **Phase B.7 — 8 `// FIXME(2026-06-01)` skipped E2E describe
+1. **Phase B.7 — 8 `// FIXME(2026-06-01)` skipped E2E describe
    blocks**. Owned by the team for the 2026-06-01 deadline per
    `docs/standards/entry-ui-standard.md` §7. The
    `scripts/check-skipped-tests.sh` CI guard prevents new skips
    without similar tracking.
 
-4. **5 of 8 KPI detail pages** still inline their logic in
+2. **5 of 8 KPI detail pages** still inline their logic in
    `<script setup>` (Availability, OEE, Absenteeism, OnTimeDelivery,
    WIPAging). The composable extraction pattern was only applied to
    Efficiency, Performance, Quality. Smoke-mount provides 60-72%
    line coverage today; refactor when one of these views needs new
    features.
 
-5. **Phase C.2 — `enforce_admins` and
+3. **Phase C.2 — `enforce_admins` and
    `required_conversation_resolution`** branch protection settings
    recommended but not yet applied (require explicit user action).
 
