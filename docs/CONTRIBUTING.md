@@ -35,6 +35,48 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
+## Pre-commit hooks
+
+Install once after cloning the repo. The hooks catch every lint/type/
+format failure before they reach CI; CI is a backstop, not the
+primary enforcement.
+
+```bash
+pip install pre-commit          # one-time per dev machine
+pre-commit install               # one-time per clone
+pre-commit run --all-files       # smoke-check it works
+```
+
+Hooks configured in `.pre-commit-config.yaml`:
+
+- **trailing-whitespace, end-of-file-fixer, check-yaml, check-added-large-files (max 500 KB)**
+- **black** on `backend/` (v25.1)
+- **flake8** on `backend/` (v7.2.0) — must be 0 errors per `.flake8` config
+- **mypy** on `backend/` whole-package (NOT per-file — see comment in `.pre-commit-config.yaml`)
+- **bandit** on `backend/` (`-ll`, excluding tests)
+- **eslint** on `frontend/src/` (flat config)
+- **vue-tsc** on `frontend/src/` whole-project (`--noEmit` strict types)
+
+Note: `npm run build` is intentionally NOT a pre-commit hook (30-60 s
+cost per commit). Build verification runs in CI as the first step of
+`frontend-lint-and-tests`.
+
+### Bypassing hooks
+
+**Bypassing hooks (`git commit --no-verify`) is forbidden as a
+default**, including by AI agents. The only legitimate reason is
+when a hook itself is broken (rare — usually means the hook config
+is wrong, not that the gate should be skipped). If you must bypass:
+
+1. Document **why** in the commit message body.
+2. Open an issue or PR to fix the hook so the next person doesn't
+   need to bypass it again.
+3. Never bypass on `main` — push to a branch and use a real PR.
+
+The corresponding rule for AI agents is in `feedback_no_shortcuts.md`
+(memory): "no shortcuts, no workarounds, real fixes only. `# noqa`
+and ignore-list additions are forbidden as defaults; rewrites only."
+
 ## Code Style
 
 ### Python (Backend)
