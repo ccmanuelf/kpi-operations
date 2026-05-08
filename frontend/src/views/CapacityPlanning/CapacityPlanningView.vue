@@ -383,7 +383,20 @@
 
     <!-- Workbook Action Dialogs (Analysis, Schedule, Export, Import, Reset) -->
     <WorkbookActionDialogs
-      :state="dialogState"
+      v-model:showAnalysisDialog="showAnalysisDialog"
+      v-model:showScheduleDialog="showScheduleDialog"
+      v-model:showExportDialog="showExportDialog"
+      v-model:showImportDialog="showImportDialog"
+      v-model:showResetDialog="showResetDialog"
+      v-model:analysisStartDate="analysisStartDate"
+      v-model:analysisEndDate="analysisEndDate"
+      v-model:scheduleName="scheduleName"
+      v-model:scheduleStartDate="scheduleStartDate"
+      v-model:scheduleEndDate="scheduleEndDate"
+      v-model:exportFormat="exportFormat"
+      v-model:importFile="importFile"
+      v-model:importTarget="importTarget"
+      :worksheet-options="worksheetOptions"
       @runAnalysis="runCapacityAnalysis"
       @generateSchedule="generateSchedule"
       @exportWorkbook="exportWorkbook"
@@ -394,7 +407,7 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCapacityData } from '@/composables/useCapacityData'
 import { useCapacityExport } from '@/composables/useCapacityExport'
@@ -474,23 +487,8 @@ const {
   importData,
 } = useCapacityExport(activeTab)
 
-// Reactive state object for dialog sub-component (auto-unwraps refs)
-const dialogState = reactive({
-  showAnalysisDialog,
-  analysisStartDate,
-  analysisEndDate,
-  showScheduleDialog,
-  scheduleName,
-  scheduleStartDate,
-  scheduleEndDate,
-  showExportDialog,
-  exportFormat,
-  showImportDialog,
-  importFile,
-  importTarget,
-  worksheetOptions,
-  showResetDialog,
-})
+// Dialog state is bound directly via v-model on WorkbookActionDialogs;
+// no aggregate reactive() wrapper needed.
 </script>
 
 <style scoped>

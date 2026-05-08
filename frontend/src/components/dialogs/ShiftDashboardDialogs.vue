@@ -204,21 +204,29 @@
 </template>
 
 <script setup>
+// Form objects are bound via defineModel — the dialogs mutate fields on the
+// model's value (e.g. `productionForm.quantity = preset`), which Vue 3
+// permits because the model is the local two-way binding, not a one-way
+// prop. The prior pattern passed each form as a plain prop and mutated it
+// directly, tripping `vue/no-mutating-props` 13 times.
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
 
+// Two-way bound form state — parent uses `v-model:productionForm="..."` etc.
+const productionForm = defineModel('productionForm', { type: Object, default: () => ({}) })
+const downtimeForm = defineModel('downtimeForm', { type: Object, default: () => ({}) })
+const qualityForm = defineModel('qualityForm', { type: Object, default: () => ({}) })
+const helpForm = defineModel('helpForm', { type: Object, default: () => ({}) })
+
+// Read-only props (no mutation needed — child only displays these)
 defineProps({
   isSubmitting: Boolean,
-  productionForm: Object,
-  downtimeForm: Object,
-  qualityForm: Object,
-  helpForm: Object,
   workOrderOptions: Array,
   productionPresets: Array,
   downtimeReasons: Array,
   defectTypes: Array,
-  helpTypes: Array
+  helpTypes: Array,
 })
 
 const showProductionDialog = defineModel('showProductionDialog', { type: Boolean })

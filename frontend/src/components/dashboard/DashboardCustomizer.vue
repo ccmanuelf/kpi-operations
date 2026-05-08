@@ -60,7 +60,7 @@
             class="widget-list"
             @end="onDragEnd"
           >
-            <template #item="{ element, index }">
+            <template #item="{ element }">
               <div class="widget-item d-flex align-center pa-3 mb-2 rounded">
                 <v-icon class="drag-handle mr-3 cursor-move" color="grey">mdi-drag</v-icon>
                 <v-icon :icon="getWidgetIcon(element.widget_key)" class="mr-3" color="primary" />
