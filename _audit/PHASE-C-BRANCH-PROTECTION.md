@@ -125,10 +125,9 @@ matching the current state plus the two changes.)
 ## Acceptance
 
 - [x] Recommendation document written
-- [ ] User notified to apply settings (not auto-applied)
-
-After user applies (or declines) the recommendations, this section
-moves to ✅ DONE in the tracker.
+- [x] User authorized agent to apply settings 2026-05-08
+- [x] `enforce_admins=true` applied
+- [x] `required_conversation_resolution=true` applied
 
 ## Audit log
 
@@ -137,3 +136,5 @@ moves to ✅ DONE in the tracker.
 | 2026-05-06 (Phase A.13) | Required status checks | `backend-tests, frontend-lint-and-tests, docker-build, e2e-sqlite` (4-job gate). Set via `gh api repos/.../branches/main/protection PUT` per user mandate "option 3". |
 | 2026-05-06 (Phase A.13) | strict, allow_force_pushes, allow_deletions | Already in line with recommendations. |
 | 2026-05-07 (Phase C.2) | Documentation | This file written. No live changes applied. |
+| 2026-05-08 (Phase C.2) | enforce_admins | Set to true. User authorized agent to apply via `gh api PUT`. Backup of prior config saved to `/tmp/main-protection-backup.json`. |
+| 2026-05-08 (Phase C.2) | required_conversation_resolution | Set to true. Same PUT call. |
