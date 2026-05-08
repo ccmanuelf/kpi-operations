@@ -459,14 +459,9 @@ test.describe('Simulation V2 - Config Management', () => {
     await addButton.click({ force: true });
     await page.waitForTimeout(500);
 
-    // Click reset via dispatchEvent — pointer hit-testing lands on the
-    // QuickActionsFAB shift-indicator chip (position:fixed bottom:90
-    // right:24 z-index:5) which geometrically overlaps the actions
-    // card's Reset button. dispatching the synthetic click event
-    // directly on the target invokes the Vue @click handler without
-    // going through pointer hit-testing.
+    // Click reset
     const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
-    await resetButton.dispatchEvent('click');
+    await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
     // Should show reset dialog with options
@@ -486,17 +481,17 @@ test.describe('Simulation V2 - Config Management', () => {
     await addButton.click({ force: true });
     await page.waitForTimeout(500);
 
-    // Click reset via dispatchEvent (see comment above for rationale)
+    // Click reset
     const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
-    await resetButton.dispatchEvent('click');
+    await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
     // Wait for dialog to fully render before interacting — under parallel
     // load WebKit is slower to make dialog content interactive
     const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
     await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
-    // dispatchEvent for v-overlay-scroll-blocked pointer-event interception
-    await clearAllOption.dispatchEvent('click');
+    // force:true bypasses v-overlay-scroll-blocked pointer-event interception
+    await clearAllOption.click({ force: true });
 
     // Operations should be cleared (toHaveCount polls until satisfied).
     const gridRows = page.locator('.ag-row');
@@ -701,11 +696,9 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await navigateToSimulationV2(page);
     await waitForTabContent(page);
 
-    // Click Reset via dispatchEvent — pointer hit-testing lands on the
-    // QuickActionsFAB shift-indicator chip overlay (see Sample Data
-    // describe for full rationale).
+    // Click Reset
     const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
-    await resetButton.dispatchEvent('click');
+    await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
     // Reset dialog should appear with two options
@@ -725,15 +718,15 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await navigateToSimulationV2(page);
     await waitForTabContent(page);
 
-    // Click Reset via dispatchEvent (see rationale above)
+    // Click Reset
     const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
-    await resetButton.dispatchEvent('click');
+    await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
-    // Click Load Sample Data option — dispatchEvent for v-overlay-scroll-blocked
+    // Click Load Sample Data option — force:true bypasses v-overlay-scroll-blocked
     const loadSampleOption = page.locator('.v-list-item').filter({ hasText: 'Load Sample Data' });
     await loadSampleOption.waitFor({ state: 'visible', timeout: 5000 });
-    await loadSampleOption.dispatchEvent('click');
+    await loadSampleOption.click({ force: true });
     await page.waitForTimeout(1000);
 
     // Should have sample data loaded
@@ -764,13 +757,12 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     const initialCount = await gridRows.count();
     expect(initialCount).toBeGreaterThan(0);
 
-    // Click Reset via dispatchEvent — pointer hit-testing lands on the
-    // QuickActionsFAB shift-indicator chip (position:fixed bottom:90
-    // right:24 z-index:5) which geometrically overlaps the actions
-    // card's Reset button. force:true skips actionability checks but
-    // the pointer coordinates still hit the chip in front. dispatching
-    // the synthetic click event directly on the target invokes the
-    // Vue @click handler without going through pointer hit-testing.
+    // Click Reset via dispatchEvent — on the first-visit sample-data
+    // load path, AG-Grid's lazy paint races with the actions card's
+    // reactive @click binding. force:true skips actionability but
+    // still fires pointer events at coordinates that may not yet be
+    // bound. dispatchEvent fires the synthetic click directly on the
+    // target so the Vue @click handler runs regardless of timing.
     const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
     await resetButton.dispatchEvent('click');
 
@@ -781,8 +773,8 @@ test.describe('Simulation V2 - Sample Data Onboarding', () => {
     await expect(dialog).toBeVisible({ timeout: 15000 });
 
     // Click Clear All within the dialog. dispatchEvent for the same
-    // reason — the v-overlay-scroll-blocked overlay can intercept
-    // pointer events on dialog list items in headless Chromium.
+    // reason — v-overlay-scroll-blocked can intercept pointer events
+    // on dialog list items in headless Chromium / WebKit.
     const clearAllOption = dialog.locator('.v-list-item').filter({ hasText: 'Clear All' });
     await clearAllOption.dispatchEvent('click');
 

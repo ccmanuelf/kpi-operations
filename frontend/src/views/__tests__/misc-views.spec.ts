@@ -64,27 +64,14 @@ vi.mock('@/stores/notificationStore', () => ({
   }),
 }))
 
-vi.mock('@/stores/workflowStore', () => ({
-  useWorkflowStore: () => ({
-    config: ref({}),
-    fetchConfig: vi.fn(() => Promise.resolve()),
-  }),
-}))
-
 // ---------- composables used by misc views ----------
 vi.mock('@/composables/useShiftDashboardData', () => ({
   useShiftDashboardData: () => ({
     assignedWorkOrders: ref([]),
     recentActivity: ref([]),
     myStats: ref({}),
-    activeShift: ref(null),
-    hasActiveShift: computed(() => false),
     currentDate: ref(new Date()),
     currentDateFormatted: computed(() => 'May 07, 2026'),
-    shiftStatusColor: computed(() => 'grey'),
-    shiftStatusIcon: computed(() => 'mdi-clock'),
-    shiftStatusText: computed(() => 'No shift'),
-    shiftDuration: computed(() => '0h'),
     workOrderOptions: ref([]),
     formatTime: () => '',
     formatRelativeTime: () => '',

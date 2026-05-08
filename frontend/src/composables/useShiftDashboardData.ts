@@ -3,7 +3,6 @@
  * Work orders, recent activity, stats, clock interval.
  */
 import { ref, computed, type Ref } from 'vue'
-import { useWorkflowStore } from '@/stores/workflowStore'
 import api from '@/services/api'
 
 export interface ShiftWorkOrderRow {
@@ -65,8 +64,6 @@ interface WorkOrderOption {
 }
 
 export function useShiftDashboardData() {
-  const workflowStore = useWorkflowStore()
-
   const currentTime = ref(new Date())
   let timeInterval: ReturnType<typeof setInterval> | null = null
 
@@ -79,9 +76,6 @@ export function useShiftDashboardData() {
     qualityChecks: 0,
   })
 
-  const activeShift = computed(() => workflowStore.activeShift)
-  const hasActiveShift = computed(() => workflowStore.hasActiveShift)
-
   const currentDate = computed(() => new Date().toISOString().split('T')[0])
   const currentDateFormatted = computed(() =>
     new Date().toLocaleDateString('en-US', {
@@ -90,27 +84,6 @@ export function useShiftDashboardData() {
       day: 'numeric',
     }),
   )
-
-  const shiftStatusColor = computed(() => (hasActiveShift.value ? 'success' : 'grey'))
-
-  const shiftStatusIcon = computed(() =>
-    hasActiveShift.value ? 'mdi-play-circle' : 'mdi-clock-outline',
-  )
-
-  const shiftStatusText = computed(() => (hasActiveShift.value ? 'Active' : 'Not Started'))
-
-  const shiftDuration = computed<string>(() => {
-    const startRaw = (activeShift.value as { start_time?: string } | null)?.start_time
-    if (!startRaw) return ''
-    const start = new Date(startRaw)
-    if (isNaN(start.getTime())) return ''
-    const diff = currentTime.value.getTime() - start.getTime()
-    if (diff < 0) return ''
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-    if (hours === 0) return `${minutes}m`
-    return `${hours}h ${minutes}m`
-  })
 
   const workOrderOptions = computed<WorkOrderOption[]>(() =>
     assignedWorkOrders.value.map((wo) => ({
@@ -254,12 +227,10 @@ export function useShiftDashboardData() {
         (woResponse.data as ShiftWorkOrderRow[]) ||
         []
 
-      const shiftNumber = (activeShift.value as { shift_number?: number } | null)
-        ?.shift_number
-
+      // No backend shift-session tracking exists, so we don't filter by
+      // shift number — all of today's entries are aggregated.
       const prodResponse = await api.getProductionEntries({
         date: currentDate.value,
-        shift: shiftNumber,
       })
       const productions: ProductionRow[] =
         (prodResponse.data as { items?: ProductionRow[] })?.items ||
@@ -275,7 +246,6 @@ export function useShiftDashboardData() {
 
       const downResponse = await api.getDowntimeEntries({
         date: currentDate.value,
-        shift: shiftNumber,
       })
       const downtimes: DowntimeRow[] =
         (downResponse.data as { items?: DowntimeRow[] })?.items ||
@@ -284,7 +254,6 @@ export function useShiftDashboardData() {
 
       const qualityResponse = await api.getQualityEntries({
         date: currentDate.value,
-        shift: shiftNumber,
       })
       const qualities: QualityRow[] =
         (qualityResponse.data as { items?: QualityRow[] })?.items ||
@@ -342,7 +311,6 @@ export function useShiftDashboardData() {
   }
 
   const initialize = async (): Promise<void> => {
-    await workflowStore.initialize()
     await fetchMyShiftData()
 
     timeInterval = setInterval(() => {
@@ -362,14 +330,8 @@ export function useShiftDashboardData() {
     assignedWorkOrders,
     recentActivity,
     myStats,
-    activeShift,
-    hasActiveShift,
     currentDate,
     currentDateFormatted,
-    shiftStatusColor,
-    shiftStatusIcon,
-    shiftStatusText,
-    shiftDuration,
     workOrderOptions,
     formatTime,
     formatRelativeTime,
