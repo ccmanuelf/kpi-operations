@@ -258,7 +258,8 @@ const loadingClients = ref(false)
 const showEmailDialog = ref(false)
 
 const onEmailConfigSaved = (config) => {
-  console.log('Email config saved:', config)
+  // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+  if (import.meta.env.DEV) console.log('Email config saved:', config)
   // Optionally show a snackbar notification
 }
 
@@ -317,7 +318,8 @@ const loadReferenceData = async () => {
     products.value = productsRes.data || []
     shifts.value = shiftsRes.data || []
   } catch (error) {
-    console.error('Failed to load reference data:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load reference data:', error)
   }
 }
 
@@ -359,7 +361,8 @@ const loadClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
   } finally {
     loadingClients.value = false
   }
@@ -430,7 +433,8 @@ const exportToExcel = async () => {
     link.click()
     document.body.removeChild(link)
   } catch (error) {
-    console.error('Failed to export Excel:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to export Excel:', error)
     // Fallback to CSV if Excel export fails
     exportToCSV()
   }

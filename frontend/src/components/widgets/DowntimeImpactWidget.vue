@@ -241,8 +241,9 @@ const fetchData = async () => {
     }
 
     lastUpdated.value = new Date().toLocaleTimeString()
-  } catch (err: any) {
-    console.warn('Downtime impact API not available, using fallback calculation')
+  } catch {
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.warn('Downtime impact API not available, using fallback calculation')
     await fetchDowntimeEvents()
   } finally {
     loading.value = false

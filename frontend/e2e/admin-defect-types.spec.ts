@@ -14,7 +14,10 @@ test.setTimeout(60000)
 async function navigateToDefectTypes(page: Page) {
   // Direct goto bypasses the role-based v-list-group expansion
   // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
-  await page.goto('/admin/defect-types')
+  // domcontentloaded (vs the default 'load') avoids ERR_ABORTED on
+  // the very first test of the run when Vite dev server is still
+  // warming up — 'load' waits for every resource and times out.
+  await page.goto('/admin/defect-types', { waitUntil: 'domcontentloaded' })
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
 }
 

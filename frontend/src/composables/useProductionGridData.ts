@@ -39,10 +39,10 @@ export interface ShiftRef {
 
 interface AGGridApi {
   sizeColumnsToFit: () => void
-  applyTransaction: (params: { add?: ProductionRow[]; remove?: ProductionRow[]; addIndex?: number }) => void
-  startEditingCell: (params: { rowIndex: number; colKey: string }) => void
-  refreshCells: (params?: { rowNodes?: unknown[]; force?: boolean }) => void
-  forEachNode: (cb: (node: { data: ProductionRow }) => void) => void
+  applyTransaction: (_params: { add?: ProductionRow[]; remove?: ProductionRow[]; addIndex?: number }) => void
+  startEditingCell: (_params: { rowIndex: number; colKey: string }) => void
+  refreshCells: (_params?: { rowNodes?: unknown[]; force?: boolean }) => void
+  forEachNode: (_cb: (_node: { data: ProductionRow }) => void) => void
 }
 
 interface AGGridRef {

@@ -387,7 +387,8 @@ const fetchData = async () => {
     completenessData.value = response.data
     emit('refresh', completenessData.value)
   } catch (err: any) {
-    console.error('Error fetching data completeness:', err)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error fetching data completeness:', err)
     error.value = err.response?.data?.detail || 'Failed to load completeness data'
 
     // Fallback: generate mock data for UI demonstration

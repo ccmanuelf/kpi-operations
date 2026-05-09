@@ -88,7 +88,10 @@ const ProductionKPIsMock = {
         this.performance = parseFloat(perfRes.data.value.toFixed(1))
         this.productionData = entriesRes.data
       } catch (error) {
-        console.error('Error fetching production KPIs:', error)
+        if (import.meta.env.DEV) {
+          // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+          console.error('Error fetching production KPIs:', error)
+        }
       } finally {
         this.loading = false
       }

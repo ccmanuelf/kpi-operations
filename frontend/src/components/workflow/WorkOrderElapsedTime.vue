@@ -307,7 +307,8 @@ const fetchMetrics = async () => {
     metrics.value = response.data
     emit('loaded', metrics.value)
   } catch (err) {
-    console.error('Error fetching elapsed time metrics:', err)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error fetching elapsed time metrics:', err)
     error.value = true
     emit('error', err)
   } finally {

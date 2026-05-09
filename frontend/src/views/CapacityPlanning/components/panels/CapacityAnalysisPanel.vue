@@ -239,7 +239,8 @@ const runAnalysis = async () => {
   try {
     await store.runCapacityAnalysis(startDate.value, endDate.value)
   } catch (error) {
-    console.error('Capacity analysis failed:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Capacity analysis failed:', error)
   }
 }
 

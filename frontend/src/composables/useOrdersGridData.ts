@@ -40,7 +40,7 @@ interface ColumnDef {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; precision?: number }
-  cellRenderer?: (params: { data: OrderRow; rowIndex: number; value?: unknown }) => HTMLElement
+  cellRenderer?: (_params: { data: OrderRow; rowIndex: number; value?: unknown }) => HTMLElement
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -74,12 +74,12 @@ interface UseOrdersGridDataReturn {
   hasChanges: ComputedRef<boolean>
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeRow: (index: number) => void
-  duplicateRow: (index: number) => void
+  removeRow: (_index: number) => void
+  duplicateRow: (_index: number) => void
   onCellValueChanged: () => void
-  parseCsv: (csvText: string) => Partial<OrderRow>[]
-  importCsv: (csvText: string) => void
-  onRowsPasted: (pasteData: { convertedRows?: Partial<OrderRow>[] }) => void
+  parseCsv: (_csvText: string) => Partial<OrderRow>[]
+  importCsv: (_csvText: string) => void
+  onRowsPasted: (_pasteData: { convertedRows?: Partial<OrderRow>[] }) => void
 }
 
 export default function useOrdersGridData(): UseOrdersGridDataReturn {
@@ -253,7 +253,7 @@ const renderStatusChip = (params: { value?: unknown }): HTMLElement => {
 
 const renderActions = (
   params: { data: OrderRow; rowIndex: number },
-  handlers: { duplicateRow: (i: number) => void; removeRow: (i: number) => void },
+  handlers: { duplicateRow: (_i: number) => void; removeRow: (_i: number) => void },
 ): HTMLElement => {
   const div = document.createElement('div')
   div.style.cssText = 'display: flex; gap: 4px;'

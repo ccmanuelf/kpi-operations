@@ -16,7 +16,7 @@ interface ClientOption {
   [key: string]: unknown
 }
 
-type SnackbarFn = (message: string, color: string) => void
+type SnackbarFn = (_message: string, _color: string) => void
 
 export function useKPIDashboardData(showSnackbar: SnackbarFn) {
   const { t } = useI18n()

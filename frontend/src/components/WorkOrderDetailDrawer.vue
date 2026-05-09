@@ -318,7 +318,7 @@ const onRtyLoaded = (rtyData) => {
 }
 
 // Handle status transition from WorkOrderStatusChip
-const onStatusTransitioned = (event) => {
+const onStatusTransitioned = (_event) => {
   // Refresh transition history
   if (transitionHistoryRef.value) {
     transitionHistoryRef.value.refresh()
@@ -353,17 +353,6 @@ const isOverdue = computed(() => {
 })
 
 // Methods
-const getStatusColor = (status) => {
-  const colors = {
-    ACTIVE: 'info',
-    ON_HOLD: 'warning',
-    COMPLETED: 'success',
-    REJECTED: 'error',
-    CANCELLED: 'grey'
-  }
-  return colors[status] || 'grey'
-}
-
 const formatStatus = (status) => {
   const labels = {
     ACTIVE: 'Active',
@@ -393,15 +382,6 @@ const formatDate = (dateStr) => {
   }
 }
 
-const formatDateTime = (dateStr) => {
-  if (!dateStr) return ''
-  try {
-    return format(parseISO(dateStr), 'MMM dd, yyyy h:mm a')
-  } catch {
-    return dateStr
-  }
-}
-
 const updateStatus = async (newStatus) => {
   try {
     await api.transitionWorkOrder(props.workOrder.work_order_id, newStatus)
@@ -413,7 +393,8 @@ const updateStatus = async (newStatus) => {
     emit('update')
     emit('update:modelValue', false)
   } catch (error) {
-    console.error('Error updating status:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error updating status:', error)
     // Fallback to direct update if workflow API fails
     try {
       await api.updateWorkOrder(props.workOrder.work_order_id, { status: newStatus })
@@ -421,7 +402,11 @@ const updateStatus = async (newStatus) => {
       emit('update')
       emit('update:modelValue', false)
     } catch (fallbackError) {
-      notificationStore.showError(error.response?.data?.detail || 'Failed to update status')
+      notificationStore.showError(
+        fallbackError.response?.data?.detail ||
+          error.response?.data?.detail ||
+          'Failed to update status'
+      )
     }
   }
 }

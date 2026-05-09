@@ -13,15 +13,17 @@ import { login } from './helpers'
 test.setTimeout(60000)
 
 async function navigateToKpiTrackingTab(page: Page) {
-  // Direct goto bypasses the role-based v-list-group expansion
-  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
-  await page.goto('/capacity-planning')
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
+  // domcontentloaded (vs networkidle) avoids waits that never resolve
+  // when long-lived connections — Vite HMR websocket, in-flight store
+  // fetches — keep the network active.
+  await page.goto('/capacity-planning', { waitUntil: 'domcontentloaded' })
 
   const tab = page
     .locator('button:has-text("KPI"), [role="tab"]:has-text("KPI")')
     .first()
-  if (await tab.isVisible({ timeout: 5000 }).catch(() => false)) {
+  // Wait long enough for the lazy-mounted CapacityPlanningView tabs to
+  // register on cold-start CI (the prior 5s could miss).
+  if (await tab.isVisible({ timeout: 15000 }).catch(() => false)) {
     await tab.click({ force: true })
     await page.waitForTimeout(800)
   }
@@ -51,15 +53,17 @@ test.describe('Capacity KPI Tracking — workbook-style AG Grid', () => {
     }
   })
 
-  // FIXME(2026-06-01): KPI Tracking tab is lazy-mounted; race with
-  // CapacityPlanningView's tab-content load. See Phase B.7.
-  test.skip('Add Row triggers a new draft (when permitted by store state)', async ({ page }) => {
+  test('Add Row triggers a new draft (when permitted by store state)', async ({ page }) => {
+    // Wait for the AG-Grid root first; the Add button is a sibling
+    // inside the same panel and only renders after the panel mounts.
+    await expect(page.locator('.ag-root').first()).toBeVisible({ timeout: 20000 })
     const addBtn = page.locator('button:has-text("Add"), button:has-text("Agregar")').first()
     if (await addBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await addBtn.click({ force: true })
       await page.waitForTimeout(500)
     }
+    // Grid stays alive after the click (or remained alive if Add was disabled).
     const grid = page.locator('.ag-root').first()
-    expect(await grid.isVisible({ timeout: 5000 }).catch(() => true)).toBeTruthy()
+    await expect(grid).toBeVisible({ timeout: 5000 })
   })
 })

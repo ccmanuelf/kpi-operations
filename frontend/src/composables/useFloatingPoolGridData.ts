@@ -54,22 +54,22 @@ export interface ClientOption {
 interface ColumnDef {
   headerName?: string
   field?: string
-  editable?: boolean | ((params: { data: FloatingPoolGridRow }) => boolean)
+  editable?: boolean | ((_params: { data: FloatingPoolGridRow }) => boolean)
   cellEditor?: string
   cellEditorPopup?: boolean
   cellEditorParams?: {
     values?: (string | number | null)[]
-    formatValue?: (v: unknown) => string
+    formatValue?: (_v: unknown) => string
     rows?: number
     cols?: number
   }
-  cellRenderer?: (params: {
+  cellRenderer?: (_params: {
     data: FloatingPoolGridRow
     rowIndex: number
     value?: unknown
   }) => HTMLElement
-  valueGetter?: (params: { data: FloatingPoolGridRow }) => unknown
-  valueFormatter?: (params: { value?: unknown; data?: FloatingPoolGridRow }) => string
+  valueGetter?: (_params: { data: FloatingPoolGridRow }) => unknown
+  valueFormatter?: (_params: { value?: unknown; data?: FloatingPoolGridRow }) => string
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -77,9 +77,9 @@ interface ColumnDef {
 }
 
 interface SnackbarLike {
-  showSuccess?: (m: string) => void
-  showError?: (m: string) => void
-  show?: (m: string, color?: string) => void
+  showSuccess?: (_m: string) => void
+  showError?: (_m: string) => void
+  show?: (_m: string, _color?: string) => void
 }
 
 interface UseFloatingPoolGridDataOptions {
@@ -91,14 +91,14 @@ interface UseFloatingPoolGridDataOptions {
 
 interface UseFloatingPoolGridDataReturn {
   columnDefs: ComputedRef<ColumnDef[]>
-  onCellValueChanged: (event: {
+  onCellValueChanged: (_event: {
     data: FloatingPoolGridRow
     column?: { colId?: string }
     colDef?: { field?: string }
     oldValue?: unknown
     newValue?: unknown
   }) => Promise<void>
-  unassignRow: (row: FloatingPoolGridRow) => Promise<void>
+  unassignRow: (_row: FloatingPoolGridRow) => Promise<void>
 }
 
 const errorDetail = (e: unknown, fallback: string): string => {
@@ -324,7 +324,7 @@ export default function useFloatingPoolGridData(
   }
 }
 
-const renderStatusChip = (status: string, t: (k: string) => string): HTMLElement => {
+const renderStatusChip = (status: string, t: (_k: string) => string): HTMLElement => {
   const span = document.createElement('span')
   const isAssigned = status === 'ASSIGNED'
   span.textContent = isAssigned
@@ -345,8 +345,8 @@ const renderStatusChip = (status: string, t: (k: string) => string): HTMLElement
 const renderActions = (
   params: { data: FloatingPoolGridRow; rowIndex: number },
   ctx: {
-    unassignRow: (row: FloatingPoolGridRow) => Promise<void>
-    t: (k: string) => string
+    unassignRow: (_row: FloatingPoolGridRow) => Promise<void>
+    t: (_k: string) => string
   },
 ): HTMLElement => {
   const div = document.createElement('div')

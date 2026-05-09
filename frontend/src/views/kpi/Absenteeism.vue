@@ -165,7 +165,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.shift_date="{ item }">
                 {{ formatDate(item.shift_date) }}
@@ -191,7 +191,7 @@
               :headers="reasonHeaders"
               :items="absenteeismData?.by_reason || []"
               density="compact"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.count="{ item }">
                 <v-chip color="error" size="small">{{ item.count }}</v-chip>
@@ -214,7 +214,7 @@
               :headers="deptHeaders"
               :items="absenteeismData?.by_department || []"
               density="compact"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.rate="{ item }">
                 <v-chip :color="getAbsenteeismColor(item.rate)" size="small">
@@ -237,7 +237,7 @@
               :headers="alertHeaders"
               :items="absenteeismData?.high_absence_employees || []"
               density="compact"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.absence_count="{ item }">
                 <v-chip color="warning" size="small">{{ $t('kpi.daysCount', { count: item.absence_count }) }}</v-chip>
@@ -255,192 +255,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted } from 'vue'
 import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { format } from 'date-fns'
-import { useKPIStore } from '@/stores/kpi'
-import api from '@/services/api'
+import useAbsenteeismData from '@/composables/useAbsenteeismData'
+import useAbsenteeismCharts from '@/composables/useAbsenteeismCharts'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+const {
+  loading, clients, selectedClient, startDate, endDate, tableSearch,
+  attendanceHistory, absenteeismData, statusColor,
+  reasonHeaders, deptHeaders, alertHeaders, attendanceHistoryHeaders,
+  formatValue, formatDate, getAbsenteeismColor,
+  onClientChange, onDateChange, refreshData, initialize
+} = useAbsenteeismData()
 
-const { t } = useI18n()
-const kpiStore = useKPIStore()
-const loading = ref(false)
-const clients = ref([])
-const selectedClient = ref(null)
-const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-const endDate = ref(new Date().toISOString().split('T')[0])
-const tableSearch = ref('')
-const attendanceHistory = ref([])
+const { chartData, chartOptions } = useAbsenteeismCharts()
 
-const absenteeismData = computed(() => kpiStore.absenteeism)
-
-const statusColor = computed(() => {
-  const rate = absenteeismData.value?.rate || 0
-  if (rate <= 5) return 'success'
-  if (rate <= 10) return 'amber-darken-3'
-  return 'error'
-})
-
-const reasonHeaders = computed(() => [
-  { title: t('kpi.headers.reason'), key: 'reason', sortable: true },
-  { title: t('kpi.headers.count'), key: 'count', sortable: true },
-  { title: t('kpi.headers.percentage'), key: 'percentage', sortable: true }
-])
-
-const deptHeaders = computed(() => [
-  { title: t('kpi.headers.department'), key: 'department', sortable: true },
-  { title: t('kpi.headers.workforce'), key: 'workforce', sortable: true },
-  { title: t('kpi.headers.absences'), key: 'absences', sortable: true },
-  { title: t('kpi.headers.rate'), key: 'rate', sortable: true }
-])
-
-const alertHeaders = computed(() => [
-  { title: t('kpi.headers.employeeId'), key: 'employee_id', sortable: true },
-  { title: t('kpi.headers.department'), key: 'department', sortable: true },
-  { title: t('kpi.headers.absenceDays'), key: 'absence_count', sortable: true },
-  { title: t('kpi.headers.lastAbsence'), key: 'last_absence', sortable: true }
-])
-
-const attendanceHistoryHeaders = computed(() => [
-  { title: t('kpi.headers.date'), key: 'shift_date', sortable: true },
-  { title: t('kpi.headers.employeeId'), key: 'employee_id', sortable: true },
-  { title: t('kpi.headers.hoursScheduled'), key: 'scheduled_hours', sortable: true },
-  { title: t('kpi.headers.hoursWorked'), key: 'actual_hours', sortable: true },
-  { title: t('kpi.headers.status'), key: 'status', sortable: true }
-])
-
-const chartData = computed(() => ({
-  labels: kpiStore.trends.absenteeism.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: t('kpi.charts.absenteeismRatePercent'),
-      data: kpiStore.trends.absenteeism.map(d => d.value),
-      borderColor: '#d32f2f',
-      backgroundColor: 'rgba(211, 47, 47, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: t('kpi.charts.targetValue', { value: 5 }),
-      data: Array(kpiStore.trends.absenteeism.length).fill(5),
-      borderColor: '#2e7d32',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: { display: true, position: 'top' },
-    tooltip: { mode: 'index', intersect: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      max: 20,
-      ticks: { callback: (value) => `${value}%` }
-    }
-  }
-}
-
-const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(1) : t('common.na')
-}
-
-const formatDate = (dateStr) => {
-  try {
-    return format(new Date(dateStr), 'MMM dd, yyyy')
-  } catch {
-    return dateStr
-  }
-}
-
-const getAbsenteeismColor = (rate) => {
-  if (rate <= 5) return 'success'
-  if (rate <= 10) return 'amber-darken-3'
-  return 'error'
-}
-
-const loadClients = async () => {
-  try {
-    const response = await api.getClients()
-    clients.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load clients:', error)
-  }
-}
-
-const loadAttendanceHistory = async () => {
-  try {
-    const params = {
-      start_date: startDate.value,
-      end_date: endDate.value
-    }
-    if (selectedClient.value) {
-      params.client_id = selectedClient.value
-    }
-    const response = await api.getAttendanceEntries(params)
-    // Transform data to add computed status field
-    attendanceHistory.value = (response.data || []).map(record => ({
-      ...record,
-      status: record.is_absent ? 'ABSENT' : 'PRESENT'
-    }))
-  } catch (error) {
-    console.error('Failed to load attendance history:', error)
-    attendanceHistory.value = []
-  }
-}
-
-const onClientChange = () => {
-  kpiStore.setClient(selectedClient.value)
-  refreshData()
-}
-
-const onDateChange = () => {
-  kpiStore.setDateRange(startDate.value, endDate.value)
-  refreshData()
-}
-
-const refreshData = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      kpiStore.fetchAbsenteeism(),
-      loadAttendanceHistory()
-    ])
-  } catch (error) {
-    console.error('Failed to refresh data:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await loadClients()
-    kpiStore.setDateRange(startDate.value, endDate.value)
-    await refreshData()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(() => initialize())
 </script>
 
 <style scoped>

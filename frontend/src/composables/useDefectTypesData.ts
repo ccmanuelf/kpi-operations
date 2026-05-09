@@ -33,7 +33,7 @@ export interface TableHeader {
   align?: 'start' | 'center' | 'end'
 }
 
-export type ValidationRule = (v: string | null | undefined) => true | string
+export type ValidationRule = (_v: string | null | undefined) => true | string
 
 export interface ValidationRules {
   required: ValidationRule

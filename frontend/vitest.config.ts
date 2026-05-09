@@ -62,11 +62,15 @@ export default defineConfig({
         // 2026-04-27 measured floor (.js-only include glob): 18.35/18.67/10.97/19.93.
         // 2026-05-04 — included .ts files in the coverage glob to match the
         // post-TS-port codebase (services/stores/utils/composables are all
-        // .ts now). Current floor measured: 22.68/20.5/15.02/24.32.
-        statements: 22,
-        branches: 20,
-        functions: 15,
-        lines: 24
+        // .ts now). Floor measured: 22.68/20.5/15.02/24.32.
+        // 2026-05-07 — Phase B.3 zero-coverage views audit: shipped smoke-mount
+        // tests for 29 views (KPI ×8, admin ×11, misc ×10) plus the
+        // useEfficiencyData composable spec. Floor measured: 33.34/26.68/26.14/35.43.
+        // Ratcheted thresholds 1pt below the new floor for stability.
+        statements: 32,
+        branches: 25,
+        functions: 25,
+        lines: 34
       }
     }
   }

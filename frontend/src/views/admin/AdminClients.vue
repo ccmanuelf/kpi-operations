@@ -360,7 +360,8 @@ const refreshClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
     showSnackbar(t('admin.clients.failedToLoadClients'), 'error')
   } finally {
     loading.value = false
@@ -426,7 +427,7 @@ const toggleClientStatus = async (client) => {
     await api.updateClient(client.client_id, { is_active: !client.is_active })
     showSnackbar(client.is_active ? t('admin.clients.clientDeactivated') : t('admin.clients.clientActivated'))
     refreshClients()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.clients.failedToUpdateStatus'), 'error')
   }
 }
@@ -443,7 +444,7 @@ const deleteClient = async () => {
     showSnackbar(t('admin.clients.clientDeleted'))
     deleteDialog.value = false
     refreshClients()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.clients.failedToDeleteClient'), 'error')
   } finally {
     deleting.value = false

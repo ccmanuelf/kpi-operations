@@ -349,8 +349,9 @@ const fetchData = async () => {
     } else {
       await fetchQualityAndAggregate()
     }
-  } catch (err: any) {
-    console.warn('Rework by operation API not available, using fallback calculation')
+  } catch {
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.warn('Rework by operation API not available, using fallback calculation')
     await fetchQualityAndAggregate()
   } finally {
     loading.value = false
@@ -412,7 +413,7 @@ const fetchQualityAndAggregate = async () => {
       // Use demo data
       reworkOperations.value = generateDemoData()
     }
-  } catch (err: any) {
+  } catch {
     // Use demo data for display
     reworkOperations.value = generateDemoData()
     totalUnitsProduced.value = 10000

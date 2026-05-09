@@ -106,7 +106,7 @@ export function handleValidationError(
 }
 
 export function withErrorHandling<TArgs extends unknown[], TResult>(
-  fn: (...args: TArgs) => Promise<TResult>,
+  fn: (..._args: TArgs) => Promise<TResult>,
   options: ErrorHandlerOptions = {},
 ) {
   return async (...args: TArgs): Promise<TResult | ErrorResult> => {

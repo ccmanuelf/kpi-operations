@@ -267,7 +267,8 @@ const generateSchedule = async () => {
       includeAllOrders.value ? null : []
     )
   } catch (error) {
-    console.error('Schedule generation failed:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Schedule generation failed:', error)
   }
 }
 

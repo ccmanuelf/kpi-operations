@@ -19,21 +19,24 @@ class TestTrendsEndpoint:
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
         # Should return either 200, 403 (access denied), or 404 depending on data
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_trends_7d_range(self, authenticated_client):
         """Test trends with 7-day range"""
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_trends_90d_range(self, authenticated_client):
         """Test trends with 90-day range"""
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "quality", "time_range": "90d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_trends_custom_dates(self, authenticated_client):
         """Test trends with custom date range"""
@@ -48,7 +51,8 @@ class TestTrendsEndpoint:
                 "end_date": end_date.isoformat(),
             },
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_trends_all_kpi_types(self, authenticated_client):
         """Test trends for all KPI types"""
@@ -57,7 +61,8 @@ class TestTrendsEndpoint:
             response = authenticated_client.get(
                 "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "time_range": "30d"}
             )
-            assert response.status_code in [200, 403, 404, 422]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+            assert response.status_code == 403
 
     def test_get_trends_missing_client_id(self, authenticated_client):
         """Test trends without client_id parameter"""
@@ -91,7 +96,8 @@ class TestPredictionsEndpoint:
             "/api/analytics/predictions",
             params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "horizon_days": 7},
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_predictions_various_horizons(self, authenticated_client):
         """Test predictions with different horizon values"""
@@ -101,7 +107,8 @@ class TestPredictionsEndpoint:
                 "/api/analytics/predictions",
                 params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "horizon_days": horizon},
             )
-            assert response.status_code in [200, 403, 404]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_predictions_all_kpi_types(self, authenticated_client):
         """Test predictions for all KPI types"""
@@ -111,7 +118,8 @@ class TestPredictionsEndpoint:
                 "/api/analytics/predictions",
                 params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "horizon_days": 7},
             )
-            assert response.status_code in [200, 403, 404, 422]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+            assert response.status_code == 403
 
     def test_get_predictions_custom_date_range(self, authenticated_client):
         """Test predictions with custom historical range"""
@@ -127,7 +135,8 @@ class TestPredictionsEndpoint:
                 "end_date": end_date.isoformat(),
             },
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_predictions_missing_params(self, authenticated_client):
         """Test predictions with missing required parameters"""
@@ -143,7 +152,8 @@ class TestComparisonEndpoint:
         response = authenticated_client.get(
             "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": "30d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_comparison_all_kpi_types(self, authenticated_client):
         """Test comparison for all KPI types"""
@@ -152,7 +162,8 @@ class TestComparisonEndpoint:
             response = authenticated_client.get(
                 "/api/analytics/comparisons", params={"kpi_type": kpi_type, "time_range": "30d"}
             )
-            assert response.status_code in [200, 403, 404, 422]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+            assert response.status_code == 403
 
     def test_get_comparison_various_ranges(self, authenticated_client):
         """Test comparison with different time ranges"""
@@ -161,20 +172,21 @@ class TestComparisonEndpoint:
             response = authenticated_client.get(
                 "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": time_range}
             )
-            assert response.status_code in [200, 403, 404]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_comparison_with_custom_benchmark(self, authenticated_client):
         """Test comparison with custom benchmark"""
         response = authenticated_client.get(
             "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": "30d", "benchmark": 90.0}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_comparison_missing_kpi_type(self, authenticated_client):
         """Test comparison without required kpi_type"""
         response = authenticated_client.get("/api/analytics/comparisons", params={"time_range": "30d"})
-        # Should return 422 for missing required param, but may return 404 if route doesn't exist
-        assert response.status_code in [422, 404, 400]
+        assert response.status_code == 422
 
 
 class TestHeatmapEndpoint:
@@ -185,7 +197,8 @@ class TestHeatmapEndpoint:
         response = authenticated_client.get(
             "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_heatmap_all_kpi_types(self, authenticated_client):
         """Test heatmap for all KPI types"""
@@ -194,7 +207,8 @@ class TestHeatmapEndpoint:
             response = authenticated_client.get(
                 "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "time_range": "7d"}
             )
-            assert response.status_code in [200, 403, 404, 422]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+            assert response.status_code == 403
 
     def test_get_heatmap_various_time_ranges(self, authenticated_client):
         """Test heatmap with different time ranges"""
@@ -204,7 +218,8 @@ class TestHeatmapEndpoint:
                 "/api/analytics/heatmap",
                 params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": time_range},
             )
-            assert response.status_code in [200, 403, 404]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_heatmap_with_custom_benchmark(self, authenticated_client):
         """Test heatmap with custom benchmark"""
@@ -212,7 +227,8 @@ class TestHeatmapEndpoint:
             "/api/analytics/heatmap",
             params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d", "benchmark": 85.0},
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_heatmap_missing_client_id(self, authenticated_client):
         """Test heatmap without client_id"""
@@ -230,7 +246,8 @@ class TestParetoEndpoint:
         response = authenticated_client.get(
             "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_pareto_various_time_ranges(self, authenticated_client):
         """Test pareto with different time ranges"""
@@ -239,7 +256,8 @@ class TestParetoEndpoint:
             response = authenticated_client.get(
                 "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": time_range}
             )
-            assert response.status_code in [200, 403, 404]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_pareto_with_top_n(self, authenticated_client):
         """Test pareto with custom top_n parameter"""
@@ -247,7 +265,8 @@ class TestParetoEndpoint:
             response = authenticated_client.get(
                 "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d", "top_n": top_n}
             )
-            assert response.status_code in [200, 403, 404]
+            # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_pareto_missing_client_id(self, authenticated_client):
         """Test pareto without client_id"""

@@ -13,18 +13,20 @@ import { login } from './helpers'
 test.setTimeout(60000)
 
 async function navigateToBomTab(page: Page) {
-  // Direct goto bypasses the role-based v-list-group expansion
-  // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
-  await page.goto('/capacity-planning')
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
+  // domcontentloaded (vs networkidle) avoids waits that never resolve
+  // when long-lived connections — Vite HMR websocket, in-flight store
+  // fetches — keep the network active.
+  await page.goto('/capacity-planning', { waitUntil: 'domcontentloaded' })
 
-  const tab = page
-    .locator('button:has-text("BOM"), [role="tab"]:has-text("BOM")')
-    .first()
-  if (await tab.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await tab.click({ force: true })
-    await page.waitForTimeout(800)
-  }
+  // Use ARIA role+name to target the tab — `force:true` on a text-match
+  // selector races with v-tabs animation and intermittently misses.
+  const tab = page.getByRole('tab', { name: 'BOM' })
+  await tab.waitFor({ state: 'visible', timeout: 15000 })
+  await tab.click()
+  // Wait for v-tabs to actually mark BOM as selected — Playwright
+  // re-evaluates [aria-selected="true"] on the same role+name match
+  // until the v-model update flushes.
+  await expect(page.getByRole('tab', { name: 'BOM', selected: true })).toBeVisible({ timeout: 10000 })
 }
 
 test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
@@ -38,15 +40,17 @@ test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
     await expect(heading).toBeVisible({ timeout: 10000 })
   })
 
-  // FIXME(2026-06-01): BOM tab is lazy-mounted inside CapacityPlanning;
-  // the 8s wait isn't enough on cold-start CI. See Phase B.7.
-  test.skip('master grid renders', async ({ page }) => {
+  test('master grid renders', async ({ page }) => {
+    // Lazy-mounted BOM panel needs time to load on CI cold-start;
+    // bump from 8s to 20s to absorb chunk fetch + AG-Grid initial paint.
     const grid = page.locator('.ag-root').first()
-    const visible = await grid.isVisible({ timeout: 8000 }).catch(() => false)
-    expect(visible).toBeTruthy()
+    await expect(grid).toBeVisible({ timeout: 20000 })
   })
 
   test('master-detail layout — detail grid present after master selection', async ({ page }) => {
+    // Wait for the master grid to mount before counting — point-in-time
+    // .count() returns 0 if AG-Grid hasn't finished its initial paint yet.
+    await expect(page.locator('.ag-root').first()).toBeVisible({ timeout: 20000 })
     const masterRow = page.locator('.ag-center-cols-container .ag-row').first()
     if (await masterRow.isVisible({ timeout: 5000 }).catch(() => false)) {
       await masterRow.click({ force: true })
@@ -58,9 +62,10 @@ test.describe('Capacity — BOM master-detail (stacked AG Grids)', () => {
     expect(gridCount).toBeGreaterThanOrEqual(1)
   })
 
-  // FIXME(2026-06-01): Toolbar buttons depend on master grid lazy-mount;
-  // same race as the master-grid test above. See Phase B.7.
-  test.skip('toolbar Import / Export buttons render on the master grid', async ({ page }) => {
+  test('toolbar Import / Export buttons render on the master grid', async ({ page }) => {
+    // Wait for the AG-Grid root first to ensure the toolbar chunk has
+    // also mounted (toolbar buttons are siblings inside AGGridBase).
+    await expect(page.locator('.ag-root').first()).toBeVisible({ timeout: 20000 })
     const exportBtn = page
       .locator('button:has-text("Export CSV"), button:has-text("Exportar CSV")')
       .first()

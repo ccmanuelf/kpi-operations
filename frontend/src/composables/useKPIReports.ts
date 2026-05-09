@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { format } from 'date-fns'
 import api from '@/services/api'
 
-type SnackbarFn = (message: string, color: string) => void
+type SnackbarFn = (_message: string, _color: string) => void
 type SelectedClientGetter = () => string | number | null
 type DateRangeGetter = () => Date[] | null | undefined
 

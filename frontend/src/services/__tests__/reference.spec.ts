@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 // Mock the performance utility
 vi.mock('@/utils/performance', () => ({
   referenceDataCache: {
-    get: vi.fn((key, fetcher, options) => fetcher()),
+    get: vi.fn((key, fetcher, _options) => fetcher()),
     invalidatePattern: vi.fn(),
     invalidate: vi.fn(),
     getStats: vi.fn(() => ({
@@ -58,6 +58,9 @@ describe('Reference Data API Service', () => {
           forceRefresh: false
         })
       )
+      // The cache mock invokes the fetcher inline, so getProducts should
+      // resolve to the same payload api.get returned.
+      expect(result).toEqual(mockProducts)
     })
 
     it('respects forceRefresh option', async () => {

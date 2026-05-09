@@ -48,11 +48,11 @@ interface ColumnDef {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; max?: number; precision?: number }
-  cellRenderer?: (params: {
+  cellRenderer?: (_params: {
     data: BOMHeaderRow | BOMComponentRow
     rowIndex: number
   }) => HTMLElement
-  valueGetter?: (params: { data: BOMHeaderRow }) => unknown
+  valueGetter?: (_params: { data: BOMHeaderRow }) => unknown
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -70,10 +70,10 @@ interface UseBOMGridDataReturn {
   bomColumnDefs: ComputedRef<ColumnDef[]>
   componentColumnDefs: ComputedRef<ColumnDef[]>
   addBOM: () => void
-  removeBOM: (index: number) => void
+  removeBOM: (_index: number) => void
   addComponent: () => void
-  removeComponent: (componentIndex: number) => void
-  onBOMRowClicked: (event: { data: BOMHeaderRow; rowIndex: number }) => void
+  removeComponent: (_componentIndex: number) => void
+  onBOMRowClicked: (_event: { data: BOMHeaderRow; rowIndex: number }) => void
   onBOMCellValueChanged: () => void
   onComponentCellValueChanged: () => void
 }
@@ -283,7 +283,7 @@ const renderCheckmark = (value: boolean): HTMLElement => {
 
 const renderBOMActions = (
   params: { data: BOMHeaderRow | BOMComponentRow; rowIndex: number },
-  removeBOM: (i: number) => void,
+  removeBOM: (_i: number) => void,
 ): HTMLElement => {
   const div = document.createElement('div')
   div.innerHTML = `
@@ -308,7 +308,7 @@ const renderBOMActions = (
 
 const renderComponentActions = (
   params: { data: BOMHeaderRow | BOMComponentRow; rowIndex: number },
-  removeComponent: (i: number) => void,
+  removeComponent: (_i: number) => void,
 ): HTMLElement => {
   const div = document.createElement('div')
   div.innerHTML = `

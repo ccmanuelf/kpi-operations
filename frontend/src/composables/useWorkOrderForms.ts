@@ -32,7 +32,7 @@ interface FormHandle {
   validate: () => Promise<{ valid: boolean }>
 }
 
-type ValidationRule = (v: unknown) => true | string
+type ValidationRule = (_v: unknown) => true | string
 
 interface ValidationRules {
   required: ValidationRule
@@ -57,7 +57,7 @@ const DEFAULT_FORM_DATA = (): WorkOrderFormData => ({
 
 export function useWorkOrderForms(
   loadWorkOrders: () => Promise<void>,
-  formatStatus: (status: string) => string,
+  formatStatus: (_status: string) => string,
 ) {
   const notificationStore = useNotificationStore()
   const { t } = useI18n()

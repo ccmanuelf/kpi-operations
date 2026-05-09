@@ -67,7 +67,7 @@ class TestAuthEndpoints:
 
     def test_login_invalid(self, test_client):
         response = test_client.post("/api/auth/login", json={"username": "nonexistent", "password": "wrong"})
-        assert response.status_code in [401, 404]
+        assert response.status_code == 401
 
     def test_me_authenticated(self, authenticated_client):
         response = authenticated_client.get("/api/auth/me")
@@ -90,7 +90,8 @@ class TestProductionEndpoints:
 
     def test_get_production_entries(self, authenticated_client):
         response = authenticated_client.get("/api/production")
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_production_entries_unauthenticated(self, test_client):
         response = test_client.get("/api/production")
@@ -102,7 +103,8 @@ class TestDowntimeEndpoints:
 
     def test_get_downtime_entries(self, authenticated_client):
         response = authenticated_client.get("/api/downtime")
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_downtime_entries_unauthenticated(self, test_client):
         response = test_client.get("/api/downtime")
@@ -114,7 +116,8 @@ class TestQualityEndpoints:
 
     def test_get_quality_entries(self, authenticated_client):
         response = authenticated_client.get("/api/quality")
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate, after redirect)
+        assert response.status_code == 403
 
     def test_get_quality_entries_unauthenticated(self, test_client):
         response = test_client.get("/api/quality")
@@ -126,8 +129,8 @@ class TestAttendanceEndpoints:
 
     def test_get_attendance_records(self, authenticated_client):
         response = authenticated_client.get("/api/attendance")
-        # 403 expected: test user has no client_id association
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_attendance_unauthenticated(self, test_client):
         response = test_client.get("/api/attendance")
@@ -139,16 +142,15 @@ class TestAlertEndpoints:
 
     def test_get_alerts(self, authenticated_client):
         response = authenticated_client.get("/api/alerts/")
-        # 200 if table exists and user has access, 500 if ALERT table missing
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 200
 
     def test_get_alert_dashboard(self, authenticated_client):
         response = authenticated_client.get("/api/alerts/dashboard")
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 200
 
     def test_get_alert_summary(self, authenticated_client):
         response = authenticated_client.get("/api/alerts/summary")
-        assert response.status_code in [200, 403, 500]
+        assert response.status_code == 200
 
 
 class TestClientEndpoints:
@@ -156,8 +158,8 @@ class TestClientEndpoints:
 
     def test_get_clients(self, authenticated_client):
         response = authenticated_client.get("/api/clients")
-        # 403 expected: test user (supervisor) may lack client association
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_get_clients_unauthenticated(self, test_client):
         response = test_client.get("/api/clients")
@@ -169,8 +171,8 @@ class TestAnalyticsEndpoints:
 
     def test_get_analytics_trends(self, authenticated_client):
         response = authenticated_client.get("/api/analytics/trends?time_range=7d")
-        # 403 if no client_id, 422 if params invalid
-        assert response.status_code in [200, 403, 422]
+        # Missing client_id and kpi_type → Pydantic 422 fires before tenant gate
+        assert response.status_code == 422
 
 
 class TestCoverageEndpoints:
@@ -178,7 +180,8 @@ class TestCoverageEndpoints:
 
     def test_get_coverage_entries(self, authenticated_client):
         response = authenticated_client.get("/api/coverage")
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestEmployeeEndpoints:
@@ -186,7 +189,7 @@ class TestEmployeeEndpoints:
 
     def test_get_employees(self, authenticated_client):
         response = authenticated_client.get("/api/employees/")
-        assert response.status_code in [200, 403]
+        assert response.status_code == 200
 
 
 class TestDefectEndpoints:
@@ -194,11 +197,12 @@ class TestDefectEndpoints:
 
     def test_get_defects(self, authenticated_client):
         response = authenticated_client.get("/api/defects/")
-        assert response.status_code in [200, 403]
+        # Supervisor fixture has no client_id → 403 (tenant gate, after redirect)
+        assert response.status_code == 403
 
     def test_get_defect_types(self, authenticated_client):
         response = authenticated_client.get("/api/defect-types/global")
-        assert response.status_code in [200, 403]
+        assert response.status_code == 200
 
 
 class TestFilterEndpoints:

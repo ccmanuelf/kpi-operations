@@ -70,10 +70,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.uptimeFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.uptimeMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.uptimeFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.uptimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -88,8 +88,8 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.downtimeMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.downtimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -104,10 +104,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.totalTimeFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.totalTimeMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.totalTimeFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.totalTimeMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -122,10 +122,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.mtbfFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.mtbfMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.mtbfFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.mtbfMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -169,7 +169,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.shift_date="{ item }">
                 {{ formatDate(item.shift_date) }}
@@ -195,7 +195,7 @@
               :headers="downtimeHeaders"
               :items="availabilityData?.downtime_reasons || []"
               density="compact"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.hours="{ item }">
                 <v-chip color="error" size="small">{{ $t('kpi.hoursSuffix', { value: item.hours }) }}</v-chip>
@@ -218,7 +218,7 @@
               :headers="equipmentHeaders"
               :items="availabilityData?.by_equipment || []"
               density="compact"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.availability="{ item }">
                 <v-chip :color="getAvailabilityColor(item.availability)" size="small">
@@ -238,180 +238,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted } from 'vue'
 import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { format } from 'date-fns'
-import { useKPIStore } from '@/stores/kpi'
-import api from '@/services/api'
+import useAvailabilityData from '@/composables/useAvailabilityData'
+import useAvailabilityCharts from '@/composables/useAvailabilityCharts'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+const {
+  loading, clients, selectedClient, startDate, endDate, tableSearch,
+  downtimeHistory, availabilityData, statusColor,
+  downtimeHeaders, equipmentHeaders, downtimeHistoryHeaders,
+  formatValue, formatDate, getAvailabilityColor,
+  onClientChange, onDateChange, refreshData, initialize
+} = useAvailabilityData()
 
-const { t } = useI18n()
-const kpiStore = useKPIStore()
-const loading = ref(false)
-const clients = ref([])
-const selectedClient = ref(null)
-const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-const endDate = ref(new Date().toISOString().split('T')[0])
-const tableSearch = ref('')
-const downtimeHistory = ref([])
+const { chartData, chartOptions } = useAvailabilityCharts()
 
-const availabilityData = computed(() => kpiStore.availability)
-
-const statusColor = computed(() => {
-  const avail = availabilityData.value?.percentage || 0
-  if (avail >= 90) return 'success'
-  if (avail >= 80) return 'amber-darken-3'
-  return 'error'
-})
-
-const downtimeHeaders = computed(() => [
-  { title: t('kpi.headers.reason'), key: 'reason', sortable: true },
-  { title: t('kpi.headers.hours'), key: 'hours', sortable: true },
-  { title: t('kpi.headers.percentage'), key: 'percentage', sortable: true }
-])
-
-const equipmentHeaders = computed(() => [
-  { title: t('kpi.headers.equipment'), key: 'equipment_name', sortable: true },
-  { title: t('kpi.headers.uptime'), key: 'uptime', sortable: true },
-  { title: t('kpi.headers.downtime'), key: 'downtime', sortable: true },
-  { title: t('kpi.headers.availability'), key: 'availability', sortable: true }
-])
-
-const downtimeHistoryHeaders = computed(() => [
-  { title: t('kpi.headers.date'), key: 'shift_date', sortable: true },
-  { title: t('kpi.headers.reason'), key: 'downtime_reason', sortable: true },
-  { title: t('kpi.headers.duration'), key: 'downtime_duration_minutes', sortable: true },
-  { title: t('kpi.headers.notes'), key: 'notes', sortable: true }
-])
-
-const chartData = computed(() => ({
-  labels: kpiStore.trends.availability.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: t('kpi.charts.availabilityPercent'),
-      data: kpiStore.trends.availability.map(d => d.value),
-      borderColor: '#7b1fa2',
-      backgroundColor: 'rgba(123, 31, 162, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: t('kpi.charts.targetValue', { value: 90 }),
-      data: Array(kpiStore.trends.availability.length).fill(90),
-      borderColor: '#2e7d32',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: { display: true, position: 'top' },
-    tooltip: { mode: 'index', intersect: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      max: 100,
-      ticks: { callback: (value) => `${value}%` }
-    }
-  }
-}
-
-const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(1) : t('common.na')
-}
-
-const formatDate = (dateStr) => {
-  try {
-    return format(new Date(dateStr), 'MMM dd, yyyy')
-  } catch {
-    return dateStr
-  }
-}
-
-const getAvailabilityColor = (avail) => {
-  if (avail >= 90) return 'success'
-  if (avail >= 80) return 'amber-darken-3'
-  return 'error'
-}
-
-const loadClients = async () => {
-  try {
-    const response = await api.getClients()
-    clients.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load clients:', error)
-  }
-}
-
-const loadDowntimeHistory = async () => {
-  try {
-    const params = {
-      start_date: startDate.value,
-      end_date: endDate.value
-    }
-    if (selectedClient.value) {
-      params.client_id = selectedClient.value
-    }
-    const response = await api.getDowntimeEntries(params)
-    downtimeHistory.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load downtime history:', error)
-    downtimeHistory.value = []
-  }
-}
-
-const onClientChange = () => {
-  kpiStore.setClient(selectedClient.value)
-  refreshData()
-}
-
-const onDateChange = () => {
-  kpiStore.setDateRange(startDate.value, endDate.value)
-  refreshData()
-}
-
-const refreshData = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      kpiStore.fetchAvailability(),
-      loadDowntimeHistory()
-    ])
-  } catch (error) {
-    console.error('Failed to refresh data:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await loadClients()
-    kpiStore.setDateRange(startDate.value, endDate.value)
-    await refreshData()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(() => initialize())
 </script>
 
 <style scoped>

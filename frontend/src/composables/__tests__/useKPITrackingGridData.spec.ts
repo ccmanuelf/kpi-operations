@@ -38,7 +38,7 @@ interface ColumnDefShape {
   cellEditor?: string
   cellEditorParams?: { precision?: number }
   pinned?: 'left' | 'right'
-  valueGetter?: (params: { data: KPITrackingRow }) => unknown
+  valueGetter?: (_params: { data: KPITrackingRow }) => unknown
 }
 
 const findCol = (cols: unknown[], field: string): ColumnDefShape | undefined =>

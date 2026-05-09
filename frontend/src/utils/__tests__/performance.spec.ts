@@ -259,12 +259,14 @@ describe('Performance Utilities', () => {
 
       const measure = monitor.startMeasure('test-op')
 
-      // Simulate some work
+      // Simulate some work; the loop's running sum is asserted on so
+      // the JIT can't elide it and endMeasure records a real duration.
       let sum = 0
       for (let i = 0; i < 1000; i++) sum += i
 
       const result = monitor.endMeasure(measure)
 
+      expect(sum).toBe(499500) // 0+1+...+999 = 999*1000/2
       expect(result.name).toBe('test-op')
       expect(result.duration).toBeGreaterThanOrEqual(0)
     })

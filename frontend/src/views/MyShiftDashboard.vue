@@ -5,58 +5,17 @@
       <v-col cols="12">
         <v-card class="shift-header-card" elevation="2">
           <v-card-text class="pa-4">
-            <div class="d-flex flex-column flex-sm-row justify-space-between align-start align-sm-center gap-3">
-              <!-- Shift Info -->
-              <div class="d-flex align-center gap-3">
-                <v-avatar :color="shiftStatusColor" size="56" class="elevation-2">
-                  <v-icon size="28" color="white">{{ shiftStatusIcon }}</v-icon>
-                </v-avatar>
-                <div>
-                  <h1 class="text-h5 font-weight-bold mb-1">
-                    {{ hasActiveShift ? `${t('production.shift')} ${activeShift?.shift_number || 1}` : t('navigation.myShift') }}
-                  </h1>
-                  <div class="d-flex align-center gap-2 flex-wrap">
-                    <v-chip
-                      :color="shiftStatusColor"
-                      size="small"
-                      variant="flat"
-                      class="font-weight-medium"
-                    >
-                      {{ shiftStatusText }}
-                    </v-chip>
-                    <span v-if="hasActiveShift" class="text-body-2 text-grey">
-                      {{ t('shifts.started') }} {{ formatTime(activeShift?.start_time) }} ({{ shiftDuration }})
-                    </span>
-                    <span v-else class="text-body-2 text-grey">
-                      {{ currentDateFormatted }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Quick Actions -->
-              <div class="d-flex gap-2">
-                <v-btn
-                  v-if="!hasActiveShift"
-                  color="success"
-                  size="large"
-                  class="touch-target"
-                  @click="handleStartShift"
-                >
-                  <v-icon start>mdi-play-circle</v-icon>
-                  {{ t('common.start') }} {{ t('production.shift') }}
-                </v-btn>
-                <v-btn
-                  v-else
-                  color="error"
-                  variant="outlined"
-                  size="large"
-                  class="touch-target"
-                  @click="handleEndShift"
-                >
-                  <v-icon start>mdi-stop-circle</v-icon>
-                  {{ t('common.end') }} {{ t('production.shift') }}
-                </v-btn>
+            <div class="d-flex align-center gap-3">
+              <v-avatar color="primary" size="56" class="elevation-2">
+                <v-icon size="28" color="white">mdi-clipboard-account</v-icon>
+              </v-avatar>
+              <div>
+                <h1 class="text-h5 font-weight-bold mb-1">
+                  {{ t('navigation.myShift') }}
+                </h1>
+                <span class="text-body-2 text-grey">
+                  {{ currentDateFormatted }}
+                </span>
               </div>
             </div>
           </v-card-text>
@@ -214,7 +173,6 @@
           <v-card-text class="pa-3">
             <DataCompletenessIndicator
               :date="currentDate"
-              :shift="activeShift?.shift_number?.toString()"
               compact
               @navigate="handleCompletenessNavigate"
             />
@@ -270,11 +228,11 @@
       v-model:show-downtime-dialog="showDowntimeDialog"
       v-model:show-quality-dialog="showQualityDialog"
       v-model:show-help-dialog="showHelpDialog"
+      v-model:production-form="productionForm"
+      v-model:downtime-form="downtimeForm"
+      v-model:quality-form="qualityForm"
+      v-model:help-form="helpForm"
       :is-submitting="isSubmitting"
-      :production-form="productionForm"
-      :downtime-form="downtimeForm"
-      :quality-form="qualityForm"
-      :help-form="helpForm"
       :work-order-options="workOrderOptions"
       :production-presets="productionPresets"
       :downtime-reasons="downtimeReasons"
@@ -305,7 +263,6 @@
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { useWorkflowStore } from '@/stores/workflowStore'
 import DataCompletenessIndicator from '@/components/DataCompletenessIndicator.vue'
 import ShiftDashboardDialogs from '@/components/dialogs/ShiftDashboardDialogs.vue'
 
@@ -317,7 +274,6 @@ import DualViewKPIPanel from '@/components/dual_view/DualViewKPIPanel.vue'
 
 const { t } = useI18n()
 const router = useRouter()
-const workflowStore = useWorkflowStore()
 const authStore = useAuthStore()
 
 // Dual-view panel inputs (today's window for the operator's assigned client).
@@ -338,14 +294,8 @@ const {
   assignedWorkOrders,
   recentActivity,
   myStats,
-  activeShift,
-  hasActiveShift,
   currentDate,
   currentDateFormatted,
-  shiftStatusColor,
-  shiftStatusIcon,
-  shiftStatusText,
-  shiftDuration,
   workOrderOptions,
   formatTime,
   formatRelativeTime,
@@ -387,7 +337,7 @@ const {
   submitQuality,
   submitHelpRequest
 } = useShiftForms(
-  () => activeShift.value,
+  () => null,
   () => currentDate.value,
   () => assignedWorkOrders.value,
   fetchMyShiftData
@@ -408,14 +358,6 @@ const statCards = computed(() => [
   { key: 'quality', color: 'info', icon: 'mdi-check-decagram', value: myStats.value.qualityChecks, labelKey: 'quality.title' }
 ])
 
-// Shift workflow actions
-const handleStartShift = () => {
-  workflowStore.startWorkflow('shift-start')
-}
-
-const handleEndShift = () => {
-  workflowStore.startWorkflow('shift-end')
-}
 
 // Navigation
 const handleCompletenessNavigate = (categoryId, route) => {

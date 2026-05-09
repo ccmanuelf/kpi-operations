@@ -32,7 +32,7 @@ import useCalendarGridData, { type CalendarRow } from '../useCalendarGridData'
 
 interface ColumnDefShape {
   field?: string
-  editable?: boolean | ((params: { data: CalendarRow }) => boolean)
+  editable?: boolean | ((_params: { data: CalendarRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: unknown[]; min?: number; max?: number }
   pinned?: 'left' | 'right'
@@ -99,21 +99,21 @@ describe('useCalendarGridData', () => {
     it('shift2_hours editable when shifts_available === 2', () => {
       const { columnDefs } = useCalendarGridData()
       const col = findCol(columnDefs.value, 'shift2_hours')!
-      const editable = col.editable as (params: { data: CalendarRow }) => boolean
+      const editable = col.editable as (_params: { data: CalendarRow }) => boolean
       expect(editable({ data: { shifts_available: 2 } })).toBe(true)
     })
 
     it('shift2_hours editable when shifts_available === 3', () => {
       const { columnDefs } = useCalendarGridData()
       const col = findCol(columnDefs.value, 'shift2_hours')!
-      const editable = col.editable as (params: { data: CalendarRow }) => boolean
+      const editable = col.editable as (_params: { data: CalendarRow }) => boolean
       expect(editable({ data: { shifts_available: 3 } })).toBe(true)
     })
 
     it('shift2_hours NOT editable when shifts_available === 1', () => {
       const { columnDefs } = useCalendarGridData()
       const col = findCol(columnDefs.value, 'shift2_hours')!
-      const editable = col.editable as (params: { data: CalendarRow }) => boolean
+      const editable = col.editable as (_params: { data: CalendarRow }) => boolean
       expect(editable({ data: { shifts_available: 1 } })).toBe(false)
     })
   })

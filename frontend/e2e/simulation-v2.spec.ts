@@ -19,74 +19,48 @@ import { login } from './helpers';
 // Increase default timeout for all tests
 test.setTimeout(90000);
 
-// Helper to navigate to simulation v2 with stability improvements
+// Helper to navigate to simulation v2 with stability improvements.
+// Uses page.goto() directly (matches the dashboard.spec.ts pattern from
+// commit 16b32e5) — clicking the nav drawer link races with the
+// role-based v-list-group expansion in CI Chromium and intermittently
+// loses the click. Direct goto bypasses that entire surface.
 async function navigateToSimulationV2(page: Page, clearSampleData = true) {
-  // Clear localStorage to ensure consistent test state (no sample data auto-load)
+  // Clear localStorage flag BEFORE navigation so any onMounted logic
+  // (sample-data auto-load) sees the suppressed state on first paint.
   if (clearSampleData) {
     await page.evaluate(() => {
       localStorage.setItem('simulation_v2_visited', 'true');
     });
   }
 
-  // Scroll nav item into view and click — it's near the bottom of a long drawer
-  const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
-  await navItem.scrollIntoViewIfNeeded();
-  await navItem.click({ force: true });
+  // domcontentloaded fires deterministically; networkidle hangs in CI
+  // when Vite HMR + in-flight store fetches keep the network busy.
+  await page.goto('/simulation', { waitUntil: 'domcontentloaded' });
 
-  // Wait for URL to confirm Vue Router navigation completed
-  // Router redirects /simulation-v2 → /simulation; the nav also points
-  // directly at /simulation, so wait for that final URL.
-  await page.waitForURL('**/simulation', { timeout: 15000 });
-
-  // Wait for the page header to confirm navigation
+  // Wait for the page header to confirm SimulationV2View mounted.
   await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 }
 
-// Helper to navigate with sample data pre-loaded (for testing sample data feature)
-async function navigateToSimulationV2WithSampleData(page: Page) {
-  // Clear the visited flag so sample data loads
-  await page.evaluate(() => {
-    localStorage.removeItem('simulation_v2_visited');
-  });
-
-  // Navigate to the simulation page — scroll into view, it's near bottom of drawer
-  const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
-  await navItem.scrollIntoViewIfNeeded();
-  await navItem.click({ force: true });
-
-  // Wait for URL to confirm Vue Router navigation completed
-  // Router redirects /simulation-v2 → /simulation; the nav also points
-  // directly at /simulation, so wait for that final URL.
-  await page.waitForURL('**/simulation', { timeout: 15000 });
-
-  // Wait for the page header to confirm navigation
-  await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
-
-  // Wait for the welcome snackbar to appear (indicates sample data loaded)
-  await page.waitForTimeout(1000);
-}
-
-// Helper to wait for tab content to load
-async function waitForTabContent(page: Page, timeout = 5000) {
-  await page.waitForLoadState('networkidle', { timeout });
+// Helper to wait for tab content to load. domcontentloaded fires
+// deterministically; networkidle hangs in CI when Vite HMR + in-flight
+// store fetches keep the network busy. Per-test toBeVisible() assertions
+// do the rest of the waiting.
+async function waitForTabContent(page: Page, timeout = 15000) {
+  await page.waitForLoadState('domcontentloaded', { timeout });
   await page.waitForTimeout(300); // Small buffer for Vue reactivity
 }
 
-// Sample operation data for testing
-const sampleOperations = [
-  { product: 'Widget-A', step: 1, operation: 'Cut', machine_tool: 'Cutter-1', sam_min: 2.5, operators: 2, grade_pct: 85, fpd_pct: 3 },
-  { product: 'Widget-A', step: 2, operation: 'Assemble', machine_tool: 'Assembly-1', sam_min: 5.0, operators: 3, grade_pct: 80, fpd_pct: 5 },
-  { product: 'Widget-A', step: 3, operation: 'Pack', machine_tool: 'Packer-1', sam_min: 1.5, operators: 1, grade_pct: 90, fpd_pct: 1 },
-];
-
-test.describe.skip('Simulation V2 - Navigation [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Navigation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
 
   test('should display Simulation v2 in navigation menu', async ({ page }) => {
-    const navItem = page.locator('.v-navigation-drawer').locator('text=Simulation v2');
-    await expect(navItem).toBeVisible({ timeout: 10000 });
+    // The nav drawer renders `t('navigation.simulation')` = "Simulation"
+    // (no "v2" suffix). Match by stable href instead of locale-fragile
+    // label text.
+    const navItem = page.locator('.v-navigation-drawer a[href="/simulation"]');
+    await expect(navItem.first()).toBeVisible({ timeout: 10000 });
   });
 
   test('should navigate to Simulation v2 page', async ({ page }) => {
@@ -136,7 +110,7 @@ test.describe.skip('Simulation V2 - Navigation [SKIPPED — flaky in CI; see Pha
   });
 });
 
-test.describe.skip('Simulation V2 - Operations Tab [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Operations Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -162,12 +136,9 @@ test.describe.skip('Simulation V2 - Operations Tab [SKIPPED — flaky in CI; see
     const addButton = page.locator('button:has-text("Add Operation")');
     await addButton.click({ force: true });
 
-    // Wait for AG Grid to update
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
-
+    // Wait for AG Grid to render the new row.
     const gridRows = page.locator('.ag-row');
-    await expect(gridRows.first()).toBeVisible({ timeout: 10000 });
+    await expect(gridRows.first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should show CSV import dialog', async ({ page }) => {
@@ -198,7 +169,7 @@ test.describe.skip('Simulation V2 - Operations Tab [SKIPPED — flaky in CI; see
   });
 });
 
-test.describe.skip('Simulation V2 - Schedule Tab [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Schedule Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -214,7 +185,14 @@ test.describe.skip('Simulation V2 - Schedule Tab [SKIPPED — flaky in CI; see P
   });
 
   test('should show shift configuration', async ({ page }) => {
-    await expect(page.locator('text=Shifts').or(page.locator('text=Shift')).first()).toBeVisible({ timeout: 15000 });
+    // Vuetify renders v-text-field labels as floating `<label
+    // aria-hidden="true">` — Playwright's `text=` matcher resolves
+    // them but `toBeVisible()` returns false because of aria-hidden.
+    // The accessible name is plumbed through to the underlying
+    // `<input>` (rendered as `role="spinbutton"` for type="number").
+    // Match by ARIA role + name — that's the stable, accessibility-
+    // tree contract.
+    await expect(page.getByRole('spinbutton', { name: 'Shift 1 Hours' })).toBeVisible({ timeout: 15000 });
   });
 
   test('should show work days configuration', async ({ page }) => {
@@ -245,7 +223,7 @@ test.describe.skip('Simulation V2 - Schedule Tab [SKIPPED — flaky in CI; see P
   });
 });
 
-test.describe.skip('Simulation V2 - Demand Tab [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Demand Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -276,11 +254,8 @@ test.describe.skip('Simulation V2 - Demand Tab [SKIPPED — flaky in CI; see Pha
     await expect(addButton).toBeVisible({ timeout: 15000 });
     await addButton.click({ force: true });
 
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
-
     const gridRows = page.locator('.ag-row');
-    await expect(gridRows.first()).toBeVisible({ timeout: 10000 });
+    await expect(gridRows.first()).toBeVisible({ timeout: 15000 });
   });
 
   test('should interact with demand mode selector', async ({ page }) => {
@@ -294,7 +269,7 @@ test.describe.skip('Simulation V2 - Demand Tab [SKIPPED — flaky in CI; see Pha
   });
 });
 
-test.describe.skip('Simulation V2 - Breakdowns Tab [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Breakdowns Tab', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -332,16 +307,13 @@ test.describe.skip('Simulation V2 - Breakdowns Tab [SKIPPED — flaky in CI; see
     await expect(addButton).toBeVisible({ timeout: 15000 });
     await addButton.click({ force: true });
 
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
-
     // Check for either grid rows or a dialog for adding breakdown
     const gridOrDialog = page.locator('.ag-row').or(page.locator('.v-dialog'));
-    await expect(gridOrDialog.first()).toBeVisible({ timeout: 10000 });
+    await expect(gridOrDialog.first()).toBeVisible({ timeout: 15000 });
   });
 });
 
-test.describe.skip('Simulation V2 - Validation Flow [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Validation Flow', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -357,12 +329,10 @@ test.describe.skip('Simulation V2 - Validation Flow [SKIPPED — flaky in CI; se
     // Add an operation
     const addButton = page.locator('button:has-text("Add Operation")');
     await addButton.click({ force: true });
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
 
     // Validate button should be enabled
     const validateButton = page.locator('button:has-text("Validate Configuration")');
-    await expect(validateButton).toBeEnabled({ timeout: 10000 });
+    await expect(validateButton).toBeEnabled({ timeout: 15000 });
   });
 
   test('should show validation panel after validation', async ({ page }) => {
@@ -375,17 +345,15 @@ test.describe.skip('Simulation V2 - Validation Flow [SKIPPED — flaky in CI; se
     const validateButton = page.locator('button:has-text("Validate Configuration")');
     await validateButton.click({ force: true });
 
-    // Wait for API response
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.waitForTimeout(1000);
-
-    // Should show validation panel (may have errors for incomplete data)
+    // Should show validation panel (may have errors for incomplete data).
+    // The toBeVisible timeout absorbs the API round-trip — no separate
+    // networkidle wait needed.
     const validationPanel = page.locator('text=Validation').or(page.locator('.v-alert'));
-    await expect(validationPanel.first()).toBeVisible({ timeout: 15000 });
+    await expect(validationPanel.first()).toBeVisible({ timeout: 20000 });
   });
 });
 
-test.describe.skip('Simulation V2 - Run Simulation [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Run Simulation', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -405,7 +373,7 @@ test.describe.skip('Simulation V2 - Run Simulation [SKIPPED — flaky in CI; see
   });
 });
 
-test.describe.skip('Simulation V2 - Config Management [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Config Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -446,17 +414,13 @@ test.describe.skip('Simulation V2 - Config Management [SKIPPED — flaky in CI; 
     const dialogImportBtn = page.locator('.v-dialog button:has-text("Import")');
     await dialogImportBtn.click({ force: true });
 
-    // Wait for import to complete
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(500);
-
     // Go to operations tab to verify
     await page.locator('.v-tabs button', { hasText: 'Operations' }).click();
-    await page.waitForTimeout(500);
 
-    // Check that operations grid has data
+    // Check that operations grid has data — toBeVisible absorbs the
+    // import-roundtrip + tab switch wait.
     const operationsGrid = page.locator('.ag-row');
-    await expect(operationsGrid.first()).toBeVisible({ timeout: 10000 });
+    await expect(operationsGrid.first()).toBeVisible({ timeout: 20000 });
   });
 
   test('should show error for invalid JSON', async ({ page }) => {
@@ -484,11 +448,9 @@ test.describe.skip('Simulation V2 - Config Management [SKIPPED — flaky in CI; 
     // Add an operation
     const addButton = page.locator('button:has-text("Add Operation")');
     await addButton.click({ force: true });
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
 
     const exportButton = page.locator('button:has-text("Export Config")');
-    await expect(exportButton).toBeEnabled({ timeout: 15000 });
+    await expect(exportButton).toBeEnabled({ timeout: 20000 });
   });
 
   test('should show reset confirmation dialog', async ({ page }) => {
@@ -498,7 +460,7 @@ test.describe.skip('Simulation V2 - Config Management [SKIPPED — flaky in CI; 
     await page.waitForTimeout(500);
 
     // Click reset
-    const resetButton = page.locator('button:has-text("Reset")');
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
     await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
@@ -520,7 +482,7 @@ test.describe.skip('Simulation V2 - Config Management [SKIPPED — flaky in CI; 
     await page.waitForTimeout(500);
 
     // Click reset
-    const resetButton = page.locator('button:has-text("Reset")');
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
     await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
@@ -528,18 +490,16 @@ test.describe.skip('Simulation V2 - Config Management [SKIPPED — flaky in CI; 
     // load WebKit is slower to make dialog content interactive
     const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
     await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
-    // Use force:true — WebKit's v-overlay-scroll-blocked intercepts pointer events
+    // force:true bypasses v-overlay-scroll-blocked pointer-event interception
     await clearAllOption.click({ force: true });
-    await page.waitForTimeout(1000);
-    await page.waitForLoadState('networkidle');
 
-    // Operations should be cleared
+    // Operations should be cleared (toHaveCount polls until satisfied).
     const gridRows = page.locator('.ag-row');
-    await expect(gridRows).toHaveCount(0, { timeout: 15000 });
+    await expect(gridRows).toHaveCount(0, { timeout: 20000 });
   });
 });
 
-test.describe.skip('Simulation V2 - Summary Stats [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Summary Stats', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -556,16 +516,14 @@ test.describe.skip('Simulation V2 - Summary Stats [SKIPPED — flaky in CI; see 
     // Add operations
     const addButton = page.locator('button:has-text("Add Operation")');
     await addButton.click({ force: true });
-    await page.waitForTimeout(500);
-    await page.waitForLoadState('networkidle');
 
     // Summary should show - look for the stat card or operation count
     const statsIndicator = page.locator('.v-card').filter({ hasText: 'Operations' }).or(page.locator('text=1 operation'));
-    await expect(statsIndicator.first()).toBeVisible({ timeout: 10000 });
+    await expect(statsIndicator.first()).toBeVisible({ timeout: 20000 });
   });
 });
 
-test.describe.skip('Simulation V2 - Full Workflow [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Full Workflow', () => {
   test('should complete full simulation workflow', async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -607,45 +565,38 @@ test.describe.skip('Simulation V2 - Full Workflow [SKIPPED — flaky in CI; see 
 
     const dialogImportBtn = page.locator('.v-dialog button:has-text("Import")');
     await dialogImportBtn.click({ force: true });
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
 
     // Step 2: Verify data loaded - go to operations tab
     await page.locator('.v-tabs button', { hasText: 'Operations' }).click();
-    await page.waitForTimeout(500);
-    await expect(page.locator('.ag-row').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.ag-row').first()).toBeVisible({ timeout: 20000 });
 
     // Step 3: Validate configuration
     const validateButton = page.locator('button:has-text("Validate Configuration")');
-    await expect(validateButton).toBeEnabled({ timeout: 10000 });
+    await expect(validateButton).toBeEnabled({ timeout: 15000 });
     await validateButton.click({ force: true });
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.waitForTimeout(2000);
 
-    // Step 4: Check for validation response (any validation panel appearing)
+    // Step 4: Check for validation response (any validation panel appearing).
+    // The toBeVisible timeout absorbs the validate API round-trip.
     const validationPanel = page.locator('.v-card').filter({ hasText: 'Validation' });
-    await expect(validationPanel.first()).toBeVisible({ timeout: 15000 });
+    await expect(validationPanel.first()).toBeVisible({ timeout: 20000 });
 
-    // Step 5: Run simulation if run button is enabled
+    // Step 5: Run simulation if run button is enabled. If valid config
+    // is required and our import wasn't, the run button stays disabled —
+    // skip the run step in that case but still assert validation worked.
     const runButton = page.locator('button:has-text("Run Simulation")');
-    if (await runButton.isEnabled({ timeout: 5000 }).catch(() => false)) {
+    const runEnabled = await runButton.isEnabled({ timeout: 5000 }).catch(() => false);
+    if (runEnabled) {
       await runButton.click({ force: true });
 
-      // Wait for simulation to complete
-      await page.waitForLoadState('networkidle', { timeout: 30000 });
-      await page.waitForTimeout(5000);
-
-      // Check for results dialog or completion indicator
+      // Results dialog or "Results" header should appear after the run
+      // completes. The 30s timeout absorbs SimPy execution time.
       const resultsIndicator = page.locator('.v-dialog').or(page.locator('text=Results'));
-      if (await resultsIndicator.first().isVisible({ timeout: 15000 }).catch(() => false)) {
-        // Verify we got some results
-        expect(true).toBeTruthy();
-      }
+      await expect(resultsIndicator.first()).toBeVisible({ timeout: 30000 });
     }
   });
 });
 
-test.describe.skip('Simulation V2 - Responsive Design [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Responsive Design', () => {
   test('should be functional on tablet viewport', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await login(page);
@@ -665,7 +616,7 @@ test.describe.skip('Simulation V2 - Responsive Design [SKIPPED — flaky in CI; 
   });
 });
 
-test.describe.skip('Simulation V2 - Error Handling [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Error Handling', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await navigateToSimulationV2(page);
@@ -685,17 +636,14 @@ test.describe.skip('Simulation V2 - Error Handling [SKIPPED — flaky in CI; see
     const validateButton = page.locator('button:has-text("Validate Configuration")');
     await validateButton.click({ force: true });
 
-    // Wait for API response
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.waitForTimeout(1000);
-
-    // Should show some kind of feedback (error or validation result)
+    // Should show some kind of feedback (error or validation result).
+    // toBeVisible absorbs the API round-trip wait.
     const feedback = page.locator('.v-alert').or(page.locator('.v-card').filter({ hasText: 'Validation' }));
-    await expect(feedback.first()).toBeVisible({ timeout: 15000 });
+    await expect(feedback.first()).toBeVisible({ timeout: 20000 });
   });
 });
 
-test.describe.skip('Simulation V2 - Sample Data Onboarding [SKIPPED — flaky in CI; see Phase B.7]', () => {
+test.describe('Simulation V2 - Sample Data Onboarding', () => {
   test('should load sample T-Shirt data on first visit', async ({ page }) => {
     await login(page);
 
@@ -704,32 +652,26 @@ test.describe.skip('Simulation V2 - Sample Data Onboarding [SKIPPED — flaky in
       localStorage.removeItem('simulation_v2_visited');
     });
 
-    // Navigate to simulation page
-    const navItem = page.locator('text=Simulation v2');
-    await navItem.waitFor({ state: 'visible', timeout: 10000 });
-    await navItem.click({ force: true });
+    // Direct goto bypasses the role-based v-list-group click race in
+    // CI Chromium (matches the navigateToSimulationV2 helper above).
+    await page.goto('/simulation', { waitUntil: 'domcontentloaded' });
 
-    // Wait for page to load
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
-    await page.waitForTimeout(1500);
-
-    // Should show welcome snackbar
-    const welcomeSnackbar = page.locator('.v-snackbar').filter({ hasText: 'Welcome' });
-    const hasWelcome = await welcomeSnackbar.isVisible({ timeout: 5000 }).catch(() => false);
+    // Wait for the page header to confirm navigation
+    await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 
     // Should have pre-loaded operations (check for summary stats)
     const summaryStats = page.locator('.v-card').filter({ hasText: 'Products' });
-    await expect(summaryStats.first()).toBeVisible({ timeout: 10000 });
+    await expect(summaryStats.first()).toBeVisible({ timeout: 15000 });
 
     // The grid should have rows with sample data
     const gridRows = page.locator('.ag-row');
+    await expect(gridRows.first()).toBeVisible({ timeout: 10000 });
     const rowCount = await gridRows.count();
     expect(rowCount).toBeGreaterThan(0);
 
     // Verify it's T-Shirt data (use first() to avoid strict mode violation)
     const tshirtCell = page.locator('.ag-cell').filter({ hasText: 'Basic T-Shirt' }).first();
-    await expect(tshirtCell).toBeVisible({ timeout: 10000 });
+    await expect(tshirtCell).toBeVisible({ timeout: 15000 });
   });
 
   test('should not reload sample data on subsequent visits', async ({ page }) => {
@@ -754,8 +696,8 @@ test.describe.skip('Simulation V2 - Sample Data Onboarding [SKIPPED — flaky in
     await navigateToSimulationV2(page);
     await waitForTabContent(page);
 
-    // Click Reset button
-    const resetButton = page.locator('button:has-text("Reset")');
+    // Click Reset
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
     await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
@@ -776,12 +718,12 @@ test.describe.skip('Simulation V2 - Sample Data Onboarding [SKIPPED — flaky in
     await navigateToSimulationV2(page);
     await waitForTabContent(page);
 
-    // Click Reset button
-    const resetButton = page.locator('button:has-text("Reset")');
+    // Click Reset
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
     await resetButton.click({ force: true });
     await page.waitForTimeout(500);
 
-    // Click Load Sample Data option — wait for render + force:true for WebKit overlay
+    // Click Load Sample Data option — force:true bypasses v-overlay-scroll-blocked
     const loadSampleOption = page.locator('.v-list-item').filter({ hasText: 'Load Sample Data' });
     await loadSampleOption.waitFor({ state: 'visible', timeout: 5000 });
     await loadSampleOption.click({ force: true });
@@ -804,42 +746,40 @@ test.describe.skip('Simulation V2 - Sample Data Onboarding [SKIPPED — flaky in
       localStorage.removeItem('simulation_v2_visited');
     });
 
-    const navItem = page.locator('text=Simulation v2');
-    await navItem.waitFor({ state: 'visible', timeout: 10000 });
-    await navItem.click({ force: true });
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
-    await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 15000 });
-    await page.waitForTimeout(1500);
+    // Direct goto bypasses the role-based v-list-group click race in
+    // CI Chromium (matches the navigateToSimulationV2 helper above).
+    await page.goto('/simulation', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('text=Production Line Simulation v2.0', { state: 'visible', timeout: 30000 });
 
     // Verify sample data is loaded
     const gridRows = page.locator('.ag-row');
+    await expect(gridRows.first()).toBeVisible({ timeout: 15000 });
     const initialCount = await gridRows.count();
     expect(initialCount).toBeGreaterThan(0);
 
-    // Click Reset button
-    const resetButton = page.locator('button:has-text("Reset")');
-    await resetButton.click({ force: true });
-    await page.waitForTimeout(500);
+    // Click Reset via dispatchEvent — on the first-visit sample-data
+    // load path, AG-Grid's lazy paint races with the actions card's
+    // reactive @click binding. force:true skips actionability but
+    // still fires pointer events at coordinates that may not yet be
+    // bound. dispatchEvent fires the synthetic click directly on the
+    // target so the Vue @click handler runs regardless of timing.
+    const resetButton = page.locator('[data-testid="simulation-v2-reset-btn"]');
+    await resetButton.dispatchEvent('click');
 
-    // Wait for dialog to fully render, then click Clear All
-    // Use force:true — WebKit's v-overlay-scroll-blocked intercepts pointer events
-    const clearAllOption = page.locator('.v-list-item').filter({ hasText: 'Clear All' });
-    await clearAllOption.waitFor({ state: 'visible', timeout: 5000 });
-    await clearAllOption.click({ force: true });
-    await page.waitForTimeout(1000);
+    // Wait for the dialog itself to materialize before drilling into
+    // its child v-list-items. CI cold-start needs more than 5s for
+    // the dialog overlay to mount.
+    const dialog = page.locator('.v-dialog').filter({ hasText: 'Clear All' });
+    await expect(dialog).toBeVisible({ timeout: 15000 });
 
-    // Summary stats bar should not be visible (no operations)
-    const summaryStats = page.locator('.v-card').filter({ hasText: 'Products' }).filter({ hasText: 'Operations' });
-    const hasStats = await summaryStats.isVisible({ timeout: 2000 }).catch(() => false);
+    // Click Clear All within the dialog. dispatchEvent for the same
+    // reason — v-overlay-scroll-blocked can intercept pointer events
+    // on dialog list items in headless Chromium / WebKit.
+    const clearAllOption = dialog.locator('.v-list-item').filter({ hasText: 'Clear All' });
+    await clearAllOption.dispatchEvent('click');
 
-    // Either no stats bar, or the grid should show empty/add state
-    if (!hasStats) {
-      // No stats means cleared
-      expect(true).toBeTruthy();
-    } else {
-      // Check if operations count is 0
-      const operationsText = page.locator('text=Operations').first();
-      await expect(operationsText).toBeVisible({ timeout: 5000 });
-    }
+    // After Clear All, the grid must report zero rows. toHaveCount polls
+    // until the assertion is satisfied or times out.
+    await expect(gridRows).toHaveCount(0, { timeout: 15000 });
   });
 });

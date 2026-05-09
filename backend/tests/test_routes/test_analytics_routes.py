@@ -345,21 +345,24 @@ class TestTrendsEndpointTimeRanges:
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
         # Accept 200 (success), 403 (access denied), or 404 (no data)
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_trends_30d_time_range(self, authenticated_client):
         """Test trends with 30-day time range"""
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_trends_90d_time_range(self, authenticated_client):
         """Test trends with 90-day time range"""
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "90d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_trends_custom_date_range(self, authenticated_client):
         """Test trends with custom start_date and end_date"""
@@ -375,7 +378,8 @@ class TestTrendsEndpointTimeRanges:
                 "end_date": end_date.isoformat(),
             },
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_trends_custom_dates_override_time_range(self, authenticated_client):
         """Test that custom dates override time_range parameter"""
@@ -392,7 +396,8 @@ class TestTrendsEndpointTimeRanges:
                 "end_date": end_date.isoformat(),
             },
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestTrendsEndpointKPITypes:
@@ -421,8 +426,8 @@ class TestTrendsEndpointKPITypes:
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "time_range": "30d"}
         )
-        # 422 is acceptable for KPI types not yet implemented in CRUD
-        assert response.status_code in [200, 403, 404, 422, 500]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestTrendsEndpointAccessControl:
@@ -435,7 +440,8 @@ class TestTrendsEndpointAccessControl:
             params={"client_id": "UNAUTHORIZED-CLIENT", "kpi_type": "efficiency", "time_range": "30d"},
         )
         # Should return 403 (forbidden) or 404 (not found if client doesn't exist)
-        assert response.status_code in [403, 404]
+        # Supervisor fixture lacks access to UNAUTHORIZED-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -525,15 +531,16 @@ class TestPredictionsEndpointMethods:
             "/api/analytics/predictions",
             params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "method": method},
         )
-        # 400 is acceptable when there's insufficient data
-        assert response.status_code in [200, 400, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_predictions_default_method_is_auto(self, authenticated_client):
         """Test that default prediction method is auto"""
         response = authenticated_client.get(
             "/api/analytics/predictions", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency"}
         )
-        assert response.status_code in [200, 400, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestPredictionsEndpointForecastPeriods:
@@ -546,7 +553,8 @@ class TestPredictionsEndpointForecastPeriods:
             "/api/analytics/predictions",
             params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "forecast_days": forecast_days},
         )
-        assert response.status_code in [200, 400, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     @pytest.mark.parametrize("historical_days", [7, 30, 60, 90])
     def test_predictions_valid_historical_days(self, authenticated_client, historical_days):
@@ -555,7 +563,8 @@ class TestPredictionsEndpointForecastPeriods:
             "/api/analytics/predictions",
             params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "historical_days": historical_days},
         )
-        assert response.status_code in [200, 400, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestPredictionsEndpointInsufficientData:
@@ -568,7 +577,8 @@ class TestPredictionsEndpointInsufficientData:
             params={"client_id": "EMPTY-CLIENT", "kpi_type": "efficiency", "historical_days": 7},
         )
         # 400 for insufficient data, 403 for access denied, 404 for not found
-        assert response.status_code in [400, 403, 404]
+        # Supervisor fixture has no access to EMPTY-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -617,7 +627,8 @@ class TestComparisonsEndpointTimeRanges:
         response = authenticated_client.get(
             "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": time_range}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_comparisons_custom_date_range(self, authenticated_client):
         """Test comparisons with custom date range"""
@@ -628,7 +639,8 @@ class TestComparisonsEndpointTimeRanges:
             "/api/analytics/comparisons",
             params={"kpi_type": "efficiency", "start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestComparisonsEndpointKPITypes:
@@ -640,7 +652,8 @@ class TestComparisonsEndpointKPITypes:
         response = authenticated_client.get(
             "/api/analytics/comparisons", params={"kpi_type": kpi_type, "time_range": "30d"}
         )
-        assert response.status_code in [200, 403, 404, 422, 500]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestComparisonsEndpointNoData:
@@ -652,7 +665,8 @@ class TestComparisonsEndpointNoData:
             "/api/analytics/comparisons",
             params={"kpi_type": "efficiency", "time_range": "7d", "start_date": "1990-01-01", "end_date": "1990-01-07"},
         )
-        assert response.status_code in [404, 403, 422]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -715,7 +729,8 @@ class TestHeatmapEndpointTimeRanges:
             "/api/analytics/heatmap",
             params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": time_range},
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_heatmap_custom_date_range(self, authenticated_client):
         """Test heatmap with custom date range"""
@@ -731,7 +746,8 @@ class TestHeatmapEndpointTimeRanges:
                 "end_date": end_date.isoformat(),
             },
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestHeatmapEndpointKPITypes:
@@ -743,7 +759,8 @@ class TestHeatmapEndpointKPITypes:
         response = authenticated_client.get(
             "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": kpi_type, "time_range": "7d"}
         )
-        assert response.status_code in [200, 403, 404, 422, 500]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestHeatmapEndpointAccessControl:
@@ -755,7 +772,8 @@ class TestHeatmapEndpointAccessControl:
             "/api/analytics/heatmap",
             params={"client_id": "UNAUTHORIZED-CLIENT", "kpi_type": "efficiency", "time_range": "7d"},
         )
-        assert response.status_code in [403, 404]
+        # Supervisor fixture lacks access to UNAUTHORIZED-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -811,7 +829,8 @@ class TestParetoEndpointTimeRanges:
         response = authenticated_client.get(
             "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": time_range}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_pareto_custom_date_range(self, authenticated_client):
         """Test pareto with custom date range"""
@@ -822,7 +841,8 @@ class TestParetoEndpointTimeRanges:
             "/api/analytics/pareto",
             params={"client_id": "TEST-CLIENT", "start_date": start_date.isoformat(), "end_date": end_date.isoformat()},
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestParetoEndpointThreshold:
@@ -835,14 +855,16 @@ class TestParetoEndpointThreshold:
             "/api/analytics/pareto",
             params={"client_id": "TEST-CLIENT", "time_range": "30d", "pareto_threshold": threshold},
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_pareto_default_threshold_is_80(self, authenticated_client):
         """Test that default pareto threshold is 80"""
         response = authenticated_client.get(
             "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestParetoEndpointAccessControl:
@@ -853,7 +875,8 @@ class TestParetoEndpointAccessControl:
         response = authenticated_client.get(
             "/api/analytics/pareto", params={"client_id": "UNAUTHORIZED-CLIENT", "time_range": "30d"}
         )
-        assert response.status_code in [403, 404]
+        # Supervisor fixture lacks access to UNAUTHORIZED-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 class TestParetoEndpointNoData:
@@ -864,7 +887,8 @@ class TestParetoEndpointNoData:
         response = authenticated_client.get(
             "/api/analytics/pareto", params={"client_id": "CLIENT-NO-DEFECTS", "time_range": "7d"}
         )
-        assert response.status_code in [404, 403]
+        # Supervisor fixture has no access to CLIENT-NO-DEFECTS → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -880,8 +904,8 @@ class TestAnalyticsEdgeCases:
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "", "kpi_type": "efficiency", "time_range": "30d"}
         )
-        # Empty string should be accepted by validation but fail access check
-        assert response.status_code in [403, 404, 422]
+        # Empty client_id triggers tenant-gate denial → 403
+        assert response.status_code == 403
 
     def test_predictions_zero_forecast_days(self, authenticated_client):
         """Test predictions with zero forecast_days"""
@@ -906,7 +930,8 @@ class TestAnalyticsEdgeCases:
             },
         )
         # Should either return empty data or 404
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_pareto_very_old_date_range(self, authenticated_client):
         """Test pareto with very old date range"""
@@ -914,7 +939,8 @@ class TestAnalyticsEdgeCases:
             "/api/analytics/pareto",
             params={"client_id": "TEST-CLIENT", "start_date": "2000-01-01", "end_date": "2000-12-31"},
         )
-        assert response.status_code in [403, 404]
+        # Supervisor fixture lacks access to UNAUTHORIZED-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     def test_comparisons_inverted_date_range(self, authenticated_client):
         """Test comparisons where start_date > end_date"""
@@ -922,15 +948,16 @@ class TestAnalyticsEdgeCases:
             "/api/analytics/comparisons",
             params={"kpi_type": "efficiency", "start_date": "2024-12-31", "end_date": "2024-01-01"},
         )
-        # Should handle gracefully - either swap dates or return error
-        assert response.status_code in [200, 400, 403, 404, 422]
+        # Tenant gate fires before date-range validation → 403
+        assert response.status_code == 403
 
     def test_trends_special_characters_in_client_id(self, authenticated_client):
         """Test trends with special characters in client_id"""
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST<>CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
-        assert response.status_code in [403, 404, 422]
+        # Special chars in client_id trigger tenant-gate denial → 403
+        assert response.status_code == 403
 
     def test_heatmap_same_start_end_date(self, authenticated_client):
         """Test heatmap where start_date equals end_date (single day)"""
@@ -945,7 +972,8 @@ class TestAnalyticsEdgeCases:
                 "end_date": today.isoformat(),
             },
         )
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -956,109 +984,45 @@ class TestAnalyticsEdgeCases:
 class TestAnalyticsResponseStructure:
     """Response structure validation tests"""
 
-    def test_trends_response_structure(self, authenticated_client):
-        """Test that trends response has expected structure when successful"""
+    def test_trends_endpoint_denies_unauthorized_access(self, authenticated_client):
+        """Supervisor fixture cannot read TEST-CLIENT data → tenant gate returns 403.
+
+        Response-shape validation under a 200 path is covered by integration tests
+        that bind the user fixture to the queried client_id (see test_predictions_routes
+        for the admin-fixture pattern).
+        """
         response = authenticated_client.get(
             "/api/analytics/trends", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "30d"}
         )
+        assert response.status_code == 403
 
-        if response.status_code == 200:
-            data = response.json()
-            # Verify expected fields
-            assert "client_id" in data
-            assert "kpi_type" in data
-            assert "time_range" in data
-            assert "start_date" in data
-            assert "end_date" in data
-            assert "data_points" in data
-            assert "trend_direction" in data
-            assert "trend_slope" in data
-            assert "average_value" in data
-            assert "std_deviation" in data
-            assert "min_value" in data
-            assert "max_value" in data
-            assert "anomalies_detected" in data
-            assert "anomaly_dates" in data
-
-    def test_predictions_response_structure(self, authenticated_client):
-        """Test that predictions response has expected structure when successful"""
+    def test_predictions_endpoint_denies_unauthorized_access(self, authenticated_client):
+        """Supervisor fixture cannot read TEST-CLIENT data → tenant gate returns 403."""
         response = authenticated_client.get(
             "/api/analytics/predictions", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency"}
         )
+        assert response.status_code == 403
 
-        if response.status_code == 200:
-            data = response.json()
-            # Verify expected fields
-            assert "client_id" in data
-            assert "kpi_type" in data
-            assert "prediction_method" in data
-            assert "historical_start" in data
-            assert "historical_end" in data
-            assert "forecast_start" in data
-            assert "forecast_end" in data
-            assert "predictions" in data
-            assert "model_accuracy" in data
-            assert "historical_average" in data
-            assert "predicted_average" in data
-            assert "trend_continuation" in data
-
-    def test_comparisons_response_structure(self, authenticated_client):
-        """Test that comparisons response has expected structure when successful"""
+    def test_comparisons_endpoint_denies_unauthorized_access(self, authenticated_client):
+        """Supervisor fixture has no client_id assignment for comparisons → tenant gate returns 403."""
         response = authenticated_client.get(
             "/api/analytics/comparisons", params={"kpi_type": "efficiency", "time_range": "30d"}
         )
+        assert response.status_code == 403
 
-        if response.status_code == 200:
-            data = response.json()
-            # Verify expected fields
-            assert "kpi_type" in data
-            assert "time_range" in data
-            assert "start_date" in data
-            assert "end_date" in data
-            assert "clients" in data
-            assert "overall_average" in data
-            assert "industry_benchmark" in data
-            assert "best_performer" in data
-            assert "worst_performer" in data
-            assert "performance_spread" in data
-
-    def test_heatmap_response_structure(self, authenticated_client):
-        """Test that heatmap response has expected structure when successful"""
+    def test_heatmap_endpoint_denies_unauthorized_access(self, authenticated_client):
+        """Supervisor fixture cannot read TEST-CLIENT data → tenant gate returns 403."""
         response = authenticated_client.get(
             "/api/analytics/heatmap", params={"client_id": "TEST-CLIENT", "kpi_type": "efficiency", "time_range": "7d"}
         )
+        assert response.status_code == 403
 
-        if response.status_code == 200:
-            data = response.json()
-            # Verify expected fields
-            assert "client_id" in data
-            assert "kpi_type" in data
-            assert "time_range" in data
-            assert "start_date" in data
-            assert "end_date" in data
-            assert "cells" in data
-            assert "shifts" in data
-            assert "dates" in data
-            assert "color_scale" in data
-
-    def test_pareto_response_structure(self, authenticated_client):
-        """Test that pareto response has expected structure when successful"""
+    def test_pareto_endpoint_denies_unauthorized_access(self, authenticated_client):
+        """Supervisor fixture cannot read TEST-CLIENT data → tenant gate returns 403."""
         response = authenticated_client.get(
             "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
-
-        if response.status_code == 200:
-            data = response.json()
-            # Verify expected fields
-            assert "client_id" in data
-            assert "time_range" in data
-            assert "start_date" in data
-            assert "end_date" in data
-            assert "items" in data
-            assert "total_defects" in data
-            assert "vital_few_count" in data
-            assert "vital_few_percentage" in data
-            assert "pareto_threshold" in data
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -1081,7 +1045,8 @@ class TestAnalyticsWithMockedCRUD:
         )
 
         # Response depends on whether mock is properly applied
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
     @patch("backend.routes.analytics.comparisons.get_defect_pareto_data")
     def test_pareto_with_mock_data(self, mock_get_data, authenticated_client):
@@ -1094,7 +1059,8 @@ class TestAnalyticsWithMockedCRUD:
             "/api/analytics/pareto", params={"client_id": "TEST-CLIENT", "time_range": "30d"}
         )
 
-        assert response.status_code in [200, 403, 404]
+        # Supervisor fixture has no access to TEST-CLIENT → 403 (tenant gate)
+        assert response.status_code == 403
 
 
 # =============================================================================
@@ -1121,10 +1087,10 @@ class TestAnalyticsConcurrency:
                 futures = [executor.submit(make_request) for _ in range(3)]
                 results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
-            # All should return consistent status codes
+            # Supervisor fixture has no access to TEST-CLIENT, all responses 403 (tenant gate)
             status_codes = [r.status_code for r in results]
             for code in status_codes:
-                assert code in [200, 403, 404]
+                assert code == 403
         except Exception as e:
             # Concurrency tests with TestClient can be flaky
             pytest.skip(f"Concurrency test skipped due to TestClient threading issues: {e}")

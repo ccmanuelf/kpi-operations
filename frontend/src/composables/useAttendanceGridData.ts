@@ -47,8 +47,8 @@ export interface ShiftRef {
 interface AGGridApi {
   sizeColumnsToFit: () => void
   refreshCells: () => void
-  applyTransaction: (params: { add?: AttendanceRow[]; addIndex?: number }) => void
-  forEachNode: (cb: (node: { data: AttendanceRow }) => void) => void
+  applyTransaction: (_params: { add?: AttendanceRow[]; addIndex?: number }) => void
+  forEachNode: (_cb: (_node: { data: AttendanceRow }) => void) => void
 }
 
 interface AGGridRef {

@@ -247,7 +247,6 @@ const {
   fetchData,
   resetFilters,
   getRiskColor,
-  getVarianceColor,
   getVarianceClass,
   getCompletionColor,
   formatDate,

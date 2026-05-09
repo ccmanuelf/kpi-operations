@@ -34,10 +34,10 @@ export interface QualityRow {
 
 interface AGGridApi {
   sizeColumnsToFit: () => void
-  applyTransaction: (params: { add?: QualityRow[]; remove?: QualityRow[]; addIndex?: number }) => void
-  startEditingCell: (params: { rowIndex: number; colKey: string }) => void
-  refreshCells: (params?: { rowNodes?: unknown[]; columns?: string[]; force?: boolean }) => void
-  forEachNode: (cb: (node: { data: QualityRow }) => void) => void
+  applyTransaction: (_params: { add?: QualityRow[]; remove?: QualityRow[]; addIndex?: number }) => void
+  startEditingCell: (_params: { rowIndex: number; colKey: string }) => void
+  refreshCells: (_params?: { rowNodes?: unknown[]; columns?: string[]; force?: boolean }) => void
+  forEachNode: (_cb: (_node: { data: QualityRow }) => void) => void
 }
 
 interface AGGridRef {

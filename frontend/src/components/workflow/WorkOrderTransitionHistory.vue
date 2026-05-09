@@ -249,7 +249,8 @@ const fetchHistory = async () => {
     })
     emit('loaded', transitions.value)
   } catch (error) {
-    console.error('Error fetching transition history:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error fetching transition history:', error)
     emit('error', error)
   } finally {
     loading.value = false

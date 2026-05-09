@@ -24,7 +24,7 @@ vi.mock('ag-grid-vue3', () => ({
 // the real signature has many overloads we don't need to model.
 vi.mock('papaparse', () => ({
   default: {
-    parse: vi.fn((text: string, options: { complete: (result: { data: Record<string, string>[] }) => void }) => {
+    parse: vi.fn((text: string, options: { complete: (_result: { data: Record<string, string>[] }) => void }) => {
       const lines = text.trim().split('\n')
       const headers = lines[0].split(',')
       const data = lines.slice(1).map((line: string) => {

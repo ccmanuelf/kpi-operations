@@ -1,11 +1,10 @@
 /**
  * Composable for DashboardOverview data fetching, computed date
- * range, navigation handlers, and shift-workflow triggers.
+ * range, and navigation handlers.
  */
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
-import { useWorkflowStore } from '@/stores/workflowStore'
 
 export type DateRangeOption = '7d' | '30d' | '90d' | string
 
@@ -29,7 +28,6 @@ export interface DashboardKPIData {
 
 export function useDashboardOverviewData(props: DashboardOverviewProps) {
   const router = useRouter()
-  const workflowStore = useWorkflowStore()
 
   const startDate = computed<string>(() => {
     const today = new Date()
@@ -146,16 +144,7 @@ export function useDashboardOverviewData(props: DashboardOverviewProps) {
     console.log(`Navigating to ${categoryId} at ${route}`)
   }
 
-  const handleStartShift = (): void => {
-    workflowStore.startWorkflow('shift-start')
-  }
-
-  const handleEndShift = (): void => {
-    workflowStore.startWorkflow('shift-end')
-  }
-
   return {
-    workflowStore,
     startDate,
     endDate,
     kpiData,
@@ -170,7 +159,5 @@ export function useDashboardOverviewData(props: DashboardOverviewProps) {
     exportQualityReport,
     openActionDialog,
     handleCompletenessNavigate,
-    handleStartShift,
-    handleEndShift,
   }
 }

@@ -9,12 +9,6 @@
       </v-col>
     </v-row>
 
-    <!-- Shift Status Banner -->
-    <ShiftStatusBanner
-      @start-shift="handleStartShift"
-      @end-shift="handleEndShift"
-    />
-
     <!-- Absenteeism Alert Banner (P3-004) -->
     <AbsenteeismAlert
       :threshold="5"
@@ -360,7 +354,6 @@ import QualityByOperatorWidget from './widgets/QualityByOperatorWidget.vue'
 import ReworkByOperationWidget from './widgets/ReworkByOperationWidget.vue'
 import AbsenteeismAlert from './alerts/AbsenteeismAlert.vue'
 import DataCompletenessIndicator from './DataCompletenessIndicator.vue'
-import ShiftStatusBanner from './workflow/ShiftStatusBanner.vue'
 import { useDashboardOverviewData } from '@/composables/useDashboardOverviewData'
 
 const props = defineProps<{
@@ -381,7 +374,5 @@ const {
   exportQualityReport,
   openActionDialog,
   handleCompletenessNavigate,
-  handleStartShift,
-  handleEndShift
 } = useDashboardOverviewData(props)
 </script>

@@ -32,12 +32,12 @@ interface ColumnDef {
   editable?: boolean
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; max?: number; precision?: number }
-  cellRenderer?: (params: {
+  cellRenderer?: (_params: {
     data: KPITrackingRow
     rowIndex: number
     value?: unknown
   }) => HTMLElement
-  valueGetter?: (params: { data: KPITrackingRow }) => unknown
+  valueGetter?: (_params: { data: KPITrackingRow }) => unknown
   width?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
@@ -66,7 +66,7 @@ interface UseKPITrackingGridDataReturn {
   criticalCount: ComputedRef<number>
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeRow: (index: number) => void
+  removeRow: (_index: number) => void
   onCellValueChanged: () => void
 }
 
@@ -259,7 +259,7 @@ const renderStatusChip = (status: string): HTMLElement => {
 
 const renderDeleteAction = (
   params: { data: KPITrackingRow; rowIndex: number },
-  remove: (i: number) => void,
+  remove: (_i: number) => void,
 ): HTMLElement => {
   const div = document.createElement('div')
   div.innerHTML = `

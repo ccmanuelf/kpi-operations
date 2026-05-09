@@ -33,11 +33,11 @@ import useFloatingPoolGridData, {
 
 interface ColumnDefShape {
   field?: string
-  editable?: boolean | ((params: { data: FloatingPoolGridRow }) => boolean)
+  editable?: boolean | ((_params: { data: FloatingPoolGridRow }) => boolean)
   cellEditor?: string
-  cellEditorParams?: { values?: unknown[]; formatValue?: (v: unknown) => string }
-  valueGetter?: (params: { data: FloatingPoolGridRow }) => unknown
-  valueFormatter?: (params: { value?: unknown; data?: FloatingPoolGridRow }) => string
+  cellEditorParams?: { values?: unknown[]; formatValue?: (_v: unknown) => string }
+  valueGetter?: (_params: { data: FloatingPoolGridRow }) => unknown
+  valueFormatter?: (_params: { value?: unknown; data?: FloatingPoolGridRow }) => string
   pinned?: 'left' | 'right'
 }
 
@@ -333,7 +333,7 @@ describe('actions cell renderer', () => {
     harness: ReturnType<typeof buildHarness>,
   ): HTMLElement => {
     const col = findCol(harness.columnDefs.value, '_actions') as
-      | { cellRenderer?: (p: { data: FloatingPoolGridRow; rowIndex: number }) => HTMLElement }
+      | { cellRenderer?: (_p: { data: FloatingPoolGridRow; rowIndex: number }) => HTMLElement }
       | undefined
     return col!.cellRenderer!({ data: row, rowIndex: 0 })
   }

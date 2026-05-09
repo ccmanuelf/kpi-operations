@@ -252,7 +252,8 @@ const loadConfig = async () => {
       }
     }
   } catch (error) {
-    console.error('Failed to load email config:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load email config:', error)
     // Use defaults if load fails
   }
 }
@@ -298,7 +299,8 @@ const saveConfig = async () => {
       close()
     }, 1500)
   } catch (error) {
-    console.error('Failed to save email config:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to save email config:', error)
     errorMessage.value = error.response?.data?.detail || t('reports.configSaveFailed')
   } finally {
     saving.value = false
@@ -314,7 +316,8 @@ const sendTestEmail = async () => {
     await api.sendTestEmail(testEmail.value)
     successMessage.value = t('reports.testEmailSentTo', { email: testEmail.value })
   } catch (error) {
-    console.error('Failed to send test email:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to send test email:', error)
     errorMessage.value = error.response?.data?.detail || t('reports.testEmailFailed')
   } finally {
     sendingTest.value = false

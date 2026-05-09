@@ -31,7 +31,7 @@ import usePartOpportunitiesGridData, {
 
 interface ColumnDefShape {
   field?: string
-  editable?: boolean | ((params: { data: PartOpportunityGridRow }) => boolean)
+  editable?: boolean | ((_params: { data: PartOpportunityGridRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: unknown[]; min?: number; precision?: number } | (() => { values?: unknown[] })
   pinned?: 'left' | 'right'
@@ -89,7 +89,7 @@ describe('usePartOpportunitiesGridData', () => {
     it('part_number editable only on new rows (pinned left)', () => {
       const { columnDefs } = buildHarness()
       const col = findCol(columnDefs.value, 'part_number')!
-      const editable = col.editable as (p: { data: PartOpportunityGridRow }) => boolean
+      const editable = col.editable as (_p: { data: PartOpportunityGridRow }) => boolean
       expect(editable({ data: { _isNew: true } })).toBe(true)
       expect(editable({ data: { _isNew: false, part_opportunities_id: 1 } })).toBe(false)
       expect(col.pinned).toBe('left')
@@ -122,7 +122,7 @@ describe('usePartOpportunitiesGridData', () => {
       const { columnDefs } = buildHarness()
       const col = findCol(columnDefs.value, 'client_id')!
       expect(col.cellEditor).toBe('agSelectCellEditor')
-      const editable = col.editable as (p: { data: PartOpportunityGridRow }) => boolean
+      const editable = col.editable as (_p: { data: PartOpportunityGridRow }) => boolean
       expect(editable({ data: { _isNew: true } })).toBe(true)
       expect(editable({ data: { _isNew: false } })).toBe(false)
     })

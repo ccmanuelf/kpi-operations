@@ -42,7 +42,7 @@ interface ColumnDef {
   cellEditor?: string
   cellEditorParams?: { values?: string[]; min?: number; precision?: number }
   cellEditorPopup?: boolean
-  valueGetter?: (params: { data: Partial<QualityRow> }) => string | number
+  valueGetter?: (_params: { data: Partial<QualityRow> }) => string | number
 }
 
 const findCol = (cols: unknown[], field: string): ColumnDef | undefined =>

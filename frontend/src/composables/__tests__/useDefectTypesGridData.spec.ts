@@ -31,7 +31,7 @@ import useDefectTypesGridData, {
 
 interface ColumnDefShape {
   field?: string
-  editable?: boolean | ((params: { data: DefectTypeGridRow }) => boolean)
+  editable?: boolean | ((_params: { data: DefectTypeGridRow }) => boolean)
   cellEditor?: string
   cellEditorParams?: { values?: unknown[]; min?: number; precision?: number }
   pinned?: 'left' | 'right'
@@ -86,7 +86,7 @@ describe('useDefectTypesGridData', () => {
     it('defect_code editable only on new rows', () => {
       const { columnDefs } = buildHarness()
       const col = findCol(columnDefs.value, 'defect_code')!
-      const editable = col.editable as (params: { data: DefectTypeGridRow }) => boolean
+      const editable = col.editable as (_params: { data: DefectTypeGridRow }) => boolean
       expect(editable({ data: { _isNew: true } })).toBe(true)
       expect(editable({ data: { _isNew: false, defect_type_id: 1 } })).toBe(false)
     })

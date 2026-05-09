@@ -2,8 +2,7 @@
  * Unit tests for Composables
  * Tests: useResponsive, useKeyboardShortcuts, useUnsavedChanges, useQRScanner
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, nextTick } from 'vue'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------- Mock setup for vue-router (useUnsavedChanges needs it) ----------
 vi.mock('vue-router', () => ({
@@ -139,7 +138,7 @@ describe('useResponsive', () => {
 // ============================================================
 // useKeyboardShortcuts
 // ============================================================
-import { shallowMount, mount } from '@vue/test-utils'
+import { shallowMount } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 
 describe('useKeyboardShortcuts', () => {

@@ -62,7 +62,7 @@
       <v-col cols="12">
         <v-card color="primary" variant="tonal">
           <v-card-text class="text-center">
-            <div class="text-h6 mb-2">{{ t('kpi.oeeFormula') }}</div>
+            <div class="text-h6 mb-2">{{ $t('kpi.oeeFormula') }}</div>
             <div class="text-h4 font-weight-bold">
               {{ formatValue(components.availability) }}% x
               {{ formatValue(components.performance) }}% x
@@ -85,7 +85,7 @@
                   <div>
                     <div class="text-caption text-medium-emphasis">{{ $t('kpi.availability') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.availability) }}%</div>
-                    <div class="text-caption">{{ t('kpi.equipmentUptime') }}</div>
+                    <div class="text-caption">{{ $t('kpi.equipmentUptime') }}</div>
                   </div>
                   <v-icon size="48" color="blue">mdi-server</v-icon>
                 </div>
@@ -93,10 +93,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.availabilityFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.availabilityMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.availabilityFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.availabilityMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -109,7 +109,7 @@
                   <div>
                     <div class="text-caption text-medium-emphasis">{{ $t('kpi.performance') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.performance) }}%</div>
-                    <div class="text-caption">{{ t('kpi.speedEfficiency') }}</div>
+                    <div class="text-caption">{{ $t('kpi.speedEfficiency') }}</div>
                   </div>
                   <v-icon size="48" color="orange">mdi-speedometer</v-icon>
                 </div>
@@ -117,10 +117,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.performanceFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.performanceMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.performanceFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.performanceMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -133,7 +133,7 @@
                   <div>
                     <div class="text-caption text-medium-emphasis">{{ $t('kpi.qualityFPY') }}</div>
                     <div class="text-h4 font-weight-bold">{{ formatValue(components.quality) }}%</div>
-                    <div class="text-caption">{{ t('kpi.firstPassYield') }}</div>
+                    <div class="text-caption">{{ $t('kpi.firstPassYield') }}</div>
                   </div>
                   <v-icon size="48" color="green">mdi-star-circle</v-icon>
                 </div>
@@ -141,10 +141,10 @@
             </v-card>
           </template>
           <div>
-            <div class="tooltip-title">{{ t('common.formula') }}:</div>
-            <div class="tooltip-formula">{{ t('kpi.tooltips.qualityFormula') }}</div>
-            <div class="tooltip-title">{{ t('common.meaning') }}:</div>
-            <div class="tooltip-meaning">{{ t('kpi.tooltips.qualityMeaning') }}</div>
+            <div class="tooltip-title">{{ $t('common.formula') }}:</div>
+            <div class="tooltip-formula">{{ $t('kpi.tooltips.qualityFormula') }}</div>
+            <div class="tooltip-title">{{ $t('common.meaning') }}:</div>
+            <div class="tooltip-meaning">{{ $t('kpi.tooltips.qualityMeaning') }}</div>
           </div>
         </v-tooltip>
       </v-col>
@@ -188,7 +188,7 @@
               :loading="loading"
               :items-per-page="10"
               class="elevation-0"
-              :no-data-text="t('common.noData')"
+              :no-data-text="$t('common.noData')"
             >
               <template v-slot:item.date="{ item }">
                 {{ formatDate(item.date) }}
@@ -216,166 +216,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { onMounted } from 'vue'
 import { Line } from 'vue-chartjs'
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js'
-import { format } from 'date-fns'
-import { useKPIStore } from '@/stores/kpi'
-import api from '@/services/api'
+import useOEEData from '@/composables/useOEEData'
+import useOEECharts from '@/composables/useOEECharts'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
+const {
+  loading, clients, selectedClient, startDate, endDate, tableSearch,
+  historicalData, oeeData, components, statusColor,
+  historyHeaders, formatValue, formatDate,
+  getEfficiencyColor, getPerformanceColor,
+  onClientChange, onDateChange, refreshData, initialize
+} = useOEEData()
 
-const { t } = useI18n()
-const kpiStore = useKPIStore()
-const loading = ref(false)
-const clients = ref([])
-const selectedClient = ref(null)
-const startDate = ref(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-const endDate = ref(new Date().toISOString().split('T')[0])
-const tableSearch = ref('')
-const historicalData = ref([])
+const { chartData, chartOptions } = useOEECharts()
 
-const oeeData = computed(() => kpiStore.oee)
-const components = computed(() => ({
-  availability: kpiStore.availability?.percentage || 91.5,
-  performance: kpiStore.performance?.percentage || 92,
-  quality: kpiStore.quality?.fpy || 97
-}))
-
-const statusColor = computed(() => {
-  const oee = oeeData.value?.percentage || 0
-  if (oee >= 85) return 'success'
-  if (oee >= 65) return 'amber-darken-3'
-  return 'error'
-})
-
-const historyHeaders = computed(() => [
-  { title: t('kpi.headers.date'), key: 'date', sortable: true },
-  { title: t('kpi.headers.totalUnits'), key: 'total_units', sortable: true },
-  { title: t('kpi.headers.efficiencyPercent'), key: 'avg_efficiency', sortable: true },
-  { title: t('kpi.headers.performancePercent'), key: 'avg_performance', sortable: true },
-  { title: t('kpi.headers.entryCount'), key: 'entry_count', sortable: true }
-])
-
-const chartData = computed(() => ({
-  labels: kpiStore.trends.oee.map(d => format(new Date(d.date), 'MMM dd')),
-  datasets: [
-    {
-      label: t('kpi.charts.oeePercent'),
-      data: kpiStore.trends.oee.map(d => d.value),
-      borderColor: '#1976d2',
-      backgroundColor: 'rgba(25, 118, 210, 0.1)',
-      tension: 0.3,
-      fill: true
-    },
-    {
-      label: t('kpi.charts.worldClass', { value: 85 }),
-      data: Array(kpiStore.trends.oee.length).fill(85),
-      borderColor: '#2e7d32',
-      borderDash: [5, 5],
-      pointRadius: 0
-    }
-  ]
-}))
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: true,
-  plugins: {
-    legend: { display: true, position: 'top' },
-    tooltip: { mode: 'index', intersect: false }
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-      max: 100,
-      ticks: { callback: (value) => `${value}%` }
-    }
-  }
-}
-
-const formatValue = (value) => {
-  return value !== null && value !== undefined ? Number(value).toFixed(1) : t('common.na')
-}
-
-const formatDate = (dateStr) => {
-  try {
-    return format(new Date(dateStr), 'MMM dd, yyyy')
-  } catch {
-    return dateStr
-  }
-}
-
-const getEfficiencyColor = (eff) => {
-  if (eff >= 85) return 'success'
-  if (eff >= 70) return 'amber-darken-3'
-  return 'error'
-}
-
-const getPerformanceColor = (perf) => {
-  if (perf >= 95) return 'success'
-  if (perf >= 80) return 'amber-darken-3'
-  return 'error'
-}
-
-const loadClients = async () => {
-  try {
-    const response = await api.getClients()
-    clients.value = response.data || []
-  } catch (error) {
-    console.error('Failed to load clients:', error)
-  }
-}
-
-const onClientChange = () => {
-  kpiStore.setClient(selectedClient.value)
-  refreshData()
-}
-
-const onDateChange = () => {
-  kpiStore.setDateRange(startDate.value, endDate.value)
-  refreshData()
-}
-
-const refreshData = async () => {
-  loading.value = true
-  try {
-    await Promise.all([
-      kpiStore.fetchOEE(),
-      kpiStore.fetchAvailability(),
-      kpiStore.fetchPerformance(),
-      kpiStore.fetchQuality(),
-      kpiStore.fetchDashboard()
-    ])
-    historicalData.value = kpiStore.dashboard || []
-  } catch (error) {
-    console.error('Failed to refresh data:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    await loadClients()
-    kpiStore.setDateRange(startDate.value, endDate.value)
-    await refreshData()
-  } finally {
-    loading.value = false
-  }
-})
+onMounted(() => initialize())
 </script>
 
 <style>

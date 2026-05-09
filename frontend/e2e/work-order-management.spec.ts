@@ -38,19 +38,44 @@ test.describe('Work Order Management — inline AG Grid', () => {
     await expect(totalCard).toBeVisible({ timeout: 10000 })
   })
 
-  // FIXME(2026-06-01): the inline-grid Add button creates a draft
-  // row whose save button uses CSS class `ag-grid-save-btn` — that
-  // selector is fragile (depends on AG Grid render order).
-  // See Phase B.7 — replace with stable data-testid.
-  test.skip('Add button opens a new draft row in the grid', async ({ page }) => {
-    const addBtn = page.locator('button:has-text("Add")').first()
-    if (await addBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await addBtn.click({ force: true })
-      await page.waitForTimeout(500)
-      const saveBtn = page.locator('button.ag-grid-save-btn, button[title*="Save"]').first()
-      const hasDraft = await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)
-      expect(hasDraft).toBeTruthy()
+  test('Add button opens a new draft row in the grid', async ({ page }) => {
+    // Wait for the grid to mount before looking for Add (header buttons
+    // render after AG-Grid's first paint).
+    await expect(page.locator('[data-testid="ag-grid-wrapper"], .ag-root').first()).toBeVisible({ timeout: 15000 })
+
+    // The Add button is disabled until a client is selected. On
+    // fresh CI runs the kpi store's selectedClient is null. UI-driven
+    // selection through Vuetify's v-select dropdown is fragile in
+    // headless Chromium; reach into the Pinia store via window for a
+    // stable test-only setup. The fallback is to assert the disabled-
+    // state contract when no clients exist in the seeded DB.
+    const clients = await page.evaluate(async () => {
+      const res = await fetch('/api/clients/active/list')
+      if (!res.ok) return []
+      const data = await res.json()
+      return Array.isArray(data) ? data : []
+    })
+    if (clients.length === 0) {
+      await expect(page.locator('button:has-text("Add")').first()).toBeDisabled({ timeout: 3000 })
+      return
     }
+    // Set selected client by clicking the first option in the v-select.
+    // Use ARIA label match (Vuetify wires it to the underlying input).
+    const clientCombo = page.getByRole('combobox', { name: /Filter by Client|filters\.client/i }).first()
+    await clientCombo.click({ force: true })
+    const firstOption = page.locator('.v-list-item').filter({ hasText: clients[0].client_name }).first()
+    await firstOption.waitFor({ state: 'visible', timeout: 5000 })
+    await firstOption.click({ force: true })
+    // Allow the v-model + reactive disabled binding to flush.
+    await page.waitForTimeout(500)
+
+    const addBtn = page.locator('button:has-text("Add")').first()
+    await expect(addBtn).toBeEnabled({ timeout: 5000 })
+    await addBtn.click({ force: true })
+    // Stable data-testid hook on the row-level save button — the prior
+    // CSS-class selector raced with AG-Grid's render order.
+    const saveBtn = page.locator('[data-testid="work-order-row-save-btn"]').first()
+    await expect(saveBtn).toBeVisible({ timeout: 10000 })
   })
 
   test('toolbar exposes Export CSV and Import CSV buttons', async ({ page }) => {

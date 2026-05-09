@@ -365,7 +365,8 @@ const loadClients = async () => {
     const response = await api.getClients()
     clients.value = response.data || []
   } catch (error) {
-    console.error('Failed to load clients:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load clients:', error)
   }
 }
 
@@ -389,7 +390,8 @@ const loadThresholds = async () => {
       globalDefaults.value = { ...thresholds.value }
     }
   } catch (error) {
-    console.error('Failed to load thresholds:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Failed to load thresholds:', error)
     showSnackbar(t('admin.settings.failedToLoad') + ' thresholds', 'error')
   } finally {
     loadingThresholds.value = false
@@ -443,7 +445,7 @@ const resetToGlobal = async () => {
 
     showSnackbar(`${t('admin.settings.resetToGlobalSuccess')} - ${selectedClientName.value}`)
     await loadThresholds()
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   }
 }
@@ -453,7 +455,7 @@ const saveGeneralSettings = async () => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
     showSnackbar(t('admin.settings.generalSettingsSaved'))
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
@@ -465,7 +467,7 @@ const saveNotificationSettings = async () => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
     showSnackbar(t('admin.settings.notificationSettingsSaved'))
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false
@@ -477,7 +479,7 @@ const saveDataSettings = async () => {
   try {
     await new Promise(resolve => setTimeout(resolve, 500))
     showSnackbar(t('admin.settings.dataSettingsSaved'))
-  } catch (error) {
+  } catch {
     showSnackbar(t('admin.settings.failedToSave'), 'error')
   } finally {
     saving.value = false

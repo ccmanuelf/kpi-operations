@@ -46,24 +46,24 @@ interface ColumnDef {
   headerName?: string
   headerTooltip?: string
   field?: string
-  editable?: boolean | ((params: { data: ScenarioRow }) => boolean)
+  editable?: boolean | ((_params: { data: ScenarioRow }) => boolean)
   cellEditor?: string
   cellEditorPopup?: boolean
   cellEditorParams?: { values?: string[]; min?: number; max?: number; precision?: number }
-  cellRenderer?: (params: {
+  cellRenderer?: (_params: {
     data: ScenarioRow
     rowIndex: number
     value?: unknown
   }) => HTMLElement
-  valueGetter?: (params: { data: ScenarioRow }) => unknown
-  valueFormatter?: (params: { value?: unknown; data?: ScenarioRow }) => string
-  valueSetter?: (params: { data: ScenarioRow; newValue: unknown }) => boolean
+  valueGetter?: (_params: { data: ScenarioRow }) => unknown
+  valueFormatter?: (_params: { value?: unknown; data?: ScenarioRow }) => string
+  valueSetter?: (_params: { data: ScenarioRow; newValue: unknown }) => boolean
   width?: number
   minWidth?: number
   pinned?: 'left' | 'right'
   sortable?: boolean
   filter?: boolean
-  checkboxSelection?: boolean | ((params: { data: ScenarioRow }) => boolean)
+  checkboxSelection?: boolean | ((_params: { data: ScenarioRow }) => boolean)
   headerCheckboxSelection?: boolean
 }
 
@@ -114,22 +114,22 @@ export const DEFAULT_PARAMETERS: Record<string, Record<string, unknown>> = {
 }
 
 interface SnackbarLike {
-  showSuccess: (m: string) => void
-  showError: (m: string) => void
+  showSuccess: (_m: string) => void
+  showError: (_m: string) => void
 }
 
 interface UseScenariosGridDataOptions {
   scenarios: Ref<ScenarioRow[]>
   notify: SnackbarLike
-  onSaveNewRow: (row: ScenarioRow) => Promise<void>
-  onRunRow: (row: ScenarioRow) => Promise<void>
-  onConfirmDelete: (row: ScenarioRow) => void
+  onSaveNewRow: (_row: ScenarioRow) => Promise<void>
+  onRunRow: (_row: ScenarioRow) => Promise<void>
+  onConfirmDelete: (_row: ScenarioRow) => void
 }
 
 interface UseScenariosGridDataReturn {
   columnDefs: ComputedRef<ColumnDef[]>
   addRow: () => void
-  removeNewRow: (row: ScenarioRow) => void
+  removeNewRow: (_row: ScenarioRow) => void
 }
 
 const requiredFieldsPresent = (row: ScenarioRow): boolean =>
@@ -397,10 +397,10 @@ const renderStatusChip = (status: string): HTMLElement => {
 const renderActions = (
   params: { data: ScenarioRow; rowIndex: number },
   handlers: {
-    saveRow: (row: ScenarioRow) => Promise<void>
-    removeNewRow: (row: ScenarioRow) => void
-    runRow: (row: ScenarioRow) => Promise<void>
-    onConfirmDelete: (row: ScenarioRow) => void
+    saveRow: (_row: ScenarioRow) => Promise<void>
+    removeNewRow: (_row: ScenarioRow) => void
+    runRow: (_row: ScenarioRow) => Promise<void>
+    onConfirmDelete: (_row: ScenarioRow) => void
   },
 ): HTMLElement => {
   const div = document.createElement('div')

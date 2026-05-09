@@ -306,8 +306,9 @@ const fetchData = async () => {
     } else {
       await fetchQualityAndAggregate()
     }
-  } catch (err: any) {
-    console.warn('Quality by operator API not available, using fallback calculation')
+  } catch {
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.warn('Quality by operator API not available, using fallback calculation')
     await fetchQualityAndAggregate()
   } finally {
     loading.value = false
@@ -364,7 +365,7 @@ const fetchQualityAndAggregate = async () => {
       // Use demo data
       operatorQuality.value = generateDemoData()
     }
-  } catch (err: any) {
+  } catch {
     // Use demo data for display
     operatorQuality.value = generateDemoData()
   }

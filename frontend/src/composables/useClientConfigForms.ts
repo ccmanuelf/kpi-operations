@@ -37,7 +37,7 @@ export interface OTDModeOption {
 }
 
 type ValidationResult = true | string
-export type ValidationRule = (v: unknown) => ValidationResult
+export type ValidationRule = (_v: unknown) => ValidationResult
 
 export interface ValidationRules {
   required: ValidationRule
@@ -66,7 +66,7 @@ interface FormHandle {
   resetValidation?: () => void
 }
 
-type SnackbarFn = (message: string, color: string) => void
+type SnackbarFn = (_message: string, _color: string) => void
 type SelectedClientGetter = () => string | number | null
 type ConfigGetter = () => ClientConfigEnvelope | null
 type DefaultsGetter = () => ClientConfigData | null

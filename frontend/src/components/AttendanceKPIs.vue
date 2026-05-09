@@ -122,7 +122,7 @@ import axios from 'axios'
 
 const { t } = useI18n()
 
-const props = defineProps<{
+defineProps<{
   dateRange: string
 }>()
 
@@ -160,7 +160,8 @@ const fetchData = async () => {
       available: 2
     }
   } catch (error) {
-    console.error('Error fetching attendance KPIs:', error)
+    // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
+    if (import.meta.env.DEV) console.error('Error fetching attendance KPIs:', error)
   }
 }
 
