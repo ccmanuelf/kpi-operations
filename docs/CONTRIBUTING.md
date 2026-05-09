@@ -226,7 +226,41 @@ cd frontend && npm test
 
 # E2E tests (Playwright, SQLite backend)
 cd frontend && npm run test:e2e:sqlite
+
+# E2E tests against the live Render deployment (post-merge validation)
+cd frontend && BACKEND_HEALTH_URL=https://kpi-operations-api.onrender.com/health/live \
+  npx playwright test --config=playwright.render.config.ts --project=chromium-render
 ```
+
+### Render E2E Policy
+
+The `playwright.render.config.ts` suite targets the live Render deployment
+(`https://kpi-operations-frontend.onrender.com`) and exists to catch
+regressions that only surface in the production Vite build / nginx-served
+SPA / free-tier cold-start path — i.e. anything CI's local dev server
+hides.
+
+**When to run it:**
+
+1. **Once per release-bearing merge to `main`** (squash-merged PRs that
+   change frontend views, routing, auth, or the FAB / nav drawer). Goal:
+   confirm the deployed bundle matches behaviour observed in CI.
+2. **After any change to** `playwright.config.ts` / `playwright.sqlite.config.ts`
+   / `e2e/helpers.ts` — those changes invalidate the Render-parity assumption.
+3. **Not on every PR.** Free-tier cold-start makes the suite ~21 minutes
+   per run; running it on every commit would burn time without surfacing
+   bugs that the SQLite suite already catches.
+
+**Expectations:**
+
+- 0 hard failures. Up to 2 flaky-on-first-attempt tests is acceptable
+  — Render free tier wakes from idle in 30-60s and Playwright's
+  `retries: 1` covers it.
+- If a test fails on Render but passes on `npm run test:e2e:sqlite`,
+  the fix goes in the spec/helper (timing, scroll, selector), not in
+  app code — unless the failure indicates a real prod-build defect, in
+  which case it goes through the normal flake-audit gate (`memory/
+  feedback_self_audit_scope.md`).
 
 ### Testing Requirements
 

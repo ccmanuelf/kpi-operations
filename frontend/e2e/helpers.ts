@@ -6,16 +6,24 @@ import { Page } from '@playwright/test';
  */
 
 /**
- * Wait for backend health check to confirm API is ready
+ * Wait for backend health check to confirm API is ready.
+ * Uses the BACKEND_HEALTH_URL env var when set (e.g. when running
+ * against a remote deployment); otherwise hits the local dev server.
+ *
+ * Default timeout is 60s — covers Render free-tier cold-start
+ * (~30-60s) without slowing local runs (the loop exits as soon as
+ * the first health response succeeds, typically <500ms locally).
+ *
  * @param page - Playwright Page object
  * @param timeout - Maximum wait time in milliseconds
  * @returns true if backend is ready, false otherwise
  */
-export async function waitForBackend(page: Page, timeout = 10000): Promise<boolean> {
+export async function waitForBackend(page: Page, timeout = 60000): Promise<boolean> {
+  const healthUrl = process.env.BACKEND_HEALTH_URL || 'http://localhost:8000/health/';
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
     try {
-      const response = await page.request.get('http://localhost:8000/health/');
+      const response = await page.request.get(healthUrl);
       if (response.ok()) return true;
     } catch {
       // Backend not ready yet

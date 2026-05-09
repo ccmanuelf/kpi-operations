@@ -32,11 +32,21 @@ async function waitForTabContent(page: Page) {
   await page.waitForTimeout(300); // Buffer for Vue reactivity
 }
 
-// Helper to click a tab by name
+// Helper to click a tab by name. Drops `force: true` so Playwright's
+// auto-scroll + actionability handle horizontal-overflow tabs that
+// would otherwise be off-viewport. Waits for v-tabs to be fully
+// initialized (some tab marked as `.v-tab--selected`) BEFORE clicking,
+// then waits for the selected class to migrate to the target — covers
+// the v-tabs reactive-binding race seen on slower environments.
 async function clickTab(page: Page, tabName: string) {
   const tabsContainer = page.locator('.v-tabs');
+  await expect(tabsContainer.locator('.v-tab--selected').first()).toBeVisible({ timeout: 10000 });
   const tab = tabsContainer.locator('.v-tab', { hasText: tabName });
-  await tab.click({ force: true });
+  await tab.scrollIntoViewIfNeeded();
+  await tab.click();
+  await expect(
+    tabsContainer.locator('.v-tab--selected', { hasText: tabName }),
+  ).toBeVisible({ timeout: 10000 });
   await waitForTabContent(page);
 }
 
@@ -50,7 +60,17 @@ test.describe('Capacity Planning - Navigation', () => {
   });
 
   test('should display Capacity Planning in navigation menu', async ({ page }) => {
+    // The "Planning" v-list-group can render collapsed when Pinia
+    // hydration races the v-list opened-model — common on slow
+    // production builds (Render). Mirror what a real user does:
+    // click the group activator if the "Capacity Planning" child
+    // isn't already visible, then assert visibility.
     const navItem = page.locator('.v-navigation-drawer').locator('text=Capacity Planning');
+    if (!(await navItem.isVisible({ timeout: 3000 }).catch(() => false))) {
+      const planningGroup = page.locator('.v-navigation-drawer').getByRole('option', { name: 'Planning' }).first();
+      await planningGroup.scrollIntoViewIfNeeded();
+      await planningGroup.click();
+    }
     await expect(navItem).toBeVisible({ timeout: 15000 });
   });
 
