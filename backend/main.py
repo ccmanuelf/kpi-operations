@@ -148,16 +148,47 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
     are handled by the existing route handlers without any route changes.
 
     Both /api/v1/<path> and /api/<path> resolve to the same handler.
+
+    Also normalises 3xx Location headers on the way out: when a request
+    arrived at /api/v1/... and FastAPI emits a slash-redirect (e.g. for
+    routes registered with a trailing slash), the Location is generated
+    against the rewritten /api/... path AND comes back as an absolute
+    URL pointing at the backend host. In dev that absolute URL skips
+    the Vite proxy and triggers a cross-origin redirect, which strips
+    the browser's Authorization header → spurious 401 → forced logout.
+    Rewriting the Location to (a) re-include /v1 and (b) be relative
+    (path-only) keeps the redirect same-origin and authenticated.
     """
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         path = request.scope["path"]
+        original_was_v1 = path.startswith("/api/v1/") or path == "/api/v1"
         if path.startswith("/api/v1/"):
             # Strip the /v1 segment: "/api/v1/foo" -> "/api/foo"
             request.scope["path"] = "/api/" + path[8:]
         elif path == "/api/v1":
             request.scope["path"] = "/api"
         response = await call_next(request)
+
+        if original_was_v1 and response.status_code in (301, 302, 307, 308):
+            loc = response.headers.get("location")
+            if loc:
+                from urllib.parse import urlparse, urlunparse
+
+                parsed = urlparse(loc)
+                new_path = parsed.path
+                # Re-add the /v1 segment if FastAPI emitted /api/... .
+                if new_path.startswith("/api/") and not new_path.startswith("/api/v1/"):
+                    new_path = "/api/v1/" + new_path[len("/api/") :]
+                elif new_path == "/api":
+                    new_path = "/api/v1"
+                # Drop scheme+netloc so the redirect stays relative —
+                # browser keeps the original origin and the Vite proxy
+                # (or nginx in prod) handles the next hop with auth
+                # headers intact.
+                response.headers["location"] = urlunparse(
+                    ("", "", new_path, parsed.params, parsed.query, parsed.fragment)
+                )
         return response
 
 
