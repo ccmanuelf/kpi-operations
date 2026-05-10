@@ -297,7 +297,6 @@ const {
   currentDate,
   currentDateFormatted,
   workOrderOptions,
-  formatTime,
   formatRelativeTime,
   getProgressPercent,
   getProgressColor,
