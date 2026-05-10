@@ -11,16 +11,18 @@ pydantic-settings==2.12.0
 sqlalchemy==2.0.46
 alembic==1.15.2
 pymysql==1.1.2
-cryptography==46.0.5  # Pinned for pymysql SSL + python-jose; security-critical
+cryptography==46.0.7  # CVE-2026-34073 + CVE-2026-39892 fix; pinned for pymysql SSL + python-jose; security-critical
 
 # Authentication
 python-jose[cryptography]==3.5.0
+ecdsa==0.19.2          # transitive via python-jose; pinned for CVE-2024-23342 + CVE-2026-33936
+pyasn1==0.6.3          # transitive via python-jose + rsa; pinned for CVE-2026-30922
 passlib[bcrypt]==1.7.4
-bcrypt==4.2.1  # Pin: passlib incompatible with bcrypt 5.x
-python-multipart==0.0.22
+bcrypt==4.2.1          # Pin: passlib incompatible with bcrypt 5.x
+python-multipart==0.0.27  # CVE-2026-40347 + CVE-2026-42561 fix
 
 # CORS & Security
-python-dotenv==1.2.1
+python-dotenv==1.2.2   # CVE-2026-28684 fix
 slowapi==0.1.9
 
 # Date Utilities
@@ -31,9 +33,11 @@ openpyxl==3.1.5
 
 # PDF Generation
 reportlab==4.4.10
+pillow==12.2.0          # transitive via reportlab; pinned for 5 CVEs (40192, 42308–42311)
 
 # Email & Reports
 sendgrid==6.12.5
+werkzeug==3.1.6         # transitive via sendgrid; pinned for CVE-2026-27199
 APScheduler==3.11.2
 
 # System Monitoring
