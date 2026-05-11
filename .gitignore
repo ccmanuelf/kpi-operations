@@ -64,7 +64,9 @@ htmlcov/
 
 # Test reports (generated)
 **/e2e-results*.json
+**/playwright-report/
 **/playwright-report-sqlite/
+**/playwright-report-render/
 **/test-results/
 
 # Build outputs
@@ -123,7 +125,7 @@ config/secrets.json
 database/*.backup.*
 
 # Test reports (generated)
-frontend/playwright-report/
+# (covered by **/playwright-report/ above)
 frontend/e2e-results.json
 
 # Generated documentation reports

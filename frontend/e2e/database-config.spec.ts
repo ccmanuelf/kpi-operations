@@ -141,16 +141,14 @@ test.describe('API Integration', () => {
     await expect(page.getByText('SQLite').first()).toBeVisible({ timeout: 5000 })
   })
 
-  test('test connection endpoint works', async ({ page, request }) => {
-    // Test connection endpoint directly
-    const response = await request.post('http://localhost:8000/api/admin/database/test-connection', {
-      data: {
-        target_url: 'sqlite:///test.db'
-      }
+  test('test connection endpoint rejects unauthenticated callers', async ({ request }) => {
+    // Hit via the configured baseURL so Render/local both work; no auth header
+    // is provided so the supervisor-protected endpoint must respond 401.
+    const response = await request.post('/api/admin/database/test-connection', {
+      data: { target_url: 'sqlite:///test.db' },
     })
 
-    // The endpoint may return various statuses
-    expect([200, 400, 401, 403, 422]).toContain(response.status())
+    expect(response.status()).toBe(401)
   })
 })
 
