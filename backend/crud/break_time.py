@@ -57,7 +57,7 @@ def list_break_times(db: Session, shift_id: int, client_id: str) -> List[BreakTi
         .filter(
             BreakTime.shift_id == shift_id,
             BreakTime.client_id == client_id,
-            BreakTime.is_active == True,  # noqa: E712 — SQLAlchemy filter
+            BreakTime.is_active.is_(True),
         )
         .order_by(BreakTime.start_offset_minutes)
         .all()
@@ -79,7 +79,7 @@ def list_break_times_for_client(db: Session, client_id: str) -> List[BreakTime]:
         db.query(BreakTime)
         .filter(
             BreakTime.client_id == client_id,
-            BreakTime.is_active == True,  # noqa: E712
+            BreakTime.is_active.is_(True),
         )
         .order_by(BreakTime.shift_id, BreakTime.start_offset_minutes)
         .all()
@@ -106,7 +106,7 @@ def get_total_break_minutes(db: Session, shift_id: int, client_id: str) -> int:
         .filter(
             BreakTime.shift_id == shift_id,
             BreakTime.client_id == client_id,
-            BreakTime.is_active == True,  # noqa: E712
+            BreakTime.is_active.is_(True),
         )
         .scalar()
     )

@@ -81,7 +81,7 @@ def list_hold_statuses(
     """List hold statuses for a client, ordered by sort_order."""
     query = db.query(HoldStatusCatalog).filter(HoldStatusCatalog.client_id == client_id)
     if not include_inactive:
-        query = query.filter(HoldStatusCatalog.is_active == True)  # noqa: E712
+        query = query.filter(HoldStatusCatalog.is_active.is_(True))
     return query.order_by(HoldStatusCatalog.sort_order, HoldStatusCatalog.status_code).all()
 
 
@@ -129,7 +129,7 @@ def validate_hold_status_for_client(db: Session, client_id: str, status_code: st
             and_(
                 HoldStatusCatalog.client_id == client_id,
                 HoldStatusCatalog.status_code == status_code,
-                HoldStatusCatalog.is_active == True,  # noqa: E712
+                HoldStatusCatalog.is_active.is_(True),
             )
         )
         .first()
@@ -171,7 +171,7 @@ def list_hold_reasons(
     """List hold reasons for a client, ordered by sort_order."""
     query = db.query(HoldReasonCatalog).filter(HoldReasonCatalog.client_id == client_id)
     if not include_inactive:
-        query = query.filter(HoldReasonCatalog.is_active == True)  # noqa: E712
+        query = query.filter(HoldReasonCatalog.is_active.is_(True))
     return query.order_by(HoldReasonCatalog.sort_order, HoldReasonCatalog.reason_code).all()
 
 
@@ -219,7 +219,7 @@ def validate_hold_reason_for_client(db: Session, client_id: str, reason_code: st
             and_(
                 HoldReasonCatalog.client_id == client_id,
                 HoldReasonCatalog.reason_code == reason_code,
-                HoldReasonCatalog.is_active == True,  # noqa: E712
+                HoldReasonCatalog.is_active.is_(True),
             )
         )
         .first()

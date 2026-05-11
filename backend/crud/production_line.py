@@ -34,7 +34,7 @@ def count_active_lines(db: Session, client_id: str) -> int:
         db.query(ProductionLine)
         .filter(
             ProductionLine.client_id == client_id,
-            ProductionLine.is_active == True,  # noqa: E712
+            ProductionLine.is_active.is_(True),
         )
         .count()
     )
@@ -129,7 +129,7 @@ def list_production_lines(
     """
     query = db.query(ProductionLine).filter(ProductionLine.client_id == client_id)
     if not include_inactive:
-        query = query.filter(ProductionLine.is_active == True)  # noqa: E712
+        query = query.filter(ProductionLine.is_active.is_(True))
     return query.order_by(ProductionLine.line_code).all()
 
 
@@ -164,7 +164,7 @@ def get_production_line_tree(db: Session, client_id: str) -> List[ProductionLine
         .filter(
             ProductionLine.client_id == client_id,
             ProductionLine.parent_line_id.is_(None),
-            ProductionLine.is_active == True,  # noqa: E712
+            ProductionLine.is_active.is_(True),
         )
         .order_by(ProductionLine.line_code)
         .all()
@@ -319,7 +319,7 @@ def auto_sync_lines(db: Session, client_id: str) -> Dict[str, list]:
         db.query(ProductionLine)
         .filter(
             ProductionLine.client_id == client_id,
-            ProductionLine.is_active == True,  # noqa: E712
+            ProductionLine.is_active.is_(True),
             ProductionLine.capacity_line_id.is_(None),
         )
         .all()
@@ -330,7 +330,7 @@ def auto_sync_lines(db: Session, client_id: str) -> Dict[str, list]:
         db.query(CapacityProductionLine)
         .filter(
             CapacityProductionLine.client_id == client_id,
-            CapacityProductionLine.is_active == True,  # noqa: E712
+            CapacityProductionLine.is_active.is_(True),
         )
         .all()
     )
@@ -384,7 +384,7 @@ def get_unlinked_lines(db: Session, client_id: str) -> List[ProductionLine]:
         db.query(ProductionLine)
         .filter(
             ProductionLine.client_id == client_id,
-            ProductionLine.is_active == True,  # noqa: E712
+            ProductionLine.is_active.is_(True),
             ProductionLine.capacity_line_id.is_(None),
         )
         .order_by(ProductionLine.line_code)

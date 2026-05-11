@@ -73,7 +73,7 @@ def check_shift_overlaps(
     query = db.query(Shift).filter(
         and_(
             Shift.client_id == client_id,
-            Shift.is_active == True,  # noqa: E712
+            Shift.is_active.is_(True),
         )
     )
     if exclude_shift_id is not None:
@@ -147,7 +147,7 @@ def list_shifts(
     """
     query = db.query(Shift).filter(Shift.client_id == client_id)
     if not include_inactive:
-        query = query.filter(Shift.is_active == True)  # noqa: E712
+        query = query.filter(Shift.is_active.is_(True))
     return query.order_by(Shift.shift_name).all()
 
 
