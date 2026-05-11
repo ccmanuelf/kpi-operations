@@ -51,20 +51,19 @@ test.describe('Floating Pool Management — Pool Overview', () => {
   });
 
   test('should display current-assignment summary card', async ({ page }) => {
-    // The "Currently Assigned" card shows summary.assigned. Real assertion
-    // (replaces tautological `expect(value !== undefined).toBeTruthy()`).
+    // The "Currently Assigned" card shows summary.assigned. Use
+    // toHaveText (which polls) instead of textContent() (which grabs the
+    // current DOM snapshot — empty during the data fetch on Render's
+    // free-tier cold-load).
     const assignedCard = page.locator('[data-testid="floating-pool-assigned-card"]');
     await expect(assignedCard).toBeVisible({ timeout: 15000 });
-    // Card body must render an integer count (text-h4 div).
-    const count = await assignedCard.locator('.text-h4').textContent();
-    expect(count).toMatch(/^\d+$/);
+    await expect(assignedCard.locator('.text-h4')).toHaveText(/^\d+$/, { timeout: 15000 });
   });
 
   test('should show employee availability summary card', async ({ page }) => {
     const availableCard = page.locator('[data-testid="floating-pool-available-card"]');
     await expect(availableCard).toBeVisible({ timeout: 15000 });
-    const count = await availableCard.locator('.text-h4').textContent();
-    expect(count).toMatch(/^\d+$/);
+    await expect(availableCard.locator('.text-h4')).toHaveText(/^\d+$/, { timeout: 15000 });
   });
 });
 
@@ -78,21 +77,19 @@ test.describe('Floating Pool Management — Utilization Dashboard', () => {
     const utilCard = page.locator('[data-testid="floating-pool-utilization-card"]');
     await expect(utilCard).toBeVisible({ timeout: 15000 });
     // Utilization renders as "{N}%" — assert the format, not just visibility.
-    const value = await utilCard.locator('.text-h4').textContent();
-    expect(value).toMatch(/^\d+%$/);
+    await expect(utilCard.locator('.text-h4')).toHaveText(/^\d+%$/, { timeout: 15000 });
   });
 
   test('should display total-employees card alongside available count', async ({ page }) => {
-    // Real assertion: both cards render and totals are sensible (available <= total).
-    const total = await page
-      .locator('[data-testid="floating-pool-total-card"] .text-h4')
-      .textContent();
-    const available = await page
-      .locator('[data-testid="floating-pool-available-card"] .text-h4')
-      .textContent();
+    // Both cards render and totals are sensible (available <= total). Use
+    // toHaveText to wait for the data fetch to populate the counts.
+    const totalLoc = page.locator('[data-testid="floating-pool-total-card"] .text-h4');
+    const availLoc = page.locator('[data-testid="floating-pool-available-card"] .text-h4');
+    await expect(totalLoc).toHaveText(/^\d+$/, { timeout: 15000 });
+    await expect(availLoc).toHaveText(/^\d+$/, { timeout: 15000 });
 
-    expect(total).toMatch(/^\d+$/);
-    expect(available).toMatch(/^\d+$/);
+    const total = await totalLoc.textContent();
+    const available = await availLoc.textContent();
     expect(Number(available)).toBeLessThanOrEqual(Number(total));
   });
 
