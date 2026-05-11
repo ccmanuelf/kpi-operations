@@ -90,4 +90,9 @@ filterwarnings = [
     # back in via a copy-paste from old code. If a new Pydantic upgrade
     # legitimately requires a deprecation suppression, document it inline.
     "error::pydantic.PydanticDeprecatedSince20",
+    # SQLAlchemy 2.0-style imports are the only supported path in the
+    # codebase. `declarative_base()` resolves from `sqlalchemy.orm` (not
+    # the legacy `sqlalchemy.ext.declarative`). Promote any reintroduction
+    # of the V1.x import path to a hard CI failure.
+    "error::sqlalchemy.exc.MovedIn20Warning",
 ]
