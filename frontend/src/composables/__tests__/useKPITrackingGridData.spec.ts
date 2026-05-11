@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
+import { withSetup } from '../../test/composable-test-utils'
 
 const { storeApi } = vi.hoisted(() => ({
   storeApi: {
@@ -77,7 +78,7 @@ describe('useKPITrackingGridData', () => {
 
   describe('column definitions', () => {
     it('exposes kpi_name as text editor (pinned left)', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, 'kpi_name')!
       expect(col.cellEditor).toBe('agTextCellEditor')
       expect(col.pinned).toBe('left')
@@ -85,32 +86,32 @@ describe('useKPITrackingGridData', () => {
     })
 
     it('exposes target_value as numeric editor', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, 'target_value')!
       expect(col.cellEditor).toBe('agNumberCellEditor')
       expect(col.editable).toBe(true)
     })
 
     it('exposes actual_value as read-only', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, 'actual_value')!
       expect(col.editable).toBe(false)
     })
 
     it('exposes variance_percent as read-only with chip renderer', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, 'variance_percent')!
       expect(col.editable).toBe(false)
     })
 
     it('exposes status as read-only with chip renderer', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, 'status')!
       expect(col.editable).toBe(false)
     })
 
     it('exposes _period column with date-range valueGetter', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, '_period')!
       expect(col.editable).toBe(false)
       const start = '2026-05-01'
@@ -122,13 +123,13 @@ describe('useKPITrackingGridData', () => {
     })
 
     it('_period valueGetter returns empty string when dates missing', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, '_period')!
       expect(col.valueGetter!({ data: {} as KPITrackingRow })).toBe('')
     })
 
     it('exposes _actions column pinned right', () => {
-      const { columnDefs } = useKPITrackingGridData()
+      const { columnDefs } = withSetup(() => useKPITrackingGridData())
       const col = findCol(columnDefs.value, '_actions')!
       expect(col.pinned).toBe('right')
     })
@@ -141,7 +142,7 @@ describe('useKPITrackingGridData', () => {
         { variance_percent: -4 },
         { variance_percent: 7 },
       ]
-      const { onTargetCount } = useKPITrackingGridData()
+      const { onTargetCount } = withSetup(() => useKPITrackingGridData())
       expect(onTargetCount.value).toBe(2)
     })
 
@@ -152,7 +153,7 @@ describe('useKPITrackingGridData', () => {
         { variance_percent: 15 },
         { variance_percent: 2 },
       ]
-      const { offTargetCount } = useKPITrackingGridData()
+      const { offTargetCount } = withSetup(() => useKPITrackingGridData())
       expect(offTargetCount.value).toBe(2)
     })
 
@@ -162,7 +163,7 @@ describe('useKPITrackingGridData', () => {
         { variance_percent: -25 },
         { variance_percent: 5 },
       ]
-      const { criticalCount } = useKPITrackingGridData()
+      const { criticalCount } = withSetup(() => useKPITrackingGridData())
       expect(criticalCount.value).toBe(2)
     })
 
@@ -171,7 +172,7 @@ describe('useKPITrackingGridData', () => {
         { variance_percent: null },
         { variance_percent: undefined },
       ]
-      const { onTargetCount, offTargetCount, criticalCount } = useKPITrackingGridData()
+      const { onTargetCount, offTargetCount, criticalCount } = withSetup(() => useKPITrackingGridData())
       expect(onTargetCount.value).toBe(0)
       expect(offTargetCount.value).toBe(0)
       expect(criticalCount.value).toBe(0)
@@ -180,19 +181,19 @@ describe('useKPITrackingGridData', () => {
 
   describe('store-bound CRUD wrappers', () => {
     it("addRow delegates to store.addRow('kpiTracking')", () => {
-      const { addRow } = useKPITrackingGridData()
+      const { addRow } = withSetup(() => useKPITrackingGridData())
       addRow()
       expect(storeApi.addRow).toHaveBeenCalledWith('kpiTracking')
     })
 
     it("removeRow delegates to store.removeRow('kpiTracking', index)", () => {
-      const { removeRow } = useKPITrackingGridData()
+      const { removeRow } = withSetup(() => useKPITrackingGridData())
       removeRow(2)
       expect(storeApi.removeRow).toHaveBeenCalledWith('kpiTracking', 2)
     })
 
     it('onCellValueChanged marks the worksheet dirty', () => {
-      const { onCellValueChanged } = useKPITrackingGridData()
+      const { onCellValueChanged } = withSetup(() => useKPITrackingGridData())
       expect(storeApi.worksheets.kpiTracking.dirty).toBe(false)
       onCellValueChanged()
       expect(storeApi.worksheets.kpiTracking.dirty).toBe(true)
@@ -203,13 +204,13 @@ describe('useKPITrackingGridData', () => {
     it('kpiData mirrors store.worksheets.kpiTracking.data', () => {
       const seed: KPITrackingRow[] = [{ kpi_name: 'OEE', target_value: 85 }]
       storeApi.worksheets.kpiTracking.data = seed
-      const { kpiData } = useKPITrackingGridData()
+      const { kpiData } = withSetup(() => useKPITrackingGridData())
       expect(kpiData.value).toBe(seed)
     })
 
     it('hasChanges reflects worksheet.dirty', () => {
       storeApi.worksheets.kpiTracking.dirty = true
-      const { hasChanges } = useKPITrackingGridData()
+      const { hasChanges } = withSetup(() => useKPITrackingGridData())
       expect(hasChanges.value).toBe(true)
     })
   })

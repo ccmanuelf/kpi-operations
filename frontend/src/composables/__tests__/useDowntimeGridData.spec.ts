@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
+import { withSetup } from '../../test/composable-test-utils'
 
 const { storeState } = vi.hoisted(() => ({
   storeState: {
@@ -90,13 +91,13 @@ describe('useDowntimeGridData', () => {
 
   describe('column definitions match backend schema', () => {
     it('exposes shift_date column (not legacy downtime_start_time)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'shift_date')).toBeDefined()
       expect(findCol(columnDefs.value, 'downtime_start_time')).toBeUndefined()
     })
 
     it('exposes downtime_reason column with catalog-code select editor', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       const col = findCol(columnDefs.value, 'downtime_reason')!
       expect(col.cellEditor).toBe('agSelectCellEditor')
       expect((col.cellEditorParams as { values?: unknown[] }).values).toEqual(
@@ -105,7 +106,7 @@ describe('useDowntimeGridData', () => {
     })
 
     it('exposes downtime_duration_minutes column (not legacy duration_hours)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       const col = findCol(columnDefs.value, 'downtime_duration_minutes')!
       expect(col.cellEditor).toBe('agNumberCellEditor')
       expect(col).toBeDefined()
@@ -113,7 +114,7 @@ describe('useDowntimeGridData', () => {
     })
 
     it('downtime_duration_minutes editor enforces backend bounds (1..1440)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       const col = findCol(columnDefs.value, 'downtime_duration_minutes')!
       const params = col.cellEditorParams as { min?: number; max?: number }
       expect(params.min).toBe(1)
@@ -121,43 +122,43 @@ describe('useDowntimeGridData', () => {
     })
 
     it('exposes machine_id column', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'machine_id')).toBeDefined()
     })
 
     it('exposes equipment_code column', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'equipment_code')).toBeDefined()
     })
 
     it('exposes root_cause_category column', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'root_cause_category')).toBeDefined()
     })
 
     it('exposes corrective_action column with large text editor', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       const col = findCol(columnDefs.value, 'corrective_action')!
       expect(col.cellEditor).toBe('agLargeTextCellEditor')
     })
 
     it('does NOT expose category column (replaced by downtime_reason enum)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'category')).toBeUndefined()
     })
 
     it('does NOT expose impact_on_wip_hours column (vestigial, not in backend)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'impact_on_wip_hours')).toBeUndefined()
     })
 
     it('does NOT expose is_resolved column (vestigial, not in backend)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'is_resolved')).toBeUndefined()
     })
 
     it('does NOT expose resolution_notes column (renamed to corrective_action)', () => {
-      const { columnDefs } = useDowntimeGridData()
+      const { columnDefs } = withSetup(() => useDowntimeGridData())
       expect(findCol(columnDefs.value, 'resolution_notes')).toBeUndefined()
     })
   })
@@ -169,7 +170,7 @@ describe('useDowntimeGridData', () => {
         { downtime_duration_minutes: 30, shift_date: '2026-01-02' } as DowntimeRow,
         { downtime_duration_minutes: 45, shift_date: '2026-01-03' } as DowntimeRow,
       ]
-      const { totalMinutes, applyFilters } = useDowntimeGridData()
+      const { totalMinutes, applyFilters } = withSetup(() => useDowntimeGridData())
       applyFilters()
       expect(totalMinutes.value).toBe(135)
     })
@@ -179,7 +180,7 @@ describe('useDowntimeGridData', () => {
         { downtime_duration_minutes: 120, shift_date: '2026-01-01' } as DowntimeRow,
         { downtime_duration_minutes: 60, shift_date: '2026-01-02' } as DowntimeRow,
       ]
-      const { totalHours, applyFilters } = useDowntimeGridData()
+      const { totalHours, applyFilters } = withSetup(() => useDowntimeGridData())
       applyFilters()
       expect(totalHours.value).toBe(3)
     })
@@ -189,13 +190,13 @@ describe('useDowntimeGridData', () => {
         { downtime_duration_minutes: 60, shift_date: '2026-01-01' } as DowntimeRow,
         { downtime_duration_minutes: 30, shift_date: '2026-01-02' } as DowntimeRow,
       ]
-      const { eventCount, applyFilters } = useDowntimeGridData()
+      const { eventCount, applyFilters } = withSetup(() => useDowntimeGridData())
       applyFilters()
       expect(eventCount.value).toBe(2)
     })
 
     it('totalMinutes is 0 when no entries', () => {
-      const { totalMinutes } = useDowntimeGridData()
+      const { totalMinutes } = withSetup(() => useDowntimeGridData())
       expect(totalMinutes.value).toBe(0)
     })
   })
@@ -214,7 +215,7 @@ describe('useDowntimeGridData', () => {
           downtime_duration_minutes: 30,
         } as DowntimeRow,
       ]
-      const { reasonFilter, filteredEntries, applyFilters } = useDowntimeGridData()
+      const { reasonFilter, filteredEntries, applyFilters } = withSetup(() => useDowntimeGridData())
       reasonFilter.value = 'EQUIPMENT_FAILURE'
       applyFilters()
       expect(filteredEntries.value).toHaveLength(1)
@@ -225,7 +226,7 @@ describe('useDowntimeGridData', () => {
         { shift_date: '2026-04-30T00:00:00', downtime_duration_minutes: 60 } as DowntimeRow,
         { shift_date: '2026-04-29T00:00:00', downtime_duration_minutes: 60 } as DowntimeRow,
       ]
-      const { dateFilter, filteredEntries, applyFilters } = useDowntimeGridData()
+      const { dateFilter, filteredEntries, applyFilters } = withSetup(() => useDowntimeGridData())
       dateFilter.value = '2026-04-30'
       applyFilters()
       expect(filteredEntries.value).toHaveLength(1)
@@ -244,7 +245,7 @@ describe('useDowntimeGridData', () => {
           downtime_duration_minutes: 60,
         } as DowntimeRow,
       ]
-      const { lineFilter, filteredEntries, applyFilters } = useDowntimeGridData()
+      const { lineFilter, filteredEntries, applyFilters } = withSetup(() => useDowntimeGridData())
       lineFilter.value = 1
       applyFilters()
       expect(filteredEntries.value).toHaveLength(1)
@@ -255,7 +256,7 @@ describe('useDowntimeGridData', () => {
         { shift_date: '2026-01-01', downtime_duration_minutes: 60 } as DowntimeRow,
         { shift_date: '2026-01-02', downtime_duration_minutes: 60 } as DowntimeRow,
       ]
-      const { filteredEntries, applyFilters } = useDowntimeGridData()
+      const { filteredEntries, applyFilters } = withSetup(() => useDowntimeGridData())
       applyFilters()
       expect(filteredEntries.value).toHaveLength(2)
     })
@@ -263,17 +264,17 @@ describe('useDowntimeGridData', () => {
 
   describe('initial state', () => {
     it('initialises unsavedChanges as empty Set', () => {
-      const { unsavedChanges } = useDowntimeGridData()
+      const { unsavedChanges } = withSetup(() => useDowntimeGridData())
       expect(unsavedChanges.value.size).toBe(0)
     })
 
     it('initialises hasUnsavedChanges to false', () => {
-      const { hasUnsavedChanges } = useDowntimeGridData()
+      const { hasUnsavedChanges } = withSetup(() => useDowntimeGridData())
       expect(hasUnsavedChanges.value).toBe(false)
     })
 
     it('exposes reasons === DOWNTIME_REASON_CODES', () => {
-      const { reasons } = useDowntimeGridData()
+      const { reasons } = withSetup(() => useDowntimeGridData())
       expect(reasons).toBe(DOWNTIME_REASON_CODES)
     })
   })

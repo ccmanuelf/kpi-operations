@@ -3,6 +3,7 @@
  * Tests: useResponsive, useKeyboardShortcuts, useUnsavedChanges, useQRScanner
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { withSetup as inComponent } from '../../test/composable-test-utils'
 
 // ---------- Mock setup for vue-router (useUnsavedChanges needs it) ----------
 vi.mock('vue-router', () => ({
@@ -36,122 +37,95 @@ describe('useResponsive', () => {
     useResponsive = mod.useResponsive
   })
 
+  // useResponsive calls onMounted/onUnmounted to attach a window resize
+  // listener; the wrapper component gives those hooks an active instance.
+  const mount = () => inComponent(() => useResponsive())
+
+  const setWindow = (w, h) => {
+    Object.defineProperty(window, 'innerWidth', { value: w, writable: true, configurable: true })
+    Object.defineProperty(window, 'innerHeight', { value: h, writable: true, configurable: true })
+  }
+
   it('detects mobile breakpoint when width < 768', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 400, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { isMobile, isTablet, isDesktop, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(isMobile.value).toBe(true)
-    expect(isTablet.value).toBe(false)
-    expect(isDesktop.value).toBe(false)
+    setWindow(400, 800)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.isMobile.value).toBe(true)
+    expect(h.isTablet.value).toBe(false)
+    expect(h.isDesktop.value).toBe(false)
   })
 
   it('detects tablet breakpoint when 768 <= width < 1024', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 800, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 600, writable: true, configurable: true })
-
-    const { isMobile, isTablet, isDesktop, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(isMobile.value).toBe(false)
-    expect(isTablet.value).toBe(true)
-    expect(isDesktop.value).toBe(false) // 800 < 1024 (TABLET threshold)
+    setWindow(800, 600)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.isMobile.value).toBe(false)
+    expect(h.isTablet.value).toBe(true)
+    expect(h.isDesktop.value).toBe(false) // 800 < 1024 (TABLET threshold)
   })
 
   it('detects desktop breakpoint when width >= 1024', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 1200, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { isMobile, isTablet, isDesktop, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(isMobile.value).toBe(false)
-    expect(isTablet.value).toBe(false)
-    expect(isDesktop.value).toBe(true)
+    setWindow(1200, 800)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.isMobile.value).toBe(false)
+    expect(h.isTablet.value).toBe(false)
+    expect(h.isDesktop.value).toBe(true)
   })
 
   it('returns correct breakpoint name via getCurrentBreakpoint', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 400, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { getCurrentBreakpoint, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(getCurrentBreakpoint()).toBe('mobile')
+    setWindow(400, 800)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.getCurrentBreakpoint()).toBe('mobile')
   })
 
   it('returns responsive grid height based on breakpoint', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 400, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { getGridHeight, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(getGridHeight()).toBe('400px')
+    setWindow(400, 800)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.getGridHeight()).toBe('400px')
   })
 
   it('adjusts column width for mobile', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 400, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { getColumnWidth, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
+    setWindow(400, 800)
+    const h = mount()
+    h.updateBreakpoints()
     // 150 * 0.7 = 105
-    expect(getColumnWidth(150)).toBe(105)
+    expect(h.getColumnWidth(150)).toBe(105)
   })
 
   it('returns desktop column width when on desktop', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 1200, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { getColumnWidth, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(getColumnWidth(150)).toBe(150)
+    setWindow(1200, 800)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.getColumnWidth(150)).toBe(150)
   })
 
   it('shouldHideSidebar returns true on mobile/tablet', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 400, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 800, writable: true, configurable: true })
-
-    const { shouldHideSidebar, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(shouldHideSidebar()).toBe(true)
+    setWindow(400, 800)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.shouldHideSidebar()).toBe(true)
   })
 
   it('tracks screen dimensions', () => {
-    Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true })
-    Object.defineProperty(window, 'innerHeight', { value: 768, writable: true, configurable: true })
-
-    const { screenWidth, screenHeight, updateBreakpoints } = useResponsive()
-    updateBreakpoints()
-
-    expect(screenWidth.value).toBe(1024)
-    expect(screenHeight.value).toBe(768)
+    setWindow(1024, 768)
+    const h = mount()
+    h.updateBreakpoints()
+    expect(h.screenWidth.value).toBe(1024)
+    expect(h.screenHeight.value).toBe(768)
   })
 })
 
 // ============================================================
 // useKeyboardShortcuts
 // ============================================================
-import { shallowMount } from '@vue/test-utils'
-import { defineComponent } from 'vue'
-
 describe('useKeyboardShortcuts', () => {
-  // Helper: wraps the composable in a real component so onMounted fires
-  const createShortcutWrapper = (setupFn) => {
-    const TestComp = defineComponent({
-      setup() {
-        return setupFn()
-      },
-      template: '<div></div>'
-    })
-    return shallowMount(TestComp)
-  }
+  // Wraps the composable in a real component so onMounted fires.
+  // Tests don't use the return value (registerShortcut is the side
+  // effect under test), so the shared inComponent helper suits.
+  const createShortcutWrapper = (setupFn) => inComponent(setupFn)
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -272,61 +246,67 @@ describe('useUnsavedChanges', () => {
     useUnsavedChanges = mod.useUnsavedChanges
   })
 
+  // useUnsavedChanges calls onMounted / onUnmounted / onBeforeRouteLeave,
+  // all of which require an active Vue component instance via setup().
+  // Wrap in a test component (shared `inComponent` helper) so Vue's
+  // lifecycle injection has a valid scope.
+  const useInsideComponent = (options) => inComponent(() => useUnsavedChanges(options))
+
   it('initializes with no unsaved changes', () => {
-    const { hasUnsavedChanges } = useUnsavedChanges()
-    expect(hasUnsavedChanges.value).toBe(false)
+    const h = useInsideComponent()
+    expect(h.hasUnsavedChanges.value).toBe(false)
   })
 
   it('marks form as dirty', () => {
-    const { hasUnsavedChanges, markDirty } = useUnsavedChanges()
-    markDirty()
-    expect(hasUnsavedChanges.value).toBe(true)
+    const h = useInsideComponent()
+    h.markDirty()
+    expect(h.hasUnsavedChanges.value).toBe(true)
   })
 
   it('marks form as clean after save', () => {
-    const { hasUnsavedChanges, markDirty, markClean } = useUnsavedChanges()
-    markDirty()
-    expect(hasUnsavedChanges.value).toBe(true)
-    markClean()
-    expect(hasUnsavedChanges.value).toBe(false)
+    const h = useInsideComponent()
+    h.markDirty()
+    expect(h.hasUnsavedChanges.value).toBe(true)
+    h.markClean()
+    expect(h.hasUnsavedChanges.value).toBe(false)
   })
 
   it('confirmNavigation returns true when no unsaved changes', () => {
-    const { confirmNavigation } = useUnsavedChanges()
-    expect(confirmNavigation()).toBe(true)
+    const h = useInsideComponent()
+    expect(h.confirmNavigation()).toBe(true)
   })
 
   it('confirmNavigation prompts user when there are unsaved changes', () => {
     window.confirm = vi.fn(() => false)
-    const { confirmNavigation, markDirty } = useUnsavedChanges()
-    markDirty()
+    const h = useInsideComponent()
+    h.markDirty()
 
-    const result = confirmNavigation()
+    const result = h.confirmNavigation()
 
     expect(window.confirm).toHaveBeenCalled()
     expect(result).toBe(false)
   })
 
   it('setEnabled toggles the warning functionality', () => {
-    const { isEnabled, setEnabled } = useUnsavedChanges()
-    expect(isEnabled.value).toBe(true)
-    setEnabled(false)
-    expect(isEnabled.value).toBe(false)
+    const h = useInsideComponent()
+    expect(h.isEnabled.value).toBe(true)
+    h.setEnabled(false)
+    expect(h.isEnabled.value).toBe(false)
   })
 
   it('confirmNavigation returns true when disabled even with unsaved changes', () => {
-    const { confirmNavigation, markDirty, setEnabled } = useUnsavedChanges()
-    markDirty()
-    setEnabled(false)
-    expect(confirmNavigation()).toBe(true)
+    const h = useInsideComponent()
+    h.markDirty()
+    h.setEnabled(false)
+    expect(h.confirmNavigation()).toBe(true)
   })
 
   it('accepts custom message option', () => {
     window.confirm = vi.fn(() => true)
     const customMsg = 'Custom warning message'
-    const { confirmNavigation, markDirty } = useUnsavedChanges({ message: customMsg })
-    markDirty()
-    confirmNavigation()
+    const h = useInsideComponent({ message: customMsg })
+    h.markDirty()
+    h.confirmNavigation()
     expect(window.confirm).toHaveBeenCalledWith(customMsg)
   })
 })

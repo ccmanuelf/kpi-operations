@@ -50,6 +50,31 @@ config.global.stubs = {
   },
   'v-list': { template: '<ul class="v-list"><slot /></ul>' },
   'v-list-item': { template: '<li class="v-list-item"><slot /></li>' },
+  'v-list-subheader': { template: '<li class="v-list-subheader"><slot /></li>' },
+  'v-snackbar': {
+    template: '<div class="v-snackbar"><slot /></div>',
+    props: ['modelValue', 'color', 'timeout', 'location'],
+  },
+  // v-expansion-panel-title is the click-target heading inside a
+  // v-expansion-panel; stub renders the slotted label so component
+  // tests can still assert on its text content.
+  'v-expansion-panel-title': {
+    template: '<div class="v-expansion-panel-title"><slot /></div>',
+  },
+  'v-expansion-panel-text': {
+    template: '<div class="v-expansion-panel-text"><slot /></div>',
+  },
+  'v-expansion-panel': {
+    template: '<div class="v-expansion-panel"><slot /></div>',
+  },
+  'v-expansion-panels': {
+    template: '<div class="v-expansion-panels"><slot /></div>',
+    props: ['modelValue'],
+  },
+  'v-table': {
+    template: '<table class="v-table"><slot /></table>',
+    props: ['density', 'fixedHeader', 'height'],
+  },
 }
 
 // Mock pinia for component tests
