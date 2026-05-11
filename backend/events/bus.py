@@ -18,7 +18,6 @@ import threading
 
 from backend.events.base import DomainEvent, EventHandler
 
-
 logger = logging.getLogger(__name__)
 
 

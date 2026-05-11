@@ -18,7 +18,6 @@ from backend.orm.user import User
 from backend.routes.calculation_assumptions import router as assumptions_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 CLIENT_ID = "ASSUM-TEST-CLIENT"
 
 

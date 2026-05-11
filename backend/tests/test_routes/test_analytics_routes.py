@@ -19,7 +19,6 @@ from unittest.mock import patch
 # Import helper functions for direct testing
 from backend.routes.analytics import parse_time_range, get_performance_rating, get_heatmap_color_code
 
-
 # =============================================================================
 # HELPER FUNCTION UNIT TESTS
 # =============================================================================

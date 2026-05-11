@@ -19,7 +19,6 @@ from backend.routes.dual_view_calculate import router as calc_router
 from backend.services.assumption_service import AssumptionService
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 CLIENT_ID = "DV-CALC-CLIENT"
 
 

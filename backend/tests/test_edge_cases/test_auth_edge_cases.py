@@ -16,7 +16,6 @@ from backend.database import Base
 from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test Fixtures
 # =============================================================================

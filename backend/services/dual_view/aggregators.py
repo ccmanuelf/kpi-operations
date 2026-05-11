@@ -68,7 +68,6 @@ from backend.services.dual_view.fpy_service import FPYRawInputs
 from backend.services.dual_view.oee_service import OEERawInputs
 from backend.services.dual_view.otd_service import OrderDelay, OTDRawInputs
 
-
 _DEFAULT_CYCLE_TIME = Decimal("0.25")  # 15 min/unit, used only when no production rows exist
 _NEUTRAL_CYCLE_TIME_FLOOR = Decimal("0.0001")  # 0.36s — guards divide-by-zero when units == 0
 

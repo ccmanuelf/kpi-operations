@@ -13,6 +13,7 @@ Documentation requirements (from LAUNCH_GUIDE_FINAL.md and QUICKSTART.md):
 - Users: admin, supervisor1, operator1, operator2 with password123
 - Global settings: USER_PREFERENCES, DASHBOARD_WIDGET_DEFAULTS, ALERT_CONFIG
 """
+
 import sys
 import os
 import uuid

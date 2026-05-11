@@ -36,7 +36,6 @@ from backend.orm.user import User
 from backend.orm.job import Job
 from backend.schemas.alert import Alert, AlertConfig, AlertHistory
 
-
 _TRACKED_ORMS: Dict[str, Any] = {
     "ProductionEntry": ProductionEntry,
     "QualityEntry": QualityEntry,

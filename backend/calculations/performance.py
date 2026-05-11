@@ -14,7 +14,6 @@ from backend.orm.product import Product
 from backend.orm.production_entry import ProductionEntry
 from backend.calculations.efficiency import infer_ideal_cycle_time
 
-
 # =============================================================================
 # PURE CALCULATION FUNCTIONS (No Database Access)
 # Phase 1.2: These functions can be unit tested without database

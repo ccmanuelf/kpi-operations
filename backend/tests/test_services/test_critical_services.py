@@ -31,7 +31,6 @@ from backend.services.workflow_service import (
 from backend.tests.fixtures.factories import TestDataFactory
 from backend.orm.work_order import WorkOrderStatus
 
-
 # ============================================================================
 # Helpers — create the prerequisite entities used across multiple test classes
 # ============================================================================

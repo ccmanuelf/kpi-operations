@@ -36,7 +36,6 @@ from backend.main import app
 from backend.simulation_v2.models import SimulationConfig
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Fixtures (mirror the D3 pattern: one TestClient + persona switcher)
 # ---------------------------------------------------------------------------

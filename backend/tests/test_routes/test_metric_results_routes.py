@@ -24,7 +24,6 @@ from backend.services.dual_view.fpy_service import FPYCalculationService, FPYRaw
 from backend.services.dual_view.oee_service import OEECalculationService, OEERawInputs
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 CLIENT_ID = "INSPECT-CLIENT"
 
 

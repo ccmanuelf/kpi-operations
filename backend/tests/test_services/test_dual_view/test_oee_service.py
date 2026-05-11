@@ -24,7 +24,6 @@ from backend.services.assumption_service import AssumptionService
 from backend.services.dual_view.oee_service import OEECalculationService, OEERawInputs
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 PERIOD_START = datetime(2026, 4, 1, tzinfo=timezone.utc)
 PERIOD_END = datetime(2026, 4, 30, tzinfo=timezone.utc)
 

@@ -22,7 +22,6 @@ from backend.orm.user import User, UserRole
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

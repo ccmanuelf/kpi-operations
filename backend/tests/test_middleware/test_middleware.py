@@ -33,7 +33,6 @@ from backend.middleware.client_auth import (
 from backend.orm.user import User, UserRole
 from backend.orm.work_order import WorkOrder
 
-
 # ============================================================================
 # Helper — create a minimal FastAPI app with the middleware under test
 # ============================================================================

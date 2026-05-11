@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.work_order import WorkOrder, WorkOrderStatus
 
-
 # =============================================================================
 # OTD Date Inference Chain (Audit Requirement)
 # =============================================================================

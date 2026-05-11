@@ -13,7 +13,6 @@ from decimal import Decimal
 
 from backend.events.base import DomainEvent
 
-
 # =============================================================================
 # Work Order Events
 # =============================================================================

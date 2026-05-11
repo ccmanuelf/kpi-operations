@@ -28,7 +28,6 @@ from backend.services.csv_export_service import (
 )
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

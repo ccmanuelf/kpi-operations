@@ -11,7 +11,6 @@ from fastapi import HTTPException
 
 from backend.exceptions.domain_exceptions import MultiTenantViolationError
 
-
 T = TypeVar("T")
 
 

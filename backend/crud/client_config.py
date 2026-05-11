@@ -17,7 +17,6 @@ from backend.middleware.client_auth import verify_client_access
 from backend.cache import get_cache
 from backend.cache.kpi_cache import build_cache_key
 
-
 # Global default values (used when no config exists)
 GLOBAL_DEFAULTS = {
     "otd_mode": "STANDARD",

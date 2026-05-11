@@ -36,7 +36,6 @@ from backend.simulation_v2.optimization.bottleneck_rebalancing import (
     rebalance_bottleneck,
 )
 
-
 needs_minizinc = pytest.mark.skipif(
     not is_minizinc_available(),
     reason="MiniZinc CLI not available",

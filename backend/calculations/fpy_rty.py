@@ -19,7 +19,6 @@ from backend.orm.quality_entry import QualityEntry
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.job import Job
 
-
 # =============================================================================
 # PURE CALCULATION FUNCTIONS (No Database Access)
 # Phase 1.2: These functions can be unit tested without database

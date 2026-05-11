@@ -14,7 +14,6 @@ from backend.tests.fixtures.factories import TestDataFactory
 from backend.crud.attendance import bulk_create_attendance_records, mark_all_present
 from backend.schemas.attendance import AttendanceRecordCreate
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

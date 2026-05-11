@@ -14,7 +14,6 @@ from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
 
-
 # ---------------------------------------------------------------------------
 # Backward-compatible aliases so ``from backend.schemas.hold import
 # HoldStatusEnum`` still resolves (returns the constants class from ORM).

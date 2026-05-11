@@ -8,7 +8,6 @@ Uses shared auth_headers fixture from conftest.py
 import pytest
 from datetime import date, timedelta
 
-
 # auth_headers and test_client fixtures are provided by conftest.py
 
 

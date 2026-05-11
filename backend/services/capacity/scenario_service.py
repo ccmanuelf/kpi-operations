@@ -26,7 +26,6 @@ from backend.services.capacity.analysis_service import CapacityAnalysisService
 from backend.events.bus import event_bus
 from backend.events.domain_events import CapacityScenarioCreated, CapacityScenarioCompared
 
-
 # =============================================================================
 # Scenario Type Enumeration
 # =============================================================================

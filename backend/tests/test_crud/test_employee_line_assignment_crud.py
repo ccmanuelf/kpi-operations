@@ -24,7 +24,6 @@ from backend.schemas.employee_line_assignment import (
     EmployeeLineAssignmentUpdate,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

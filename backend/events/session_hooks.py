@@ -12,7 +12,6 @@ import logging
 from backend.events.bus import get_event_bus
 from typing import Any
 
-
 logger = logging.getLogger(__name__)
 
 

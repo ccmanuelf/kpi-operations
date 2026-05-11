@@ -521,9 +521,7 @@ def seed_defect_types() -> None:
 
     with engine.connect() as conn:
         # Create table if not exists (note: GLOBAL doesn't have FK constraint)
-        conn.execute(
-            text(
-                """
+        conn.execute(text("""
             CREATE TABLE IF NOT EXISTS DEFECT_TYPE_CATALOG (
                 defect_type_id VARCHAR(50) PRIMARY KEY,
                 client_id VARCHAR(50) NOT NULL,
@@ -538,9 +536,7 @@ def seed_defect_types() -> None:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME
             )
-        """
-            )
-        )
+        """))
         conn.commit()
 
         # Check existing data. fetchone() returns Optional[Row] —
@@ -563,14 +559,12 @@ def seed_defect_types() -> None:
             defect_type_id = generate_id(GLOBAL_CLIENT_ID, defect["code"])
 
             conn.execute(
-                text(
-                    """
+                text("""
                 INSERT INTO DEFECT_TYPE_CATALOG
                 (defect_type_id, client_id, defect_code, defect_name, description,
                  category, severity_default, industry_standard_code, is_active, sort_order)
                 VALUES (:id, :client_id, :code, :name, :desc, :category, :severity, :standard, 1, :order)
-            """
-                ),
+            """),
                 {
                     "id": defect_type_id,
                     "client_id": GLOBAL_CLIENT_ID,
@@ -597,14 +591,12 @@ def seed_defect_types() -> None:
                 defect_type_id = generate_id(client_id, defect["code"])
 
                 conn.execute(
-                    text(
-                        """
+                    text("""
                     INSERT INTO DEFECT_TYPE_CATALOG
                     (defect_type_id, client_id, defect_code, defect_name, description,
                      category, severity_default, industry_standard_code, is_active, sort_order)
                     VALUES (:id, :client_id, :code, :name, :desc, :category, :severity, :standard, 1, :order)
-                """
-                    ),
+                """),
                     {
                         "id": defect_type_id,
                         "client_id": client_id,

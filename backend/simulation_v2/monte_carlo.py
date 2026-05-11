@@ -31,7 +31,6 @@ from .models import (
 )
 from .validation import validate_simulation_config
 
-
 # =============================================================================
 # Statistic computation
 # =============================================================================

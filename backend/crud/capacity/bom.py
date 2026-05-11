@@ -15,7 +15,6 @@ from sqlalchemy import and_
 from backend.orm.capacity.bom import CapacityBOMHeader, CapacityBOMDetail
 from backend.utils.tenant_guard import ensure_client_id
 
-
 # ============================================================================
 # BOM Header Operations
 # ============================================================================

@@ -100,7 +100,6 @@ from backend.routes.calculation_assumptions import router as calculation_assumpt
 from backend.routes.metric_results import router as metric_results_router
 from backend.routes.dual_view_calculate import router as dual_view_calculate_router
 
-
 # =============================================================================
 # V1 Simulation API Deprecation Middleware
 # =============================================================================

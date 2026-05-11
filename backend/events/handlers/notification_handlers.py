@@ -15,7 +15,6 @@ from backend.events.domain_events import (
     KPIThresholdViolated,
 )
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -12,7 +12,6 @@ from datetime import date, datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
-
 # =============================================================================
 # Helper Function Tests
 # =============================================================================

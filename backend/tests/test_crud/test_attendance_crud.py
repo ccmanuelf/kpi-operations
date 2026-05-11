@@ -14,7 +14,6 @@ from backend.orm import (
 )
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
