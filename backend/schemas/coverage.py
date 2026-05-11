@@ -3,7 +3,7 @@ Shift coverage models (Pydantic)
 PHASE 3: Shift coverage and capacity tracking
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
@@ -44,5 +44,4 @@ class ShiftCoverageResponse(BaseModel):
     created_at: datetime = Field(..., description="Timestamp when the record was created")
     updated_at: datetime = Field(..., description="Timestamp of the last modification")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

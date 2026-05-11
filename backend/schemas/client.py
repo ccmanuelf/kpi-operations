@@ -2,7 +2,7 @@
 Client Pydantic models for request/response validation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -76,8 +76,7 @@ class ClientResponse(BaseModel):
     created_at: datetime = Field(..., description="Timestamp when the client was created")
     updated_at: Optional[datetime] = Field(None, description="Timestamp of the last client modification")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClientSummary(BaseModel):

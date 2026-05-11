@@ -3,7 +3,7 @@ Work Order Pydantic models for request/response validation
 Implements Phase 10: Flexible Workflow Foundation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
@@ -192,8 +192,7 @@ class WorkOrderResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkOrderWithMetrics(WorkOrderResponse):

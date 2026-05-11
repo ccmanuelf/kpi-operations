@@ -2,7 +2,7 @@
 User authentication models (Pydantic)
 """
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 
@@ -89,8 +89,7 @@ class UserResponse(BaseModel):
     created_at: Optional[datetime] = Field(None, description="Timestamp when the user account was created")
     updated_at: Optional[datetime] = Field(None, description="Timestamp of the last account modification")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):

@@ -2,7 +2,7 @@
 QR Code Pydantic models for request/response validation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, Dict, Any
 from enum import Enum
 
@@ -28,8 +28,7 @@ class QRCodeData(BaseModel):
     id: str = Field(..., description="Entity identifier")
     version: str = Field(default="1.0", description="QR code schema version for future compatibility")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class QRGenerateRequest(BaseModel):
@@ -43,8 +42,7 @@ class QRGenerateRequest(BaseModel):
     entity_id: str = Field(..., description="ID of the entity to encode")
     size: Optional[int] = Field(default=200, ge=100, le=500, description="QR code image size in pixels")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class QRLookupResponse(BaseModel):
@@ -61,8 +59,7 @@ class QRLookupResponse(BaseModel):
         ..., description="Fields to auto-populate in entry forms based on entity type"
     )
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class QRCodeResponse(BaseModel):

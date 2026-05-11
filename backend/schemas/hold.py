@@ -9,7 +9,7 @@ HOLD_STATUS_CATALOG / HOLD_REASON_CATALOG at the route level.
 Legacy aliases kept for backward compatibility of imports.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
@@ -132,8 +132,7 @@ class WIPHoldResponse(BaseModel):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WIPAgingResponse(BaseModel):

@@ -2,7 +2,7 @@
 Pydantic models for Client-specific Defect Type Catalog
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -24,8 +24,8 @@ class DefectTypeCatalogCreate(DefectTypeCatalogBase):
 
     client_id: str = Field(..., min_length=1, max_length=50, description="Client this defect type belongs to")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "client_id": "ELEC-ASSY",
                 "defect_code": "SOLDER_DEF",
@@ -36,7 +36,8 @@ class DefectTypeCatalogCreate(DefectTypeCatalogBase):
                 "industry_standard_code": "IPC-A-610-5.2",
                 "sort_order": 1,
             }
-        }
+        },
+    )
 
 
 class DefectTypeCatalogUpdate(BaseModel):
@@ -61,8 +62,7 @@ class DefectTypeCatalogResponse(DefectTypeCatalogBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DefectTypeCatalogBulkCreate(BaseModel):

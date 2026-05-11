@@ -9,7 +9,7 @@ for the 8 result blocks specified in the technical specification.
 from datetime import datetime
 from enum import Enum
 from typing import List, Dict, Optional, Any
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .constants import (
     DEFAULT_SEQUENCE,
@@ -119,8 +119,8 @@ class OperationInput(BaseModel):
     )
     fpd_pct: float = Field(default=DEFAULT_FPD_PCT, ge=0, le=100, description="Fatigue and Personal Delay percentage")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "product": "HV_TSHIRT",
                 "step": 1,
@@ -135,7 +135,8 @@ class OperationInput(BaseModel):
                 "grade_pct": 85,
                 "fpd_pct": 15,
             }
-        }
+        },
+    )
 
 
 class ScheduleConfig(BaseModel):
@@ -201,8 +202,8 @@ class ScheduleConfig(BaseModel):
         weekend_ot = self.weekend_ot_hours * self.weekend_ot_days
         return base + weekday_ot + weekend_ot
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "shifts_enabled": 2,
                 "shift1_hours": 9.0,
@@ -211,7 +212,8 @@ class ScheduleConfig(BaseModel):
                 "work_days": 5,
                 "ot_enabled": False,
             }
-        }
+        },
+    )
 
 
 class DemandInput(BaseModel):
@@ -234,10 +236,11 @@ class DemandInput(BaseModel):
         default=None, ge=0, le=100, description="Percentage of total production (mix-driven mode)"
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {"product": "HV_TSHIRT", "bundle_size": 10, "daily_demand": 500, "weekly_demand": 2500}
-        }
+        },
+    )
 
 
 class BreakdownInput(BaseModel):
@@ -254,8 +257,9 @@ class BreakdownInput(BaseModel):
         default=0.0, ge=0, le=100, description="Probability of breakdown during each operation (%)"
     )
 
-    class Config:
-        json_schema_extra = {"example": {"machine_tool": "4-thread overlock", "breakdown_pct": 2.5}}
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"machine_tool": "4-thread overlock", "breakdown_pct": 2.5}}
+    )
 
 
 class SimulationConfig(BaseModel):

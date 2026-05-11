@@ -73,9 +73,21 @@ disallow_untyped_defs = false
 # Project root added to sys.path so `from backend.X import ...` resolves without
 # manual sys.path.insert in conftest.py.
 pythonpath = ["."]
-# python-multipart 0.0.22 warns when starlette imports `multipart` instead of
-# `python_multipart`. starlette hasn't migrated yet; suppress to keep `-W error`
-# usable in CI without spurious failures.
+# pytest-asyncio loop scope explicit pin (was implicitly "function" via
+# pytest-asyncio < 1.0 default). 1.x removes the default and emits a
+# PytestDeprecationWarning when unset. Pinning here keeps async fixture
+# lifecycle deterministic across pytest-asyncio upgrades.
+asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
+    # python-multipart 0.0.27 still warns when starlette imports the legacy
+    # `multipart` package name instead of `python_multipart`. Upstream
+    # starlette hasn't migrated yet; suppress to keep `-W error` usable in
+    # CI without spurious failures.
     "ignore:Please use `import python_multipart`:PendingDeprecationWarning",
+    # The codebase is fully migrated off Pydantic V1 patterns (class-based
+    # Config, .from_orm(), .dict(), .parse_obj(), @validator). Promote any
+    # future V1-pattern regression to a hard CI failure so it can't slip
+    # back in via a copy-paste from old code. If a new Pydantic upgrade
+    # legitimately requires a deprecation suppression, document it inline.
+    "error::pydantic.PydanticDeprecatedSince20",
 ]

@@ -3,7 +3,7 @@ Workflow Pydantic models for request/response validation
 Implements Phase 10: Flexible Workflow Foundation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Dict
 from datetime import datetime
 from enum import Enum
@@ -72,8 +72,7 @@ class WorkflowTransitionResponse(BaseModel):
     elapsed_from_received_hours: Optional[int] = None
     elapsed_from_previous_hours: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkflowTransitionHistory(BaseModel):
@@ -128,8 +127,7 @@ class WorkflowConfigResponse(BaseModel):
     workflow_closure_trigger: str
     workflow_version: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkflowConfigUpdate(BaseModel):

@@ -40,7 +40,7 @@ def create_shift_coverage(db: Session, coverage: ShiftCoverageCreate, current_us
     db.commit()
     db.refresh(db_coverage)
 
-    return ShiftCoverageResponse.from_orm(db_coverage)
+    return ShiftCoverageResponse.model_validate(db_coverage)
 
 
 def get_shift_coverage(db: Session, coverage_id: int, current_user: User) -> Optional[ShiftCoverage]:
@@ -131,7 +131,7 @@ def update_shift_coverage(
     db.commit()
     db.refresh(db_coverage)
 
-    return ShiftCoverageResponse.from_orm(db_coverage)
+    return ShiftCoverageResponse.model_validate(db_coverage)
 
 
 def delete_shift_coverage(db: Session, coverage_id: int, current_user: User) -> bool:

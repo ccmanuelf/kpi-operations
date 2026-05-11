@@ -2,7 +2,7 @@
 Production entry models (Pydantic)
 """
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing import Optional, List, Union, Any
 from datetime import date, datetime
 from decimal import Decimal
@@ -167,8 +167,7 @@ class ProductionEntryResponse(BaseModel):
     created_at: Optional[datetime] = Field(None, description="Timestamp when the record was created")
     updated_at: Optional[datetime] = Field(None, description="Timestamp of the last modification")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductionEntryWithKPIs(ProductionEntryResponse):

@@ -68,7 +68,7 @@ def create_quality_inspection(
     db.commit()
     db.refresh(db_inspection)
 
-    return QualityInspectionResponse.from_orm(db_inspection)
+    return QualityInspectionResponse.model_validate(db_inspection)
 
 
 def get_quality_inspection(db: Session, inspection_id: str, current_user: User) -> Optional[QualityEntry]:
@@ -162,7 +162,7 @@ def update_quality_inspection(
     db.commit()
     db.refresh(db_inspection)
 
-    return QualityInspectionResponse.from_orm(db_inspection)
+    return QualityInspectionResponse.model_validate(db_inspection)
 
 
 def delete_quality_inspection(db: Session, inspection_id: str, current_user: User) -> bool:
