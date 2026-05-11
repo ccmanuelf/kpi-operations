@@ -2,6 +2,91 @@ import api from './client'
 
 type Params = Record<string, unknown>
 
+// Lightweight row shapes — these mirror what the backend serializers
+// currently return. They're intentionally `?` on every field because
+// the backend's response payload has evolved over multiple refactors
+// and some fields are null / omitted on older entries. Keeping them
+// optional matches the runtime reality without forcing a hard
+// migration; tightening individual fields is safe to do per-endpoint
+// when we revisit the API contract.
+
+interface DashboardRow {
+  avg_efficiency?: number | null
+  avg_performance?: number | null
+}
+
+interface ShiftEfficiencyRow {
+  actual_output?: number
+  expected_output?: number
+}
+
+interface WIPAgingPayload {
+  aging_15_30_days?: number
+  aging_over_30_days?: number
+  aging_0_7_days?: number
+  aging_8_14_days?: number
+  average_aging_days?: number | string
+  average_age?: number
+  avg_hold_duration?: number
+  total_held_quantity?: number
+  total_hold_events?: number
+}
+
+interface WIPAgingItem {
+  age?: number
+}
+
+interface OTDPayload {
+  otd_percentage?: number
+  otd_rate?: number
+  percentage?: number
+  on_time_count?: number
+  total_orders?: number
+}
+
+interface ProductionRow {
+  units_produced?: number | string
+  run_time_hours?: number | string
+  ideal_cycle_time_minutes?: number
+}
+
+interface DowntimeRow {
+  downtime_duration_minutes?: number | string
+  duration_hours?: number
+  downtime_reason?: string
+  reason_type?: string
+  machine_id?: string
+  equipment_code?: string
+}
+
+interface FPYRTYPayload {
+  fpy_percentage?: number | string
+  fpy?: number
+  first_pass_yield?: number
+  rty_percentage?: number | string
+  final_yield_percentage?: number | string
+  total_units?: number
+  first_pass_good?: number
+  total_scrapped?: number
+}
+
+interface AbsenteeismPayload {
+  absenteeism_rate?: number | string
+  rate?: number
+  total_scheduled_hours?: number | string
+  total_hours_absent?: number | string
+  total_employees?: number
+  total_absences?: number
+  by_reason?: unknown[]
+  by_department?: unknown[]
+  high_absence_employees?: unknown[]
+}
+
+interface DefectRatePayload {
+  ppm?: number | null
+  defect_rate_percentage?: number | null
+}
+
 export const calculateKPIs = (entryId: string | number) => api.get(`/kpi/calculate/${entryId}`)
 
 export const getKPIDashboard = (params?: Params) => api.get('/kpi/dashboard', { params })
@@ -14,22 +99,22 @@ export const getEfficiency = async (params?: Params) => {
       api.get('/kpi/efficiency/by-product', { params }).catch(() => ({ data: [] })),
     ])
 
-    const data = dashboardRes.data || []
+    const data = (dashboardRes.data || []) as DashboardRow[]
     let avgEfficiency: number | null = null
     if (Array.isArray(data) && data.length > 0) {
-      const validEntries = data.filter((d: any) => d.avg_efficiency != null)
+      const validEntries = data.filter((d) => d.avg_efficiency != null)
       avgEfficiency =
         validEntries.length > 0
-          ? validEntries.reduce((sum: number, d: any) => sum + d.avg_efficiency, 0) /
+          ? validEntries.reduce((sum: number, d) => sum + (d.avg_efficiency ?? 0), 0) /
             validEntries.length
           : null
     }
 
-    const byShiftData = byShiftRes.data || []
+    const byShiftData = (byShiftRes.data || []) as ShiftEfficiencyRow[]
     let totalActualOutput = 0
     let totalExpectedOutput = 0
 
-    byShiftData.forEach((shift: any) => {
+    byShiftData.forEach((shift) => {
       totalActualOutput += shift.actual_output || 0
       totalExpectedOutput += shift.expected_output || 0
     })
@@ -71,18 +156,23 @@ export const getWIPAging = async (params?: Params) => {
       api.get('/kpi/wip-aging/top', { params }).catch(() => ({ data: [] })),
     ])
 
-    const data: any = agingRes.data || {}
-    const topAgingItems: any[] = Array.isArray(topRes.data) ? topRes.data : []
+    const data: WIPAgingPayload = (agingRes.data || {}) as WIPAgingPayload
+    const topAgingItems: WIPAgingItem[] = Array.isArray(topRes.data)
+      ? (topRes.data as WIPAgingItem[])
+      : []
     const aging_15_30 = data.aging_15_30_days || 0
     const aging_over_30 = data.aging_over_30_days || 0
 
     const maxDays =
-      topAgingItems.length > 0 ? Math.max(...topAgingItems.map((item: any) => item.age || 0)) : 0
+      topAgingItems.length > 0 ? Math.max(...topAgingItems.map((item) => item.age || 0)) : 0
 
     return {
       data: {
         average_days:
-          parseFloat(data.average_aging_days) || data.average_age || data.avg_hold_duration || 0,
+          parseFloat(String(data.average_aging_days ?? '')) ||
+          data.average_age ||
+          data.avg_hold_duration ||
+          0,
         total_held: data.total_held_quantity || 0,
         total_units: data.total_held_quantity || 0,
         aging_0_7: data.aging_0_7_days || 0,
@@ -115,7 +205,7 @@ export const getOnTimeDelivery = async (params?: Params) => {
       api.get('/kpi/otd/late-deliveries', { params }).catch(() => ({ data: [] })),
     ])
 
-    const otdData: any = otdRes.data || {}
+    const otdData: OTDPayload = (otdRes.data || {}) as OTDPayload
     const byClientData = byClientRes.data || []
     const lateDeliveriesData = lateDeliveriesRes.data || []
 
@@ -144,12 +234,12 @@ export const getAvailability = async (params?: Params) => {
       api.get('/downtime', { params }).catch(() => ({ data: [] })),
     ])
 
-    const productionData: any[] = productionRes.data || []
-    const downtimeData: any[] = downtimeRes.data || []
+    const productionData: ProductionRow[] = (productionRes.data || []) as ProductionRow[]
+    const downtimeData: DowntimeRow[] = (downtimeRes.data || []) as DowntimeRow[]
 
     let totalScheduledHours = 0
-    productionData.forEach((p: any) => {
-      totalScheduledHours += parseFloat(p.run_time_hours || 0)
+    productionData.forEach((p) => {
+      totalScheduledHours += parseFloat(String(p.run_time_hours ?? 0))
     })
 
     if (totalScheduledHours === 0 && productionData.length === 0) {
@@ -171,8 +261,10 @@ export const getAvailability = async (params?: Params) => {
       { equipment_name: string; uptime: number; downtime: number }
     > = {}
 
-    downtimeData.forEach((d: any) => {
-      const minutes = parseFloat(d.downtime_duration_minutes || d.duration_hours * 60 || 0)
+    downtimeData.forEach((d) => {
+      const minutes = parseFloat(
+        String(d.downtime_duration_minutes ?? (d.duration_hours ?? 0) * 60),
+      )
       const hours = minutes / 60
       totalDowntimeHours += hours
 
@@ -265,28 +357,29 @@ export const getPerformance = async (params?: Params) => {
       api.get('/kpi/performance/by-product', { params }).catch(() => ({ data: [] })),
     ])
 
-    const dashboardData = dashboardRes.data || []
+    const dashboardData = (dashboardRes.data || []) as DashboardRow[]
     let avgPerformance: number | null = null
     if (Array.isArray(dashboardData) && dashboardData.length > 0) {
-      const validEntries = dashboardData.filter((d: any) => d.avg_performance != null)
+      const validEntries = dashboardData.filter((d) => d.avg_performance != null)
       avgPerformance =
         validEntries.length > 0
-          ? validEntries.reduce((sum: number, d: any) => sum + d.avg_performance, 0) /
+          ? validEntries.reduce((sum: number, d) => sum + (d.avg_performance ?? 0), 0) /
             validEntries.length
           : null
     }
 
-    const productionData: any[] = productionRes.data || []
+    const productionData: ProductionRow[] = (productionRes.data || []) as ProductionRow[]
     let totalUnits = 0
     let totalHours = 0
     let totalExpectedOutput = 0
 
-    productionData.forEach((entry: any) => {
-      totalUnits += parseInt(entry.units_produced || 0)
-      totalHours += parseFloat(entry.run_time_hours || 0)
+    productionData.forEach((entry) => {
+      totalUnits += parseInt(String(entry.units_produced ?? 0))
+      totalHours += parseFloat(String(entry.run_time_hours ?? 0))
       if (entry.ideal_cycle_time_minutes && entry.ideal_cycle_time_minutes > 0) {
         totalExpectedOutput +=
-          (parseFloat(entry.run_time_hours || 0) * 60) / parseFloat(entry.ideal_cycle_time_minutes)
+          (parseFloat(String(entry.run_time_hours ?? 0)) * 60) /
+          entry.ideal_cycle_time_minutes
       }
     })
 
@@ -338,13 +431,16 @@ export const getQuality = async (params?: Params) => {
       api.get('/quality/kpi/defects-by-type', { params }).catch(() => ({ data: [] })),
       api.get('/quality/kpi/by-product', { params }).catch(() => ({ data: [] })),
     ])
-    const fpyData: any = fpyRtyRes.data ?? {}
+    const fpyData: FPYRTYPayload = (fpyRtyRes.data ?? {}) as FPYRTYPayload
     return {
       data: {
         fpy:
-          parseFloat(fpyData?.fpy_percentage) || fpyData?.fpy || fpyData?.first_pass_yield || 0,
-        rty: parseFloat(fpyData?.rty_percentage) || 0,
-        final_yield: parseFloat(fpyData?.final_yield_percentage) || 0,
+          parseFloat(String(fpyData?.fpy_percentage ?? '')) ||
+          fpyData?.fpy ||
+          fpyData?.first_pass_yield ||
+          0,
+        rty: parseFloat(String(fpyData?.rty_percentage ?? '')) || 0,
+        final_yield: parseFloat(String(fpyData?.final_yield_percentage ?? '')) || 0,
         total_units: fpyData?.total_units || 0,
         first_pass_good: fpyData?.first_pass_good || 0,
         total_scrapped: fpyData?.total_scrapped || 0,
@@ -378,17 +474,19 @@ export const getOEE = async (params?: Params) => {
     ])
 
     const data = dashboardRes.data || []
-    const qualityPayload: any = qualityRes.data ?? {}
-    const quality = parseFloat(qualityPayload?.fpy_percentage || qualityPayload?.fpy || 97)
+    const qualityPayload: FPYRTYPayload = (qualityRes.data ?? {}) as FPYRTYPayload
+    const quality = parseFloat(
+      String(qualityPayload?.fpy_percentage ?? qualityPayload?.fpy ?? 97),
+    )
     const availability = availabilityData.data?.percentage || 90
 
     if (Array.isArray(data) && data.length > 0) {
-      const validEntries = data.filter(
-        (d: any) => d.avg_efficiency != null && d.avg_performance != null,
+      const validEntries = (data as DashboardRow[]).filter(
+        (d) => d.avg_efficiency != null && d.avg_performance != null,
       )
       if (validEntries.length > 0) {
         const avgPerf =
-          validEntries.reduce((sum: number, d: any) => sum + d.avg_performance, 0) /
+          validEntries.reduce((sum: number, d) => sum + (d.avg_performance ?? 0), 0) /
           validEntries.length
         const oee = (availability / 100) * (avgPerf / 100) * (quality / 100) * 100
         return { data: { percentage: parseFloat(Math.min(oee, 100).toFixed(2)) } }
@@ -406,12 +504,12 @@ export const getAbsenteeism = (params?: Params) => {
   return api
     .get('/attendance/kpi/absenteeism', { params })
     .then((res) => {
-      const d: any = res.data ?? {}
+      const d: AbsenteeismPayload = (res.data ?? {}) as AbsenteeismPayload
       return {
         data: {
-          rate: parseFloat(d?.absenteeism_rate) || d?.rate || 0,
-          total_scheduled_hours: parseFloat(d?.total_scheduled_hours) || 0,
-          total_hours_absent: parseFloat(d?.total_hours_absent) || 0,
+          rate: parseFloat(String(d?.absenteeism_rate ?? '')) || d?.rate || 0,
+          total_scheduled_hours: parseFloat(String(d?.total_scheduled_hours ?? '')) || 0,
+          total_hours_absent: parseFloat(String(d?.total_hours_absent ?? '')) || 0,
           total_employees: d?.total_employees || 0,
           total_absences: d?.total_absences || 0,
           by_reason: d?.by_reason || [],
@@ -440,7 +538,7 @@ export const getDefectRates = (params?: Params) => {
   return api
     .get('/quality/kpi/ppm', { params })
     .then((res) => {
-      const d: any = res.data ?? {}
+      const d: DefectRatePayload = (res.data ?? {}) as DefectRatePayload
       return {
         data: {
           ppm: d?.ppm ?? null,
@@ -458,15 +556,15 @@ export const getDefectRates = (params?: Params) => {
 export const getThroughputTime = async (params?: Params) => {
   try {
     const response = await api.get('/production', { params })
-    const entries: any[] = response.data || []
+    const entries: ProductionRow[] = (response.data || []) as ProductionRow[]
 
     if (entries.length > 0) {
       let totalRunHours = 0
       let totalUnits = 0
 
-      entries.forEach((entry: any) => {
-        totalRunHours += parseFloat(entry.run_time_hours || 0)
-        totalUnits += parseInt(entry.units_produced || 0)
+      entries.forEach((entry) => {
+        totalRunHours += parseFloat(String(entry.run_time_hours ?? 0))
+        totalUnits += parseInt(String(entry.units_produced ?? 0))
       })
 
       const avgThroughput = totalUnits > 0 ? (totalRunHours / totalUnits) * 100 : 0

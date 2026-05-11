@@ -294,14 +294,30 @@ const fetchData = async () => {
       }
     })
 
+    interface OperatorQualityRow {
+      operator_id?: string
+      employee_id?: string
+      operator_name?: string
+      employee_name?: string
+      units_inspected?: number
+      total_units?: number
+      defects?: number
+      defect_count?: number
+      fpy?: number | string
+      first_pass_yield?: number | string
+      trend?: 'up' | 'down' | 'stable' | string
+    }
+    const normalizeTrend = (t: string | undefined): 'up' | 'down' | 'stable' =>
+      t === 'up' || t === 'down' ? t : 'stable'
     if (response.data && Array.isArray(response.data)) {
-      operatorQuality.value = response.data.map((op: any) => ({
+      const ops = response.data as OperatorQualityRow[]
+      operatorQuality.value = ops.map((op) => ({
         operator_id: op.operator_id || op.employee_id || 'N/A',
         operator_name: op.operator_name || op.employee_name || `Operator ${op.operator_id}`,
         units_inspected: op.units_inspected || op.total_units || 0,
         defects: op.defects || op.defect_count || 0,
-        fpy: parseFloat(op.fpy || op.first_pass_yield || 100),
-        trend: op.trend || 'stable'
+        fpy: parseFloat(String(op.fpy || op.first_pass_yield || 100)),
+        trend: normalizeTrend(op.trend),
       }))
     } else {
       await fetchQualityAndAggregate()
@@ -326,11 +342,19 @@ const fetchQualityAndAggregate = async () => {
       }
     })
 
+    interface InspectionRow {
+      inspector_id?: string
+      operator_id?: string
+      inspector_name?: string
+      operator_name?: string
+      units_inspected?: number
+      defects_found?: number
+    }
     if (response.data && Array.isArray(response.data)) {
       // Aggregate by operator/inspector
       const operatorMap = new Map<string, { name: string; inspected: number; defects: number }>()
 
-      response.data.forEach((inspection: any) => {
+      ;(response.data as InspectionRow[]).forEach((inspection) => {
         const operatorId = inspection.inspector_id || inspection.operator_id || 'unknown'
         const operatorName = inspection.inspector_name || inspection.operator_name || `Operator ${operatorId}`
         const inspected = inspection.units_inspected || 0

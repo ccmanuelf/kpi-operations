@@ -226,14 +226,25 @@ const fetchData = async () => {
     })
 
     // Transform API response
+    interface DowntimeCategoryRow {
+      category?: string
+      downtime_category?: string
+      total_hours?: number | string
+      duration_hours?: number | string
+      oee_impact?: number | string
+      availability_impact?: number | string
+      event_count?: number
+      count?: number
+    }
     if (response.data && response.data.categories) {
-      downtimeRanking.value = response.data.categories.map((cat: any, index: number) => ({
+      const categories = response.data.categories as DowntimeCategoryRow[]
+      downtimeRanking.value = categories.map((cat, index) => ({
         rank: index + 1,
-        category: cat.category || cat.downtime_category,
-        totalHours: parseFloat(cat.total_hours || cat.duration_hours || 0),
-        oeeImpact: parseFloat(cat.oee_impact || cat.availability_impact || 0),
+        category: cat.category || cat.downtime_category || 'Unknown',
+        totalHours: parseFloat(String(cat.total_hours || cat.duration_hours || 0)),
+        oeeImpact: parseFloat(String(cat.oee_impact || cat.availability_impact || 0)),
         eventCount: cat.event_count || cat.count || 0,
-        severity: determineSeverity(parseFloat(cat.oee_impact || cat.availability_impact || 0))
+        severity: determineSeverity(parseFloat(String(cat.oee_impact || cat.availability_impact || 0))),
       }))
     } else {
       // Fallback: fetch from downtime events and calculate
@@ -261,13 +272,18 @@ const fetchDowntimeEvents = async () => {
       }
     })
 
+    interface DowntimeEventRow {
+      downtime_category?: string
+      reason_category?: string
+      duration_hours?: number | string
+    }
     if (response.data && Array.isArray(response.data)) {
       // Aggregate by category
       const categoryMap = new Map<string, { hours: number; count: number }>()
 
-      response.data.forEach((event: any) => {
+      ;(response.data as DowntimeEventRow[]).forEach((event) => {
         const category = event.downtime_category || event.reason_category || 'Unknown'
-        const hours = parseFloat(event.duration_hours || 0)
+        const hours = parseFloat(String(event.duration_hours || 0))
 
         if (categoryMap.has(category)) {
           const existing = categoryMap.get(category)!
@@ -300,8 +316,9 @@ const fetchDowntimeEvents = async () => {
     }
 
     lastUpdated.value = new Date().toLocaleTimeString()
-  } catch (err: any) {
-    error.value = err.response?.data?.detail || 'Failed to load downtime data'
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: { detail?: string } } }
+    error.value = axiosErr.response?.data?.detail || 'Failed to load downtime data'
   }
 }
 
