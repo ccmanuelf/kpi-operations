@@ -492,7 +492,10 @@ class TestEventBusCollectFlush:
 
     def test_set_persistence_handler(self, reset_event_bus):
         bus = reset_event_bus
-        callback = lambda e: None  # noqa: E731
+
+        def callback(e):
+            return None
+
         bus.set_persistence_handler(callback)
         assert bus._persistence_handler is callback
 

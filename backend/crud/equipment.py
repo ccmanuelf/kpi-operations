@@ -87,14 +87,14 @@ def list_equipment(
     query = db.query(Equipment).filter(Equipment.client_id == client_id)
 
     if not include_inactive:
-        query = query.filter(Equipment.is_active == True)  # noqa: E712
+        query = query.filter(Equipment.is_active.is_(True))
 
     if line_id is not None:
         # Include equipment assigned to the line AND shared equipment
         query = query.filter(
             or_(
                 Equipment.line_id == line_id,
-                Equipment.is_shared == True,  # noqa: E712
+                Equipment.is_shared.is_(True),
             )
         )
 
@@ -118,8 +118,8 @@ def list_shared_equipment(
         db.query(Equipment)
         .filter(
             Equipment.client_id == client_id,
-            Equipment.is_shared == True,  # noqa: E712
-            Equipment.is_active == True,  # noqa: E712
+            Equipment.is_shared.is_(True),
+            Equipment.is_active.is_(True),
         )
         .order_by(Equipment.equipment_code)
         .all()
