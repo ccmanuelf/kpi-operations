@@ -101,6 +101,10 @@ describe('downtimeReasonToCode', () => {
 
 const noopRefresh = async () => {}
 
+// `useShiftForms` calls `onMounted` to load reference data. Run it
+// inside a setup() so the lifecycle hook has a valid scope.
+import { withSetup } from '../../test/composable-test-utils'
+
 const buildHarness = () => {
   const activeShift = { shift_id: 7, shift_number: 2 }
   const today = '2026-05-01'
@@ -109,11 +113,13 @@ const buildHarness = () => {
     { id: 2, work_order_id: 'WO-B', style_model: 'STYLE-B' },
     { id: 3, work_order_id: 'WO-C', style_model: 'UNKNOWN-STYLE' },
   ]
-  return useShiftForms(
-    () => activeShift,
-    () => today,
-    () => workOrders,
-    noopRefresh,
+  return withSetup(() =>
+    useShiftForms(
+      () => activeShift,
+      () => today,
+      () => workOrders,
+      noopRefresh,
+    ),
   )
 }
 

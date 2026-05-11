@@ -10,6 +10,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
+import { withSetup } from '../../test/composable-test-utils'
 
 const { mockApi } = vi.hoisted(() => ({
   mockApi: {
@@ -148,7 +149,7 @@ describe('useAttendanceGridData', () => {
 
   describe('column definitions match backend schema', () => {
     it('exposes status column with select editor', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       const col = findCol(columnDefs.value, 'status')!
       expect(col.cellEditor).toBe('agSelectCellEditor')
       expect(col.cellEditorParams!.values).toContain('Present')
@@ -161,37 +162,37 @@ describe('useAttendanceGridData', () => {
     })
 
     it('exposes scheduled_hours column with numeric editor', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       const col = findCol(columnDefs.value, 'scheduled_hours')!
       expect(col.cellEditor).toBe('agNumberCellEditor')
       expect(col.cellEditorParams!.max).toBe(24)
     })
 
     it('exposes actual_hours column with numeric editor', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       const col = findCol(columnDefs.value, 'actual_hours')!
       expect(col.cellEditor).toBe('agNumberCellEditor')
       expect(col.cellEditorParams!.max).toBe(24)
     })
 
     it('does NOT expose late_minutes column (vestigial)', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       expect(findCol(columnDefs.value, 'late_minutes')).toBeUndefined()
     })
 
     it('does NOT expose is_excused column (vestigial)', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       expect(findCol(columnDefs.value, 'is_excused')).toBeUndefined()
     })
 
     it('clock_in column field stays user-friendly (HH:MM string)', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       const col = findCol(columnDefs.value, 'clock_in')!
       expect(col.editable).toBe(true)
     })
 
     it('clock_out column field stays user-friendly (HH:MM string)', () => {
-      const { columnDefs } = useAttendanceGridData()
+      const { columnDefs } = withSetup(() => useAttendanceGridData())
       const col = findCol(columnDefs.value, 'clock_out')!
       expect(col.editable).toBe(true)
     })
@@ -199,7 +200,7 @@ describe('useAttendanceGridData', () => {
 
   describe('statusCounts', () => {
     it('counts Present', () => {
-      const { attendanceData, statusCounts } = useAttendanceGridData()
+      const { attendanceData, statusCounts } = withSetup(() => useAttendanceGridData())
       attendanceData.value = [
         { status: 'Present' } as AttendanceRow,
         { status: 'Present' } as AttendanceRow,
@@ -208,19 +209,19 @@ describe('useAttendanceGridData', () => {
     })
 
     it('counts Absent', () => {
-      const { attendanceData, statusCounts } = useAttendanceGridData()
+      const { attendanceData, statusCounts } = withSetup(() => useAttendanceGridData())
       attendanceData.value = [{ status: 'Absent' } as AttendanceRow]
       expect(statusCounts.value.absent).toBe(1)
     })
 
     it('counts Late', () => {
-      const { attendanceData, statusCounts } = useAttendanceGridData()
+      const { attendanceData, statusCounts } = withSetup(() => useAttendanceGridData())
       attendanceData.value = [{ status: 'Late' } as AttendanceRow]
       expect(statusCounts.value.late).toBe(1)
     })
 
     it('counts Leave + Vacation + Medical together', () => {
-      const { attendanceData, statusCounts } = useAttendanceGridData()
+      const { attendanceData, statusCounts } = withSetup(() => useAttendanceGridData())
       attendanceData.value = [
         { status: 'Leave' } as AttendanceRow,
         { status: 'Vacation' } as AttendanceRow,
@@ -230,7 +231,7 @@ describe('useAttendanceGridData', () => {
     })
 
     it('counts Half Day separately', () => {
-      const { attendanceData, statusCounts } = useAttendanceGridData()
+      const { attendanceData, statusCounts } = withSetup(() => useAttendanceGridData())
       attendanceData.value = [{ status: 'Half Day' } as AttendanceRow]
       expect(statusCounts.value.halfDay).toBe(1)
     })
@@ -238,17 +239,17 @@ describe('useAttendanceGridData', () => {
 
   describe('initial state', () => {
     it('initialises attendanceData empty', () => {
-      const { attendanceData } = useAttendanceGridData()
+      const { attendanceData } = withSetup(() => useAttendanceGridData())
       expect(attendanceData.value).toEqual([])
     })
 
     it('initialises selectedDate to today', () => {
-      const { selectedDate } = useAttendanceGridData()
+      const { selectedDate } = withSetup(() => useAttendanceGridData())
       expect(selectedDate.value).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     })
 
     it('initialises hasChanges false', () => {
-      const { hasChanges } = useAttendanceGridData()
+      const { hasChanges } = withSetup(() => useAttendanceGridData())
       expect(hasChanges.value).toBe(false)
     })
   })
