@@ -3,7 +3,7 @@ Alert Pydantic models for API request/response
 Intelligent alerting system for proactive KPI management
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List, Literal
 from datetime import datetime
 from decimal import Decimal
@@ -91,9 +91,10 @@ class AlertResponse(AlertBase):
     resolved_by: Optional[str] = None
     metadata: Optional[dict] = Field(None, alias="alert_metadata")
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
+    model_config = ConfigDict(
+        from_attributes=True,
+        populate_by_name=True,
+    )
 
 
 class AlertUpdate(BaseModel):
@@ -210,5 +211,4 @@ class AlertConfigResponse(AlertConfigBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

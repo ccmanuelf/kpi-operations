@@ -3,7 +3,7 @@ Pydantic models for PART_OPPORTUNITIES API requests/responses
 Used for DPMO (Defects Per Million Opportunities) calculations
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 
 
@@ -37,8 +37,7 @@ class PartOpportunityResponse(PartOpportunityBase):
 
     part_number: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BulkImportRequest(BaseModel):
@@ -55,5 +54,4 @@ class BulkImportResponse(BaseModel):
     errors: List[str] = Field(default_factory=list, description="List of error messages (first 10)")
     total_processed: int = Field(..., description="Total records processed")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

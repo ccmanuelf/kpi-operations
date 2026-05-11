@@ -6,7 +6,7 @@ Provides immutable event base class for all domain events.
 Events are value objects that capture significant state changes.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from uuid import uuid4
@@ -34,8 +34,8 @@ class DomainEvent(BaseModel):
     triggered_by: Optional[int] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    class Config:
-        frozen = True  # Events are immutable
+    # Events are immutable
+    model_config = ConfigDict(frozen=True)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert event to dictionary for persistence."""

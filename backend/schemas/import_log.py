@@ -2,7 +2,7 @@
 Import Log models for tracking CSV and batch imports
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 
@@ -38,5 +38,4 @@ class ImportLogResponse(BaseModel):
     error_details: Optional[str]
     import_type: str  # 'csv_upload' or 'batch_import'
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

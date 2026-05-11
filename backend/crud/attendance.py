@@ -41,7 +41,7 @@ def create_attendance_record(
     db.commit()
     db.refresh(db_attendance)
 
-    return AttendanceRecordResponse.from_orm(db_attendance)
+    return AttendanceRecordResponse.model_validate(db_attendance)
 
 
 def get_attendance_record(db: Session, attendance_id: str, current_user: User) -> Optional[AttendanceEntry]:
@@ -131,7 +131,7 @@ def update_attendance_record(
     db.commit()
     db.refresh(db_attendance)
 
-    return AttendanceRecordResponse.from_orm(db_attendance)
+    return AttendanceRecordResponse.model_validate(db_attendance)
 
 
 def delete_attendance_record(db: Session, attendance_id: str, current_user: User) -> bool:

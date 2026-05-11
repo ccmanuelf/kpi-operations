@@ -3,7 +3,7 @@ Downtime tracking models (Pydantic)
 PHASE 2: Machine availability tracking
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
@@ -134,8 +134,7 @@ class DowntimeEventResponse(BaseModel):
     created_at: Optional[datetime] = Field(None, description="Timestamp when the record was created")
     updated_at: Optional[datetime] = Field(None, description="Timestamp of the last modification")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AvailabilityCalculationResponse(BaseModel):

@@ -2,7 +2,7 @@
 KPI Threshold Pydantic models for API request/response
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
 
@@ -42,8 +42,7 @@ class KPIThresholdResponse(KPIThresholdBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class KPIThresholdSet(BaseModel):

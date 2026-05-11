@@ -3,7 +3,7 @@ User Preferences Pydantic models
 Dashboard customization and widget configuration
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 import json
@@ -31,9 +31,9 @@ class DashboardWidgetConfig(BaseModel):
         default=None, description="Widget-specific settings such as chart type, filters, and display options"
     )
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "widget_key": "production_summary",
                 "widget_name": "Production Summary",
@@ -41,7 +41,8 @@ class DashboardWidgetConfig(BaseModel):
                 "is_visible": True,
                 "custom_config": {"chart_type": "bar", "time_range": "7d", "show_trend": True},
             }
-        }
+        },
+    )
 
 
 class DashboardPreferences(BaseModel):
@@ -83,9 +84,9 @@ class DashboardPreferences(BaseModel):
             raise ValueError("Duplicate widget keys are not allowed")
         return v
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "layout": "grid",
                 "widgets": [
@@ -106,7 +107,8 @@ class DashboardPreferences(BaseModel):
                 "auto_refresh": 300,
                 "default_time_range": "7d",
             }
-        }
+        },
+    )
 
 
 class DashboardPreferencesUpdate(BaseModel):
@@ -142,8 +144,7 @@ class DashboardPreferencesUpdate(BaseModel):
             raise ValueError("Duplicate widget keys are not allowed")
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PreferenceResponse(BaseModel):
@@ -166,9 +167,9 @@ class PreferenceResponse(BaseModel):
     created_at: datetime = Field(..., description="Timestamp when the preference was first created")
     updated_at: datetime = Field(..., description="Timestamp of the last preference modification")
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "preference_id": 1,
                 "user_id": "user-001",
@@ -183,7 +184,8 @@ class PreferenceResponse(BaseModel):
                 "created_at": "2024-01-15T10:30:00",
                 "updated_at": "2024-01-15T10:30:00",
             }
-        }
+        },
+    )
 
 
 class WidgetDefaultResponse(BaseModel):
@@ -210,8 +212,7 @@ class WidgetDefaultResponse(BaseModel):
                 return None
         return v
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RoleDefaultsResponse(BaseModel):
@@ -223,8 +224,7 @@ class RoleDefaultsResponse(BaseModel):
     widgets: List[WidgetDefaultResponse] = Field(..., description="List of default widget configurations for the role")
     total_widgets: int = Field(..., description="Total number of default widgets configured for this role")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ResetPreferencesRequest(BaseModel):
@@ -234,8 +234,7 @@ class ResetPreferencesRequest(BaseModel):
 
     role: Optional[str] = Field(default=None, description="Role to reset to (uses current user role if not specified)")
 
-    class Config:
-        json_schema_extra = {"example": {"role": "operator"}}
+    model_config = ConfigDict(json_schema_extra={"example": {"role": "operator"}})
 
 
 class ResetPreferencesResponse(BaseModel):
@@ -249,5 +248,4 @@ class ResetPreferencesResponse(BaseModel):
     widgets_applied: int = Field(..., description="Number of default widgets applied from the role template")
     preferences: DashboardPreferences = Field(..., description="The resulting dashboard preferences after reset")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

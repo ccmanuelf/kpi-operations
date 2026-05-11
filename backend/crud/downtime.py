@@ -26,7 +26,7 @@ def create_downtime_event(db: Session, downtime: DowntimeEventCreate, current_us
     db.commit()
     db.refresh(db_downtime)
 
-    return DowntimeEventResponse.from_orm(db_downtime)
+    return DowntimeEventResponse.model_validate(db_downtime)
 
 
 def get_downtime_event(db: Session, downtime_id: str, current_user: User) -> Optional[DowntimeEntry]:
@@ -100,7 +100,7 @@ def update_downtime_event(
     db.commit()
     db.refresh(db_downtime)
 
-    return DowntimeEventResponse.from_orm(db_downtime)
+    return DowntimeEventResponse.model_validate(db_downtime)
 
 
 def delete_downtime_event(db: Session, downtime_id: str, current_user: User) -> bool:

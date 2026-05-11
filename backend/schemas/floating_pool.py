@@ -2,7 +2,7 @@
 Floating Pool Pydantic models for request/response validation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -39,8 +39,7 @@ class FloatingPoolResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FloatingPoolAssignmentRequest(BaseModel):

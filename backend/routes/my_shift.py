@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from backend.database import get_db
 from backend.orm.production_entry import ProductionEntry
@@ -38,8 +38,7 @@ class ShiftStats(BaseModel):
     quality_checks: int
     defect_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WorkOrderProgress(BaseModel):
@@ -52,8 +51,7 @@ class WorkOrderProgress(BaseModel):
     produced: int
     progress_percent: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActivityEntry(BaseModel):
@@ -64,8 +62,7 @@ class ActivityEntry(BaseModel):
     description: str
     timestamp: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MyShiftSummary(BaseModel):
@@ -79,8 +76,7 @@ class MyShiftSummary(BaseModel):
     recent_activity: List[ActivityEntry]
     data_completeness: dict
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================

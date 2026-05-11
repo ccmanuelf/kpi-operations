@@ -3,7 +3,7 @@ Filter Pydantic models for request/response validation
 Saved Filters feature - user-specific filter configurations
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime, date
 from enum import Enum
@@ -56,13 +56,14 @@ class DateRangeConfig(BaseModel):
                 raise ValueError("end_date must be after start_date")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {"type": "relative", "relative_days": 7},
                 {"type": "absolute", "start_date": "2026-01-01", "end_date": "2026-01-15"},
             ]
-        }
+        },
+    )
 
 
 class KPIThresholds(BaseModel):
@@ -111,8 +112,8 @@ class FilterConfig(BaseModel):
         data = json.loads(json_str)
         return cls.model_validate(data)
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "client_id": "BOOT-LINE-A",
                 "date_range": {"type": "relative", "relative_days": 7},
@@ -120,7 +121,8 @@ class FilterConfig(BaseModel):
                 "product_ids": [101, 102],
                 "kpi_thresholds": {"efficiency_min": 85, "quality_rate_min": 95},
             }
-        }
+        },
+    )
 
 
 class SavedFilterCreate(BaseModel):
@@ -135,8 +137,8 @@ class SavedFilterCreate(BaseModel):
     filter_config: FilterConfig = Field(..., description="Filter configuration")
     is_default: bool = Field(default=False, description="Set as default filter for this type")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "filter_name": "Weekly Production Overview",
                 "filter_type": "production",
@@ -147,7 +149,8 @@ class SavedFilterCreate(BaseModel):
                 },
                 "is_default": True,
             }
-        }
+        },
+    )
 
 
 class SavedFilterUpdate(BaseModel):
@@ -164,13 +167,14 @@ class SavedFilterUpdate(BaseModel):
     filter_config: Optional[FilterConfig] = Field(default=None, description="Filter configuration")
     is_default: Optional[bool] = Field(default=None, description="Set as default filter for this type")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "filter_name": "Updated Filter Name",
                 "filter_config": {"date_range": {"type": "relative", "relative_days": 14}},
             }
-        }
+        },
+    )
 
 
 class SavedFilterResponse(BaseModel):
@@ -191,9 +195,9 @@ class SavedFilterResponse(BaseModel):
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "filter_id": 1,
                 "user_id": "user-123",
@@ -206,7 +210,8 @@ class SavedFilterResponse(BaseModel):
                 "created_at": "2026-01-01T08:00:00Z",
                 "updated_at": "2026-01-10T14:20:00Z",
             }
-        }
+        },
+    )
 
 
 class FilterHistoryResponse(BaseModel):
@@ -219,8 +224,7 @@ class FilterHistoryResponse(BaseModel):
     filter_config: FilterConfig = Field(..., description="Applied filter configuration")
     applied_at: datetime = Field(..., description="When the filter was applied")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FilterHistoryCreate(BaseModel):

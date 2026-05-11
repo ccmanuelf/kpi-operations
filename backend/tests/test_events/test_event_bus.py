@@ -816,7 +816,7 @@ class TestDomainEventDefinitions:
             to_status="CLOSED",
             from_status="IN_PROGRESS",
         )
-        full = event.model_dump() if hasattr(event, "model_dump") else event.dict()
+        full = event.model_dump()
         assert full["from_status"] == "IN_PROGRESS"
         assert full["to_status"] == "CLOSED"
         assert full["trigger_source"] == "manual"

@@ -2,7 +2,7 @@
 Employee Pydantic models for request/response validation
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -58,8 +58,7 @@ class EmployeeResponse(BaseModel):
     created_at: datetime = Field(..., description="Timestamp when the employee record was created")
     updated_at: Optional[datetime] = Field(None, description="Timestamp of the last employee record modification")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeWithClients(EmployeeResponse):

@@ -4,7 +4,7 @@ Implements Phase 7.2: Client-Level Calculation Overrides
 Implements Phase 10: Flexible Workflow Foundation
 """
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Any, Dict, List, Optional, cast
 from datetime import datetime
 from enum import Enum
@@ -166,8 +166,7 @@ class ClientConfigResponse(BaseModel):
                 return None
         return cast(Optional[List[str]], v)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClientConfigWithDefaults(BaseModel):

@@ -7,7 +7,7 @@ by all sub-routers without duplication.
 
 from typing import List, Optional, Dict, Any
 from datetime import date
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.constants import DEFAULT_MAX_OPERATORS
 from backend.orm.capacity.orders import OrderPriority, OrderStatus
@@ -69,8 +69,7 @@ class CalendarEntryResponse(BaseModel):
     holiday_name: Optional[str] = Field(description="Holiday name if non-working day")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -116,8 +115,7 @@ class ProductionLineResponse(BaseModel):
     is_active: bool = Field(description="Whether the line is currently active")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -173,8 +171,7 @@ class OrderResponse(BaseModel):
     order_sam_minutes: Optional[float] = Field(description="Total SAM minutes for the order")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================
@@ -217,8 +214,7 @@ class StandardResponse(BaseModel):
     manual_time_minutes: float = Field(description="Manual (hand) time in minutes")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TotalSAMResponse(BaseModel):
@@ -280,8 +276,7 @@ class BOMHeaderResponse(BaseModel):
     is_active: bool = Field(description="Whether this BOM revision is active")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BOMDetailResponse(BaseModel):
@@ -296,8 +291,7 @@ class BOMDetailResponse(BaseModel):
     component_type: Optional[str] = Field(description="Category of component (fabric, trim, etc.)")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BOMExplosionRequest(BaseModel):
@@ -353,8 +347,7 @@ class StockSnapshotResponse(BaseModel):
     location: Optional[str] = Field(description="Warehouse or storage location")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AvailableStockResponse(BaseModel):
@@ -455,8 +448,7 @@ class ScheduleResponse(BaseModel):
     committed_by: Optional[int] = Field(description="User ID who committed the schedule")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScheduleCommitRequest(BaseModel):
@@ -503,8 +495,7 @@ class ScenarioResponse(BaseModel):
     is_active: bool = Field(description="Whether this scenario is active")
     notes: Optional[str] = Field(description="Free-text notes")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ScenarioCompareRequest(BaseModel):
@@ -554,5 +545,4 @@ class KPICommitmentResponse(BaseModel):
     variance: Optional[float] = Field(description="Absolute variance (actual - committed)")
     variance_percent: Optional[float] = Field(description="Percentage variance from committed target")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

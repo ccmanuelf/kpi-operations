@@ -7,7 +7,7 @@ the client's DEFECT_TYPE_CATALOG. This allows each client to define their
 own industry-specific defect types.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -30,8 +30,8 @@ class DefectDetailCreate(DefectDetailBase):
 
     defect_detail_id: str = Field(..., max_length=50, description="Unique defect detail identifier")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "defect_detail_id": "DEF-2024-001",
                 "quality_entry_id": "QE-2024-001",
@@ -43,7 +43,8 @@ class DefectDetailCreate(DefectDetailBase):
                 "location": "Left Sleeve",
                 "description": "Found loose threads on seam",
             }
-        }
+        },
+    )
 
 
 class DefectDetailUpdate(BaseModel):
@@ -58,10 +59,11 @@ class DefectDetailUpdate(BaseModel):
     location: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {"defect_count": 3, "severity": "MAJOR", "description": "Updated count after re-inspection"}
-        }
+        },
+    )
 
 
 class DefectDetailResponse(DefectDetailBase):
@@ -70,9 +72,9 @@ class DefectDetailResponse(DefectDetailBase):
     defect_detail_id: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
             "example": {
                 "defect_detail_id": "DEF-2024-001",
                 "quality_entry_id": "QE-2024-001",
@@ -85,7 +87,8 @@ class DefectDetailResponse(DefectDetailBase):
                 "description": "Found loose threads on seam",
                 "created_at": "2024-01-15T10:30:00",
             }
-        }
+        },
+    )
 
 
 class DefectSummaryResponse(BaseModel):
@@ -95,5 +98,6 @@ class DefectSummaryResponse(BaseModel):
     total_count: int = Field(..., ge=0, description="Number of defect records")
     defect_count: int = Field(..., ge=0, description="Total defects found")
 
-    class Config:
-        json_schema_extra = {"example": {"defect_type": "Stitching", "total_count": 45, "defect_count": 120}}
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"defect_type": "Stitching", "total_count": 45, "defect_count": 120}}
+    )

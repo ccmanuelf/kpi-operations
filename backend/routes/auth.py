@@ -169,7 +169,7 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
         logger, "LOGIN_SUCCESS", user_id=user.user_id, client_id=user.client_id_assigned, ip_address=client_ip
     )
 
-    return Token(access_token=access_token, token_type="bearer", user=UserResponse.from_orm(user))
+    return Token(access_token=access_token, token_type="bearer", user=UserResponse.model_validate(user))
 
 
 @router.get("/me", response_model=UserResponse)
