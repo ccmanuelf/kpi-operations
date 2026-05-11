@@ -11,8 +11,7 @@ Connection Pool Configuration:
 """
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import QueuePool, NullPool
 from backend.config import settings
 import logging

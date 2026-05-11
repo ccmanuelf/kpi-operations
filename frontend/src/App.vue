@@ -229,9 +229,12 @@ const themeStore = useThemeStore()
 const dualViewStore = useDualViewStore()
 const onboardingState = useOnboarding()
 
-// Sync theme store → Vuetify + Carbon tokens
+// Sync theme store → Vuetify + Carbon tokens. Uses the v3.x-ratified
+// `theme.change(name)` API rather than the deprecated
+// `theme.global.name.value =` setter (which logs `[Vuetify UPGRADE]`
+// on every theme toggle).
 watch(() => themeStore.isDark, (dark) => {
-  vuetifyTheme.global.name.value = dark ? 'dark' : 'light'
+  vuetifyTheme.change(dark ? 'dark' : 'light')
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
 }, { immediate: true })
 
