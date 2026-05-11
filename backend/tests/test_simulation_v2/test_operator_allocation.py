@@ -34,7 +34,6 @@ from backend.simulation_v2.optimization.operator_allocation import (
     optimize_operator_allocation,
 )
 
-
 needs_minizinc = pytest.mark.skipif(
     not is_minizinc_available(),
     reason="MiniZinc CLI not available; subprocess-level tests skipped.",

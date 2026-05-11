@@ -20,7 +20,6 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-
 # Each entry: (name, description, allowed_values | None, default_value)
 # - allowed_values=None means free-form (must still be JSON-serialisable).
 # - default_value is the textbook baseline used by Phase 5 variance reporting

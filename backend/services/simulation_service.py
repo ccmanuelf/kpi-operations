@@ -54,7 +54,6 @@ from backend.calculations.simulation import (
     run_capacity_simulation as _run_capacity_simulation_db,
 )
 
-
 __all__ = [
     "SimulationService",
     # Pure (no-DB) calculation functions

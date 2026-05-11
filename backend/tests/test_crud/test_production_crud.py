@@ -10,7 +10,6 @@ from decimal import Decimal
 from backend.orm import ProductionEntry
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

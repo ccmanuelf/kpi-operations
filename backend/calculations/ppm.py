@@ -15,7 +15,6 @@ from typing import Any, Dict, List, Optional
 
 from backend.orm.quality_entry import QualityEntry
 
-
 # =============================================================================
 # PURE CALCULATION FUNCTIONS (No Database Access)
 # Phase 1.2: These functions can be unit tested without database

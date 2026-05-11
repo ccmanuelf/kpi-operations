@@ -19,7 +19,6 @@ from backend.orm.capacity.production_lines import CapacityProductionLine
 from backend.routes.production_lines import router as production_lines_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

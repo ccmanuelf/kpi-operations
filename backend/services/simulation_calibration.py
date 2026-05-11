@@ -41,7 +41,6 @@ from backend.orm.production_entry import ProductionEntry
 from backend.orm.shift import Shift
 from backend.simulation_v2.constants import MAX_HORIZON_DAYS
 
-
 # ---------------------------------------------------------------------------
 # Confidence helpers
 # ---------------------------------------------------------------------------

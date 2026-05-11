@@ -36,7 +36,6 @@ from backend.simulation_v2.optimization.product_sequencing import (
     sequence_products,
 )
 
-
 needs_minizinc = pytest.mark.skipif(
     not is_minizinc_available(),
     reason="MiniZinc CLI not available",

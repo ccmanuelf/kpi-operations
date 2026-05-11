@@ -17,7 +17,6 @@ from backend.orm.capacity.orders import CapacityOrder, OrderStatus, OrderPriorit
 from backend.routes.onboarding import router as onboarding_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

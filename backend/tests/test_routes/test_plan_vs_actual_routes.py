@@ -23,7 +23,6 @@ from backend.auth.jwt import get_current_user
 from backend.routes.plan_vs_actual import router as plan_vs_actual_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Test App Factory and Fixtures
 # ---------------------------------------------------------------------------

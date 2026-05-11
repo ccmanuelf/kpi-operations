@@ -17,7 +17,6 @@ from backend.orm.user import User
 from backend.routes.shifts import router as shifts_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

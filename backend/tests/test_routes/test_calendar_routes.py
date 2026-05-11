@@ -23,7 +23,6 @@ from backend.orm.capacity.calendar import CapacityCalendar
 from backend.routes.calendar import router as calendar_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

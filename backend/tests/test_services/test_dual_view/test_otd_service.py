@@ -15,7 +15,6 @@ from backend.services.dual_view.otd_service import (
 )
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 PERIOD_START = datetime(2026, 4, 1, tzinfo=timezone.utc)
 PERIOD_END = datetime(2026, 4, 30, tzinfo=timezone.utc)
 

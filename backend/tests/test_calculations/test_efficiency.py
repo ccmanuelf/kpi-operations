@@ -24,7 +24,6 @@ from backend.calculations.efficiency import (
     DEFAULT_SHIFT_HOURS,
 )
 
-
 # ===== Helper Functions for Standalone Calculations =====
 
 

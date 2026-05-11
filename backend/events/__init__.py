@@ -70,7 +70,6 @@ from backend.events.session_hooks import (
 # Handler registration
 from backend.events.handlers import register_all_handlers
 
-
 __all__ = [
     # Base
     "DomainEvent",

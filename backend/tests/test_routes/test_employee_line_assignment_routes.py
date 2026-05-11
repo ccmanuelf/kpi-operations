@@ -19,7 +19,6 @@ from backend.orm.production_line import ProductionLine
 from backend.routes.employee_line_assignments import router as ela_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

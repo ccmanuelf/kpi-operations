@@ -18,7 +18,6 @@ from backend.orm.production_line import ProductionLine
 from backend.routes.production_lines import router as production_lines_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

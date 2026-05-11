@@ -21,7 +21,6 @@ from backend.routes.work_orders import router as work_orders_router
 from backend.routes.capacity import router as capacity_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

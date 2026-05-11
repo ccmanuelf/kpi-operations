@@ -385,14 +385,12 @@ def seed_demo_predictions(db: Any, client_ids: Optional[List[str]] = None, days:
             for record in history:
                 try:
                     db.execute(
-                        text(
-                            """
+                        text("""
                             INSERT INTO kpi_history
                             (client_id, kpi_type, record_date, value, is_anomaly, metadata)
                             VALUES (:client_id, :kpi_type, :record_date, :value, :is_anomaly, :metadata)
                             ON CONFLICT DO NOTHING
-                        """
-                        ),
+                        """),
                         {
                             "client_id": client_id,
                             "kpi_type": kpi_type.value,

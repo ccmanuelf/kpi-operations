@@ -26,7 +26,6 @@ from backend.routes.production import router as production_router
 from backend.orm import ClientType
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

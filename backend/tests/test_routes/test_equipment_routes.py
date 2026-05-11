@@ -23,7 +23,6 @@ from backend.orm.production_line import ProductionLine  # noqa: F401 — registe
 from backend.routes.equipment import router as equipment_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # =============================================================================
 # Test App Factory and Fixtures
 # =============================================================================

@@ -15,7 +15,6 @@ from backend.auth.jwt import get_password_hash, create_access_token
 from backend.orm.user import User, UserRole
 from backend.orm.client import Client, ClientType
 
-
 # Test database setup
 TEST_DATABASE_URL = "sqlite:///:memory:"
 

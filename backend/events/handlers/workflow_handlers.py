@@ -11,7 +11,6 @@ import logging
 from backend.events.base import DomainEvent, EventHandler
 from backend.events.domain_events import WorkOrderStatusChanged
 
-
 logger = logging.getLogger(__name__)
 
 

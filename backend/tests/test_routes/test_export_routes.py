@@ -29,7 +29,6 @@ from backend.auth.jwt import get_current_user
 from backend.routes.export import router as export_router
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Test App Factory and Fixtures
 # ---------------------------------------------------------------------------

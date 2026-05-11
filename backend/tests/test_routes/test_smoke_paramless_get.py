@@ -42,7 +42,6 @@ from fastapi.testclient import TestClient
 from backend.auth.jwt import get_current_user
 from backend.main import app
 
-
 # Paths the smoke test deliberately skips. Empty for now; reserve for
 # infra/middleware/static endpoints that don't represent app behavior.
 _SKIP_PATHS: Set[str] = set()

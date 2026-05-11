@@ -13,7 +13,6 @@ from backend.constants import DEFAULT_MAX_OPERATORS
 from backend.orm.capacity.orders import OrderPriority, OrderStatus
 from backend.orm.capacity.schedule import ScheduleStatus
 
-
 # =============================================================================
 # Generic Responses
 # =============================================================================

@@ -33,7 +33,6 @@ from backend.orm.capacity.orders import CapacityOrder  # noqa: F401
 
 from backend.tests.fixtures.factories import TestDataFactory
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------

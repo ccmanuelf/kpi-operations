@@ -70,7 +70,6 @@ from backend.services.capacity.capacity_service import CapacityPlanningService
 
 from backend.exceptions.domain_exceptions import BOMExplosionError, SchedulingError
 
-
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------

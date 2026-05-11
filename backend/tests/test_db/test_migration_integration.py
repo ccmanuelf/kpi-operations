@@ -14,7 +14,6 @@ from backend.db.migrations.schema_initializer import SchemaInitializer
 from backend.db.migrations.demo_seeder import DemoDataSeeder
 from backend.db.state import ProviderStateManager, MigrationState
 
-
 # Create a simple test Base for testing schema operations
 TestBase = declarative_base()
 

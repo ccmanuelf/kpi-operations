@@ -48,7 +48,6 @@ from backend.events.domain_events import (
     CapacityScenarioCompared,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test handler implementations (used across multiple test classes)
 # ---------------------------------------------------------------------------

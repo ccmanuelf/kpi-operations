@@ -16,7 +16,6 @@ from backend.events.domain_events import (
     QualityDefectReported,
 )
 
-
 logger = logging.getLogger(__name__)
 
 
