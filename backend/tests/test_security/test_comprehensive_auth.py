@@ -14,51 +14,47 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 
 class TestPasswordHashing:
-    """Test password hashing functions"""
+    """Test password hashing functions.
+
+    Exercises the project's `backend.auth.password` module (argon2id)
+    rather than asserting on a specific hashing library — keeps the
+    test pinned to OUR contract, not a third-party API surface. The
+    full migration-shim contract (including legacy bcrypt support) is
+    pinned in test_password_module.py.
+    """
 
     def test_password_hash_different_each_time(self):
-        """Test that same password produces different hashes"""
-        from passlib.context import CryptContext
-
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        """Same password produces different hashes (random salt)."""
+        from backend.auth.password import hash_password
 
         password = "testpassword123"
-        hash1 = pwd_context.hash(password)
-        hash2 = pwd_context.hash(password)
+        hash1 = hash_password(password)
+        hash2 = hash_password(password)
 
         assert hash1 != hash2  # Different salts
 
     def test_password_verification_correct(self):
-        """Test correct password verification"""
-        from passlib.context import CryptContext
-
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        from backend.auth.password import hash_password, verify_password
 
         password = "testpassword123"
-        hashed = pwd_context.hash(password)
+        hashed = hash_password(password)
 
-        assert pwd_context.verify(password, hashed)
+        assert verify_password(password, hashed) is True
 
     def test_password_verification_incorrect(self):
-        """Test incorrect password verification"""
-        from passlib.context import CryptContext
-
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        from backend.auth.password import hash_password, verify_password
 
         password = "testpassword123"
-        wrong_password = "wrongpassword"
-        hashed = pwd_context.hash(password)
+        hashed = hash_password(password)
 
-        assert not pwd_context.verify(wrong_password, hashed)
+        assert verify_password("wrongpassword", hashed) is False
 
-    def test_password_hash_length(self):
-        """Test password hash has correct length"""
-        from passlib.context import CryptContext
+    def test_password_hash_uses_argon2id(self):
+        """Pin the algorithm choice: argon2id, OWASP-recommended."""
+        from backend.auth.password import hash_password
 
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-        hashed = pwd_context.hash("testpassword")
-        assert len(hashed) == 60  # bcrypt hash length
+        hashed = hash_password("testpassword")
+        assert hashed.startswith("$argon2id$"), hashed
 
 
 class TestJWTTokens:
@@ -216,16 +212,12 @@ class TestUserAuthentication:
         assert not mock_user.is_active
 
     def test_login_wrong_password(self):
-        """Test login with wrong password"""
-        from passlib.context import CryptContext
+        """Test login with wrong password using the project's
+        password-hashing module (argon2id)."""
+        from backend.auth.password import hash_password, verify_password
 
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-        correct_hash = pwd_context.hash("correctpassword")
-        wrong_password = "wrongpassword"
-
-        is_valid = pwd_context.verify(wrong_password, correct_hash)
-        assert not is_valid
+        correct_hash = hash_password("correctpassword")
+        assert verify_password("wrongpassword", correct_hash) is False
 
     def test_login_nonexistent_user(self):
         """Test login with non-existent user"""

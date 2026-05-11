@@ -17,8 +17,8 @@ cryptography==46.0.7  # CVE-2026-34073 + CVE-2026-39892 fix; pinned for pymysql 
 python-jose[cryptography]==3.5.0
 ecdsa==0.19.2          # transitive via python-jose; pinned for CVE-2024-23342 + CVE-2026-33936
 pyasn1==0.6.3          # transitive via python-jose + rsa; pinned for CVE-2026-30922
-passlib[bcrypt]==1.7.4
-bcrypt==4.2.1          # Pin: passlib incompatible with bcrypt 5.x
+argon2-cffi==25.1.0    # Primary password-hashing (OWASP-recommended algorithm)
+bcrypt==5.0.0          # Retained for legacy-hash verification path (rehash-on-verify migration shim from passlib era)
 python-multipart==0.0.27  # CVE-2026-40347 + CVE-2026-42561 fix
 
 # CORS & Security

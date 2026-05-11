@@ -25,6 +25,7 @@ from backend.middleware.rate_limit import limiter, RateLimitConfig
 from backend.auth.jwt import (
     verify_password,
     get_password_hash,
+    needs_password_rehash,
     create_access_token,
     get_current_user,
     oauth2_scheme,
@@ -126,6 +127,34 @@ def login(request: Request, user_credentials: UserLogin, db: Session = Depends(g
             ip_address=client_ip,
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive")
+
+    # Rehash-on-verify shim (passlib → argon2 migration). The user just
+    # proved they own the password — opportunistic moment to upgrade
+    # legacy bcrypt hashes to argon2id without forcing a reset. Wrapped
+    # so that any hash/persist failure is logged but does NOT fail the
+    # login: the user still gets their token, and the next successful
+    # login retries the upgrade.
+    if needs_password_rehash(user.password_hash):
+        try:
+            user.password_hash = get_password_hash(user_credentials.password)
+            user.updated_at = datetime.now(tz=timezone.utc)
+            db.commit()
+            log_security_event(
+                logger,
+                "PASSWORD_HASH_UPGRADED",
+                user_id=user.user_id,
+                details="Stored hash upgraded from legacy format to argon2id",
+                ip_address=client_ip,
+            )
+        except Exception as exc:  # noqa: BLE001 — see comment above
+            db.rollback()
+            log_security_event(
+                logger,
+                "PASSWORD_HASH_UPGRADE_FAILED",
+                user_id=user.user_id,
+                details=f"Rehash failed; legacy hash retained. Error: {type(exc).__name__}",
+                ip_address=client_ip,
+            )
 
     # Create access token with client_id for stateless validation (per audit requirement)
     # Include client_id_assigned in JWT payload for stateless tenant verification
