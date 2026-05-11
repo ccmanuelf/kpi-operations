@@ -23,10 +23,15 @@ export async function waitForBackend(page: Page, timeout = 60000): Promise<boole
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
     try {
-      const response = await page.request.get(healthUrl);
+      // Per-request timeout MUST be short (3s) so the loop actually
+      // polls. Without it, the render config's actionTimeout=20000 makes
+      // each request hang 20s on a cold backend, eating the 60s test
+      // budget after only ~3 polls — the test then times out *before*
+      // the backend finishes spinning up.
+      const response = await page.request.get(healthUrl, { timeout: 3000 });
       if (response.ok()) return true;
     } catch {
-      // Backend not ready yet
+      // Backend not ready yet (or fetch timed out — keep polling)
     }
     await page.waitForTimeout(500);
   }
