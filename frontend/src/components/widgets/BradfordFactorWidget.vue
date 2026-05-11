@@ -290,10 +290,15 @@ const fetchAttendanceAndCalculate = async () => {
       }
     })
 
+    interface AttendanceRow {
+      status: string
+      attendance_date: string
+    }
     if (response.data && Array.isArray(response.data)) {
-      const absences = response.data
-        .filter((r: any) => r.status === 'Absent' || r.status === 'Late')
-        .sort((a: any, b: any) => new Date(a.attendance_date).getTime() - new Date(b.attendance_date).getTime())
+      const rows = response.data as AttendanceRow[]
+      const absences = rows
+        .filter((r) => r.status === 'Absent' || r.status === 'Late')
+        .sort((a, b) => new Date(a.attendance_date).getTime() - new Date(b.attendance_date).getTime())
 
       if (absences.length === 0) {
         score.value = 0

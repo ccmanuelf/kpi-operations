@@ -386,10 +386,11 @@ const fetchData = async () => {
 
     completenessData.value = response.data
     emit('refresh', completenessData.value)
-  } catch (err: any) {
+  } catch (err: unknown) {
     // eslint-disable-next-line no-console -- dev-only, gated by import.meta.env.DEV
     if (import.meta.env.DEV) console.error('Error fetching data completeness:', err)
-    error.value = err.response?.data?.detail || 'Failed to load completeness data'
+    const axiosErr = err as { response?: { data?: { detail?: string } } }
+    error.value = axiosErr.response?.data?.detail || 'Failed to load completeness data'
 
     // Fallback: generate mock data for UI demonstration
     completenessData.value = generateMockData()

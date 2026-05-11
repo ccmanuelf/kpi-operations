@@ -334,17 +334,31 @@ const fetchData = async () => {
       }
     })
 
+    interface ReworkOpRow {
+      operation?: string
+      inspection_stage?: string
+      process_step?: string
+      operation_id?: string
+      step_id?: string
+      rework_units?: number
+      rework_count?: number
+      rework_hours?: number | string
+      estimated_hours?: number | string
+      rework_rate?: number | string
+      estimated_cost?: number
+      cost?: number
+    }
     if (response.data && Array.isArray(response.data.operations || response.data)) {
-      const operations = response.data.operations || response.data
+      const operations = (response.data.operations || response.data) as ReworkOpRow[]
       totalUnitsProduced.value = response.data.total_units_produced || 10000
 
-      reworkOperations.value = operations.map((op: any) => ({
+      reworkOperations.value = operations.map((op) => ({
         operation: op.operation || op.inspection_stage || op.process_step || 'Unknown',
         operation_id: op.operation_id || op.step_id || '',
         rework_units: op.rework_units || op.rework_count || 0,
-        rework_hours: parseFloat(op.rework_hours || op.estimated_hours || 0),
-        rework_rate: parseFloat(op.rework_rate || 0),
-        estimated_cost: op.estimated_cost || op.cost || (op.rework_units * 15) // $15/unit default
+        rework_hours: parseFloat(String(op.rework_hours || op.estimated_hours || 0)),
+        rework_rate: parseFloat(String(op.rework_rate || 0)),
+        estimated_cost: op.estimated_cost || op.cost || ((op.rework_units || 0) * 15), // $15/unit default
       }))
     } else {
       await fetchQualityAndAggregate()
@@ -369,12 +383,18 @@ const fetchQualityAndAggregate = async () => {
       }
     })
 
+    interface QualityInspectionRow {
+      inspection_stage?: string
+      operation?: string
+      rework_units?: number
+      units_inspected?: number
+    }
     if (response.data && Array.isArray(response.data)) {
       // Aggregate by inspection stage/operation
       const operationMap = new Map<string, { rework_units: number; total_units: number }>()
 
       let totalProduced = 0
-      response.data.forEach((inspection: any) => {
+      ;(response.data as QualityInspectionRow[]).forEach((inspection) => {
         const operation = inspection.inspection_stage || inspection.operation || 'General Inspection'
         const rework = inspection.rework_units || 0
         const total = inspection.units_inspected || 0
