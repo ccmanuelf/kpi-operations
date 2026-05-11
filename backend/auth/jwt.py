@@ -6,17 +6,16 @@ Token creation, validation, password hashing
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from backend.auth.password import hash_password as _hash_password
+from backend.auth.password import needs_rehash as _needs_rehash
+from backend.auth.password import verify_password as _verify_password
 from backend.config import settings
 from backend.database import get_db
 from backend.orm.user import User
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -32,13 +31,27 @@ def is_token_blacklisted(token: str) -> bool:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against hash"""
-    return cast(bool, pwd_context.verify(plain_password, hashed_password))
+    """Verify password against hash.
+
+    Accepts both argon2id (current) and bcrypt (legacy passlib-era)
+    stored hash formats. See `backend.auth.password.verify_password`
+    for the full migration-shim contract.
+    """
+    return _verify_password(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """Hash password"""
-    return cast(str, pwd_context.hash(password))
+    """Hash password using argon2id (OWASP-recommended)."""
+    return _hash_password(password)
+
+
+def needs_password_rehash(hashed_password: str) -> bool:
+    """Return True if the stored hash should be re-hashed.
+
+    Login flow should call this after a successful `verify_password`
+    and, if True, rehash the same plaintext + persist the new hash.
+    """
+    return _needs_rehash(hashed_password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

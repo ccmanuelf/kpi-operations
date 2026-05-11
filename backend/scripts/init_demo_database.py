@@ -372,10 +372,11 @@ def init_database() -> None:
             db.add(config)
         db.flush()
 
-        # Users
-        from passlib.context import CryptContext
-
-        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        # Users. Delegates to the project's auth.password module
+        # (argon2id) — keeps the demo seeder's hash format in sync
+        # with the runtime so login + rehash-on-verify both behave the
+        # same on a fresh seed as on a long-running install.
+        from backend.auth.password import hash_password
 
         users_data = [
             # (username, password, role, client_id, full_name)
@@ -411,7 +412,7 @@ def init_database() -> None:
                 user_id=f"USER-{username.upper()}",
                 username=username,
                 email=f"{username}@kpi-operations.com",
-                password_hash=pwd_context.hash(password),
+                password_hash=hash_password(password),
                 full_name=full_name,
                 role=role,
                 client_id_assigned=user_client_id,
