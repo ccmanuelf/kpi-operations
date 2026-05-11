@@ -28,8 +28,11 @@ test.describe('Admin — Defect Types catalog (inline AG Grid)', () => {
   })
 
   test('Defect Types page renders', async ({ page }) => {
-    const heading = page.locator('text=/defect/i').first()
-    await expect(heading).toBeVisible({ timeout: 10000 })
+    // Scope to the page <h1> so the locator can't match nav drawer links
+    // or browser-tab title text that paint before the view body. 15s
+    // matches the rest of the file's visibility timeouts.
+    const heading = page.locator('h1', { hasText: /defect/i })
+    await expect(heading).toBeVisible({ timeout: 15000 })
   })
 
   test('client selector or global picker is visible', async ({ page }) => {
