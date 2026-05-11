@@ -74,6 +74,9 @@ class DemoDataSeeder:
             ("employees", self._seed_employees),
             ("products", self._seed_products),
             ("shifts", self._seed_shifts),
+            # Production lines + equipment + assignments must seed before entries
+            # so production/downtime/attendance can reference a real line_id.
+            ("production_lines_and_equipment", self._seed_production_lines_and_equipment),
             ("work_orders", self._seed_work_orders),
             ("jobs", self._seed_jobs),
             ("production_entries", self._seed_production_entries),
@@ -93,10 +96,11 @@ class DemoDataSeeder:
             ("capacity_planning", self._seed_capacity_planning),
             # Task 3.1: Link Work Orders to Capacity Orders (post-processing)
             ("wo_capacity_links", self._link_work_orders_to_capacity_orders),
-            # Sprint 0-2: Hold catalogs, break times, production lines, equipment, assignments
+            # Sprint 0-2: Hold catalogs, break times, equipment, assignments
+            # Note: production_lines_and_equipment runs early (before production_entries)
+            # so entries can be assigned a line_id at insert time.
             ("hold_catalogs", self._seed_hold_catalogs),
             ("break_times", self._seed_break_times),
-            ("production_lines_and_equipment", self._seed_production_lines_and_equipment),
             # Global settings & configurations (aligned with init_demo_database.py)
             ("client_configs", self._seed_client_configs),
             ("kpi_thresholds", self._seed_kpi_thresholds),
@@ -474,11 +478,20 @@ class DemoDataSeeder:
         from backend.orm.production_entry import ProductionEntry
         from backend.orm.product import Product
         from backend.orm.shift import Shift
+        from backend.orm.production_line import ProductionLine
 
         # Look up DEMO-001's products and shifts by code/name
         client_id = "DEMO-001"
         client_products = self.session.query(Product).filter(Product.client_id == client_id).all()
         client_shifts = self.session.query(Shift).filter(Shift.client_id == client_id).all()
+
+        # Default to the SEW (sewing) line as the producing line for garment demo entries.
+        sew_line = (
+            self.session.query(ProductionLine)
+            .filter(ProductionLine.client_id == client_id, ProductionLine.department == "SEWING")
+            .first()
+        )
+        default_line_id = sew_line.line_id if sew_line else None
 
         # Build lookup maps
         product_by_code = {p.product_code: p.product_id for p in client_products}
@@ -525,8 +538,7 @@ class DemoDataSeeder:
                     defect_count=defects,
                     scrap_count=scrap,
                     entered_by=1,  # Admin user
-                    # TODO: Assign line_id after PRODUCTION_LINE demo data is seeded
-                    line_id=None,
+                    line_id=default_line_id,
                 )
                 entries.append(entry)
                 entry_num += 1
@@ -540,6 +552,15 @@ class DemoDataSeeder:
         Creates downtime records linked to Work Orders for Availability KPI.
         """
         from backend.orm.downtime_entry import DowntimeEntry
+        from backend.orm.production_line import ProductionLine
+
+        client_id = "DEMO-001"
+        sew_line = (
+            self.session.query(ProductionLine)
+            .filter(ProductionLine.client_id == client_id, ProductionLine.department == "SEWING")
+            .first()
+        )
+        default_line_id = sew_line.line_id if sew_line else None
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -564,8 +585,7 @@ class DemoDataSeeder:
                 downtime_duration_minutes=random.randint(15, 120),
                 machine_id=f"MACHINE-{random.randint(1, 5):02d}",
                 reported_by=1,  # Admin user
-                # TODO: Assign line_id after PRODUCTION_LINE demo data is seeded
-                line_id=None,
+                line_id=default_line_id,
             )
             entries.append(entry)
 
@@ -579,11 +599,19 @@ class DemoDataSeeder:
         """
         from backend.orm.attendance_entry import AttendanceEntry, AbsenceType
         from backend.orm.shift import Shift
+        from backend.orm.production_line import ProductionLine
 
         # Look up DEMO-001's 1st shift
         client_id = "DEMO-001"
         day_shift = self.session.query(Shift).filter(Shift.client_id == client_id, Shift.shift_name == "1st").first()
         day_shift_id = day_shift.shift_id if day_shift else 1
+
+        sew_line = (
+            self.session.query(ProductionLine)
+            .filter(ProductionLine.client_id == client_id, ProductionLine.department == "SEWING")
+            .first()
+        )
+        default_line_id = sew_line.line_id if sew_line else None
 
         entries = []
         today = datetime.now(tz=timezone.utc)
@@ -608,8 +636,7 @@ class DemoDataSeeder:
                     is_absent=is_absent,
                     absence_type=absence_type,
                     entered_by=1,  # Admin user
-                    # TODO: Assign line_id after PRODUCTION_LINE demo data is seeded
-                    line_id=None,
+                    line_id=default_line_id,
                 )
                 entries.append(entry)
                 entry_num += 1
@@ -877,7 +904,6 @@ class DemoDataSeeder:
 
         transition_id = 1
         for work_order_id, transitions in status_progressions.items():
-            from_status = None
             elapsed_from_received = 0
 
             for idx, (from_st, to_st, days_ago, notes) in enumerate(transitions):
