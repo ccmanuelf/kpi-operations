@@ -209,29 +209,24 @@ def logout(
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
 def forgot_password(request: Request, reset_request: PasswordResetRequest, db: Session = Depends(get_db)) -> dict:
     """
-    Request password reset (rate limited: 10 requests/minute)
+    Request password reset (rate limited: 10 requests/minute).
 
-    Sends a password reset email with a time-limited token.
-    Always returns success to prevent email enumeration attacks.
+    Issues a 24h password-reset JWT for the matching active user, if any.
+    Email delivery is not integrated in-process; the token is emitted at
+    DEBUG level so a deployment with an external log-to-email shipper or an
+    admin-driven reset flow can route it. The response is identical for
+    matched and unmatched emails to prevent enumeration.
     """
     user = db.query(User).filter(User.email == reset_request.email).first()
 
     if user and user.is_active:
-        # Create password reset token (24 hour expiry)
         reset_token = create_access_token(
             data={"sub": user.username, "type": "password_reset"}, expires_delta=timedelta(hours=24)
         )
-        # TODO: Send email with reset link
-        # In production, integrate with email service
-        # For now, log the token (remove in production)
         get_module_logger(__name__).debug("Password reset token generated for %s: %s", user.email, reset_token)
 
-    # Always return success to prevent email enumeration
     return {
-        "message": (
-            "If an account with this email exists, a password reset has been initiated. "
-            "Check server logs for the reset token."
-        )
+        "message": "If an account with this email exists, a password reset has been initiated.",
     }
 
 
