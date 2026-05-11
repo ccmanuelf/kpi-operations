@@ -14,11 +14,16 @@ test.setTimeout(60000)
 async function navigateToDefectTypes(page: Page) {
   // Direct goto bypasses the role-based v-list-group expansion
   // animations that hang scrollIntoViewIfNeeded() in CI Chromium.
-  // domcontentloaded (vs the default 'load') avoids ERR_ABORTED on
-  // the very first test of the run when Vite dev server is still
-  // warming up — 'load' waits for every resource and times out.
+  // domcontentloaded fires before the Vue SPA hydrates, so wait for
+  // *this* view's <h1> (text matches the i18n title) as a deterministic
+  // mount marker — eliminates the race where a transitioning previous
+  // view's h1 could satisfy a generic `h1` selector. Render's cold-load
+  // can take 20–30s for the first chunk, so 30s here.
   await page.goto('/admin/defect-types', { waitUntil: 'domcontentloaded' })
-  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {})
+  await page
+    .locator('h1', { hasText: /defect/i })
+    .first()
+    .waitFor({ state: 'visible', timeout: 30000 })
 }
 
 test.describe('Admin — Defect Types catalog (inline AG Grid)', () => {
