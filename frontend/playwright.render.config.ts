@@ -16,6 +16,11 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
 
+  // Pre-warm the Render free-tier backend once before any test runs.
+  // Cold-wake can take 60s+, longer than any per-test budget — see
+  // e2e/global-setup.ts for the full reasoning.
+  globalSetup: './e2e/global-setup.ts',
+
   fullyParallel: false,
   workers: 1,
   retries: 1,
