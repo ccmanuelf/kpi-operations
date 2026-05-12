@@ -198,6 +198,10 @@ def get_job_rty_summary(
     - Top scrap operations
     """
     from datetime import timedelta
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default to last 30 days if dates not provided
     if end_date is None:

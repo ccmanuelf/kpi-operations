@@ -309,8 +309,12 @@ def get_client_average_elapsed_times(
     SECURITY: Requires authentication and client access.
     """
     from backend.middleware.client_auth import verify_client_access
+    from backend.utils.date_range import validate_date_range
 
     verify_client_access(current_user, client_id)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     return calculate_client_average_times(
         db=db, client_id=client_id, status=status_filter, start_date=start_date, end_date=end_date
@@ -333,8 +337,12 @@ def get_client_stage_durations(
     SECURITY: Requires authentication and client access.
     """
     from backend.middleware.client_auth import verify_client_access
+    from backend.utils.date_range import validate_date_range
 
     verify_client_access(current_user, client_id)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     return calculate_stage_duration_summary(db=db, client_id=client_id, start_date=start_date, end_date=end_date)
 

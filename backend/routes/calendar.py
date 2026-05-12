@@ -95,6 +95,11 @@ def get_working_days(
 
     Returns an empty list when no calendar data exists for the requested range.
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
+
     logger.info(
         "GET /working-days requested",
         extra={"client_id": client_id, "start_date": str(start_date), "end_date": str(end_date)},
@@ -125,6 +130,11 @@ def get_summary(
     """
     Return an aggregated summary (working days, hours, holidays) for a date range.
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
+
     logger.info(
         "GET /summary requested",
         extra={"client_id": client_id, "start_date": str(start_date), "end_date": str(end_date)},

@@ -66,6 +66,10 @@ def list_downtime(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """List downtime events with filters"""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_downtime_events(
         db,
         current_user=current_user,
@@ -163,6 +167,10 @@ def calculate_availability_kpi(
     from sqlalchemy import func, cast as sa_cast, Date as SADate
     from decimal import Decimal as _Decimal
     from backend.orm.downtime_entry import DowntimeEntry
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Effective client filter — admin pass-through, others scoped.
     effective_client_id = client_id

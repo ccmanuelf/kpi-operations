@@ -41,6 +41,10 @@ def get_top_defects(
     landing on the `client_id: str` slot. Aligned the route signature
     with the underlying calculation contract.
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return identify_top_defects(
         db,
         work_order_id=work_order_id,
@@ -69,6 +73,10 @@ def get_defects_by_type(
 
     from backend.orm.defect_detail import DefectDetail
     from backend.orm.quality_entry import QualityEntry
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default to last 30 days
     if end_date is None:
@@ -135,6 +143,10 @@ def get_quality_by_product(
 
     from backend.orm.quality_entry import QualityEntry
     from backend.orm.work_order import WorkOrder
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default to last 30 days
     if end_date is None:

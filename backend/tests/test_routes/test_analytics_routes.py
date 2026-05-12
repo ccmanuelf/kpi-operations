@@ -947,8 +947,11 @@ class TestAnalyticsEdgeCases:
             "/api/analytics/comparisons",
             params={"kpi_type": "efficiency", "start_date": "2024-12-31", "end_date": "2024-01-01"},
         )
-        # Tenant gate fires before date-range validation → 403
-        assert response.status_code == 403
+        # /comparisons has no per-client tenant Depends (it aggregates over
+        # accessible clients), so validate_date_range fires first and
+        # rejects the swapped pair with a 400 — Run-6 finding R6-D-001.
+        assert response.status_code == 400
+        assert "Invalid date range" in response.json().get("detail", "")
 
     def test_trends_special_characters_in_client_id(self, authenticated_client):
         """Test trends with special characters in client_id"""

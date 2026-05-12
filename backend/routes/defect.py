@@ -129,4 +129,8 @@ def get_defect_summary(
     SECURITY: Returns only defects for user's authorized clients
     Useful for Pareto analysis and identifying top defect categories
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_defect_summary_by_type(db, current_user, start_date, end_date)

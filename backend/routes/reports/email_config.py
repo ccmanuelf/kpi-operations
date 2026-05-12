@@ -201,11 +201,10 @@ async def send_manual_report(
                 detail="Invalid date format. Use YYYY-MM-DD",
             )
 
-        if start_date > end_date:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Start date must be before end date",
-            )
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start_date, end_date)
 
         # Generate PDF report
         pdf_generator = PDFReportGenerator(db)

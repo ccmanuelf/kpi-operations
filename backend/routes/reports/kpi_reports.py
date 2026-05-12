@@ -56,8 +56,10 @@ async def generate_quality_pdf_report(
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
-        if start > end:
-            raise HTTPException(status_code=400, detail="Start date must be before end date")
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start, end)
 
         quality_kpis = ["fpy", "rty", "ppm", "dpmo"]
         pdf_buffer = PDFReportGenerator(db).generate_report(
@@ -101,8 +103,10 @@ async def generate_quality_excel_report(
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
-        if start > end:
-            raise HTTPException(status_code=400, detail="Start date must be before end date")
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start, end)
 
         excel_buffer = ExcelReportGenerator(db).generate_report(client_id=client_id, start_date=start, end_date=end)
 
@@ -155,8 +159,10 @@ async def generate_attendance_pdf_report(
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
-        if start > end:
-            raise HTTPException(status_code=400, detail="Start date must be before end date")
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start, end)
 
         attendance_kpis = ["absenteeism"]
         pdf_buffer = PDFReportGenerator(db).generate_report(
@@ -200,8 +206,10 @@ async def generate_attendance_excel_report(
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
-        if start > end:
-            raise HTTPException(status_code=400, detail="Start date must be before end date")
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start, end)
 
         excel_buffer = ExcelReportGenerator(db).generate_report(client_id=client_id, start_date=start, end_date=end)
 
