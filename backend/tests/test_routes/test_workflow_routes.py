@@ -369,7 +369,18 @@ class TestElapsedTimeEndpoints:
                     "averages": {"lifecycle_hours": 72, "lead_time_hours": 8},
                 }
 
-                result = get_client_average_elapsed_times(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
+                # Pass start_date/end_date explicitly — calling the route fn
+                # directly (not via TestClient) skips FastAPI's Query default
+                # resolution, so the unevaluated Query sentinels would reach
+                # validate_date_range and trip a TypeError.
+                result = get_client_average_elapsed_times(
+                    client_id="CLIENT-001",
+                    status_filter=None,
+                    start_date=None,
+                    end_date=None,
+                    db=mock_db,
+                    current_user=mock_user,
+                )
 
                 assert result["count"] == 50
                 assert result["averages"]["lifecycle_hours"] == 72
@@ -388,7 +399,15 @@ class TestElapsedTimeEndpoints:
                     "stage_durations": [{"from_status": "RECEIVED", "to_status": "RELEASED", "avg_hours": 4.5}],
                 }
 
-                result = get_client_stage_durations(client_id="CLIENT-001", db=mock_db, current_user=mock_user)
+                # Pass start_date/end_date explicitly — see comment in
+                # test_get_client_average_times_endpoint for rationale.
+                result = get_client_stage_durations(
+                    client_id="CLIENT-001",
+                    start_date=None,
+                    end_date=None,
+                    db=mock_db,
+                    current_user=mock_user,
+                )
 
                 assert len(result["stage_durations"]) == 1
 

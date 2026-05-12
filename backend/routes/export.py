@@ -155,6 +155,10 @@ async def export_production_entries(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Export production entries as CSV."""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return _build_csv_response(
         db=db,
         current_user=current_user,
@@ -204,6 +208,10 @@ async def export_work_orders(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Export work orders as CSV."""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return _build_csv_response(
         db=db,
         current_user=current_user,
@@ -253,6 +261,10 @@ async def export_quality_inspections(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Export quality inspection entries as CSV."""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return _build_csv_response(
         db=db,
         current_user=current_user,
@@ -296,6 +308,10 @@ async def export_downtime_events(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Export downtime events as CSV."""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return _build_csv_response(
         db=db,
         current_user=current_user,
@@ -345,6 +361,10 @@ async def export_attendance(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Export attendance entries as CSV."""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return _build_csv_response(
         db=db,
         current_user=current_user,
@@ -533,6 +553,10 @@ async def export_holds(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Export hold entries as CSV."""
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return _build_csv_response(
         db=db,
         current_user=current_user,

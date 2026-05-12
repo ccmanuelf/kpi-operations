@@ -82,6 +82,13 @@ async def get_client_comparisons(
     """
     GET /api/analytics/comparisons - Client-to-client KPI benchmarking
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    # No verify_client_access dependency here — comparisons aggregates over
+    # all clients the user can see, so input validation runs first.
+    validate_date_range(start_date, end_date)
+
     if start_date and end_date:
         pass
     else:
@@ -185,7 +192,12 @@ async def get_performance_heatmap(
     """
     GET /api/analytics/heatmap - Performance heatmap by shift and date
     """
+    from backend.utils.date_range import validate_date_range
+
     verify_client_access(current_user, client_id)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     if start_date and end_date:
         pass
@@ -294,7 +306,12 @@ async def get_defect_pareto_analysis(
     """
     GET /api/analytics/pareto - Defect Pareto analysis (80/20 rule)
     """
+    from backend.utils.date_range import validate_date_range
+
     verify_client_access(current_user, client_id)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     if start_date and end_date:
         pass

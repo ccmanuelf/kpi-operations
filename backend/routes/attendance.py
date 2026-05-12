@@ -87,6 +87,10 @@ def list_attendance(
     List attendance records with filters
     SECURITY: Returns only attendance for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_attendance_records(
         db,
         current_user=current_user,
@@ -115,6 +119,10 @@ def get_attendance_by_employee(
     Get all attendance records for a specific employee
     SECURITY: Returns only attendance for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_attendance_records(
         db,
         current_user=current_user,
@@ -139,6 +147,10 @@ def get_attendance_by_date_range(
     Get attendance records within a date range
     SECURITY: Returns only attendance for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_attendance_records(
         db, current_user=current_user, start_date=start_date, end_date=end_date, skip=skip, limit=limit
     )
@@ -159,6 +171,10 @@ def get_attendance_statistics(
     """
     from sqlalchemy import func, case, cast, Date
     from backend.orm.attendance_entry import AttendanceEntry
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Convert is_absent to status for backward compatibility
     status_case = case(
@@ -293,6 +309,10 @@ def calculate_absenteeism_kpi(
     from datetime import timedelta
     from backend.orm.attendance_entry import AttendanceEntry
     from sqlalchemy import func, desc
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -474,6 +494,10 @@ def get_absenteeism_trend(
     from datetime import timedelta
     from backend.orm.attendance_entry import AttendanceEntry
     from sqlalchemy import func
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -533,6 +557,11 @@ def get_bradford_factor(
     - 126-250: High risk - Formal action required
     - 251+: Critical - Final warning/termination
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
+
     score = calculate_bradford_factor(db, employee_id, start_date, end_date)
 
     interpretation = "Low risk"

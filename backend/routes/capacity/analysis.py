@@ -62,7 +62,12 @@ def run_component_check(
 
     Either provide specific order_ids or a date range to check all confirmed orders.
     """
+    from backend.utils.date_range import validate_date_range
+
     verify_client_access(current_user, client_id, db)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(request.start_date, request.end_date)
 
     try:
         from backend.services.capacity.mrp_service import MRPService
@@ -175,7 +180,12 @@ def run_capacity_analysis(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Run capacity analysis for lines within a date range."""
+    from backend.utils.date_range import validate_date_range
+
     verify_client_access(current_user, client_id, db)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(request.start_date, request.end_date)
 
     try:
         from backend.services.capacity.analysis_service import CapacityAnalysisService
@@ -353,7 +363,12 @@ def generate_schedule(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Auto-generate a schedule from confirmed orders."""
+    from backend.utils.date_range import validate_date_range
+
     verify_client_access(current_user, client_id, db)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     try:
         from backend.services.capacity.scheduling_service import SchedulingService

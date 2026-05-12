@@ -46,6 +46,10 @@ def calculate_ppm_kpi(
     from datetime import timedelta
     from backend.orm.quality_entry import QualityEntry
     from sqlalchemy import func
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default to last 30 days if dates not provided
     if end_date is None:
@@ -125,6 +129,10 @@ def calculate_dpmo_kpi(
     from datetime import timedelta
     from backend.orm.quality_entry import QualityEntry
     from sqlalchemy import func
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     # Default window if not specified
     if end_date is None:
@@ -210,6 +218,10 @@ def calculate_dpmo_by_part(
     - Whether part-specific opportunities were used
     """
     from datetime import timedelta
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     if end_date is None:
         end_date = date.today()

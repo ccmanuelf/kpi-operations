@@ -51,8 +51,10 @@ async def generate_comprehensive_pdf_report(
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
-        if start > end:
-            raise HTTPException(status_code=400, detail="Start date must be before end date")
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start, end)
 
         # Generate with all KPIs (None = all KPIs)
         pdf_buffer = PDFReportGenerator(db).generate_report(
@@ -107,8 +109,10 @@ async def generate_comprehensive_excel_report(
         start = parse_date(start_date, 30)
         end = parse_date(end_date, 0)
 
-        if start > end:
-            raise HTTPException(status_code=400, detail="Start date must be before end date")
+        # Reject reversed range (Run-6 audit R6-D-001) via shared helper.
+        from backend.utils.date_range import validate_date_range
+
+        validate_date_range(start, end)
 
         excel_buffer = ExcelReportGenerator(db).generate_report(client_id=client_id, start_date=start, end_date=end)
 

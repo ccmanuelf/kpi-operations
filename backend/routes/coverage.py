@@ -52,6 +52,10 @@ def list_coverage(
     List shift coverage records with filters
     SECURITY: Returns only coverage for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_shift_coverages(
         db,
         current_user=current_user,
@@ -91,6 +95,10 @@ def get_coverage_by_shift(
     Get all coverage records for a specific shift
     SECURITY: Returns only coverage for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_shift_coverages(
         db,
         current_user=current_user,

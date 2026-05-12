@@ -82,7 +82,12 @@ def get_orders_for_scheduling(
     current_user: User = Depends(get_current_user),
 ) -> Any:
     """Get confirmed orders ready for scheduling within a date range."""
+    from backend.utils.date_range import validate_date_range
+
     verify_client_access(current_user, client_id, db)
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return orders.get_orders_for_scheduling(db, client_id, start_date, end_date)
 
 

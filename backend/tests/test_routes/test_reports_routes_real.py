@@ -338,7 +338,9 @@ class TestPDFReportGeneration:
         response = client.get(f"/api/reports/production/pdf?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
-        assert "before" in response.json()["detail"].lower()
+        # New shared validate_date_range message reads "...is after end_date=..."
+        # (Run-6 R6-D-001). Same semantic, different wording.
+        assert "invalid date range" in response.json()["detail"].lower()
 
 
 class TestExcelReportGeneration:
@@ -413,7 +415,9 @@ class TestManualReport:
         )
 
         assert response.status_code == 400
-        assert "before" in response.json()["detail"].lower()
+        # New shared validate_date_range message reads "...is after end_date=..."
+        # (Run-6 R6-D-001). Same semantic, different wording.
+        assert "invalid date range" in response.json()["detail"].lower()
 
 
 # =============================================================================
@@ -629,7 +633,9 @@ class TestAttendanceExcelWithMock:
         response = client.get(f"/api/reports/attendance/excel?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
-        assert "before" in response.json()["detail"].lower()
+        # New shared validate_date_range message reads "...is after end_date=..."
+        # (Run-6 R6-D-001). Same semantic, different wording.
+        assert "invalid date range" in response.json()["detail"].lower()
 
 
 class TestMonthlyFrequencyConfig:
@@ -733,7 +739,9 @@ class TestComprehensiveExcelWithMock:
         response = client.get(f"/api/reports/comprehensive/excel?start_date={start}&end_date={end}")
 
         assert response.status_code == 400
-        assert "before" in response.json()["detail"].lower()
+        # New shared validate_date_range message reads "...is after end_date=..."
+        # (Run-6 R6-D-001). Same semantic, different wording.
+        assert "invalid date range" in response.json()["detail"].lower()
 
 
 class TestQualityExcelValidation:

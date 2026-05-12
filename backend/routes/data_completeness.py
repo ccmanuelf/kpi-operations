@@ -243,6 +243,11 @@ def get_completeness_summary(
 
     Returns daily completeness percentages for trend visualization.
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
+
     # Default date range: last 7 days
     if end_date is None:
         end_date = date.today()

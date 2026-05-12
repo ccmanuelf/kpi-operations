@@ -78,6 +78,10 @@ def list_quality(
     List quality inspections with filters
     SECURITY: Returns only inspections for user's authorized clients
     """
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
     return get_quality_inspections(
         db,
         current_user=current_user,
@@ -107,6 +111,10 @@ def get_quality_statistics(
     """
     from sqlalchemy import func, cast, Date
     from backend.orm.quality_entry import QualityEntry
+    from backend.utils.date_range import validate_date_range
+
+    # Reject reversed range (Run-6 audit R6-D-001) before defaulting.
+    validate_date_range(start_date, end_date)
 
     query = db.query(
         func.sum(QualityEntry.units_inspected).label("total_inspected"),

@@ -153,7 +153,8 @@ class TestReportEndpoints:
         )
 
         assert response.status_code == 400
-        assert "before end date" in response.json()["detail"].lower()
+        # New shared validate_date_range message (Run-6 R6-D-001).
+        assert "invalid date range" in response.json()["detail"].lower()
 
     def test_client_filtering(self, test_client, auth_headers):
         """Test client_id filtering in reports — supervisor lacks TEST_CLIENT access"""
