@@ -37,7 +37,7 @@ pillow==12.2.0          # transitive via reportlab; pinned for 5 CVEs (40192, 42
 
 # Email & Reports
 sendgrid==6.12.5
-werkzeug==3.1.6         # transitive via sendgrid; pinned for CVE-2026-27199
+werkzeug==3.1.8         # transitive via sendgrid; pinned for CVE-2026-27199
 APScheduler==3.11.2
 
 # System Monitoring
