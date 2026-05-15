@@ -100,6 +100,16 @@ Behavior defaults for working in this repo. These govern *what* and *how much* t
 
 Source: behavioral defaults adapted from `forrestchang/andrej-karpathy-skills`. Project-specific rules elsewhere in this file take precedence on conflict.
 
+## Token Efficiency (RTK)
+
+RTK (Rust Token Killer) is a CLI proxy installed via Homebrew that compresses shell command output by 60–90 %. The PreToolUse hook lives in `~/.claude/settings.json` (global scope, applies to every project) and transparently rewrites most bash commands as `rtk <cmd>`. Per-tool bypasses live in `~/Library/Application Support/rtk/config.toml` under `[hooks].exclude_commands`. Verify live savings with `rtk gain`.
+
+- **Prefer shell over built-in tools when scanning files.** Use `cat`, `rg`, `find`, `head`, `tail` instead of Read/Grep/Glob — only the shell path passes through rtk's compressor, so file-inspection savings only land when you go through bash. Keep Read/Grep/Glob for exact paths, specific line ranges, or unmodified content (e.g., reading a file you'll then `Edit`).
+- **These pass through unmodified (output is verbatim):** `curl`, `docker exec`, `docker compose exec` (hardcoded in the rtk binary), `docker logs`, `docker compose logs`, `pytest` (also catches `PYTHONPATH=.. pytest` — rtk strips env-var prefixes before matching), `npm install`, `npx playwright test`, `alembic revision`, `weasyprint`. Everything else gets rewritten as `rtk <cmd>`.
+- **Matcher is looser than the entry names suggest.** For Docker (which rtk has a built-in wrapper for), bypass is subcommand-strict — `docker run`, `docker build`, `docker compose ps` still get rewritten. For tools rtk doesn't know, the matcher is case-insensitive first-token-prefix, so `alembic revision` actually bypasses every `alembic <subcmd>` and `npm install` bypasses any unrecognized `npm <subcmd>` (e.g., `npm test`, `npm ci`). `curl` also matches `curlie`, `Curl`, `curl-impersonate` — none are used here, but worth knowing.
+- **On failure, read the tee log before re-running.** Compressed failure output prints the full tee log path at the end — open it first. Re-running silently re-incurs the cost without surfacing new information the log already contains.
+- **Frontend test triage.** Vue 3.4 + Vuetify 3.5 + AG Grid generic `ColDef<T>` errors cascade — one bad type produces dozens of follow-on diagnostics that compress well but obscure the root cause. With 1,494 Vitest tests across 52 files and 211 Playwright scenarios, failures-only mode is the right default for both; if you ever remove `npx playwright test` from `exclude_commands`, re-verify the trace artifact path is still printed on failure before trusting compressed output.
+
 ## 🚀 Available Agents (54 Total)
 
 ### Core Development
@@ -217,10 +227,10 @@ Flow-Nexus extends MCP capabilities with 70+ cloud-based orchestration tools:
   Task("Test Engineer", "Write Jest tests. Check memory for API contracts.", "tester")
   Task("DevOps Engineer", "Setup Docker and CI/CD. Document in memory.", "cicd-engineer")
   Task("Security Auditor", "Review authentication. Report findings via hooks.", "reviewer")
-  
+
   // All todos batched together
   TodoWrite { todos: [...8-10 todos...] }
-  
+
   // All file operations together
   Write "backend/server.js"
   Write "frontend/App.jsx"
@@ -269,7 +279,7 @@ npx claude-flow@alpha hooks session-end --export-metrics true
   Task("Database agent", "Design and implement database schema. Store decisions in memory.", "code-analyzer")
   Task("Tester agent", "Create comprehensive test suite with 90% coverage.", "tester")
   Task("Reviewer agent", "Review code quality and security. Document findings.", "reviewer")
-  
+
   // Batch ALL todos in ONE call
   TodoWrite { todos: [
     {id: "1", content: "Research API patterns", status: "in_progress", priority: "high"},
@@ -281,7 +291,7 @@ npx claude-flow@alpha hooks session-end --export-metrics true
     {id: "7", content: "API documentation", status: "pending", priority: "low"},
     {id: "8", content: "Performance optimization", status: "pending", priority: "low"}
   ]}
-  
+
   // Parallel file operations
   Bash "mkdir -p app/{src,tests,docs,config}"
   Write "app/package.json"
