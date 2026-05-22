@@ -20,7 +20,7 @@ factory-boy==3.3.0
 faker==20.1.0
 
 # Coverage
-coverage[toml]==7.3.4
+coverage[toml]==7.14.0
 
 # Assertions
 assertpy==1.1
