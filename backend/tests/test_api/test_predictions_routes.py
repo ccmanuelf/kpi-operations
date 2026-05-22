@@ -1,7 +1,7 @@
 """
 Comprehensive Predictions Routes Tests - Full Coverage
 
-Tests for /Users/mcampos.cerda/Documents/Programming/kpi-operations/backend/routes/predictions.py
+Tests for backend/routes/predictions.py
 Target: Increase coverage from 24% to 90%+
 
 Tests cover:

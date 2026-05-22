@@ -19,7 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 
 # Configure logging
-log_file = '/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/migrations/migration_execution_log.txt'
+log_file = str(Path(__file__).resolve().parent / 'migration_execution_log.txt')
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -421,8 +421,8 @@ class SQLiteMigrationExecutor:
 def main():
     """Main entry point"""
     # Configuration
-    database_path = '/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/kpi_platform.db'
-    migration_file = '/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/migrations/add_client_id_to_tables_sqlite.sql'
+    database_path = str(Path(__file__).resolve().parent.parent / 'kpi_platform.db')
+    migration_file = str(Path(__file__).resolve().parent / 'add_client_id_to_tables_sqlite.sql')
 
     if not Path(database_path).exists():
         logger.error(f"❌ Database file not found: {database_path}")

@@ -126,7 +126,12 @@ class Settings(BaseSettings):
                 raise ValueError(f"CORS origin must start with http:// or https://: {origin}")
         return v
 
-    model_config = {"env_file": ".env", "case_sensitive": True}
+    # extra="ignore": .env files are shared with orchestration (Docker Compose
+    # vars like DEMO_MODE/RUN_MIGRATIONS, deploy/shell exports). pydantic forbids
+    # unknown keys from dotenv FILES by default (not from os.environ), which would
+    # crash the app at import when run from a dir whose .env carries non-field keys.
+    # Ignoring extras makes config robust regardless of which .env is in scope.
+    model_config = {"env_file": ".env", "case_sensitive": True, "extra": "ignore"}
 
     @property
     def is_production(self) -> bool:

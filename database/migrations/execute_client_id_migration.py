@@ -22,7 +22,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/migrations/migration_execution_log.txt'),
+        logging.FileHandler(str(Path(__file__).resolve().parent / 'migration_execution_log.txt')),
         logging.StreamHandler(sys.stdout)
     ]
 )
@@ -387,7 +387,7 @@ class MigrationExecutor:
 def main():
     """Main entry point"""
     # Configuration
-    migration_file = '/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/migrations/add_client_id_to_tables.sql'
+    migration_file = str(Path(__file__).resolve().parent / 'add_client_id_to_tables.sql')
 
     # Get database URL from settings
     database_url = settings.DATABASE_URL
