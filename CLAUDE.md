@@ -108,7 +108,7 @@ RTK (Rust Token Killer) is a CLI proxy installed via Homebrew that compresses sh
 - **These pass through unmodified (output is verbatim):** `curl`, `docker exec`, `docker compose exec` (hardcoded in the rtk binary), `docker logs`, `docker compose logs`, `pytest` (also catches `PYTHONPATH=.. pytest` — rtk strips env-var prefixes before matching), `npm install`, `npx playwright test`, `alembic revision`, `weasyprint`. Everything else gets rewritten as `rtk <cmd>`.
 - **Matcher is looser than the entry names suggest.** For Docker (which rtk has a built-in wrapper for), bypass is subcommand-strict — `docker run`, `docker build`, `docker compose ps` still get rewritten. For tools rtk doesn't know, the matcher is case-insensitive first-token-prefix, so `alembic revision` actually bypasses every `alembic <subcmd>` and `npm install` bypasses any unrecognized `npm <subcmd>` (e.g., `npm test`, `npm ci`). `curl` also matches `curlie`, `Curl`, `curl-impersonate` — none are used here, but worth knowing.
 - **On failure, read the tee log before re-running.** Compressed failure output prints the full tee log path at the end — open it first. Re-running silently re-incurs the cost without surfacing new information the log already contains.
-- **Frontend test triage.** Vue 3.4 + Vuetify 3.5 + AG Grid generic `ColDef<T>` errors cascade — one bad type produces dozens of follow-on diagnostics that compress well but obscure the root cause. With 1,494 Vitest tests across 52 files and 211 Playwright scenarios, failures-only mode is the right default for both; if you ever remove `npx playwright test` from `exclude_commands`, re-verify the trace artifact path is still printed on failure before trusting compressed output.
+- **Frontend test triage.** Vue 3.4 + Vuetify 3.5 + AG Grid generic `ColDef<T>` errors cascade — one bad type produces dozens of follow-on diagnostics that compress well but obscure the root cause. With 1,982 Vitest tests across 80 files and 546 Playwright tests across 15 files (3 browser projects), failures-only mode is the right default for both; if you ever remove `npx playwright test` from `exclude_commands`, re-verify the trace artifact path is still printed on failure before trusting compressed output.
 
 ## 🚀 Available Agents (54 Total)
 
@@ -392,7 +392,7 @@ Remember: **Claude Flow coordinates, Claude Code creates!**
 - **Grade: C+** — production deployment chain is broken (D07+D13+D19+D17+D22)
 
 ### Key Cross-Phase Findings
-- Python 3.12 local vs 3.11 Docker target (version drift)
+- Python 3.12 local vs 3.11 Docker target (version drift) — RESOLVED 2026-05-22: local `backend/.venv` recreated on Python 3.11.15 to match `.python-version`, `requires-python`, and the Docker image; full suite green (4871 passed)
 - Pydantic `.dict()` — 4 CRUD files confirmed (should be .model_dump())
 - Simulation V1 + V2 not 1-for-1 replaceable — distinct feature sets, sunset 2026-06-01
 - python-jose CVE-2024-33663 MITIGATED — algorithms=["HS256"] confirmed in jwt.decode()

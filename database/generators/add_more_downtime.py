@@ -4,8 +4,11 @@
 import sqlite3
 import random
 from datetime import datetime, timedelta
+from pathlib import Path
 
-DB_PATH = "/Users/mcampos.cerda/Documents/Programming/kpi-operations/database/kpi_platform.db"
+# Resolve the DB relative to this file (database/generators/ -> database/) so the
+# script survives the repo being moved. Was a hardcoded absolute path.
+DB_PATH = str(Path(__file__).resolve().parent.parent / "kpi_platform.db")
 
 conn = sqlite3.connect(DB_PATH)
 cursor = conn.cursor()

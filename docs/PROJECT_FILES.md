@@ -174,7 +174,7 @@
 
 ### File Paths Reference:
 
-All paths relative to: `/Users/mcampos.cerda/Documents/Programming/kpi-operations/`
+All paths relative to: `/Users/mcampos.cerda/Developer/Programming/kpi-operations/`
 
 **Backend Entry Point**: `/backend/main.py`
 **Frontend Entry Point**: `/frontend/src/main.js`

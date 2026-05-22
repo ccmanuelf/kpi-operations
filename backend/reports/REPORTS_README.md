@@ -81,4 +81,4 @@ All endpoints require authentication and support multi-client filtering.
 
 ## Documentation
 
-See `/Users/mcampos.cerda/Documents/Programming/kpi-operations/docs/REPORT_GENERATION_IMPLEMENTATION.md` for complete implementation details.
+See `/Users/mcampos.cerda/Developer/Programming/kpi-operations/docs/REPORT_GENERATION_IMPLEMENTATION.md` for complete implementation details.

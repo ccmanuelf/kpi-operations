@@ -352,7 +352,7 @@ PPM = (Defects/Inspected) × 1,000,000
 
 ### Development Environment
 ```bash
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations/frontend
+cd /Users/mcampos.cerda/Developer/Programming/kpi-operations/frontend
 npm run dev
 ```
 

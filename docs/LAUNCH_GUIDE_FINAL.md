@@ -259,7 +259,7 @@ All 7 modules have full Create, Read, Update, Delete operations:
 ### Step 2: Initialize Database (2 minutes)
 
 ```bash
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations/database
+cd /Users/mcampos.cerda/Developer/Programming/kpi-operations/database
 
 # Database already initialized! Verify:
 python init_sqlite_schema.py
@@ -278,7 +278,7 @@ python generate_complete_sample_data.py
 ### Step 3: Start Backend Server (2 minutes)
 
 ```bash
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations/backend
+cd /Users/mcampos.cerda/Developer/Programming/kpi-operations/backend
 
 # Activate virtual environment
 source venv/bin/activate
@@ -296,7 +296,7 @@ uvicorn main:app --reload --port 8000
 
 ```bash
 # New terminal
-cd /Users/mcampos.cerda/Documents/Programming/kpi-operations/frontend
+cd /Users/mcampos.cerda/Developer/Programming/kpi-operations/frontend
 
 # Start development server
 npm run dev

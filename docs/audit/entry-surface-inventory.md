@@ -49,7 +49,7 @@ The existing `handlePasteFromExcel()` pipeline in `useAGGridBase.ts:219-304` is 
 The five techniques specified in the audit prompt were applied in full.
 
 ### 2.1 Route enumeration
-- File read: `/Users/mcampos.cerda/Documents/Programming/kpi-operations/frontend/src/router/index.ts` (single `.ts` router; no `.js` variant exists).
+- File read: `/Users/mcampos.cerda/Developer/Programming/kpi-operations/frontend/src/router/index.ts` (single `.ts` router; no `.js` variant exists).
 - 31 named routes plus 1 alias redirect (`/simulation-v2 → /simulation`) and 1 unauthenticated route (`/login`). Every route in the file points at a view component under `frontend/src/views/` or `frontend/src/components/entries/`. Role-based landing logic (`operator → /my-shift`, `leader → /`, `poweruser → /capacity-planning`, `admin → /kpi-dashboard`) was confirmed in `router/index.ts:251-258`.
 - All 31 authenticated routes map into the inventory below; 11 admin-only routes are flagged via `meta.requiresAdmin`.
 

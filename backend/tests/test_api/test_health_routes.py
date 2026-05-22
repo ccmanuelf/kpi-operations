@@ -1,7 +1,7 @@
 """
 Comprehensive Health Routes Tests - Full Coverage
 
-Tests for /Users/mcampos.cerda/Documents/Programming/kpi-operations/backend/routes/health.py
+Tests for backend/routes/health.py
 Target: Increase coverage from 61% to 90%+
 
 Tests cover:
