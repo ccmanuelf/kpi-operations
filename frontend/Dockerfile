@@ -1,7 +1,7 @@
 # Frontend Dockerfile for KPI Operations Platform
 # Production: pin to @sha256: digest from docker.io for reproducible builds
-# docker pull node:20.18-alpine3.20 && docker inspect --format='{{index .RepoDigests 0}}' node:20.18-alpine3.20
-FROM node:20.18-alpine3.20 AS builder
+# docker pull node:22.22-alpine3.23 && docker inspect --format='{{index .RepoDigests 0}}' node:22.22-alpine3.23
+FROM node:22.22-alpine3.23 AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 # Development stage
-FROM node:20.18-alpine3.20 AS development
+FROM node:22.22-alpine3.23 AS development
 
 WORKDIR /app
 
