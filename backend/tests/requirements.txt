@@ -13,7 +13,7 @@ sqlalchemy-utils==0.42.1
 
 # API Testing
 httpx==0.25.2
-requests-mock==1.11.0
+requests-mock==1.12.1
 
 # Fixtures and Factories
 factory-boy==3.3.0
