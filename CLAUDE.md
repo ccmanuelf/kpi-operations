@@ -33,7 +33,7 @@
 **MCP tools are ONLY for coordination setup:**
 - `mcp__claude-flow__swarm_init` - Initialize coordination topology
 - `mcp__claude-flow__agent_spawn` - Define agent types for coordination
-- `mcp__claude-flow__task_orchestrate` - Orchestrate high-level workflows
+- `mcp__claude-flow__coordination_orchestrate` - Orchestrate high-level workflows
 
 ### 📁 File Organization Rules
 
@@ -168,7 +168,8 @@ RTK (Rust Token Killer) is a CLI proxy installed via Homebrew that compresses sh
 
 ```bash
 # Add MCP servers (Claude Flow required, others optional)
-claude mcp add claude-flow npx claude-flow@alpha mcp start
+# claude-flow@alpha was renamed to ruflo (v3); pin the version to avoid surprise breaking changes
+claude mcp add claude-flow npx -y ruflo@3.10.42 mcp start
 claude mcp add ruv-swarm npx ruv-swarm mcp start  # Optional: Enhanced coordination
 claude mcp add flow-nexus npx flow-nexus@latest mcp start  # Optional: Cloud features
 ```
@@ -176,19 +177,19 @@ claude mcp add flow-nexus npx flow-nexus@latest mcp start  # Optional: Cloud fea
 ## MCP Tool Categories
 
 ### Coordination
-`swarm_init`, `agent_spawn`, `task_orchestrate`
+`swarm_init`, `agent_spawn`, `task_create`, `coordination_orchestrate`
 
 ### Monitoring
-`swarm_status`, `agent_list`, `agent_metrics`, `task_status`, `task_results`
+`swarm_status`, `swarm_health`, `agent_list`, `agent_status`, `task_status`, `task_summary`
 
 ### Memory & Neural
-`memory_usage`, `neural_status`, `neural_train`, `neural_patterns`
+`memory_store`, `memory_retrieve`, `memory_search`, `neural_status`, `neural_train`, `neural_patterns`
 
 ### GitHub Integration
-`github_swarm`, `repo_analyze`, `pr_enhance`, `issue_triage`, `code_review`
+`github_repo_analyze`, `github_pr_manage`, `github_issue_track`, `github_workflow`, `github_metrics`
 
 ### System
-`benchmark_run`, `features_detect`, `swarm_monitor`
+`system_health`, `performance_benchmark`, `performance_report`
 
 ### Flow-Nexus MCP Tools (Optional Advanced Features)
 Flow-Nexus extends MCP capabilities with 70+ cloud-based orchestration tools:
