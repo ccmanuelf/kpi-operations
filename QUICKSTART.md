@@ -5,7 +5,7 @@ Get the platform running in 5 minutes!
 ## Prerequisites
 
 - Python 3.11+ (see `.python-version`)
-- Node.js 20+ (see `.nvmrc`)
+- Node.js 22+ (see `.nvmrc`)
 - MariaDB 10.11+ (production) **OR** SQLite (demo/development — no install needed)
 
 ---
@@ -161,7 +161,7 @@ Visit: **http://localhost:8000/docs** for interactive Swagger UI
 
 | Username | Password | Role |
 |----------|----------|------|
-| admin | password123 | admin |
+| admin | admin123 | admin |
 | supervisor1 | password123 | supervisor |
 | operator1 | password123 | operator |
 | operator2 | password123 | operator |
@@ -219,7 +219,7 @@ mysql -u kpi_user -p kpi_platform -e "SHOW TABLES;"
 
 ```bash
 # Check Node version
-node --version  # Should be 20+
+node --version  # Should be 22+
 
 # Clear cache and reinstall
 rm -rf node_modules package-lock.json
@@ -302,7 +302,6 @@ For production setup, see `/docs/DEPLOYMENT.md` which includes:
 
 - Documentation: `/docs/`
 - API Docs: http://localhost:8000/docs
-- Implementation Summary: `/docs/IMPLEMENTATION_SUMMARY.md`
 
 ---
 

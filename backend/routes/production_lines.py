@@ -92,7 +92,11 @@ def create_production_line_endpoint(
     try:
         result = create_production_line(db, data)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        logger.info("Production line creation rejected for client '%s': %s", data.client_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Line code already exists for this client",
+        )
 
     # Surface soft-limit warning in response headers if present
     warning = getattr(result, "_limit_warning", None)
@@ -179,7 +183,11 @@ def link_capacity_endpoint(
     try:
         result = link_to_capacity_line(db, line_id, body.capacity_line_id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+        logger.info("Capacity line link rejected for line_id=%d: %s", line_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Capacity production line not found",
+        )
     if not result:
         raise HTTPException(status_code=404, detail="Production line not found")
     logger.info(

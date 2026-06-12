@@ -72,7 +72,11 @@ def create_hold_status_endpoint(
     try:
         result = create_hold_status(db, data)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        logger.info("Hold status creation rejected for client '%s': %s", data.client_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Hold status code already exists for this client",
+        )
     logger.info("Created hold status '%s' for client '%s'", data.status_code, data.client_id)
     return result
 
@@ -147,7 +151,11 @@ def create_hold_reason_endpoint(
     try:
         result = create_hold_reason(db, data)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        logger.info("Hold reason creation rejected for client '%s': %s", data.client_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Hold reason code already exists for this client",
+        )
     logger.info("Created hold reason '%s' for client '%s'", data.reason_code, data.client_id)
     return result
 

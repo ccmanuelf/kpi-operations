@@ -5,7 +5,7 @@ All authentication endpoints: register, login, logout, password management
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from jose import JWTError, jwt
 import uuid
 
@@ -211,19 +211,18 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
     """
     Request password reset (rate limited: 10 requests/minute).
 
-    Issues a 24h password-reset JWT for the matching active user, if any.
-    Email delivery is not integrated in-process; the token is emitted at
-    DEBUG level so a deployment with an external log-to-email shipper or an
-    admin-driven reset flow can route it. The response is identical for
-    matched and unmatched emails to prevent enumeration.
+    Records the reset request as a security event. No reset token is issued
+    here: email delivery is not integrated in-process, and emitting the token
+    to logs would put a live credential in log storage. Until an email
+    transport exists, password resets are performed by an admin via the
+    user-management API. The response is identical for matched and unmatched
+    emails to prevent enumeration.
     """
     user = db.query(User).filter(User.email == reset_request.email).first()
 
     if user and user.is_active:
-        reset_token = create_access_token(
-            data={"sub": user.username, "type": "password_reset"}, expires_delta=timedelta(hours=24)
-        )
-        get_module_logger(__name__).debug("Password reset token generated for %s: %s", user.email, reset_token)
+        client_ip = request.client.host if request.client else None
+        log_security_event(logger, "PASSWORD_RESET_REQUESTED", user_id=user.user_id, ip_address=client_ip)
 
     return {
         "message": "If an account with this email exists, a password reset has been initiated.",

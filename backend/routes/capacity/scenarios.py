@@ -181,7 +181,7 @@ def run_scenario(
     except Exception:
         db.rollback()
         logger.exception("Scenario run failed for scenario_id=%s", scenario_id)
-        raise HTTPException(status_code=400, detail="Scenario run failed")
+        raise HTTPException(status_code=500, detail="Scenario run failed")
 
 
 @scenarios_router.delete(
@@ -251,4 +251,4 @@ def compare_scenarios(
         raise HTTPException(status_code=503, detail="Database error during scenario comparison")
     except Exception:
         logger.exception("Scenario comparison failed for client_id=%s", client_id)
-        raise HTTPException(status_code=400, detail="Scenario comparison failed")
+        raise HTTPException(status_code=500, detail="Scenario comparison failed")

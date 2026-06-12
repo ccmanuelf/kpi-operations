@@ -109,16 +109,9 @@ config/secrets.json
 .swarm/memory.db-shm
 .swarm/memory.db-wal
 
-# Claude Flow runtime data (regenerated per session)
-.claude-flow/agents/
-.claude-flow/claims/
-.claude-flow/embeddings.json
-.claude-flow/hive-mind/
-.claude-flow/memory/
-.claude-flow/performance/
-.claude-flow/system/
-.claude-flow/tasks/
-.claude-flow/workflows/
+# Claude Flow runtime data (regenerated per session; **/ catches copies that
+# tools drop in subdirectories like backend/ or docs/, not just the repo root)
+**/.claude-flow/
 .swarm/
 
 # Database backups
@@ -159,7 +152,6 @@ reference_not_to_sync/
 .claude.json
 
 # Claude Flow telemetry and memory (regenerated per session)
-.claude-flow/metrics/
 memory/
 
 # Generated documentation reports

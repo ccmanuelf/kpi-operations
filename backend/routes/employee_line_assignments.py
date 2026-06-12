@@ -174,9 +174,10 @@ def update_assignment_endpoint(
     try:
         result = update_assignment(db, assignment_id, data)
     except ValueError as exc:
+        logger.info("Assignment update rejected for assignment_id=%d: %s", assignment_id, exc)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(exc),
+            detail="Total allocation across line assignments cannot exceed 100%",
         )
     if not result:
         raise HTTPException(
