@@ -76,7 +76,6 @@ from backend.routes import (
     my_shift_router,
     alerts_router,
     workflow_router,
-    simulation_router,
     simulation_v2_router,
     simulation_scenarios_router,
     simulation_calibration_router,
@@ -99,42 +98,6 @@ from backend.endpoints.csv_upload import router as csv_upload_router
 from backend.routes.calculation_assumptions import router as calculation_assumptions_router
 from backend.routes.metric_results import router as metric_results_router
 from backend.routes.dual_view_calculate import router as dual_view_calculate_router
-
-# =============================================================================
-# V1 Simulation API Deprecation Middleware
-# =============================================================================
-
-
-class V1SimulationDeprecationMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to add deprecation headers to v1 simulation API responses.
-
-    Adds HTTP headers per IETF deprecation header draft:
-    - Deprecation: indicates the API is deprecated
-    - Sunset: when the API will be discontinued
-    - Link: pointer to the successor API
-    """
-
-    V1_SUNSET_DATE = "2026-06-01T00:00:00Z"
-    V2_API_URL = "/api/v2/simulation"
-
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        response = await call_next(request)
-
-        # Only add deprecation headers for v1 simulation routes
-        if request.url.path.startswith("/api/simulation"):
-            response.headers["Deprecation"] = "true"
-            response.headers["Sunset"] = self.V1_SUNSET_DATE
-            response.headers["Link"] = (
-                f'<{self.V2_API_URL}>; rel="successor-version", ' f'</api/docs#/simulation-v2>; rel="deprecation"'
-            )
-            response.headers["X-API-Deprecation-Info"] = (
-                "This API version is deprecated. Please migrate to /api/v2/simulation "
-                "for enhanced SimPy-based simulation with multi-product support."
-            )
-
-        return response
-
 
 # =============================================================================
 # API Version Path-Rewrite Middleware
@@ -494,10 +457,6 @@ tags_metadata = [
         "description": "Discrete-event manufacturing simulation engine",
     },
     {
-        "name": "simulation",
-        "description": "Legacy simulation API (deprecated, use simulation-v2)",
-    },
-    {
         "name": "reports",
         "description": "Report generation (PDF, email notifications)",
     },
@@ -562,9 +521,6 @@ app = FastAPI(
     openapi_tags=tags_metadata,
     lifespan=lifespan,
 )
-
-# V1 Simulation API Deprecation middleware
-app.add_middleware(V1SimulationDeprecationMiddleware)
 
 # Security headers middleware (SEC-010)
 app.add_middleware(SecurityHeadersMiddleware)
@@ -784,11 +740,6 @@ app.include_router(alerts_router)
 # Phase 10: Register workflow management routes
 # ============================================================================
 app.include_router(workflow_router)
-
-# ============================================================================
-# Phase 11: Register simulation and capacity planning routes
-# ============================================================================
-app.include_router(simulation_router)
 
 # ============================================================================
 # Simulation v2.0: Ephemeral production line simulation (no DB dependencies)

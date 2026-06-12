@@ -206,7 +206,6 @@ The application uses FastAPI's `lifespan` context manager (not the deprecated `@
 | Work Orders | `/api/work-orders/*` | Single file | Protected |
 | Jobs | `/api/jobs/*` | Single file | Protected |
 | Capacity Planning | `/api/capacity/*` | `capacity/` (10 modules) | Protected |
-| Simulation V1 | `/api/simulation/*` | `simulation/` (8 modules) | Protected (deprecated) |
 | Simulation V2 | `/api/v2/simulation/*` | Single file | Protected |
 | Alerts | `/api/alerts/*` | `alerts/` (3 modules) | Protected |
 | Analytics | `/api/analytics/*` | `analytics/` (4 modules) | Protected |
@@ -485,15 +484,15 @@ Events are collected during a transaction and only dispatched after a successful
 
 ## Simulation System
 
-Two simulation implementations coexist in the codebase.
+Simulation is served exclusively by V2. The legacy V1 HTTP API
+(`/api/simulation/*`, the `routes/simulation/` sub-package) was removed in
+2026-06 after passing its 2026-06-01 sunset date.
 
-### V1 (Deprecated) - `calculations/simulation.py`
+### V1 remnant (internal library) - `calculations/simulation.py`
 
-- **Route**: `/api/simulation/*` (sub-package at `routes/simulation/`, 8 modules)
-- Pure-function calculator for capacity requirements, staffing, efficiency, shift coverage, and floating pool optimization.
-- Tightly coupled to the **floating pool** module: `routes/floating_pool.py` imports `optimize_floating_pool_allocation` and `simulate_shift_coverage` from V1.
-- **Cannot be removed** until the floating pool dependency is decoupled.
-- **Sunset date**: 2026-06-01 (deprecation headers added via middleware).
+- Pure-function calculator for capacity requirements, staffing, efficiency, shift coverage, and floating pool optimization. No HTTP surface.
+- Retained because the **floating pool** module depends on it (`routes/floating_pool.py` via `services/simulation_service.py`).
+- Candidate for relocation/decoupling if floating pool is ever reworked.
 
 ### V2 (Current) - `simulation_v2/`
 

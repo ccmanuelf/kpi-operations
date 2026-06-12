@@ -874,7 +874,7 @@ Pre-fills a SimulationConfig from production / quality / downtime / shift histor
 
 Query parameters: `client_id` (required), `period_start` / `period_end` (ISO date, optional — default last 30 days). Reversed dates return 400. Permission gate matches scenarios (planner-or-above). Response shape: `{client_id, period, config, sources: {field_path: {source, sample_size, period, confidence}}, warnings}` where `confidence ∈ {high, medium, low, none}` reflects the underlying sample size.
 
-> **Note:** Simulation V1 (`/api/simulation/*`) is deprecated but still active due to the floating-pool dependency. Prefer V2 for new integrations.
+> **Note:** The legacy Simulation V1 HTTP API (`/api/simulation/*`) was removed in 2026-06 after passing its 2026-06-01 sunset date. Its pure-function calculator (`calculations/simulation.py`) is retained internally for the floating-pool endpoints. All simulation integrations use `/api/v2/simulation/*`.
 
 ---
 
