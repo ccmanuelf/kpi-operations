@@ -4,12 +4,12 @@ Data Migrator
 Copies existing data from source database to target database during RDBMS migration.
 Preserves all user data while maintaining referential integrity.
 """
+
 from typing import Callable, Optional, List, Dict, Any, Tuple
 from datetime import datetime
 import logging
 
 from sqlalchemy import MetaData, Table, select, inspect, text
-from sqlalchemy.orm import Session
 from sqlalchemy.engine import Engine
 
 logger = logging.getLogger(__name__)
@@ -27,16 +27,16 @@ class DataMigrator:
 
     # Tables in dependency order (parents before children)
     # This ensures foreign key constraints are satisfied during migration.
-    # IMPORTANT: Keep this list in sync with all ORM models in backend/schemas/
-    # and backend/models/. Any table missing here will still be migrated (the
-    # safety-net in migrate_all_data catches extra tables) but the ordering
-    # won't be guaranteed, which can break FK constraints.
+    # IMPORTANT: Keep this list in sync with all ORM models in backend/orm/.
+    # Any table missing here will still be migrated (the safety-net in
+    # migrate_all_data catches extra tables) but the ordering won't be
+    # guaranteed, which can break FK constraints.
     TABLE_ORDER = [
         # Tier 1: No dependencies
         "CLIENT",
         "USER",
         "SHIFT",
-
+        "TOKEN_BLACKLIST",
         # Tier 2: Depends on CLIENT and/or USER only
         "EMPLOYEE",
         "PRODUCT",
@@ -46,28 +46,25 @@ class DataMigrator:
         "DEFECT_TYPE_CATALOG",
         "HOLD_STATUS_CATALOG",
         "HOLD_REASON_CATALOG",
-        "BREAK_TIME",               # depends on SHIFT, CLIENT
-        "PRODUCTION_LINE",          # depends on CLIENT (self-referential parent_line_id)
-        "EQUIPMENT",                # depends on CLIENT, PRODUCTION_LINE
+        "BREAK_TIME",  # depends on SHIFT, CLIENT
+        "PRODUCTION_LINE",  # depends on CLIENT (self-referential parent_line_id)
+        "EQUIPMENT",  # depends on CLIENT, PRODUCTION_LINE
         "PART_OPPORTUNITIES",
         "KPI_THRESHOLD",
-        "CLIENT_CONFIG",            # depends on CLIENT
-        "ALERT_CONFIG",             # depends on CLIENT (nullable FK)
-        "import_log",               # depends on USER
-
+        "CLIENT_CONFIG",  # depends on CLIENT
+        "ALERT_CONFIG",  # depends on CLIENT (nullable FK)
+        "import_log",  # depends on USER
         # Tier 3: Depends on CLIENT + EMPLOYEE or CLIENT + USER
         "WORK_ORDER",
         "FLOATING_POOL",
         "FILTER_HISTORY",
-        "shift_coverage",           # depends on CLIENT, SHIFT, USER
+        "shift_coverage",  # depends on CLIENT, SHIFT, USER
         "EMPLOYEE_CLIENT_ASSIGNMENT",  # depends on EMPLOYEE, CLIENT
-        "EMPLOYEE_LINE_ASSIGNMENT", # depends on EMPLOYEE, PRODUCTION_LINE, CLIENT
-        "USER_CLIENT_ASSIGNMENT",   # depends on USER, CLIENT
-
+        "EMPLOYEE_LINE_ASSIGNMENT",  # depends on EMPLOYEE, PRODUCTION_LINE, CLIENT
+        "USER_CLIENT_ASSIGNMENT",  # depends on USER, CLIENT
         # Tier 4: Depends on WORK_ORDER
         "JOB",
         "WORKFLOW_TRANSITION_LOG",
-
         # Tier 5: Depends on EMPLOYEE, SHIFT, WORK_ORDER
         "PRODUCTION_ENTRY",
         "ATTENDANCE_ENTRY",
@@ -75,46 +72,37 @@ class DataMigrator:
         "QUALITY_ENTRY",
         "HOLD_ENTRY",
         "COVERAGE_ENTRY",
-
         # Tier 6: Depends on QUALITY_ENTRY
         "DEFECT_DETAIL",
-
         # Tier 7: Alerts (depends on CLIENT, WORK_ORDER, USER)
-        "ALERT",                    # depends on CLIENT, WORK_ORDER, USER
-        "ALERT_HISTORY",            # depends on ALERT
-
+        "ALERT",  # depends on CLIENT, WORK_ORDER, USER
+        "ALERT_HISTORY",  # depends on ALERT
         # Tier 8: Domain events (no FK constraints, but logical dependency)
         "EVENT_STORE",
-
         # Tier 9: Capacity Planning - Base tables (depend on CLIENT only)
         "capacity_calendar",
         "capacity_production_lines",
         "capacity_production_standards",
         "capacity_stock_snapshot",
-
         # Tier 10: Capacity Planning - Orders and headers (depend on CLIENT only)
         "capacity_orders",
         "capacity_bom_header",
         "capacity_schedule",
-
         # Tier 11: Capacity Planning - Child tables with FK to parent capacity tables
-        "capacity_bom_detail",          # depends on capacity_bom_header
-        "capacity_scenario",            # depends on capacity_schedule (optional FK)
-        "capacity_component_check",     # depends on capacity_orders
-        "capacity_analysis",            # depends on capacity_production_lines
-        "capacity_schedule_detail",     # depends on capacity_schedule, capacity_orders, capacity_production_lines
-        "capacity_kpi_commitment",      # depends on capacity_schedule
-
+        "capacity_bom_detail",  # depends on capacity_bom_header
+        "capacity_scenario",  # depends on capacity_schedule (optional FK)
+        "capacity_component_check",  # depends on capacity_orders
+        "capacity_analysis",  # depends on capacity_production_lines
+        "capacity_schedule_detail",  # depends on capacity_schedule, capacity_orders, capacity_production_lines
+        "capacity_kpi_commitment",  # depends on capacity_schedule
         # Tier 12: Dual-View Architecture Phase 2 — Calculation Assumption Registry
         "METRIC_ASSUMPTION_DEPENDENCY",  # static reference data, no FK to user data
-        "CALCULATION_ASSUMPTION",        # depends on CLIENT, USER
-        "ASSUMPTION_CHANGE",             # depends on CALCULATION_ASSUMPTION, USER
-
+        "CALCULATION_ASSUMPTION",  # depends on CLIENT, USER
+        "ASSUMPTION_CHANGE",  # depends on CALCULATION_ASSUMPTION, USER
         # Tier 13: Dual-View Architecture Phase 3 — Metric Calculation Results
-        "METRIC_CALCULATION_RESULT",     # depends on CLIENT, USER
-
+        "METRIC_CALCULATION_RESULT",  # depends on CLIENT, USER
         # Tier 14: Simulation V2 — Scenario persistence (D3)
-        "SIMULATION_SCENARIO",           # depends on CLIENT (nullable, NULL = global)
+        "SIMULATION_SCENARIO",  # depends on CLIENT (nullable, NULL = global)
     ]
 
     def __init__(
@@ -122,7 +110,7 @@ class DataMigrator:
         source_engine: Engine,
         target_engine: Engine,
         source_provider: str = "sqlite",
-        target_provider: str = "mariadb"
+        target_provider: str = "mariadb",
     ):
         """Initialize data migrator.
 
@@ -140,9 +128,7 @@ class DataMigrator:
         self._skipped_tables: List[str] = []
 
     def migrate_all_data(
-        self,
-        progress_callback: Optional[Callable[[str, int, int, int], None]] = None,
-        skip_empty_tables: bool = True
+        self, progress_callback: Optional[Callable[[str, int, int, int], None]] = None, skip_empty_tables: bool = True
     ) -> Dict[str, Any]:
         """Migrate all data from source to target.
 
@@ -164,10 +150,7 @@ class DataMigrator:
         logger.info(f"Found {len(source_tables)} tables in source database")
 
         # Determine migration order (only tables that exist in source)
-        tables_to_migrate = [
-            t for t in self.TABLE_ORDER
-            if t in source_tables
-        ]
+        tables_to_migrate = [t for t in self.TABLE_ORDER if t in source_tables]
 
         # Add any tables not in our predefined order (safety net)
         extra_tables = source_tables - set(self.TABLE_ORDER)
@@ -185,11 +168,7 @@ class DataMigrator:
                 if progress_callback:
                     progress_callback(table_name, idx, total_tables, total_rows)
 
-                rows_copied = self._migrate_table(
-                    table_name,
-                    source_meta.tables[table_name],
-                    skip_empty_tables
-                )
+                rows_copied = self._migrate_table(table_name, source_meta.tables[table_name], skip_empty_tables)
 
                 self._migrated_counts[table_name] = rows_copied
                 total_rows += rows_copied
@@ -214,12 +193,7 @@ class DataMigrator:
             "tables_skipped": self._skipped_tables,
         }
 
-    def _migrate_table(
-        self,
-        table_name: str,
-        source_table: Table,
-        skip_empty: bool = True
-    ) -> int:
+    def _migrate_table(self, table_name: str, source_table: Table, skip_empty: bool = True) -> int:
         """Migrate a single table.
 
         Args:
@@ -236,9 +210,7 @@ class DataMigrator:
         # parameterizing identifiers; reflection-based whitelisting is the
         # standard mitigation.
         with self.source_engine.connect() as source_conn:
-            count_result = source_conn.execute(
-                text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
-            ).scalar()
+            count_result = source_conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()  # nosec B608
 
             if count_result == 0 and skip_empty:
                 return 0
@@ -266,12 +238,11 @@ class DataMigrator:
                 # Batch insert for performance
                 batch_size = 1000
                 for i in range(0, len(rows), batch_size):
-                    batch = rows[i:i + batch_size]
+                    batch = rows[i : i + batch_size]
 
                     # Convert rows to dicts
                     row_dicts = [
-                        {col: self._convert_value(row[idx], col, table_name)
-                         for idx, col in enumerate(columns)}
+                        {col: self._convert_value(row[idx], col, table_name) for idx, col in enumerate(columns)}
                         for row in batch
                     ]
 
@@ -335,9 +306,7 @@ class DataMigrator:
         # mitigation since SQL identifiers can't be parameterized.
         for table_name in source_inspector.get_table_names():
             with self.source_engine.connect() as conn:
-                count = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
-                ).scalar()
+                count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()  # nosec B608
                 # .scalar() returns Optional[Any]; coerce to int (with
                 # 0 for the empty/None case) so the dict matches the
                 # declared dict[str, int] return type.
@@ -345,9 +314,7 @@ class DataMigrator:
 
         for table_name in target_inspector.get_table_names():
             with self.target_engine.connect() as conn:
-                count = conn.execute(
-                    text(f"SELECT COUNT(*) FROM {table_name}")  # nosec B608
-                ).scalar()
+                count = conn.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()  # nosec B608
                 target_counts[table_name] = int(count or 0)
 
         return source_counts, target_counts
@@ -366,12 +333,14 @@ class DataMigrator:
         for table_name, source_count in source_counts.items():
             target_count = target_counts.get(table_name, 0)
             if source_count != target_count:
-                mismatches.append({
-                    "table": table_name,
-                    "source_count": source_count,
-                    "target_count": target_count,
-                    "difference": source_count - target_count
-                })
+                mismatches.append(
+                    {
+                        "table": table_name,
+                        "source_count": source_count,
+                        "target_count": target_count,
+                        "difference": source_count - target_count,
+                    }
+                )
 
         return {
             "verified": len(mismatches) == 0,
@@ -398,14 +367,12 @@ class DataMigrator:
 
 class DataMigrationError(Exception):
     """Exception raised when data migration fails."""
+
     pass
 
 
 def create_data_migration_handler(
-    source_engine: Engine,
-    target_engine: Engine,
-    source_provider: str = "sqlite",
-    target_provider: str = "mariadb"
+    source_engine: Engine, target_engine: Engine, source_provider: str = "sqlite", target_provider: str = "mariadb"
 ) -> Callable:
     """Factory to create data migration handler.
 
@@ -418,10 +385,8 @@ def create_data_migration_handler(
     Returns:
         Migration handler function.
     """
-    def migrate_data(
-        progress_callback: Optional[Callable] = None,
-        verify: bool = True
-    ) -> Dict[str, Any]:
+
+    def migrate_data(progress_callback: Optional[Callable] = None, verify: bool = True) -> Dict[str, Any]:
         """Execute data migration.
 
         Args:
@@ -431,12 +396,7 @@ def create_data_migration_handler(
         Returns:
             Migration results.
         """
-        migrator = DataMigrator(
-            source_engine,
-            target_engine,
-            source_provider,
-            target_provider
-        )
+        migrator = DataMigrator(source_engine, target_engine, source_provider, target_provider)
 
         result = migrator.migrate_all_data(progress_callback)
 

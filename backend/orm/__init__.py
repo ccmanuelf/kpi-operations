@@ -11,6 +11,7 @@ import a model here was the root cause of 503 errors on fresh installs
 # Core multi-tenant foundation
 from .client import Client, ClientType
 from .user import User, UserRole
+from .token_blacklist import TokenBlacklist
 from .employee import Employee
 from .floating_pool import FloatingPool
 
@@ -118,6 +119,7 @@ __all__ = [
     "ClientType",
     "User",
     "UserRole",
+    "TokenBlacklist",
     "Employee",
     "FloatingPool",
     # Work orders

@@ -132,15 +132,27 @@ def demo_mode_enabled():
     settings.DEMO_MODE = original
 
 
-# Clear token blacklist between tests to prevent cross-test contamination
+# Clear token revocations between tests to prevent cross-test contamination.
+# The blacklist is DB-backed (TOKEN_BLACKLIST, Run 7 T1.4) and the module-
+# scoped test engine persists across tests, so wipe the table around each.
 @pytest.fixture(autouse=True)
 def clear_token_blacklist():
-    """Clear the in-memory token blacklist before each test."""
-    from backend.auth.jwt import _token_blacklist
+    """Clear the DB-backed token blacklist before/after each test."""
+    from backend.orm.token_blacklist import TokenBlacklist
 
-    _token_blacklist.clear()
+    def _wipe():
+        if _test_engine is None:
+            return
+        session = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)()
+        try:
+            session.query(TokenBlacklist).delete()
+            session.commit()
+        finally:
+            session.close()
+
+    _wipe()
     yield
-    _token_blacklist.clear()
+    _wipe()
 
 
 # Test Database Engine (shared across tests)

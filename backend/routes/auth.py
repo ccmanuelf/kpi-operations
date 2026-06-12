@@ -29,7 +29,7 @@ from backend.auth.jwt import (
     create_access_token,
     get_current_user,
     oauth2_scheme,
-    _token_blacklist,
+    blacklist_token,
 )
 from backend.orm.user import User, UserRole
 
@@ -200,12 +200,16 @@ def get_current_user_info(current_user: User = Depends(get_current_user)) -> Use
 
 @router.post("/logout")
 def logout(
-    request: Request, current_user: User = Depends(get_current_user), token: str = Depends(oauth2_scheme)
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
 ) -> dict:
     """
     Explicit logout endpoint (per audit requirement)
 
-    Invalidates the current access token by adding it to the blacklist.
+    Persists the token's revocation in TOKEN_BLACKLIST (keyed by jti), so
+    logout survives restarts and is shared across workers (Run 7 T1.4).
     Client should also clear the token from local storage.
 
     Returns:
@@ -213,9 +217,7 @@ def logout(
     """
     client_ip = request.client.host if request.client else None
 
-    # Add token to blacklist (JTI would be better, using full token for simplicity)
-    # In production, use Redis with TTL matching token expiration
-    _token_blacklist.add(token)
+    blacklist_token(db, token, user_id=current_user.user_id)
 
     log_security_event(logger, "LOGOUT", user_id=current_user.user_id, ip_address=client_ip)
 

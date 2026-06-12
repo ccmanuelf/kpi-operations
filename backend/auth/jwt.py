@@ -3,6 +3,8 @@ JWT Authentication utilities
 Token creation, validation, password hashing
 """
 
+import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
 from jose import JWTError, jwt
@@ -15,19 +17,62 @@ from backend.auth.password import needs_rehash as _needs_rehash
 from backend.auth.password import verify_password as _verify_password
 from backend.config import settings
 from backend.database import get_db
+from backend.orm.token_blacklist import TokenBlacklist
 from backend.orm.user import User
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# Token blacklist for logout functionality (per audit requirement)
-# In production, this should be replaced with Redis or database-backed storage
-_token_blacklist: set = set()
+
+def token_revocation_key(token: str) -> str:
+    """
+    Stable revocation key for a token: its jti claim, falling back to a
+    sha256 digest of the raw token for legacy tokens minted before the jti
+    claim existed. The fallback keeps every outstanding token revocable
+    across the rollout without storing raw JWTs in the database.
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        jti = payload.get("jti")
+        if isinstance(jti, str) and jti:
+            return jti
+    except JWTError:
+        pass
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
-def is_token_blacklisted(token: str) -> bool:
-    """Check if a token has been blacklisted (logged out)"""
-    return token in _token_blacklist
+def is_token_blacklisted(db: Session, revocation_key: str) -> bool:
+    """Check the TOKEN_BLACKLIST table for a revoked (logged-out) token key."""
+    return db.query(TokenBlacklist.jti).filter(TokenBlacklist.jti == revocation_key).first() is not None
+
+
+def blacklist_token(db: Session, token: str, user_id: Optional[str] = None) -> None:
+    """
+    Persist a token revocation (logout).
+
+    Stores the token's revocation key with its own expiry so the row can be
+    pruned once the JWT would be rejected by exp validation anyway. Pruning
+    happens here, on insert — logout is the low-frequency write path, which
+    bounds table growth without a scheduler.
+    """
+    expires_at = datetime.now(tz=timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        exp = payload.get("exp")
+        if exp is not None:
+            expires_at = datetime.fromtimestamp(float(exp), tz=timezone.utc)
+    except JWTError:
+        pass  # keep the conservative default expiry
+
+    # Prune rows whose tokens have already expired (compare naive-UTC, the
+    # storage convention of the DateTime column).
+    now_naive = datetime.now(tz=timezone.utc).replace(tzinfo=None)
+    db.query(TokenBlacklist).filter(TokenBlacklist.expires_at < now_naive).delete(synchronize_session=False)
+
+    key = token_revocation_key(token)
+    if db.query(TokenBlacklist.jti).filter(TokenBlacklist.jti == key).first() is None:
+        db.add(TokenBlacklist(jti=key, user_id=user_id, expires_at=expires_at.replace(tzinfo=None)))
+    db.commit()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -72,6 +117,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     else:
         expire = datetime.now(tz=timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
+    # jti keys the DB-backed revocation (logout) without storing raw tokens.
+    to_encode.setdefault("jti", uuid.uuid4().hex)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
@@ -96,14 +143,6 @@ def decode_access_token(token: str) -> dict:
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
-    # Check token blacklist before decoding (catches logged-out tokens)
-    if is_token_blacklisted(token):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token has been revoked",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -135,6 +174,18 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
         HTTPException: If user not found or inactive
     """
     payload = decode_access_token(token)
+
+    # Reject revoked (logged-out) tokens. The check is DB-backed so it
+    # survives restarts and is shared across workers (Run 7 T1.4).
+    jti = payload.get("jti")
+    revocation_key = jti if isinstance(jti, str) and jti else hashlib.sha256(token.encode()).hexdigest()
+    if is_token_blacklisted(db, revocation_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     # JWT "sub" claim must be a non-empty string. payload.get returns
     # Optional[Any] — refuse the token rather than passing None into
     # the username filter (which would either match no rows or, on
