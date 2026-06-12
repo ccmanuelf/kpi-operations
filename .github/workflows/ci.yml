@@ -28,7 +28,11 @@ jobs:
           cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt
+        # pip itself is upgraded first so the pip-audit gate below audits a
+        # current pip (old runner pips carry their own PYSEC advisories).
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
 
       - name: Check code formatting
         run: black --check .
@@ -78,10 +82,19 @@ jobs:
         run: bandit -r . -ll --exclude ./tests -q
 
       - name: Secret scanning
-        run: |
-          pip install detect-secrets
-          detect-secrets scan --baseline .secrets.baseline || echo "No baseline found, scanning all files"
-          detect-secrets scan --all-files --force-use-all-plugins 2>&1 | grep -c "True" && echo "::warning::Potential secrets detected" || echo "No secrets detected"
+        # Blocking (Run 7 T2.1): detect-secrets-hook exits nonzero on any
+        # finding not in the committed .secrets.baseline. Pinned via
+        # requirements-dev.txt. Runs from the repo root over tracked files
+        # only (the old step ran from backend/ and ended every branch in
+        # `|| echo`, so it could never fail).
+        working-directory: .
+        run: git ls-files -z | xargs -0 -s 900000 detect-secrets-hook --baseline .secrets.baseline
+
+      - name: Dependency vulnerability audit (pip-audit)
+        # Blocking (Run 7 T2.2): audits the exact environment this job
+        # installed (runtime + dev deps + resolved transitives) against the
+        # PyPI advisory DB. Fails on any known CVE.
+        run: pip-audit --progress-spinner off
 
   frontend-lint-and-tests:
     runs-on: ubuntu-latest
