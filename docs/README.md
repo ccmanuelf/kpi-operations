@@ -78,7 +78,6 @@ The backend auto-seeds demo data on first startup when it detects an empty datab
 | `auth` | `/api/token`, `/api/register` | Authentication, registration |
 | `capacity/` | `/api/capacity/*` | 10 modules (orders, BOM, lines, calendar, standards, analysis, scenarios, KPI workbook, stock, WO bridge) |
 | `kpi/` | `/api/kpi/*` | 7 modules (dashboard, calculations, efficiency, OTD, thresholds, trends) |
-| `simulation/` | `/api/simulation/*` | 8 modules (capacity, efficiency, staffing, shift coverage, floating pool, production line, overview, comprehensive) |
 | `alerts/` | `/api/alerts/*` | Config history, CRUD, generation |
 | `analytics/` | `/api/analytics/*` | Comparisons, predictions, trends |
 | `quality/` | `/api/quality/*` | Entries, PPM/DPMO, FPY/RTY, Pareto |

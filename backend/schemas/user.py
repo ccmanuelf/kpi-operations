@@ -9,8 +9,35 @@ from datetime import datetime
 from backend.auth.password_policy import validate_password_strength
 
 
+class UserRegister(BaseModel):
+    """
+    Public self-registration model (demo mode only).
+
+    Role and client assignment are intentionally absent: self-registered
+    accounts are always created as 'operator' with no client assignment.
+    Privileged roles are granted by an admin via the user-management API
+    (Run 7 C-2).
+    """
+
+    username: str = Field(..., min_length=3, max_length=50, description="Unique login identifier for the user")
+    email: EmailStr = Field(..., description="User email address for notifications and password recovery")
+    password: str = Field(
+        ..., min_length=8, max_length=128, description="User password, must meet security policy requirements"
+    )
+    full_name: str = Field(..., min_length=1, max_length=100, description="User display name shown in the application")
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_policy(cls, v: str) -> str:
+        """Validate password against security policy (SEC-002)"""
+        is_valid, message = validate_password_strength(v)
+        if not is_valid:
+            raise ValueError(message)
+        return v
+
+
 class UserCreate(BaseModel):
-    """User registration model with password policy enforcement (SEC-002)"""
+    """User creation model for the admin user-management API (SEC-002)"""
 
     username: str = Field(..., min_length=3, max_length=50, description="Unique login identifier for the user")
     email: EmailStr = Field(..., description="User email address for notifications and password recovery")

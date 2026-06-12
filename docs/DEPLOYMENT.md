@@ -37,8 +37,8 @@ This guide covers deploying the KPI Operations Platform to production environmen
 
 | Software | Version | Purpose |
 |----------|---------|---------|
-| **Python** | 3.12+ | Backend runtime |
-| **Node.js** | 20+ LTS | Frontend build |
+| **Python** | 3.11+ | Backend runtime |
+| **Node.js** | 22+ LTS | Frontend build |
 | **MariaDB** | 10.11+ | Production database |
 | **Nginx** | 1.18+ | Reverse proxy |
 | **Git** | 2.30+ | Source control |
@@ -592,7 +592,7 @@ This uses the `render.yaml` blueprint at the project root to provision both serv
 | `kpi-operations-api` | Web Service | Docker | Starter | 8000 |
 | `kpi-operations-frontend` | Web Service | Docker | Starter | 80 |
 
-- **Backend**: Uses the root `Dockerfile` (multi-stage, Python 3.12, non-root user)
+- **Backend**: Uses the root `Dockerfile` (multi-stage, Python 3.11, non-root user)
 - **Frontend**: Uses `frontend/Dockerfile` (nginx serving the Vue 3 SPA)
 - **Database**: SQLite on a 1 GB persistent disk mounted at `/app/database`
 - **API Proxy**: nginx in the frontend container proxies `/api/` to the backend service

@@ -49,7 +49,6 @@ from .data_completeness import router as data_completeness_router
 from .my_shift import router as my_shift_router
 from .alerts import router as alerts_router
 from .workflow import router as workflow_router
-from .simulation import router as simulation_router
 from .simulation_v2 import router as simulation_v2_router
 from .simulation_scenarios import router as simulation_scenarios_router
 from .simulation_calibration import router as simulation_calibration_router
@@ -99,7 +98,6 @@ __all__ = [
     "my_shift_router",
     "alerts_router",
     "workflow_router",
-    "simulation_router",
     "simulation_v2_router",
     "simulation_scenarios_router",
     "simulation_calibration_router",

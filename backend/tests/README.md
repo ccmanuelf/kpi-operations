@@ -209,8 +209,8 @@ Tests run automatically on:
 ```yaml
 - name: Run Tests
   run: |
-    pip install -r tests/requirements.txt
-    pytest --cov --cov-fail-under=80
+    pip install -r requirements-dev.txt
+    pytest --cov --cov-fail-under=75
 ```
 
 ## Generating Additional Tests

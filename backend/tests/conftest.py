@@ -115,6 +115,23 @@ def disable_rate_limit():
         yield  # Ignore if rate limiter is not available
 
 
+# Run the suite in demo mode, mirroring every runtime the suite models
+# (CI docker smokes, e2e webServer, Render demo). Production behavior
+# (DEMO_MODE off: self-registration 403, no auto-seed) is covered explicitly
+# in tests/test_security/test_register_lockdown.py and
+# tests/test_demo_seed_gate.py, which override this per-test.
+# Session-scoped (not monkeypatch) so module-scoped fixtures that register
+# users during their setup also see demo mode.
+@pytest.fixture(scope="session", autouse=True)
+def demo_mode_enabled():
+    from backend.config import settings
+
+    original = settings.DEMO_MODE
+    settings.DEMO_MODE = True
+    yield
+    settings.DEMO_MODE = original
+
+
 # Clear token blacklist between tests to prevent cross-test contamination
 @pytest.fixture(autouse=True)
 def clear_token_blacklist():
@@ -412,13 +429,12 @@ def test_client():
 
 @pytest.fixture
 def test_user_data():
-    """Test user registration data"""
+    """Test user registration data (self-registration always yields role=operator)"""
     return {
         "username": "testuser",
         "email": "test@example.com",
         "password": "Test123!",
         "full_name": "Test User",
-        "role": "supervisor",  # Valid roles: admin, supervisor, operator, viewer
     }
 
 
@@ -459,37 +475,43 @@ def auth_headers(test_client, test_user_data):
 
 @pytest.fixture
 def admin_auth_headers(test_client):
-    """Get admin authentication headers for testing."""
-    admin_data = {
-        "username": "admin_testuser",
-        "email": "admin_test@example.com",
-        "password": "AdminPass123!",
-        "full_name": "Admin Test User",
-        "role": "admin",
-    }
+    """
+    Get admin authentication headers for testing.
 
-    # Try to login first
-    response = test_client.post(
-        "/api/auth/login", json={"username": admin_data["username"], "password": admin_data["password"]}
-    )
+    Self-registration cannot assign privileged roles (Run 7 C-2), so the admin
+    account is seeded directly at the ORM level — the same way a production
+    admin is provisioned — and then logged in normally.
+    """
+    from backend.auth.jwt import get_password_hash
 
-    if response.status_code == 200:
-        token = response.json().get("access_token")
+    username = "admin_testuser"
+    password = "AdminPass123!"
+
+    engine = get_test_engine()
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = TestingSessionLocal()
+    try:
+        if session.query(User).filter(User.username == username).first() is None:
+            session.add(
+                User(
+                    user_id="USR-ADMINTEST",
+                    username=username,
+                    email="admin_test@example.com",
+                    password_hash=get_password_hash(password),
+                    full_name="Admin Test User",
+                    role="admin",
+                    is_active=True,
+                )
+            )
+            session.commit()
+    finally:
+        session.close()
+
+    login_response = test_client.post("/api/auth/login", json={"username": username, "password": password})
+    if login_response.status_code == 200:
+        token = login_response.json().get("access_token")
         if token:
             return {"Authorization": f"Bearer {token}"}
-
-    # User doesn't exist, register first
-    register_response = test_client.post("/api/auth/register", json=admin_data)
-
-    if register_response.status_code in [200, 201]:
-        login_response = test_client.post(
-            "/api/auth/login", json={"username": admin_data["username"], "password": admin_data["password"]}
-        )
-
-        if login_response.status_code == 200:
-            token = login_response.json().get("access_token")
-            if token:
-                return {"Authorization": f"Bearer {token}"}
 
     pytest.skip("Admin authentication setup failed")
     return {}

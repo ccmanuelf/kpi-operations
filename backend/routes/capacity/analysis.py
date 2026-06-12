@@ -120,7 +120,7 @@ def run_component_check(
     except Exception:
         db.rollback()
         logger.exception("Component check failed for client_id=%s", client_id)
-        raise HTTPException(status_code=400, detail="Component check failed")
+        raise HTTPException(status_code=500, detail="Component check failed")
 
 
 @analysis_router.get("/component-check/shortages", response_model=List[ComponentCheckResult])
@@ -227,7 +227,7 @@ def run_capacity_analysis(
     except Exception:
         db.rollback()
         logger.exception("Capacity analysis failed for client_id=%s", client_id)
-        raise HTTPException(status_code=400, detail="Capacity analysis failed")
+        raise HTTPException(status_code=500, detail="Capacity analysis failed")
 
 
 @analysis_router.get("/analysis/bottlenecks", response_model=List[AnalysisResult])

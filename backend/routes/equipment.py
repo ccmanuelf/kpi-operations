@@ -80,7 +80,11 @@ def create_equipment_endpoint(
     try:
         result = create_equipment(db, data)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        logger.info("Equipment creation rejected for client '%s': %s", data.client_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Equipment code already exists for this client, or shared equipment was assigned to a line",
+        )
     logger.info(
         "Created equipment '%s' (%s) for client '%s'",
         data.equipment_name,

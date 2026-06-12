@@ -207,18 +207,24 @@ class TestAuthenticatedEndpoints:
 
 
 class TestProductionEntryEndpoints:
-    """Test production entry CRUD endpoints - admin without client_id is denied tenant-scoped data"""
+    """Test production entry CRUD endpoints - admin has global (all-clients) access.
+
+    Note: before Run 7 C-2 these asserted 403, but that came from the fixture's
+    broken 'ADMIN' role string failing the lowercase guards — not from tenant
+    scoping. A real admin is global per the UserRole enum.
+    """
 
     def test_list_production_entries(self, test_client, admin_auth_headers):
         """Test listing production entries"""
         response = test_client.get("/api/production", headers=admin_auth_headers)
-        # Admin user has no client_id; production is tenant-scoped → 403
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_production_with_pagination(self, test_client, admin_auth_headers):
         """Test production list pagination"""
         response = test_client.get("/api/production?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_production_with_date_filter(self, test_client, admin_auth_headers):
         """Test listing production entries with date filters"""
@@ -226,17 +232,20 @@ class TestProductionEntryEndpoints:
         end = date.today()
 
         response = test_client.get(f"/api/production?start_date={start}&end_date={end}", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_production_by_product(self, test_client, admin_auth_headers):
         """Test filtering production by product ID"""
         response = test_client.get("/api/production?product_id=1", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_production_by_shift(self, test_client, admin_auth_headers):
         """Test filtering production by shift ID"""
         response = test_client.get("/api/production?shift_id=1", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_production_entry_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent production entry"""
@@ -263,10 +272,9 @@ class TestKPICalculationEndpoints:
         assert response.status_code == 404
 
     def test_kpi_dashboard(self, test_client, admin_auth_headers):
-        """Test KPI dashboard endpoint"""
+        """Test KPI dashboard endpoint — a real admin has global access"""
         response = test_client.get("/api/kpi/dashboard", headers=admin_auth_headers)
-        # Dashboard requires client_id; admin without one is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     def test_kpi_dashboard_with_dates(self, test_client, admin_auth_headers):
         """Test KPI dashboard with date range"""
@@ -274,7 +282,7 @@ class TestKPICalculationEndpoints:
         end = date.today()
 
         response = test_client.get(f"/api/kpi/dashboard?start_date={start}&end_date={end}", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
 
     def test_availability_kpi(self, test_client, admin_auth_headers):
         """Test availability KPI calculation"""
@@ -318,22 +326,25 @@ class TestKPICalculationEndpoints:
 
 
 class TestClientEndpoints:
-    """Test client management endpoints - admin without assigned client_id is denied"""
+    """Test client management endpoints - admin has global (all-clients) access"""
 
     def test_list_clients(self, test_client, admin_auth_headers):
         """Test listing all clients"""
         response = test_client.get("/api/clients", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_clients_pagination(self, test_client, admin_auth_headers):
         """Test client list pagination"""
         response = test_client.get("/api/clients?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_active_clients(self, test_client, admin_auth_headers):
         """Test filtering active clients"""
         response = test_client.get("/api/clients?is_active=true", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_client_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent client"""
@@ -350,7 +361,8 @@ class TestClientEndpoints:
     def test_get_active_clients_list(self, test_client, admin_auth_headers):
         """Test getting active clients list endpoint"""
         response = test_client.get("/api/clients/active/list", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
 
 # =============================================================================
@@ -403,23 +415,26 @@ class TestWorkOrderEndpoints:
     def test_list_work_orders(self, test_client, admin_auth_headers):
         """Test listing all work orders"""
         response = test_client.get("/api/work-orders", headers=admin_auth_headers)
-        # Work orders are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_work_orders_with_pagination(self, test_client, admin_auth_headers):
         """Test work order list pagination"""
         response = test_client.get("/api/work-orders?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_work_orders_by_client(self, test_client, admin_auth_headers):
         """Test filtering work orders by client"""
         response = test_client.get("/api/work-orders?client_id=TEST-CLIENT", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_work_orders_by_status(self, test_client, admin_auth_headers):
         """Test filtering work orders by status"""
         response = test_client.get("/api/work-orders?status_filter=ACTIVE", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_work_order_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent work order"""
@@ -436,7 +451,8 @@ class TestWorkOrderEndpoints:
     def test_get_work_orders_by_status_endpoint(self, test_client, admin_auth_headers):
         """Test work orders by status dedicated endpoint"""
         response = test_client.get("/api/work-orders/status/ACTIVE", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_work_orders_by_date_range(self, test_client, admin_auth_headers):
         """Test work orders by date range"""
@@ -448,7 +464,8 @@ class TestWorkOrderEndpoints:
             params={"start_date": start.isoformat(), "end_date": end.isoformat()},
             headers=admin_auth_headers,
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
 
 # =============================================================================
@@ -462,31 +479,32 @@ class TestJobEndpoints:
     def test_list_jobs(self, test_client, admin_auth_headers):
         """Test listing all jobs"""
         response = test_client.get("/api/jobs", headers=admin_auth_headers)
-        # Jobs are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_jobs_with_pagination(self, test_client, admin_auth_headers):
         """Test job list pagination"""
         response = test_client.get("/api/jobs?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_jobs_by_work_order(self, test_client, admin_auth_headers):
         """Test filtering jobs by work order"""
         response = test_client.get("/api/jobs?work_order_id=WO-TEST-001", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_job_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent job"""
         response = test_client.get("/api/jobs/JOB-NONEXISTENT-XYZ", headers=admin_auth_headers)
-        # Endpoint returns 403 (tenant gate) before reaching the not-found check
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_update_job_not_found(self, test_client, admin_auth_headers):
         """Test updating non-existent job"""
         response = test_client.put(
             "/api/jobs/JOB-NONEXISTENT-XYZ", headers=admin_auth_headers, json={"operation_name": "Test"}
         )
-        assert response.status_code == 403
+        assert response.status_code == 404
 
 
 # =============================================================================
@@ -500,13 +518,14 @@ class TestDowntimeEndpoints:
     def test_list_downtime(self, test_client, admin_auth_headers):
         """Test listing downtime events"""
         response = test_client.get("/api/downtime", headers=admin_auth_headers)
-        # Downtime is tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_downtime_with_pagination(self, test_client, admin_auth_headers):
         """Test downtime list pagination"""
         response = test_client.get("/api/downtime?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_downtime_with_date_filter(self, test_client, admin_auth_headers):
         """Test filtering downtime events by date"""
@@ -514,22 +533,26 @@ class TestDowntimeEndpoints:
         end = date.today()
 
         response = test_client.get(f"/api/downtime?start_date={start}&end_date={end}", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_downtime_by_product(self, test_client, admin_auth_headers):
         """Test filtering downtime by product"""
         response = test_client.get("/api/downtime?product_id=1", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_downtime_by_shift(self, test_client, admin_auth_headers):
         """Test filtering downtime by shift"""
         response = test_client.get("/api/downtime?shift_id=1", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_downtime_by_category(self, test_client, admin_auth_headers):
         """Test filtering downtime by category"""
         response = test_client.get("/api/downtime?downtime_category=EQUIPMENT", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_downtime_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent downtime event"""
@@ -553,13 +576,14 @@ class TestHoldEndpoints:
     def test_list_holds(self, test_client, admin_auth_headers):
         """Test listing WIP holds"""
         response = test_client.get("/api/holds", headers=admin_auth_headers)
-        # Holds are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_holds_with_pagination(self, test_client, admin_auth_headers):
         """Test hold list pagination"""
         response = test_client.get("/api/holds?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_holds_with_date_filter(self, test_client, admin_auth_headers):
         """Test filtering holds by date"""
@@ -567,22 +591,26 @@ class TestHoldEndpoints:
         end = date.today()
 
         response = test_client.get(f"/api/holds?start_date={start}&end_date={end}", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_holds_by_product(self, test_client, admin_auth_headers):
         """Test filtering holds by product"""
         response = test_client.get("/api/holds?product_id=1", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_unreleased_holds(self, test_client, admin_auth_headers):
         """Test filtering unreleased holds"""
         response = test_client.get("/api/holds?released=false", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_released_holds(self, test_client, admin_auth_headers):
         """Test filtering released holds"""
         response = test_client.get("/api/holds?released=true", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_hold_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent hold"""
@@ -640,14 +668,14 @@ class TestReferenceDataEndpoints:
     def test_list_products(self, test_client, admin_auth_headers):
         """Test listing products"""
         response = test_client.get("/api/products", headers=admin_auth_headers)
-        # Products are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_shifts(self, test_client, admin_auth_headers):
         """Test listing shifts"""
         response = test_client.get("/api/shifts", headers=admin_auth_headers)
-        # Shifts are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
 
 # =============================================================================
@@ -661,24 +689,24 @@ class TestDefectEndpoints:
     def test_list_defects(self, test_client, admin_auth_headers):
         """Test listing defect details"""
         response = test_client.get("/api/defects", headers=admin_auth_headers)
-        # Defects are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_defects_with_pagination(self, test_client, admin_auth_headers):
         """Test defect list pagination"""
         response = test_client.get("/api/defects?skip=0&limit=50", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_defect_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent defect"""
         response = test_client.get("/api/defects/DEFECT-NONEXISTENT", headers=admin_auth_headers)
-        # Endpoint returns 403 (tenant gate) before reaching the not-found check
-        assert response.status_code == 403
+        assert response.status_code == 404
 
     def test_get_defect_summary(self, test_client, admin_auth_headers):
         """Test defect summary endpoint"""
         response = test_client.get("/api/defects/summary", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 404
 
 
 # =============================================================================
@@ -692,19 +720,19 @@ class TestPartOpportunitiesEndpoints:
     def test_list_part_opportunities(self, test_client, admin_auth_headers):
         """Test listing part opportunities"""
         response = test_client.get("/api/part-opportunities", headers=admin_auth_headers)
-        # Part opportunities are tenant-scoped; admin without client_id is denied
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_list_part_opportunities_with_pagination(self, test_client, admin_auth_headers):
         """Test part opportunities list pagination"""
         response = test_client.get("/api/part-opportunities?skip=0&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_get_part_opportunity_not_found(self, test_client, admin_auth_headers):
         """Test getting non-existent part opportunity"""
         response = test_client.get("/api/part-opportunities/PART-NONEXISTENT-XYZ", headers=admin_auth_headers)
-        # Endpoint returns 403 (tenant gate) before reaching the not-found check
-        assert response.status_code == 403
+        assert response.status_code == 404
 
 
 # =============================================================================
@@ -891,18 +919,20 @@ class TestPaginationAndFilters:
     def test_negative_skip_value(self, test_client, admin_auth_headers):
         """Test that negative skip values are handled"""
         response = test_client.get("/api/production?skip=-1&limit=10", headers=admin_auth_headers)
-        # Tenant gate (admin without client_id) fires before parameter validation
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_zero_limit_value(self, test_client, admin_auth_headers):
         """Test zero limit value"""
         response = test_client.get("/api/production?skip=0&limit=0", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_large_skip_value(self, test_client, admin_auth_headers):
         """Test large skip value returns empty list"""
         response = test_client.get("/api/production?skip=999999&limit=10", headers=admin_auth_headers)
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
     def test_production_multiple_filters(self, test_client, admin_auth_headers):
         """Test multiple filter combination"""
@@ -912,7 +942,8 @@ class TestPaginationAndFilters:
         response = test_client.get(
             f"/api/production?start_date={start}&end_date={end}&product_id=1&shift_id=1", headers=admin_auth_headers
         )
-        assert response.status_code == 403
+        assert response.status_code == 200
+        assert isinstance(response.json(), list)
 
 
 if __name__ == "__main__":

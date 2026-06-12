@@ -5,7 +5,7 @@ All authentication endpoints: register, login, logout, password management
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from jose import JWTError, jwt
 import uuid
 
@@ -13,7 +13,7 @@ from backend.database import get_db
 from backend.config import settings
 from backend.utils.logging_utils import get_module_logger, log_security_event
 from backend.schemas.user import (
-    UserCreate,
+    UserRegister,
     UserLogin,
     UserResponse,
     Token,
@@ -31,7 +31,7 @@ from backend.auth.jwt import (
     oauth2_scheme,
     _token_blacklist,
 )
-from backend.orm.user import User
+from backend.orm.user import User, UserRole
 
 logger = get_module_logger(__name__)
 
@@ -41,9 +41,27 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(RateLimitConfig.AUTH_LIMIT)
-def register_user(request: Request, user: UserCreate, db: Session = Depends(get_db)) -> UserResponse:
-    """Register new user (rate limited: 10 requests/minute)"""
+def register_user(request: Request, user: UserRegister, db: Session = Depends(get_db)) -> UserResponse:
+    """
+    Self-register a new operator account (demo mode only; rate limited: 10/min).
+
+    Disabled outside DEMO_MODE (403): production accounts are created by an
+    admin via /api/users. The account role is always 'operator' — privileged
+    roles cannot be self-assigned (Run 7 C-2).
+    """
     client_ip = request.client.host if request.client else None
+
+    if not settings.DEMO_MODE:
+        log_security_event(
+            logger,
+            "REGISTER_DISABLED",
+            details="Self-registration attempted while DEMO_MODE is off",
+            ip_address=client_ip,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Self-registration is disabled. Contact an administrator to get an account.",
+        )
 
     # Check if username exists
     db_user = db.query(User).filter(User.username == user.username).first()
@@ -67,7 +85,9 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
         )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
 
-    # Create user with generated ID
+    # Create user with generated ID. Role is hardcoded to the lowercase enum
+    # value — all authorization guards compare lowercase, and the caller must
+    # not be able to choose a role here.
     user_id = f"USR-{uuid.uuid4().hex[:8].upper()}"
     hashed_password = get_password_hash(user.password)
     db_user = User(
@@ -76,7 +96,7 @@ def register_user(request: Request, user: UserCreate, db: Session = Depends(get_
         email=user.email,
         password_hash=hashed_password,
         full_name=user.full_name,
-        role=user.role.upper() if user.role else "OPERATOR",
+        role=UserRole.OPERATOR.value,
     )
 
     db.add(db_user)
@@ -211,19 +231,18 @@ def forgot_password(request: Request, reset_request: PasswordResetRequest, db: S
     """
     Request password reset (rate limited: 10 requests/minute).
 
-    Issues a 24h password-reset JWT for the matching active user, if any.
-    Email delivery is not integrated in-process; the token is emitted at
-    DEBUG level so a deployment with an external log-to-email shipper or an
-    admin-driven reset flow can route it. The response is identical for
-    matched and unmatched emails to prevent enumeration.
+    Records the reset request as a security event. No reset token is issued
+    here: email delivery is not integrated in-process, and emitting the token
+    to logs would put a live credential in log storage. Until an email
+    transport exists, password resets are performed by an admin via the
+    user-management API. The response is identical for matched and unmatched
+    emails to prevent enumeration.
     """
     user = db.query(User).filter(User.email == reset_request.email).first()
 
     if user and user.is_active:
-        reset_token = create_access_token(
-            data={"sub": user.username, "type": "password_reset"}, expires_delta=timedelta(hours=24)
-        )
-        get_module_logger(__name__).debug("Password reset token generated for %s: %s", user.email, reset_token)
+        client_ip = request.client.host if request.client else None
+        log_security_event(logger, "PASSWORD_RESET_REQUESTED", user_id=user.user_id, ip_address=client_ip)
 
     return {
         "message": "If an account with this email exists, a password reset has been initiated.",

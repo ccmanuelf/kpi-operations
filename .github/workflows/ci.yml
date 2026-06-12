@@ -151,6 +151,7 @@ jobs:
           docker run -d --name backend-smoke -p 8000:8000 \
             -e DATABASE_URL=sqlite:////tmp/test.db \
             -e SECRET_KEY=ci-test-only-32-chars-minimum-zzz \
+            -e DEMO_MODE=true \
             kpi-operations-backend
           # Smart-reseed lifespan does a 10-step DB init on a fresh DB
           # (~10-15s); a fixed `sleep 5` raced the init and curl 502'd
@@ -172,6 +173,7 @@ jobs:
           docker run -d --name backend-freshdb -p 8001:8000 \
             -e DATABASE_URL=sqlite:////tmp/fresh.db \
             -e SECRET_KEY=ci-freshdb-test-32-chars-minimum-zzz \
+            -e DEMO_MODE=true \
             kpi-operations-backend
           # Same poll pattern — fresh DB triggers full smart-reseed.
           for i in $(seq 1 30); do

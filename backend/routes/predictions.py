@@ -503,8 +503,10 @@ async def seed_demo_data(
     """
     POST /api/predictions/demo/seed - Seed demo prediction data
     """
-    # Admin only check
-    if current_user.role not in ["admin", "super_admin", "ADMIN", "POWERUSER"]:
+    # Admin only check — lowercase enum values only; the uppercase variants
+    # previously accepted here only existed to serve register's role.upper()
+    # artifact, which Run 7 C-2 removed.
+    if current_user.role not in ["admin", "poweruser"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required for seeding demo data")
 
     from generators.sample_data_phase5 import seed_demo_predictions

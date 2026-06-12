@@ -17,9 +17,9 @@ def supervisor_headers(test_client):
     """
     Create supervisor auth headers compatible with get_current_active_supervisor.
 
-    The register endpoint uppercases roles (e.g. "supervisor" -> "SUPERVISOR")
-    but get_current_active_supervisor checks for lowercase. This fixture
-    registers a user, corrects the role case in the DB, then logs in.
+    Self-registration always yields role='operator' (Run 7 C-2), so this
+    fixture registers a user, elevates the role to 'supervisor' directly in
+    the DB (the way an admin would via the users API), then logs in.
     """
     from backend.main import app
 

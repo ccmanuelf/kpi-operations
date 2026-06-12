@@ -74,7 +74,11 @@ def create_shift_endpoint(
     try:
         result = create_shift(db, data)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+        logger.info("Shift creation rejected for client '%s': %s", data.client_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Shift name already exists for this client",
+        )
 
     logger.info("Created shift '%s' for client '%s'", data.shift_name, data.client_id)
     return {"data": ShiftResponse.model_validate(result), "warnings": warnings}
