@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
+    # Demo mode gates every demo-only startup behavior, most importantly the
+    # auto-seeder in main.py, which may DROP ALL TABLES when it considers demo
+    # data incomplete. Must stay False by default so a carelessly configured
+    # production deployment can never destroy real data.
+    DEMO_MODE: bool = False
+
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     UPLOAD_DIR: str = "./uploads"

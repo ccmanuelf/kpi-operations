@@ -222,63 +222,21 @@ except ImportError:
 # ============================================================================
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Application lifespan: startup and shutdown logic."""
-    # ------------------------------------------------------------------
-    # STARTUP
-    # ------------------------------------------------------------------
+def _auto_seed_demo_data() -> None:
+    """
+    Auto-seed demo data if the database is empty or incomplete (DEMO_MODE only).
 
-    # Ensure all tables exist (idempotent — safe on pre-populated databases)
-    Base.metadata.create_all(bind=engine)
+    FORCE_RESEED=true: always drop and re-seed (one-time migration).
+    Otherwise: smart detection — re-seed only if data is missing/stale.
 
-    # Safety check: warn if ORM model registry looks incomplete.
-    # The project has 51 tables as of the deployment-readiness audit (2026-02-23).
-    # If fewer than 45 appear, a model file was likely added to backend/orm/
-    # but not imported in backend/orm/__init__.py.
-    _actual_table_count = len(Base.metadata.tables)
-    if _actual_table_count < 45:
-        _logger.warning(
-            "Schema registry may be incomplete: expected >=45 tables, got %d. "
-            "Check that all ORM models are imported in backend/orm/__init__.py.",
-            _actual_table_count,
-        )
+    The re-seed path executes Base.metadata.drop_all(); the DEMO_MODE gate must
+    stay the first statement so a non-demo deployment can never reach it
+    (Run 7 C-1). Guarded by backend/tests/test_demo_seed_gate.py.
+    """
+    if not settings.DEMO_MODE:
+        _logger.info("DEMO_MODE disabled — skipping demo data auto-seed")
+        return
 
-    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
-
-    create_capacity_tables()
-
-    # Initialize Domain Events Infrastructure (Phase 3)
-    try:
-        # Register all event handlers
-        register_all_handlers()
-
-        # Set up event persistence to EVENT_STORE
-        from backend.database import SessionLocal
-
-        event_bus = get_event_bus()
-        event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
-        _logger.info("Domain events infrastructure initialized")
-    except Exception as e:
-        _logger.warning("Failed to initialize event infrastructure: %s", e)
-
-    # Start daily report scheduler
-    if report_scheduler is not None:
-        try:
-            report_scheduler.start()
-        except Exception as e:
-            _logger.warning("Failed to start report scheduler: %s", e)
-
-    # Start nightly dual-view calculation scheduler (F.4).
-    if dual_view_scheduler is not None:
-        try:
-            dual_view_scheduler.start()
-        except Exception as e:
-            _logger.warning("Failed to start dual-view scheduler: %s", e)
-
-    # Auto-seed demo data if database is empty or incomplete
-    # FORCE_RESEED=true: always drop and re-seed (one-time migration)
-    # Otherwise: smart detection — re-seed only if data is missing/stale
     try:
         import os
         from backend.database import SessionLocal
@@ -342,6 +300,64 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             _logger.info("Database OK (%d clients, all expected clients present)", client_count)
     except Exception as e:
         _logger.warning("Auto-seed check failed: %s", e)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Application lifespan: startup and shutdown logic."""
+    # ------------------------------------------------------------------
+    # STARTUP
+    # ------------------------------------------------------------------
+
+    # Ensure all tables exist (idempotent — safe on pre-populated databases)
+    Base.metadata.create_all(bind=engine)
+
+    # Safety check: warn if ORM model registry looks incomplete.
+    # The project has 51 tables as of the deployment-readiness audit (2026-02-23).
+    # If fewer than 45 appear, a model file was likely added to backend/orm/
+    # but not imported in backend/orm/__init__.py.
+    _actual_table_count = len(Base.metadata.tables)
+    if _actual_table_count < 45:
+        _logger.warning(
+            "Schema registry may be incomplete: expected >=45 tables, got %d. "
+            "Check that all ORM models are imported in backend/orm/__init__.py.",
+            _actual_table_count,
+        )
+
+    from backend.db.migrations.capacity_planning_tables import create_capacity_tables
+
+    create_capacity_tables()
+
+    # Initialize Domain Events Infrastructure (Phase 3)
+    try:
+        # Register all event handlers
+        register_all_handlers()
+
+        # Set up event persistence to EVENT_STORE
+        from backend.database import SessionLocal
+
+        event_bus = get_event_bus()
+        event_bus.set_persistence_handler(create_event_persistence_handler(SessionLocal))
+        _logger.info("Domain events infrastructure initialized")
+    except Exception as e:
+        _logger.warning("Failed to initialize event infrastructure: %s", e)
+
+    # Start daily report scheduler
+    if report_scheduler is not None:
+        try:
+            report_scheduler.start()
+        except Exception as e:
+            _logger.warning("Failed to start report scheduler: %s", e)
+
+    # Start nightly dual-view calculation scheduler (F.4).
+    if dual_view_scheduler is not None:
+        try:
+            dual_view_scheduler.start()
+        except Exception as e:
+            _logger.warning("Failed to start dual-view scheduler: %s", e)
+
+    # Auto-seed demo data (no-op unless DEMO_MODE is enabled)
+    _auto_seed_demo_data()
 
     # Idempotently seed the canonical metric→assumption dependency map (Phase 2
     # dual-view architecture). Static engineering-curated reference data; safe

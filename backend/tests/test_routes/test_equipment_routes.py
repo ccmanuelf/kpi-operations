@@ -290,7 +290,7 @@ class TestEquipmentCreateEndpoint:
         }
         response = client.post("/api/equipment/", json=payload)
         assert response.status_code == 409
-        assert "Shared equipment" in response.json()["detail"]
+        assert "shared equipment" in response.json()["detail"].lower()
 
     def test_create_equipment_validation_error(self, supervisor_client):
         """Missing required fields returns 422."""

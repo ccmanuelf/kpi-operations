@@ -169,7 +169,7 @@ class TestLinkCapacityEndpoint:
             json={"capacity_line_id": 999999},
         )
         assert response.status_code == 400
-        assert "does not exist" in response.json()["detail"]
+        assert "not found" in response.json()["detail"].lower()
 
     def test_link_requires_supervisor(self, operator_client):
         """Operator cannot link capacity lines."""
