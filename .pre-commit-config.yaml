@@ -16,11 +16,18 @@ repos:
         language_version: python3.11
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.2.0
+    rev: 7.3.0
     hooks:
       - id: flake8
         files: ^backend/
         additional_dependencies: []
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package-lock\.json$
 
   # mypy as a local system hook rather than mirrors-mypy. The mirrors-
   # mypy hook invokes mypy file-by-file on the staged paths, which
