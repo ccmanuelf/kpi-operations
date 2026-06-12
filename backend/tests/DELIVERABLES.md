@@ -8,7 +8,7 @@
 
 ### Test Configuration (4 files)
 1. `/backend/tests/conftest.py` - 300 lines of fixtures and utilities
-2. `/backend/tests/pytest.ini` - Complete pytest configuration
+2. `pyproject.toml` `[tool.pytest.ini_options]` + `/backend/.coveragerc` - Pytest and coverage configuration
 3. `/backend/requirements-dev.txt` - All test dependencies
 4. `/backend/tests/README.md` - Comprehensive testing guide
 
@@ -210,8 +210,8 @@ All tests configured for:
 
 **Key Files**:
 - `conftest.py` - Shared fixtures
-- `pytest.ini` - Configuration
-- `requirements.txt` - Dependencies
+- `pyproject.toml` (root) + `backend/.coveragerc` - Configuration
+- `requirements-dev.txt` - Dependencies
 - `README.md` - Complete guide
 - `test_calculations/` - KPI tests
 - `test_security/` - Security tests

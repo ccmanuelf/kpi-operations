@@ -70,15 +70,56 @@ check_untyped_defs = false
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
+# THE single pytest configuration (Run 7 T0.3). The former
+# backend/tests/pytest.ini shadowed this section in CI (pytest config
+# discovery found it first), which (a) deactivated `pythonpath` — forcing the
+# PYTHONPATH=.. workaround — and (b) its blanket `ignore::DeprecationWarning`
+# swallowed the Pydantic/SQLAlchemy regression guards below (both are
+# DeprecationWarning subclasses). Do not reintroduce a pytest.ini/setup.cfg
+# below this file.
+minversion = "7.0"
 # Project root added to sys.path so `from backend.X import ...` resolves without
 # manual sys.path.insert in conftest.py.
 pythonpath = ["."]
+testpaths = ["backend/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Coverage source/omit/fail_under live in backend/.coveragerc — the file
+# coverage.py actually reads when pytest runs from backend/ (Run 7 T0.2).
+# Plain `--cov` (no path) defers the measured pool to that file.
+addopts = [
+    "--verbose",
+    "--strict-markers",
+    "--tb=short",
+    "--cov",
+    "--cov-report=html:htmlcov",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+    "-ra",
+    "--maxfail=10",
+]
+markers = [
+    "unit: Unit tests for individual functions",
+    "integration: Integration tests with database",
+]
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 # pytest-asyncio loop scope explicit pin (was implicitly "function" via
 # pytest-asyncio < 1.0 default). 1.x removes the default and emits a
 # PytestDeprecationWarning when unset. Pinning here keeps async fixture
 # lifecycle deterministic across pytest-asyncio upgrades.
 asyncio_default_fixture_loop_scope = "function"
+# Filter order matters: pytest applies the LAST matching filter, so the two
+# specific `error::` guards must stay below the blanket ignores to win.
 filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    # Third-party libraries routinely emit DeprecationWarnings we cannot fix;
+    # blanket-ignore them, then re-promote the two classes we guard against.
+    "ignore::DeprecationWarning",
     # python-multipart 0.0.27 still warns when starlette imports the legacy
     # `multipart` package name instead of `python_multipart`. Upstream
     # starlette hasn't migrated yet; suppress to keep `-W error` usable in

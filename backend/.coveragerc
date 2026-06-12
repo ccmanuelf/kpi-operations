@@ -1,0 +1,47 @@
+# Coverage configuration (Run 7 T0.2).
+#
+# This file exists because coverage.py only reads .coveragerc / setup.cfg /
+# tox.ini / pyproject.toml from the CURRENT DIRECTORY — the former
+# [coverage:run] sections in backend/tests/pytest.ini were never read
+# (`coverage debug config` showed "config_files_read: -none-"), and CI's
+# `--cov=.` measured the test suite itself, inflating the 75% gate.
+#
+# The measured pool below is the explicit package list the suite has always
+# used locally (the honest metric: 81.07% as of 2026-06-12). Deliberately
+# excluded, as before: tests/, alembic/, scripts/, db/migrations/ (seeders),
+# and the top-level modules main.py / config.py / database.py / constants.py
+# — adding those to the pool is a separate, conscious decision.
+
+[run]
+source =
+    auth
+    cache
+    calculations
+    crud
+    db
+    endpoints
+    events
+    exceptions
+    middleware
+    orm
+    routes
+    schemas
+    services
+    simulation_v2
+    tasks
+    utils
+omit =
+    */tests/*
+    */__pycache__/*
+    */migrations/*
+    */conftest.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+# The CI coverage gate (was --cov-fail-under=75 in the CI command line).
+fail_under = 75
+
+[html]
+directory = htmlcov

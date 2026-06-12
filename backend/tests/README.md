@@ -7,8 +7,8 @@ Comprehensive test suite achieving **80%+ code coverage** across all critical pa
 ```
 tests/
 ├── conftest.py                          # Shared fixtures and configuration
-├── pytest.ini                           # Pytest configuration
-├── requirements.txt                     # Test dependencies
+│   # Pytest config: root pyproject.toml [tool.pytest.ini_options]
+│   # Coverage config: backend/.coveragerc (source pool, omit, fail_under=75)
 ├── generate_remaining_tests.py          # Test file generator
 ├── test_calculations/                   # SPRINT 1: KPI Formula Tests
 │   ├── __init__.py
