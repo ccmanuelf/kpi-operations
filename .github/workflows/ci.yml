@@ -57,7 +57,12 @@ jobs:
         run: PYTHONPATH=. python backend/scripts/init_demo_database.py
 
       - name: Run tests with coverage
-        run: PYTHONPATH=.. pytest tests/ --tb=short -q --cov=. --cov=auth --cov=cache --cov=tasks --cov=utils --cov=endpoints --cov-report=xml:coverage.xml --cov-report=html:htmlcov --cov-fail-under=75
+        # Coverage source/omit/fail_under come from backend/.coveragerc; pytest
+        # options from the root pyproject.toml [tool.pytest.ini_options]
+        # (single config — Run 7 T0.2/T0.3). The former --cov=. here measured
+        # the test suite itself, inflating the gate. pythonpath=["."] in
+        # pyproject replaces the PYTHONPATH=.. workaround.
+        run: pytest tests/ --tb=short -q
 
       - name: Upload backend coverage
         if: always()
