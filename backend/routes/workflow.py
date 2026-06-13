@@ -63,7 +63,7 @@ def transition_work_order_status(
     work_order_id: str,
     transition: WorkflowTransitionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Dict[str, Any]:
     """
     Transition a work order to a new status.

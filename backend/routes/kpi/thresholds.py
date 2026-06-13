@@ -12,7 +12,7 @@ import uuid
 
 from backend.utils.logging_utils import get_module_logger
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user
 from backend.orm.user import User
 
 logger = get_module_logger(__name__)
@@ -76,7 +76,7 @@ def get_kpi_thresholds(
 
 @thresholds_router.put("")
 def update_kpi_thresholds(
-    thresholds_data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    thresholds_data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_planner)
 ) -> Any:
     """
     Update KPI thresholds for a client or global.
@@ -140,7 +140,7 @@ def update_kpi_thresholds(
 
 @thresholds_router.delete("/{client_id}/{kpi_key}")
 def delete_client_threshold(
-    client_id: str, kpi_key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    client_id: str, kpi_key: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_planner)
 ) -> Any:
     """
     Delete a client-specific threshold (reverts to global default).

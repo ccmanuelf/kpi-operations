@@ -16,7 +16,7 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_planner, get_current_user
 from backend.database import get_db
 from backend.orm.calculation_assumption import AssumptionStatus
 from backend.orm.user import User
@@ -215,7 +215,7 @@ def get_history(
 def propose_assumption(
     body: AssumptionProposalCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> AssumptionResponse:
     """Submit a new assumption proposal. Requires `poweruser` or `admin` role."""
 
@@ -235,7 +235,7 @@ def update_proposal(
     assumption_id: int,
     body: AssumptionProposalUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> AssumptionResponse:
     """Edit a PROPOSED record. Allowed for the original proposer or any admin."""
 
@@ -258,7 +258,7 @@ def approve_assumption(
     assumption_id: int,
     body: AssumptionApproveRequest = AssumptionApproveRequest(),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> AssumptionResponse:
     """Transition PROPOSED → ACTIVE. Admin only. Auto-retires overlapping ACTIVE records."""
 
@@ -271,7 +271,7 @@ def retire_assumption(
     assumption_id: int,
     body: AssumptionRetireRequest = AssumptionRetireRequest(),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> AssumptionResponse:
     """Transition ACTIVE → RETIRED. Admin only."""
 

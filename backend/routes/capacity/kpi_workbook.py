@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import (
@@ -427,7 +427,7 @@ def save_worksheet(
     worksheet_name: str,
     data: List[Dict[str, Any]],
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Save a specific worksheet's data (bulk update/create)."""
     verify_client_access(current_user, client_id, db)

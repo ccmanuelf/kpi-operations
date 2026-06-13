@@ -23,7 +23,7 @@ from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_user
 from backend.crud import simulation_scenario as crud
 from backend.database import get_db
 from backend.orm.user import User
@@ -114,7 +114,7 @@ def get_scenario_endpoint(
 def create_scenario_endpoint(
     payload: SimulationScenarioCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """Save a new scenario. The body's config_json is stored verbatim;
     no engine validation runs on save (validate when actually running)."""
@@ -137,7 +137,7 @@ def update_scenario_endpoint(
     scenario_id: int,
     payload: SimulationScenarioUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     _check_write_permission(current_user)
     scenario = crud.update_scenario(db, current_user, scenario_id, payload.model_dump(exclude_unset=True))
@@ -152,7 +152,7 @@ def update_scenario_endpoint(
 def delete_scenario_endpoint(
     scenario_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> None:
     _check_write_permission(current_user)
     ok = crud.delete_scenario(db, current_user, scenario_id)
@@ -166,7 +166,7 @@ def duplicate_scenario_endpoint(
     scenario_id: int,
     new_name: Optional[str] = Query(None, max_length=150),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     _check_write_permission(current_user)
     dup = crud.duplicate_scenario(db, current_user, scenario_id, new_name)
@@ -186,7 +186,7 @@ def duplicate_scenario_endpoint(
 def run_scenario_endpoint(
     scenario_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """Run the scenario through the SimPy engine and persist a result
     summary. The summary (NOT the full result blocks) is stored on the

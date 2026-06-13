@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_admin
 from backend.database import get_db
 from backend.middleware.client_auth import verify_client_access
 from backend.orm.user import User
@@ -83,7 +83,7 @@ def _validate_period(period_start: datetime, period_end: datetime) -> None:
 def calculate_oee_endpoint(
     body: OEECalculateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CalculateResponse:
     verify_client_access(current_user, body.client_id)
     _validate_period(body.period_start, body.period_end)
@@ -111,7 +111,7 @@ def calculate_oee_endpoint(
 def calculate_otd_endpoint(
     body: OTDCalculateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CalculateResponse:
     verify_client_access(current_user, body.client_id)
     _validate_period(body.period_start, body.period_end)
@@ -139,7 +139,7 @@ def calculate_otd_endpoint(
 def calculate_fpy_endpoint(
     body: FPYCalculateRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CalculateResponse:
     verify_client_access(current_user, body.client_id)
     _validate_period(body.period_start, body.period_end)
@@ -198,7 +198,7 @@ class FromPeriodRequest(BaseModel):
 def calculate_oee_from_period(
     body: FromPeriodRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CalculateResponse:
     """Aggregate OEE raw inputs from production data + run dual-view calculation."""
 
@@ -233,7 +233,7 @@ def calculate_oee_from_period(
 def calculate_otd_from_period(
     body: FromPeriodRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CalculateResponse:
     """Aggregate OTD raw inputs from work-order data + run dual-view calculation."""
 
@@ -268,7 +268,7 @@ def calculate_otd_from_period(
 def calculate_fpy_from_period(
     body: FromPeriodRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CalculateResponse:
     """Aggregate FPY raw inputs from quality data + run dual-view calculation."""
 
@@ -300,7 +300,7 @@ def calculate_fpy_from_period(
     status_code=status.HTTP_202_ACCEPTED,
 )
 def trigger_nightly_run(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ) -> dict:
     """
     Admin-only manual trigger for the F.4 nightly dual-view calculation job.

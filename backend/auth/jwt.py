@@ -222,21 +222,51 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
     return user
 
 
+# Role tiers (Run 7 T2.7), per the documented permission matrix in
+# docs/user-guide/10-roles-permissions.md:
+#   admin                      -> system administration
+#   PLANNER_ROLES              -> capacity planning, scenarios, configuration
+#   SUPERVISORY_ROLES          -> operations master data, work orders, bulk loads
+#   any authenticated user     -> transactional data entry (the operator's job)
+# "supervisor" is a legacy role string (not in the UserRole enum) carried by
+# DB-seeded users; it is accepted in the supervisory tier for compatibility.
+PLANNER_ROLES = ["admin", "poweruser"]
+SUPERVISORY_ROLES = ["admin", "poweruser", "leader", "supervisor"]
+
+
 def get_current_active_supervisor(current_user: User = Depends(get_current_user)) -> User:
     """
-    Dependency to require supervisor or admin role
+    Dependency to require a supervisory-tier role (any role except operator).
 
-    Args:
-        current_user: Current authenticated user
-
-    Returns:
-        User if supervisor or admin
+    Per docs/user-guide/10-roles-permissions.md: Admin, PowerUser, Leader and
+    (legacy) Supervisor manage operations master data and work orders;
+    Operators are restricted to transactional data entry. Before Run 7 T2.7
+    this guard only accepted ["supervisor", "admin"], wrongly denying
+    PowerUser and Leader everywhere it was used.
 
     Raises:
-        HTTPException: If user lacks permissions
+        HTTPException: If the caller is an operator (or unknown role)
     """
-    if current_user.role not in ["supervisor", "admin"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    return current_user
+
+
+def get_current_planner(current_user: User = Depends(get_current_user)) -> User:
+    """
+    Dependency to require a planning-tier role (admin or poweruser).
+
+    Per docs/user-guide/10-roles-permissions.md: editing the capacity
+    workbook, saving scenarios, and platform configuration are
+    Admin/PowerUser-only.
+
+    Raises:
+        HTTPException: If the caller lacks a planning-tier role
+    """
+    if current_user.role not in PLANNER_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Planner access required (admin or poweruser)"
+        )
     return current_user
 
 

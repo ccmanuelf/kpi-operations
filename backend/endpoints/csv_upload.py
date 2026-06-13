@@ -15,7 +15,7 @@ import io
 import csv
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_admin
 from backend.orm.user import User, UserRole
 from backend.middleware.client_auth import verify_client_access
 from backend.schemas.production import CSVUploadResponse
@@ -116,7 +116,7 @@ async def upload_downtime_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload downtime events via CSV or XLSX - ALIGNED WITH DOWNTIME_ENTRY SCHEMA
@@ -218,7 +218,7 @@ async def upload_holds_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload WIP hold/resume events via CSV or XLSX - ALIGNED WITH HOLD_ENTRY SCHEMA
@@ -319,7 +319,7 @@ async def upload_attendance_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload attendance records via CSV or XLSX - ALIGNED WITH ATTENDANCE_ENTRY SCHEMA
@@ -425,7 +425,7 @@ async def upload_coverage_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload shift coverage records via CSV or XLSX
@@ -503,7 +503,7 @@ async def upload_quality_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload quality inspection records via CSV or XLSX - ALIGNED WITH QUALITY_ENTRY SCHEMA
@@ -626,7 +626,7 @@ async def upload_defects_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload defect detail records via CSV or XLSX
@@ -708,7 +708,7 @@ async def upload_work_orders_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload work orders via CSV or XLSX
@@ -817,7 +817,7 @@ async def upload_jobs_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload job line items via CSV or XLSX
@@ -923,7 +923,7 @@ async def upload_clients_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin),
 ) -> CSVUploadResponse:
     """
     Upload clients via CSV or XLSX (Admin only)
@@ -1012,7 +1012,7 @@ async def upload_employees_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload employees via CSV or XLSX (Admin only)
@@ -1101,7 +1101,7 @@ async def upload_floating_pool_csv(
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Query(None, description="Sheet name for XLSX files"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> CSVUploadResponse:
     """
     Upload floating pool assignments via CSV or XLSX (Supervisor/Admin only)
