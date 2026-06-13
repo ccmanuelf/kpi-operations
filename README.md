@@ -3,10 +3,10 @@
 **Enterprise Manufacturing KPI Tracking and Analytics**
 
 [![Status](https://img.shields.io/badge/status-Production--Ready-brightgreen)](https://github.com)
-[![Version](https://img.shields.io/badge/version-1.0.4-blue)](CHANGELOG.md)
-[![Tests](https://img.shields.io/badge/tests-5771%20passing-success)](https://github.com)
-[![Audit](https://img.shields.io/badge/audit-Run%205%3A%20287%20findings%2C%20remediation%20in%20progress-orange)](CHANGELOG.md)
-[![Coverage](https://img.shields.io/badge/coverage-76%25-brightgreen)](https://github.com)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-6906%20passing-success)](https://github.com)
+[![Audit](https://img.shields.io/badge/audit-Run%207%3A%20criticals%20remediated-brightgreen)](CHANGELOG.md)
+[![Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen)](https://github.com)
 [![Design](https://img.shields.io/badge/design-Vuetify%20Material-blue)](https://vuetifyjs.com)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](https://github.com)
 
@@ -94,7 +94,7 @@ The KPI Operations Dashboard Platform is an enterprise-grade web application des
 
 ### **Prerequisites**
 - Python 3.11+
-- Node.js 20+
+- Node.js 22+
 - SQLite 3 (included with Python)
 - Git
 
@@ -187,7 +187,7 @@ kpi-operations/
 │   │   │   ├── DashboardView.vue
 │   │   │   ├── KPIDashboard.vue
 │   │   │   └── LoginView.vue
-│   │   ├── stores/             # Pinia state management (17 stores)
+│   │   ├── stores/             # Pinia state management (16 stores)
 │   │   └── services/api/       # API service modules
 │   ├── e2e/                    # Playwright E2E tests
 │   └── package.json
@@ -215,7 +215,7 @@ kpi-operations/
 
 ## Implementation Status
 
-### **Current Version: 1.0.4** (February 13, 2026)
+### **Current Version: 1.1.0** (June 13, 2026)
 
 | Phase | Module | Status |
 |-------|--------|--------|
@@ -368,16 +368,16 @@ PYTHONPATH=.. pytest --cov                     # With coverage report
 ### **Run Frontend Tests**
 ```bash
 cd frontend
-npm run test                                   # Vitest unit tests (1,434 tests)
+npm run test                                   # Vitest unit tests (1,982 tests)
 npm run lint                                   # ESLint checks
-npx playwright test --config=playwright.sqlite.config.ts  # E2E tests (211 scenarios)
+npx playwright test --config=playwright.sqlite.config.ts  # E2E tests (Chromium, CI gate)
 ```
 
 ### **Current Test Coverage**
-- **Backend:** 4,277 passed, 76.26% coverage (threshold: 70%)
-- **Frontend:** 1,494 passed across 52 test files
-- **E2E:** 211 Playwright scenarios (Chromium)
-- **Total:** 4,277 backend + 1,494 frontend = 5,771 passing tests, 0 failures
+- **Backend:** 4,924 passed, 81.88% coverage (threshold: 75%)
+- **Frontend:** 1,982 passed across 80 test files
+- **E2E:** 546 Playwright tests across 15 files (3 browser projects locally; Chromium in CI)
+- **Total:** 4,924 backend + 1,982 frontend = 6,906 passing tests, 0 failures
 
 ---
 
@@ -513,15 +513,15 @@ Frontend:
 - 6 AG Grid implementations (4,100+ lines)
 - 8 KPI detail views + OEE composite view
 - 13-tab Capacity Planning workbook
-- 17 Pinia stores (12 top-level + 5 capacity sub-stores)
+- 16 Pinia stores (13 top-level + 3 capacity sub-stores)
 - 100% responsive design
 
 Backend:
-- 35 database tables (multi-tenant architecture)
+- 57 database tables (multi-tenant architecture)
 - 16 KPI calculation engines + predictive forecasting
-- 35 route modules + 13 CRUD modules
-- 393 REST API endpoints
-- 76.26% test coverage (4,277 tests passing)
+- 43 route modules (14 sub-packages) + multi-package CRUD layer
+- 456 REST API endpoints
+- 81.88% test coverage (4,924 tests passing)
 - Docker deployment ready (multi-stage Dockerfile + docker-compose.yml)
 - SimPy-based production line simulation engine
 - Domain event bus with collect/flush pattern
@@ -529,13 +529,21 @@ Backend:
 
 ---
 
-**Version:** 1.0.4
-**Release Date:** February 13, 2026
+**Version:** 1.1.0
+**Release Date:** June 13, 2026
 **Status:** Production Ready
 
-**Test Coverage:** 5,771 tests (4,277 backend + 1,494 frontend) | 76.26% backend coverage | Docker Support: YES | Simulation Engine: SimPy
+**Test Coverage:** 6,906 tests (4,924 backend + 1,982 frontend) | 81.88% backend coverage | Docker Support: YES | Simulation Engine: SimPy
 
-### **Recent Updates (v1.0.4)**
+### **Recent Updates (v1.1.0)**
+- **Audit Run 7 remediation** - Both criticals fixed: demo auto-seed/`drop_all` now gated behind `DEMO_MODE` (cannot wipe a real database on boot); self-registration locked to demo-mode and role `operator` only (no caller-supplied roles)
+- **DB-backed token revocation** - Logout persists to a `TOKEN_BLACKLIST` table keyed by JWT `jti`, surviving restarts and shared across workers (replaces the in-memory set)
+- **Uniform authorization** - Three route-level permission tiers (admin / planner / supervisory) applied to all mutation endpoints; closes 93 previously unguarded mutations
+- **Simulation V1 removed** - Legacy `/api/simulation/*` HTTP API retired past its sunset date; V2 (`/api/v2/simulation/*`) is the sole engine
+- **CI security gates** - Blocking `detect-secrets` (with baseline) and `pip-audit`; honest coverage gate (measures production code, not the test suite)
+- **Structure & deps** - `orm/`↔`schemas/` directory invariant corrected; starlette PYSEC-2026-161 and esbuild advisories patched; Node 22 / Python 3.11 toolchain
+
+### **Previous Updates (v1.0.4)**
 - **Capacity Planning Module** - 13-worksheet workbook with full CRUD for orders, calendars, production lines, standards, BOM, stock, scheduling, and analysis
 - **11 Scenario Types** - OVERTIME, SETUP_REDUCTION, SUBCONTRACT, NEW_LINE, THREE_SHIFT, LEAD_TIME_DELAY, ABSENTEEISM_SPIKE, MULTI_CONSTRAINT, SHIFT_ADD, EFFICIENCY_IMPROVEMENT, LABOR_ADD
 - **Dashboard Inputs Tab** - Configurable parameters for capacity analysis

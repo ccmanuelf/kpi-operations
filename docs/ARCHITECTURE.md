@@ -16,11 +16,11 @@ KPI Operations is a manufacturing KPI tracking platform designed for shopfloor o
 |-------|------------|---------|
 | **Frontend** | Vue 3 + Vuetify 3 + Pinia | 3.4 / 3.5 / 3.0 |
 | **Backend** | FastAPI + SQLAlchemy + Pydantic | 0.129 / 2.0.46 / 2.12 |
-| **Database** | SQLite (dev) / MariaDB (prod) | 51 tables |
+| **Database** | SQLite (dev) / MariaDB (prod) | 57 tables |
 | **Authentication** | JWT + bcrypt | HS256, token blacklist enforced |
 | **Data Grid** | AG-Grid Community | - |
 | **Design System** | IBM Carbon (tokens) | - |
-| **Testing** | pytest + Vitest 4.0 | 4,910+ backend / 1,476+ frontend |
+| **Testing** | pytest + Vitest 4.0 | 4,924 backend / 1,982 frontend / 546 e2e |
 
 ---
 
@@ -60,7 +60,7 @@ KPI Operations is a manufacturing KPI tracking platform designed for shopfloor o
 |  +-------------------------+-------------------------------+   |
 |                            |                                    |
 |  +-------------------------+-------------------------------+   |
-|  |              ORM Models (backend/orm/, 51 tables)        |   |
+|  |              ORM Models (backend/orm/, 57 tables)        |   |
 |  |  Client | WorkOrder | Job | Production | Quality | ...   |   |
 |  +-------------------------+-------------------------------+   |
 +----------------------------+------------------------------------+
@@ -101,9 +101,9 @@ backend/
     ...
   orm/                     # SQLAlchemy ORM models (all imported in __init__.py)
     __init__.py            # Central registry -- every model file MUST be imported here
-    client.py, user.py, work_order.py, job.py, ...
+    client.py, user.py, work_order.py, job.py, token_blacklist.py, ...
     capacity/              # 13 capacity planning tables
-  models/                  # Pydantic request/response schemas
+  schemas/                 # Pydantic request/response schemas
   routes/                  # API endpoint modules (14 sub-packages + single-file routes)
     capacity/              # 10 modules: analysis, bom_stock, calendar, lines, orders, scenarios, standards, kpi_workbook, work_order_bridge, _models
     kpi/                   # 7 modules: dashboard, calculations, efficiency, otd, thresholds, trends
@@ -237,7 +237,7 @@ if _actual_table_count < 45:
     )
 ```
 
-As of the deployment-readiness audit, the database has 51 tables. The threshold of 45 provides margin for the check to remain useful without false positives.
+As of Run 7 (2026-06), the database has 57 tables. The threshold of 45 provides margin for the check to remain useful without false positives.
 
 ### Dual Seeder Architecture
 
@@ -268,32 +268,30 @@ frontend/src/
     widgets/              # Dashboard widgets
     filters/              # Filter components
     dashboard/            # Dashboard customization
-  composables/           # Reusable logic (extracted from large views)
-    useKPIDashboardData.js
-    useKPIReports.js
-    useKPIFilters.js
-    useKPIChartData.js
-    useShiftDashboardData.js
-    useShiftForms.js
-    useKeyboardShortcuts.js
-    useResponsive.js
-    useMobileGrid.js
+  composables/           # Reusable logic (extracted from large views), all TypeScript
+    useKPIDashboardData.ts
+    useKPIReports.ts
+    useKPIFilters.ts
+    useKPIChartData.ts
+    useShiftDashboardData.ts
+    useShiftForms.ts
+    useResponsive.ts
+    useMobileGrid.ts
   services/
-    api.js               # Backward-compat stub
-    api/                  # API sub-modules (18 modules, 57+ exports)
-  stores/                # Pinia state management
-    authStore.js         # Authentication
-    productionDataStore.js  # Production data
-    kpi.js               # KPI metrics
-    dashboardStore.js    # Dashboard customization
-    capacityPlanningStore.js  # Main capacity store (delegates to sub-stores)
-    capacity/            # Sub-stores: defaults, historyManager, useWorksheetOps, useWorkbookStore, useAnalysisStore
+    api/                  # API sub-modules (27 modules)
+  stores/                # Pinia state management (16 stores: 13 top-level + 3 capacity)
+    authStore.ts         # Authentication
+    productionDataStore.ts  # Production data
+    kpi.ts               # KPI metrics
+    dashboardStore.ts    # Dashboard customization
+    capacityPlanningStore.ts  # Main capacity store (delegates to sub-stores)
+    capacity/            # Sub-stores: useWorksheetOps, useWorkbookStore, useAnalysisStore (+ defaults, historyManager helpers)
   views/
     admin/               # Admin pages
     kpi/                 # KPI detail views
     CapacityPlanning/    # 13-tab capacity planning view
   router/
-    index.js             # Route definitions
+    index.ts             # Route definitions
   App.vue                # Root component
 ```
 
@@ -328,7 +326,7 @@ frontend/src/
 
 ## Data Model
 
-### Core Entities (51 tables)
+### Core Entities (57 tables)
 
 ```
 +-----------+     +-----------+     +-----------+
@@ -531,8 +529,7 @@ Simulation is served exclusively by V2. The legacy V1 HTTP API
 
 | Issue | Location | Impact |
 |-------|----------|--------|
-| V1 simulation floating pool coupling | `routes/floating_pool.py` imports from V1 | Blocks V1 sunset |
-| Inconsistent naming convention | `models/` = Pydantic, `orm/` = SQLAlchemy | Developer confusion |
+| Floating-pool coupling to the V1 calculation library | `routes/floating_pool.py` imports `calculations/simulation.py` | Keeps the V1 calc module alive after the V1 HTTP API was removed (Run 7) |
 
 ### Medium Priority
 
@@ -584,14 +581,15 @@ npm run dev
 
 ## Appendix: Naming Conventions
 
-**Note:** This project uses a non-standard naming convention:
+The backend follows the conventional split (corrected in Run 7, T2.5):
 
-| Directory | Contains | Common Convention |
-|-----------|----------|-------------------|
-| `/models/` | Pydantic schemas | Usually SQLAlchemy |
-| `/orm/` | SQLAlchemy models | Usually `models/` |
+| Directory | Contains |
+|-----------|----------|
+| `backend/orm/` | SQLAlchemy ORM models (database tables) |
+| `backend/schemas/` | Pydantic request/response models |
 
-This is documented and internally consistent.
+Every ORM model file must be imported in `backend/orm/__init__.py` so it
+registers on `Base.metadata` (enforced by the startup registry check above).
 
 ---
 

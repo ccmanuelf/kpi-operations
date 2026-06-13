@@ -10,6 +10,8 @@
 | **Supervisor** | Shift supervisor | `/` (fallback) | Operations + Monitoring |
 | **Operator** | Line operator (data collector) | `/my-shift` | Operations + Monitoring (single client) |
 
+> **Role strings:** the canonical role enum (`backend/orm/user.py`) is `admin`, `poweruser`, `leader`, `operator`. `supervisor` is a legacy role string still carried by the demo `supervisor*` accounts; for write permissions it is treated as supervisory-tier, equivalent to `leader`. (A future release will consolidate `supervisor` into `leader` and reconcile the user-management role list.)
+
 ## What each role can do
 
 ### Read access
@@ -79,8 +81,8 @@ Look at the backend logs (`/tmp/backend-uvicorn.log` locally; Render dashboard l
 
 ## Token lifecycle
 
-- Login returns a JWT (HS256) valid for 8h by default
-- Logout server-side blacklists the token until expiry
+- Login returns a JWT (HS256) valid for 30 minutes by default (`ACCESS_TOKEN_EXPIRE_MINUTES`)
+- Logout records the token's `jti` in the `TOKEN_BLACKLIST` table; the revocation persists across restarts and is enforced on every request until the token expires (Run 7)
 - Refresh: the platform does NOT auto-refresh; on expiry you're sent to login
 
 ## Adding / managing users

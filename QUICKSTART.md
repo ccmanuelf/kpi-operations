@@ -20,8 +20,8 @@ No database installation required. SQLite is included with Python.
 cd backend
 
 # Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -77,8 +77,8 @@ EOF
 cd ./backend
 
 # Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -206,7 +206,7 @@ Visit: **http://localhost:8000/docs** for interactive Swagger UI
 python --version  # Should be 3.11+
 
 # Check virtual environment
-which python  # Should point to venv/bin/python
+which python  # Should point to .venv/bin/python
 
 # Check database connection (SQLite - Option A)
 sqlite3 database/kpi_platform.db ".tables"

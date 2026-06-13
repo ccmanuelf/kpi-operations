@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir --prefix=/usr/local -r backend/requirements.txt
 FROM python:3.11.11-slim-bookworm as production
 
 LABEL maintainer="KPI Operations Team"
-LABEL version="1.0.4"
+LABEL version="1.1.0"
 LABEL description="KPI Operations Platform - FastAPI Backend"
 
 WORKDIR /app

@@ -1,6 +1,6 @@
 {
   "name": "kpi-platform-frontend",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Enterprise manufacturing KPI dashboard frontend - Vue 3/Vuetify/AG Grid",
   "license": "UNLICENSED",
   "private": true,

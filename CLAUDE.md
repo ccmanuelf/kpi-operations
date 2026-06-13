@@ -371,45 +371,27 @@ Message 4: Write "file.js"
 
 Remember: **Claude Flow coordinates, Claude Code creates!**
 
-# Codebase Audit Status (Run 5)
-**Current Phase:** ALL PHASES COMPLETE
-**Audit Prompt:** See `_audit/` directory for all reports
-**Previous runs:** Run 1-4 archived in `_audit/_history/`
+# Codebase Audit Status (Run 7)
+**Current audit:** Run 7 (Fable5) — report at `_audit/RUN-7-FABLE5-AUDIT.md`. Opened at grade **B−**; both criticals and all gate-integrity Highs are now remediated.
+**Previous runs:** Runs 1–4 in `_audit/_history/`; Run 5 phase reports + `PHASE-7-CONSOLIDATION.md` in `_audit/`; Run 6 in `_audit/RUN-6-BUSINESS-AUDIT/`. The `_audit/` tree is local-only (gitignored), so these reports do NOT survive a fresh clone.
 
-### Completed Phases
-- Phase 0: Baseline — COMPLETE — see `_audit/PHASE-0-BASELINE.md`
-- Phase 1: Dead Code & Dependencies — COMPLETE — see `_audit/PHASE-1-DEAD-CODE.md` (73 findings: 58H/6M/9L)
-- Phase 2: Project Structure — COMPLETE — see `_audit/PHASE-2-STRUCTURE.md` (65 findings: 7H/20M/35L)
-- Phase 2.5: Data Layer & Integration — COMPLETE — see `_audit/PHASE-2.5-DATA-LAYER.md` (45 findings: 4H/10M/23L)
-- Phase 3: Repository Hygiene — COMPLETE — see `_audit/PHASE-3-REPO-HYGIENE.md` (16 findings: 4H/8M/4L)
-- Phase 4: Docker & Deployment — COMPLETE — see `_audit/PHASE-4-DOCKER-DEPLOY.md` (27 findings: 6H/8M/13L)
-- Phase 5: Code Quality — COMPLETE — see `_audit/PHASE-5-CODE-QUALITY.md` (19 findings: 2H/9M/8L)
-- Phase 6: Documentation & Tests — COMPLETE — see `_audit/PHASE-6-DOCS-TESTS.md` (22 findings: 5H/12M/5L)
-- Phase 7: Consolidation Plan — COMPLETE — see `_audit/PHASE-7-CONSOLIDATION.md`
+### Run 7 remediation — SHIPPED (merged to main, each verified on the Render demo)
+- **C-1** demo auto-seed/`drop_all` gated behind `DEMO_MODE` (was ungated — could wipe a real DB on boot)
+- **C-2** `/api/auth/register` locked to demo-mode + role `operator` only (was unauthenticated, accepted caller-supplied `admin`)
+- **H-1** DB-backed token revocation: `TOKEN_BLACKLIST` table keyed by JWT `jti` (was in-memory set, lost on restart)
+- **H-2** password-reset token no longer logged; **H-4** 7× `detail=str(exc)` removed
+- **H-3/H-5** honest coverage gate (`backend/.coveragerc`, measures prod code; 81.88% / threshold 75) + single pytest config with deprecation guards re-armed
+- **H-6** blocking `detect-secrets` (committed `.secrets.baseline`) + **M-14** blocking `pip-audit` in CI
+- **M-3** Simulation V1 HTTP API removed (past sunset); **M-6** `orm/`↔`schemas/` invariant corrected; **M-7** uniform 3-tier authorization on all mutation endpoints; **M-9** capacity 400→500
+- Deps: starlette PYSEC-2026-161 + esbuild advisories patched; Node 22 / Python 3.11
 
-### Aggregate Findings (Phases 1-6)
-- **Total: 287 findings** (86 HIGH / 73 MEDIUM / 97 LOW / 23 INFO/PASS)
-- **79 actionable tasks** organized into 6 execution groups + 4 deferred
-- **Grade: C+** — production deployment chain is broken (D07+D13+D19+D17+D22)
-
-### Key Cross-Phase Findings
-- Python 3.12 local vs 3.11 Docker target (version drift) — RESOLVED 2026-05-22: local `backend/.venv` recreated on Python 3.11.15 to match `.python-version`, `requires-python`, and the Docker image; full suite green (4871 passed)
-- Pydantic `.dict()` — 4 CRUD files confirmed (should be .model_dump())
-- Simulation V1 + V2 not 1-for-1 replaceable — distinct feature sets, sunset 2026-06-01
-- python-jose CVE-2024-33663 MITIGATED — algorithms=["HS256"] confirmed in jwt.decode()
-- Token blacklist defined but never checked — logout does not invalidate tokens (SEC-R5-01)
-- schemas/models naming inverted vs Python conventions (HIGH structural concern)
-- 3 frontend API functions call non-existent backend endpoints
-- VITE_API_URL ARG not declared in frontend Dockerfile — production API URL silently broken (D07)
-- JWT admin token in tracked .claude/settings.local.json (H3-01)
-- ARCHITECTURE.md massively outdated (main.py 3647→657, capacity.py monolith→10 modules)
-- 216 hardcoded i18n strings not using $t() (F-01)
-- 5 backend modules excluded from coverage measurement including auth/ (T-01)
+### Still open (lower-priority Run 7 items)
+- python-jose → joserfc/pyjwt migration (M); Python lockfile/hash pinning (L); `endpoints/csv_upload.py` consolidation (L); ~55 residual hardcoded i18n strings (L)
+- **Role-model inconsistency (NEW, surfaced in docs wave):** `UserRole` enum = {admin, poweruser, leader, operator}, but demo seeders create `supervisor` accounts, `UserCreate` regex allows {admin, poweruser, supervisor, operator, viewer}, and guards accept both `leader` and `supervisor`. Needs a product decision on the canonical role set before code reconciliation.
+- Architecture Mediums deferred: single schema-evolution mechanism (Alembic vs `create_all`), `main.py` lifespan decomposition
 
 ### Audit Conventions
-- All audit reports in `_audit/` directory (Run 5)
-- Previous run reports in `_audit/_history/run-{1,2,3,4}/`
-- Cross-phase connections tracked in `_audit/CROSS-REFERENCES.md`
+- Audit reports in `_audit/` (current run at root, prior runs in subdirs/`_history/`)
 - Subagent temp files go in `_audit/temp/`
 - No code modifications without explicit user approval
 - Write findings to disk immediately after each sub-section

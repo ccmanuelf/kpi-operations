@@ -1,6 +1,15 @@
-# Deployment Guide - KPI Operations Platform v2.0.0
+# Deployment Guide - KPI Operations Platform
 
-This guide covers deploying the KPI Operations Platform to production environments.
+This guide covers deploying the KPI Operations Platform to a **self-hosted
+MariaDB production environment** (systemd + MariaDB + nginx/TLS). This is the
+go-live target described in `_audit/Follow_up_hardening.md`.
+
+> **Note:** the repo's checked-in `docker-compose.yml` and
+> `docker-compose.prod.yml` run the **SQLite demo** (the Render deployment),
+> not the MariaDB stack below. The compose example in this guide is the
+> reference MariaDB topology for go-live, not a file that ships in the repo.
+> When the MariaDB migration happens, that compose file gets created from
+> this reference.
 
 ---
 
@@ -494,11 +503,9 @@ docker-compose logs -f
 docker-compose down
 ```
 
-### docker-compose.yml
+### docker-compose.yml (MariaDB reference)
 
 ```yaml
-version: '3.8'
-
 services:
   db:
     image: mariadb:10.11
