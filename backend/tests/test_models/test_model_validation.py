@@ -31,7 +31,7 @@ from backend.orm import (
 from backend.orm.hold_entry import HoldReason
 
 # Alert ORM is in backend/models/alert.py (it IS an ORM model, not Pydantic)
-from backend.schemas.alert import Alert, AlertConfig, AlertHistory
+from backend.orm.alert import Alert, AlertConfig, AlertHistory
 
 # ── Pydantic validation models ──
 from backend.schemas.hold import (

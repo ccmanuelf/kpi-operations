@@ -12,6 +12,11 @@ import a model here was the root cause of 503 errors on fresh installs
 from .client import Client, ClientType
 from .user import User, UserRole
 from .token_blacklist import TokenBlacklist
+
+# Alerting (moved here from backend/schemas/ in the Run 7 orm/schemas
+# unswap — previously these tables only registered on Base.metadata as a
+# side effect of seeder/route imports)
+from .alert import Alert, AlertConfig, AlertHistory
 from .employee import Employee
 from .floating_pool import FloatingPool
 
@@ -120,6 +125,9 @@ __all__ = [
     "User",
     "UserRole",
     "TokenBlacklist",
+    "Alert",
+    "AlertConfig",
+    "AlertHistory",
     "Employee",
     "FloatingPool",
     # Work orders

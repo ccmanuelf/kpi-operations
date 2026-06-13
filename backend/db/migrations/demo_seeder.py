@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 # ORM models for missing seed entities
 from backend.orm.client_config import ClientConfig, OTDMode
 from backend.orm.kpi_threshold import KPIThreshold
-from backend.schemas.alert import Alert, AlertConfig
+from backend.orm.alert import Alert, AlertConfig
 from backend.orm.user_preferences import DashboardWidgetDefaults
 
 logger = logging.getLogger(__name__)

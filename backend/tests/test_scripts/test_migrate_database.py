@@ -40,7 +40,7 @@ except ImportError:
     pass
 
 try:
-    import backend.schemas.alert  # noqa: F401
+    import backend.orm.alert  # noqa: F401
 except ImportError:
     pass
 
@@ -111,9 +111,9 @@ def _seed_product(session: Session, client_id: str, product_code: str = "PROD-00
 
 
 def _count_table(engine, table_name: str) -> int:
-    """Count rows in a table."""
+    """Count rows in a table (test helper; table_name comes from TABLE_ORDER constants, never user input)."""
     with engine.connect() as conn:
-        result = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"'))
+        result = conn.execute(text(f'SELECT COUNT(*) FROM "{table_name}"'))  # nosec B608
         return result.scalar() or 0
 
 

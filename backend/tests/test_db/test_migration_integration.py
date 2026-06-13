@@ -352,7 +352,7 @@ class TestTableOrderCompleteness:
         import backend.orm.capacity.component_check  # noqa: F401
         import backend.orm.capacity.analysis  # noqa: F401
         import backend.orm.capacity.kpi_commitment  # noqa: F401
-        import backend.schemas.alert  # noqa: F401
+        import backend.orm.alert  # noqa: F401
 
         return set(Base.metadata.tables.keys())
 

@@ -85,7 +85,7 @@ from backend.orm import (  # noqa: E402 — sys.path setup above is required for
 )
 
 # Alert models live outside backend/orm/ (in backend/schemas/alert.py)
-from backend.schemas.alert import Alert, AlertConfig  # noqa: E402
+from backend.orm.alert import Alert, AlertConfig  # noqa: E402
 
 # ============================================================================
 # MASTER PRODUCT CATALOG

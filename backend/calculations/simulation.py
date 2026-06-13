@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from backend.crud.client_config import get_client_config_or_defaults
-from backend.orm.simulation import SimulationScenarioType, OptimizationGoal  # canonical definitions
+from backend.schemas.simulation import SimulationScenarioType, OptimizationGoal  # canonical definitions
 
 # ---------------------------------------------------------------------------
 # Named constants — avoid magic numbers in calculation logic

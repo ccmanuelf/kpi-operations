@@ -13,9 +13,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from backend.database import get_db
-from backend.schemas.alert import Alert
+from backend.orm.alert import Alert
 from backend.orm.kpi_threshold import KPIThreshold
-from backend.orm.alert import AlertResponse
+from backend.schemas.alert import AlertResponse
 from backend.calculations.alerts import (
     generate_alert_id,
     generate_otd_risk_alert,
