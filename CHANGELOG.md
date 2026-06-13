@@ -5,6 +5,34 @@ All notable changes to the Manufacturing KPI Platform will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-06-13
+
+Audit Run 7 (Fable5) remediation plus the accumulated maintenance since 1.0.5.
+Reports archived under `_audit/` (local-only). Both critical findings fixed;
+all four CI required checks green throughout.
+
+### Security
+- **Demo auto-seed gated behind `DEMO_MODE`** (C-1) — the startup seeder could run `Base.metadata.drop_all()` against any database missing the demo client IDs, with nothing reading `DEMO_MODE`. Pointing `DATABASE_URL` at a populated production database would erase it on boot. The seeder (`backend/main.py:_auto_seed_demo_data`) is now gated on `settings.DEMO_MODE` as its first statement; `FORCE_RESEED` can no longer bypass it.
+- **Self-registration locked down** (C-2) — `POST /api/auth/register` was unauthenticated and accepted a caller-supplied role (including `admin`). It is now demo-mode-only (403 otherwise), uses a `UserRegister` schema with no role/client fields, and always creates `operator` accounts. Privileged roles are assigned only by an admin via `/api/users`.
+- **DB-backed token revocation** (H-1) — logout was an in-memory set, lost on every restart and invisible across workers. Replaced with a `TOKEN_BLACKLIST` table keyed by JWT `jti` (sha256 fallback for legacy tokens), pruned on insert.
+- **Password-reset token no longer logged** (H-2) — the 24h reset JWT was emitted at DEBUG level; removed in favor of a security-event record.
+- **`detail=str(exc)` removed from 7 endpoints** (H-4) — internal exception text no longer surfaced to clients.
+- **Blocking secret scanning** (H-6) — `detect-secrets` now runs in CI with a committed `.secrets.baseline` and fails on new findings (was non-blocking); added to pre-commit.
+- **Dependency CVE audit** (M-14) — `pip-audit` added as a blocking CI step. Patched starlette PYSEC-2026-161 (fastapi 0.129.0 → 0.136.3, starlette 1.3.1) and the esbuild GHSA-gv7w-rqvm-qjhr / GHSA-g7r4-m6w7-qqqr advisories.
+
+### Added
+- **Uniform authorization tiers** (M-7) — three route-level guards (admin / planner / supervisory) applied across all mutation endpoints, closing 93 previously bare-authenticated mutations (including a work-order transition that bypassed the Run-6 gate). Pinned by `test_permission_matrix.py`. `get_current_active_supervisor` was also corrected to stop denying PowerUser and Leader.
+
+### Changed
+- **Honest coverage gate** (H-3/H-5) — coverage config moved to `backend/.coveragerc` (CI previously measured the test suite itself via `--cov=.`); the gate now reflects production-code coverage (81.88%, threshold 75%). Consolidated to a single pytest config in `pyproject.toml`, restoring the Pydantic/SQLAlchemy deprecation guards.
+- **`orm/` ↔ `schemas/` invariant corrected** (M-6) — four files (`alert`, `analytics`, `simulation`) moved to the directory matching their contents (SQLAlchemy in `orm/`, Pydantic in `schemas/`).
+- **Toolchain** — Node 20 → 22, Python standardized on 3.11; docs (README, QUICKSTART, DEPLOYMENT) corrected for versions, test counts, coverage threshold, store count, and the admin demo password.
+- **`validate_date_range` wired across all 56 query endpoints** (R6-D-001).
+
+### Removed
+- **Simulation V1 HTTP API** (M-3) — the legacy `/api/simulation/*` surface (8-module package + deprecation middleware) was retired past its 2026-06-01 sunset. V2 (`/api/v2/simulation/*`) is the sole engine; the V1 calculation library is retained internally for the floating-pool endpoints.
+- Stale `backend/tests/requirements.txt` (conflicting pins, the only LGPL dependency) and 15 tracked `.claude-flow/metrics` telemetry files.
+
 ## [1.0.5] - 2026-02-16
 
 ### Changed

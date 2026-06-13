@@ -1,6 +1,6 @@
 [project]
 name = "kpi-operations"
-version = "1.0.4"
+version = "1.1.0"
 description = "Enterprise manufacturing KPI tracking and analytics platform"
 requires-python = ">=3.11"
 
