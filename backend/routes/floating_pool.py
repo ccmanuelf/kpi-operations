@@ -10,7 +10,7 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, cast
 
 from backend.database import get_db
-from backend.orm.simulation import OptimizationGoal
+from backend.schemas.simulation import OptimizationGoal
 from backend.services.simulation_service import (
     SimulationService,
     run_staffing_simulation,

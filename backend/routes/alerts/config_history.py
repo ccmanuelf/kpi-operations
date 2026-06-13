@@ -11,8 +11,8 @@ from datetime import datetime, timedelta, timezone
 import uuid
 
 from backend.database import get_db
-from backend.schemas.alert import AlertConfig, AlertHistory
-from backend.orm.alert import (
+from backend.orm.alert import AlertConfig, AlertHistory
+from backend.schemas.alert import (
     AlertConfigCreate,
     AlertConfigResponse,
     AlertCategory,
@@ -94,7 +94,7 @@ async def get_prediction_accuracy(
 
     Returns metrics showing how accurate our predictions have been.
     """
-    from backend.schemas.alert import Alert
+    from backend.orm.alert import Alert
 
     from_date = datetime.now(tz=timezone.utc) - timedelta(days=days)
 

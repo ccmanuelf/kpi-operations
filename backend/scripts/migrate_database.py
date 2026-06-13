@@ -655,7 +655,7 @@ class DatabaseMigrationTool:
         import backend.orm.coverage  # noqa: F401
 
         try:
-            import backend.schemas.alert  # noqa: F401
+            import backend.orm.alert  # noqa: F401
         except ImportError:
             pass
 

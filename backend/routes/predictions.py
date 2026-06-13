@@ -28,7 +28,7 @@ from backend.constants import (
     MIN_HISTORICAL_DAYS,
     MAX_HISTORICAL_DAYS,
 )
-from backend.orm.analytics import (
+from backend.schemas.analytics import (
     KPIType,
     ComprehensivePredictionResponse,
     AllKPIPredictionsResponse,

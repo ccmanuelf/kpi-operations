@@ -66,7 +66,7 @@ from backend.orm.import_log import ImportLog
 from backend.orm.capacity.orders import CapacityOrder  # noqa: F401
 
 # Alert ORM model (in models/, not schemas/) — needed for Base.metadata.create_all()
-from backend.schemas.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
+from backend.orm.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
 
 # Test fixtures (factories, auth fixtures, seed data) — moved up from below the
 # alias block to keep all imports at module top.

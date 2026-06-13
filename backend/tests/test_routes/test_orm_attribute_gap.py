@@ -34,7 +34,7 @@ from backend.orm.attendance_entry import AttendanceEntry
 from backend.orm.work_order import WorkOrder
 from backend.orm.user import User
 from backend.orm.job import Job
-from backend.schemas.alert import Alert, AlertConfig, AlertHistory
+from backend.orm.alert import Alert, AlertConfig, AlertHistory
 
 _TRACKED_ORMS: Dict[str, Any] = {
     "ProductionEntry": ProductionEntry,

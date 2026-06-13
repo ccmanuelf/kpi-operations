@@ -14,7 +14,7 @@ import pytest
 import backend.orm  # noqa: F401 — triggers all model registrations
 
 # Alert ORM models live in backend/schemas/ (inverted naming convention)
-from backend.schemas.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
+from backend.orm.alert import Alert, AlertConfig, AlertHistory  # noqa: F401
 
 from backend.database import Base
 

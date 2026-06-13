@@ -407,7 +407,7 @@ class TestAlertSchemas:
 
     def test_alert_create_schema(self):
         """Test AlertCreate schema validation"""
-        from backend.orm.alert import AlertCreate, AlertCategory, AlertSeverity
+        from backend.schemas.alert import AlertCreate, AlertCategory, AlertSeverity
 
         alert = AlertCreate(
             category=AlertCategory.OTD,
@@ -427,7 +427,7 @@ class TestAlertSchemas:
 
     def test_alert_summary_schema(self):
         """Test AlertSummary schema"""
-        from backend.orm.alert import AlertSummary
+        from backend.schemas.alert import AlertSummary
 
         summary = AlertSummary(
             total_active=10,
@@ -443,7 +443,7 @@ class TestAlertSchemas:
 
     def test_alert_filter_schema(self):
         """Test AlertFilter schema"""
-        from backend.orm.alert import AlertFilter, AlertCategory, AlertSeverity, AlertStatus
+        from backend.schemas.alert import AlertFilter, AlertCategory, AlertSeverity, AlertStatus
 
         filter_params = AlertFilter(
             client_id="CLIENT-001",
@@ -457,7 +457,7 @@ class TestAlertSchemas:
 
     def test_alert_status_enum(self):
         """Test AlertStatus enum values"""
-        from backend.orm.alert import AlertStatus
+        from backend.schemas.alert import AlertStatus
 
         assert AlertStatus.ACTIVE.value == "active"
         assert AlertStatus.ACKNOWLEDGED.value == "acknowledged"
@@ -466,7 +466,7 @@ class TestAlertSchemas:
 
     def test_alert_category_enum(self):
         """Test AlertCategory enum values"""
-        from backend.orm.alert import AlertCategory
+        from backend.schemas.alert import AlertCategory
 
         assert AlertCategory.OTD.value == "otd"
         assert AlertCategory.QUALITY.value == "quality"
@@ -475,7 +475,7 @@ class TestAlertSchemas:
 
     def test_alert_severity_enum(self):
         """Test AlertSeverity enum values"""
-        from backend.orm.alert import AlertSeverity
+        from backend.schemas.alert import AlertSeverity
 
         assert AlertSeverity.INFO.value == "info"
         assert AlertSeverity.WARNING.value == "warning"
@@ -488,7 +488,7 @@ class TestAlertModels:
 
     def test_alert_model_creation(self):
         """Test Alert model can be instantiated"""
-        from backend.schemas.alert import Alert
+        from backend.orm.alert import Alert
 
         alert = Alert(
             alert_id="ALT-20260126-TEST001",
@@ -506,7 +506,7 @@ class TestAlertModels:
 
     def test_alert_config_model_creation(self):
         """Test AlertConfig model can be instantiated"""
-        from backend.schemas.alert import AlertConfig
+        from backend.orm.alert import AlertConfig
 
         config = AlertConfig(
             config_id="ACF-TEST001",
@@ -524,7 +524,7 @@ class TestAlertModels:
 
     def test_alert_history_model_creation(self):
         """Test AlertHistory model can be instantiated"""
-        from backend.schemas.alert import AlertHistory
+        from backend.orm.alert import AlertHistory
         from datetime import datetime
 
         history = AlertHistory(
@@ -549,7 +549,7 @@ class TestAlertRouteHelpers:
 
     def test_alert_status_filter_logic(self):
         """Test status filter defaults to active"""
-        from backend.orm.alert import AlertStatus
+        from backend.schemas.alert import AlertStatus
 
         default_status = AlertStatus.ACTIVE
 
@@ -584,7 +584,7 @@ class TestListAlertsEndpoint:
 
     def test_filter_by_category(self):
         """Test category filter options"""
-        from backend.orm.alert import AlertCategory
+        from backend.schemas.alert import AlertCategory
 
         valid_categories = [c.value for c in AlertCategory]
 
@@ -595,7 +595,7 @@ class TestListAlertsEndpoint:
 
     def test_filter_by_severity(self):
         """Test severity filter options"""
-        from backend.orm.alert import AlertSeverity
+        from backend.schemas.alert import AlertSeverity
 
         valid_severities = [s.value for s in AlertSeverity]
 
@@ -606,7 +606,7 @@ class TestListAlertsEndpoint:
 
     def test_filter_by_status(self):
         """Test status filter options"""
-        from backend.orm.alert import AlertStatus
+        from backend.schemas.alert import AlertStatus
 
         valid_statuses = [s.value for s in AlertStatus]
 
@@ -681,7 +681,7 @@ class TestAlertSummaryEndpoint:
 
     def test_summary_structure(self):
         """Test summary has required fields"""
-        from backend.orm.alert import AlertSummary
+        from backend.schemas.alert import AlertSummary
 
         summary = AlertSummary(
             total_active=5,
@@ -1001,7 +1001,7 @@ class TestPredictionAccuracyEndpoint:
 
     def test_category_filter(self):
         """Test category filter is applied"""
-        from backend.orm.alert import AlertCategory
+        from backend.schemas.alert import AlertCategory
 
         category = AlertCategory.OTD
 
