@@ -33,7 +33,7 @@ router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 def create_job_endpoint(
-    job: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    job: JobCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ) -> Any:
     """
     Create new job (work order line item)
@@ -72,7 +72,12 @@ def get_job_endpoint(job_id: str, db: Session = Depends(get_db), current_user: U
 
 @router.put("/{job_id}", response_model=JobResponse)
 def update_job_endpoint(
-    job_id: str, job_update: JobUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    job_id: str,
+    job_update: JobUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> Any:
     """
     Update job
@@ -87,7 +92,12 @@ def update_job_endpoint(
 
 @router.post("/{job_id}/complete", response_model=JobResponse)
 def complete_job_endpoint(
-    job_id: str, completion: JobComplete, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    job_id: str,
+    completion: JobComplete,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> Any:
     """
     Mark job as completed with actual quantities and hours
@@ -118,7 +128,7 @@ work_order_jobs_router = APIRouter(prefix="/api/work-orders", tags=["Jobs"])
 
 @work_order_jobs_router.get("/{work_order_id}/jobs", response_model=List[JobResponse])
 def get_work_order_jobs(
-    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    work_order_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ) -> Any:
     """
     Get all jobs for a specific work order

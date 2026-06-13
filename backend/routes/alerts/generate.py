@@ -22,7 +22,7 @@ from backend.calculations.alerts import (
     generate_capacity_alert,
     generate_hold_alert,
 )
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.utils.logging_utils import get_module_logger
@@ -39,7 +39,7 @@ generate_router = APIRouter()
 async def generate_all_alerts(
     client_id: Optional[str] = Query(None, description="Check for specific client"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Run all alert checks and generate new alerts
@@ -105,7 +105,7 @@ async def generate_all_alerts(
 async def check_otd_risk_alerts(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """Check for OTD risk alerts on pending work orders"""
     if client_id:
@@ -118,7 +118,7 @@ async def check_otd_risk_alerts(
 async def check_quality_alerts(
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """Check for quality KPI alerts"""
     if client_id:
@@ -136,7 +136,7 @@ async def check_capacity_alerts(
     bottleneck_station: Optional[str] = Query(None),
     client_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Check for capacity planning alerts

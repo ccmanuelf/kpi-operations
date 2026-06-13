@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_user
 from backend.orm.user import User
 from backend.reports.pdf_generator import PDFReportGenerator
 from backend.utils.logging_utils import get_module_logger
@@ -63,7 +63,7 @@ async def get_email_report_config(
 @email_config_router.post("/email-config", response_model=EmailReportConfigResponse)
 async def save_email_report_config(
     config: EmailReportConfig,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Save email report configuration
@@ -104,7 +104,7 @@ async def save_email_report_config(
 @email_config_router.put("/email-config", response_model=EmailReportConfigResponse)
 async def update_email_report_config(
     config: EmailReportConfig,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Update existing email report configuration
@@ -138,7 +138,7 @@ async def update_email_report_config(
 @email_config_router.post("/email-config/test")
 async def send_test_email(
     request: TestEmailRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Send a test email to verify email configuration
@@ -178,7 +178,7 @@ async def send_test_email(
 async def send_manual_report(
     request: ManualReportRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Manually trigger a report to be sent via email

@@ -36,7 +36,7 @@ from backend.services.floating_pool_service import (
     check_employee_availability as is_employee_available_for_assignment,
     get_pool_summary as get_floating_pool_summary,
 )
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_user
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -47,7 +47,11 @@ router = APIRouter(prefix="/api/floating-pool", tags=["Floating Pool"])
 
 @router.post("", response_model=FloatingPoolResponse, status_code=status.HTTP_201_CREATED)
 def create_floating_pool_entry_endpoint(
-    pool_entry: FloatingPoolCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    pool_entry: FloatingPoolCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> Any:
     """
     Create new floating pool entry
@@ -144,7 +148,7 @@ def update_floating_pool_entry_endpoint(
     pool_id: int,
     pool_update: FloatingPoolUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Update floating pool entry
@@ -159,7 +163,7 @@ def update_floating_pool_entry_endpoint(
 
 @router.delete("/{pool_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_floating_pool_entry_endpoint(
-    pool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    pool_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_supervisor)
 ) -> None:
     """
     Delete floating pool entry
@@ -174,7 +178,7 @@ def delete_floating_pool_entry_endpoint(
 def assign_floating_pool_employee_to_client(
     assignment: FloatingPoolAssignmentRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Assign floating pool employee to a client
@@ -195,7 +199,7 @@ def assign_floating_pool_employee_to_client(
 def unassign_floating_pool_employee_from_client(
     unassignment: FloatingPoolUnassignmentRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Unassign floating pool employee from client
@@ -361,7 +365,7 @@ def optimize_floating_pool_allocation_endpoint(
     optimization_goal: str = "maximize_coverage",
     target_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Optimize floating pool allocation across shifts/lines.
@@ -469,7 +473,7 @@ def simulate_shift_coverage_endpoint(
     required_employees: int,
     target_date: Optional[date] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Simulate coverage for a specific shift with floating pool.

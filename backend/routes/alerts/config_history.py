@@ -17,7 +17,7 @@ from backend.schemas.alert import (
     AlertConfigResponse,
     AlertCategory,
 )
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import (
@@ -55,7 +55,7 @@ async def list_alert_configs(
 async def create_alert_config(
     config_data: AlertConfigCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """Create alert configuration"""
     if config_data.client_id:

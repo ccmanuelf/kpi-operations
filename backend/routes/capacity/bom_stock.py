@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
@@ -65,7 +65,7 @@ def create_bom_header(
     header: BOMHeaderCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Create a new BOM header."""
     verify_client_access(current_user, client_id, db)
@@ -106,7 +106,7 @@ def update_bom_header(
     update: BOMHeaderUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Update a BOM header."""
     verify_client_access(current_user, client_id, db)
@@ -124,7 +124,7 @@ def delete_bom_header(
     client_id: str = Query(..., description="Client ID"),
     cascade: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Dict[str, str]:
     """Delete a BOM header (and optionally its details)."""
     verify_client_access(current_user, client_id, db)
@@ -153,7 +153,7 @@ def create_bom_detail(
     detail: BOMDetailCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Add a component to a BOM."""
     verify_client_access(current_user, client_id, db)
@@ -181,7 +181,7 @@ def update_bom_detail(
     update: BOMDetailUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Update a BOM detail."""
     verify_client_access(current_user, client_id, db)
@@ -198,7 +198,7 @@ def delete_bom_detail(
     detail_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Dict[str, str]:
     """Delete a BOM detail."""
     verify_client_access(current_user, client_id, db)
@@ -214,7 +214,7 @@ def explode_bom(
     request: BOMExplosionRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Dict[str, Any]:
     """Run BOM explosion for a parent item."""
     verify_client_access(current_user, client_id, db)
@@ -279,7 +279,7 @@ def create_stock_snapshot(
     snapshot: StockSnapshotCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Create a new stock snapshot."""
     verify_client_access(current_user, client_id, db)
@@ -372,7 +372,7 @@ def update_stock_snapshot(
     update: StockSnapshotUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Update a stock snapshot."""
     verify_client_access(current_user, client_id, db)
@@ -389,7 +389,7 @@ def delete_stock_snapshot(
     snapshot_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Dict[str, str]:
     """Delete a stock snapshot."""
     verify_client_access(current_user, client_id, db)

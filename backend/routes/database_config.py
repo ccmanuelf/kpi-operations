@@ -21,7 +21,7 @@ from backend.db.migrations.data_migrator import DataMigrator, DataMigrationError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 
-from backend.auth.jwt import get_current_active_supervisor
+from backend.auth.jwt import get_current_active_supervisor, get_current_admin
 from backend.orm.user import User
 from backend.utils.logging_utils import get_module_logger
 
@@ -194,7 +194,7 @@ async def test_connection(
 async def start_migration(
     request: MigrationRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_current_active_supervisor),
+    current_user: User = Depends(get_current_admin),
 ) -> Any:
     """Start database migration (schema + demo data).
 

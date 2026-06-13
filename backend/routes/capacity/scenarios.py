@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
@@ -59,7 +59,7 @@ def create_scenario(
     scenario: ScenarioCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Create a new scenario."""
     verify_client_access(current_user, client_id, db)
@@ -120,7 +120,7 @@ def run_scenario(
     request: ScenarioRunRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Run/evaluate a scenario by applying its parameters and analyzing impact."""
     verify_client_access(current_user, client_id, db)
@@ -191,7 +191,7 @@ def delete_scenario(
     scenario_id: int,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Delete a scenario."""
     verify_client_access(current_user, client_id, db)
@@ -223,7 +223,7 @@ def compare_scenarios(
     request: ScenarioCompareRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Compare multiple scenarios."""
     verify_client_access(current_user, client_id, db)

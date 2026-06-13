@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
@@ -55,7 +55,7 @@ def run_component_check(
     request: ComponentCheckRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """
     Run component availability check (MRP explosion).
@@ -177,7 +177,7 @@ def run_capacity_analysis(
     request: AnalysisRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Run capacity analysis for lines within a date range."""
     from backend.utils.date_range import validate_date_range
@@ -300,7 +300,7 @@ def create_schedule(
     schedule: ScheduleCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Create a new schedule."""
     verify_client_access(current_user, client_id, db)
@@ -360,7 +360,7 @@ def generate_schedule(
     end_date: date = Query(..., description="Schedule period end"),
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Auto-generate a schedule from confirmed orders."""
     from backend.utils.date_range import validate_date_range
@@ -404,7 +404,7 @@ def commit_schedule(
     request: ScheduleCommitRequest,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Commit a schedule, locking KPI targets."""
     verify_client_access(current_user, client_id, db)

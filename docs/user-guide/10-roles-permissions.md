@@ -41,6 +41,20 @@
 | Manage users / clients | ✓ | — | — | — | — |
 | Trigger DB migrations | ✓ | — | — | — | — |
 
+### How this is enforced (Run 7)
+
+Every mutation endpoint carries one of three route-level guard tiers
+(`backend/auth/jwt.py`), applied uniformly in the Run 7 permission sweep:
+
+| Tier | Roles | Covers |
+|------|-------|--------|
+| **admin** | admin | users/clients management, client CSV import, DB migrations, cache invalidation, nightly batch triggers |
+| **planner** | admin, poweruser | capacity workbook/orders/BOM/calendar/lines/standards/schedules, capacity scenarios, KPI thresholds, client configuration |
+| **supervisory** | admin, poweruser, leader, supervisor | operations master data (employees, jobs, floating pool, part opportunities), work-order transitions, bulk/CSV imports, simulation V2 runs & scenarios, alert generation/config, report email config |
+| *(authenticated)* | all roles incl. operator | transactional data entry (production, downtime, attendance, quality, holds), filters, preferences, alert acknowledge/resolve |
+
+These tiers are pinned by `backend/tests/test_security/test_permission_matrix.py`.
+
 ## Multi-tenant isolation
 
 Every database row carries a `client_id`. The platform filters queries server-side based on the user's `client_id_assigned`:

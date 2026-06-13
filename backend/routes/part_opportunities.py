@@ -35,7 +35,11 @@ router = APIRouter(prefix="/api/part-opportunities", tags=["Part Opportunities"]
 
 @router.post("", response_model=PartOpportunityResponse, status_code=status.HTTP_201_CREATED)
 def create_part_opportunity_endpoint(
-    part: PartOpportunityCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    part: PartOpportunityCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> Any:
     """
     Create new part opportunity record
@@ -86,7 +90,7 @@ def update_part_opportunity_endpoint(
     part_number: str,
     part_update: PartOpportunityUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_active_supervisor),
 ) -> Any:
     """
     Update part opportunity
@@ -114,7 +118,11 @@ def delete_part_opportunity_endpoint(
 
 @router.post("/bulk-import", response_model=BulkImportResponse)
 def bulk_import_part_opportunities(
-    import_request: BulkImportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    import_request: BulkImportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> Any:
     """
     Bulk import part opportunities (for CSV imports)

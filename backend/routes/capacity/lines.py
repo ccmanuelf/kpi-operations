@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_planner, get_current_user
 from backend.orm.user import User
 from backend.middleware.client_auth import verify_client_access
 from backend.constants import DEFAULT_PAGE_SIZE
@@ -51,7 +51,7 @@ def create_production_line(
     line: ProductionLineCreate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Create a new production line."""
     verify_client_access(current_user, client_id, db)
@@ -99,7 +99,7 @@ def update_production_line(
     update: ProductionLineUpdate,
     client_id: str = Query(..., description="Client ID"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Update a production line."""
     verify_client_access(current_user, client_id, db)
@@ -117,7 +117,7 @@ def delete_production_line(
     client_id: str = Query(..., description="Client ID"),
     soft_delete: bool = True,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_planner),
 ) -> Any:
     """Delete a production line."""
     verify_client_access(current_user, client_id, db)

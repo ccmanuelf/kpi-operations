@@ -10,7 +10,7 @@ tool without persisting scenarios to the database.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.auth.jwt import get_current_user
+from backend.auth.jwt import get_current_active_supervisor
 from backend.orm.user import User
 
 from backend.simulation_v2.models import (
@@ -179,7 +179,7 @@ async def simulation_info() -> Any:
 
 @router.post("/validate", response_model=ValidationReport)
 async def validate_configuration(
-    request: SimulationRequest, current_user: User = Depends(get_current_user)
+    request: SimulationRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> ValidationReport:
     """
     Validate simulation configuration without running simulation.
@@ -210,7 +210,7 @@ async def validate_configuration(
 
 @router.post("/run", response_model=SimulationResponse)
 async def run_simulation_endpoint(
-    request: SimulationRequest, current_user: User = Depends(get_current_user)
+    request: SimulationRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> SimulationResponse:
     """
     Run complete simulation and return results.
@@ -295,7 +295,7 @@ async def run_simulation_endpoint(
 
 @router.post("/run-monte-carlo", response_model=MonteCarloResponse)
 async def run_monte_carlo_endpoint(
-    request: MonteCarloRequest, current_user: User = Depends(get_current_user)
+    request: MonteCarloRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> MonteCarloResponse:
     """
     Run N replications of the simulation and return aggregated statistics.
@@ -377,7 +377,7 @@ async def run_monte_carlo_endpoint(
 
 @router.post("/optimize-operators", response_model=OperatorAllocationResponse)
 async def optimize_operators_endpoint(
-    request: OperatorAllocationRequest, current_user: User = Depends(get_current_user)
+    request: OperatorAllocationRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> OperatorAllocationResponse:
     """
     Pattern 1 — operator allocation optimization (MiniZinc → SimPy validate).
@@ -497,7 +497,7 @@ async def optimize_operators_endpoint(
 
 @router.post("/rebalance-bottlenecks", response_model=RebalancingResponse)
 async def rebalance_bottlenecks_endpoint(
-    request: RebalancingRequest, current_user: User = Depends(get_current_user)
+    request: RebalancingRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> RebalancingResponse:
     """
     Pattern 2 — bottleneck rebalancing (SimPy detects → MiniZinc solves).
@@ -625,7 +625,7 @@ async def rebalance_bottlenecks_endpoint(
 
 @router.post("/sequence-products", response_model=ProductSequencingResponse)
 async def sequence_products_endpoint(
-    request: ProductSequencingRequest, current_user: User = Depends(get_current_user)
+    request: ProductSequencingRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> ProductSequencingResponse:
     """
     Pattern 3 — product sequencing (MiniZinc orders → SimPy simulates).
@@ -725,7 +725,7 @@ async def sequence_products_endpoint(
 
 @router.post("/plan-horizon", response_model=PlanningHorizonResponse)
 async def plan_horizon_endpoint(
-    request: PlanningHorizonRequest, current_user: User = Depends(get_current_user)
+    request: PlanningHorizonRequest, current_user: User = Depends(get_current_active_supervisor)
 ) -> PlanningHorizonResponse:
     """
     Pattern 4 — planning vs. execution horizon (MiniZinc plans the

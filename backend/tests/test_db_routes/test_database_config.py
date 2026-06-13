@@ -15,11 +15,14 @@ from backend.orm.user import User
 @pytest.fixture(scope="module")
 def supervisor_headers(test_client):
     """
-    Create supervisor auth headers compatible with get_current_active_supervisor.
+    Create admin auth headers for the database-config endpoints.
 
-    Self-registration always yields role='operator' (Run 7 C-2), so this
-    fixture registers a user, elevates the role to 'supervisor' directly in
-    the DB (the way an admin would via the users API), then logs in.
+    POST /migrate is admin-only per docs/user-guide/10-roles-permissions.md
+    ("Trigger DB migrations: Admin only", enforced in Run 7 T2.7); the other
+    database-config endpoints accept the supervisory tier, which admin also
+    satisfies. Self-registration always yields role='operator' (Run 7 C-2),
+    so this fixture registers a user, elevates the role directly in the DB
+    (the way an admin would via the users API), then logs in.
     """
     from backend.main import app
 
@@ -44,7 +47,7 @@ def supervisor_headers(test_client):
         try:
             user = db.query(User).filter(User.username == user_data["username"]).first()
             if user:
-                user.role = "supervisor"
+                user.role = "admin"
                 db.commit()
         finally:
             try:

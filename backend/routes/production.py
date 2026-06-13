@@ -186,7 +186,11 @@ def delete_entry(
 
 @router.post("/upload/csv", response_model=CSVUploadResponse)
 async def upload_csv(
-    file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> CSVUploadResponse:
     """
     Upload production entries via CSV - ALIGNED WITH PRODUCTION_ENTRY SCHEMA
@@ -299,7 +303,11 @@ async def upload_csv(
 
 @router.post("/batch-import", response_model=BatchImportResponse)
 def batch_import_production(
-    request: BatchImportRequest, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    request: BatchImportRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_supervisor,
+    ),
 ) -> BatchImportResponse:
     """
     Batch import production entries after frontend validation.
