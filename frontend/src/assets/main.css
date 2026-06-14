@@ -5,6 +5,8 @@
  * Typography, spacing, and visual patterns follow Carbon guidelines.
  */
 
+@layer vuetify, app, utilities;
+
 @import './carbon-tokens.css';
 @import "tailwindcss";
 
