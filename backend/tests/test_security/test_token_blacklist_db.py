@@ -77,7 +77,7 @@ class TestDbBackedRevocation:
 
     def test_tokens_carry_jti_claim(self):
         """New tokens embed a jti so revocation is keyed, not full-token."""
-        from jose import jwt as jose_jwt
+        import jwt as jose_jwt
 
         from backend.config import settings
 
@@ -87,7 +87,7 @@ class TestDbBackedRevocation:
 
     def test_legacy_token_without_jti_still_revocable(self, test_client):
         """Tokens minted before the jti claim fall back to a sha256 digest key."""
-        from jose import jwt as jose_jwt
+        import jwt as jose_jwt
 
         from backend.config import settings
 

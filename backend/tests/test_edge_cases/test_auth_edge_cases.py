@@ -396,11 +396,11 @@ class TestJWTEdgeCases:
     def test_expired_token(self, auth_setup):
         """Test expired token handling."""
         from backend.auth.jwt import decode_access_token
-        from jose import JWTError
+        from jwt import PyJWTError
 
         # Patch jwt.decode to raise JWTError for expired token
         with patch("backend.auth.jwt.jwt.decode") as mock_decode:
-            mock_decode.side_effect = JWTError("Token expired")
+            mock_decode.side_effect = PyJWTError("Token expired")
 
             with pytest.raises(HTTPException) as exc_info:
                 decode_access_token("expired_token")
@@ -410,10 +410,10 @@ class TestJWTEdgeCases:
     def test_malformed_token(self, auth_setup):
         """Test malformed token handling."""
         from backend.auth.jwt import decode_access_token
-        from jose import JWTError
+        from jwt import PyJWTError
 
         with patch("backend.auth.jwt.jwt.decode") as mock_decode:
-            mock_decode.side_effect = JWTError("Invalid token")
+            mock_decode.side_effect = PyJWTError("Invalid token")
 
             with pytest.raises(HTTPException) as exc_info:
                 decode_access_token("not.a.valid.token")

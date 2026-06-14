@@ -7,7 +7,8 @@ import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, cast
-from jose import JWTError, jwt
+import jwt
+from jwt import PyJWTError
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
@@ -36,7 +37,7 @@ def token_revocation_key(token: str) -> str:
         jti = payload.get("jti")
         if isinstance(jti, str) and jti:
             return jti
-    except JWTError:
+    except PyJWTError:
         pass
     return hashlib.sha256(token.encode()).hexdigest()
 
@@ -61,7 +62,7 @@ def blacklist_token(db: Session, token: str, user_id: Optional[str] = None) -> N
         exp = payload.get("exp")
         if exp is not None:
             expires_at = datetime.fromtimestamp(float(exp), tz=timezone.utc)
-    except JWTError:
+    except PyJWTError:
         pass  # keep the conservative default expiry
 
     # Prune rows whose tokens have already expired (compare naive-UTC, the
@@ -120,9 +121,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     # jti keys the DB-backed revocation (logout) without storing raw tokens.
     to_encode.setdefault("jti", uuid.uuid4().hex)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-    return cast(str, encoded_jwt)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
@@ -146,11 +145,10 @@ def decode_access_token(token: str) -> dict:
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        if payload.get("sub") is None:
             raise credentials_exception
         return cast(Dict[Any, Any], payload)
-    except JWTError:
+    except PyJWTError:
         raise credentials_exception
 
 
