@@ -32,6 +32,17 @@ class UserRole(str, enum.Enum):
     VIEWER = "viewer"  # Read-only; single client
 
 
+# Authorization tiers — the SINGLE SOURCE OF TRUTH for write permissions
+# (Run 7). Route guards (backend/auth/jwt.py), the CRUD layer, and per-module
+# write checks all import these so the tiers can never drift apart again
+# (the drift between route guards and CRUD checks is exactly what Run 7 fixed).
+# Defined as plain str lists of UserRole values so they compose with the
+# lowercase `User.role` column directly.
+PLANNER_ROLES = [UserRole.ADMIN.value, UserRole.POWERUSER.value]
+SUPERVISORY_ROLES = PLANNER_ROLES + [UserRole.LEADER.value, UserRole.SUPERVISOR.value]
+CONTRIBUTOR_ROLES = SUPERVISORY_ROLES + [UserRole.OPERATOR.value]
+
+
 class User(Base):
     """USER table ORM - Authentication and authorization"""
 

@@ -18,7 +18,7 @@ from backend.schemas.defect_type_catalog import (
     DefectTypeCatalogCSVRow,
 )
 from backend.middleware.client_auth import verify_client_access
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def create_defect_type(db: Session, defect_type: DefectTypeCatalogCreate, curren
     """Create a new defect type for a client or globally"""
     # Global defect types require admin role
     if is_global_client(defect_type.client_id):
-        if current_user.role not in ["admin", "supervisor"]:
+        if current_user.role not in SUPERVISORY_ROLES:
             raise ValueError("Only admins can create global defect types")
     else:
         # Verify user has access to this client
@@ -148,7 +148,7 @@ def update_defect_type(
 
     # Global defect types require admin role
     if is_global_client(db_defect_type.client_id):
-        if current_user.role not in ["admin", "supervisor"]:
+        if current_user.role not in SUPERVISORY_ROLES:
             raise ValueError("Only admins can update global defect types")
     else:
         verify_client_access(current_user, db_defect_type.client_id)
@@ -172,7 +172,7 @@ def delete_defect_type(db: Session, defect_type_id: str, current_user: User) -> 
 
     # Global defect types require admin role
     if is_global_client(db_defect_type.client_id):
-        if current_user.role not in ["admin", "supervisor"]:
+        if current_user.role not in SUPERVISORY_ROLES:
             raise ValueError("Only admins can delete global defect types")
     else:
         verify_client_access(current_user, db_defect_type.client_id)
@@ -196,7 +196,7 @@ def bulk_create_defect_types(
     """
     # Global defect types require admin role
     if is_global_client(client_id):
-        if current_user.role not in ["admin", "supervisor"]:
+        if current_user.role not in SUPERVISORY_ROLES:
             raise ValueError("Only admins can bulk create global defect types")
     else:
         verify_client_access(current_user, client_id)

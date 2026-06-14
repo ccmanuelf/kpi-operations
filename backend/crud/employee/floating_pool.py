@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from backend.orm.employee import Employee
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 
 
 def get_floating_pool_employees(db: Session, current_user: User, skip: int = 0, limit: int = 100) -> List[Employee]:
@@ -53,7 +53,7 @@ def assign_to_floating_pool(db: Session, employee_id: int, current_user: User) -
         HTTPException 404: If employee not found
     """
     # SECURITY: Only supervisors and admins can assign to floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can assign to floating pool")
 
     db_employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
@@ -86,7 +86,7 @@ def remove_from_floating_pool(db: Session, employee_id: int, current_user: User)
         HTTPException 404: If employee not found
     """
     # SECURITY: Only supervisors and admins can remove from floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can remove from floating pool")
 
     db_employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()

@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from backend.orm.floating_pool import FloatingPool
 from backend.orm.employee import Employee
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.utils.soft_delete import soft_delete
 
 
@@ -32,7 +32,7 @@ def create_floating_pool_entry(db: Session, pool_data: dict, current_user: User)
         HTTPException 404: If employee not found or not in floating pool
     """
     # SECURITY: Only supervisors and admins can manage floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can manage floating pool")
 
     # Verify employee exists and is in floating pool
@@ -98,7 +98,7 @@ def update_floating_pool_entry(
         HTTPException 404: If pool entry not found
     """
     # SECURITY: Only supervisors and admins can manage floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can manage floating pool")
 
     db_pool = db.query(FloatingPool).filter(FloatingPool.pool_id == pool_id).first()
@@ -135,7 +135,7 @@ def delete_floating_pool_entry(db: Session, pool_id: int, current_user: User) ->
         HTTPException 404: If pool entry not found
     """
     # SECURITY: Only supervisors and admins can manage floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can manage floating pool")
 
     db_pool = db.query(FloatingPool).filter(FloatingPool.pool_id == pool_id).first()

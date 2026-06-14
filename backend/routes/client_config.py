@@ -10,7 +10,7 @@ from typing import Any, List
 
 from backend.database import get_db
 from backend.auth.jwt import get_current_planner, get_current_user
-from backend.orm.user import User
+from backend.orm.user import User, PLANNER_ROLES
 from backend.dependencies import PaginationParams
 from backend.schemas.client_config import (
     ClientConfigCreate,
@@ -29,7 +29,7 @@ router = APIRouter(
 )
 
 
-_CONFIG_WRITE_ROLES = {"admin", "ADMIN", "poweruser"}
+_CONFIG_WRITE_ROLES = PLANNER_ROLES
 
 
 def _check_config_write_permission(user: User) -> None:

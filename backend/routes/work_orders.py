@@ -23,7 +23,7 @@ from backend.services.work_order_service import (
     list_orders_by_date_range as get_work_orders_by_date_range,
 )
 from backend.auth.jwt import get_current_user, get_current_active_supervisor
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.orm.production_entry import ProductionEntry
 from backend.orm.product import Product
 from backend.orm.shift import Shift
@@ -32,7 +32,7 @@ from backend.orm.hold_entry import HoldEntry
 
 logger = get_module_logger(__name__)
 
-_WRITE_ALLOWED_ROLES = {"admin", "ADMIN", "poweruser", "leader", "supervisor"}
+_WRITE_ALLOWED_ROLES = SUPERVISORY_ROLES
 
 
 def _check_wo_write_permission(user: User) -> None:

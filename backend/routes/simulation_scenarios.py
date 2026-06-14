@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from backend.auth.jwt import get_current_active_supervisor, get_current_user
 from backend.crud import simulation_scenario as crud
 from backend.database import get_db
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.schemas.simulation_scenario import (
     SimulationScenarioCreate,
     SimulationScenarioResponse,
@@ -47,7 +47,7 @@ router = APIRouter(
 )
 
 
-_WRITE_ROLES = {"admin", "ADMIN", "poweruser", "leader", "supervisor"}
+_WRITE_ROLES = SUPERVISORY_ROLES
 
 
 def _check_write_permission(user: User) -> None:

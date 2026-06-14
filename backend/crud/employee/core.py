@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from backend.orm.employee import Employee
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.utils.soft_delete import soft_delete
 
 
@@ -31,7 +31,7 @@ def create_employee(db: Session, employee_data: dict, current_user: User) -> Emp
         HTTPException 400: If employee_code already exists
     """
     # SECURITY: Only supervisors and admins can create employees
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can create employees")
 
     # Check if employee_code already exists
@@ -129,7 +129,7 @@ def update_employee(db: Session, employee_id: int, employee_update: dict, curren
         HTTPException 404: If employee not found
     """
     # SECURITY: Only supervisors and admins can update employees
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can update employees")
 
     db_employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()

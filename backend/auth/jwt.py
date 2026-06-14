@@ -19,7 +19,7 @@ from backend.auth.password import verify_password as _verify_password
 from backend.config import settings
 from backend.database import get_db
 from backend.orm.token_blacklist import TokenBlacklist
-from backend.orm.user import User
+from backend.orm.user import User, PLANNER_ROLES, SUPERVISORY_ROLES, CONTRIBUTOR_ROLES
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -221,16 +221,14 @@ def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: 
 
 
 # Role tiers (Run 7), per the documented permission matrix in
-# docs/user-guide/10-roles-permissions.md. All six are canonical UserRole
-# enum values (Run 7 role-model reconciliation):
+# docs/user-guide/10-roles-permissions.md. Canonical definitions live in
+# backend/orm/user.py and are imported here (and by the CRUD layer and
+# per-module write checks) so the tiers can never drift apart:
 #   admin               -> system administration
 #   PLANNER_ROLES       -> capacity planning, scenarios, configuration
 #   SUPERVISORY_ROLES   -> operations master data, work orders, bulk loads
 #   CONTRIBUTOR_ROLES   -> transactional data entry (everyone except viewer)
 #   viewer              -> read-only (excluded from all write guards)
-PLANNER_ROLES = ["admin", "poweruser"]
-SUPERVISORY_ROLES = ["admin", "poweruser", "leader", "supervisor"]
-CONTRIBUTOR_ROLES = ["admin", "poweruser", "leader", "supervisor", "operator"]
 
 
 def get_current_active_supervisor(current_user: User = Depends(get_current_user)) -> User:

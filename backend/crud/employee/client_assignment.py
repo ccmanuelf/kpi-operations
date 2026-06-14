@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from backend.orm.employee import Employee
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.middleware.client_auth import verify_client_access
 
 
@@ -65,7 +65,7 @@ def assign_employee_to_client(db: Session, employee_id: int, client_id: str, cur
         HTTPException 404: If employee not found
     """
     # SECURITY: Only supervisors and admins can assign employees
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can assign employees to clients")
 
     # SECURITY: Verify user has access to this client

@@ -11,7 +11,7 @@ from fastapi import HTTPException
 
 from backend.orm.floating_pool import FloatingPool
 from backend.orm.employee import Employee
-from backend.orm.user import User
+from backend.orm.user import User, SUPERVISORY_ROLES
 from backend.middleware.client_auth import verify_client_access
 
 
@@ -48,7 +48,7 @@ def assign_floating_pool_to_client(
         HTTPException 409: If employee is already assigned (double-assignment)
     """
     # SECURITY: Only supervisors and admins can assign floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can assign floating pool employees")
 
     # SECURITY: Verify user has access to this client
@@ -135,7 +135,7 @@ def unassign_floating_pool_from_client(db: Session, pool_id: int, current_user: 
         HTTPException 404: If pool entry not found
     """
     # SECURITY: Only supervisors and admins can unassign floating pool
-    if current_user.role not in ["admin", "supervisor"]:
+    if current_user.role not in SUPERVISORY_ROLES:
         raise HTTPException(status_code=403, detail="Only supervisors and admins can unassign floating pool employees")
 
     db_pool = db.query(FloatingPool).filter(FloatingPool.pool_id == pool_id).first()
